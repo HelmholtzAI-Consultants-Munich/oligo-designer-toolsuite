@@ -28,7 +28,7 @@ def args():
     
     args_parser = argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
     args_parser.add_argument('-d','--dirdata',help='directory for data storage',type=str,required=True)
-    args_parser.add_argument('-r','--release',help='ensemble release',type=str,required=True)
+    args_parser.add_argument('-r','--release',help='ensemble release',type=str,required=False, default='104')
     return args_parser.parse_args()
 
 
@@ -121,12 +121,12 @@ def main():
     file_genome_sequence = download_genome_fasta(dir_data, release)
     print(file_genome_sequence)
 
-    file_gene_annotation = download_genome_fasta(dir_data, release)
+    file_gene_annotation = download_gene_gtf(dir_data, release)
     print(file_gene_annotation)
 
-    print('get exome annotation')
+    print('\nget exome annotation')
     file_exon_annotation = get_exons_annotation(file_gene_annotation)
-    print('get exome fasta')
+    print('\nget exome fasta')
     file_exon_sequence = get_exons_fasta(file_exon_annotation, file_genome_sequence)
 
 
