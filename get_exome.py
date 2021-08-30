@@ -219,6 +219,7 @@ def main():
     print('\nDownload data from: {}'.format(source))
 
     if source == 'ncbi':
+        # if source ncbi we need a chromosome mapping
         mapping = download_chr_mapping(dir_data)
     else:
         mapping = None
