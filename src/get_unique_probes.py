@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import time
 import pickle
 import argparse
 import pandas as pd
@@ -102,10 +103,10 @@ def get_mapping_gene_probes(dir_output, file_exon_sequence, mapping_exon_to_gene
                             else:
                                 mapping_gene_to_probes[gene_id] = {probe: [exon_id]}
                         
-            if count_exons % 100000 == 0:
-                print('Processed exons: {}'.format(count_exons))
-                print('Probes found in total: {}'.format(count_probes))
-                #break
+            #if count_exons % 100000 == 0:
+            #    print('Processed exons: {}'.format(count_exons))
+            #    print('Probes found in total: {}'.format(count_probes))
+            #    break
 
         print('Total number of exons processed: {} with {} probes in total.'.format(count_exons, count_probes))
         pickle.dump(mapping_gene_to_probes, open(file_mapping_gene_to_probes,'wb'))
@@ -145,10 +146,10 @@ def get_unique_probes(dir_output, mapping_gene_to_probes, mapping_gene_to_probes
                 else:
                     probes_unique[probe] = [exon_id, gene_id]
 
-                if count_probes % 100000 == 0:
-                    print('Processed genes: {}'.format(count_genes))
-                    print('Processed probes: {}'.format(count_probes))
-                    print('Unique probes: {}'.format(len(probes_unique)))
+                #if count_probes % 100000 == 0:
+                #    print('Processed genes: {}'.format(count_genes))
+                #    print('Processed probes: {}'.format(count_probes))
+                #    print('Unique probes: {}'.format(len(probes_unique)))
 
         print('Total number of genes processed: {}, total number of probes processed: {} with {} unique probes in total.'.format(count_genes, count_probes, len(probes_unique)))    
         pickle.dump(mapping_gene_to_probes_unique, open(file_mapping_gene_to_probes_unique,'wb')) 
@@ -203,10 +204,10 @@ def filter_probes_with_hamming_distance(dir_output, mapping_gene_to_probes_uniqu
 
                         mapping_gene_to_probes_hamming[gene_id].append(probe)
 
-                    if count_probes % 100000 == 0:
-                        print('Processed genes: {}'.format(count_genes))
-                        print('Processed probes: {}'.format(count_probes))
-                        print('Probes passed hamming distance filter: {}'.format(count_selected_probes))
+                    #if count_probes % 100000 == 0:
+                    #    print('Processed genes: {}'.format(count_genes))
+                    #    print('Processed probes: {}'.format(count_probes))
+                    #    print('Probes passed hamming distance filter: {}'.format(count_selected_probes))
                 
         print('Total number of genes processed: {}, total number of probes processed: {} with {} probes passed hamming distance filter.'.format(count_genes, count_probes, count_selected_probes))    
         pickle.dump(mapping_gene_to_probes_hamming, open(file_mapping_gene_to_probes_hamming,'wb')) 
@@ -302,27 +303,35 @@ def main():
     print('Minimum coverage between probes and target sequence (blast parameter "coverage"): {} %'.format(coverage))
     print('Maximum similarity between probes and target sequences (blast parameter "percent identity"): {} % \n'.format(percent_identity))
 
+    t = time.time()
     file_mapping_exon_to_gene, file_mapping_gene_to_exon = get_mapping_gene_exon(dir_output, file_gene_annotation)
+    print('Time to process gene-exon mapping dicts: {} s'.format(time.time() - t))
 
     mapping_exon_to_gene = pickle.load(open(file_mapping_exon_to_gene,'rb'))
-    mapping_gene_to_exon = pickle.load(open(file_mapping_gene_to_exon,'rb'))
+    #mapping_gene_to_exon = pickle.load(open(file_mapping_gene_to_exon,'rb'))
 
+    t = time.time()
     file_mapping_gene_to_probes = get_mapping_gene_probes(dir_output, file_exon_sequence, mapping_exon_to_gene, probe_length, GC_content_min, GC_content_max, Tm_min, Tm_max)
+    print('Time to process gene-probe mapping dict: {} s'.format(time.time() - t))
 
     mapping_gene_to_probes = pickle.load(open(file_mapping_gene_to_probes,'rb'))
     mapping_gene_to_probes_unique = pickle.load(open(file_mapping_gene_to_probes,'rb'))
 
+    t = time.time()
     file_mapping_gene_to_probes_unique = get_unique_probes(dir_output, mapping_gene_to_probes, mapping_gene_to_probes_unique)
-    mapping_gene_to_probes_unique = pickle.load(open(file_mapping_gene_to_probes_unique,'rb'))
+    print('Time to process unique probes: {} s'.format(time.time() - t))
 
+    mapping_gene_to_probes_unique = pickle.load(open(file_mapping_gene_to_probes_unique,'rb'))
     removed_genes = []
     for gene_id, mapping_probe_to_exon in mapping_gene_to_probes_unique.items():
         if len(mapping_probe_to_exon) < min_probes_per_gene:
             removed_genes.append(gene_id)
 
-    print('{} number of genes were filtered out because they had < {} probes per gene.'.format(len(removed_genes), min_probes_per_gene))
+    print('{} genes were filtered out because they had < {} probes per gene.'.format(len(removed_genes), min_probes_per_gene))
 
-    #file_mapping_gene_to_probes_hamming = filter_probes_with_hamming_distance(dir_output, mapping_gene_to_probes_unique, min_probes_per_gene, probe_length, percent_identity)
+    t = time.time()
+    file_mapping_gene_to_probes_hamming = filter_probes_with_hamming_distance(dir_output, mapping_gene_to_probes_unique, min_probes_per_gene, probe_length, percent_identity)
+    print('Time to process hamming distance filter: {} s'.format(time.time() - t))
     #mapping_gene_to_probes_hamming = pickle.load(open(file_mapping_gene_to_probes_hamming,'rb'))
 
 
