@@ -1,0 +1,21 @@
+
+dir_output: ./data/ensemble/ #output directory
+get_gene_and_exon_annotation_file: False # should gene and exon annotation file (gtf) be retrieved from 'source'
+file_gene_annotation: ./data/ensemble/Homo_sapiens.GRCh38.104.gtf # provide file if get_gene_and_exon_annotation_file is set to false
+file_exon_annotation: ./data/ensemble/Homo_sapiens.GRCh38.104.exons.gtf # provide file if get_gene_and_exon_annotation_file is set to false
+
+get_genome_annotation_file: False # should genome file (fasta) be retrieved from 'source'
+file_genome_sequence: ./data/ensemble/Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa # provide file if get_genome_annotation_file is set to false
+
+source: 'ensemble' # provide if get_gene_and_exon_annotation_file or get_genome_annotation_file is set to true, available sources: 'ncbi' and 'ensemble'
+release_ensemble: 104 # # provide if get_gene_and_exon_annotation_file or get_genome_annotation_file is set to true, ensemble release
+
+probe_length: 45 #length of probes
+min_probes_per_gene: 4 #minimum number of probes per gene
+GC_content_min: 40 #minimum GC content of probes
+GC_content_max: 60 #maximum GC content of probes
+Tm_min: 68 #minimum melting temperature of probes
+Tm_max: 75 #maximum melting temperature of probes
+coverage: 0.5 #minimum coverage between probes and target sequence (blast parameter "coverage"), ranging from 0 tp 1 (full coverage).
+percent_identity: 0.8 #Maximum similarity between probes and target sequences (blast parameter "percent identity"), ranging from 0 tp 1 (no missmatch).
+num_threads: 10
