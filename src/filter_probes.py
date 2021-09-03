@@ -24,20 +24,22 @@ def filter_probes_with_blastn(dir_output, file_exon_sequence, mapping_gene_to_pr
     file_mapping_gene_to_probes_blastn = '{}mapping_gene_to_probes_blastn.pkl'.format(dir_output)
 
     if not os.path.isfile(file_mapping_gene_to_probes_blastn):
+        print_run = 10
         count_genes = 0
         count_probes = 0
+        count_probes_last_run = 0
         count_selected_probes = 0
-        count_selected_probes_last_run = 0
         
-        mapping_gene_to_probes_blastn = {}
-
-        cmd = 'mkdir {}probe_queries/'.format(dir_output)
+        dir_output_blast = '{}probe_queries_single/'.format(dir_output)
+        cmd = 'mkdir {}'.format(dir_output_blast)
         sp.run(cmd, shell=True)
 
         cmd = 'makeblastdb -in {} -dbtype nucl'.format(file_exon_sequence)
         sp.run(cmd, shell=True)
 
         t = time.time()
+        mapping_gene_to_probes_blastn = {}
+
         for gene_id, mapping_probe_to_exon in mapping_gene_to_probes_unique.items():
             if count_genes > 1000:
                 return
@@ -54,14 +56,14 @@ def filter_probes_with_blastn(dir_output, file_exon_sequence, mapping_gene_to_pr
                     sequence = SeqRecord(probe, '{}'.format(probe), '', '')
                     probes.append(sequence)
 
-                file_fasta_probes_per_gene = '{}probe_queries/probes_{}.fna'.format(dir_output, gene_id)
+                file_fasta_probes_per_gene = '{}probes_{}.fna'.format(dir_output_blast, gene_id)
                 
                 output = open(file_fasta_probes_per_gene, 'w')
                 SeqIO.write(probes, output, 'fasta')
                 output.close()
 
                 # run BlastN
-                file_blast_output = '{}probe_queries/blast_{}.txt'.format(dir_output, gene_id)
+                file_blast_output = '{}blast_{}.txt'.format(dir_output_blast, gene_id)
                 cmd = 'blastn -query {} -db {} -outfmt 10 -out {} -word_size 7 -strand plus -num_threads {} 2>/dev/null'.format(file_fasta_probes_per_gene, file_exon_sequence, file_blast_output, num_threads)
                 sp.run(cmd, shell=True)
 
@@ -87,24 +89,22 @@ def filter_probes_with_blastn(dir_output, file_exon_sequence, mapping_gene_to_pr
                 count_selected_probes += len(mapping_probe_to_exon)
                 mapping_gene_to_probes_blastn[gene_id] = mapping_probe_to_exon
 
-            if count_genes % 10 == 0:
-                count_probes_single_run = count_selected_probes - count_selected_probes_last_run
+            
+            if count_genes % print_run == 0:
+                count_probes_single_run = count_probes - count_probes_last_run
                 time_elapsed = time.time() - t
 
-                print('\nTotal processed genes: {}'.format(count_genes))
-                print('Total processed probes: {}'.format(count_probes))
-                print('Total probes passed blastn filter: {}'.format(count_selected_probes))
-                print('Time to process blastn filter: {} s'.format(time_elapsed))
-                print('Probes passed blastn filter: {}'.format(count_probes_single_run))
-                print('Time per probe: {} s'.format(time_elapsed/count_probes_single_run))
-                count_selected_probes_last_run = count_selected_probes
+                print('In total, {} genes with {} probes were processed and {} probes passed the blastn filter in total.'.format(count_genes, count_probes, count_selected_probes))
+                print('In one run, {} genes with {} probes were processed, which took {} s and {} s per probe'.format(print_run,count_probes_single_run,time_elapsed,time_elapsed/count_probes_single_run))
+               
+                count_probes_last_run = count_probes
                 t = time.time()
 
     print('Total number of genes processed: {}, total number of probes processed: {} with {} probes passed hamming distance filter.'.format(count_genes, count_probes, count_selected_probes))    
     pickle.dump(mapping_gene_to_probes_blastn, open(file_mapping_gene_to_probes_blastn,'wb')) 
 
     # remove blast files
-    cmd = 'rm -rf {}probe_queries/'.format(dir_output)
+    cmd = 'rm -rf {}'.format(dir_output_blast)
     sp.run(cmd, shell=True)
 
     return file_mapping_gene_to_probes_blastn
@@ -122,13 +122,14 @@ def filter_probes_with_blastn_2(dir_output, file_exon_sequence, mapping_gene_to_
         count_probes = 0
         count_selected_probes = 0
 
-        mapping_gene_to_probes_blastn = {}
-
-        cmd = 'mkdir {}probe_queries/'.format(dir_output)
+        dir_output_blast = '{}probe_queries_joint/'.format(dir_output)
+        cmd = 'mkdir {}'.format(dir_output_blast)
         sp.run(cmd, shell=True)
 
         cmd = 'makeblastdb -in {} -dbtype nucl'.format(file_exon_sequence)
         sp.run(cmd, shell=True)
+
+        mapping_gene_to_probes_blastn = {}
 
         probes = []
         for gene_id, mapping_probe_to_exon in mapping_gene_to_probes_unique.items():
@@ -146,15 +147,16 @@ def filter_probes_with_blastn_2(dir_output, file_exon_sequence, mapping_gene_to_
                     sequence = SeqRecord(probe, '{}_{}'.format(gene_id, probe), '', '')
                     probes.append(sequence)
 
-        file_fasta_probes_per_gene = 'probe_queries/probes.fna'
+        file_fasta_probes_per_gene = '{}probes.fna'.format(dir_output_blast)
                 
         output = open(file_fasta_probes_per_gene, 'w')
         SeqIO.write(probes, output, 'fasta')
         output.close()
 
         # run BlastN
-        file_blast_output = '{}probe_queries/blast.txt'.format(dir_output)
+        file_blast_output = '{}blast.txt'.format(dir_output_blast)
         cmd = 'blastn -query {} -db {} -outfmt 10 -out {} -word_size 7 -strand plus -num_threads {} 2>/dev/null'.format(file_fasta_probes_per_gene, file_exon_sequence, file_blast_output, num_threads)
+        print(cmd)
         sp.run(cmd, shell=True)
 
         # read and process results of BlastN
@@ -201,7 +203,7 @@ def filter_probes_with_blastn_2(dir_output, file_exon_sequence, mapping_gene_to_
     pickle.dump(mapping_gene_to_probes_blastn, open(file_mapping_gene_to_probes_blastn,'wb')) 
 
     # remove blast files
-    cmd = 'rm -rf {}probe_queries/'.format(dir_output)
+    cmd = 'rm -rf {}'.format(dir_output_blast)
     sp.run(cmd, shell=True)
 
     return file_mapping_gene_to_probes_blastn

@@ -122,7 +122,7 @@ def main():
     num_threads = int(config['num_threads'])
 
     t = time.time()
-    file_mapping_gene_to_probes_blastn = fp.filter_probes_with_blastn(dir_output, file_exon_sequence, mapping_gene_to_probes_unique, mapping_exon_to_gene, min_probes_per_gene, probe_length, coverage, percent_identity, num_threads)
+    file_mapping_gene_to_probes_blastn = fp.filter_probes_with_blastn_2(dir_output, file_exon_sequence, mapping_gene_to_probes_unique, mapping_exon_to_gene, min_probes_per_gene, probe_length, coverage, percent_identity, num_threads)
     logging.info('Time to process blastn filter: {} s'.format(time.time() - t))
     
     #t = time.time()
