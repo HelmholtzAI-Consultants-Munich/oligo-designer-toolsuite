@@ -5,12 +5,14 @@
 
 import os
 import itertools
-import pybedtools
-from gtfparse import read_gtf
-from Bio import SeqIO
-from ftplib import FTP
+
 import pandas as pd
 import subprocess as sp
+
+import pybedtools
+from Bio import SeqIO
+from ftplib import FTP
+from gtfparse import read_gtf
 
 
 ############################################
