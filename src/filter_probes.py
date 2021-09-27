@@ -3,183 +3,223 @@
 ############################################
 
 import os
-import time
-import pickle
-import subprocess as sp
 import pandas as pd
+import multiprocessing
 
-
-import Levenshtein as Lev
-
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 from Bio.Blast.Applications import NcbiblastnCommandline
 from Bio.Blast.Applications import NcbimakeblastdbCommandline
 
+import src.utils as utils
+
 ############################################
-# filter probes with blastn or hamming distance 
+# functions 
 ############################################
 
+'''
+## pool is an alternative to process, hwoever, it did not lead better performance on CPU server
 
-def filter_probes_with_blastn(dir_output, file_exon_sequence, mapping_gene_to_probes_unique, mapping_exon_to_gene, min_probes_per_gene, probe_length, word_size, coverage, percent_identity, num_threads):
-  
-    #print_run = 500
-    count_genes = 0
-    count_probes = 0
-    count_probes_last_run = 0
-    count_selected_probes = 0
-
-    # create temporary directory
-    dir_output_blast = '{}probe_queries_combined/'.format(dir_output)
-    cmd = 'mkdir {}'.format(dir_output_blast)
-    sp.run(cmd, shell=True)
+def run_blast_search_pool(number_batchs, word_size, num_threads_blast, file_gene_gtf, file_genome_fasta, dir_output_probes):   
+    
+    file_transcriptome_gtf = _get_transcriptome_gtf(file_gene_gtf, dir_output_probes)
+    file_transcriptome_fasta = os.path.join(dir_output_probes, 'transcriptome.fna')
+    utils.get_fasta(file_transcriptome_gtf, file_genome_fasta, file_transcriptome_fasta)
 
     # create blast database
-    cmd = NcbimakeblastdbCommandline(input_file=file_exon_sequence, dbtype='nucl')
+    cmd = NcbimakeblastdbCommandline(input_file=file_transcriptome_fasta, dbtype='nucl')
     out, err = cmd()
+    print('Blast database created.')
 
-    t = time.time()
-    mapping_gene_to_probes_blastn = {}
+    print('Multiprocessing with pool')
+    number_cpus = multiprocessing.cpu_count() - 2
+    pool = multiprocessing.Pool(number_cpus)
+    print('Number of cpus: {}'.format(number_cpus))
 
-    probes = []
-    for gene_id, mapping_probe_to_exon in mapping_gene_to_probes_unique.items():
-        count_genes += 1
-        #if count_genes > print_run:
-        #    break
-        
-        # exclude genes with less than required number of probes
-        if len(mapping_probe_to_exon) > min_probes_per_gene:
-            
-            # write all probes to fasta file
-            for probe, exons in mapping_probe_to_exon.items():
-                count_probes += 1
-                sequence = SeqRecord(probe, '{}_{}'.format(gene_id, probe), '', '')
-                probes.append(sequence)
+    jobs = []
+    for batch_id in range(number_batchs): 
+        jobs.append(pool.apply_async(_run_blast, args=(batch_id, word_size, num_threads_blast, file_transcriptome_fasta, dir_output_probes, )))
 
-        else:
-            mapping_gene_to_probes_blastn[gene_id] = None
+    utils.processes_wait(jobs)
+    pool.close()
+'''
 
-    file_fasta_probes_per_gene = '{}probes.fna'.format(dir_output_blast)
-                
-    output = open(file_fasta_probes_per_gene, 'w')
-    SeqIO.write(probes, output, 'fasta')
-    output.close()
+############################################
 
+def run_blast_search(number_batchs, word_size, num_threads_blast, file_gene_gtf, file_genome_fasta, dir_output_probes):   
+    
+    file_transcriptome_gtf = _get_transcriptome_gtf(file_gene_gtf, dir_output_probes)
+    file_transcriptome_fasta = os.path.join(dir_output_probes, 'transcriptome.fna')
+    utils.get_fasta(file_transcriptome_gtf, file_genome_fasta, file_transcriptome_fasta)
 
-    # run BlastN
-    file_blast_output = '{}blast.txt'.format(dir_output_blast)
-    cmd = NcbiblastnCommandline(query=file_fasta_probes_per_gene,db=file_exon_sequence, outfmt=10, out=file_blast_output,word_size=word_size, strand='plus',num_threads=num_threads)
+    # create blast database
+    cmd = NcbimakeblastdbCommandline(input_file=file_transcriptome_fasta, dbtype='nucl')
     out, err = cmd()
+    print('Blast database created.')
 
-    # read and process results of BlastN
-    blast_results = pd.read_csv(file_blast_output,header=None, usecols=[0,1,2,3,6,7]) # don't load columns: 'missmatches','gap_opens','start_t','end_t', 'evalue','bit_score'
-    blast_results.columns = ['query','target_exon','percent_identity','alignment_length','query_start','query_end']
-    
-    blast_results['query_gene_id'] = blast_results['query'].str.split('_').str[0]
-    blast_results['query_probe'] = blast_results['query'].str.split('_').str[1]
-    blast_results['target_exon'] = blast_results['target_exon'].str.split('::').str[0]
-    
-    
-    for gene_id in blast_results['query_gene_id'].unique():
-        probes_with_match = []
-        blast_results_gene = blast_results[blast_results['query_gene_id'] == gene_id]
-        blast_results_gene.reset_index(inplace=True, drop=True)
-        for idx in blast_results_gene.index:
-            probe = blast_results_gene['query_probe'][idx]
-            gene_id_target = mapping_exon_to_gene[blast_results_gene['target_exon'][idx]]
+    # run blast with multi process
+    jobs = []
+    for batch_id in range(number_batchs):
+        proc = multiprocessing.Process(target=_run_blast, args=(batch_id, word_size, num_threads_blast, file_transcriptome_fasta, dir_output_probes, ))
+        jobs.append(proc)
+        proc.start()
 
-            # only consider hit in other genes
-            if gene_id_target != gene_id:
-                # filter out probes that have more than 50% sequence coverage with target sequence, 80% identity with target sequence, and target sequence covers ligation site +- 5
-                if int(blast_results_gene['alignment_length'][idx]) > (probe_length * coverage) and float(blast_results_gene['percent_identity'][idx]) > percent_identity and int(blast_results_gene['query_start'][idx]) < (probe_length //2 - 4) and int(blast_results_gene['query_end'][idx]) > (probe_length //2 + 5):
-                    probes_with_match.append(probe)
+    for job in jobs:
+        job.join()   
 
-        # remove all probes with matches
-        mapping_probe_to_exon = mapping_gene_to_probes_unique[gene_id]
-        for probe in set(probes_with_match):
-            mapping_probe_to_exon.pop(probe)
-        mapping_gene_to_probes_blastn[gene_id] = mapping_probe_to_exon
-        count_selected_probes += len(mapping_probe_to_exon)
-    
-            
-    count_probes_single_run = count_probes - count_probes_last_run
-    time_elapsed = time.time() - t
 
-    print('In total, {} genes with {} probes were processed and {} probes passed the blastn filter in total.'.format(count_genes, count_probes, count_selected_probes))
-    print('In one run, {} genes with {} probes were processed, which took {} s and {} s per probe'.format(count_genes,count_probes_single_run,time_elapsed,time_elapsed/count_probes_single_run))
+############################################
 
-    count_probes_last_run = count_probes
-    t = time.time()
+def _get_transcriptome_gtf(file_gene_gtf, dir_output):
+    file_transcriptome_gtf = os.path.join(dir_output, 'transcriptome.gtf')
 
-    # remove blast files
-    cmd = 'rm -rf {}'.format(dir_output_blast)
-    sp.run(cmd, shell=True)
+    transcriptome_annotation = utils.load_transcriptome_annotation(file_gene_gtf)
+    transcriptome_annotation['transcript'] = transcriptome_annotation['gene_id'] + '_tid' + transcriptome_annotation['transcript_id']
+    transcriptome_annotation[['seqname','source','transcript','start','end','score','strand','frame']].to_csv(file_transcriptome_gtf, sep='\t', header=False, index = False)
+   
+    return file_transcriptome_gtf
 
-    return mapping_gene_to_probes_blastn
+
+############################################
+
+def _run_blast(batch_id, word_size, num_threads_blast, file_exon_fasta, dir_output_probes):
+    file_probe_fasta_batch = os.path.join(dir_output_probes, 'probes_batch{}.fna'.format(batch_id))
+    file_blast_batch = os.path.join(dir_output_probes, 'blast_batch{}.txt'.format(batch_id))
+
+    cmd = NcbiblastnCommandline(query=file_probe_fasta_batch,db=file_exon_fasta, outfmt="10 qseqid sseqid pident length qstart qend", out=file_blast_batch, word_size=word_size, strand='plus', num_threads=num_threads_blast)
+    out, err = cmd()
 
 
 ############################################
 
 '''
-def filter_probes_with_hamming_distance(dir_output, mapping_gene_to_probes_unique, min_probes_per_gene, probe_length, percent_identity):
-  
-    file_mapping_gene_to_probes_hamming = '{}mapping_gene_to_probes_hamming.pkl'.format(dir_output)
+## pool is an alternative to process, hwoever, it did not lead better performance on CPU server
+## here, I additionally had the problem that pool stopped after one execution of the for loops within the called functions, so I removed the multiprocessing for this part
 
-    if not os.path.isfile(file_mapping_gene_to_probes_hamming):
-
-        count_genes = 0
-        count_probes = 0
-        count_selected_probes = 0
-
-        mapping_gene_to_probes_hamming = {}
-        threshold = probe_length / 100 * (100-percent_identity)
-
-        print('Filter out probes that map to target sequences with < {} missmatches.'.format(threshold))
-
-        for gene_id, mapping_probe_to_exon in mapping_gene_to_probes_unique.items():
-
-            count_genes +=1
-
-            if len(mapping_probe_to_exon) > min_probes_per_gene:
-                
-                for probe, exons in mapping_probe_to_exon.items():
-                    count_probes += 1
-                    foundMatch = False
-
-                    for gene_id2, mapping_probe_to_exon2 in mapping_gene_to_probes_unique.items():
-
-                            if gene_id != gene_id2:
-                                
-                                for probe2, exons2 in mapping_probe_to_exon2.items():
-                                    hamming_dist = Lev.hamming(str(probe),str(probe2))
-                                    if  hamming_dist < threshold:
-                                            foundMatch = True
-                                            break
-                            
-                            if foundMatch:
-                                break
-
-                    if not foundMatch:   
-                        count_selected_probes +=1
-
-                        if gene_id not in mapping_gene_to_probes_hamming:
-                            mapping_gene_to_probes_hamming[gene_id] = []
-
-                        mapping_gene_to_probes_hamming[gene_id].append(probe)
-
-                    #if count_probes % 100000 == 0:
-                    #    print('Processed genes: {}'.format(count_genes))
-                    #    print('Processed probes: {}'.format(count_probes))
-                    #    print('Probes passed hamming distance filter: {}'.format(count_selected_probes))
-                
-        print('Total number of genes processed: {}, total number of probes processed: {} with {} probes passed hamming distance filter.'.format(count_genes, count_probes, count_selected_probes))    
-        pickle.dump(mapping_gene_to_probes_hamming, open(file_mapping_gene_to_probes_hamming,'wb')) 
+def filter_probes_by_blast_results_pool(number_batchs, probe_length, percent_identity, coverage, min_probes_per_gene, dir_output_probes, dir_output_results):
     
-    return file_mapping_gene_to_probes_hamming
+    file_removed_genes = os.path.join(dir_output_results, 'genes_with_insufficient_probes.txt')
 
-
+    for batch_id in range(number_batchs): 
+        _process_blast_results(batch_id, probe_length, percent_identity, coverage, min_probes_per_gene, file_removed_genes, dir_output_probes, dir_output_results)
 '''
 
+############################################
+
+def filter_probes_by_blast_results(number_batchs, probe_length, percent_identity, coverage, min_probes_per_gene, dir_output_probes, dir_output_results):
+    
+    file_removed_genes = os.path.join(dir_output_results, 'genes_with_insufficient_probes.txt')
+
+    # process blast results
+    jobs = []
+    for batch_id in range(number_batchs):
+        proc = multiprocessing.Process(target=_process_blast_results, args=(batch_id, probe_length, percent_identity, coverage, min_probes_per_gene, file_removed_genes, dir_output_probes, dir_output_results, ))
+        jobs.append(proc)
+        proc.start()
+
+    for job in jobs:
+        job.join()
 
 
+############################################
+
+def _process_blast_results(batch_id, probe_length, percent_identity, coverage, min_probes_per_gene, file_removed_genes, dir_output_probes, dir_output_results):
+    blast_results = _read_blast_output(batch_id, dir_output_probes)
+    _filter_probes(blast_results, probe_length, percent_identity, coverage, min_probes_per_gene, file_removed_genes, dir_output_results)
+
+
+############################################
+
+def _read_blast_output(batch_id, dir_output_probes):
+    file_blast_batch = os.path.join(dir_output_probes, 'blast_batch{}.txt'.format(batch_id))
+
+    blast_results = pd.read_csv(file_blast_batch, header=None)
+    blast_results.columns = ['query','target_exon','percent_identity','alignment_length','query_start','query_end']
+
+    blast_results['query_gene_id'] = blast_results['query'].str.split('_tid').str[0]
+    blast_results['target_exon'] = blast_results['target_exon'].str.split('::').str[0]
+
+    return blast_results
+
+
+############################################
+
+def _filter_probes(blast_results, probe_length, percent_identity, coverage, min_probes_per_gene, file_removed_genes, dir_output_results):
+    removed_genes = [] 
+
+    for gene_id in blast_results['query_gene_id'].unique():
+        probes_wo_match = _get_probes_wo_match(gene_id, blast_results, percent_identity, probe_length, coverage)
+
+        if len(probes_wo_match) < min_probes_per_gene:
+            removed_genes.append(gene_id)
+        else:
+            _write_output(gene_id, probes_wo_match, dir_output_results)
+
+    with open(file_removed_genes, 'a') as output:
+        for gene_id in removed_genes:
+            output.write('{}\n'.format(gene_id))
+
+
+############################################
+
+def _get_probes_wo_match(gene_id, blast_results, percent_identity, probe_length, coverage):
+
+    blast_results_gene = blast_results[blast_results['query_gene_id'] == gene_id]
+    blast_results_gene.reset_index(inplace=True, drop=True)
+
+    probes_wo_match = {}
+    probes_with_match = []
+
+    for idx in blast_results_gene.index:
+        header = blast_results_gene['query'][idx]
+        target_exon = blast_results_gene['target_exon'][idx]
+        gene_id_target = target_exon.split('_tid')[0]
+
+        if header not in probes_with_match:
+            probes_wo_match[header] = ''
+            if gene_id_target != gene_id:
+                if float(blast_results_gene['percent_identity'][idx]) > percent_identity and int(blast_results_gene['alignment_length'][idx]) > (probe_length * coverage) and int(blast_results_gene['query_start'][idx]) < (probe_length //2 - 4) and int(blast_results_gene['query_end'][idx]) > (probe_length //2 + 5):
+                    probes_with_match.append(header)
+                    probes_wo_match.pop(header)
+
+    return list(set(probes_wo_match.keys()))
+
+
+############################################
+
+def _write_output(gene_id, probes_wo_match, dir_output_results):
+    file_output = '{}probes_{}'.format(dir_output_results, gene_id)
+
+    with open(file_output, 'w') as handle:
+        handle.write('probe_sequence\tchromosome\tstart\tend\tstrand\tgene_id\ttranscript_id\texon_id\tprobe_id\tGC_content\tmelting_temperature\n')
+
+        for header in probes_wo_match:
+            transcript_id = header.split('_tid')[1].split('_eid')[0]
+            exon_id = header.split('_eid')[1].split('_pid')[0]
+            probe_id = header.split('_pid')[1].split('_seq')[0]
+            probe_seq = header.split('_seq')[1].split('_chr')[0]
+            chrom = header.split('_chr')[1].split('_start')[0]
+            start = header.split('_start')[1].split('_end')[0]
+            end = header.split('_end')[1].split('_strand')[0]
+            strand = header.split('_strand')[1].split('_gc')[0]
+            gc = header.split('_gc')[1].split('_tm')[0]
+            Tm = header.split('_tm')[1]
+
+            if len(set(start.split(';'))) > 1:
+                frame_multi_s = pd.DataFrame({'transcript_id':transcript_id.split(';'), 'exon_id':exon_id.split(';'), 'probe_id':probe_id.split(';'), 'start': start.split(';'), 'end':end.split(';')})
+                for s in set(start.split(';')):
+                    frame_s = frame_multi_s.loc[frame_multi_s['start'] == s]
+
+                    output = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(probe_seq, chrom, frame_s.start.unique()[0], frame_s.end.unique()[0], strand, gene_id, ';'.join(frame_s.transcript_id), ';'.join(frame_s.exon_id), ';'.join(frame_s.probe_id), gc, Tm)
+                    handle.write(output)
+            else:
+                output = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(probe_seq, chrom, start.split(';')[0], end.split(';')[0], strand, gene_id, transcript_id, exon_id, probe_id, gc, Tm)
+                handle.write(output)
+
+
+
+
+
+
+
+
+        
 
