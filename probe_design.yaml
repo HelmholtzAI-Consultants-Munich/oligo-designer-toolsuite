@@ -1,24 +1,70 @@
+### Parameters for genome and gene annotation
+# If True: gene annotation file (gtf) as well as genome file (fasta) are retrieved from 'source'. 
+# If False: provide gene annotation (gtf) and genome file (fasta).
+get_annotation: True   
 
-dir_output: ./data/ensemble/ #output directory
+# provide if get_annotation = true
+source: ensemble # available sources: 'ncbi' and 'ensemble'
+release_ensemble: 104 # release number of ensemble annotation
 
-get_annotation: True # If True: gene and exon annotation file (gtf) as well as genome file (fasta) is retrieved from 'source'. If False: provided files are used
+# provide file if get_annotation = false
+file_gene_gtf: /storage/groups/aiconsultants/workspace/lisa.barros/pool/ncbi_45nt/GCF_000001405.39_GRCh38.p13_genomic.gtf
+file_genome_fasta: /storage/groups/aiconsultants/workspace/lisa.barros/pool/ncbi_45nt/GCF_000001405.39_GRCh38.p13_genomic.fna
 
-source: 'ensemble' # provide if get_gene_and_exon_annotation_file or get_genome_annotation_file is set to true, available sources: 'ncbi' and 'ensemble'
-release_ensemble: 104 # # provide if get_gene_and_exon_annotation_file or get_genome_annotation_file is set to true, ensemble release
 
-file_gene_annotation: ./data/ensemble/Homo_sapiens.GRCh38.104.gtf # provide file if get_annotation is set to false
-file_exon_annotation: ./data/ensemble/Homo_sapiens.GRCh38.104.exons.gtf # provide file if get_annotation is set to false
-file_genome_sequence: ./data/ensemble/Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa # provide file if get_annotation is set to false
-file_exon_sequence: ./data/ensemble/Homo_sapiens.GRCh38.104.exons.fna # provide file if get_annotation is set to false
 
+### Which geneset should be used? 
+# If probes should be designed for all genes of the provided annotation, leave gene_list empty, i.e. gene_list: []
+# If probes should only be designed for specific genes, provide a gene_list, e.g. gene_list: ['ACHE', 'ACIN1', 'ACLY', 'NOTCH4_2', 'NOX1', 'NOX4']
+#gene_list: []
+#gene_list: ['ACHE', 'ACIN1', 'ACLY', 'NOTCH4_2', 'NOX1', 'NOX4'] # ncbi test list
+gene_list: ['ENSG00000000003', 'ENSG00000000938', 'ENSG00000001631', 'ENSG00000003393', 'ENSG00000004777', 'ENSG00000005302', 'ENSG00000005844', 'ENSG00000006071'] # ensemble test list
+
+
+
+### Parameters for probe design
 probe_length: 45 #length of probes
-min_probes_per_gene: 4 #minimum number of probes per gene
 GC_content_min: 40 #minimum GC content of probes
 GC_content_max: 60 #maximum GC content of probes
 Tm_min: 68 #minimum melting temperature of probes
 Tm_max: 75 #maximum melting temperature of probes
+min_probes_per_gene: 2 #minimum number of probes per gene
+
+
+
+### Parameters for Blastn search
 word_size: 10 #word size for the blastn seed (exact match to target)
 coverage: 0.5 #minimum coverage between probes and target sequence (blast parameter "coverage"), ranging from 0 tp 1 (full coverage).
 percent_identity: 0.8 #Maximum similarity between probes and target sequences (blast parameter "percent identity"), ranging from 0 tp 1 (no missmatch).
-num_threads: 90
 
+
+
+### Where should the results be stored?
+dir_output: ./data/ensemble_test/ #output directory
+
+
+### Optional parameters: 
+
+# How many genes should be processed in one batch?
+batch_size: 2 
+
+
+# parameters for melting temperature
+Tm_parameters:
+  check: True
+  strict: True
+  c_seq: null
+  shift: 0
+  nn_table: DNA_NN3
+  tmm_table: DNA_TMM1
+  imm_table: DNA_IMM1
+  de_table: DNA_DE1
+  dnac1: 25
+  dnac2: 25
+  selfcomp: False
+  Na: 50
+  K: 0
+  Tris: 0
+  Mg: 0
+  dNTPs: 0
+  saltcorr: 5
