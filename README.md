@@ -39,7 +39,7 @@ Optional parameters that the user can define include the number of genes that sh
 
 ### Pipeline Description
 
-The pipeline has three major steps: 
+The pipeline has four major steps: 
 
 1) Downloading annotations: within this step the gene and genome annotations are downloaded from *NCBI* or *ensemble*. The main functions used for this step are in ```src/load_annotations.py```. Annotations are downloaded via ftp server (```ftp_download``` function). One functions downloads the gene *gtf* (```download_gene_gtf``` function) and another funtion downloads the genome *fasta* file (```download_genome_fasta``` function). In case, *NCBI* annotation is chosen for download, the annotation has to be post-processed. The chromosome names have to be mapped from *RefSeq* accession number to either *sequence-name* (for chromosomes) or to *GenBank* accession number (for scaffolds) in order to be used by ```bedtools```. The required mapping is downloaded automatically from *NCBI* (```download_chr_mapping``` function). 
 
