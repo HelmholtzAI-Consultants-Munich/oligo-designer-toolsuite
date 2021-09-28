@@ -8,17 +8,17 @@ source: ensemble # available sources: 'ncbi' and 'ensemble'
 release_ensemble: 104 # release number of ensemble annotation
 
 # provide file if get_annotation = false
-file_gene_gtf: /storage/groups/aiconsultants/workspace/lisa.barros/pool/ncbi_45nt/GCF_000001405.39_GRCh38.p13_genomic.gtf
-file_genome_fasta: /storage/groups/aiconsultants/workspace/lisa.barros/pool/ncbi_45nt/GCF_000001405.39_GRCh38.p13_genomic.fna
+file_gene_gtf: ./data/ensemble_45/GCF_000001405.39_GRCh38.p13_genomic.gtf
+file_genome_fasta: ./data/ensemble_45/GCF_000001405.39_GRCh38.p13_genomic.fna
 
 
 
 ### Which geneset should be used? 
 # If probes should be designed for all genes of the provided annotation, leave gene_list empty, i.e. gene_list: []
 # If probes should only be designed for specific genes, provide a gene_list, e.g. gene_list: ['ACHE', 'ACIN1', 'ACLY', 'NOTCH4_2', 'NOX1', 'NOX4']
-#gene_list: []
+gene_list: []
 #gene_list: ['ACHE', 'ACIN1', 'ACLY', 'NOTCH4_2', 'NOX1', 'NOX4'] # ncbi test list
-gene_list: ['ENSG00000000003', 'ENSG00000000938', 'ENSG00000001631', 'ENSG00000003393', 'ENSG00000004777', 'ENSG00000005302', 'ENSG00000005844', 'ENSG00000006071'] # ensemble test list
+#gene_list: ['ENSG00000000003', 'ENSG00000000938', 'ENSG00000001631', 'ENSG00000003393', 'ENSG00000004777', 'ENSG00000005302', 'ENSG00000005844', 'ENSG00000006071'] # ensemble test list
 
 
 
@@ -40,13 +40,13 @@ percent_identity: 0.8 #Maximum similarity between probes and target sequences (b
 
 
 ### Where should the results be stored?
-dir_output: ./data/ensemble_test/ #output directory
+dir_output: ./data/ensemble_45/ #output directory
 
 
 ### Optional parameters: 
 
 # How many genes should be processed in one batch?
-batch_size: 2 
+batch_size: 500 
 
 
 # parameters for melting temperature
