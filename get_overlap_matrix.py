@@ -6,6 +6,7 @@ import os
 import argparse
 import fnmatch
 import pandas as pd
+from functools import reduce
 
 import multiprocessing
 
@@ -24,13 +25,13 @@ def args():
 ############################################
 
 def get_files(dirs_in):
-
+    
     files = []
     number_dirs = 0
     for dir in dirs_in:
         files.append(pd.DataFrame([[file.split('probes_')[1].split('.')[0], file] for file in _list_files_in_dir(dir, r'probes_*')], columns=['gene', 'file_dir{}'.format(number_dirs)]))
         number_dirs += 1
-    files = pd.concat(files, axis=1)
+    files = reduce(lambda  left,right: pd.merge(left, right, on=['gene'], how='outer'), files)
     files = files.loc[:,~files.columns.duplicated()]
 
     return files
@@ -53,7 +54,6 @@ def get_overlap_matrix(files, dir_out):
     jobs = []
     for idx in files.index:
         files_gene = files.iloc[idx]
-        print(files_gene)
         for index, value in files_gene.items():
             if index == 'gene':
                 gene = value
