@@ -18,6 +18,7 @@ file_genome_fasta:
 file_genes: ./data/ensemble_gene_list.txt
 
 
+
 ### Parameters for probe design
 probe_length: 45 #length of probes
 GC_content_min: 40 #minimum GC content of probes

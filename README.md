@@ -55,7 +55,7 @@ The pipeline has four major steps:
 We tested the pipeline on a 96 core CPU server. Therefore, 
 
 - we connect to ```vicb-submit-01``` or ```vicb-submit-02``` and open a ```screen``` (this allows to run srun in background without crashing when loosing the VPN connection)
-- we submit a job to the server, e.g. ```srun -p cpu_p --mem 200 --nice=10000 -w cpusrv20 --pty /bin/bash``` 
+- we submit a job to the server, e.g. ```srun -p cpu_p -c 96 --mem 200 --nice=10000 -w cpusrv20 --pty /bin/bash``` 
 - we activate the conda environment, e.g. ```conda activate environment```
 - we run the pipeline, i.e. ```python probe_design.py -c probe_design.yaml```
 
