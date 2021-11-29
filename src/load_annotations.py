@@ -19,24 +19,24 @@ import src.utils as utils
 ############################################
 
 
-def ftp_download(ftp_link, directory, file_pattern, dir_output):
+def ftp_download(ftp_link, directory, file_name, dir_output):
     """
-    ...
+    Download file from ftp server.
     Parameters
     ----------
-        ftp_link: 
-            
-        directory: 
-            
-        file_pattern: 
-            
-        dir_output:
+        ftp_link: string
+            Link to ftp server, e.g. 'ftp.ncbi.nlm.nih.gov'.
+        directory: string
+            Directory on ftp server, where the file is located, e.g. 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'.
+        file_name: string
+            Name of file that should be downloaded from ftp server, e.g. 'GCF_000001405.39_GRCh38.p13_genomic.fna'.
+        dir_output: string
+            Path to directory for downloaded files.
     Returns
     -------
-        file_output: 
-            
+        file_output: string
+            Path to downloaded file.
     """
-
     ftp = FTP(ftp_link)
     ftp.login() #login to ftp server
     ftp.cwd(directory) #move to directory
@@ -45,7 +45,7 @@ def ftp_download(ftp_link, directory, file_pattern, dir_output):
     ftp.retrlines('LIST ', allfiles.append) 
 
     for file in allfiles:
-        if file_pattern in file: 
+        if file_name in file: 
             if " -> " in file: # if file is a symbolic link
                 file_download = file.split(" -> ")[1]
                 file_output = file_download.split('/')[-1]
@@ -62,24 +62,21 @@ def ftp_download(ftp_link, directory, file_pattern, dir_output):
 
 ############################################
 
-def download_chr_mapping(dir_output):
+def download_chr_mapping(ftp, dir_output):
     """
-    ...
+    Download file with mapping of chromosome names between GenBank and Ref-Seq accession number from ftp server and create a mapping dictionary.
     Parameters
     ----------
-        dir_output: 
-            
+        ftp: dict
+            Dictionary with ftp parameters (ftp_link: link to ftp server; directory: directory on ftp server; file_name: name of file).
+        dir_output: string
+            Path to directory for downloaded files.
     Returns
     -------
-        mapping: 
-            
+        mapping: dict
+            Dictionary with mapping of chromsome names from GenBank to Ref-Seq.
     """
-
-    ftp_link = 'ftp.ncbi.nlm.nih.gov'
-    directory = 'genomes/all/GCF/000/001/405/GCF_000001405.39_GRCh38.p13/'
-    file_pattern = 'assembly_report.txt'
-
-    file_output = ftp_download(ftp_link, directory, file_pattern, dir_output)
+    file_output = ftp_download(ftp['ftp_link'], ftp['directory'], ftp['file_name'], dir_output)
     file_mapping = os.path.join(dir_output, file_output)
 
     # skip comment lines but keep last comment line for header
@@ -103,37 +100,25 @@ def download_chr_mapping(dir_output):
 
 ############################################
 
-def download_gene_gtf(source, release_ensemble, mapping, dir_output):
+def download_gene_gtf(source, mapping, ftp, dir_output):
     """
-    ...
+    Download gene annotation in gtf file format from ftp server and unzip file. If gene annotation comes from ncbi, map chromosome annotation to Ref-Seq accession number.
     Parameters
     ----------
-        source: 
-            
-        release_ensemble: 
-
-        mapping:
-            
-        dir_output: 
-            
+        source: string
+            Source for ftp download, e.g. 'ncbi' or 'ensemble'.
+        mapping: dict
+            Chromosome mapping dictionary (GenBank to Ref-Seq).
+        ftp: dict
+            Dictionary with ftp parameters (ftp_link: link to ftp server; directory: directory on ftp server; file_name: name of file).
+        dir_output: string
+            Path to directory for downloaded files.
     Returns
     -------
-        file_gene_gtf: 
-            
+        file_gene_gtf: string
+            Path to downloaded file. 
     """
-
-    if source == 'ensemble':
-        ftp_link = 'ftp.ensembl.org'
-        directory = 'pub/release-{}/gtf/homo_sapiens/'.format(release_ensemble)
-        file_pattern = '{}.gtf'.format(release_ensemble)
-    elif source == 'ncbi':
-        ftp_link = 'ftp.ncbi.nlm.nih.gov'
-        directory = '/refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers/'
-        file_pattern = 'genomic.gtf'
-    else:
-        raise ValueError('Error: unknown source "{}"'.format(source))
-    
-    file_output = ftp_download(ftp_link, directory, file_pattern, dir_output)
+    file_output = ftp_download(ftp['ftp_link'], ftp['directory'], ftp['file_name'], dir_output)
     file_gene_gtf = utils.decompress_gzip(os.path.join(dir_output, file_output))
 
     if source == 'ncbi':
@@ -146,15 +131,15 @@ def download_gene_gtf(source, release_ensemble, mapping, dir_output):
 
 def process_ncbi_gene_gtf(dir_output, file_gene_gtf, mapping):
     """
-    ...
+    Process gene annotation file downloaded from NCBI: map chromosome annotation to Ref-Seq.
     Parameters
     ----------
-        dir_output: 
-            
-        file_gene_gtf: 
-
-        mapping:
-            
+        dir_output: string
+            Path to directory where the processed file should be saved.
+        file_gene_gtf: string
+            Path to gtf file with gene annotation.
+        mapping: dict
+            Chromosome mapping dictionary (GenBank to Ref-Seq).
     Returns
     -------
         --- None --- 
@@ -185,36 +170,25 @@ def process_ncbi_gene_gtf(dir_output, file_gene_gtf, mapping):
 
 ############################################
 
-def download_genome_fasta(source, release_ensemble, mapping, dir_output):
+def download_genome_fasta(source, mapping, ftp, dir_output):
     """
-    ...
+    Download genome sequence in fasta file format from ftp server and unzip file. If genome sequence comes from ncbi, map chromosome annotation to Ref-Seq accession number.
     Parameters
     ----------
-        source: 
-            
-        release_ensemble: 
-
-        mapping:
-            
-        dir_output: 
-            
+        source: string
+            Source for ftp download, e.g. 'ncbi' or 'ensemble'.
+        mapping: dict
+            Chromosome mapping dictionary (GenBank to Ref-Seq).
+        ftp: dict
+            Dictionary with ftp parameters (ftp_link: link to ftp server; directory: directory on ftp server; file_name: name of file).
+        dir_output: string
+            Path to directory for downloaded files.
     Returns
     -------
-        file_genome_fasta: 
-            
+        file_genome_fasta: string
+            Path to downloaded file. 
     """
-    if source == 'ensemble':
-        ftp_link = 'ftp.ensembl.org'
-        directory = 'pub/release-{}/fasta/homo_sapiens/dna'.format(release_ensemble)
-        file_pattern = 'dna_rm.primary_assembly'
-    elif source == 'ncbi':
-        ftp_link = 'ftp.ncbi.nlm.nih.gov'
-        directory = 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'
-        file_pattern = 'genomic.fna'
-    else:
-        raise ValueError('Error: unknown source "{}"'.format(source))
-    
-    file_output = ftp_download(ftp_link, directory, file_pattern, dir_output)
+    file_output = ftp_download(ftp['ftp_link'], ftp['directory'], ftp['file_name'], dir_output)
     file_genome_fasta = utils.decompress_gzip(os.path.join(dir_output, file_output))
 
     if source == 'ncbi':
@@ -227,20 +201,20 @@ def download_genome_fasta(source, release_ensemble, mapping, dir_output):
 
 def process_ncbi_genome_fasta(dir_output, file_genome_fasta, mapping):
     """
-    ...
+    Process genome sequence file downloaded from NCBI: map chromosome annotation to Ref-Seq.
     Parameters
     ----------
-        dir_output: 
-            
-        file_genome_fasta: 
-
-        mapping:
-            
+        dir_output: string
+            Path to directory where the processed file should be saved.
+        file_genome_fasta: string
+            Path to fasta file with genome sequence.
+        mapping: dict
+            Chromosome mapping dictionary (GenBank to Ref-Seq).
     Returns
     -------
         --- None --- 
             
-    """   
+    """ 
     file_tmp = os.path.join(dir_output, 'temp.fna')
     output = open(file_tmp, 'w')
 
