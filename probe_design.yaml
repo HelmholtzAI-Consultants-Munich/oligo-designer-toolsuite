@@ -6,16 +6,16 @@ get_annotation: True
 # provide if get_annotation = true --> download annotation from NCBI or Ensemble
 source: ensemble # available sources: 'ncbi' and 'ensemble'
 
-# provide file if get_annotation = False
-file_gene_gtf: 
-file_genome_fasta: 
+# provide file if get_annotation = False, otherwise leave empty
+file_gene_gtf:
+file_genome_fasta:
 
 
 
 ### Which geneset should be used? 
 # If probes should be designed for all genes of the provided annotation, leave gene_list empty, i.e. gene_list: 
 # If probes should only be designed for specific genes, provide a file with a list of genes (each row should contain one gene name in ensemble or NCBI format), e.g. gene_list: ./data/ensemble_gene_list.txt
-file_genes: ./data/ensemble_gene_list.txt
+file_genes:
 
 
 
@@ -32,9 +32,9 @@ min_probes_per_gene: 3 #minimum number of probes per gene
 ### Parameters for Blastn search
 num_threads: 8 #number of threads for parallele run of blast
 word_size: 10 #word size for the blastn seed (exact match to target)
-coverage: 0.5 #minimum coverage between probes and target sequence (blast parameter "coverage"), ranging from 0 tp 1 (full coverage).
-percent_identity: 0.8 #Maximum similarity between probes and target sequences (blast parameter "percent identity"), ranging from 0 tp 1 (no missmatch).
-
+coverage: 50 #minimum coverage between probes and target sequence, ranging from 0 to 100% (full coverage).
+percent_identity: 80 #maximum similarity between probes and target sequences, ranging from 0 to 100% (no missmatch).
+ligation_site: 5 #coverage between probes and target sequence should not span ligation site (e.g. ligation site of +/-5 bp around probe center), if ligation_site = 0, omit this requirement
 
 
 # How many Blast runs should run in parallele
@@ -66,29 +66,30 @@ Tm_parameters:
 
 
 # parameters for download of ensemble (release 104) annotation from ftp server 
-ftp_gene_ensemble:
+ftp_gene:
   ftp_link: 'ftp.ensembl.org' # link to ftp server
   directory: 'pub/release-104/gtf/homo_sapiens' # directory that contains gene annotation file
   file_name: 'Homo_sapiens.GRCh38.104.gtf' # name of gene annotation file
 
-ftp_genome_ensemble:
+ftp_genome:
   ftp_link: 'ftp.ensembl.org' # link to ftp server
   directory: 'pub/release-104/fasta/homo_sapiens/dna' # directory that contains genome annotation file (gtf)
   file_name: 'Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa' # name of genome annotation file (fasta)
 
+ftp_chr_mapping: #no chromosome mapping needed for ensemble
 
 # parameters for download of download latest NCBI annotation from ftp server
-ftp_gene_ncbi:
-  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
-  directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers' # directory that contains gene annotation file
-  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.gtf' # name of gene annotation file
+#ftp_gene:
+#  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
+#  directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers' # directory that contains gene annotation file
+#  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.gtf' # name of gene annotation file
 
-ftp_genome_ncbi:
-  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
-  directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers' # directory that contains genome annotation file (gtf)
-  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.fna' # name of genome annotation file (fasta)
+#ftp_genome:
+#  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
+#  directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers' # directory that contains genome annotation file (gtf)
+#  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.fna' # name of genome annotation file (fasta)
 
-ftp_chr_mapping_ncbi:
-  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
-  directory: 'genomes/all/GCF/000/001/405/GCF_000001405.39_GRCh38.p13' # directory that contains chromosome mapping file
-  file_name: 'assembly_report.txt' # name of chromosome mapping file
+#ftp_chr_mapping:
+#  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
+#  directory: 'genomes/all/GCF/000/001/405/GCF_000001405.39_GRCh38.p13' # directory that contains chromosome mapping file
+#  file_name: 'assembly_report.txt' # name of chromosome mapping file
