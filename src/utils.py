@@ -10,6 +10,7 @@ import shutil
 import pybedtools
 import gtfparse
 
+from Bio.SeqUtils import MeltingTemp as mt
 
 ############################################
 # helper functions
@@ -165,84 +166,22 @@ def read_gene_list(file_genes):
 
 ############################################
 
-def get_gene_transcrip_exon_mapping(exon_annotation, dir_output):
+def get_Tm_parameters(Tm_parameters):
     """
-    Get a maaping for exons: to which transcript does the exon belong to, to which gene does the transcript belong to. 
+    Convert config parameters for 'table' attributes of MeltingTemp function into MeltingTemp attributes. 
     Parameters
     ----------
-        exon_annotation: pandas.DataFrame
-            Dataframe with exon annotation.
-        dir_output: string
-            Path to output directory for mapping csv file.
+        Tm_parameters: dict
+            Dictionary with parameters for MeltingTemp function.
     Returns
     -------
-        --- none ---
+        Tm_parameters: dict
+            Dictionary with parameters for MeltingTemp function.
     """
-    file_mapping = os.path.join(dir_output, 'mapping_gene_transcript_exon.txt')
+    # get the attributed for the parameter
+    Tm_parameters['nn_table'] = getattr(mt, Tm_parameters['nn_table'])
+    Tm_parameters['tmm_table'] = getattr(mt, Tm_parameters['tmm_table'])
+    Tm_parameters['imm_table'] = getattr(mt, Tm_parameters['imm_table'])
+    Tm_parameters['de_table'] = getattr(mt, Tm_parameters['de_table'])
 
-    with open(file_mapping, 'w') as handle:
-        handle.write('gene_id\ttranscript_id\texon_id\n')
-
-        for gene in get_gene_list(exon_annotation):
-            exon_annotation_gene = exon_annotation[exon_annotation['gene_id'] == gene]
-            for transcript in get_transcript_list(exon_annotation_gene):
-                exon_annotation_transcript = exon_annotation_gene[exon_annotation_gene['transcript_id'] == transcript]
-                for exon in get_exon_list(exon_annotation_transcript):
-                    handle.write('{}\t{}\t{}\n'.format(gene, transcript, exon))
-
-
-############################################
-
-def get_gene_list(annotation):
-    """
-    Retrive list of unique gene identifiers from annotation table.
-    Parameters
-    ----------
-        annotation: pandas.DataFrame
-            Dataframe with genomic annotation.
-    Returns
-    -------
-        genes: list
-            List of unique genes.
-    """
-    genes = sorted(list(annotation['gene_id'].unique()))
-    return genes
-
-
-############################################
-
-def get_transcript_list(annotation):
-    """
-    Retrive list of unique transcript identifiers from annotation table.
-    Parameters
-    ----------
-        annotation: pandas.DataFrame
-            Dataframe with genomic annotation.
-    Returns
-    -------
-        transcripts: list
-            List of unique transcripts.
-    """
-    transcripts = sorted(list(annotation['transcript_id'].unique()))
-    return transcripts
-
-
-############################################
-
-def get_exon_list(annotation):
-    """
-    Retrive list of unique exon identifiers from annotation table. 
-    Parameters
-    ----------
-        annotation: pandas.DataFrame
-            Dataframe with genomic annotation.
-    Returns
-    -------
-        exons: list
-            List of unique exons.
-    """
-    exons = sorted(list(annotation['exon_id'].unique()))
-    return exons
-
-
-############################################
+    return Tm_parameters

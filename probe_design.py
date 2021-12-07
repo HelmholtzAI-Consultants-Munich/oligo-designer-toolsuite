@@ -50,16 +50,16 @@ def probe_pipeline(config, dir_output):
         logging.info('Download annotation from: {}'.format(source))
         
         if source == 'ncbi':
-            ftp_gene = config['ftp_gene_ncbi']
-            ftp_genome = config['ftp_genome_ncbi']
-            ftp_chr_mapping = config['ftp_chr_mapping_ncbi']
+            ftp_gene = config['ftp_gene']
+            ftp_genome = config['ftp_genome']
+            ftp_chr_mapping = config['ftp_chr_mapping']
 
             # if source ncbi we need a chromosome mapping
             mapping = la.download_chr_mapping(ftp_chr_mapping, dir_output_annotations)
 
         elif source == 'ensemble':
-            ftp_gene = config['ftp_gene_ensemble']
-            ftp_genome = config['ftp_genome_ensemble']
+            ftp_gene = config['ftp_gene']
+            ftp_genome = config['ftp_genome']
 
             # if source ensemble we don't need a chromosome mapping
             mapping = None
@@ -95,13 +95,8 @@ def probe_pipeline(config, dir_output):
     number_batchs = config['number_batchs']
     batch_size = int(len(genes) / number_batchs) + (len(genes) % number_batchs > 0)
 
-    #batch_size = config['batch_size']
-    #number_batchs = int(len(genes) / batch_size) + (len(genes) % batch_size > 0)
-
     logging.info('{} processes will run in parallel with {} genes in one batch'.format(number_batchs, batch_size))
 
-    #utils.get_gene_transcrip_exon_mapping(exon_annotation, dir_output_annotations)
-    
 
     #############
     ### get probes
@@ -110,7 +105,7 @@ def probe_pipeline(config, dir_output):
     probe_length = config['probe_length']
     GC_content_min = config['GC_content_min']
     GC_content_max = config['GC_content_max']
-    Tm_parameters = config['Tm_parameters']
+    Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'])
     Tm_min = config['Tm_min']
     Tm_max = config['Tm_max']
     
@@ -133,17 +128,22 @@ def probe_pipeline(config, dir_output):
 
     num_threads_blast = config['num_threads']
     word_size = config['word_size'] 
-    coverage = config['coverage']
     percent_identity = config['percent_identity']
+    coverage = config['coverage'] / 100
+    ligation_site = config['ligation_site']
     min_probes_per_gene = config['min_probes_per_gene']
 
     t = time.time()
-    fp.run_blast_search(number_batchs, word_size, num_threads_blast, file_gene_gtf, file_genome_fasta, dir_output_annotations, dir_output_blast)
+    fp.filter_probes_by_GC_Tm_exactmatch(number_batchs, GC_content_min, GC_content_max, Tm_min, Tm_max, dir_output_annotations)
+    logging.info('Time to filter with CG vontent, melting temperature and extact matches: {} min'.format((time.time() - t)/60))
+
+    t = time.time()
+    fp.run_blast_search(number_batchs, word_size, percent_identity, num_threads_blast, file_gene_gtf, file_genome_fasta, dir_output_annotations, dir_output_blast)
     logging.info('Time to run Blast search: {} min'.format((time.time() - t)/60))
 
     
     t = time.time()
-    fp.filter_probes_by_blast_results(number_batchs, probe_length, percent_identity, coverage, min_probes_per_gene, dir_output_blast, dir_output_probes)
+    fp.filter_probes_by_blast_results(number_batchs, probe_length, coverage, ligation_site, min_probes_per_gene, dir_output_annotations, dir_output_blast, dir_output_probes)
     logging.info('Time to filter with Blast results: {} min'.format((time.time() - t)/60))
     
     

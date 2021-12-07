@@ -8,7 +8,6 @@ import multiprocessing
 from pyfaidx import Fasta
 
 from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils import GC
 from Bio.SeqUtils import MeltingTemp as mt
 
@@ -56,12 +55,6 @@ def get_probes(number_batchs, batch_size, exon_annotation, genes, probe_length, 
     """
     # create index file
     Fasta(file_genome_fasta)
-
-    # get the attributed for the parameter
-    Tm_parameters['nn_table'] = getattr(mt, Tm_parameters['nn_table'])
-    Tm_parameters['tmm_table'] = getattr(mt, Tm_parameters['tmm_table'])
-    Tm_parameters['imm_table'] = getattr(mt, Tm_parameters['imm_table'])
-    Tm_parameters['de_table'] = getattr(mt, Tm_parameters['de_table'])
 
     jobs = []
     for batch_id in range(number_batchs): 
@@ -114,11 +107,12 @@ def get_probes_per_batch(batch_id, genes_batch, exon_annotation, probe_length, G
     """
     file_exon_gtf_batch = os.path.join(dir_output_annotations, 'exons_batch{}.gtf'.format(batch_id))
     file_exon_fasta_batch = os.path.join(dir_output_annotations, 'exons_batch{}.fna'.format(batch_id))
-    file_probe_fasta_batch = os.path.join(dir_output_annotations, 'probes_batch{}.fna'.format(batch_id))
+    file_probe_info_batch = os.path.join(dir_output_annotations, 'probes_info_batch{}.txt'.format(batch_id))
+    file_probe_sequence_batch = os.path.join(dir_output_annotations, 'probes_sequence_batch{}.txt'.format(batch_id))
     
     _get_exome_fasta(genes_batch, exon_annotation, file_exon_gtf_batch, file_exon_fasta_batch, file_genome_fasta)
-    gene_probes = _GC_Tm_filter(file_exon_fasta_batch, genes_batch, probe_length, GC_content_min, GC_content_max, Tm_parameters, Tm_min, Tm_max)
-    _write_probes_fasta(gene_probes, file_probe_fasta_batch)
+    gene_probes = _get_probes_info(file_exon_fasta_batch, genes_batch, probe_length, Tm_parameters)
+    _write_probes_info(gene_probes, file_probe_info_batch, file_probe_sequence_batch)
 
 
 ############################################
@@ -154,39 +148,8 @@ def _get_exome_fasta(genes_batch, exon_annotation, file_exon_gtf_batch, file_exo
 
 ############################################
 
-def _GC_Tm_filter(file_exon_fasta_batch, genes_batch, probe_length, GC_content_min, GC_content_max, Tm_parameters, Tm_min, Tm_max):
-    """
-    Filter out probes that don't fulfill certain requirement: 
-    GC content below or above user-defined threshold,
-    melting temperature (Tm) below or above user-defined threshold,
-    and undefined nucleotides ('N') within the sequence.
-    Merge all probes with identical sequence that come from the same gene into one fasta entry.
-    Parameters
-    ----------
-        file_exon_fasta_batch: string
-            Path to fasta exon sequence file.
-        genes_batch: list
-            List of genes for which probes should be designed.
-        probe_length: int
-            Length of designed probe.
-        GC_content_min: float
-            Minimal GC content of a probe.
-        GC_content_max: float
-            Maximum GC content of a probe.
-        Tm_parameters: dict
-            Dictionary with parameters for 'MeltingTemp' fucntion that computed the melting temperature for a sequence.
-        Tm_min: float
-            Minimal melting temperature of a probe.
-        Tm_max: float
-            Maximum melting temperature of a probe.    
-    Returns
-    -------
-        gene_probes: dict
-            Dictionary containing gene_id as key and as values another dict that has the probe_identifier of all possible probes as key and 
-            the corresponding meta information (transcript_id, exon_id, probe_id, chromosome, start, end, strand, gc_content, Tm) as values.
-    """
+def _get_probes_info(file_exon_fasta_batch, genes_batch, probe_length, Tm_parameters):
     gene_probes = {key: {} for key in genes_batch}
-    gene_total_probes = {key: 0 for key in genes_batch}
 
     for exon in SeqIO.parse(file_exon_fasta_batch, "fasta"):
 
@@ -203,74 +166,51 @@ def _GC_Tm_filter(file_exon_fasta_batch, genes_batch, probe_length, GC_content_m
         sequence = exon.seq
 
         if len(sequence) > probe_length:
-            total_probes = gene_total_probes[gene_id]
             number_probes = len(sequence)-(probe_length-1)
             probes_sequence = [sequence[i:i+probe_length] for i in range(number_probes)]
             probes_start = [start + i for i in range(number_probes)]
             probes_end = [start + i + probe_length for i in range(number_probes)]
 
-            probes_id = [total_probes + i for i in range(number_probes)]
-            gene_total_probes[gene_id] = total_probes + number_probes
-
             for i in range(len(probes_sequence)):
                 probe_sequence = probes_sequence[i]
-
+                
                 if 'N' not in probe_sequence:
-                    gc_content = round(GC(probe_sequence),2)
 
-                    if (GC_content_min < gc_content < GC_content_max):
+                    tmp = gene_probes[gene_id]
+
+                    probe_start = probes_start[i]
+                    probe_end = probes_end[i]
+
+                    if probe_sequence in tmp:
+                        tmp[probe_sequence]['transcript_id'].append(transcript_id)
+                        tmp[probe_sequence]['exon_id'].append(exon_id)
+                        tmp[probe_sequence]['start'].append(probe_start)
+                        tmp[probe_sequence]['end'].append(probe_end)
+                    else:
+                        gc_content = round(GC(probe_sequence),2)
                         Tm = round(mt.Tm_NN(probe_sequence, **Tm_parameters),2)
-
-                        if (Tm_min < Tm < Tm_max):
-                            probe_id = probes_id[i]
-                            probe_start = probes_start[i]
-                            probe_end = probes_end[i]
-
-                            tmp = gene_probes[gene_id]
-                            if probe_sequence in tmp:
-                                tmp[probe_sequence]['transcript_id'].append(transcript_id)
-                                tmp[probe_sequence]['exon_id'].append(exon_id)
-                                tmp[probe_sequence]['probe_id'].append(probe_id)
-                                tmp[probe_sequence]['start'].append(probe_start)
-                                tmp[probe_sequence]['end'].append(probe_end)
-                            else:
-                                tmp[probe_sequence] = {'transcript_id': [transcript_id], 'exon_id': [exon_id], 'probe_id': [probe_id], 'chr': chrom, 'start': [probe_start], 'end': [probe_end], 'strand': strand, 'gc': gc_content, 'Tm': Tm}
-                            gene_probes[gene_id] = tmp
+                        tmp[probe_sequence] = {'transcript_id': [transcript_id], 'exon_id': [exon_id], 'chr': chrom, 'start': [probe_start], 'end': [probe_end], 'strand': strand, 'gc': gc_content, 'Tm': Tm}
+                    gene_probes[gene_id] = tmp
                             
-    #print('Number of possible probes in batch {}: {}'.format(file_exon_fasta_batch.split('.fna')[0].split('_batch')[1], sum(gene_total_probes.values())))
-    #print('Number of selected probes in batch {}: {}'.format(file_exon_fasta_batch.split('.fna')[0].split('_batch')[1], sum({key: len(value) for key, value in gene_probes.items()}.values())))
     return gene_probes
 
 
 ############################################
 
-def _write_probes_fasta(gene_probes, file_probe_fasta_batch):
-    """
-    Write probe sequences to fasta file.
-    Parameters
-    ----------
-        gene_probes: dict
-            Dictionary containing gene_id as key and as values another dict that has the probe_identifier of all possible probes as key and 
-            the corresponding meta information (transcript_id, exon_id, probe_id, chromosome, start, end, strand, gc_content, Tm) as values.
-    Returns
-    -------
-        --- none ---       
-    """
-    output = []
-    for gene_id, probes in gene_probes.items():
-        for probe_sequence, probe_attributes in probes.items():
-            header = '{}_tid{}_eid{}_pid{}_seq{}_chr{}_start{}_end{}_strand{}_gc{}_tm{}'.format(gene_id, ';'.join(probe_attributes['transcript_id']), 
-                        ';'.join(probe_attributes['exon_id']), ';'.join(str(p) for p in probe_attributes['probe_id']), probe_sequence, probe_attributes['chr'], 
-                        ';'.join(str(s) for s in probe_attributes['start']), ';'.join(str(e) for e in probe_attributes['end']), probe_attributes['strand'], probe_attributes['gc'], probe_attributes['Tm'])
-            sequence = SeqRecord(probe_sequence, header, '', '')
-            output.append(sequence)
-         
-    with open(file_probe_fasta_batch, 'w') as handle:
-        SeqIO.write(output, handle, 'fasta')
+def _write_probes_info(gene_probes, file_probe_info_batch, file_probe_sequence_batch):
 
+    with open(file_probe_info_batch, 'w') as handle1:
+        handle1.write('gene_id\ttranscript_id\texon_id\tprobe_sequence\tchromosome\tstart\tend\tstrand\tGC_content\tmelting_temperature\n')
 
+        with open(file_probe_sequence_batch, 'w') as handle2:
+            
+            for gene_id, probes in gene_probes.items():
+                for probe_sequence, probe_attributes in probes.items():
 
+                    output1 = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(gene_id, ';'.join(probe_attributes['transcript_id']), ';'.join(probe_attributes['exon_id']), 
+                            probe_sequence, probe_attributes['chr'], ';'.join(str(s) for s in probe_attributes['start']), ';'.join(str(e) for e in probe_attributes['end']), probe_attributes['strand'], 
+                            probe_attributes['gc'], probe_attributes['Tm'])
+                    handle1.write(output1)
 
-
-
-
+                    output2 = '{}\n'.format(probe_sequence)
+                    handle2.write(output2)
