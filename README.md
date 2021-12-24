@@ -12,7 +12,7 @@ The code has been implemented using Python 3.8. To install the necessary package
 conda env create -f environment.yaml
 ```
 
-To install the package run:
+To install the package via pip:
 
 ```
 pip install .        (Installation as python package: run inside directory)
@@ -22,6 +22,10 @@ or if you want to develop the package:
 pip install -e .        (Installation as python package: run inside directory)
 ``` 
 
+To install the package via setup.py:
+```
+python setup.py install
+```
 
 ## Usage
 
