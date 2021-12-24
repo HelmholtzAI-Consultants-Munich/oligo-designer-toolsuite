@@ -14,9 +14,9 @@ dependencies:
   - blast=2.12.0=pl5262h3289130_0
   - bzip2=1.0.8=h7f98852_4
   - c-ares=1.17.1=h27cfd23_0
-  - ca-certificates=2021.5.30=ha878542_0
+  - ca-certificates=2021.10.8=ha878542_0
   - cairo=1.16.0=h6cf1ce9_1008
-  - certifi=2021.5.30=py38h578d9bd_0
+  - certifi=2021.10.8=py38h578d9bd_1
   - curl=7.78.0=hea6ffbf_0
   - cvbio=3.0.0=hdfd78af_1
   - decorator=5.0.9=pyhd3eb1b0_0
@@ -30,9 +30,12 @@ dependencies:
   - gtfparse=1.2.1=pyh864c0ab_0
   - harfbuzz=2.8.2=h83ec7ef_0
   - icu=68.1=h58526e2_0
+  - infinity=1.5=pyhd8ed1ab_0
+  - intervals=0.9.2=pyhd8ed1ab_0
   - ipykernel=5.3.4=py38h5ca1d4c_0
   - ipython=7.26.0=py38hb070fc8_0
   - ipython_genutils=0.2.0=pyhd3eb1b0_1
+  - iteration_utilities=0.11.0=py38h497a2fe_0
   - jbig=2.1=h7f98852_2003
   - jedi=0.18.0=py38h06a4308_1
   - jpeg=9d=h36c2ea0_0
@@ -150,8 +153,10 @@ dependencies:
   - pthread-stubs=0.4=h36c2ea0_1001
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pybedtools=0.8.2=py38h69e0bdc_1
+  - pycrlibm=1.0.3=py38h1e0a361_1
   - pyfaidx=0.6.2=pyh5e36f6f_0
   - pygments=2.9.0=pyhd3eb1b0_0
+  - pyinterval=1.2.0=py_0
   - pysam=0.16.0.1=py38hf7546f9_3
   - python=3.8.11=h12debd9_0_cpython
   - python-dateutil=2.8.2=pyhd3eb1b0_0
@@ -191,4 +196,3 @@ dependencies:
   - zeromq=4.3.4=h2531618_0
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.5.0=ha95c52a_0
-prefix: /home/haicu/lisa.barros/anaconda3/envs/probe_design
