@@ -308,6 +308,13 @@ class DataModule:
             return merged_exons
 
         def _merge_containing_exons(unique_exons):
+            '''Merge exons that are contained in a larger exon, e.g. have the same start coordinates but different end coordinates, into one entry.
+
+            :param unique_exons: Dataframe with annotation of unique exons, where overlapping exons are merged.
+            :type unique_exons: pandas.DataFrame
+            :return: Dataframe with annotation of merged exons, where containing exons are merged.
+            :rtype: pandas.DataFrame
+            '''
 
             aggregate_function = {'gene_id': 'first', 'gene_transcript_exon_id': ':'.join, 
                                   'seqname': 'first', 'start': 'min', 'end': 'max', 'score': 'first', 'strand': 'first',
@@ -437,7 +444,7 @@ class DataModule:
         unique_exons = _load_unique_exons()
         print('{} unique exons loaded.'.format(len(unique_exons.index)))
         
-        # get exon junction annotation for probes --> length os probe_length - 1 to continue where exons annotation ends
+        # get exon junction annotation for probes --> length is probe_length - 1 to continue where exons annotation ends
         exon_junctions_probes = _load_exon_junctions(self.probe_length - 1)
         self.transcriptome_annotation = unique_exons.append(exon_junctions_probes)
         self.transcriptome_annotation = self.transcriptome_annotation.sort_values(by=['gene_id'])
@@ -447,6 +454,7 @@ class DataModule:
         # get exon junction annotation for reference --> longer than probe length to cover bulges in alignments
         exon_junctions_reference = _load_exon_junctions(self.probe_length + 5) # to allow bulges in the alignment
         unique_exons_reference = _merge_containing_exons(unique_exons)
+        print('{} unique merged exons loaded.'.format(len(unique_exons_reference.index)))
         transcriptome_reference = unique_exons_reference.append(exon_junctions_reference)
         transcriptome_reference = transcriptome_reference.sort_values(by=['gene_id'])
         transcriptome_reference.reset_index(inplace=True, drop=True)

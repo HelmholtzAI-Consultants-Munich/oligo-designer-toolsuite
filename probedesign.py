@@ -7,11 +7,12 @@ import time
 import argparse
 import logging
 from datetime import datetime
+from memory_profiler import profile
 
 timestamp = datetime.now()
 logging.basicConfig(filename='log_probe_design_{}-{}-{}-{}-{}.txt'.format(timestamp.year, timestamp.month, timestamp.day, timestamp.hour, timestamp.minute), level=logging.NOTSET)
 
-from src.utils import get_config, print_config
+from src.utils import get_config, print_config, rm_intermediate_files
 from src.datamodule import DataModule
 from src.probefilter import ProbeFilter
 
@@ -31,7 +32,7 @@ def args():
     args_parser.add_argument('-o','--output',help='path of output folder',type=str,required=True)
     return args_parser.parse_args()
 
-
+@profile
 def probe_pipeline(config, dir_output):
     '''Pipeline of probe designer. Sets up all required directories; loads annotations, genes and probes; 
     and filters probes based on sequence properties and blast aligment search results.
@@ -80,7 +81,7 @@ def probe_pipeline(config, dir_output):
     logging.info('Time to filter with Blast results: {} min'.format(t))
     print('Time to filter with Blast results: {} min \n'.format(t))
 
-    probefilter.log_statistics(rm_intermediate_files=True)
+    probefilter.log_statistics()
 
 
 ############################################
@@ -109,3 +110,5 @@ if __name__ == '__main__':
 
     print('Time Pipeline: {} min \n'.format(t_pipeline))
     print('#########End Pipeline#########')
+
+    rm_intermediate_files(dir_output)

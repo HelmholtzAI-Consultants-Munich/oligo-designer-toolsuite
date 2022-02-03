@@ -47,6 +47,7 @@ class ProbeFilter:
 
         # set parameters
         self.number_batchs = config['number_batchs']
+        self.number_subbatches = config['number_subbatches']
         self.num_threads_blast = config['num_threads']
         self.word_size = config['word_size'] 
         self.percent_identity = config['percent_identity']
@@ -130,14 +131,23 @@ class ProbeFilter:
                                   'GC_content', 'melting_temperature']].to_csv(file_probe_info_batch, sep='\t', index=False)
 
             # save sequence of probes in fasta format
-            output = []
-            for row in probes_info_filtered.index:
-                header = probes_info_filtered.iloc[row, probes_info_filtered.columns.get_loc('probe_id')]
-                sequence = Seq(probes_info_filtered.iloc[row, probes_info_filtered.columns.get_loc('probe_sequence')])
-                output.append(SeqRecord(sequence, header, '', ''))
+            genes = probes_info_filtered.gene_id.unique()
+            subbatch_size = int(len(genes)/self.number_subbatches) + (len(genes) % self.number_subbatches > 0)
+            for subbatch_id in range(self.number_subbatches):
+                file_probe_fasta_subbatch = file_probe_fasta_batch.replace('.fna', '_{}.fna'.format(subbatch_id))
+                
+                genes_subbatch = genes[(subbatch_id*subbatch_size):((subbatch_id+1)*subbatch_size)]
+                probes_info_filtered_subbatch = probes_info_filtered.loc[probes_info_filtered['gene_id'].isin(genes_subbatch)].copy()
+                probes_info_filtered_subbatch.reset_index(inplace=True, drop=True)
 
-            with open(file_probe_fasta_batch, 'w') as handle:
-                SeqIO.write(output, handle, 'fasta')
+                output = []
+                for row in probes_info_filtered_subbatch.index:
+                    header = probes_info_filtered_subbatch.iloc[row, probes_info_filtered_subbatch.columns.get_loc('probe_id')]
+                    sequence = Seq(probes_info_filtered_subbatch.iloc[row, probes_info_filtered_subbatch.columns.get_loc('probe_sequence')])
+                    output.append(SeqRecord(sequence, header, '', ''))
+
+                with open(file_probe_fasta_subbatch, 'w') as handle:
+                    SeqIO.write(output, handle, 'fasta')
 
         # get list of exact matches in probes pool
         self.duplicated_sequences = _get_duplicated_sequences()
@@ -166,12 +176,13 @@ class ProbeFilter:
             :param batch_id: Batch ID.
             :type batch_id: int
             '''
-            file_probe_fasta_batch = os.path.join(self.dir_output_annotations, 'probes_batch{}.fna'.format(batch_id))
-            file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}.txt'.format(batch_id))
+            for subbatch_id in range(self.number_subbatches):
+                file_probe_fasta_batch = os.path.join(self.dir_output_annotations, 'probes_batch{}_{}.fna'.format(batch_id, subbatch_id))
+                file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
 
-            cmd = NcbiblastnCommandline(query=file_probe_fasta_batch,db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend", 
-                                        out=file_blast_batch, word_size=self.word_size, perc_identity=self.percent_identity, num_threads=self.num_threads_blast)
-            out, err = cmd()
+                cmd = NcbiblastnCommandline(query=file_probe_fasta_batch,db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend", 
+                                            out=file_blast_batch, word_size=self.word_size, perc_identity=self.percent_identity, num_threads=self.num_threads_blast)
+                out, err = cmd()
 
         # create blast database
         cmd = NcbimakeblastdbCommandline(input_file=self.file_transcriptome_fasta, dbtype='nucl')
@@ -201,11 +212,16 @@ class ProbeFilter:
             :param batch_id: Batch ID.
             :type batch_id: int
             '''
-            import sys
             probes_info = _load_probes_info(batch_id)
-            blast_results = _read_blast_output(batch_id)
-            #print(sys.getsizeof(blast_results))
-            _filter_probes_blast(probes_info, blast_results)
+
+            num_probes_wo_match = 0
+            for subbatch_id in range(self.number_subbatches):
+                blast_results = _read_blast_output(batch_id, subbatch_id)
+                num_probes_wo_match += _filter_probes_blast(probes_info, blast_results)
+
+            batch_logger = os.path.join(self.dir_output_annotations, 'logger_batch{}.txt'.format(batch_id))
+            with open(batch_logger, 'a') as handle:
+                handle.write('{}\n'.format(num_probes_wo_match))
 
         def _load_probes_info(batch_id):
             '''Load filtered probe infomration from tsv file. 
@@ -221,7 +237,7 @@ class ProbeFilter:
                                              'chromosome': str, 'start': str, 'end': str, 'strand': str, 'GC_content': float, 'melting_temperature': float})
             return probes_info
 
-        def _read_blast_output(batch_id):
+        def _read_blast_output(batch_id, subbatch_id):
             '''Load the output of the BlastN alignment search into a DataFrame and process the results.
 
             :param batch_id: Batch ID.
@@ -229,7 +245,7 @@ class ProbeFilter:
             :return: DataFrame with processed blast alignment search results.  
             :rtype: pandas.DataFrame
             '''
-            file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}.txt'.format(batch_id))
+            file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
             blast_results = pd.read_csv(file_blast_batch, header=None, sep=',', low_memory=False,
                                         names=['query','target','alignment_length','query_start','query_end'], engine='c', 
                                         dtype={'query': str, 'target': str, 'alignment_length': int, 'query_start': int, 'query_end': int})
@@ -262,15 +278,9 @@ class ProbeFilter:
                 probes_wo_match_gene = probes_wo_match_gene['query'].unique()
 
                 if len(probes_wo_match_gene) > self.min_probes_per_gene:
-                    #print(self.removed_genes)
-                    #print(gene_id)
-                    #self.removed_genes = self.removed_genes.remove(gene_id)
-                    #print(self.removed_genes)
                     _write_output(probes_info, gene_id, probes_wo_match_gene)
 
-            batch_logger = os.path.join(self.dir_output_annotations, 'logger_batch{}.txt'.format(batch_id))
-            with open(batch_logger, 'a') as handle:
-                handle.write('{}\n'.format(len(probes_wo_match['query'].unique())))
+            return len(probes_wo_match['query'].unique())
 
         def _write_output(probes_info, gene_id, probes_wo_match):
             '''Write results of probe design pipeline to file and create one file with suitable probes per gene. 
@@ -286,8 +296,21 @@ class ProbeFilter:
             valid_probes = probes_info[probes_info['probe_id'].isin(probes_wo_match)]
             valid_probes.to_csv(file_output, sep='\t', index=False)
 
-        # create file where removed genes are saved
-        file_removed_genes = os.path.join(self.dir_output_probes, 'genes_with_insufficient_probes.txt')
+        def _write_removed_genes():
+            '''Write list of genes for which not enough probes could be designed for.
+            '''
+            # create file where removed genes are saved
+            file_removed_genes = os.path.join(self.dir_output_probes, 'genes_with_insufficient_probes.txt')
+
+            _, _, probe_files = next(os.walk(self.dir_output_probes))
+            for probe_file in probe_files:
+                gene_id = probe_file[len('probes_'):-len('.txt')]
+                if gene_id in self.removed_genes:
+                    self.removed_genes.remove(gene_id)
+                
+            with open(file_removed_genes, 'w') as output:
+                for gene_id in self.removed_genes:
+                    output.write('{}\n'.format(gene_id))
 
         print('Process blast results.')
 
@@ -303,22 +326,12 @@ class ProbeFilter:
             job.join()
 
         print('Blast filter done.')
-
-        _, _, probe_files = next(os.walk(self.dir_output_probes))
-        for probe_file in probe_files:
-            gene_id = probe_file[len('probes_'):-len('.txt')]
-            self.removed_genes.remove(gene_id)
-            
-        with open(file_removed_genes, 'w') as output:
-            for gene_id in self.removed_genes:
-                output.write('{}\n'.format(gene_id))
+        
+        _write_removed_genes()
 
     
-    def log_statistics(self, rm_intermediate_files=True):
+    def log_statistics(self):
         '''Log some statistics on probes and used disk space.
-
-        :param rm_intermediate_files: Should intermediate result files be deleted, defaults to True
-        :type rm_intermediate_files: bool, optional
         '''
         statistics = pd.DataFrame(columns=['total', 'GC_Tm', 'exact_match', 'blast'])
         for batch_id in range(self.number_batchs):
@@ -342,15 +355,10 @@ class ProbeFilter:
 
         _, _, files = next(os.walk(self.dir_output_probes))
         genes_with_probes = len(files) - 1
-        self.logging.info('Number of gene for which probes could be designed: {}'.format(genes_with_probes))
+        self.logging.info('Number of genes for which probes could be designed: {}'.format(genes_with_probes))
 
         genes_wo_probes = sum(1 for line in open(os.path.join(self.dir_output_probes, 'genes_with_insufficient_probes.txt')))
-        self.logging.info('Number of gene for which no probes could be designed: {}'.format(genes_wo_probes))
-
-        if rm_intermediate_files:
-            import shutil
-            shutil.rmtree(self.dir_output_annotations)
-            shutil.rmtree(self.dir_output_blast)
+        self.logging.info('Number of genes for which no probes could be designed: {}'.format(genes_wo_probes))
 
 
 
