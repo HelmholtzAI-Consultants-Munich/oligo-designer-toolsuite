@@ -127,11 +127,6 @@ def decompress_gzip(file_gzip):
     return file_output
 
 
-def merge(file_bed):
-    annotation = pybedtools.BedTool(file_bed)
-    annotation = annotation.merge(d=0, s=True, )
-
-
 
 def get_fasta(file_bed, file_reference_fasta, file_fasta, split=False):
     '''Get sequence for regions annotated in input gft file using genome fasta file.
@@ -152,11 +147,14 @@ def get_fasta(file_bed, file_reference_fasta, file_fasta, split=False):
     annotation.save_seqs(file_fasta)
 
 
+def rm_intermediate_files(dir_output):
+    '''Remove all intermediate files, i.e. folders containing annotations and blast outputs.
 
-
-
-
-
-
-
-
+    :param dir_output: User-defined output directory.
+    :type dir_output: string
+    '''
+    dir_output_annotations = create_dir(dir_output, 'annotations')
+    dir_output_blast = create_dir(dir_output, 'blast')
+    shutil.rmtree(dir_output_blast)
+    #shutil.rmtree(dir_output_annotations)
+    
