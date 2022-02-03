@@ -40,6 +40,7 @@ The pipeline takes the following input:
 ### Pipeline Description
 
 The pipeline has seven major steps: 
+
 **Load annotations**: download the gene annotation (*gtf* file) and genome sequence (*fasta* file) via FTP server from *NCBI* or *ensemble* if no custom files are provided. In case, *NCBI* is given as annotation source, the downloaded files have to be post-processed. The chromosome names have to be mapped from *GenBank* to *RefSeq* annotation in order to be used by ```bedtools```. The required mapping is downloaded automatically from *NCBI*. This function is part of the ```DataModule``` class. 
 
 **Load genes**: load the list of genes for which probes should be defined. If no custom file with a gene list is provided, a list of genes is retrieved from the downloaded *NCBI* or *ensemble* gene annotation. If a custom file is provided, each row in this file should have one gene name and the gene name should match the source annotation. This function is part of the ```DataModule``` class.
