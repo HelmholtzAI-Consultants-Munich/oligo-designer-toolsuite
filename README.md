@@ -33,9 +33,9 @@ python setup.py install
 
 The pipeline takes the following input:
 - ```config```: file, which contains the parameter settings
-- ```source```: annotation source, i.e. ensmble or NCBI (other annotations are not supported)
+- ```source``` (tbd): annotation source, i.e. ensmble or NCBI (other annotations are not supported)
 - ```output```: directory, where output of pipeline is stored
-- ```gene_list``` (optional): text file with a list of gene names (one gene per row), where the gene names correspond to the provided gene annotation, if not provided, all genes from the provided gene annotation are used
+- ```gene_list``` (optional) (tbd): text file with a list of gene names (one gene per row), where the gene names correspond to the provided gene annotation, if not provided, all genes from the provided gene annotation are used
 
 ### Pipeline Description
 
