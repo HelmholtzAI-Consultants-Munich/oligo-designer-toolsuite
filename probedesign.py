@@ -7,7 +7,6 @@ import time
 import argparse
 import logging
 from datetime import datetime
-from memory_profiler import profile
 
 timestamp = datetime.now()
 logging.basicConfig(filename='log_probe_design_{}-{}-{}-{}-{}.txt'.format(timestamp.year, timestamp.month, timestamp.day, timestamp.hour, timestamp.minute), level=logging.NOTSET)
@@ -32,7 +31,6 @@ def args():
     args_parser.add_argument('-o','--output',help='path of output folder',type=str,required=True)
     return args_parser.parse_args()
 
-@profile
 def probe_pipeline(config, dir_output):
     '''Pipeline of probe designer. Sets up all required directories; loads annotations, genes and probes; 
     and filters probes based on sequence properties and blast aligment search results.
