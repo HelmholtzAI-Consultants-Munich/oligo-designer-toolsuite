@@ -153,12 +153,16 @@ class DataModule:
                 gene_annotation = pd.read_table(file_gene_gtf, names = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame', 'attribute'], sep='\t', comment='#')
 
                 # replace ncbi with genbank chromosome annotation
-                for accession_number in gene_annotation.seqname.unique():
-                    if accession_number in mapping:
-                        gene_annotation.loc[gene_annotation.seqname == accession_number, 'seqname'] = mapping[accession_number]
-                    else:
-                        print('No mapping for accession number: {}'.format(accession_number))
-                        gene_annotation = gene_annotation[gene_annotation.seqname != accession_number]
+                
+                # for accession_number in gene_annotation.seqname.unique():
+                #     if accession_number in mapping:
+                #         gene_annotation.loc[gene_annotation.seqname == accession_number, 'seqname'] = mapping[accession_number]
+                #     else:
+                #         print('No mapping for accession number: {}'.format(accession_number))
+                #         gene_annotation = gene_annotation[gene_annotation.seqname != accession_number]
+
+                # Maybe need to print when maapping is missing (Na entries)
+                gene_annotation['seqname'] = gene_annotation['seqname'].map(mapping)
                 
                 gene_annotation.to_csv(handle_out, sep='\t', header=False, index = False)
             os.replace(file_tmp, file_gene_gtf)
@@ -392,10 +396,14 @@ class DataModule:
             transcript_exons = {key: {} for key in transcripts}
             transcript_info = dict()
             
-            for row in exon_annotation.index:
-                transcript_id = exon_annotation.transcript_id[row]
-                transcript_exons[transcript_id][int(exon_annotation.exon_number[row])] = [exon_annotation.exon_id[row], exon_annotation.start[row], exon_annotation.end[row]]
-                transcript_info[transcript_id] = [exon_annotation.gene_id[row], exon_annotation.seqname[row], exon_annotation.strand[row]]
+            # for row in exon_annotation.index:
+            #     transcript_id = exon_annotation.transcript_id[row]
+            #     transcript_exons[transcript_id][int(exon_annotation.exon_number[row])] = [exon_annotation.exon_id[row], exon_annotation.start[row], exon_annotation.end[row]]
+            #     transcript_info[transcript_id] = [exon_annotation.gene_id[row], exon_annotation.seqname[row], exon_annotation.strand[row]]
+
+            for (transcript_id, exon_number, exon_id, start, end, gene_id, seqname, strand) in zip(exon_annotation['transcript_id'], exon_annotation['exon_number'], exon_annotation['exon_id'], exon_annotation['start'], exon_annotation['end'], exon_annotation['gene_id'], exon_annotation['seqname'], exon_annotation['strand']):
+                transcript_exons[transcript_id][int(exon_number)] = [exon_id, start, end]
+                transcript_info[transcript_id] = [gene_id, seqname, strand]
 
             return transcript_exons, transcript_info
 
