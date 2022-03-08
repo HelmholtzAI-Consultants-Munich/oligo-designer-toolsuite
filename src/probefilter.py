@@ -108,7 +108,8 @@ class ProbeFilter:
 
             probes_info_filetred = probes_info[~ probes_info.probe_sequence.isin(self.duplicated_sequences)]
             probes_info_filetred.reset_index(inplace=True, drop=True)
-            probe_ids = ['{}_pid{}'.format(probes_info_filetred.gene_id[probe_id], probe_id) for probe_id in range(len(probes_info_filetred.index))]
+            # probe_ids = ['{}_pid{}'.format(probes_info_filetred.gene_id[probe_id], probe_id) for probe_id in range(len(probes_info_filetred.index))]
+            probe_ids = ['{}_pid{}'.format(g_id, i) for i, g_id in enumerate(probes_info_filetred['gene_id'])]
             probes_info_filetred.insert(0, 'probe_id', probe_ids)
             _write_probes(probes_info_filetred, file_probe_info_batch, file_probe_fasta_batch)
 
@@ -264,7 +265,8 @@ class ProbeFilter:
             :param blast_results: DataFrame with processed blast alignment search results. 
             :type blast_results: pandas.DataFrame
             '''
-            blast_results_matches = blast_results[~(blast_results[['query_gene_id','target_gene_id']].nunique(axis=1) == 1)]
+            # blast_results_matches = blast_results[~(blast_results[['query_gene_id','target_gene_id']].nunique(axis=1) == 1)]
+            blast_results_matches = blast_results[blast_results['query_gene_id'] != blast_results['target_gene_id']]
             blast_results_matches = blast_results_matches[blast_results_matches.alignment_length > self.min_alignment_length]
             if self.ligation_site > 0:
                 blast_results_matches = blast_results_matches[blast_results_matches.query_start < self.ligation_site_start]
