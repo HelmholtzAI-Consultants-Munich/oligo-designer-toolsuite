@@ -180,8 +180,8 @@ class ProbeFilter:
                 file_probe_fasta_batch = os.path.join(self.dir_output_annotations, 'probes_batch{}_{}.fna'.format(batch_id, subbatch_id))
                 file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
 
-                cmd = NcbiblastnCommandline(query=file_probe_fasta_batch,db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend", 
-                                            out=file_blast_batch, word_size=self.word_size, perc_identity=self.percent_identity, num_threads=self.num_threads_blast)
+                cmd = NcbiblastnCommandline(query=file_probe_fasta_batch, db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend", out=file_blast_batch,
+                                            strand='plus', word_size=self.word_size, perc_identity=self.percent_identity, num_threads=self.num_threads_blast) 
                 out, err = cmd()
 
         # create blast database
