@@ -264,6 +264,21 @@ class DataModule:
         self.batch_size = int(len(self.genes) / self.number_batchs) + (len(self.genes) % self.number_batchs > 0)
         self.logging.info('Probes for {} genes will be designed processed in {} parallele batches with {} genes in one batch'.format(len(self.genes), self.number_batchs, self.batch_size))
 
+        textfile = open("genes_3000.txt", "w")
+        for element in self.genes[0:3000]:
+            textfile.write(element + "\n")
+        textfile.close()
+
+        textfile = open("genes_5000.txt", "w")
+        for element in self.genes[0:5000]:
+            textfile.write(element + "\n")
+        textfile.close()
+
+        textfile = open("genes_10000.txt", "w")
+        for element in self.genes[0:10000]:
+            textfile.write(element + "\n")
+        textfile.close()
+
         print('Gene list loaded.')
 
 
