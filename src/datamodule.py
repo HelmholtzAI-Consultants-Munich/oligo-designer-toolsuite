@@ -67,7 +67,8 @@ class DataModule:
         self.file_transcriptome_fasta = os.path.join(self.dir_output_annotations, 'transcriptome.fna')
         
         self.file_genes = config['file_genes']
-        self.probe_length = config['probe_length']
+        self.probe_length_min = config['probe_length_min']
+        self.probe_length_max = config['probe_length_max']
         self.Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'])
         self.GC_content_min = config['GC_content_min']
         self.GC_content_max = config['GC_content_max']
@@ -394,6 +395,7 @@ class DataModule:
             #there are some exon annotations which have the same start and end coordinates and can't be saved as fasta from bedtools
             exon_annotation = exon_annotation[(exon_annotation.end - exon_annotation.start) > 0] 
             exon_annotation.reset_index(inplace=True, drop=True)
+            exon_annotation['start'] -= 1
 
             return exon_annotation
 
@@ -411,11 +413,6 @@ class DataModule:
             transcript_exons = {key: {} for key in transcripts}
             transcript_info = dict()
             
-            # for row in exon_annotation.index:
-            #     transcript_id = exon_annotation.transcript_id[row]
-            #     transcript_exons[transcript_id][int(exon_annotation.exon_number[row])] = [exon_annotation.exon_id[row], exon_annotation.start[row], exon_annotation.end[row]]
-            #     transcript_info[transcript_id] = [exon_annotation.gene_id[row], exon_annotation.seqname[row], exon_annotation.strand[row]]
-
             for (transcript_id, exon_number, exon_id, start, end, gene_id, seqname, strand) in zip(exon_annotation['transcript_id'], exon_annotation['exon_number'], exon_annotation['exon_id'], exon_annotation['start'], exon_annotation['end'], exon_annotation['gene_id'], exon_annotation['seqname'], exon_annotation['strand']):
                 transcript_exons[transcript_id][int(exon_number)] = [exon_id, start, end]
                 transcript_info[transcript_id] = [gene_id, seqname, strand]
@@ -468,14 +465,14 @@ class DataModule:
         print('{} unique exons loaded.'.format(len(unique_exons.index)))
         
         # get exon junction annotation for probes --> length is probe_length - 1 to continue where exons annotation ends
-        exon_junctions_probes = _load_exon_junctions(self.probe_length - 1)
+        exon_junctions_probes = _load_exon_junctions(self.probe_length_max - 1)
         self.transcriptome_annotation = unique_exons.append(exon_junctions_probes)
         self.transcriptome_annotation = self.transcriptome_annotation.sort_values(by=['gene_id'])
         self.transcriptome_annotation.reset_index(inplace=True, drop=True)
         print('{} exon junctions loaded.'.format(len(exon_junctions_probes.index)))
 
         # get exon junction annotation for reference --> longer than probe length to cover bulges in alignments
-        exon_junctions_reference = _load_exon_junctions(self.probe_length + 5) # to allow bulges in the alignment
+        exon_junctions_reference = _load_exon_junctions(self.probe_length_max + 5) # to allow bulges in the alignment
         unique_exons_reference = _merge_containing_exons(unique_exons)
         print('{} unique merged exons loaded.'.format(len(unique_exons_reference.index)))
         transcriptome_reference = unique_exons_reference.append(exon_junctions_reference)
@@ -580,37 +577,38 @@ class DataModule:
             for exon in SeqIO.parse(file_transcriptome_fasta_batch, "fasta"):
                 sequence = exon.seq
 
-                if len(sequence) > self.probe_length:
-                    number_probes = len(sequence)-(self.probe_length-1)
-                    probes_sequence = [sequence[i:i+self.probe_length] for i in range(number_probes)]
+                for probe_length in range(self.probe_length_min, self.probe_length_max + 1):
+                    if len(sequence) > probe_length:
+                        number_probes = len(sequence)-(probe_length-1)
+                        probes_sequence = [sequence[i:i+probe_length] for i in range(number_probes)]
 
-                    for i in range(number_probes):
-                        total_probes +=1
-                        probe_sequence = probes_sequence[i]
-                        
-                        if 'N' not in probe_sequence:
-                            gc_content = round(GC(probe_sequence),2)
+                        for i in range(number_probes):
+                            total_probes +=1
+                            probe_sequence = probes_sequence[i]
+                            
+                            if 'N' not in probe_sequence:
+                                gc_content = round(GC(probe_sequence),2)
 
-                            if (self.GC_content_min < gc_content < self.GC_content_max):
-                                Tm = round(mt.Tm_NN(probe_sequence, **self.Tm_parameters),2)
+                                if (self.GC_content_min < gc_content < self.GC_content_max):
+                                    Tm = round(mt.Tm_NN(probe_sequence, **self.Tm_parameters),2)
 
-                                if (self.Tm_min < Tm < self.Tm_max):
-                                    gene_id, transcript_id, exon_id, chrom, start, strand = _parse_header(exon.id)
-                                    probe_start = start + i
-                                    probe_end = start + i + self.probe_length
+                                    if (self.Tm_min < Tm < self.Tm_max):
+                                        gene_id, transcript_id, exon_id, chrom, start, strand = _parse_header(exon.id)
+                                        probe_start = start + i
+                                        probe_end = start + i + probe_length
 
-                                    tmp = gene_probes[gene_id]
+                                        tmp = gene_probes[gene_id]
 
-                                    if probe_sequence in tmp:
-                                        tmp[probe_sequence]['transcript_id'].append(transcript_id)
-                                        tmp[probe_sequence]['exon_id'].append(exon_id)
-                                        tmp[probe_sequence]['start'].append(probe_start)
-                                        tmp[probe_sequence]['end'].append(probe_end)
-                                    else:
-                                        loaded_probes += 1
-                                        tmp[probe_sequence] = {'transcript_id': [transcript_id], 'exon_id': [exon_id], 'chr': chrom, 'start': [probe_start], 
-                                                                'end': [probe_end], 'strand': strand, 'gc': gc_content, 'Tm': Tm}
-                                    gene_probes[gene_id] = tmp
+                                        if probe_sequence in tmp:
+                                            tmp[probe_sequence]['transcript_id'].append(transcript_id)
+                                            tmp[probe_sequence]['exon_id'].append(exon_id)
+                                            tmp[probe_sequence]['start'].append(probe_start)
+                                            tmp[probe_sequence]['end'].append(probe_end)
+                                        else:
+                                            loaded_probes += 1
+                                            tmp[probe_sequence] = {'transcript_id': [transcript_id], 'exon_id': [exon_id], 'chr': chrom, 'start': [probe_start], 
+                                                                    'end': [probe_end], 'strand': strand, 'gc': gc_content, 'Tm': Tm, 'length': probe_length}
+                                        gene_probes[gene_id] = tmp
             
             with open(batch_logger, 'w') as handle:
                 handle.write('{}\n'.format(total_probes))
@@ -631,15 +629,15 @@ class DataModule:
             :type file_probe_sequence_batch: string
             '''
             with open(file_probe_info_batch, 'w') as handle_probeinfo: 
-                handle_probeinfo.write('gene_id\ttranscript_id\texon_id\tprobe_sequence\tchromosome\tstart\tend\tstrand\tGC_content\tmelting_temperature\n')
+                handle_probeinfo.write('gene_id\ttranscript_id\texon_id\tprobe_sequence\tchromosome\tstart\tend\tstrand\tGC_content\tmelting_temperature\tlength\n')
 
                 with open(file_probe_sequence_batch, 'w') as handle_sequences:
                     for gene_id, probes in gene_probes.items():
                         for probe_sequence, probe_attributes in probes.items():
 
-                            output1 = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(gene_id, ';'.join(probe_attributes['transcript_id']), ';'.join(probe_attributes['exon_id']), 
+                            output1 = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(gene_id, ';'.join(probe_attributes['transcript_id']), ';'.join(probe_attributes['exon_id']), 
                                     probe_sequence, probe_attributes['chr'], ';'.join(str(s) for s in probe_attributes['start']), ';'.join(str(e) for e in probe_attributes['end']), 
-                                    probe_attributes['strand'], probe_attributes['gc'], probe_attributes['Tm'])
+                                    probe_attributes['strand'], probe_attributes['gc'], probe_attributes['Tm'], probe_attributes['length'])
                             handle_probeinfo.write(output1)
 
                             output2 = '{}\n'.format(probe_sequence)
