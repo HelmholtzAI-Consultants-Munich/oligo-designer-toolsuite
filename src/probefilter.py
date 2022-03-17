@@ -51,10 +51,10 @@ class ProbeFilter:
         self.num_threads_blast = config['num_threads']
         self.word_size = config['word_size'] 
         self.percent_identity = config['percent_identity']
-        self.min_alignment_length = config['probe_length'] * config['coverage'] / 100
+        self.probe_length_min = config['probe_length_min']
+        self.probe_length_max = config['probe_length_max']
+        self.coverage = config['coverage']
         self.ligation_site = config['ligation_site']
-        self.ligation_site_start = config['probe_length'] // 2 - (self.ligation_site - 1)
-        self.ligation_site_end = config['probe_length'] // 2 + self.ligation_site
         self.min_probes_per_gene = config['min_probes_per_gene']
         self.file_transcriptome_fasta = file_transcriptome_fasta
         self.removed_genes = genes
@@ -103,7 +103,7 @@ class ProbeFilter:
             probes_info = pd.read_csv(file_probe_info_batch, sep='\t', 
                                     dtype={'gene_id': str, 'transcript_id': str, 'exon_id': str, 'probe_sequence': str, 
                                     'chromosome': str, 'start': str, 'end': str, 'strand': str, 
-                                    'GC_content': float, 'melting_temperature': float})
+                                    'GC_content': float, 'melting_temperature': float, 'length': int})
             os.remove(file_probe_info_batch)
 
             probes_info_filetred = probes_info[~ probes_info.probe_sequence.isin(self.duplicated_sequences)]
@@ -129,7 +129,7 @@ class ProbeFilter:
             # save info table
             probes_info_filtered[['probe_id', 'probe_sequence', 'gene_id', 'transcript_id', 'exon_id', 
                                   'chromosome', 'start', 'end', 'strand', 
-                                  'GC_content', 'melting_temperature']].to_csv(file_probe_info_batch, sep='\t', index=False)
+                                  'GC_content', 'melting_temperature', 'length']].to_csv(file_probe_info_batch, sep='\t', index=False)
 
             # save sequence of probes in fasta format
             genes = probes_info_filtered.gene_id.unique()
@@ -181,7 +181,7 @@ class ProbeFilter:
                 file_probe_fasta_batch = os.path.join(self.dir_output_annotations, 'probes_batch{}_{}.fna'.format(batch_id, subbatch_id))
                 file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
 
-                cmd = NcbiblastnCommandline(query=file_probe_fasta_batch, db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend", out=file_blast_batch,
+                cmd = NcbiblastnCommandline(query=file_probe_fasta_batch, db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend qlen", out=file_blast_batch,
                                             strand='plus', word_size=self.word_size, perc_identity=self.percent_identity, num_threads=self.num_threads_blast) 
                 out, err = cmd()
 
@@ -235,7 +235,8 @@ class ProbeFilter:
             file_probe_info_batch = os.path.join(self.dir_output_annotations, 'probes_info_batch{}.txt'.format(batch_id))
             probes_info = pd.read_csv(file_probe_info_batch, sep='\t',  
                                       dtype={'gene_id': str, 'transcript_id': str, 'exon_id': str, 'probe_sequence': str, 
-                                             'chromosome': str, 'start': str, 'end': str, 'strand': str, 'GC_content': float, 'melting_temperature': float})
+                                             'chromosome': str, 'start': str, 'end': str, 'strand': str, 
+                                             'GC_content': float, 'melting_temperature': float, 'length': int})
             return probes_info
 
         def _read_blast_output(batch_id, subbatch_id):
@@ -248,8 +249,8 @@ class ProbeFilter:
             '''
             file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
             blast_results = pd.read_csv(file_blast_batch, header=None, sep=',', low_memory=False,
-                                        names=['query','target','alignment_length','query_start','query_end'], engine='c', 
-                                        dtype={'query': str, 'target': str, 'alignment_length': int, 'query_start': int, 'query_end': int})
+                                        names=['query','target','alignment_length','query_start','query_end','query_length'], engine='c', 
+                                        dtype={'query': str, 'target': str, 'alignment_length': int, 'query_start': int, 'query_end': int, 'query_length': int})
 
             blast_results['query_gene_id'] = blast_results['query'].str.split('_pid').str[0]
             blast_results['target_gene_id'] = blast_results['target'].str.split('::').str[0]
@@ -267,22 +268,35 @@ class ProbeFilter:
             '''
             # blast_results_matches = blast_results[~(blast_results[['query_gene_id','target_gene_id']].nunique(axis=1) == 1)]
             blast_results_matches = blast_results[blast_results['query_gene_id'] != blast_results['target_gene_id']]
-            blast_results_matches = blast_results_matches[blast_results_matches.alignment_length > self.min_alignment_length]
-            if self.ligation_site > 0:
-                blast_results_matches = blast_results_matches[blast_results_matches.query_start < self.ligation_site_start]
-                blast_results_matches = blast_results_matches[blast_results_matches.query_end > self.ligation_site_end]
+            blast_results_matches_filtered = []
             
-            probes_with_match = blast_results_matches['query'].unique()
+            for probe_length in range(self.probe_length_min, self.probe_length_max + 1):
+
+               min_alignment_length = probe_length * self.coverage / 100
+               blast_results_matches_probe_length = blast_results_matches[blast_results_matches.query_length == probe_length]
+               blast_results_matches_probe_length = blast_results_matches_probe_length[blast_results_matches_probe_length.alignment_length > min_alignment_length]
+
+               if self.ligation_site > 0:
+                   ligation_site_start = probe_length // 2 - (self.ligation_site - 1)
+                   ligation_site_end = probe_length // 2 + self.ligation_site
+                   blast_results_matches_probe_length = blast_results_matches_probe_length[blast_results_matches_probe_length.query_start < ligation_site_start]
+                   blast_results_matches_probe_length = blast_results_matches_probe_length[blast_results_matches_probe_length.query_end > ligation_site_end]
+                
+               blast_results_matches_filtered.append(blast_results_matches_probe_length) 
+               
+            blast_results_matches_filtered = pd.concat(blast_results_matches_filtered)
+
+            probes_with_match = blast_results_matches_filtered['query'].unique()
             probes_wo_match = blast_results[~blast_results['query'].isin(probes_with_match)]
 
             for gene_id in blast_results['query_gene_id'].unique():
-                probes_wo_match_gene = probes_wo_match[probes_wo_match.query_gene_id == gene_id]
-                probes_wo_match_gene = probes_wo_match_gene['query'].unique()
+               probes_wo_match_gene = probes_wo_match[probes_wo_match.query_gene_id == gene_id]
+               probes_wo_match_gene = probes_wo_match_gene['query'].unique()
 
-                if len(probes_wo_match_gene) > self.min_probes_per_gene:
-                    _write_output(probes_info, gene_id, probes_wo_match_gene)
+               if len(probes_wo_match_gene) > self.min_probes_per_gene:
+                   _write_output(probes_info, gene_id, probes_wo_match_gene)
 
-            return len(probes_wo_match['query'].unique())
+            return len(probes_wo_match['query'].unique())   
 
         def _write_output(probes_info, gene_id, probes_wo_match):
             '''Write results of probe design pipeline to file and create one file with suitable probes per gene. 

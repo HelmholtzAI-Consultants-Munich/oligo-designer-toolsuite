@@ -109,4 +109,4 @@ if __name__ == '__main__':
     print('Time Pipeline: {} min \n'.format(t_pipeline))
     print('#########End Pipeline#########')
 
-    rm_intermediate_files(dir_output)
+    #rm_intermediate_files(dir_output)
