@@ -7,24 +7,15 @@ import argparse
 import fnmatch
 import pandas as pd
 from functools import reduce
+from pathlib import Path
 
 import multiprocessing
 
 ############################################
-# pipeline
+# functions
 ############################################
 
-def args():
-    
-    args_parser = argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
-    args_parser.add_argument('-ind','--input_directories',help='path to config yaml file',type=str,required=True)
-    args_parser.add_argument('-outd','--output_directory',help='path to config yaml file',type=str,required=True)
-    return args_parser.parse_args()
-
-
-############################################
-
-def get_files(dirs_in):
+def _get_files(dirs_in):
     
     files = []
     number_dirs = 0
@@ -49,7 +40,7 @@ def _list_files_in_dir(dir, pattern):
 
 ############################################
 
-def get_overlap_matrix(files, dir_out):
+def _get_overlap_matrix(files, dir_out):
 
     jobs = []
     for idx in files.index:
@@ -74,19 +65,18 @@ def get_overlap_matrix(files, dir_out):
 ############################################
 
 def _compute_overlap_matrix(gene, probes, dir_out):
-    probes['pid'] = ['{}_{}'.format(probes.start[i], probes.end[i]) for i in probes.index]
-    matrix = pd.DataFrame(0, columns=probes.pid, index=probes.pid)
+    matrix = pd.DataFrame(0, columns=probes.probe_id, index=probes.probe_id)
     for i in probes.index:
-        probe1_start = int(probes.loc[i,'start'])
-        probe1_end = int(probes.loc[i,'end'])
-        probe1_interval = [probe1_start, probe1_end]
-        pid1 = '{}_{}'.format(probe1_start, probe1_end)
+        probe1_starts =  [int(s) for s in str(probes.loc[i,'start']).split(";")]
+        probe1_ends =  [int(s) for s in str(probes.loc[i,'end']).split(";")]
+        probe1_intervals = [[start,end] for start,end in zip(probe1_starts, probe1_ends)]
+        pid1 = probes.loc[i,'probe_id']
         for j in probes.index:
-            probe2_start = int(probes.loc[j,'start'])
-            probe2_end = int(probes.loc[j,'end'])
-            probe2_interval = [probe2_start, probe2_end]
-            pid2 = '{}_{}'.format(probe2_start, probe2_end)
-            if _get_overlap(probe1_interval, probe2_interval):
+            probe2_starts =  [int(s) for s in str(probes.loc[j,'start']).split(";")]
+            probe2_ends =  [int(s) for s in str(probes.loc[j,'end']).split(";")]
+            probe2_intervals = [[start,end] for start,end in zip(probe2_starts, probe2_ends)]
+            pid2 = probes.loc[j,'probe_id']
+            if _get_overlap(probe1_intervals, probe2_intervals):
                 matrix.loc[pid1,pid2] = 1
                 matrix.loc[pid2,pid1] = 1
             else:
@@ -99,21 +89,26 @@ def _compute_overlap_matrix(gene, probes, dir_out):
 
 ############################################
 
-def _get_overlap(a, b):
-    overlap = min(a[1], b[1]) - max(a[0], b[0])
-    return overlap > -1
+def _get_overlap(seq1_intervals, seq2_intervals):
+    seqs_overlap = False
+    for a in seq1_intervals:
+        for b in seq2_intervals:
+            overlap = min(a[1], b[1]) - max(a[0], b[0])
+            seqs_overlap |= overlap > -1
+    return seqs_overlap
 
 
 ############################################
-    
-if __name__ == '__main__':
-    
-    # get comman line arguments
-    parameters = args()
-    dirs_in = parameters.input_directories
-    dirs_in = dirs_in.split(',')
 
-    dir_out = parameters.output_directory
+def get_overlap_matrix(dir_in,dir_out):
+    """Generate overlap matrix for probes of each gene in directory dir_in
+    
+    Note: the other functions here work with multiple `dirs_in` which is not needed when we have all probes files at one
+    place. Could be changed for the other functions in the future.
+    """
 
-    files = get_files(dirs_in)
-    get_overlap_matrix(files, dir_out)
+    Path(dir_out).mkdir(parents=True, exist_ok=True)    
+    
+    files = _get_files([dir_in])
+    _get_overlap_matrix(files, dir_out)
+
