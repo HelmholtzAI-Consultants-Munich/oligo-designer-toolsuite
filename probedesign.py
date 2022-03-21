@@ -17,6 +17,7 @@ from src.datamodule import DataModule
 from src.probefilter import ProbeFilter
 from src.get_overlap_matrix import get_overlap_matrix
 from src.nonoverlapping_sets import get_nonoverlapping_sets
+from src.padlock_design import design_padlocks
 
 
 ############################################
@@ -106,6 +107,14 @@ def probe_pipeline(config, dir_output, download_only=False):
 
     logging.info('Time to find nonoverlapping probe sets: {} min'.format(t))
     print('Time to find nonoverlapping probe sets: {} min \n'.format(t))
+    
+    t = time.time()    
+    design_padlocks(config,os.path.join(dir_output,"probes"),os.path.join(dir_output,"probesets"),
+                    os.path.join(dir_output,"padlock_probes"))
+    t = (time.time() - t)/60
+
+    logging.info('Time to design padlock probes: {} min'.format(t))
+    print('Time to design padlock probes: {} min \n'.format(t))    
 
 
 ############################################
