@@ -69,11 +69,16 @@ class DataModule:
         self.file_genes = config['file_genes']
         self.probe_length_min = config['probe_length_min']
         self.probe_length_max = config['probe_length_max']
-        self.Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'])
+        self.Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'], sequence='probe')
+        self.Tm_correction_parameters = utils.get_Tm_correction_parameters(config['Tm_correction_parameters'], sequence='probe')
         self.GC_content_min = config['GC_content_min']
         self.GC_content_max = config['GC_content_max']
         self.Tm_min = config['Tm_min']
         self.Tm_max = config['Tm_max']
+        self.arm_length_min = config['arm_length_min']
+        self.arm_Tm_min = config['arm_Tm_min']
+        self.arm_Tm_max = config['arm_Tm_max']
+        self.arm_Tm_dif_max = config['arm_Tm_dif_max']
 
         # initialize additional paremeters
         self.batch_size = None
@@ -585,6 +590,66 @@ class DataModule:
 
             return gene_id, transcript_id, exon_id, chrom, start, strand
 
+        
+        def _get_Tm(probe_sequence):
+            """Compute the melting temperature for a given sequence
+            
+            In the first step the melting temperature is calculated based on sequence and salt concentrations. In the
+            second step the temperature is corrected by formamide (and DMSO) percentage.
+            
+            :param probe_sequence: Sequence of probe
+            :type probe_sequence: string
+            """
+            Tm = mt.Tm_NN(probe_sequence, **self.Tm_parameters)
+            Tm_corrected = round(mt.chem_correction(Tm, **self.Tm_correction_parameters),2)
+            return Tm_corrected
+        
+        
+        def _find_arms(probe,min_arm_length=10,max_Tm_dif=2,Tm_min=40,Tm_max=43):
+            """Find the ligation site for the two padlock probe arms according melting temperature constraints
+            
+            The search starts in the center of the probe and shifts alternating 1 more nucleotide to the right and to
+            the left. As soon as 
+            
+            :param probe: Sequence of probe which is cut at a certain location to generate the two arms
+            :type probe: string
+            :param min_arm_length: Minimal length of each arm
+            :type min_arm_length: int
+            :param max_Tm_dif: Maximal difference of melting temperatures of the two arms
+            :type max_Tm_dif: float
+            :param Tm_min: Minimal melting temperature of each arm
+            :type Tm_min: float
+            :param Tm_max: Maximal melting temperature of each arm
+            :type Tm_max: float
+            :return: 1. ligation site, 2. melting temperature infos of arms ("arm1", "arm2", "dif", "found")
+            :rtype: 1. int, 2. dict
+            
+            """
+            probe_length = len(probe)
+            ligation_site = probe_length//2
+            
+            arms_long_enough = (ligation_site >= min_arm_length) and ((probe_length - ligation_site) >= min_arm_length)
+            Tm_found = False
+            sign_factor = 1 # switch between positive and negative shift
+            shift = 1 # distance of ligation site shift
+            
+            while arms_long_enough and not Tm_found:
+                Tm_arm1 = _get_Tm(probe[:ligation_site])
+                #print(probe[:ligation_site] + "|" + probe[ligation_site:])
+                Tm_arm2 = _get_Tm(probe[ligation_site:])
+                Tm_dif = round(abs(Tm_arm2-Tm_arm1),2)
+                Tm_found = (Tm_dif <= max_Tm_dif) and (Tm_min <= Tm_arm1 <= Tm_max) and (Tm_min <= Tm_arm2 <= Tm_max)
+                #print(f"lig site: {ligation_site}, Tms: {Tm_arm1}, {Tm_arm2}, {Tm_dif}, found: {Tm_found}")
+                if not Tm_found:
+                    ligation_site += sign_factor*shift
+                    sign_factor *= -1
+                    shift += 1
+                    arms_long_enough = (ligation_site >= min_arm_length) and ((probe_length - ligation_site) >= min_arm_length)
+            
+            Tms = {"arm1":Tm_arm1,"arm2":Tm_arm2,"dif":Tm_dif,"found":Tm_found}
+            return ligation_site, Tms        
+        
+        
         def _get_probes_info(genes_batch, file_transcriptome_fasta_batch, batch_logger):
             '''Merge all probes with identical sequence that come from the same gene into one fasta entry.
             Filter all probes based on GC content and melting temperature for user-defined thresholds.
@@ -621,25 +686,39 @@ class DataModule:
                                 gc_content = round(GC(probe_sequence),2)
 
                                 if (self.GC_content_min < gc_content < self.GC_content_max):
-                                    Tm = round(mt.Tm_NN(probe_sequence, **self.Tm_parameters),2)
+                                    Tm = _get_Tm(probe_sequence)#round(mt.Tm_NN(probe_sequence, **self.Tm_parameters),2)
 
                                     if (self.Tm_min < Tm < self.Tm_max):
-                                        gene_id, transcript_id, exon_id, chrom, start, strand = _parse_header(exon.id)
-                                        probe_start = start + i
-                                        probe_end = start + i + probe_length
-
-                                        tmp = gene_probes[gene_id]
-
-                                        if probe_sequence in tmp:
-                                            tmp[probe_sequence]['transcript_id'].append(transcript_id)
-                                            tmp[probe_sequence]['exon_id'].append(exon_id)
-                                            tmp[probe_sequence]['start'].append(probe_start)
-                                            tmp[probe_sequence]['end'].append(probe_end)
-                                        else:
-                                            loaded_probes += 1
-                                            tmp[probe_sequence] = {'transcript_id': [transcript_id], 'exon_id': [exon_id], 'chr': chrom, 'start': [probe_start], 
-                                                                    'end': [probe_end], 'strand': strand, 'gc': gc_content, 'Tm': Tm, 'length': probe_length}
-                                        gene_probes[gene_id] = tmp
+                                        
+                                        ligation_site, arm_Tms = _find_arms(
+                                            probe_sequence,
+                                            min_arm_length=self.arm_length_min,
+                                            max_Tm_dif=self.arm_Tm_dif_max,
+                                            Tm_min=self.arm_Tm_min,
+                                            Tm_max=self.arm_Tm_max
+                                        )
+                                        
+                                        if arm_Tms["found"]:
+                                            gene_id, transcript_id, exon_id, chrom, start, strand = _parse_header(exon.id)
+                                            probe_start = start + i
+                                            probe_end = start + i + probe_length
+    
+                                            tmp = gene_probes[gene_id]
+    
+                                            if probe_sequence in tmp:
+                                                tmp[probe_sequence]['transcript_id'].append(transcript_id)
+                                                tmp[probe_sequence]['exon_id'].append(exon_id)
+                                                tmp[probe_sequence]['start'].append(probe_start)
+                                                tmp[probe_sequence]['end'].append(probe_end)
+                                            else:
+                                                loaded_probes += 1
+                                                tmp[probe_sequence] = {
+                                                    'transcript_id': [transcript_id], 'exon_id': [exon_id], 'chr': chrom, 'start': [probe_start], 
+                                                    'end': [probe_end], 'strand': strand, 'gc': gc_content, 'Tm': Tm, 'Tm_arm1': arm_Tms["arm1"],
+                                                    'Tm_arm2': arm_Tms["arm2"], 'Tm_arm_dif': arm_Tms["dif"], 'length': probe_length,
+                                                    'ligation_site': ligation_site
+                                                }
+                                            gene_probes[gene_id] = tmp
             
             with open(batch_logger, 'w') as handle:
                 handle.write('{}\n'.format(total_probes))
@@ -659,16 +738,24 @@ class DataModule:
             :param file_probe_sequence_batch: Path to probe sequence output file.
             :type file_probe_sequence_batch: string
             '''
-            with open(file_probe_info_batch, 'w') as handle_probeinfo: 
-                handle_probeinfo.write('gene_id\ttranscript_id\texon_id\tprobe_sequence\tchromosome\tstart\tend\tstrand\tGC_content\tmelting_temperature\tlength\n')
+            with open(file_probe_info_batch, 'w') as handle_probeinfo:
+                columns =[
+                    'gene_id', 'transcript_id', 'exon_id', 'probe_sequence', 'chromosome', 'start', 'end', 'strand', 
+                    'GC_content', 'melting_temperature', 'melt_temp_arm1', 'melt_temp_arm2', 'melt_temp_dif_arms', 
+                    'length', 'ligation_site'
+                ]
+                handle_probeinfo.write("\t".join(columns)+"\n")
 
                 with open(file_probe_sequence_batch, 'w') as handle_sequences:
                     for gene_id, probes in gene_probes.items():
                         for probe_sequence, probe_attributes in probes.items():
 
-                            output1 = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(gene_id, ';'.join(probe_attributes['transcript_id']), ';'.join(probe_attributes['exon_id']), 
-                                    probe_sequence, probe_attributes['chr'], ';'.join(str(s) for s in probe_attributes['start']), ';'.join(str(e) for e in probe_attributes['end']), 
-                                    probe_attributes['strand'], probe_attributes['gc'], probe_attributes['Tm'], probe_attributes['length'])
+                            output1 = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                                gene_id, ';'.join(probe_attributes['transcript_id']), ';'.join(probe_attributes['exon_id']), 
+                                probe_sequence, probe_attributes['chr'], ';'.join(str(s) for s in probe_attributes['start']), ';'.join(str(e) for e in probe_attributes['end']), 
+                                probe_attributes['strand'], probe_attributes['gc'], probe_attributes['Tm'], probe_attributes['Tm_arm1'], probe_attributes['Tm_arm2'], 
+                                probe_attributes['Tm_arm_dif'], probe_attributes['length'], probe_attributes['ligation_site']
+                            )
                             handle_probeinfo.write(output1)
 
                             output2 = '{}\n'.format(probe_sequence)
