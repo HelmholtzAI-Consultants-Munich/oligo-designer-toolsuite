@@ -208,20 +208,39 @@ class DataModule:
             
             os.replace(file_tmp, file_genome_fasta)            
         
-        if self.source == 'ncbi':
-            # if source ncbi we need a chromosome mapping
-            mapping = _download_chr_mapping()
-        elif self.source == 'ensemble':
-            # if source ensemble we don't need a chromosome mapping
-            mapping = None
-
+        # Check if files are already present
         if self.file_gene_gtf is None:
-            self.file_gene_gtf = _download_gene_gtf(mapping)
-            self.logging.info('Downloaded gene annotation from {} and save as gene gtf: {}'.format(self.source, self.file_gene_gtf))
-            
+            file = os.path.join(self.dir_output_annotations,self.ftp_gene["file_name"])
+            if os.path.exists(file):
+                self.file_gene_gtf = file
+                self.logging.info('Found gene annotation from {} as gene gtf at: {}'.format(self.source, self.file_gene_gtf))
         if self.file_genome_fasta is None:
-            self.file_genome_fasta = _download_genome_fasta(mapping)
-            self.logging.info('Downloaded genome annotation from {} and save as genome fasta: {}'.format(self.source, self.file_genome_fasta))
+            file = os.path.join(self.dir_output_annotations,self.ftp_genome["file_name"])
+            if os.path.exists(file):
+                self.file_genome_fasta = file
+                self.logging.info('Found genome annotation from {} as genome fasta at: {}'.format(self.source, self.file_genome_fasta))
+        
+        # Download if files are not present
+        if (self.file_gene_gtf is None) or (self.file_genome_fasta is None):
+            if self.source == 'ncbi':
+                # if source ncbi we need a chromosome mapping
+                self.logging.info('Download chromosome mapping')
+                mapping = _download_chr_mapping()
+                self.logging.info('\tDone')
+            elif self.source == 'ensemble':
+                # if source ensemble we don't need a chromosome mapping
+                mapping = None
+    
+            if self.file_gene_gtf is None:
+                self.logging.info('Download gtf file')
+                self.file_gene_gtf = _download_gene_gtf(mapping)
+                self.logging.info('Downloaded gene annotation from {} and save as gene gtf: {}'.format(self.source, self.file_gene_gtf))
+                
+            if self.file_genome_fasta is None:
+                self.logging.info('Download fasta file')
+                self.file_genome_fasta = _download_genome_fasta(mapping)
+                self.logging.info('Downloaded genome annotation from {} and save as genome fasta: {}'.format(self.source, self.file_genome_fasta))
+
             
         print('Annotations downloaded.')
 
