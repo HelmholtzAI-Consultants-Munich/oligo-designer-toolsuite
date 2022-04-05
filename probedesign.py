@@ -15,6 +15,7 @@ logging.basicConfig(filename='log_probe_design_{}-{}-{}-{}-{}.txt'.format(timest
 from src.utils import get_config, print_config, rm_intermediate_files
 from src.datamodule import DataModule
 from src.probefilter import ProbeFilter
+from src.get_overlap_matrix import get_overlap_matrix
 
 
 ############################################
@@ -89,6 +90,16 @@ def probe_pipeline(config, dir_output, download_only=False):
     print('Time to filter with Blast results: {} min \n'.format(t))
 
     probefilter.log_statistics()
+    
+    t = time.time()
+    get_overlap_matrix(os.path.join(dir_output,"probes"),os.path.join(dir_output,"overlap"))
+    t = (time.time() - t)/60    
+    
+    logging.info('Time to compute overlap matrices: {} min'.format(t))
+    print('Time to compute overlap matrices: {} min \n'.format(t))
+    
+    
+    
 
 
 ############################################
