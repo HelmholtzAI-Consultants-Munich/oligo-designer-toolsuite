@@ -31,8 +31,7 @@ def args():
     args_parser = argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
     args_parser.add_argument('-c','--config',help='path to config yaml file',type=str,required=True)
     args_parser.add_argument('-o','--output',help='path of output folder',type=str,required=True)
-    args_parser.add_argument('-d','--download_only',help='dry run that only downloads the necessary files',
-                             action='store_true', required=False)
+    args_parser.add_argument('-d','--download_only',help='dry run that only downloads the necessary files',action='store_true',required=False)
     return args_parser.parse_args()
 
 def probe_pipeline(config, dir_output, download_only=False):
