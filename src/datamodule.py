@@ -210,12 +210,12 @@ class DataModule:
         
         # Check if files are already present
         if self.file_gene_gtf is None:
-            file = os.path.join(self.dir_output_annotations,self.ftp_gene["file_name"])
+            file = os.path.join(self.dir_output_annotations,self.ftp_gene['file_name'])
             if os.path.exists(file):
                 self.file_gene_gtf = file
                 self.logging.info('Found gene annotation from {} as gene gtf at: {}'.format(self.source, self.file_gene_gtf))
         if self.file_genome_fasta is None:
-            file = os.path.join(self.dir_output_annotations,self.ftp_genome["file_name"])
+            file = os.path.join(self.dir_output_annotations,self.ftp_genome['file_name'])
             if os.path.exists(file):
                 self.file_genome_fasta = file
                 self.logging.info('Found genome annotation from {} as genome fasta at: {}'.format(self.source, self.file_genome_fasta))
@@ -241,7 +241,6 @@ class DataModule:
                 self.file_genome_fasta = _download_genome_fasta(mapping)
                 self.logging.info('Downloaded genome annotation from {} and save as genome fasta: {}'.format(self.source, self.file_genome_fasta))
 
-            
         print('Annotations downloaded.')
 
 
@@ -457,24 +456,37 @@ class DataModule:
                 gene_id = transcript_info[transcript][0]
                 seqname = transcript_info[transcript][1]
                 strand = transcript_info[transcript][2]
-                exon_upstream = []
-                exon_downstream = []
 
                 if strand == '+':
-                    exons = sorted(exons.items())
+                    exons = [entry[1] for entry in sorted(exons.items())] #return only exon attributes sorted by exon number
                 elif strand == '-':
-                    exons = sorted(exons.items(), reverse=True)
+                    exons = [entry[1] for entry in sorted(exons.items(), reverse=True)] #return only exon attributes sorted by exon number -> reverse sort on minus strand
                 
-                for exon, attributes in exons:
-                    if exon_upstream == []:
+                for idx, attributes in enumerate(exons):
+                    if idx == 0: #first exon of transcript
                         exon_upstream = attributes
+                        exon_middle = []
+                    elif ((idx+1) < len(attributes)) & ((attributes[2] - attributes[1]) < blockSize): #if exon is shorter than probe blockSize but not the last exon -> create sequence with neighboring exons
+                        exon_middle = attributes
                     else:
                         exon_downstream = attributes
-                        start_up = max(exon_upstream[1], (exon_upstream[2] - blockSize))
-                        end_down = min((exon_downstream[1] + blockSize), exon_downstream[2])
+                        blockSize_up = min(blockSize, (exon_upstream[2] - exon_upstream[1])) #catch case that first or last exon < blockSize
+                        blockSize_down = min(blockSize, (exon_downstream[2] - exon_downstream[1])) #catch case that first or last exon < blockSize
+                        start_up = exon_upstream[2] - blockSize_up
+                        end_down = exon_downstream[1] + blockSize_down
                         
+                        if exon_middle == []:
+                            blockCount = 2
+                            blockSize_length_entry = '{},{}'.format(blockSize_up, blockSize_down)
+                            blockSize_start_entry = '{},{}'.format(0, exon_downstream[1] - start_up)
+                        else:
+                            blockCount = 3
+                            blockSize_length_entry = '{},{},{}'.format(blockSize_up, (exon_middle[2] - exon_middle[1]), blockSize_down)
+                            blockSize_start_entry = '{},{},{}'.format(0, exon_middle[1] - start_up, exon_downstream[1] - start_up)
+                            exon_middle = []
+
                         exon_junction_list.append(['{}_{}_{}_{}'.format(seqname, start_up, end_down, strand), gene_id, transcript, '{}_{}'.format(exon_upstream[0], exon_downstream[0]),
-                                                    seqname, start_up, end_down, 0, strand, start_up, end_down, 0, 2, '{},{}'.format(blockSize, blockSize), '{},{}'.format(0, exon_downstream[1] - start_up)])
+                                                    seqname, start_up, end_down, 0, strand, start_up, end_down, 0, blockCount, blockSize_length_entry, blockSize_start_entry])
                         exon_upstream = attributes
             
             return exon_junction_list
