@@ -5,13 +5,11 @@ from pathlib import Path
 import yaml
 import pandas as pd
 from Bio.SeqUtils import MeltingTemp as mt
+from Bio.Seq import Seq
 import src.utils as utils
 
 def design_padlocks(config,dir_in_probes,dir_in_probesets,dir_out):
     """Design final padlock probe sequences
-    
-    config: dict
-        Configuration dict    
     
     Arguments
     ---------
@@ -24,15 +22,14 @@ def design_padlocks(config,dir_in_probes,dir_in_probesets,dir_out):
     dir_out: str
         Results directory
     
-        
-    Saves table "padlock_probes_<gene>.txt" with final padlock probe sequences, detection oligo sequences, and infos
-    ("detection_oligo_<gene>.txt" <-> not needed, let's save detection_oligo in padlock_probes..txt)
+    Saves
+    -----
+    - table at dir_out+"padlock_probes.yml" with final padlock probe sequences, detection oligo sequences, and infos
+    - table at dir_out+"padlock_probes_order.yml" with final padlock probe sequences and detection oligo sequences
     
     """
 
     Path(dir_out).mkdir(parents=True, exist_ok=True)
-    
-    #config = get_config(config)
         
     probes_files = [f for f in os.listdir(dir_in_probes) if f.startswith("probes_")]
     genes = [f.split("_")[1].split(".")[0] for f in probes_files]
@@ -45,26 +42,24 @@ def design_padlocks(config,dir_in_probes,dir_in_probesets,dir_out):
         
         probes = pd.read_csv(os.path.join(dir_in_probes,probe_f),index_col=0,sep="\t")
         df_probeset = pd.read_csv(os.path.join(dir_in_probesets,probeset_f),index_col=0,sep="\t")
-        probeset = [df_probeset[col].iloc[0] for col in df_probeset.columns if col.startswith("probe")]
+        probeset_idx = best_probeset_with_possible_detection_oligos(df_probeset, probes, config, minT=2)
+        probeset = [df_probeset[col].iloc[probeset_idx] for col in df_probeset.columns if col.startswith("probe")]
         
         for probe_idx, probe in enumerate(probeset):
             complementary_seq = probes.loc[probe,"probe_sequence"]
             ligation_idx = probes.loc[probe,"ligation_site"]
-            #print(gene, gene_idx, probe_idx, "### padlock probe")
             full_seq, sub_seqs = get_padlock_probe(gene_idx,complementary_seq,ligation_idx,barcode_seed=0,barcode_length=4)
-            #print(gene, gene_idx, probe_idx, "### detection oligo", complementary_seq)
-            det_oligo_seq, det_oligo_Tm = get_detection_oligo(complementary_seq,ligation_idx,config,max_no_U_length=9)
-            #print(det_oligo_seq, type(det_oligo_seq), det_oligo_Tm)
+            det_oligo_seq, det_oligo_Tm = get_detection_oligo(complementary_seq,ligation_idx,config,minT=2)
             
             yaml_dict[gene][f"{gene}_probe{probe_idx+1}"] = {}
         
-            # potentially nice to also save organism, full gene name, reference genome
+            #TODO: potentially nice to also save organism, full gene name, reference genome
             yaml_dict[gene][f"{gene}_probe{probe_idx+1}"]["probe_id"] = str(probe)
             for key in ["gene_id", "transcript_id", "exon_id", "chromosome", "start", "end", "strand"]:
                 yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = str(probes.loc[probe,key])
             yaml_dict[gene][f"{gene}_probe{probe_idx+1}"].update({
                 "padlock_probe_full_sequence" : str(full_seq),
-                "detection_oligo_sequence"    : str(det_oligo_seq + "[fluorophore]"),
+                "detection_oligo_sequence"    : str(det_oligo_seq),
                 "padlock_arm1_sequence"       : str(sub_seqs["arm1"]),
                 "padlock_accessory1_sequence" : str(sub_seqs["accessory1"]),
                 "padlock_ISS_anchor_sequence" : str(sub_seqs["ISS_anchor"]),
@@ -72,7 +67,7 @@ def design_padlocks(config,dir_in_probes,dir_in_probesets,dir_out):
                 "padlock_accessory2_sequence" : str(sub_seqs["accessory1"]),
                 "padlock_arm2_sequence"       : str(sub_seqs["arm2"]),
                 "complementary_sequence"      : str(complementary_seq),
-                "target_mRNA_sequence"        : str(complementary_seq[::-1]),
+                "recognised_mRNA_sequence"    : str(Seq(complementary_seq).complement()),
             })
             for key in ["GC_content", "melting_temperature", "melt_temp_arm1", "melt_temp_arm2", "melt_temp_dif_arms"]:
                 yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = float(probes.loc[probe,key])
@@ -118,7 +113,6 @@ def get_barcode(gene_idx,length=4,seed=0):
     """
     bases = ["A","C","T","G"]
     
-    #barcodes = list(itertools.product(bases, repeat=length))
     barcodes = ["".join(nts) for nts in itertools.product(bases, repeat=length)]
     random.seed(seed)
     random.shuffle(barcodes)
@@ -130,7 +124,7 @@ def get_barcode(gene_idx,length=4,seed=0):
     
     
 def SCRINSHOT_or_ISS_backbone_sequence(gene_idx,barcode_length=4,barcode_seed=0):
-    """Get backbone sequence of padblock probes for SCRINSHOT or ISS
+    """Get backbone sequence of padlock probes for SCRINSHOT or ISS
     
     Arguments
     ---------
@@ -144,7 +138,8 @@ def SCRINSHOT_or_ISS_backbone_sequence(gene_idx,barcode_length=4,barcode_seed=0)
         
     Returns
     -------
-    str: backbone sequence (5' to 3')
+    str: 
+        backbone sequence (5' to 3')
     dict of strs:
         Individual parts of the backbone sequence
         
@@ -159,13 +154,13 @@ def SCRINSHOT_or_ISS_backbone_sequence(gene_idx,barcode_length=4,barcode_seed=0)
     
     return full_seq, sub_seqs
 
-def convert_complementary_seq_to_5to3(complementary_seq, ligation_idx):
+def convert_complementary_seq_to_arms(complementary_seq, ligation_idx):
     """Convert the complementary sequence of padlock probes to two arms with 5' to 3' convention
     
     E.g.
     complementary_seq = "AAAATGCTTAAGC" ligation_idx = 7
     --> cut after 7th base: "AAAATGC|TTAAGC"
-    --> final result: ["CGTAAAA","TTAAGC"]
+    --> final result: ["CGTAAAA","CGAATT"]
     
     Arguments
     ---------
@@ -176,17 +171,17 @@ def convert_complementary_seq_to_5to3(complementary_seq, ligation_idx):
         
     Returns
     -------
-    list of strs: first on second arm sequences (both 5' to 3')
+    list of strs: first and second arm sequences (both 5' to 3')
     
     """
     
     arm1 = complementary_seq[:ligation_idx][::-1]
-    arm2 = complementary_seq[ligation_idx:]
+    arm2 = complementary_seq[ligation_idx:][::-1]
     
     return [arm1,arm2]
     
 def get_padlock_probe(gene_idx,complementary_seq,ligation_idx,barcode_seed=0,barcode_length=4):
-    """Get full padlock probe for a given gene and complementary sequence
+    """Get full padlock probe for a given gene and a given complementary sequence
     
     Arguments
     ---------
@@ -197,19 +192,20 @@ def get_padlock_probe(gene_idx,complementary_seq,ligation_idx,barcode_seed=0,bar
         Sequence that hybridises with the target RNA
     ligation_idx: int
         Site where complementary_seq is cut in two arms according padlock probe design  
-    barcode_length: int
-        Length of barcode sequence
     barcode_seed: int
         Defines the random assignment of barcodes to each gene_idx.        
+    barcode_length: int
+        Length of barcode sequence        
     
     Returns
     -------
-    str: padlock probe sequence (5' to 3')
+    str: 
+        padlock probe sequence (5' to 3')
     dict of strs:
         Individual parts of the padlock sequence
         
     """
-    arms = convert_complementary_seq_to_5to3(complementary_seq, ligation_idx)
+    arms = convert_complementary_seq_to_arms(complementary_seq, ligation_idx)
     sub_seqs = {"arm1":arms[0]}
     
     backbone_seq, backbone_sub_seqs = SCRINSHOT_or_ISS_backbone_sequence(gene_idx,barcode_seed=barcode_seed,barcode_length=barcode_length)
@@ -222,94 +218,261 @@ def get_padlock_probe(gene_idx,complementary_seq,ligation_idx,barcode_seed=0,bar
     return full_seq, sub_seqs
 
 
-
-def Ts_are_close_enough(probe,max_no_T_length=9):
-    """Check if sequence has maximally `max_no_T_length` nucleotides without T in a row
-    
-    E.g. (max_no_T_length=9):
-        "AAAAAAAAAAAAAAATAAAA" -> Error
-        "TAAAAAAAAAAAAAAAAAAT" -> Error
-        "AAAATAAAAATAAAATAAAA" -> no Error
-    
-    """
-    if not "T" in probe:
-        return False    
-    for idx in range(len(probe)):
-        if probe[idx:].find("T") > max_no_T_length:
-            return False
-    for idx in range(len(probe)):
-        if probe[idx::-1].find("T") > max_no_T_length:
-            return False        
-    return True
-            
-
-def exchange_T_with_U(probe,max_no_U_length=9):
-    """Exchange minimal number of T(hymines) with U(racils) in probe
-    
-    Arguments
-    ---------
-    probe: str
-        Sequence
-    max_no_U_length: int
-        Maximal number of nucleotides in a row without U
-        
-    Returns
-    -------
-    str:
-        Sequence with the minimal number of exchanged Us
-    
-    """
-    
-    if not Ts_are_close_enough(probe,max_no_T_length=max_no_U_length):
-        return "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO"
-        raise ValueError(f"Sequence {probe} has subsequences with more than {max_no_U_length} nucleotides without T.")
-    
-    probe_length = len(probe)
-    
-    idx = 0
-    idxs = []
-    while idx < (probe_length - 1 - max_no_U_length):
-        idxs.append(idx + probe[idx:idx+max_no_U_length+int(idx>0)+1].rfind("T"))
-        idx = idxs[-1]
-    probe_option1 = "".join(["U" if i in idxs else nt for i,nt in enumerate(probe)])
-    
-    probe_rev = probe[::-1]
-    idx = 0
-    idxs = []
-    while idx < (probe_length - 1 - max_no_U_length):
-        idxs.append(idx + probe_rev[idx:idx+max_no_U_length+int(idx>0)+1].rfind("T"))
-        idx = idxs[-1]        
-    probe_option2 = "".join(["U" if i in idxs else nt for i,nt in enumerate(probe_rev)])[::-1]
-    
-    #print(probe_option1, probe_option1.count('U'))
-    #print(probe_option2, probe_option2.count('U'))
-    
-    if probe_option1.count('U') >= probe_option2.count('U'):
-        return probe_option1
-    else:
-        return probe_option2
-
+##########################
+# Detection Oligo Design #
+##########################
 
 def _get_oligo_Tm(probe_sequence,Tm_parameters,Tm_correction_parameters):
     """Compute the melting temperature for the detection oligo sequence
     
-    #TODO: this function is not placed very nicely. Also it uses utils.get_Tm_parameters everytime we search a new oligo
-           is calculated. In datamodule.py we have the same function for the probe sequence instead of the oligo. Idk
-           atm, it could be handled nicer. Not rly important atm since we only compute a handful of detection oligos.
+    #TODO: this function is not placed very nicely. Also it uses utils.get_Tm_parameters everytime we calculate a new 
+           oligo. In datamodule.py we have the same function for the probe sequence instead of the oligo. Idk atm, 
+           it could be handled nicer. Not rly important atm since we only compute a handful of detection oligos.
     
     In the first step the melting temperature is calculated based on sequence and salt concentrations. In the
     second step the temperature is corrected by formamide (and DMSO) percentage.
     
     :param probe_sequence: Sequence of probe
     :type probe_sequence: string
+    :param Tm_parameters: Parameters for melting temperature calculation
+    :type Tm_parameters: dict
+    :param Tm_correction_parameters: Parameters for melting temperature formamide correction
+    :type Tm_correction_parameters: dict    
     """
     
     Tm = mt.Tm_NN(probe_sequence, **Tm_parameters)
     Tm_corrected = round(mt.chem_correction(Tm, **Tm_correction_parameters),2)
     return Tm_corrected
 
+def exchange_T_with_U(probe, minT=2, U_distance=5):
+    """Exchange 2 T(hymines) with U(racils) and find best side for fluorophore (closest U)
+    
+    Arguments
+    ---------
+    probe: str
+        Sequence
+    minT: int
+        Minimal number of T(hymines) in probe
+    U_distance: int
+        Preferred minimal distance between U(racils)
+        
+    Returns
+    -------
+    str:
+        Oligo sequence with exchanged U(racils) and fluorophore
+    str:
+        Info if fluorophore should be placed left or right
+    
+    """
+    
+    if probe.count("T") < minT:
+        return "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO", None
+    
+    probe_length = len(probe)
+    
+    if probe.find("T") < probe[::-1].find("T"):
+        fluorophor_pos = "left"
+        p = probe
+    else:
+        fluorophor_pos = "right"
+        p = probe[::-1]
+    
+    pos = 0
+    new_pos = 1
+    for i in range(minT):
+        T_not_found = True
+        while T_not_found:
+            shift = 0 if (pos == 0 and (new_pos != 0)) else U_distance
+            new_pos = p[min(pos+shift,len(p)):].find("T")
+            if new_pos == -1:
+                pos = p.rfind("T") - U_distance # 0
+            else:
+                p = "".join(["U" if (i == pos+shift+new_pos) else nt for i,nt in enumerate(p)])
+                pos = pos+shift+new_pos
+                T_not_found = False
+                
+    if fluorophor_pos == "right":
+        p = p[::-1]
+    return p, fluorophor_pos
 
-def get_detection_oligo(probe_sequence,ligation_site,config,max_no_U_length=9):
+
+def get_initial_oligos_for_search(probe_sequence, ligation_site, oligo_length_max_constraint):
+    """Get initial oligos for best oligo search
+    
+    We only allow a difference of 1 nt for the sequences left and right of the ligation site.
+    The search will start with the even length oligo. However, if the parameters allow for odd lengths we might also
+    find oligos with an additional nucleotide on the left or right or both sides.
+    
+    In a firt step we find the oligo sequence that is possible based on the location of the ligation site. 
+    E.g. (the "|" is only for marking the ligation site):
+        - probe_sequence = AAA|CTGCTG -> oligo = AAA|CTGC 
+        - probe_sequence = AAA|CTG    -> oligo = AAA|CTG
+        - probe_sequence = AAAAA|CTG  -> oligo = AAAA|CTG
+    
+    Then the following parameter scenarios can occur:
+    1. The length constraint is smaller than the length of the oligo
+        1.1 the maximal length is even:
+            --> only an even length oligo
+        1.2 the maximal length is odd:
+            --> three different oligos: even, longer left, longer right
+    2. The length of the oligo is smaller than the length constraint
+        2.1 the length of the oligo is even (this only happens when the ligation site is exactly in the middle of an even length probe)
+            --> only an even length oligo
+        2.2 the length of the oligo is odd
+            2.2.1 ligation site is closer to the left
+                --> two different oligos: even, long right
+            2.2.2 ligation site is closter to the right
+                --> two different oligos: even, long left
+    
+    Arguments
+    ---------
+    probe_sequence: str
+        Sequence of probe for which a detection oligo is designed
+    ligation_site: int
+        Position of ligation site. E.g. probe_sequence="AACTG", ligation_site = 2: AA|CTG 
+    oligo_length_max_constraint: int
+        Maximal length of oligo sequence.
+        
+    Returns
+    -------
+    str:
+        oligo with even length (ligation site is in the center of the oligo)
+    str or None:
+        oligo with odd length (ligation site is in the center + 1 of the oligo)
+    str or None
+        oligo with odd length (ligation site is in the center - 1 of the oligo)
+    
+    """
+    
+    if oligo_length_max_constraint ==  0:
+        return None, None, None
+    
+    max_len_constraint_is_even = (oligo_length_max_constraint % 2) == 0
+    constraint_half_len = oligo_length_max_constraint//2
+    
+    probe_length = len(probe_sequence)
+    oligo_half_length_max = min(ligation_site,probe_length-ligation_site)
+    
+    if ligation_site == (probe_length-ligation_site):
+        oligo = probe_sequence
+    elif ligation_site > (probe_length-ligation_site):
+        oligo = probe_sequence[probe_length-2*oligo_half_length_max-1:]
+    else:
+        oligo = probe_sequence[:2*oligo_half_length_max+1]
+    
+    # Different scenarios
+    if oligo_length_max_constraint < len(oligo):
+        # 1.1
+        if max_len_constraint_is_even:
+            start_oligo = probe_sequence[ligation_site-constraint_half_len:ligation_site+constraint_half_len]
+            start_oligo_long_left = None
+            start_oligo_long_right = None    
+        # 1.2
+        else:
+            start_oligo = probe_sequence[ligation_site-constraint_half_len:ligation_site+constraint_half_len]
+            start_oligo_long_left = probe_sequence[ligation_site-constraint_half_len-1:ligation_site+constraint_half_len]
+            start_oligo_long_right = probe_sequence[ligation_site-constraint_half_len:ligation_site+constraint_half_len+1]
+    else:
+        # 2.1
+        if (len(oligo) % 2) == 0:
+            start_oligo = oligo
+            start_oligo_long_left = None
+            start_oligo_long_right = None    
+        else:
+            # 2.2.1
+            if (len(oligo) - ligation_site) > ligation_site:
+                start_oligo_long_right = oligo
+                start_oligo_long_left = None
+                start_oligo = oligo[:-1]
+            # 2.2.2
+            else:
+                start_oligo_long_left = oligo
+                start_oligo_long_right = None
+                start_oligo = oligo[1:]
+    
+    return start_oligo, start_oligo_long_left, start_oligo_long_right
+
+def find_best_oligo(start_oligo,best_oligo,best_Tm_dif,oligo_length_min,minT,get_Tm_dif):
+    """Find detection oligo with best melting temperature
+    
+    We shorten the start_oligo by 1 nucleotide each cycle and test if the shortened oligo is better.
+    The procedure runs through two times: 1. starting with cutting from left, 2. from right. (We
+    don't care too much about computation time ...this procedure tests each even length substring
+    two times.)
+    
+    Arguments
+    ---------
+    start_oligo: str
+        Longest possible oligo with even length
+    best_oligo: str
+        Initial best observed oligo sequence (can be start_oligo or a 1 nt longer oligo with odd length)
+    best_Tm_dif: float
+        Best observed melting temperature difference
+    oligo_length_min: int
+        Minimal length of detection oligo
+    minT: int
+        Minimal number of T(hymines) in detection oligo
+    get_Tm_dif: fct
+        Function that calculates the melting temperature difference based on the sequence
+        
+    Returns
+    -------
+    str:
+        Best observed detection oligo sequence
+    float:
+        Corresponding best melting temperature difference
+    
+    """
+
+    #  The while loop shortens the oligo 1 nt each step
+    
+    # Start cutting from right
+    oligo = start_oligo
+    oligo_length = len(oligo)
+    Tm_dif = best_Tm_dif
+    count = 0
+    while oligo_length > oligo_length_min:
+        
+        if bool(count % 2):
+            oligo = oligo[1:]
+        else:
+            oligo = oligo[:-1]
+            
+        Tm_dif = get_Tm_dif(oligo)
+        
+        # only oligos with at least minT thymines are allowed
+        if (Tm_dif < best_Tm_dif) and (oligo.count("T") >= minT):
+            best_Tm_dif = Tm_dif
+            best_oligo = oligo
+            
+        count += 1
+        oligo_length = len(oligo)
+        
+    # Start cutting from left
+    oligo = start_oligo
+    oligo_length = len(oligo)
+    Tm_dif = best_Tm_dif
+    count = 0
+    while oligo_length > oligo_length_min:
+        
+        if bool(count % 2):
+            oligo = oligo[:-1]
+        else:
+            oligo = oligo[1:]
+            
+        Tm_dif = get_Tm_dif(oligo)
+        
+        if (Tm_dif < best_Tm_dif) and (oligo.count("T") >= minT):
+            best_Tm_dif = Tm_dif
+            best_oligo = oligo
+            
+        count += 1
+        oligo_length = len(oligo)
+        
+    return best_oligo, best_Tm_dif
+
+
+def get_detection_oligo(probe_sequence,ligation_site,config,minT=2):
     """Get detection oligo sequence for a given probe
     
     Detection oligos have the same sequence as the complementary sequence (i.e. `probe_sequence`) but shortend and 
@@ -326,8 +489,8 @@ def get_detection_oligo(probe_sequence,ligation_site,config,max_no_U_length=9):
         Ligation site
     config: dict
         Configuration for oligo design. 
-    max_no_U_length: int
-        Maximal number of nucleotides in a row without U(racil) in the final detection oligo
+    minT: int
+        Minimal number of T(hymines) in detection oligo
     
     Returns
     -------
@@ -338,9 +501,10 @@ def get_detection_oligo(probe_sequence,ligation_site,config,max_no_U_length=9):
     
     """
     
-    probe_length = len(probe_sequence)
-    oligo_length_max = max(ligation_site,probe_length-ligation_site)
+    # Configuration parameters
+    
     oligo_length_min = config["detect_oligo_length_min"]
+    oligo_length_max = config["detect_oligo_length_max"]
     
     Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'], sequence='detection_oligo')
     Tm_correction_parameters = utils.get_Tm_correction_parameters(
@@ -350,44 +514,248 @@ def get_detection_oligo(probe_sequence,ligation_site,config,max_no_U_length=9):
     optimal_Tm = config["detect_oligo_Tm_opt"]
     get_Tm_dif = lambda seq: abs(_get_oligo_Tm(seq,Tm_parameters,Tm_correction_parameters) - optimal_Tm)
     
-    if ligation_site > (probe_length-ligation_site):
-        best_oligo = probe_sequence[probe_length-oligo_length_max:]
-    else:
-        best_oligo = probe_sequence[:oligo_length_max]
-    best_Tm_dif = get_Tm_dif(best_oligo)
-        
-    # Find detection oligo with best melting temperature
-    oligo = best_oligo
-    oligo_length = len(oligo)
-    Tm_dif = best_Tm_dif
     
-    count = 0
-    while oligo_length > oligo_length_min:
-        
-        if bool(count % 2):
-            oligo = oligo[1:]
-        else:
-            oligo = oligo[:-1]
-            
-        Tm_dif = get_Tm_dif(oligo)
-        
-        #TODO: if there are no sequences with proper distances between Ts (very unlikely) than we run into an error
-        #      this is really bad since the pipeline will be interrupted. 
-        if (Tm_dif < best_Tm_dif) and Ts_are_close_enough(oligo,max_no_T_length=max_no_U_length):
-            best_Tm_dif = Tm_dif
-            best_oligo = oligo
-            
-        count += 1
-        oligo_length = len(oligo)
+    # Search for best oligos
+    
+    start_oligo, start_oligo_long_left, start_oligo_long_right = get_initial_oligos_for_search(
+        probe_sequence, ligation_site, oligo_length_max
+    )
+    # Check which of the three initial oligos is the best one
+    best_oligo = start_oligo
+    # The 10000 is for the case that start_oligo doesn't contain minT: The longer sequences could still contain minT
+    # and Tm_dif of the longer sequences are definitely below 10000.
+    best_Tm_dif = get_Tm_dif(start_oligo) if (start_oligo.count("T") >= minT) else 10000 
+    for tmp_oligo in [start_oligo_long_left,start_oligo_long_right]:
+        if tmp_oligo is not None:
+            Tm_dif = get_Tm_dif(tmp_oligo)
+            if (Tm_dif < best_Tm_dif) and (tmp_oligo.count("T") >= minT):
+                best_Tm_dif = Tm_dif
+                best_oligo = tmp_oligo
+    # Iterative search through shorter oligos
+    best_oligo, best_Tm_dif = find_best_oligo(start_oligo,best_oligo,best_Tm_dif,oligo_length_min,minT,get_Tm_dif)
     
     # exchange T's with U (for enzymatic degradation of oligos)
-    oligo_seq = exchange_T_with_U(best_oligo,max_no_U_length=max_no_U_length)
+    oligo_seq, fluorophor_pos = exchange_T_with_U(best_oligo, minT=minT, U_distance=5)
+
     if oligo_seq != "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO":
         oligo_Tm = _get_oligo_Tm(best_oligo,Tm_parameters,Tm_correction_parameters)
     else:
         oligo_Tm = 0
+        
+    # The real oligo sequence is the reverse complement (therefore left and right fluorophore positions are exchanged)
+    if oligo_seq != "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO":
+        oligo_seq = oligo_seq[::-1]
+        
+    if fluorophor_pos == "left":
+        oligo_seq = oligo_seq+"[fluorophore]"
+    elif fluorophor_pos == "right":
+        oligo_seq = "[fluorophore]"+oligo_seq
+    else:
+        oligo_seq = oligo_seq
     
     return oligo_seq, oligo_Tm
+
+
+def best_probeset_with_possible_detection_oligos(df_probeset, probes, config, minT=2):
+    """Get row index of best probeset for which all detection oligos can be designed
+    
+    Criterions for detection oligo design are 1. a length constraint and 2. to have at least 2 T(hymines).
+    
+    TODO: The detection oligo thing is a bit annoying. Currently I don't want to set this as a constrained for
+          finding probes for a gene. Otherwise we could directly filter probes before searching for probesets 
+          which would be great. Maybe something to think about in the future. For now we only check after having 
+          the probe sets per gene.
+    
+    Arguments
+    ---------
+    df_probeset: pd.DataFrame
+        Dataframe with ranked probesets. Output of get_nonoverlapping_sets in nonoverlapping_sets.py.
+    probes: pd.DataFrame
+        Table with probe infos.
+    config: dict
+        Probe design config parameters.
+    minT: int
+        Minimal number of T(hymines) in detection oligo.
+        
+    Returns
+    -------
+    int: 
+        Numerical row index of first probeset that only contains probes for which a detection oligo can be designed.
+        If no probeset can be found the first probeset index i.e. 0 is returned.
+    
+    """
+    
+    oligo_length_max = config["detect_oligo_length_max"]
+    
+    for probeset_idx in range(len(df_probeset)):
+        probeset = [df_probeset[col].iloc[probeset_idx] for col in df_probeset.columns if col.startswith("probe")]
+        for probe_idx, probe in enumerate(probeset):
+            complementary_seq = probes.loc[probe,"probe_sequence"]
+            ligation_idx = probes.loc[probe,"ligation_site"]
+            
+            start_oligo, start_oligo_long_left, start_oligo_long_right = get_initial_oligos_for_search(
+                complementary_seq, ligation_idx, oligo_length_max
+            )
+            if (start_oligo_long_left is not None) and (start_oligo_long_left.count("T") >= minT):
+                return probeset_idx
+            elif (start_oligo_long_right is not None) and (start_oligo_long_right.count("T") >= minT):
+                return probeset_idx
+            elif (start_oligo.count("T") >= minT):
+                return probeset_idx
+        
+    return 0
+    
+    
+
+
+#
+# OLD OLIGO DESIGN VERSION: different T and U exchange. Nice functions, however in practice often olgios can't be 
+#                           designed with those criteria...
+#                           with the new olgio criteria the fluorophore is still cut off. However, the oligo rest might 
+#                           still bind to probes after enzymatic degradation. So everything fine, just signals 
+#                           can't be remeasured. 
+#
+#def Ts_are_close_enough(probe,max_no_T_length=9):
+#    """Check if sequence has maximally `max_no_T_length` nucleotides without T in a row
+#    
+#    E.g. (max_no_T_length=9):
+#        "AAAAAAAAAAAAAAATAAAA" -> Error
+#        "TAAAAAAAAAAAAAAAAAAT" -> Error
+#        "AAAATAAAAATAAAATAAAA" -> no Error
+#    
+#    """
+#    if not "T" in probe:
+#        return False    
+#    for idx in range(len(probe)):
+#        if probe[idx:].find("T") > max_no_T_length:
+#            return False
+#    for idx in range(len(probe)):
+#        if probe[idx::-1].find("T") > max_no_T_length:
+#            return False        
+#    return True
+#            
+#def exchange_T_with_U(probe,max_no_U_length=9):
+#    """Exchange minimal number of T(hymines) with U(racils) in probe
+#    
+#    Arguments
+#    ---------
+#    probe: str
+#        Sequence
+#    max_no_U_length: int
+#        Maximal number of nucleotides in a row without U
+#        
+#    Returns
+#    -------
+#    str:
+#        Sequence with the minimal number of exchanged Us
+#    
+#    """
+#    
+#    if not Ts_are_close_enough(probe,max_no_T_length=max_no_U_length):
+#        return "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO"
+#        raise ValueError(f"Sequence {probe} has subsequences with more than {max_no_U_length} nucleotides without T.")
+#    
+#    probe_length = len(probe)
+#    
+#    idx = 0
+#    idxs = []
+#    while idx < (probe_length - 1 - max_no_U_length):
+#        idxs.append(idx + probe[idx:idx+max_no_U_length+int(idx>0)+1].rfind("T"))
+#        idx = idxs[-1]
+#    probe_option1 = "".join(["U" if i in idxs else nt for i,nt in enumerate(probe)])
+#    
+#    probe_rev = probe[::-1]
+#    idx = 0
+#    idxs = []
+#    while idx < (probe_length - 1 - max_no_U_length):
+#        idxs.append(idx + probe_rev[idx:idx+max_no_U_length+int(idx>0)+1].rfind("T"))
+#        idx = idxs[-1]        
+#    probe_option2 = "".join(["U" if i in idxs else nt for i,nt in enumerate(probe_rev)])[::-1]
+#    
+#    #print(probe_option1, probe_option1.count('U'))
+#    #print(probe_option2, probe_option2.count('U'))
+#    
+#    if probe_option1.count('U') >= probe_option2.count('U'):
+#        return probe_option1
+#    else:
+#        return probe_option2
+#
+#def get_detection_oligo(probe_sequence,ligation_site,config,max_no_U_length=9):
+#    """Get detection oligo sequence for a given probe
+#    
+#    Detection oligos have the same sequence as the complementary sequence (i.e. `probe_sequence`) but shortend and 
+#    reversed. The ligation site is placed in the middle of the detection oligo. The detection oligo is shortend to get
+#    its melting temperature as close as possible to config["detect_oligo_Tm_opt"] but not shorter than 
+#    config["detect_oligo_length_min"].
+#    
+#    
+#    Arguments
+#    ---------
+#    probe_sequence: str
+#        The sequence of the complementary probe
+#    ligation_site: int
+#        Ligation site
+#    config: dict
+#        Configuration for oligo design. 
+#    max_no_U_length: int
+#        Maximal number of nucleotides in a row without U(racil) in the final detection oligo
+#    
+#    Returns
+#    -------
+#    str:
+#        Sequence of detection oligo
+#    float:
+#        Melting temperature of detection oligo
+#    
+#    """
+#    
+#    probe_length = len(probe_sequence)
+#    oligo_length_max = max(ligation_site,probe_length-ligation_site)
+#    oligo_length_min = config["detect_oligo_length_min"]
+#    
+#    Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'], sequence='detection_oligo')
+#    Tm_correction_parameters = utils.get_Tm_correction_parameters(
+#        config['Tm_correction_parameters'], 
+#        sequence='detection_oligo'
+#    )
+#    optimal_Tm = config["detect_oligo_Tm_opt"]
+#    get_Tm_dif = lambda seq: abs(_get_oligo_Tm(seq,Tm_parameters,Tm_correction_parameters) - optimal_Tm)
+#    
+#    if ligation_site > (probe_length-ligation_site):
+#        best_oligo = probe_sequence[probe_length-oligo_length_max:]
+#    else:
+#        best_oligo = probe_sequence[:oligo_length_max]
+#    best_Tm_dif = get_Tm_dif(best_oligo)
+#        
+#    # Find detection oligo with best melting temperature (the while loop shortens the oligo 1 nt each step)
+#    oligo = best_oligo
+#    oligo_length = len(oligo)
+#    Tm_dif = best_Tm_dif
+#    count = 0
+#    while oligo_length > oligo_length_min:
+#        
+#        if bool(count % 2):
+#            oligo = oligo[1:]
+#        else:
+#            oligo = oligo[:-1]
+#            
+#        Tm_dif = get_Tm_dif(oligo)
+#        
+#        if (Tm_dif < best_Tm_dif) and Ts_are_close_enough(oligo,max_no_T_length=max_no_U_length):
+#            best_Tm_dif = Tm_dif
+#            best_oligo = oligo
+#            
+#        count += 1
+#        oligo_length = len(oligo)
+#    
+#    # exchange T's with U (for enzymatic degradation of oligos)
+#    oligo_seq = exchange_T_with_U(best_oligo,max_no_U_length=max_no_U_length)
+#    if oligo_seq != "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO":
+#        oligo_Tm = _get_oligo_Tm(best_oligo,Tm_parameters,Tm_correction_parameters)
+#    else:
+#        oligo_Tm = 0
+#    
+#    return oligo_seq, oligo_Tm
         
     
     
