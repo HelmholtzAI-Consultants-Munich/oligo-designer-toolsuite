@@ -431,7 +431,14 @@ class DataModule:
             :return: Two dictionaries: transcript - exon mapping and transcript information.
             :rtype: dict
             '''
-            transcripts = self.gene_annotation.loc[self.gene_annotation['feature'] == 'transcript']
+            
+            #TODO: if/else at beginning and end are for taking care of mouse gtf files where "transcript" feature is
+            #      missing. I think this could be written simpler...
+            
+            if ('transcript' in self.gene_annotation['feature'].values):
+                transcripts = self.gene_annotation.loc[self.gene_annotation['feature'] == 'transcript']
+            else:
+                transcripts = self.gene_annotation.loc[self.gene_annotation["transcript_id"] != '']
             transcripts = sorted(list(transcripts['transcript_id'].unique()))
             transcript_exons = {key: {} for key in transcripts}
             transcript_info = dict()
@@ -439,7 +446,15 @@ class DataModule:
             for (transcript_id, exon_number, exon_id, start, end, gene_id, seqname, strand) in zip(exon_annotation['transcript_id'], exon_annotation['exon_number'], exon_annotation['exon_id'], exon_annotation['start'], exon_annotation['end'], exon_annotation['gene_id'], exon_annotation['seqname'], exon_annotation['strand']):
                 transcript_exons[transcript_id][int(exon_number)] = [exon_id, start, end]
                 transcript_info[transcript_id] = [gene_id, seqname, strand]
-
+                
+            if not ('transcript' in self.gene_annotation['feature'].values):
+                delete_ids = []
+                for transcript_id in transcript_exons:
+                    if transcript_id not in transcript_info:
+                        delete_ids.append(transcript_id)
+                for transcript_id in delete_ids:
+                    del transcript_exons[transcript_id]
+                
             return transcript_exons, transcript_info
 
         def _get_exon_junction_list(blockSize, transcript_exons, transcript_info):
