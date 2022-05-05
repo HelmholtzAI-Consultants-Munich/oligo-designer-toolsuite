@@ -51,6 +51,8 @@ def create_dir(dir, subdir):
     :return: Pyth to subdirectory.
     :rtype: str
     '''
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)
     dir = os.path.join(dir, subdir)
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
