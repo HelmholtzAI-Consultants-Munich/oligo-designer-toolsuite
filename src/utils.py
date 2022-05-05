@@ -60,20 +60,45 @@ def create_dir(dir, subdir):
     return dir
 
 
-def get_Tm_parameters(Tm_parameters):
+def get_Tm_parameters(Tm_parameters,sequence='probe'):
     '''Convert config parameters for 'table' attributes of MeltingTemp function into MeltingTemp attributes. 
+    
+    And load specific parameters of the given `sequence` type.
 
     :param Tm_parameters: Dictionary with parameters for MeltingTemp function.
     :type Tm_parameters: dict
+    :param sequence: Name of the sequence for which parameters are loaded
+    :type sequence: string
     :return: Dictionary with parameters for MeltingTemp function.
     :rtype: dict
     '''
-    Tm_parameters['nn_table'] = getattr(mt, Tm_parameters['nn_table'])
-    Tm_parameters['tmm_table'] = getattr(mt, Tm_parameters['tmm_table'])
-    Tm_parameters['imm_table'] = getattr(mt, Tm_parameters['imm_table'])
-    Tm_parameters['de_table'] = getattr(mt, Tm_parameters['de_table'])
+    Tm_params = Tm_parameters['shared'].copy()
+    if Tm_parameters[sequence]:
+        Tm_params.update(Tm_parameters[sequence])
+    
+    Tm_params['nn_table'] = getattr(mt, Tm_params['nn_table'])
+    Tm_params['tmm_table'] = getattr(mt, Tm_params['tmm_table'])
+    Tm_params['imm_table'] = getattr(mt, Tm_params['imm_table'])
+    Tm_params['de_table'] = getattr(mt, Tm_params['de_table'])
 
-    return Tm_parameters
+    return Tm_params
+
+
+def get_Tm_correction_parameters(Tm_correction_parameters,sequence='probe'):
+    '''Load specific Tm correction parameters of the given `sequence` type
+
+    :param Tm_correction_parameters: Dictionary with parameters for MeltingTemp function.
+    :type Tm_correction_parameters: dict
+    :param sequence: Name of the sequence for which parameters are loaded
+    :type sequence: string
+    :return: Dictionary with parameters for MeltingTemp function.
+    :rtype: dict
+    '''
+    Tm_params = Tm_correction_parameters['shared'].copy()
+    if Tm_correction_parameters[sequence]:
+        Tm_params.update(Tm_correction_parameters[sequence])
+
+    return Tm_params
 
 
 def ftp_download(ftp_link, directory, file_name, dir_output):
