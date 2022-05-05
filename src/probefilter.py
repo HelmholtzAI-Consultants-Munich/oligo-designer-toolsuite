@@ -100,10 +100,12 @@ class ProbeFilter:
             file_probe_fasta_batch = os.path.join(self.dir_output_annotations, 'probes_batch{}.fna'.format(batch_id))
             batch_logger = os.path.join(self.dir_output_annotations, 'logger_batch{}.txt'.format(batch_id))
 
-            probes_info = pd.read_csv(file_probe_info_batch, sep='\t', 
+            probes_info = pd.read_csv(file_probe_info_batch, sep='\t',
                                     dtype={'gene_id': str, 'transcript_id': str, 'exon_id': str, 'probe_sequence': str, 
-                                    'chromosome': str, 'start': str, 'end': str, 'strand': str, 
-                                    'GC_content': float, 'melting_temperature': float, 'length': int})
+                                           'chromosome': str, 'start': str, 'end': str, 'strand': str, 
+                                           'GC_content': float, 'melting_temperature': float, 'melt_temp_arm1':float,
+                                           'melt_temp_arm2': float, 'melt_temp_dif_arms': float, 'length': int, 
+                                           'ligation_site': int})            
             os.remove(file_probe_info_batch)
 
             probes_info_filetred = probes_info[~ probes_info.probe_sequence.isin(self.duplicated_sequences)]
@@ -129,7 +131,8 @@ class ProbeFilter:
             # save info table
             probes_info_filtered[['probe_id', 'probe_sequence', 'gene_id', 'transcript_id', 'exon_id', 
                                   'chromosome', 'start', 'end', 'strand', 
-                                  'GC_content', 'melting_temperature', 'length']].to_csv(file_probe_info_batch, sep='\t', index=False)
+                                  'GC_content', 'melting_temperature', 'melt_temp_arm1', 'melt_temp_arm2', 'melt_temp_dif_arms', 
+                                  'length', 'ligation_site']].to_csv(file_probe_info_batch, sep='\t', index=False)
 
             # save sequence of probes in fasta format
             genes = probes_info_filtered.gene_id.unique()
@@ -236,7 +239,9 @@ class ProbeFilter:
             probes_info = pd.read_csv(file_probe_info_batch, sep='\t',  
                                       dtype={'gene_id': str, 'transcript_id': str, 'exon_id': str, 'probe_sequence': str, 
                                              'chromosome': str, 'start': str, 'end': str, 'strand': str, 
-                                             'GC_content': float, 'melting_temperature': float, 'length': int})
+                                             'GC_content': float, 'melting_temperature': float, 'melt_temp_arm1':float,
+                                             'melt_temp_arm2': float, 'melt_temp_dif_arms': float, 'length': int, 
+                                             'ligation_site': int})
             return probes_info
 
         def _read_blast_output(batch_id, subbatch_id):
