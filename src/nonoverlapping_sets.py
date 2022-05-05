@@ -10,6 +10,7 @@ from src.utils import get_config
 #       accordingl add another weighting factor
 
 def get_nonoverlapping_sets(config,dir_in_probes,dir_in_overlap,dir_out,n_sets=5000):
+
     """Get ranked list of non overlapping probe sets for each gene in directory `dir_in_probes`
     
     config: dict

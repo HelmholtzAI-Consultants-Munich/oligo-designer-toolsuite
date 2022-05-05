@@ -22,9 +22,11 @@ probe_length_max: 45 #max length of probes
 GC_content_min: 40 #minimum GC content of probes
 GC_content_opt: 50 #optimal GC content of probes
 GC_content_max: 60 #maximum GC content of probes
+
 Tm_min: 52 #55 #minimum melting temperature of probes
 Tm_opt: 60 #60 #optimal melting temperature of probes
 Tm_max: 67 #63 #maximum melting temperature of probes
+
 n_probes_per_gene: 5 #ideal number of probes per gene
 min_probes_per_gene: 1 #minimum number of probes per gene
 # probe arms
