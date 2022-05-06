@@ -298,7 +298,7 @@ class ProbeFilter:
                probes_wo_match_gene = probes_wo_match[probes_wo_match.query_gene_id == gene_id]
                probes_wo_match_gene = probes_wo_match_gene['query'].unique()
 
-               if len(probes_wo_match_gene) > self.min_probes_per_gene:
+               if len(probes_wo_match_gene) > 0: #gene has to have at least one probe
                    _write_output(probes_info, gene_id, probes_wo_match_gene)
 
             return len(probes_wo_match['query'].unique())   
