@@ -1,13 +1,16 @@
 from distutils.core import setup
 
 setup(
-    name='ProbeDesign',
+    name='oligo-designer-toolsuite',
     version='0.1',
-    packages=['src'],
-    install_requires=['os', 'datetime', 'time', 'argparse', 'yaml', 'logging', 
-                      'random', 'pandas', 'gzip', 'shutil', 'ftplib', 
-                      'multiprocessing', 'itertools', 'iteration_utilities', 
-                      'Bio', 'gtfparse', 'pyfaidx', 'pybedtoolsftplib'],
+    packages=['oligo_designer_toolsuite'],
+    install_requires=['datetime', 'argparse', 'pandas', 'iteration_utilities', 
+                      'Bio', 'gtfparse', 'pyfaidx', 'pyyaml', 'pybedtools', 'networkx'],
     long_description=open('README.md').read(),
     author='Lisa Barros de Andrade e Sousa',
+    entry_points={
+        'console_scripts': [
+            'test_probe = oligo_designer_toolsuite.probedesign:main'
+        ]
+    },
 )
