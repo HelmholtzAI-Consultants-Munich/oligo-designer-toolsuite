@@ -104,8 +104,7 @@ def probe_pipeline(config, dir_output, download_only=False):
     t = time.time()
 
     get_nonoverlapping_sets(config,os.path.join(dir_output,"probes"),os.path.join(dir_output,"overlap"),
-                            os.path.join(dir_output,"probesets"),n_sets=100
-                           )
+                            os.path.join(dir_output,"probesets"),n_sets=100)
     t = (time.time() - t)/60
 
     logging.info('Time to find nonoverlapping probe sets: {} min'.format(t))
