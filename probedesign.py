@@ -12,12 +12,12 @@ from pathlib import Path
 timestamp = datetime.now()
 logging.basicConfig(filename='log_probe_design_{}-{}-{}-{}-{}.txt'.format(timestamp.year, timestamp.month, timestamp.day, timestamp.hour, timestamp.minute), level=logging.NOTSET)
 
-from src.utils import get_config, print_config, rm_intermediate_files
-from src.datamodule import DataModule
-from src.probefilter import ProbeFilter
-from src.get_overlap_matrix import get_overlap_matrix
-from src.nonoverlapping_sets import get_nonoverlapping_sets
-from src.padlock_design import design_padlocks
+from oligo_designer_toolsuite.utils import get_config, print_config, rm_intermediate_files
+from oligo_designer_toolsuite.datamodule import DataModule
+from oligo_designer_toolsuite.probefilter import ProbeFilter
+from oligo_designer_toolsuite.get_overlap_matrix import get_overlap_matrix
+from oligo_designer_toolsuite.nonoverlapping_sets import get_nonoverlapping_sets
+from oligo_designer_toolsuite.padlock_design import design_padlocks
 
 
 
@@ -124,7 +124,7 @@ def probe_pipeline(config, dir_output, download_only=False):
 # main
 ############################################
     
-if __name__ == '__main__':
+def main():
     '''Main function of probe designer.
     '''
     # get comman line arguments
