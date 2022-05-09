@@ -292,23 +292,6 @@ class DataModule:
         self.batch_size = int(len(self.genes) / self.number_batchs) + (len(self.genes) % self.number_batchs > 0)
         self.logging.info('Probes for {} genes will be designed processed in {} parallele batches with {} genes in one batch'.format(len(self.genes), self.number_batchs, self.batch_size))
 
-        textfile = open("genes_3000.txt", "w")
-        for element in self.genes[0:3000]:
-            textfile.write(element + "\n")
-        textfile.close()
-
-        textfile = open("genes_5000.txt", "w")
-        for element in self.genes[0:5000]:
-            textfile.write(element + "\n")
-        textfile.close()
-
-        textfile = open("genes_10000.txt", "w")
-        for element in self.genes[0:10000]:
-            textfile.write(element + "\n")
-        textfile.close()
-
-        print('Gene list loaded.')
-
 
     def load_transcriptome(self):
         '''Create transcriptome from NCBI or ensemble gene annotation.
@@ -485,9 +468,9 @@ class DataModule:
                 for idx, attributes in enumerate(exons):
                     if idx == 0: #first exon of transcript
                         exon_upstream = attributes
-                        exon_middle = []
-                    elif ((idx+1) < len(attributes)) & ((attributes[2] - attributes[1]) < blockSize): #if exon is shorter than probe blockSize but not the last exon -> create sequence with neighboring exons
-                        exon_middle = attributes
+                        exons_small = []
+                    elif ((idx+1) < len(exons)) & ((attributes[2] - attributes[1]) < blockSize): #if exon is not the last exon of transcript and shorter than probe blockSize but not the last exon -> create sequence with neighboring exons
+                        exons_small.append(attributes)
                     else:
                         exon_downstream = attributes
                         blockSize_up = min(blockSize, (exon_upstream[2] - exon_upstream[1])) #catch case that first or last exon < blockSize
@@ -495,15 +478,15 @@ class DataModule:
                         start_up = exon_upstream[2] - blockSize_up
                         end_down = exon_downstream[1] + blockSize_down
                         
-                        if exon_middle == []:
+                        if exons_small == []:
                             blockCount = 2
                             blockSize_length_entry = '{},{}'.format(blockSize_up, blockSize_down)
                             blockSize_start_entry = '{},{}'.format(0, exon_downstream[1] - start_up)
                         else:
-                            blockCount = 3
-                            blockSize_length_entry = '{},{},{}'.format(blockSize_up, (exon_middle[2] - exon_middle[1]), blockSize_down)
-                            blockSize_start_entry = '{},{},{}'.format(0, exon_middle[1] - start_up, exon_downstream[1] - start_up)
-                            exon_middle = []
+                            blockCount = len(exons_small) + 2
+                            blockSize_length_entry = str(blockSize_up) + ',' + ','.join([str(attributes[2] - attributes[1]) for attributes in exons_small]) + ',' + str(blockSize_down) #'{},{},{}'.format(blockSize_up, (exons_small[2] - exons_small[1]), blockSize_down)
+                            blockSize_start_entry = '0,' + ','.join([str(attributes[1] - start_up,) for attributes in exons_small]) + ',' + str(exon_downstream[1] - start_up) #'{},{},{}'.format(0, exons_small[1] - start_up, exon_downstream[1] - start_up)
+                            exons_small = []
 
                         exon_junction_list.append(['{}_{}_{}_{}'.format(seqname, start_up, end_down, strand), gene_id, transcript, '{}_{}'.format(exon_upstream[0], exon_downstream[0]),
                                                     seqname, start_up, end_down, 0, strand, start_up, end_down, 0, blockCount, blockSize_length_entry, blockSize_start_entry])
