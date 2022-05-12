@@ -10,6 +10,7 @@ from datetime import datetime
 timestamp = datetime.now()
 logging.basicConfig(filename='log_probe_design_{}-{}-{}-{}-{}.txt'.format(timestamp.year, timestamp.month, timestamp.day, timestamp.hour, timestamp.minute), level=logging.NOTSET)
 
+from oligo_designer_toolsuite.utils import get_config, print_config, rm_intermediate_files
 from oligo_designer_toolsuite.pipeline import download_and_filter, find_non_overlapping_sets, design_padlock_probes
 
 
@@ -47,9 +48,9 @@ def main():
 
     t_pipeline = time.time()
     
-    pipeline.download_and_filter(config, dir_output, logging, download_only=download_only)
-    pipeline.find_non_overlapping_sets(config, dir_output, logging)
-    pipeline.design_padlock_probes(config, dir_output, logging)
+    download_and_filter(config, dir_output, logging, download_only=download_only)
+    find_non_overlapping_sets(config, dir_output, logging)
+    design_padlock_probes(config, dir_output, logging)
     
     t_pipeline = (time.time() - t_pipeline)/60
 

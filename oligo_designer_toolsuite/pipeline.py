@@ -6,7 +6,6 @@ import os
 import time
 from pathlib import Path
 
-from oligo_designer_toolsuite.utils import get_config, print_config, rm_intermediate_files
 from oligo_designer_toolsuite.datamodule import DataModule
 from oligo_designer_toolsuite.probefilter import ProbeFilter
 from oligo_designer_toolsuite.get_overlap_matrix import get_overlap_matrix
