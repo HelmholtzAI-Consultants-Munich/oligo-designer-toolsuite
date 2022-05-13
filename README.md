@@ -1,74 +1,71 @@
-# Probe Designer for transcriptomics experiments
+# Oligo Designer Toolsuite
 
-In a targeted spatial transcriptomics experiment, you need to know a priori what genes you would like to see. These genes are targeted by probes that target mRNA sequences by hybridization. However, we cannot design probes for all genes as some genes are just too similar in sequence to keep apart. A probe for one of these genes would also bind to the other, similar gene and therefore cannot give a specific readout.
+Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers can customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
-This package provides a probe designer that designs all valid probes for a given gene. Probes are designed with a specific length and are pre-filtered based on their GC content and melting temperature. To ensure that the potential probes don't map to any other region in the transcriptome, the probes are blasted with ```blastN``` against the transcriptome of the given species (e.g. human transcriptome). All probes that map to other genomic regions (outside their gene region) with more than 80% similarity are discarded, given that the probe and matching genomic regions have at least 50% overlap and the matching region covers -4 to +5nt of the probe center. All remaining probes are reported as suitable probes for a given gene. Genes can be filtered by the number of possible probes, i.e. all genes with less than *n* possible probes can be filtered out. 
+Various tools exist that provide custom design of oligo sequences depending on the area of application. Interestingly, all those pipelines have many common basic processing steps, ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos. Despite the fact that most tools apply the same basic processing steps, each newly developed tool usually uses its own implementation and different versions of package dependencies for those basic processing steps. As a consequence, the comparability of tools that differ only in certain steps is hampered, but also the development of new tools and the update of existing tools is slowed down, because developers do not have a common resource for basic functionalities to fall back on. We tackle this issue by providing such a common resource in our *Oligo Designer Toolsuite*. This Toolsuite is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps. 
 
 ## Installation
 
-The code has been implemented using Python 3.8. To install the necessary packages for this framework with conda run:
+**Requirements:**
+
+- >= Python 3.8 
+- ```'datetime```, ```argparse```, ```pyyaml```, ```iteration_utilities```, ```pandas```, 
+- ```Bio```, ```gtfparse```, ```pyfaidx```,  ```pybedtools```, ```networkx```
+
+All required packages are automatically installed if installation is done via ```pip```.
+
+**Install Options:**
+
+PyPI install:
 
 ```
-conda env create -f environment.yaml
+pip install oligo-designer-toolbox
 ```
 
-To install the package via pip:
+Installation of the package via pip from source:
+
+Clone the git repo and install the downloaded package with:
+
+```
+git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
+```
 
 ```
 pip install .        (Installation as python package: run inside directory)
-``` 
+```
+
 or if you want to develop the package:
+
 ```
 pip install -e .        (Installation as python package: run inside directory)
-``` 
-
-To install the package via setup.py:
-```
-python setup.py install
 ```
 
-## Usage
+Note: if you are using conda, first install pip with: ```conda install pip```
 
-### Input parameters
 
-The pipeline takes the following input:
-- ```config```: file, which contains the parameter settings
-- ```source``` (tbd): annotation source, i.e. ensmble or NCBI (other annotations are not supported)
-- ```output```: directory, where output of pipeline is stored
-- ```gene_list``` (optional) (tbd): text file with a list of gene names (one gene per row), where the gene names correspond to the provided gene annotation, if not provided, all genes from the provided gene annotation are used
+# Implemented Oligo Design Pipelines
 
-### Pipeline Description
+## Padlock Probe Design
 
-The pipeline has seven major steps: 
+A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is 40nt.
 
-**Load annotations**: download the gene annotation (*gtf* file) and genome sequence (*fasta* file) via FTP server from *NCBI* or *ensemble* if no custom files are provided. In case, *NCBI* is given as annotation source, the downloaded files have to be post-processed. The chromosome names have to be mapped from *GenBank* to *RefSeq* annotation in order to be used by ```bedtools```. The required mapping is downloaded automatically from *NCBI*. This function is part of the ```DataModule``` class. 
 
-**Load genes**: load the list of genes for which probes should be defined. If no custom file with a gene list is provided, a list of genes is retrieved from the downloaded *NCBI* or *ensemble* gene annotation. If a custom file is provided, each row in this file should have one gene name and the gene name should match the source annotation. This function is part of the ```DataModule``` class.
+### Usage
 
-**Load transcriptome**: create the transcriptome from *NCBI* or *ensemble* gene annotation. The transcriptome is created from the gene annotation to avoid the time-consuming step of a multiple sequence alignments over all transcripts. To create the transcriptome, retrieve all exons and all possible exon junctions from the transcript annotation in the gene annotation file. For the reference transcriptome, define the exon junction region larger than the probe length (+5 bp) to allow bulges in the alignments and merge containing exons, i.e. exons that are contained in another, larger exon. For the probe transcriptome, define the exon junction region as *probe length - 1*, to avoid duplicated probes from an overlap with the exon annotation. The resulting transcriptome annotation only returns each exon and all possible exon junctions once per gene, i.e. when multiple transcripts use the same exon, the region is only reported once. This step reduces the blast database and decreases runtime of the blast search itself (an effect that is otherwise achieved with the multiple sequence alignment step). The transcriptome annotation is saved in ```bed12``` format that allows split annotations, which are needed to get sequences for exon junctions, i.e. the intron sequence has to be spared. Save the transcriptome sequence in fasta format. This function is part of the ```DataModule``` class.
+To create padlock probes you can run the pipeline with 
 
-**Load probes**: get the fasta sequence of all possible probes with user-defined length for all input genes. A list of potential probes is generated by a sliding window over the transcriptome sequence. Generated probes are filtered by undefined (masked) nucleotides ('N') in their sequence. In addition, generated probes are filtered based on GC content and melting temperature for user-defined thresholds. The probes passing both filters are aggregated over each gene and all probes that have exactly the same sequence (only considering probes of the same gene) are merged into one fasta entry, saving the information of exon and transcript-of-origin as well as start and end position of the respective probes. This step can be executed in a parallel fashion with ```multiprocessing``` on a user-defined number of threads (parameter: ```number_batchs```). This function is part of the ```DataModule``` class.
+```
+padlock_probe_designer -c ./config/padlock_probe_designer.yaml -o output/ [-d False]
+````
 
-**Filter probes by exact match**: filter out probes with exact matches within the pool of all possible probe sequences for all input genes. Save the sequence of all probes that passed this filter as fasta file. This step can be executed in a parallel fashion with ```multiprocessing``` on a user-defined number of threads (parameter: ```number_batchs```). This function is part of the ```ProbeFilter``` class.
+where:
 
-**Run blast search**: run ```BlastN``` alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts. This step uses the ```Bio.Blast``` api, which runs the ```bioconda``` installation of ```BlastN``` with the defined parameters (e.g. ```num_threads```, which additionally parallelizes the blast search). ```BlastN``` identifies the transcript regions where probes match with a certain coverage and similarity. This step can be executed in a parallel fashion with ```multiprocessing``` on a user-defined number of threads (parameter: ```number_batchs```). This function is part of the ```ProbeFilter``` class.
+- ```-c```: config file, which contains parameter settings, specific to padlock probe design, default: ```./config/padlock_probe_designer.yaml``` with default parameter settings
+- ```-o```: output folder, where results of pipeline are stored
+  - ```annotations```folder: downloaded gene and genome annotation as well as constructed transcriptome
+  - ```probes```folder: list of probes per gene, which fulfill user-defined criteria, given in config file
+  - ```probesets```folder: sets of non-overlapping probes per gene, ranked by best set criteria
+  - ```padlock_probes```folder: final padlock probe sequences per gene, ready to order
+- ```-d```: optional, 'download only' option, where only gene and genome annotation files are downloaded but no probes generated
 
-**Filter probes by blast results**: Process the results from BlastN alignment search and filter probes based on the results. Once the blast search is finished for all batches, the results are used to filter out probes that map to too similar sequences within the genome (but not within its own gene). Probes are filtered based on the percent identity that should not be greater than the user-defined threshold, the alignment length (coverage) that should not be greater the user-defined threshold and coverage at the region around the probe center (the -*a* to +*b* nt region should not be covered). This step can be executed in a parallel fashion with ```multiprocessing``` on a user-defined number of threads (parameter: ```number_batchs```). This function is part of the ```ProbeFilter``` class.
-
-### Running the Pipeline
-
-We tested the pipeline on a 96 core CPU server. Therefore, 
-
-- we connect to ```vicb-submit-01``` or ```vicb-submit-02``` and open a ```screen``` (this allows to run srun in background without crashing when loosing the VPN connection)
-- we submit a job to the server, e.g. ```srun -p cpu_p -c 96 --mem 200 --nice=10000 -w cpusrv20 --pty /bin/bash``` 
-- we activate the conda environment, e.g. ```conda activate environment```
-- we run the pipeline, i.e. ```python probe_design.py -c probe_design.yaml```
-
-If the user choses to download the gene and genome annotation from *NCBI* or *ensemble*, the downloaded files will be saved to the user-defined output directory.
-
-Running the pipeline will create two subdirectories in the specified output directory:
-
-- ```probes```: batches of exon *gtf* files, exon *fasta* files, probe *fasta* files and blast output files as well as the transcriptome *gtf* and *fasta* files retrieved from the provided or downloaded gene and genome annotation
-- ```results```: one file with gene that were filtered out due to insufficient number of probes as well as one file per gene, containing all possible probes with *probe sequence*, *chromosome*, *start*, *end*, *strand*, *gene ID*, *transcript ID*, *exon ID*, *probe ID* (artificial ID generated for all probes of one gene), *GC content* and *melting temperature*
-
-All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_probe_design_{year}-{month}-{day}-{hour}-{minute}.txt```.
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
