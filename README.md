@@ -67,10 +67,10 @@ Import padlock probe design pipeline as python package:
 ```
 import oligo_designer_toolsuite.pipelines.padlock_probe_designer as packlock_probe_designer
 
-annotations = packlock_probe_designer.download_annotations(config, dir_output, logging, download_only)
-packlock_probe_designer.filter_probes(config, annotations, dir_output, logging)
+annotations = packlock_probe_designer.download_annotations(config, dir_output)
+packlock_probe_designer.filter_probes(config, annotations, dir_output)
 del annotations # free memory
 
-packlock_probe_designer.generate_probe_sets(config, dir_output, logging)
-packlock_probe_designer.design_padlock_probes(config, dir_output, logging)
+packlock_probe_designer.generate_probe_sets(config, dir_output)
+packlock_probe_designer.design_padlock_probes(config, dir_output)
 ```
