@@ -28,7 +28,7 @@ Tm_opt: 60 #60 #optimal melting temperature of probes
 Tm_max: 67 #63 #maximum melting temperature of probes
 
 n_probes_per_gene: 5 #ideal number of probes per gene
-min_probes_per_gene: 1 #minimum number of probes per gene
+min_probes_per_gene: 2 #minimum number of probes per gene
 # probe arms
 arm_length_min: 10 #min length of each arm
 arm_Tm_min: 38 #41 #minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)
@@ -42,6 +42,7 @@ detect_oligo_Tm_opt: 32 # not sure if we should also define a min and max, think
 #TODO: blast detection oligo against other padlock probes that are used (espc for short sequence)
 
 
+
 ### Parameters for Blastn search
 num_threads: 1 #number of threads for parallel run of blast
 word_size: 10 #word size for the blastn seed (exact match to target)
@@ -49,10 +50,11 @@ coverage: 50 #minimum coverage between probes and target sequence, ranging from 
 percent_identity: 80 #maximum similarity between probes and target sequences, ranging from 0 to 100% (no missmatch)
 ligation_site: 0 #coverage between probes and target sequence should not span ligation site (e.g. ligation_site = 5 would correspond to -4 to +5 nt around probe center), if ligation_site = 0, omit this requirement
 
-
 # How many Blast runs should run in parallele
 number_batchs: 10 #number of threads running in parallel, each starts one blastn run
 number_subbatches: 1 #number of batches into which the input is divided, i.e. divide list of probes into 50 batches to reduce required memory for loading blast results
+
+
 
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:
@@ -93,6 +95,7 @@ Tm_correction_parameters:
         fmd: 30
 
 
+        
 # parameters for download of ensemble (release 104) annotation from ftp server 
 ftp_gene_ensemble:
   ftp_link: 'ftp.ensembl.org' # link to ftp server

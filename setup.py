@@ -10,7 +10,7 @@ setup(
     author='Lisa Barros de Andrade e Sousa',
     entry_points={
         'console_scripts': [
-            'padlock_probe_design = oligo_designer_toolsuite.probedesign:main'
+            'padlock_probe_designer = oligo_designer_toolsuite.pipelines.padlock_probe_designer:main'
         ]
     },
 )
