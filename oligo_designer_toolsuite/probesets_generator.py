@@ -329,9 +329,10 @@ class ProbesetsGenerator:
             probes = pd.read_csv(os.path.join(self.dir_probes, probe_f),index_col=0,sep='\t')
             adj_mat = pd.read_csv(os.path.join(self.dir_overlapmatrix, overlap_f),index_col=0,sep='\t')
             table_probesets = _get_nonoverlapping_sets(probes, adj_mat, n_sets=n_sets)
-            if len([col for col in table_probesets.columns if col.startswith('probe')]) < self.min_probes_per_gene:
+            probes_per_gene = len([col for col in table_probesets.columns if col.startswith('probe')])
+            if probes_per_gene < self.min_probes_per_gene:
                 with open(self.file_removed_genes, 'a') as output:
-                    output.write(f'{gene_id}\n')
+                    output.write(f'{gene_id}\tprobes_per_gene\n')
             else:
                 table_probesets.to_csv(os.path.join(self.dir_probesets, f'ranked_probesets_{gene_id}.txt'), sep='\t')
 
