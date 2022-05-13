@@ -332,7 +332,7 @@ class ProbesetsGenerator:
             probes_per_gene = len([col for col in table_probesets.columns if col.startswith('probe')])
             if probes_per_gene < self.min_probes_per_gene:
                 with open(self.file_removed_genes, 'a') as output:
-                    output.write(f'{gene_id}\tprobes_per_gene\n')
+                    output.write(f'{gene_id}\t{probes_per_gene}\n')
             else:
                 table_probesets.to_csv(os.path.join(self.dir_probesets, f'ranked_probesets_{gene_id}.txt'), sep='\t')
 
