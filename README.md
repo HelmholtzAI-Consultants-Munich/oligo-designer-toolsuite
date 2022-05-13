@@ -29,7 +29,7 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 
 pip install .        (Installation as python package: run inside directory)
 
-pip install -e .        (Installation as python package: run inside directory)
+pip install -e .        (Development Installation as python package: run inside directory)
 ```
 
 Note: if you are using conda, first install pip with: ```conda install pip```
