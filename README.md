@@ -44,6 +44,8 @@ A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and
 
 ### Usage
 
+**Command-Line Call:**
+
 To create padlock probes you can run the pipeline with 
 
 ```
@@ -62,15 +64,17 @@ where:
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
+**Python Import:**
+
 Import padlock probe design pipeline as python package:
 
 ```
 import oligo_designer_toolsuite.pipelines.padlock_probe_designer as packlock_probe_designer
 
-annotations = packlock_probe_designer.download_annotations(config, dir_output, logging, download_only)
-packlock_probe_designer.filter_probes(config, annotations, dir_output, logging)
+annotations = packlock_probe_designer.download_annotations(config, dir_output)
+packlock_probe_designer.filter_probes(config, annotations, dir_output)
 del annotations # free memory
 
-packlock_probe_designer.generate_probe_sets(config, dir_output, logging)
-packlock_probe_designer.design_padlock_probes(config, dir_output, logging)
+packlock_probe_designer.generate_probe_sets(config, dir_output)
+packlock_probe_designer.design_padlock_probes(config, dir_output)
 ```
