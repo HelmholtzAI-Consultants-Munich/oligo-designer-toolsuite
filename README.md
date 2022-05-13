@@ -44,6 +44,8 @@ A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and
 
 ### Usage
 
+**Command-Line Call:**
+
 To create padlock probes you can run the pipeline with 
 
 ```
@@ -61,6 +63,8 @@ where:
 - ```-d```: optional, 'download only' option, where only gene and genome annotation files are downloaded but no probes generated, default: False
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
+**Python Import:**
 
 Import padlock probe design pipeline as python package:
 
