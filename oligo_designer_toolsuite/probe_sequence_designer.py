@@ -5,6 +5,7 @@
 import os
 import yaml
 import random
+import logging
 import itertools
 
 from pathlib import Path
@@ -24,11 +25,11 @@ class ProbeSequenceDesigner:
     '''This class is used to design the final padlock sequences.
     '''
 
-    def __init__(self, config, dir_output, logging, dir_probes = None, dir_probesets=None):
+    def __init__(self, config, dir_output, dir_probes = None, dir_probesets=None):
         """Constructor method
         """
          # set logger
-        self.logging = logging
+        self.logging = logging.getLogger('padlock_probe_designer')
     
         # set directory
         if dir_probes == None:

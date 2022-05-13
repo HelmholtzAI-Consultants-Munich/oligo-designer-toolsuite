@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import logging
 import random
 import multiprocessing
 import itertools
@@ -39,11 +40,11 @@ class AnnotationLoader:
     :type dir_output: string
     '''
 
-    def __init__(self, config, dir_output, logging):
+    def __init__(self, config, dir_output):
         """Constructor method
         """
         # set logger
-        self.logging = logging
+        self.logging = logging.getLogger('padlock_probe_designer')
 
         # set directory
         self.dir_annotations = os.path.join(dir_output, 'annotations')

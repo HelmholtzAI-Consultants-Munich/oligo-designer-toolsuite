@@ -11,6 +11,7 @@ from datetime import datetime
 
 timestamp = datetime.now()
 file_logger = f'log_padlock_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt'
+logging.getLogger('padlock_probe_designer')
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=logging.NOTSET, handlers=[logging.FileHandler(file_logger), logging.StreamHandler()])
 
 from oligo_designer_toolsuite.utils import get_config, print_config
@@ -37,11 +38,11 @@ def args():
     return args_parser.parse_args()
 
 
-def download_annotations(config, dir_output, logging, download_only=False):
+def download_annotations(config, dir_output, download_only=False):
 
     t = time.time()
 
-    annotations = AnnotationLoader(config, dir_output, logging)
+    annotations = AnnotationLoader(config, dir_output)
     annotations.load_annotations()
 
     if not download_only:
@@ -55,9 +56,9 @@ def download_annotations(config, dir_output, logging, download_only=False):
     return annotations
 
     
-def filter_probes(config, datamodule, dir_output, logging, dir_annotations = None):
+def filter_probes(config, datamodule, dir_output, dir_annotations = None):
 
-    probefilter = ProbeFilter(config, logging, dir_output, datamodule.file_transcriptome_fasta, datamodule.genes, dir_annotations)
+    probefilter = ProbeFilter(config, dir_output, datamodule.file_transcriptome_fasta, datamodule.genes, dir_annotations)
     
     t = time.time()
     probefilter.filter_probes_by_exactmatch()
@@ -75,9 +76,9 @@ def filter_probes(config, datamodule, dir_output, logging, dir_annotations = Non
     logging.info('Time to filter with Blast results: {} min'.format(t))
 
 
-def generate_probe_sets(config, dir_output, logging, dir_probes = None):
+def generate_probe_sets(config, dir_output, dir_probes = None):
 
-    probesets = ProbesetsGenerator(config, dir_output, logging, dir_probes)
+    probesets = ProbesetsGenerator(config, dir_output, dir_probes)
 
     t = time.time()
     probesets.get_overlap_matrix()
@@ -90,9 +91,9 @@ def generate_probe_sets(config, dir_output, logging, dir_probes = None):
     logging.info('Time to find nonoverlapping probe sets: {} min'.format(t))
 
 
-def design_padlock_probes(config, dir_output, logging, dir_probes = None, dir_probesets = None):  
+def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets = None):  
 
-    sequencedesigner = ProbeSequenceDesigner(config, dir_output, logging, dir_probes, dir_probesets)
+    sequencedesigner = ProbeSequenceDesigner(config, dir_output, dir_probes, dir_probesets)
     
     t = time.time()   
     sequencedesigner.design_padlocks()
@@ -118,16 +119,16 @@ def main():
     logging.info('#########Start Pipeline#########')
     t_pipeline = time.time()
 
-    annotations = download_annotations(config, dir_output, logging, download_only=False)
+    annotations = download_annotations(config, dir_output, download_only)
     if download_only:
         logging.info("Download finished. Pipeline interrupted. Set download_only to False to run the full pipeline.")
         return
 
-    filter_probes(config, annotations, dir_output, logging)
+    filter_probes(config, annotations, dir_output)
     del annotations # free memory
 
-    generate_probe_sets(config, dir_output, logging)
-    design_padlock_probes(config, dir_output, logging)
+    generate_probe_sets(config, dir_output)
+    design_padlock_probes(config, dir_output)
     
     t_pipeline = (time.time() - t_pipeline)/60
     logging.info('Time Pipeline: {} min'.format(t_pipeline))
