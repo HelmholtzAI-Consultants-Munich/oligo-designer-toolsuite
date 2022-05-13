@@ -41,25 +41,6 @@ def print_config(config, logger):
         logger.info("{}: {}".format(item, value))
 
 
-def create_dir(dir, subdir):
-    '''Create subdirectory and return path to subdirectory.
-
-    :param dir: Path to main directory.
-    :type dir: str
-    :param subdir: Name of subdirectory.
-    :type subdir: str
-    :return: Pyth to subdirectory.
-    :rtype: str
-    '''
-    if os.path.isdir(dir) == False:
-        os.mkdir(dir)
-    dir = os.path.join(dir, subdir)
-    if os.path.isdir(dir) == False:
-        os.mkdir(dir)
-
-    return dir
-
-
 def get_Tm_parameters(Tm_parameters,sequence='probe'):
     '''Convert config parameters for 'table' attributes of MeltingTemp function into MeltingTemp attributes. 
     
@@ -151,6 +132,7 @@ def decompress_gzip(file_gzip):
     with gzip.open(file_gzip, 'rb') as f_in:
         with open(file_output, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
+    os.remove(file_gzip)
     return file_output
 
 
@@ -172,16 +154,4 @@ def get_fasta(file_bed, file_reference_fasta, file_fasta, split=False):
 
     annotation = annotation.sequence(fi=genome_sequence, s=True, name=True, split=split)
     annotation.save_seqs(file_fasta)
-
-
-def rm_intermediate_files(dir_output):
-    '''Remove all intermediate files, i.e. folders containing annotations and blast outputs.
-
-    :param dir_output: User-defined output directory.
-    :type dir_output: string
-    '''
-    dir_output_annotations = create_dir(dir_output, 'annotations')
-    dir_output_blast = create_dir(dir_output, 'blast')
-    shutil.rmtree(dir_output_blast)
-    #shutil.rmtree(dir_output_annotations)
     

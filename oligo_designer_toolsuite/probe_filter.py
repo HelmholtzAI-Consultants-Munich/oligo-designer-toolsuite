@@ -3,17 +3,20 @@
 ############################################
 
 import os
-import pandas as pd
+import re
+import shutil
 import multiprocessing
 import iteration_utilities
+
+import pandas as pd
+
+from pathlib import Path
 
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Blast.Applications import NcbiblastnCommandline
 from Bio.Blast.Applications import NcbimakeblastdbCommandline
-
-import oligo_designer_toolsuite.utils as utils
 
 ############################################
 # probe filter class
@@ -34,16 +37,25 @@ class ProbeFilter:
     :type dir_output: string
     '''
 
-    def __init__(self, config, logging, dir_output, file_transcriptome_fasta, genes):
+    def __init__(self, config, logging, dir_output, file_transcriptome_fasta, genes, dir_annotations = None):
         """Constructor method
         """
          # set logger
         self.logging = logging
 
         # set directory
-        self.dir_output_annotations = utils.create_dir(dir_output, 'annotations')
-        self.dir_output_blast = utils.create_dir(dir_output, 'blast')
-        self.dir_output_probes = utils.create_dir(dir_output, 'probes')
+        if dir_annotations == None:
+            self.dir_annotations = os.path.join(dir_output, 'annotations')
+            Path(self.dir_annotations).mkdir(parents=True, exist_ok=True)
+        else: 
+            self.dir_annotations = dir_annotations
+        self.dir_blast = os.path.join(dir_output, 'blast')
+        Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
+
+        self.dir_probes = os.path.join(dir_output, 'probes')
+        Path(self.dir_probes).mkdir(parents=True, exist_ok=True)
+
+        self.file_removed_genes = os.path.join(dir_output, 'genes_with_insufficient_probes.txt')
 
         # set parameters
         self.number_batchs = config['number_batchs']
@@ -61,7 +73,7 @@ class ProbeFilter:
 
         # initialize additional paremeters
         self.duplicated_sequences = None
-        
+
 
     def filter_probes_by_exactmatch(self):
         '''Probes with exact matches are filtered out.
@@ -78,7 +90,7 @@ class ProbeFilter:
             sequences = []
             
             for batch_id in range(self.number_batchs):
-                file_probe_sequence_batch = os.path.join(self.dir_output_annotations, 'probes_sequence_batch{}.txt'.format(batch_id))
+                file_probe_sequence_batch = os.path.join(self.dir_annotations, 'probes_sequence_batch{}.txt'.format(batch_id))
 
                 with open(file_probe_sequence_batch, 'r') as handle:
                     sequences_batch = [line.rstrip() for line in handle]
@@ -86,7 +98,7 @@ class ProbeFilter:
                 os.remove(file_probe_sequence_batch)
             
             duplicated_sequences = list(iteration_utilities.unique_everseen(iteration_utilities.duplicates(sequences)))
-            print('Number of duplicated probe sequences: {}'.format(len(duplicated_sequences)))
+            #self.logging.info('Number of duplicated probe sequences: {}'.format(len(duplicated_sequences)))
             
             return duplicated_sequences
 
@@ -96,9 +108,8 @@ class ProbeFilter:
             :param batch_id: Batch ID.
             :type batch_id: int
             '''
-            file_probe_info_batch = os.path.join(self.dir_output_annotations, 'probes_info_batch{}.txt'.format(batch_id))
-            file_probe_fasta_batch = os.path.join(self.dir_output_annotations, 'probes_batch{}.fna'.format(batch_id))
-            batch_logger = os.path.join(self.dir_output_annotations, 'logger_batch{}.txt'.format(batch_id))
+            file_probe_info_batch = os.path.join(self.dir_annotations, 'probes_info_batch{}.txt'.format(batch_id))
+            file_probe_fasta_batch = os.path.join(self.dir_annotations, 'probes_sequence_batch{}.fna'.format(batch_id))
 
             probes_info = pd.read_csv(file_probe_info_batch, sep='\t',
                                     dtype={'gene_id': str, 'transcript_id': str, 'exon_id': str, 'probe_sequence': str, 
@@ -115,8 +126,6 @@ class ProbeFilter:
             probes_info_filetred.insert(0, 'probe_id', probe_ids)
             _write_probes(probes_info_filetred, file_probe_info_batch, file_probe_fasta_batch)
 
-            with open(batch_logger, 'a') as handle:
-                handle.write('{}\n'.format(len(probes_info_filetred.index)))
 
         def _write_probes(probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch):
             '''Save filtered probe information in tsv file. Save probe sequences as fasta file.
@@ -163,7 +172,7 @@ class ProbeFilter:
             jobs.append(proc)
             proc.start()
 
-        print('\n {} \n'.format(jobs))
+        #print('\n {} \n'.format(jobs))
 
         for job in jobs:
             job.join()  
@@ -181,8 +190,8 @@ class ProbeFilter:
             :type batch_id: int
             '''
             for subbatch_id in range(self.number_subbatches):
-                file_probe_fasta_batch = os.path.join(self.dir_output_annotations, 'probes_batch{}_{}.fna'.format(batch_id, subbatch_id))
-                file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
+                file_probe_fasta_batch = os.path.join(self.dir_annotations, 'probes_sequence_batch{}_{}.fna'.format(batch_id, subbatch_id))
+                file_blast_batch = os.path.join(self.dir_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
 
                 cmd = NcbiblastnCommandline(query=file_probe_fasta_batch, db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend qlen", out=file_blast_batch,
                                             strand='plus', word_size=self.word_size, perc_identity=self.percent_identity, num_threads=self.num_threads_blast) 
@@ -191,7 +200,6 @@ class ProbeFilter:
         # create blast database
         cmd = NcbimakeblastdbCommandline(input_file=self.file_transcriptome_fasta, dbtype='nucl')
         out, err = cmd()
-        print('Blast database created.')
 
         # run blast with multi process
         jobs = []
@@ -200,7 +208,7 @@ class ProbeFilter:
             jobs.append(proc)
             proc.start()
 
-        print('\n {} \n'.format(jobs))
+        #print('\n {} \n'.format(jobs))
 
         for job in jobs:
             job.join()   
@@ -223,9 +231,6 @@ class ProbeFilter:
                 blast_results = _read_blast_output(batch_id, subbatch_id)
                 num_probes_wo_match += _filter_probes_blast(probes_info, blast_results)
 
-            batch_logger = os.path.join(self.dir_output_annotations, 'logger_batch{}.txt'.format(batch_id))
-            with open(batch_logger, 'a') as handle:
-                handle.write('{}\n'.format(num_probes_wo_match))
 
         def _load_probes_info(batch_id):
             '''Load filtered probe infomration from tsv file. 
@@ -235,7 +240,7 @@ class ProbeFilter:
             :return: Dataframe with probe information, filtered based on sequence properties.
             :rtype: pandas.DataFrame
             '''
-            file_probe_info_batch = os.path.join(self.dir_output_annotations, 'probes_info_batch{}.txt'.format(batch_id))
+            file_probe_info_batch = os.path.join(self.dir_annotations, 'probes_info_batch{}.txt'.format(batch_id))
             probes_info = pd.read_csv(file_probe_info_batch, sep='\t',  
                                       dtype={'gene_id': str, 'transcript_id': str, 'exon_id': str, 'probe_sequence': str, 
                                              'chromosome': str, 'start': str, 'end': str, 'strand': str, 
@@ -252,7 +257,7 @@ class ProbeFilter:
             :return: DataFrame with processed blast alignment search results.  
             :rtype: pandas.DataFrame
             '''
-            file_blast_batch = os.path.join(self.dir_output_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
+            file_blast_batch = os.path.join(self.dir_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
             blast_results = pd.read_csv(file_blast_batch, header=None, sep=',', low_memory=False,
                                         names=['query','target','alignment_length','query_start','query_end','query_length'], engine='c', 
                                         dtype={'query': str, 'target': str, 'alignment_length': int, 'query_start': int, 'query_end': int, 'query_length': int})
@@ -313,7 +318,7 @@ class ProbeFilter:
             :param probes_wo_match: List of suitable probes that don't have matches in the transcriptome.
             :type probes_wo_match: list
             '''
-            file_output = os.path.join(self.dir_output_probes, 'probes_{}.txt'.format(gene_id))
+            file_output = os.path.join(self.dir_probes, 'probes_{}.txt'.format(gene_id))
             valid_probes = probes_info[probes_info['probe_id'].isin(probes_wo_match)]
             valid_probes.to_csv(file_output, sep='\t', index=False)
 
@@ -321,19 +326,15 @@ class ProbeFilter:
             '''Write list of genes for which not enough probes could be designed for.
             '''
             # create file where removed genes are saved
-            file_removed_genes = os.path.join(self.dir_output_probes, 'genes_with_insufficient_probes.txt')
-
-            _, _, probe_files = next(os.walk(self.dir_output_probes))
+            _, _, probe_files = next(os.walk(self.dir_probes))
             for probe_file in probe_files:
                 gene_id = probe_file[len('probes_'):-len('.txt')]
                 if gene_id in self.removed_genes:
                     self.removed_genes.remove(gene_id)
                 
-            with open(file_removed_genes, 'w') as output:
+            with open(self.file_removed_genes, 'w') as output:
                 for gene_id in self.removed_genes:
                     output.write('{}\n'.format(gene_id))
-
-        print('Process blast results.')
 
         jobs = []
         for batch_id in range(self.number_batchs):
@@ -341,45 +342,19 @@ class ProbeFilter:
             jobs.append(proc)
             proc.start()
 
-        print('\n {} \n'.format(jobs))
-
+        #print('\n {} \n'.format(jobs))
+        
         for job in jobs:
             job.join()
-
-        print('Blast filter done.')
         
         _write_removed_genes()
 
+        # remove intermediate files
+        shutil.rmtree(self.dir_blast)
+        for file in os.listdir(self.dir_annotations):
+            if re.search('probes_*', file):
+                os.remove(os.path.join(self.dir_annotations, file))
+
+
     
-    def log_statistics(self):
-        '''Log some statistics on probes and used disk space.
-        '''
-        statistics = pd.DataFrame(columns=['total', 'GC_Tm', 'exact_match', 'blast'])
-        for batch_id in range(self.number_batchs):
-            batch_logger = os.path.join(self.dir_output_annotations, 'logger_batch{}.txt'.format(batch_id))
-            with open(batch_logger, 'r') as handle:
-                batch_statistics = [int(line.rstrip()) for line in handle]
-                statistics.loc[batch_id] = batch_statistics
-        statistics = statistics.sum(axis=0)
-
-        self.logging.info('Statistics on probes:')      
-        self.logging.info('{} probes in total.'.format(statistics.total))
-        self.logging.info('{} probes after GC content and melting temperature filter.'.format(statistics.GC_Tm))
-        self.logging.info('{} probes after exact match filter.'.format(statistics.exact_match))
-        self.logging.info('{} probes after blast filter.'.format(statistics.blast))
-
-        transcriptome_size = os.path.getsize(os.path.join(self.dir_output_annotations, 'transcriptome.fna'))
-        self.logging.info('Size of transcriptome: {} MB'.format(round(transcriptome_size / (1024*1024), 4)))
-
-        blast_folder_size = sum(os.path.getsize(os.path.join(self.dir_output_blast, file)) for file in os.listdir(self.dir_output_blast))
-        self.logging.info('Size of blast output: {} GB'.format(round(blast_folder_size / (1024*1024*1024), 4)))
-
-        _, _, files = next(os.walk(self.dir_output_probes))
-        genes_with_probes = len(files) - 1
-        self.logging.info('Number of genes for which probes could be designed: {}'.format(genes_with_probes))
-
-        genes_wo_probes = sum(1 for line in open(os.path.join(self.dir_output_probes, 'genes_with_insufficient_probes.txt')))
-        self.logging.info('Number of genes for which no probes could be designed: {}'.format(genes_wo_probes))
-
-
 

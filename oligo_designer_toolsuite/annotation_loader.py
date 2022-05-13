@@ -12,6 +12,8 @@ import pandas as pd
 import gtfparse
 import pyfaidx
 
+from pathlib import Path
+
 from Bio import SeqIO
 from Bio.SeqUtils import GC
 from Bio.SeqUtils import MeltingTemp as mt
@@ -23,7 +25,7 @@ import oligo_designer_toolsuite.utils as utils
 ############################################
 
 
-class DataModule:
+class AnnotationLoader:
     '''This class is used to download annotations from NCBI or ensemble, 
     retrieve the list of genes for which probes should be designed and 
     get the list of all possible guides that can be designed for the list of genes, 
@@ -37,14 +39,15 @@ class DataModule:
     :type dir_output: string
     '''
 
-    def __init__(self, config, logging, dir_output):
+    def __init__(self, config, dir_output, logging):
         """Constructor method
         """
         # set logger
         self.logging = logging
 
         # set directory
-        self.dir_output_annotations = utils.create_dir(dir_output, 'annotations')
+        self.dir_annotations = os.path.join(dir_output, 'annotations')
+        Path(self.dir_annotations).mkdir(parents=True, exist_ok=True)
 
         # set parameters
         self.number_batchs = config['number_batchs']
@@ -63,8 +66,8 @@ class DataModule:
 
         self.file_gene_gtf = config['file_gene_gtf']
         self.file_genome_fasta = config['file_genome_fasta']
-        self.file_transcriptome_bed = os.path.join(self.dir_output_annotations, 'transcriptome.bed')
-        self.file_transcriptome_fasta = os.path.join(self.dir_output_annotations, 'transcriptome.fna')
+        self.file_transcriptome_bed = os.path.join(self.dir_annotations, 'transcriptome.bed')
+        self.file_transcriptome_fasta = os.path.join(self.dir_annotations, 'transcriptome.fna')
         
         self.file_genes = config['file_genes']
         self.probe_length_min = config['probe_length_min']
@@ -101,7 +104,7 @@ class DataModule:
             :rtype: dict
             '''
             file_mapping = utils.ftp_download(self.ftp_chr_mapping['ftp_link'], self.ftp_chr_mapping['directory'], 
-                                              self.ftp_chr_mapping['file_name'], self.dir_output_annotations)
+                                              self.ftp_chr_mapping['file_name'], self.dir_annotations)
             
             # skip comment lines but keep last comment line for header
             with open(file_mapping) as handle:
@@ -131,7 +134,7 @@ class DataModule:
             :rtype: string
             '''
             file_gene_gtf_gz = utils.ftp_download(self.ftp_gene['ftp_link'], self.ftp_gene['directory'], 
-                                                  self.ftp_gene['file_name'], self.dir_output_annotations)
+                                                  self.ftp_gene['file_name'], self.dir_annotations)
             file_gene_gtf = utils.decompress_gzip(file_gene_gtf_gz)
             
             if self.source == 'ncbi':
@@ -147,7 +150,7 @@ class DataModule:
             :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
             :type mapping: dict
             '''
-            file_tmp = os.path.join(self.dir_output_annotations, 'temp.gtf')
+            file_tmp = os.path.join(self.dir_annotations, 'temp.gtf')
 
             # write comment lines to new file
             with open(file_tmp, 'w') as handle_out:
@@ -159,16 +162,8 @@ class DataModule:
                 gene_annotation = pd.read_table(file_gene_gtf, names = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame', 'attribute'], sep='\t', comment='#')
 
                 # replace ncbi with genbank chromosome annotation
-                
-                # for accession_number in gene_annotation.seqname.unique():
-                #     if accession_number in mapping:
-                #         gene_annotation.loc[gene_annotation.seqname == accession_number, 'seqname'] = mapping[accession_number]
-                #     else:
-                #         print('No mapping for accession number: {}'.format(accession_number))
-                #         gene_annotation = gene_annotation[gene_annotation.seqname != accession_number]
-
-                # Maybe need to print when maapping is missing (Na entries)
                 gene_annotation['seqname'] = gene_annotation['seqname'].map(mapping)
+                gene_annotation.dropna(inplace=True) #drop if no mapping exists
                 
                 gene_annotation.to_csv(handle_out, sep='\t', header=False, index = False)
             os.replace(file_tmp, file_gene_gtf)
@@ -182,7 +177,7 @@ class DataModule:
             :return: Path to downloaded genome fasta file.
             :rtype: string
             '''
-            file_genome_fasta_gz = utils.ftp_download(self.ftp_genome['ftp_link'], self.ftp_genome['directory'], self.ftp_genome['file_name'], self.dir_output_annotations) 
+            file_genome_fasta_gz = utils.ftp_download(self.ftp_genome['ftp_link'], self.ftp_genome['directory'], self.ftp_genome['file_name'], self.dir_annotations) 
             file_genome_fasta = utils.decompress_gzip(file_genome_fasta_gz)
 
             if self.source == 'ncbi':
@@ -198,7 +193,7 @@ class DataModule:
             :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
             :type mapping: dict
             '''
-            file_tmp = os.path.join(self.dir_output_annotations, 'temp.fna')
+            file_tmp = os.path.join(self.dir_annotations, 'temp.fna')
 
             with open(file_tmp, 'w') as handle:
                 for chromosome_sequnece in SeqIO.parse(file_genome_fasta,'fasta'):
@@ -209,18 +204,18 @@ class DataModule:
                         chromosome_sequnece.description = chromosome_sequnece.description.replace(accession_number, mapping[accession_number])
                         SeqIO.write(chromosome_sequnece, handle, 'fasta')
                     else:
-                        print('No mapping for accession number: {}'.format(accession_number))
+                        self.logging.info('No mapping for accession number: {}'.format(accession_number))
             
             os.replace(file_tmp, file_genome_fasta)            
         
         # Check if files are already present
         if self.file_gene_gtf is None:
-            file = os.path.join(self.dir_output_annotations,self.ftp_gene['file_name'])
+            file = os.path.join(self.dir_annotations,self.ftp_gene['file_name'])
             if os.path.exists(file):
                 self.file_gene_gtf = file
                 self.logging.info('Found gene annotation from {} as gene gtf at: {}'.format(self.source, self.file_gene_gtf))
         if self.file_genome_fasta is None:
-            file = os.path.join(self.dir_output_annotations,self.ftp_genome['file_name'])
+            file = os.path.join(self.dir_annotations,self.ftp_genome['file_name'])
             if os.path.exists(file):
                 self.file_genome_fasta = file
                 self.logging.info('Found genome annotation from {} as genome fasta at: {}'.format(self.source, self.file_genome_fasta))
@@ -245,9 +240,6 @@ class DataModule:
                 self.logging.info('Download fasta file')
                 self.file_genome_fasta = _download_genome_fasta(mapping)
                 self.logging.info('Downloaded genome annotation from {} and save as genome fasta: {}'.format(self.source, self.file_genome_fasta))
-
-        print('Annotations downloaded.')
-
 
     def load_genes(self):
         '''Load list of genes for which probes should be designed.
@@ -496,19 +488,16 @@ class DataModule:
         
         # get annotation of exons and merge exon annotations for the same region
         unique_exons = _load_unique_exons()
-        print('{} unique exons loaded.'.format(len(unique_exons.index)))
         
         # get exon junction annotation for probes --> length is probe_length - 1 to continue where exons annotation ends
         exon_junctions_probes = _load_exon_junctions(self.probe_length_max - 1)
         self.transcriptome_annotation = unique_exons.append(exon_junctions_probes)
         self.transcriptome_annotation = self.transcriptome_annotation.sort_values(by=['gene_id'])
         self.transcriptome_annotation.reset_index(inplace=True, drop=True)
-        print('{} exon junctions loaded.'.format(len(exon_junctions_probes.index)))
 
         # get exon junction annotation for reference --> longer than probe length to cover bulges in alignments
         exon_junctions_reference = _load_exon_junctions(self.probe_length_max + 5) # to allow bulges in the alignment
         unique_exons_reference = _merge_containing_exons(unique_exons)
-        print('{} unique merged exons loaded.'.format(len(unique_exons_reference.index)))
         transcriptome_reference = unique_exons_reference.append(exon_junctions_reference)
         transcriptome_reference = transcriptome_reference.sort_values(by=['gene_id'])
         transcriptome_reference.reset_index(inplace=True, drop=True)
@@ -534,14 +523,13 @@ class DataModule:
             :param genes_batch: List of genes for which probes should be designed.
             :type genes_batch: list
             '''
-            file_transcriptome_bed_batch = os.path.join(self.dir_output_annotations, 'transcriptome_batch{}.bed'.format(batch_id))
-            file_transcriptome_fasta_batch = os.path.join(self.dir_output_annotations, 'transcriptome_batch{}.fna'.format(batch_id))
-            file_probe_info_batch = os.path.join(self.dir_output_annotations, 'probes_info_batch{}.txt'.format(batch_id))
-            file_probe_sequence_batch = os.path.join(self.dir_output_annotations, 'probes_sequence_batch{}.txt'.format(batch_id))
-            batch_logger = os.path.join(self.dir_output_annotations, 'logger_batch{}.txt'.format(batch_id))
+            file_transcriptome_bed_batch = os.path.join(self.dir_annotations, 'transcriptome_batch{}.bed'.format(batch_id))
+            file_transcriptome_fasta_batch = os.path.join(self.dir_annotations, 'transcriptome_batch{}.fna'.format(batch_id))
+            file_probe_info_batch = os.path.join(self.dir_annotations, 'probes_info_batch{}.txt'.format(batch_id))
+            file_probe_sequence_batch = os.path.join(self.dir_annotations, 'probes_sequence_batch{}.txt'.format(batch_id))
             
             _get_transcriptome_fasta(genes_batch, file_transcriptome_bed_batch, file_transcriptome_fasta_batch)
-            gene_probes = _get_probes_info(genes_batch, file_transcriptome_fasta_batch, batch_logger)
+            gene_probes = _get_probes_info(genes_batch, file_transcriptome_fasta_batch)
             _write_probes_info(gene_probes, file_probe_info_batch, file_probe_sequence_batch)
 
             os.remove(file_transcriptome_bed_batch)
@@ -633,11 +621,9 @@ class DataModule:
             
             while arms_long_enough and not Tm_found:
                 Tm_arm1 = _get_Tm(probe[:ligation_site])
-                #print(probe[:ligation_site] + "|" + probe[ligation_site:])
                 Tm_arm2 = _get_Tm(probe[ligation_site:])
                 Tm_dif = round(abs(Tm_arm2-Tm_arm1),2)
                 Tm_found = (Tm_dif <= max_Tm_dif) and (Tm_min <= Tm_arm1 <= Tm_max) and (Tm_min <= Tm_arm2 <= Tm_max)
-                #print(f"lig site: {ligation_site}, Tms: {Tm_arm1}, {Tm_arm2}, {Tm_dif}, found: {Tm_found}")
                 if not Tm_found:
                     ligation_site += sign_factor*shift
                     sign_factor *= -1
@@ -648,7 +634,7 @@ class DataModule:
             return ligation_site, Tms        
         
         
-        def _get_probes_info(genes_batch, file_transcriptome_fasta_batch, batch_logger):
+        def _get_probes_info(genes_batch, file_transcriptome_fasta_batch):
             '''Merge all probes with identical sequence that come from the same gene into one fasta entry.
             Filter all probes based on GC content and melting temperature for user-defined thresholds.
             Collect additional information about each probe. 
@@ -657,8 +643,6 @@ class DataModule:
             :type genes_batch: list
             :param file_transcriptome_fasta_batch: Path to fasta transcriptome sequence output file.
             :type file_transcriptome_fasta_batch: string
-            :param batch_logger: Path to logger file for probe statistics.
-            :type batch_logger: string
             :return: Mapping of probes to corresponding genes with additional information about each probe, i.e.
                 position (chromosome, start, end, strand), gene_id, transcript_id, exon_id, melting temp. and GC content
             :rtype: dict
@@ -718,10 +702,6 @@ class DataModule:
                                                 }
                                             gene_probes[gene_id] = tmp
             
-            with open(batch_logger, 'w') as handle:
-                handle.write('{}\n'.format(total_probes))
-                handle.write('{}\n'.format(loaded_probes))
-            
             return gene_probes
 
         def _write_probes_info(gene_probes, file_probe_info_batch, file_probe_sequence_batch):
@@ -771,11 +751,10 @@ class DataModule:
             jobs.append(proc)
             proc.start()
 
-        print('\n {} \n'.format(jobs))
+        #print('\n {} \n'.format(jobs))
 
         for job in jobs:
             job.join()
 
         # remove index file
         os.remove('{}.fai'.format(self.file_genome_fasta))
-        print('All probes created.')
