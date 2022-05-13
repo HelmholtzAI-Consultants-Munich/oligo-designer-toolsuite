@@ -24,10 +24,8 @@ pip install oligo-designer-toolbox
 
 Installation of the package via pip from source:
 
-Clone the git repo and install the downloaded package with:
-
 ```
-git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
+git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git         
 
 pip install .        (Installation as python package: run inside directory)
 
