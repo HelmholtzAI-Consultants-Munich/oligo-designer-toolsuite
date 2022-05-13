@@ -62,15 +62,15 @@ where:
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
-Import padlock probe design into own pipeline:
+Import padlock probe design pipeline as python package:
 
 ```
 import oligo_designer_toolsuite.pipelines.padlock_probe_designer as packlock_probe_designer
 
 annotations = packlock_probe_designer.download_annotations(config, dir_output, logging, download_only)
-filter_probes(config, annotations, dir_output, logging)
+packlock_probe_designer.filter_probes(config, annotations, dir_output, logging)
 del annotations # free memory
 
-generate_probe_sets(config, dir_output, logging)
-design_padlock_probes(config, dir_output, logging)
+packlock_probe_designer.generate_probe_sets(config, dir_output, logging)
+packlock_probe_designer.design_padlock_probes(config, dir_output, logging)
 ```
