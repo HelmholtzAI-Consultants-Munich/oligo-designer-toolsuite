@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import logging
 import shutil
 import fnmatch
 import multiprocessing
@@ -22,11 +23,11 @@ class ProbesetsGenerator:
     '''This class is used to generate ranked, non-overlapping probe sets.
     '''
 
-    def __init__(self, config, dir_output, logging, dir_probes = None):
+    def __init__(self, config, dir_output, dir_probes = None):
         """Constructor method
         """
          # set logger
-        self.logging = logging
+        self.logging = logging.getLogger('padlock_probe_designer')
 
         # set directory
         if dir_probes == None:

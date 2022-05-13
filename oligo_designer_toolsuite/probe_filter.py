@@ -5,6 +5,7 @@
 import os
 import re
 import shutil
+import logging
 import multiprocessing
 import iteration_utilities
 
@@ -31,17 +32,15 @@ class ProbeFilter:
 
     :param config: User-defined parameters, where keys are the parameter names and values are the paremeter values.
     :type config: dict
-    :param logging: Logger object to store important information.
-    :type logging: logging.basicConfig
     :param dir_output: User-defined output directory.
     :type dir_output: string
     '''
 
-    def __init__(self, config, logging, dir_output, file_transcriptome_fasta, genes, dir_annotations = None):
+    def __init__(self, config, dir_output, file_transcriptome_fasta, genes, dir_annotations = None):
         """Constructor method
         """
          # set logger
-        self.logging = logging
+        self.logging = logging.getLogger('padlock_probe_designer')
 
         # set directory
         if dir_annotations == None:
