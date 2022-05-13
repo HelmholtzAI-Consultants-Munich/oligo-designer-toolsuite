@@ -8,7 +8,7 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 **Requirements:**
 
-- >= Python 3.8 
+- \>= Python 3.8 
 - ```'datetime```, ```argparse```, ```pyyaml```, ```iteration_utilities```, ```pandas```, 
 - ```Bio```, ```gtfparse```, ```pyfaidx```,  ```pybedtools```, ```networkx```
 
@@ -28,15 +28,9 @@ Clone the git repo and install the downloaded package with:
 
 ```
 git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
-```
 
-```
 pip install .        (Installation as python package: run inside directory)
-```
 
-or if you want to develop the package:
-
-```
 pip install -e .        (Installation as python package: run inside directory)
 ```
 
@@ -60,12 +54,12 @@ padlock_probe_designer -c ./config/padlock_probe_designer.yaml -o output/ [-d Fa
 
 where:
 
-- ```-c```: config file, which contains parameter settings, specific to padlock probe design, default: ```./config/padlock_probe_designer.yaml``` with default parameter settings
+- ```-c```: config file, which contains parameter settings, specific to padlock probe design, *./config/padlock_probe_designer.yaml* contains default parameter settings
 - ```-o```: output folder, where results of pipeline are stored
   - ```annotations```folder: downloaded gene and genome annotation as well as constructed transcriptome
   - ```probes```folder: list of probes per gene, which fulfill user-defined criteria, given in config file
   - ```probesets```folder: sets of non-overlapping probes per gene, ranked by best set criteria
   - ```padlock_probes```folder: final padlock probe sequences per gene, ready to order
-- ```-d```: optional, 'download only' option, where only gene and genome annotation files are downloaded but no probes generated
+- ```-d```: optional, 'download only' option, where only gene and genome annotation files are downloaded but no probes generated, default: False
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
