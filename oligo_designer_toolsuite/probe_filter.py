@@ -333,7 +333,7 @@ class ProbeFilter:
                 
             with open(self.file_removed_genes, 'w') as output:
                 for gene_id in self.removed_genes:
-                    output.write('{}\n'.format(gene_id))
+                    output.write(f'{gene_id}\t0\n')
 
         jobs = []
         for batch_id in range(self.number_batchs):
