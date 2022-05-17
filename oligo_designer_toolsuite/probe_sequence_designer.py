@@ -80,15 +80,11 @@ class ProbeSequenceDesigner:
         """ 
 
         probeset_files = [f for f in os.listdir(self.dir_probesets) if f.startswith("ranked_probesets_")]
-        genes = [f.split("_")[-1].split(".")[0] for f in probeset_files]
-        print(genes)
-        print(probeset_files)        
+        genes = [f.split("_")[-1].split(".")[0] for f in probeset_files]        
         if self.genes is not None:
             mask = [g in self.genes for g in genes]
             genes = [g for i,g in enumerate(genes) if mask[i]]
             probeset_files = [f for i,f in enumerate(probeset_files) if mask[i]]
-        print(genes)
-        print(probeset_files)
         probes_files = [f"probes_{gene_id}.txt" for gene_id in genes]
         
         yaml_dict = {}
