@@ -105,7 +105,7 @@ def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets =
     logging.info('Time to design padlock probes: {} min'.format(t))
 
 
-@hydra.main(config_path="../../config", config_name="main_conf")
+@hydra.main(config_path="../../config", config_name="padlock_probe_designer")
 def main(config: DictConfig):
     '''Main function of probe designer.
     '''
