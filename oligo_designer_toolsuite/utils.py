@@ -98,24 +98,18 @@ def ftp_download(ftp_link, directory, file_name, dir_output):
     :return: Path to downloaded file.
     :rtype: string
     '''
+    
     ftp = FTP(ftp_link)
     ftp.login()  # login to ftp server
     ftp.cwd(directory)  # move to directory
+    
+    files = ftp.nlst()
 
-    allfiles = [] 
-    ftp.retrlines('LIST ', allfiles.append) 
-
-    for file in allfiles:
+    for file in files:
         if file_name in file: 
-            if " -> " in file:  # if file is a symbolic link
-                file_download = file.split(" -> ")[1]
-                raise ValueError('The provided file path is a symbolic link to {}. Please provide the actual path!'.format(file_download))
-                #file_output = file_download.split('/')[-1]
-                #ftp.retrbinary('RETR ' + file_download, open(os.path.join(dir_output, file_output), 'wb').write)
-            else:
-                file_download = file.split(" ")[-1]
-                file_output = os.path.join(dir_output, file_download)
-                ftp.retrbinary('RETR ' + file_download, open(file_output, 'wb').write)
+            # file_download = file.split(" ")[-1]
+            file_output = os.path.join(dir_output, file)
+            ftp.retrbinary('RETR ' + file, open(file_output, 'wb').write)
 
     ftp.quit()
 

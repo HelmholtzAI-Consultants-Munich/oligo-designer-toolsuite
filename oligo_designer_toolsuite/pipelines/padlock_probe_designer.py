@@ -104,23 +104,14 @@ def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets =
     t = (time.time() - t)/60
     logging.info('Time to design padlock probes: {} min'.format(t))
 
-
-@hydra.main(config_path="../../config", config_name="main_conf")
+@hydra.main(config_path="../../config", config_name="main_conf.yaml")
 def main(config: DictConfig):
     '''Main function of probe designer.
     '''
-    # get comman line arguments
-    #parameters = args()
-
-
-    print(config)
-    # dir_output = os.path.join(parameters.output)
+    
     dir_output = config['dir_output']
     Path(dir_output).mkdir(parents=True, exist_ok=True)
     logging.info('Results will be saved to: {}'.format(dir_output))
-
-    # config = get_config(parameters.config)
-    # print_config(config, logging)
 
     download_only = False
 
@@ -143,8 +134,8 @@ def main(config: DictConfig):
     logging.info('#########End Pipeline#########')
     
     
-def test():
-    print("HALLO!")
+def entry():
+    main()
 
 if __name__ == "__main__":
     main()
