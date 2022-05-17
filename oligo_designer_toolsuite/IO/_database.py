@@ -132,7 +132,7 @@ class ReferenceDB(BaseDB):
     '''
     def __init__(self, species) -> None:
         super().__init__(species)
-        self.blockSize = 10 #change to exon/2   
+        self.blockSize = 200 # maximum length of "long oligos" is 180bp
 
 
 
