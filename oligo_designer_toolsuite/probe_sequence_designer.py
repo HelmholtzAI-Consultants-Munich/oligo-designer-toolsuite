@@ -25,7 +25,7 @@ class ProbeSequenceDesigner:
     '''This class is used to design the final padlock sequences.
     '''
 
-    def __init__(self, config, dir_output, dir_probes = None, dir_probesets=None):
+    def __init__(self, config, dir_output, dir_probes = None, dir_probesets=None, genes=None):
         """Constructor method
         """
          # set logger
@@ -47,6 +47,9 @@ class ProbeSequenceDesigner:
         self.dir_padlock_probes = os.path.join(dir_output, 'padlock_probes')
         Path(self.dir_padlock_probes).mkdir(parents=True, exist_ok=True)
 
+        # set genes
+        self.genes = genes
+        
         # set parameters
         self.detect_oligo_length_min = config["detect_oligo_length_min"]
         self.detect_oligo_length_max = config["detect_oligo_length_max"]
@@ -75,12 +78,17 @@ class ProbeSequenceDesigner:
         - table at dir_out+"padlock_probes_order.yml" with final padlock probe sequences and detection oligo sequences
         
         """ 
-        #probes_files = [f for f in os.listdir(self.dir_probes) if f.startswith("probes_")]
-        #genes = [f.split("_")[1].split(".")[0] for f in probes_files]
-        #probeset_files = [f"ranked_probesets_{gene_id}.txt" for gene_id in genes]
 
         probeset_files = [f for f in os.listdir(self.dir_probesets) if f.startswith("ranked_probesets_")]
         genes = [f.split("_")[-1].split(".")[0] for f in probeset_files]
+        print(genes)
+        print(probeset_files)        
+        if self.genes is not None:
+            mask = [g in self.genes for g in genes]
+            genes = [g for i,g in enumerate(genes) if mask[i]]
+            probeset_files = [f for i,f in enumerate(probeset_files) if mask[i]]
+        print(genes)
+        print(probeset_files)
         probes_files = [f"probes_{gene_id}.txt" for gene_id in genes]
         
         yaml_dict = {}
