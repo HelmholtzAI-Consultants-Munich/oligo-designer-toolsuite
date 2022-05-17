@@ -45,10 +45,10 @@ class ProbesetsGenerator:
         self.file_removed_genes = os.path.join(dir_output, 'genes_with_insufficient_probes.txt')
 
         # set parameters
-        self.n_probes_per_gene = config['n_probes_per_gene']
-        self.Tm_params = [config['Tm_opt'], config['Tm_min'], config['Tm_max']]
-        self.GC_params = [config['GC_content_opt'], config['GC_content_min'], config['GC_content_max']]
-        self.min_probes_per_gene = config['min_probes_per_gene']
+        self.n_probes_per_gene = config['probe_design']['n_probes_per_gene']
+        self.Tm_params = [config['probe_design']['Tm_opt'], config['probe_design']['Tm_min'], config['probe_design']['Tm_max']]
+        self.GC_params = [config['probe_design']['GC_content_opt'], config['probe_design']['GC_content_min'], config['probe_design']['GC_content_max']]
+        self.min_probes_per_gene = config['probe_design']['min_probes_per_gene']
 
 
     def get_overlap_matrix(self):

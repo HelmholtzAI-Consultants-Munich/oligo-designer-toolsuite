@@ -51,17 +51,17 @@ class AnnotationLoader:
         Path(self.dir_annotations).mkdir(parents=True, exist_ok=True)
 
         # set parameters
-        self.number_batchs = config['number_batchs']
+        self.number_batchs = config['specificity_filter']['number_batchs']
 
         self.source = config['source']
         if self.source == 'ensemble':
-            self.ftp_gene = config['ftp_gene_ensemble']
-            self.ftp_genome = config['ftp_genome_ensemble']
-            self.ftp_chr_mapping = config['ftp_chr_mapping_ensemble']
+            self.ftp_gene = config['ftp']['ftp_gene_ensemble']
+            self.ftp_genome = config['ftp']['ftp_genome_ensemble']
+            self.ftp_chr_mapping = config['ftp']['ftp_chr_mapping_ensemble']
         elif self.source == 'ncbi':
-            self.ftp_gene = config['ftp_gene_ncbi']
-            self.ftp_genome = config['ftp_genome_ncbi']
-            self.ftp_chr_mapping = config['ftp_chr_mapping_ncbi']
+            self.ftp_gene = config['ftp']['ftp_gene_ncbi']
+            self.ftp_genome = config['ftp']['ftp_genome_ncbi']
+            self.ftp_chr_mapping = config['ftp']['ftp_chr_mapping_ncbi']
         else:
             raise ValueError('Error: unknown source "{}"'.format(self.source)) 
 
@@ -71,18 +71,18 @@ class AnnotationLoader:
         self.file_transcriptome_fasta = os.path.join(self.dir_annotations, 'transcriptome.fna')
         
         self.file_genes = config['file_genes']
-        self.probe_length_min = config['probe_length_min']
-        self.probe_length_max = config['probe_length_max']
-        self.Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'], sequence='probe')
-        self.Tm_correction_parameters = utils.get_Tm_correction_parameters(config['Tm_correction_parameters'], sequence='probe')
-        self.GC_content_min = config['GC_content_min']
-        self.GC_content_max = config['GC_content_max']
-        self.Tm_min = config['Tm_min']
-        self.Tm_max = config['Tm_max']
-        self.arm_length_min = config['arm_length_min']
-        self.arm_Tm_min = config['arm_Tm_min']
-        self.arm_Tm_max = config['arm_Tm_max']
-        self.arm_Tm_dif_max = config['arm_Tm_dif_max']
+        self.probe_length_min = config['probe_design']['probe_length_min']
+        self.probe_length_max = config['probe_design']['probe_length_max']
+        self.Tm_parameters = utils.get_Tm_parameters(config['melting_temperature']['Tm_parameters'], sequence='probe')
+        self.Tm_correction_parameters = utils.get_Tm_correction_parameters(config['melting_temperature']['Tm_correction_parameters'], sequence='probe')
+        self.GC_content_min = config['probe_design']['GC_content_min']
+        self.GC_content_max = config['probe_design']['GC_content_max']
+        self.Tm_min = config['probe_design']['Tm_min']
+        self.Tm_max = config['probe_design']['Tm_max']
+        self.arm_length_min = config['probe_design']['arm_length_min']
+        self.arm_Tm_min = config['probe_design']['arm_Tm_min']
+        self.arm_Tm_max = config['probe_design']['arm_Tm_max']
+        self.arm_Tm_dif_max = config['probe_design']['arm_Tm_dif_max']
 
         # initialize additional paremeters
         self.batch_size = None

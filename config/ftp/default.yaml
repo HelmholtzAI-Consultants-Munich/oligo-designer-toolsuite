@@ -1,0 +1,36 @@
+# parameters for download of ensemble (release 104) annotation from ftp server 
+ftp_gene_ensemble:
+  ftp_link: 'ftp.ensembl.org' # link to ftp server
+  directory: 'pub/release-104/gtf/homo_sapiens' # directory that contains gene annotation file
+  file_name: 'Homo_sapiens.GRCh38.104.gtf' # name of gene annotation file
+
+ftp_genome_ensemble:
+  ftp_link: 'ftp.ensembl.org' # link to ftp server
+  directory: 'pub/release-104/fasta/homo_sapiens/dna' # directory that contains genome annotation file (gtf)
+  file_name: 'Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa' # name of genome annotation file (fasta)
+
+ftp_chr_mapping_ensemble: #no chromosome mapping needed for ensemble
+
+# parameters for download of download latest NCBI annotation from ftp server
+ftp_gene_ncbi:
+  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
+  directory: 'genomes/all/annotation_releases/9606/109.20211119/GCF_000001405.39_GRCh38.p13' # directory that contains gene annotation file
+  #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
+  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'
+  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.gtf' # name of gene annotation file
+  #file_name: 'GCF_000001405.38_GRCh38.p12_genomic.gtf' 
+
+ftp_genome_ncbi:
+  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
+  directory: 'genomes/all/annotation_releases/9606/109.20211119/GCF_000001405.39_GRCh38.p13' # directory that contains genome annotation file (gtf)
+  #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
+  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'
+  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.fna' # name of genome annotation file (fasta)
+  #file_name: 'GCF_000001405.38_GRCh38.p12_genomic.fna'
+
+ftp_chr_mapping_ncbi:
+  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
+  directory: 'genomes/all/annotation_releases/9606/109.20211119/GCF_000001405.39_GRCh38.p13' # directory that contains gene annotation file
+  #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
+  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers' 
+  file_name: 'assembly_report.txt' # name of chromosome mapping file

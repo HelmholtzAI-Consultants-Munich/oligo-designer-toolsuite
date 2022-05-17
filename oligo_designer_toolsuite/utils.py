@@ -12,6 +12,8 @@ import pybedtools
 from ftplib import FTP
 from Bio.SeqUtils import MeltingTemp as mt
 
+from omegaconf import OmegaConf
+
 ############################################
 # helper functions
 ############################################
@@ -55,7 +57,7 @@ def get_Tm_parameters(Tm_parameters,sequence='probe'):
     '''
     Tm_params = Tm_parameters['shared'].copy()
     if Tm_parameters[sequence]:
-        Tm_params.update(Tm_parameters[sequence])
+        Tm_params = OmegaConf.merge(dict(Tm_params), dict(Tm_parameters[sequence]))
     
     Tm_params['nn_table'] = getattr(mt, Tm_params['nn_table'])
     Tm_params['tmm_table'] = getattr(mt, Tm_params['tmm_table'])
@@ -77,7 +79,7 @@ def get_Tm_correction_parameters(Tm_correction_parameters,sequence='probe'):
     '''
     Tm_params = Tm_correction_parameters['shared'].copy()
     if Tm_correction_parameters[sequence]:
-        Tm_params.update(Tm_correction_parameters[sequence])
+        Tm_params = OmegaConf.merge(dict(Tm_params), dict(Tm_correction_parameters[sequence]))
 
     return Tm_params
 

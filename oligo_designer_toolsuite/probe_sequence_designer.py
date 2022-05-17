@@ -48,11 +48,11 @@ class ProbeSequenceDesigner:
         Path(self.dir_padlock_probes).mkdir(parents=True, exist_ok=True)
 
         # set parameters
-        self.detect_oligo_length_min = config["detect_oligo_length_min"]
-        self.detect_oligo_length_max = config["detect_oligo_length_max"]
-        self.detect_oligo_Tm_opt = config["detect_oligo_Tm_opt"]
-        self.Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'], sequence='detection_oligo')
-        self.Tm_correction_parameters = utils.get_Tm_correction_parameters(config['Tm_correction_parameters'], sequence='detection_oligo')
+        self.detect_oligo_length_min = config['probe_design']["detect_oligo_length_min"]
+        self.detect_oligo_length_max = config['probe_design']["detect_oligo_length_max"]
+        self.detect_oligo_Tm_opt = config['probe_design']["detect_oligo_Tm_opt"]
+        self.Tm_parameters = utils.get_Tm_parameters(config['melting_temperature']['Tm_parameters'], sequence='detection_oligo')
+        self.Tm_correction_parameters = utils.get_Tm_correction_parameters(config['melting_temperature']['Tm_correction_parameters'], sequence='detection_oligo')
 
 
     def design_padlocks(self):

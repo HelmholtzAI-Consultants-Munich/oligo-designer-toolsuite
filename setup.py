@@ -5,7 +5,8 @@ setup(
     version='0.1',
     packages=['oligo_designer_toolsuite'],
     install_requires=['datetime', 'argparse', 'pandas', 'iteration_utilities', 
-                      'Bio', 'gtfparse', 'pyfaidx', 'pyyaml', 'pybedtools', 'networkx'],
+                      'Bio', 'gtfparse', 'pyfaidx', 'pyyaml', 'pybedtools', 'networkx', 
+                      'omegaconf', 'hydra-core'],
     long_description=open('README.md').read(),
     author='Lisa Barros de Andrade e Sousa',
     entry_points={

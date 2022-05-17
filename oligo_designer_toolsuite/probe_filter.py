@@ -57,16 +57,16 @@ class ProbeFilter:
         self.file_removed_genes = os.path.join(dir_output, 'genes_with_insufficient_probes.txt')
 
         # set parameters
-        self.number_batchs = config['number_batchs']
-        self.number_subbatches = config['number_subbatches']
-        self.num_threads_blast = config['num_threads']
-        self.word_size = config['word_size'] 
-        self.percent_identity = config['percent_identity']
-        self.probe_length_min = config['probe_length_min']
-        self.probe_length_max = config['probe_length_max']
-        self.coverage = config['coverage']
-        self.ligation_site = config['ligation_site']
-        self.min_probes_per_gene = config['min_probes_per_gene']
+        self.number_batchs = config['specificity_filter']['number_batchs']
+        self.number_subbatches = config['specificity_filter']['number_subbatches']
+        self.num_threads_blast = config['specificity_filter']['num_threads']
+        self.word_size = config['specificity_filter']['word_size'] 
+        self.percent_identity = config['specificity_filter']['percent_identity']
+        self.probe_length_min = config['probe_design']['probe_length_min']
+        self.probe_length_max = config['probe_design']['probe_length_max']
+        self.coverage = config['specificity_filter']['coverage']
+        self.ligation_site = config['specificity_filter']['ligation_site']
+        self.min_probes_per_gene = config['probe_design']['min_probes_per_gene']
         self.file_transcriptome_fasta = file_transcriptome_fasta
         self.removed_genes = genes
 
