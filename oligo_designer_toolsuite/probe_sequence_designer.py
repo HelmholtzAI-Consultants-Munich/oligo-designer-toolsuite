@@ -80,7 +80,7 @@ class ProbeSequenceDesigner:
         """ 
 
         probeset_files = [f for f in os.listdir(self.dir_probesets) if f.startswith("ranked_probesets_")]
-        genes = [f.split("_")[-1].split(".")[0] for f in probeset_files]        
+        genes = [f.split("_")[-1].split(".")[0] for f in probeset_files]
         if self.genes is not None:
             mask = [g in self.genes for g in genes]
             genes = [g for i,g in enumerate(genes) if mask[i]]
@@ -98,8 +98,14 @@ class ProbeSequenceDesigner:
             probeset = [table_probesets[col].iloc[probeset_idx] for col in table_probesets.columns if col.startswith("probe")]
             
             for probe_idx, probe in enumerate(probeset):
-                complementary_seq = probes.loc[probe,"probe_sequence"]
-                ligation_idx = probes.loc[probe,"ligation_site"]
+                # NOTE: so far what we called "probe" is actually the sequence on the target mRNA, it was straightforward
+                #       to adjust everything from here, but it would have been cleaner to take the reverse complement
+                #       from the beginning. The previous ligation_site for example needed to be adjusted which might be 
+                #       confusing when looking into files generated in previous steps. Also the arm Tm's could have 
+                #       changed, but the naming (arm1, arm2) still fits and Tm(seq)==Tm(rev_compl(seq)) (properly tested).
+                target_mRNA = probes.loc[probe,"probe_sequence"]
+                complementary_seq = str(Seq(target_mRNA).reverse_complement())
+                ligation_idx = len(target_mRNA) - probes.loc[probe,"ligation_site"]
                 full_seq, sub_seqs = self.get_padlock_probe(gene_idx,complementary_seq,ligation_idx,barcode_seed=0,barcode_length=4)
                 det_oligo_seq, det_oligo_Tm = self.get_detection_oligo(complementary_seq, ligation_idx, minT=2)
                 
@@ -119,12 +125,13 @@ class ProbeSequenceDesigner:
                     "padlock_accessory2_sequence" : str(sub_seqs["accessory1"]),
                     "padlock_arm2_sequence"       : str(sub_seqs["arm2"]),
                     "complementary_sequence"      : str(complementary_seq),
-                    "recognised_mRNA_sequence"    : str(Seq(complementary_seq).complement()),
+                    "recognised_mRNA_sequence"    : str(target_mRNA),#str(Seq(complementary_seq).complement()),
                 })
                 for key in ["GC_content", "melting_temperature", "melt_temp_arm1", "melt_temp_arm2", "melt_temp_dif_arms"]:
                     yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = float(probes.loc[probe,key])
-                for key in ["length", "ligation_site"]:
+                for key in ["length"]:#, "ligation_site"]:
                     yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = int(probes.loc[probe,key])
+                yaml_dict[gene][f"{gene}_probe{probe_idx+1}"]["ligation_site"] = int(ligation_idx)
                 yaml_dict[gene][f"{gene}_probe{probe_idx+1}"]["melt_temp_detection_oligo"] = float(det_oligo_Tm)
                 
         with open(os.path.join(self.dir_padlock_probes,'padlock_probes.yml'), 'w') as outfile:
@@ -170,9 +177,10 @@ class ProbeSequenceDesigner:
         """
         for probeset_idx in range(len(df_probeset)):
             probeset = [df_probeset[col].iloc[probeset_idx] for col in df_probeset.columns if col.startswith("probe")]
-            for probe_idx, probe in enumerate(probeset):
-                complementary_seq = probes.loc[probe,"probe_sequence"]
-                ligation_idx = probes.loc[probe,"ligation_site"]
+            for probe_idx, probe in enumerate(probeset):                
+                target_mRNA = probes.loc[probe,"probe_sequence"]
+                complementary_seq = str(Seq(target_mRNA).reverse_complement())
+                ligation_idx = len(target_mRNA) - probes.loc[probe,"ligation_site"]
                 
                 start_oligo, start_oligo_long_left, start_oligo_long_right = self._get_initial_oligos_for_search(complementary_seq, ligation_idx)
                 if (start_oligo_long_left is not None) and (start_oligo_long_left.count("T") >= minT):
@@ -230,9 +238,8 @@ class ProbeSequenceDesigner:
             list of strs: first and second arm sequences (both 5' to 3')
             
             """
-            
-            arm1 = complementary_seq[:ligation_idx][::-1]
-            arm2 = complementary_seq[ligation_idx:][::-1]
+            arm1 = complementary_seq[ligation_idx:]
+            arm2 = complementary_seq[:ligation_idx]
             
             return [arm1,arm2]
 
@@ -517,14 +524,11 @@ class ProbeSequenceDesigner:
         else:
             oligo_Tm = 0
             
-        # The real oligo sequence is the reverse complement (therefore left and right fluorophore positions are exchanged)
-        if oligo_seq != "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO":
-            oligo_seq = oligo_seq[::-1]
-            
+        # Add fluorophore
         if fluorophor_pos == "left":
-            oligo_seq = oligo_seq+"[fluorophore]"
-        elif fluorophor_pos == "right":
             oligo_seq = "[fluorophore]"+oligo_seq
+        elif fluorophor_pos == "right":
+            oligo_seq = oligo_seq+"[fluorophore]"
         else:
             oligo_seq = oligo_seq
         
