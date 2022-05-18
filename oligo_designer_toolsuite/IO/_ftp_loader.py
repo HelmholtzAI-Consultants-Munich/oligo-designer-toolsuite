@@ -11,10 +11,10 @@ def download_gene_gtf_ensemble():
 def download_genome_fasta_ensemble():
     pass
 
-def download_gene_gtf_NCBI():
+def download_gene_gtf_ncbi():
     pass
 
-def download_genome_fasta_NCBI():
+def download_genome_fasta_ncbi():
     pass
 
 def _download_mapping_chr_names():
