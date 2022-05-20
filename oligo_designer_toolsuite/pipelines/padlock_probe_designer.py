@@ -91,9 +91,9 @@ def generate_probe_sets(config, dir_output, dir_probes = None):
     logging.info('Time to find nonoverlapping probe sets: {} min'.format(t))
 
 
-def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets = None, genes = None):
+def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets = None):
 
-    sequencedesigner = ProbeSequenceDesigner(config, dir_output, dir_probes, dir_probesets, genes)
+    sequencedesigner = ProbeSequenceDesigner(config, dir_output, dir_probes, dir_probesets)
     
     t = time.time()   
     sequencedesigner.design_padlocks()
