@@ -28,7 +28,7 @@ class ProbeSequenceDesigner:
     def __init__(self, config, dir_output, dir_probes = None, dir_probesets=None):
         """Constructor method
         """
-         # set logger
+        # set logger
         self.logging = logging.getLogger('padlock_probe_designer')
     
         # set directory
@@ -48,11 +48,11 @@ class ProbeSequenceDesigner:
         Path(self.dir_padlock_probes).mkdir(parents=True, exist_ok=True)
 
         # set parameters
-        self.detect_oligo_length_min = config['probe_design']["detect_oligo_length_min"]
-        self.detect_oligo_length_max = config['probe_design']["detect_oligo_length_max"]
-        self.detect_oligo_Tm_opt = config['probe_design']["detect_oligo_Tm_opt"]
-        self.Tm_parameters = utils.get_Tm_parameters(config['melting_temperature']['Tm_parameters'], sequence='detection_oligo')
-        self.Tm_correction_parameters = utils.get_Tm_correction_parameters(config['melting_temperature']['Tm_correction_parameters'], sequence='detection_oligo')
+        self.detect_oligo_length_min = config["detect_oligo_length_min"]
+        self.detect_oligo_length_max = config["detect_oligo_length_max"]
+        self.detect_oligo_Tm_opt = config["detect_oligo_Tm_opt"]
+        self.Tm_parameters = utils.get_Tm_parameters(config['Tm_parameters'], sequence='detection_oligo')
+        self.Tm_correction_parameters = utils.get_Tm_correction_parameters(config['Tm_correction_parameters'], sequence='detection_oligo')
 
 
     def design_padlocks(self):
@@ -75,10 +75,6 @@ class ProbeSequenceDesigner:
         - table at dir_out+"padlock_probes_order.yml" with final padlock probe sequences and detection oligo sequences
         
         """ 
-        #probes_files = [f for f in os.listdir(self.dir_probes) if f.startswith("probes_")]
-        #genes = [f.split("_")[1].split(".")[0] for f in probes_files]
-        #probeset_files = [f"ranked_probesets_{gene_id}.txt" for gene_id in genes]
-
         probeset_files = [f for f in os.listdir(self.dir_probesets) if f.startswith("ranked_probesets_")]
         genes = [f.split("_")[-1].split(".")[0] for f in probeset_files]
         probes_files = [f"probes_{gene_id}.txt" for gene_id in genes]

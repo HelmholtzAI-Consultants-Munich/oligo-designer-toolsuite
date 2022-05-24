@@ -39,7 +39,7 @@ class ProbeFilter:
     def __init__(self, config, dir_output, file_transcriptome_fasta, genes, dir_annotations = None):
         """Constructor method
         """
-         # set logger
+        # set logger
         self.logging = logging.getLogger('padlock_probe_designer')
 
         # set directory
@@ -57,16 +57,16 @@ class ProbeFilter:
         self.file_removed_genes = os.path.join(dir_output, 'genes_with_insufficient_probes.txt')
 
         # set parameters
-        self.number_batchs = config['specificity_filter']['number_batchs']
-        self.number_subbatches = config['specificity_filter']['number_subbatches']
-        self.num_threads_blast = config['specificity_filter']['num_threads']
-        self.word_size = config['specificity_filter']['word_size'] 
-        self.percent_identity = config['specificity_filter']['percent_identity']
-        self.probe_length_min = config['probe_design']['probe_length_min']
-        self.probe_length_max = config['probe_design']['probe_length_max']
-        self.coverage = config['specificity_filter']['coverage']
-        self.ligation_site = config['specificity_filter']['ligation_site']
-        self.min_probes_per_gene = config['probe_design']['min_probes_per_gene']
+        self.number_batchs = config['number_batchs']
+        self.number_subbatches = 1 #if number of genes in batch > max_genes_in_batch then split batch into multiple subbatches
+        self.max_genes_in_batch = 300 #if more than 300 genes in one batch split into subbatches to reduce required memory for loading blast results
+        self.word_size = config['word_size'] 
+        self.percent_identity = config['percent_identity']
+        self.probe_length_min = config['probe_length_min']
+        self.probe_length_max = config['probe_length_max']
+        self.coverage = config['coverage']
+        self.ligation_region = config['ligation_region']
+        self.min_probes_per_gene = config['min_probes_per_gene']
         self.file_transcriptome_fasta = file_transcriptome_fasta
         self.removed_genes = genes
 
@@ -144,11 +144,11 @@ class ProbeFilter:
 
             # save sequence of probes in fasta format
             genes = probes_info_filtered.gene_id.unique()
-            subbatch_size = int(len(genes)/self.number_subbatches) + (len(genes) % self.number_subbatches > 0)
+            self.number_subbatches = (len(genes) // self.max_genes_in_batch) + 1
             for subbatch_id in range(self.number_subbatches):
                 file_probe_fasta_subbatch = file_probe_fasta_batch.replace('.fna', '_{}.fna'.format(subbatch_id))
                 
-                genes_subbatch = genes[(subbatch_id*subbatch_size):((subbatch_id+1)*subbatch_size)]
+                genes_subbatch = genes[(subbatch_id*self.max_genes_in_batch):((subbatch_id+1)*self.max_genes_in_batch)]
                 probes_info_filtered_subbatch = probes_info_filtered.loc[probes_info_filtered['gene_id'].isin(genes_subbatch)].copy()
                 probes_info_filtered_subbatch.reset_index(inplace=True, drop=True)
 
@@ -165,16 +165,17 @@ class ProbeFilter:
         self.duplicated_sequences = _get_duplicated_sequences()
                 
         # run filter with multiprocess
-        jobs = []
+        #jobs = []
         for batch_id in range(self.number_batchs):
-            proc = multiprocessing.Process(target=_filter_probes_exactmatch, args=(batch_id, ))
-            jobs.append(proc)
-            proc.start()
+            _filter_probes_exactmatch(batch_id)
+            #proc = multiprocessing.Process(target=_filter_probes_exactmatch, args=(batch_id, ))
+            #jobs.append(proc)
+            #proc.start()
 
         #print('\n {} \n'.format(jobs))
 
-        for job in jobs:
-            job.join()  
+        #for job in jobs:
+        #    job.join()  
 
 
     def run_blast_search(self):   
@@ -193,7 +194,7 @@ class ProbeFilter:
                 file_blast_batch = os.path.join(self.dir_blast, 'blast_batch{}_{}.txt'.format(batch_id, subbatch_id))
 
                 cmd = NcbiblastnCommandline(query=file_probe_fasta_batch, db=self.file_transcriptome_fasta, outfmt="10 qseqid sseqid length qstart qend qlen", out=file_blast_batch,
-                                            strand='plus', word_size=self.word_size, perc_identity=self.percent_identity, num_threads=self.num_threads_blast) 
+                                            strand='plus', word_size=self.word_size, perc_identity=self.percent_identity, num_threads=1) 
                 out, err = cmd()
 
         # create blast database
@@ -201,16 +202,17 @@ class ProbeFilter:
         out, err = cmd()
 
         # run blast with multi process
-        jobs = []
+        #jobs = []
         for batch_id in range(self.number_batchs):
-            proc = multiprocessing.Process(target=_run_blast, args=(batch_id, ))
-            jobs.append(proc)
-            proc.start()
+            _run_blast(batch_id)
+            #proc = multiprocessing.Process(target=_run_blast, args=(batch_id, ))
+            #jobs.append(proc)
+            #proc.start()
 
         #print('\n {} \n'.format(jobs))
 
-        for job in jobs:
-            job.join()   
+        #for job in jobs:
+        #    job.join()   
 
     
     def filter_probes_by_blast_results(self):
@@ -277,21 +279,23 @@ class ProbeFilter:
             '''
             # blast_results_matches = blast_results[~(blast_results[['query_gene_id','target_gene_id']].nunique(axis=1) == 1)]
             blast_results_matches = blast_results[blast_results['query_gene_id'] != blast_results['target_gene_id']]
+            blast_results_matches = blast_results_matches.merge(probes_info[['probe_id', 'ligation_site']], left_on='query', right_on='probe_id', how = 'inner')
+            blast_results_matches.drop(columns=['probe_id'], inplace=True)
             blast_results_matches_filtered = []
             
             for probe_length in range(self.probe_length_min, self.probe_length_max + 1):
 
-               min_alignment_length = probe_length * self.coverage / 100
-               blast_results_matches_probe_length = blast_results_matches[blast_results_matches.query_length == probe_length]
-               blast_results_matches_probe_length = blast_results_matches_probe_length[blast_results_matches_probe_length.alignment_length > min_alignment_length]
-
-               if self.ligation_site > 0:
-                   ligation_site_start = probe_length // 2 - (self.ligation_site - 1)
-                   ligation_site_end = probe_length // 2 + self.ligation_site
-                   blast_results_matches_probe_length = blast_results_matches_probe_length[blast_results_matches_probe_length.query_start < ligation_site_start]
-                   blast_results_matches_probe_length = blast_results_matches_probe_length[blast_results_matches_probe_length.query_end > ligation_site_end]
+                min_alignment_length = probe_length * self.coverage / 100
+                blast_results_matches_probe_length = blast_results_matches[blast_results_matches.query_length == probe_length]
                 
-               blast_results_matches_filtered.append(blast_results_matches_probe_length) 
+                if self.ligation_region == 0:
+                    blast_results_matches_probe_length = blast_results_matches_probe_length[blast_results_matches_probe_length.alignment_length > min_alignment_length]
+                else:
+                    blast_results_matches_probe_length = blast_results_matches_probe_length[(blast_results_matches_probe_length.alignment_length > min_alignment_length) | 
+                                                                                            ((blast_results_matches_probe_length.query_start < blast_results_matches_probe_length.ligation_site - (self.ligation_region - 1)) & 
+                                                                                            (blast_results_matches_probe_length.query_end > (blast_results_matches_probe_length.ligation_site + self.ligation_region)))]
+                
+                blast_results_matches_filtered.append(blast_results_matches_probe_length) 
                
             blast_results_matches_filtered = pd.concat(blast_results_matches_filtered)
 
@@ -335,16 +339,17 @@ class ProbeFilter:
                 for gene_id in self.removed_genes:
                     output.write(f'{gene_id}\t0\n')
 
-        jobs = []
+        #jobs = []
         for batch_id in range(self.number_batchs):
-            proc = multiprocessing.Process(target=_process_blast_results, args=(batch_id, ))
-            jobs.append(proc)
-            proc.start()
+            _process_blast_results(batch_id)
+            #proc = multiprocessing.Process(target=_process_blast_results, args=(batch_id, ))
+            #jobs.append(proc)
+            #proc.start()
 
         #print('\n {} \n'.format(jobs))
         
-        for job in jobs:
-            job.join()
+        #for job in jobs:
+        #    job.join()
         
         _write_removed_genes()
 

@@ -45,10 +45,10 @@ class ProbesetsGenerator:
         self.file_removed_genes = os.path.join(dir_output, 'genes_with_insufficient_probes.txt')
 
         # set parameters
-        self.n_probes_per_gene = config['probe_design']['n_probes_per_gene']
-        self.Tm_params = [config['probe_design']['Tm_opt'], config['probe_design']['Tm_min'], config['probe_design']['Tm_max']]
-        self.GC_params = [config['probe_design']['GC_content_opt'], config['probe_design']['GC_content_min'], config['probe_design']['GC_content_max']]
-        self.min_probes_per_gene = config['probe_design']['min_probes_per_gene']
+        self.n_probes_per_gene = config['n_probes_per_gene']
+        self.Tm_params = [config['Tm_opt'], config['Tm_min'], config['Tm_max']]
+        self.GC_params = [config['GC_content_opt'], config['GC_content_min'], config['GC_content_max']]
+        self.min_probes_per_gene = config['min_probes_per_gene']
 
 
     def get_overlap_matrix(self):
@@ -61,20 +61,18 @@ class ProbesetsGenerator:
                         filename = os.path.join(root, basename)
                         yield filename
 
-
         def _get_files():
             files = []
             number_dirs = 0
             #Note: the other functions here work with multiple `dirs_in` which is not needed when we have all probes files at one
             #place. Could be changed for the other functions in the future.
             for dir in [self.dir_probes]:
-                files.append(pd.DataFrame([[file.split('probes_')[1].split('.')[0], file] for file in _list_files_in_dir(dir, r'probes_*')], columns=['gene', 'file_dir{}'.format(number_dirs)]))
+                files.append(pd.DataFrame([[str(file).split('probes_')[1].split('.')[0], str(file)] for file in Path(dir).rglob('probes_*')], columns=['gene', 'file_dir{}'.format(number_dirs)]))
                 number_dirs += 1
             files = reduce(lambda  left,right: pd.merge(left, right, on=['gene'], how='outer'), files)
             files = files.loc[:,~files.columns.duplicated()]
 
             return files
-
 
         def _get_overlap(seq1_intervals, seq2_intervals):
             seqs_overlap = False
@@ -83,7 +81,6 @@ class ProbesetsGenerator:
                     overlap = min(a[1], b[1]) - max(a[0], b[0])
                     seqs_overlap |= overlap > -1
             return seqs_overlap
-
 
         def _compute_overlap_matrix(gene, probes):
             matrix = pd.DataFrame(0, columns=probes.probe_id, index=probes.probe_id)
@@ -107,10 +104,9 @@ class ProbesetsGenerator:
                         break
             matrix.to_csv(os.path.join(self.dir_overlapmatrix, 'overlap_matrix_{}.txt'.format(gene)), sep='\t')
 
-
         def _get_overlap_matrix(files):
 
-            jobs = []
+            #jobs = []
             for idx in files.index:
                 files_gene = files.iloc[idx]
                 for index, value in files_gene.items():
@@ -120,14 +116,14 @@ class ProbesetsGenerator:
                     elif not pd.isna(value):
                         probes.append(pd.read_csv(value, sep='\t'))
                 probes = pd.concat(probes, axis=0, ignore_index=True)
-                #probes.to_csv(os.path.join(self.dir_output_overlapmatrix, 'probes_{}.txt'.format(gene)), sep='\t', index=False)
             
-                proc = multiprocessing.Process(target=_compute_overlap_matrix, args=(gene, probes, ))
-                jobs.append(proc)
-                proc.start()
+                _compute_overlap_matrix(gene, probes)
+                #proc = multiprocessing.Process(target=_compute_overlap_matrix, args=(gene, probes, ))
+                #jobs.append(proc)
+                #proc.start()
 
-            for job in jobs:
-                job.join()
+            #for job in jobs:
+            #    job.join()
 
         files = _get_files()
         _get_overlap_matrix(files)

@@ -6,19 +6,12 @@ import os
 import time
 import argparse
 import logging
+logging.getLogger('padlock_probe_designer')
+
 from pathlib import Path
 from datetime import datetime
 
-
-timestamp = datetime.now()
-file_logger = f'log_padlock_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt'
-logging.getLogger('padlock_probe_designer')
-logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=logging.NOTSET, handlers=[logging.FileHandler(file_logger), logging.StreamHandler()])
-
-#from oligo_designer_toolsuite.utils import get_config, print_config
-from omegaconf import DictConfig
-import hydra
-
+from oligo_designer_toolsuite.utils import get_config, print_config
 from oligo_designer_toolsuite.annotation_loader import AnnotationLoader
 from oligo_designer_toolsuite.probe_filter import ProbeFilter
 from oligo_designer_toolsuite.probesets_generator import ProbesetsGenerator
@@ -36,7 +29,7 @@ def args():
     :rtype: dict
     '''
     args_parser = argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
-    # args_parser.add_argument('-c','--config',help='path to config yaml file',type=str,required=True)
+    args_parser.add_argument('-c','--config',help='path to config yaml file',type=str,required=True)
     args_parser.add_argument('-o','--output',help='path of output folder',type=str,required=True)
     args_parser.add_argument('-d','--download_only',help='dry run that only downloads the necessary files',action='store_true',required=False)
     return args_parser.parse_args()
@@ -104,19 +97,28 @@ def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets =
     t = (time.time() - t)/60
     logging.info('Time to design padlock probes: {} min'.format(t))
 
-@hydra.main(config_path="../../config", config_name="padlock_probe_designer.yaml")
-def main(config: DictConfig):
+def main():
     '''Main function of probe designer.
     '''
-    
-    dir_output = config['dir_output']
-    Path(dir_output).mkdir(parents=True, exist_ok=True)
-    logging.info('Results will be saved to: {}'.format(dir_output))
+    timestamp = datetime.now()
+    file_logger = f'log_padlock_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt'
+    logging.getLogger('padlock_probe_designer')
+    logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=logging.NOTSET, handlers=[logging.FileHandler(file_logger), logging.StreamHandler()])
 
-    download_only = False
+    # get comman line arguments
+    parameters = args()
+
+    config = get_config(parameters.config)
+    print_config(config)
+
+    download_only = parameters.download_only
 
     logging.info('#########Start Pipeline#########')
     t_pipeline = time.time()
+
+    dir_output = os.path.join(parameters.output)
+    Path(dir_output).mkdir(parents=True, exist_ok=True)
+    logging.info('Results will be saved to: {}'.format(dir_output))
 
     annotations = download_annotations(config, dir_output, download_only)
     if download_only:
@@ -132,10 +134,7 @@ def main(config: DictConfig):
     t_pipeline = (time.time() - t_pipeline)/60
     logging.info('Time Pipeline: {} min'.format(t_pipeline))
     logging.info('#########End Pipeline#########')
-    
-    
-def entry():
-    main()
+
 
 if __name__ == "__main__":
-    main()
+    main() 
