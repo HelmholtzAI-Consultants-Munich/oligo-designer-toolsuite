@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name='oligo-designer-toolsuite',
     version='0.1',
-    packages=['oligo_designer_toolsuite'],
+    packages=['oligo_designer_toolsuite', 'oligo_designer_toolsuite.pipelines'],
     install_requires=['datetime', 'argparse', 'pandas', 'iteration_utilities', 
                       'Bio', 'gtfparse', 'pyfaidx', 'pyyaml', 'pybedtools', 'networkx'],
     long_description=open('README.md').read(),

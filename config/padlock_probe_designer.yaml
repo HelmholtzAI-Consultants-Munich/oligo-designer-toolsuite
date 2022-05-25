@@ -1,24 +1,28 @@
 ### Parameters for genome and gene annotation
-# Which annotation should be used? Ensemble or NCBI?
-source: ncbi # available sources: 'ncbi' and 'ensemble'
+# Which annotation should be used? Ensemble, NCBI or custom?
+species: human # available species: human or mouse
+genome_assembly: GRCh38 # genome assembly for species | for human: GRCh37 or GRCh38 | for mouse: GRCm38 or GRCm39
+annotation_source: custom # available sources: 'ncbi', 'ensemble' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
+annotation_release: current # release number (e.g. 109 or 109.20211119 for ncbi) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/ or for ensemble at ftp.ensembl.org/pub/ 
 
-# If own annotation files should be used, provide a gene annotation (gtf) and genome file (fasta), e.g. file_gene_gtf: ./data/Homo_sapiens.GRCh38.104.gtf
+# If own annotation files should be used, set annotation_source to 'custom' and provide a gene annotation (gtf) and genome file (fasta), e.g. file_gene_gtf: ./data/Homo_sapiens.GRCh38.104.gtf
 # If no files are provided (e.g. file_gene_gtf: null), gene annotation file (gtf) as well as genome file (fasta) are retrieved from 'source'.
-file_gene_gtf: null  # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.gtf
-file_genome_fasta: null  # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.fna
+file_gene_gtf:  ./data_ncbi/annotations/GCF_000001405.40_GRCh38.p14_genomic.gtf
+file_genome_fasta:  ./data_ncbi/annotations/GCF_000001405.40_GRCh38.p14_genomic.fna
 
 
 
 ### Which geneset should be used? 
-# If probes should be designed for all genes of the provided annotation, leave gene_list empty, i.e. gene_list: null
+# If probes should be designed for all genes of the provided annotation, leave gene_list empty, i.e. gene_list: 
 # If probes should only be designed for specific genes, provide a file with a list of genes (each row should contain one gene name in ensemble or NCBI format), e.g. gene_list: ./data/ensemble_gene_list.txt
 file_genes: ./data/genes_ncbi_10.txt
 
 
 
-### Parameters for probe design
-probe_length_min: 38 #min length of probes
+### Parameters for padlock probe design
+probe_length_min: 38 #min length of probes 
 probe_length_max: 45 #max length of probes
+
 GC_content_min: 40 #minimum GC content of probes
 GC_content_opt: 50 #optimal GC content of probes
 GC_content_max: 60 #maximum GC content of probes
@@ -44,15 +48,15 @@ detect_oligo_Tm_opt: 32 # not sure if we should also define a min and max, think
 
 
 ### Parameters for Blastn search
-num_threads: 1 #number of threads for parallel run of blast
+
+# How many Blast runs should run in parallele
+number_batchs: 2 #number of threads running in parallel, each starts one blastn run
+
+# Blastn parameters
 word_size: 10 #word size for the blastn seed (exact match to target)
 coverage: 50 #minimum coverage between probes and target sequence, ranging from 0 to 100% (full coverage)
 percent_identity: 80 #maximum similarity between probes and target sequences, ranging from 0 to 100% (no missmatch)
-ligation_site: 0 #coverage between probes and target sequence should not span ligation site (e.g. ligation_site = 5 would correspond to -4 to +5 nt around probe center), if ligation_site = 0, omit this requirement
-
-# How many Blast runs should run in parallele
-number_batchs: 10 #number of threads running in parallel, each starts one blastn run
-number_subbatches: 1 #number of batches into which the input is divided, i.e. divide list of probes into 50 batches to reduce required memory for loading blast results
+ligation_region: 0 #coverage between probes and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
 
 
 
@@ -94,41 +98,3 @@ Tm_correction_parameters:
     detection_oligo:
         fmd: 30
 
-
-        
-# parameters for download of ensemble (release 104) annotation from ftp server 
-ftp_gene_ensemble:
-  ftp_link: 'ftp.ensembl.org' # link to ftp server
-  directory: 'pub/release-104/gtf/homo_sapiens' # directory that contains gene annotation file
-  file_name: 'Homo_sapiens.GRCh38.104.gtf' # name of gene annotation file
-
-ftp_genome_ensemble:
-  ftp_link: 'ftp.ensembl.org' # link to ftp server
-  directory: 'pub/release-104/fasta/homo_sapiens/dna' # directory that contains genome annotation file (gtf)
-  file_name: 'Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa' # name of genome annotation file (fasta)
-
-ftp_chr_mapping_ensemble: #no chromosome mapping needed for ensemble
-
-# parameters for download of download latest NCBI annotation from ftp server
-ftp_gene_ncbi:
-  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
-  directory: 'genomes/all/annotation_releases/9606/109.20211119/GCF_000001405.39_GRCh38.p13' # directory that contains gene annotation file
-  #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
-  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'
-  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.gtf' # name of gene annotation file
-  #file_name: 'GCF_000001405.38_GRCh38.p12_genomic.gtf' 
-
-ftp_genome_ncbi:
-  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
-  directory: 'genomes/all/annotation_releases/9606/109.20211119/GCF_000001405.39_GRCh38.p13' # directory that contains genome annotation file (gtf)
-  #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
-  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'
-  file_name: 'GCF_000001405.39_GRCh38.p13_genomic.fna' # name of genome annotation file (fasta)
-  #file_name: 'GCF_000001405.38_GRCh38.p12_genomic.fna'
-
-ftp_chr_mapping_ncbi:
-  ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
-  directory: 'genomes/all/annotation_releases/9606/109.20211119/GCF_000001405.39_GRCh38.p13' # directory that contains gene annotation file
-  #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
-  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers' 
-  file_name: 'assembly_report.txt' # name of chromosome mapping file

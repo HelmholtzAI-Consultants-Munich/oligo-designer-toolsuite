@@ -34,8 +34,6 @@ class AnnotationLoader:
 
     :param config: User-defined parameters, where keys are the parameter names and values are the paremeter values.
     :type config: dict
-    :param logging: Logger object to store important information.
-    :type logging: logging.basicConfig
     :param dir_output: User-defined output directory.
     :type dir_output: string
     '''
@@ -53,20 +51,14 @@ class AnnotationLoader:
         # set parameters
         self.number_batchs = config['number_batchs']
 
-        self.source = config['source']
-        if self.source == 'ensemble':
-            self.ftp_gene = config['ftp_gene_ensemble']
-            self.ftp_genome = config['ftp_genome_ensemble']
-            self.ftp_chr_mapping = config['ftp_chr_mapping_ensemble']
-        elif self.source == 'ncbi':
-            self.ftp_gene = config['ftp_gene_ncbi']
-            self.ftp_genome = config['ftp_genome_ncbi']
-            self.ftp_chr_mapping = config['ftp_chr_mapping_ncbi']
-        else:
-            raise ValueError('Error: unknown source "{}"'.format(self.source)) 
+        self.species = config['species']
+        self.genome_assembly = config['genome_assembly']
+        self.annotation_source = config['annotation_source']
+        self.annotation_release = config['annotation_release']
 
         self.file_gene_gtf = config['file_gene_gtf']
         self.file_genome_fasta = config['file_genome_fasta']
+
         self.file_transcriptome_bed = os.path.join(self.dir_annotations, 'transcriptome.bed')
         self.file_transcriptome_fasta = os.path.join(self.dir_annotations, 'transcriptome.fna')
         
@@ -97,15 +89,14 @@ class AnnotationLoader:
         chromosome names between GenBank and Ref-Seq accession number. 
         '''
 
-        def _download_chr_mapping():
+        def _download_chr_mapping(ftp_link, ftp_directory, ftp_file_chr_mapping):
             '''Download file with mapping of chromosome names between GenBank and Ref-Seq accession number 
             from ftp server and create a mapping dictionary.
 
             :return: Dictionary with mapping of chromsome names from GenBank to Ref-Seq.
             :rtype: dict
             '''
-            file_mapping = utils.ftp_download(self.ftp_chr_mapping['ftp_link'], self.ftp_chr_mapping['directory'], 
-                                              self.ftp_chr_mapping['file_name'], self.dir_annotations)
+            file_mapping = utils.ftp_download(ftp_link, ftp_directory, ftp_file_chr_mapping, self.dir_annotations)
             
             # skip comment lines but keep last comment line for header
             with open(file_mapping) as handle:
@@ -125,7 +116,7 @@ class AnnotationLoader:
 
             return mapping
 
-        def _download_gene_gtf(mapping):
+        def _download_gene_gtf(ftp_link, ftp_directory, ftp_file_gtf, mapping=None):
             ''' Download gene annotation in gtf file format from ftp server and unzip file. 
             If gene annotation comes from ncbi, map chromosome annotation to Ref-Seq accession number.
 
@@ -134,11 +125,10 @@ class AnnotationLoader:
             :return: Path to downloaded gene gtf file.
             :rtype: string
             '''
-            file_gene_gtf_gz = utils.ftp_download(self.ftp_gene['ftp_link'], self.ftp_gene['directory'], 
-                                                  self.ftp_gene['file_name'], self.dir_annotations)
+            file_gene_gtf_gz = utils.ftp_download(ftp_link, ftp_directory, ftp_file_gtf, self.dir_annotations)
             file_gene_gtf = utils.decompress_gzip(file_gene_gtf_gz)
             
-            if self.source == 'ncbi':
+            if self.annotation_source == 'ncbi':
                 _process_ncbi_gene_gtf(file_gene_gtf, mapping)
                 
             return file_gene_gtf
@@ -169,7 +159,7 @@ class AnnotationLoader:
                 gene_annotation.to_csv(handle_out, sep='\t', header=False, index = False)
             os.replace(file_tmp, file_gene_gtf)
 
-        def _download_genome_fasta(mapping):
+        def _download_genome_fasta(ftp_link, ftp_directory, ftp_file_fasta, mapping=None):
             '''Download genome sequence in fasta file format from ftp server and unzip file. 
             If genome sequence comes from ncbi, map chromosome annotation to Ref-Seq accession number.
 
@@ -178,10 +168,10 @@ class AnnotationLoader:
             :return: Path to downloaded genome fasta file.
             :rtype: string
             '''
-            file_genome_fasta_gz = utils.ftp_download(self.ftp_genome['ftp_link'], self.ftp_genome['directory'], self.ftp_genome['file_name'], self.dir_annotations) 
+            file_genome_fasta_gz = utils.ftp_download(ftp_link, ftp_directory, ftp_file_fasta, self.dir_annotations) 
             file_genome_fasta = utils.decompress_gzip(file_genome_fasta_gz)
 
-            if self.source == 'ncbi':
+            if self.annotation_source == 'ncbi':
                 _process_ncbi_genome_fasta(file_genome_fasta, mapping)
 
             return file_genome_fasta
@@ -207,40 +197,27 @@ class AnnotationLoader:
                     else:
                         self.logging.info('No mapping for accession number: {}'.format(accession_number))
             
-            os.replace(file_tmp, file_genome_fasta)            
-        
-        # Check if files are already present
-        if self.file_gene_gtf is None:
-            file = os.path.join(self.dir_annotations,self.ftp_gene['file_name'])
-            if os.path.exists(file):
-                self.file_gene_gtf = file
-                self.logging.info('Found gene annotation from {} as gene gtf at: {}'.format(self.source, self.file_gene_gtf))
-        if self.file_genome_fasta is None:
-            file = os.path.join(self.dir_annotations,self.ftp_genome['file_name'])
-            if os.path.exists(file):
-                self.file_genome_fasta = file
-                self.logging.info('Found genome annotation from {} as genome fasta at: {}'.format(self.source, self.file_genome_fasta))
-        
-        # Download if files are not present
-        if (self.file_gene_gtf is None) or (self.file_genome_fasta is None):
-            if self.source == 'ncbi':
-                # if source ncbi we need a chromosome mapping
-                self.logging.info('Download chromosome mapping')
-                mapping = _download_chr_mapping()
-                self.logging.info('\tDone')
-            elif self.source == 'ensemble':
-                # if source ensemble we don't need a chromosome mapping
-                mapping = None
-    
-            if self.file_gene_gtf is None:
-                self.logging.info('Download gtf file')
-                self.file_gene_gtf = _download_gene_gtf(mapping)
-                self.logging.info('Downloaded gene annotation from {} and save as gene gtf: {}'.format(self.source, self.file_gene_gtf))
-                
-            if self.file_genome_fasta is None:
-                self.logging.info('Download fasta file')
-                self.file_genome_fasta = _download_genome_fasta(mapping)
-                self.logging.info('Downloaded genome annotation from {} and save as genome fasta: {}'.format(self.source, self.file_genome_fasta))
+            os.replace(file_tmp, file_genome_fasta)  
+
+        if self.annotation_source == 'ncbi':
+            # get ftp links
+            ftp_link, ftp_directory, ftp_file_gtf, ftp_file_fasta, ftp_file_chr_mapping = utils.get_ncbi_ftp_parameters(self.species, self.annotation_release, self.genome_assembly, self.dir_annotations)
+            mapping = _download_chr_mapping(ftp_link, ftp_directory, ftp_file_chr_mapping)
+            self.file_gene_gtf = _download_gene_gtf(ftp_link, ftp_directory, ftp_file_gtf, mapping)
+            self.file_genome_fasta = _download_genome_fasta(ftp_link, ftp_directory, ftp_file_fasta, mapping)
+            
+        elif self.annotation_source == 'ensemble':
+            # get ftp links
+            ftp_link, ftp_directory_gtf, ftp_directory_fasta, ftp_file_gtf, ftp_file_fasta = utils.get_ensemble_ftp_parameters(self.species, self.annotation_release, self.genome_assembly, self.dir_annotations)
+            self.file_gene_gtf = _download_gene_gtf(ftp_link, ftp_directory_gtf, ftp_file_gtf)
+            self.file_genome_fasta = _download_genome_fasta(ftp_link, ftp_directory_fasta, ftp_file_fasta)
+ 
+        elif self.annotation_source == 'custom':
+            if (self.file_gene_gtf is None) or (self.file_genome_fasta is None):
+                raise ValueError('If annotation_source = custom you must provide a gene (gtf format) and genome (fasta format) file!') 
+        else:
+            raise ValueError(f'Error: unknown source: {self.annotation_source}') 
+
 
     def load_genes(self):
         '''Load list of genes for which probes should be designed.
@@ -277,13 +254,10 @@ class AnnotationLoader:
         # load list of genes from given file or annotation
         if self.file_genes is None:
             self.genes = _get_gene_list_from_annotation()
-            self.logging.info('Loaded gene list from {} annotation.'.format(self.source)) 
         else:
             self.genes = _get_gene_list_from_file()
-            self.logging.info('Loaded gene list from {}.'.format(self.file_genes))
 
         self.batch_size = int(len(self.genes) / self.number_batchs) + (len(self.genes) % self.number_batchs > 0)
-        self.logging.info('Probes for {} genes will be designed processed in {} parallele batches with {} genes in one batch'.format(len(self.genes), self.number_batchs, self.batch_size))
 
 
     def load_transcriptome(self):
@@ -407,14 +381,7 @@ class AnnotationLoader:
             :return: Two dictionaries: transcript - exon mapping and transcript information.
             :rtype: dict
             '''
-            
-            #TODO: if/else at beginning and end are for taking care of mouse gtf files where "transcript" feature is
-            #      missing. I think this could be written simpler...
-            
-            if ('transcript' in self.gene_annotation['feature'].values):
-                transcripts = self.gene_annotation.loc[self.gene_annotation['feature'] == 'transcript']
-            else:
-                transcripts = self.gene_annotation.loc[self.gene_annotation["transcript_id"] != '']
+            transcripts = self.gene_annotation.loc[self.gene_annotation["transcript_id"] != '']
             transcripts = sorted(list(transcripts['transcript_id'].unique()))
             transcript_exons = {key: {} for key in transcripts}
             transcript_info = dict()
@@ -477,8 +444,8 @@ class AnnotationLoader:
                             blockSize_start_entry = '{},{}'.format(0, exon_downstream[1] - start_up)
                         else:
                             blockCount = len(exons_small) + 2
-                            blockSize_length_entry = str(blockSize_up) + ',' + ','.join([str(attributes[2] - attributes[1]) for attributes in exons_small]) + ',' + str(blockSize_down) #'{},{},{}'.format(blockSize_up, (exons_small[2] - exons_small[1]), blockSize_down)
-                            blockSize_start_entry = '0,' + ','.join([str(attributes[1] - start_up,) for attributes in exons_small]) + ',' + str(exon_downstream[1] - start_up) #'{},{},{}'.format(0, exons_small[1] - start_up, exon_downstream[1] - start_up)
+                            blockSize_length_entry = str(blockSize_up) + ',' + ','.join([str(attributes[2] - attributes[1]) for attributes in exons_small]) + ',' + str(blockSize_down) 
+                            blockSize_start_entry = '0,' + ','.join([str(attributes[1] - start_up,) for attributes in exons_small]) + ',' + str(exon_downstream[1] - start_up) 
                             exons_small = []
 
                         exon_junction_list.append(['{}_{}_{}_{}'.format(seqname, start_up, end_down, strand), gene_id, transcript, '{}_{}'.format(exon_upstream[0], exon_downstream[0]),
@@ -515,7 +482,6 @@ class AnnotationLoader:
         In addition, generated probes are filtered based on GC content and melting temperature for user-defined thresholds
         This process can be executed in a parallele fashion on a user-defined number of threads (defined in config file).
         '''
-
         def _get_probes(batch_id, genes_batch):
             '''Get the fasta sequence of all possible probes for all genes in the batch.
 
@@ -669,7 +635,7 @@ class AnnotationLoader:
                                 gc_content = round(GC(probe_sequence),2)
 
                                 if (self.GC_content_min < gc_content < self.GC_content_max):
-                                    Tm = _get_Tm(probe_sequence)#round(mt.Tm_NN(probe_sequence, **self.Tm_parameters),2)
+                                    Tm = _get_Tm(probe_sequence)
 
                                     if (self.Tm_min < Tm < self.Tm_max):
                                         
@@ -744,18 +710,19 @@ class AnnotationLoader:
         pyfaidx.Fasta(self.file_genome_fasta)
 
         # create probes in parallele 
-        jobs = []
+        #jobs = []
         for batch_id in range(self.number_batchs): 
             genes_batch = self.genes[(self.batch_size * batch_id):(min(self.batch_size * (batch_id+1), len(self.genes)+1))]
+            _get_probes(batch_id, genes_batch)
         
-            proc = multiprocessing.Process(target=_get_probes, args=(batch_id, genes_batch, ))
-            jobs.append(proc)
-            proc.start()
+            #proc = multiprocessing.Process(target=_get_probes, args=(batch_id, genes_batch, ))
+            #jobs.append(proc)
+            #proc.start()
 
         #print('\n {} \n'.format(jobs))
 
-        for job in jobs:
-            job.join()
+        #for job in jobs:
+        #    job.join()
 
         # remove index file
         os.remove('{}.fai'.format(self.file_genome_fasta))
