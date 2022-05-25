@@ -97,7 +97,6 @@ class ProbeFilter:
                 os.remove(file_probe_sequence_batch)
             
             duplicated_sequences = list(iteration_utilities.unique_everseen(iteration_utilities.duplicates(sequences)))
-            #self.logging.info('Number of duplicated probe sequences: {}'.format(len(duplicated_sequences)))
             
             return duplicated_sequences
 
