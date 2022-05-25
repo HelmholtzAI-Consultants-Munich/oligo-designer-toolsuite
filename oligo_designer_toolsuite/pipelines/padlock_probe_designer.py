@@ -66,7 +66,7 @@ def generate_probe_sets(config, dir_output, dir_probes = None):
     probesets.get_probe_sets(n_sets=100)
 
 
-def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets = None):  
+def design_padlock_probes(config, dir_output, dir_probes = None, dir_probesets = None):
 
     sequencedesigner = ProbeSequenceDesigner(config, dir_output, dir_probes, dir_probesets)
     sequencedesigner.design_padlocks()
