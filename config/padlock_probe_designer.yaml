@@ -2,13 +2,13 @@
 # Which annotation should be used? Ensemble, NCBI or custom?
 species: human # available species: human or mouse
 genome_assembly: GRCh38 # genome assembly for species | for human: GRCh37 or GRCh38 | for mouse: GRCm38 or GRCm39
-annotation_source: custom # available sources: 'ncbi', 'ensemble' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
+annotation_source: ncbi # available sources: 'ncbi', 'ensemble' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
 annotation_release: current # release number (e.g. 109 or 109.20211119 for ncbi) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/ or for ensemble at ftp.ensembl.org/pub/ 
 
 # If own annotation files should be used, set annotation_source to 'custom' and provide a gene annotation (gtf) and genome file (fasta), e.g. file_gene_gtf: ./data/Homo_sapiens.GRCh38.104.gtf
 # If no files are provided (e.g. file_gene_gtf: null), gene annotation file (gtf) as well as genome file (fasta) are retrieved from 'source'.
-file_gene_gtf:  ./data_ncbi/annotations/GCF_000001405.40_GRCh38.p14_genomic.gtf
-file_genome_fasta:  ./data_ncbi/annotations/GCF_000001405.40_GRCh38.p14_genomic.fna
+file_gene_gtf:  #./data_ncbi/annotations/GCF_000001405.40_GRCh38.p14_genomic.gtf
+file_genome_fasta:  #./data_ncbi/annotations/GCF_000001405.40_GRCh38.p14_genomic.fna
 
 
 
