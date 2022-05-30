@@ -10,11 +10,24 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 **Requirements:**
 
-- \>= Python 3.8 
-- ```'datetime```, ```argparse```, ```pyyaml```, ```iteration_utilities```, ```pandas```, 
-- ```Bio```, ```gtfparse```, ```pyfaidx```,  ```pybedtools```, ```networkx```
+This package was build with Python 3.8 
+
+| Package  | Version |
+| ------------- | ------------- |
+| argparse  | 1.4.0  |
+| Bio  | 1.3.8  |
+| datetime | 4.4 |
+| gtfparse  | 1.2.1 |
+| iteration_utilities  | 0.11.0 |
+| networkx  | 2.8.1 |
+| pandas  | 1.4.2 |
+| pybedtools  | 0.9.0 |
+| pyfaidx  | 0.6.4 |
+| pyyaml  | 6.0 |
+
 
 All required packages are automatically installed if installation is done via ```pip```.
+In addition to the packages listed above, you need to install ```Blast```. This can be done via NCBI webpage (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```. 
 
 **Install Options:**
 
