@@ -49,7 +49,7 @@ pip install -e .        (Development Installation as python package: run inside 
 
 Note: if you are using conda, first install pip with: ```conda install pip```
 
-In addition to the packages listed above, you need to install ```Blast```. This can be done via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```. 
+In addition to the packages listed above, you need to install *Blast Software*. This can be done via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```. 
 
 # Implemented Oligo Design Pipelines
 
