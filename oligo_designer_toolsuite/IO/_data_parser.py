@@ -6,9 +6,6 @@ import shutil
 def read_gtf():
     pass
 
-def read_gff():
-    pass
-
 def get_sequence_from_annotation():
     pass
 
