@@ -20,11 +20,6 @@ class BaseDB():
 
 
     def read_DB(self, file_DB):
-        '''Read database from file, check if databse has correct format (fasta file).
-
-        :param file_DB: _description_
-        :type file_DB: _type_
-        '''
         if os.path.exists(file_DB):
             if data_parser.check_fasta_format(file_DB):
                 self.file_DB = file_DB
@@ -58,24 +53,16 @@ class BaseDB():
 
         return file_annotation, file_sequence
 
-
-    def _get_gene(self, file_sequence, file_annotation, dir_output):
-        '''Generate fasta file with DNA sequence corresponding to whole gene annotation, including exons, introns, 5'UTR
-
-        :param file_sequence: _description_
-        :type file_sequence: _type_
-        :param file_annotation: _description_
-        :type file_annotation: _type_
-        '''
-        pass
-
     def _get_gene_transcript(self, file_sequence, file_annotation, blockSize, dir_output):
         pass
-        
+
+    '''
+    def _get_gene(self, file_sequence, file_annotation, dir_output):
+        pass
 
     def _get_gene_CDS(self, file_sequence, file_annotation, blockSize, dir_output):
         pass
-
+    '''
 
 
 
@@ -190,7 +177,7 @@ class OligoDB(BaseDB):
 
 
     def write_DB(self, dir_output):
-        self.file_DB = os.path.join(dir_output, 'oligo_DB')
+        #self.file_DB = ...
         # -> output DB as fasta file
         pass
 
@@ -222,7 +209,7 @@ class OligoDB(BaseDB):
     def _generate_oligos(self, file_region):
         pass
 
-    
+    '''
     def mask_prohibited_sequences(self):
         pass
 
@@ -234,3 +221,4 @@ class OligoDB(BaseDB):
     def filter_xyz(self):
         #wrap different filter from 'oligo_filter'
         pass
+    '''

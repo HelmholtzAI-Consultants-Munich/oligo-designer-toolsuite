@@ -1,5 +1,5 @@
 
-class FtpLoader():
+class BaseFtpLoader():
     '''_summary_
     '''
     def __init__(self) -> None:
@@ -18,7 +18,7 @@ class FtpLoader():
         pass
 
 
-class FtpLoaderEnsemble(FtpLoader):
+class EnsembleFtpLoader(FtpLoader):
 
     def __init__(self, species, genome_assembly, annotation_release) -> None:
         super().__init__()
@@ -30,7 +30,7 @@ class FtpLoaderEnsemble(FtpLoader):
         pass
 
 
-class FTPLoaderNCBI(FtpLoader):
+class NcbiFTPLoader(FtpLoader):
 
     def __init__(self, species, genome_assembly, annotation_release) -> None:
         super().__init__()
