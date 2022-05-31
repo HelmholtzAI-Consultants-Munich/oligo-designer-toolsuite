@@ -4,15 +4,30 @@ Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA tha
 
 Various tools exist that provide custom design of oligo sequences depending on the area of application. Interestingly, all those pipelines have many common basic processing steps, ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos. Despite the fact that most tools apply the same basic processing steps, each newly developed tool usually uses its own implementation and different versions of package dependencies for those basic processing steps. As a consequence, the comparability of tools that differ only in certain steps is hampered, but also the development of new tools and the update of existing tools is slowed down, because developers do not have a common resource for basic functionalities to fall back on. We tackle this issue by providing such a common resource in our *Oligo Designer Toolsuite*. This Toolsuite is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps. 
 
+![](docs/figures/oligo_design.png)
+
 ## Installation
 
 **Requirements:**
 
-- \>= Python 3.8 
-- ```'datetime```, ```argparse```, ```pyyaml```, ```iteration_utilities```, ```pandas```, 
-- ```Bio```, ```gtfparse```, ```pyfaidx```,  ```pybedtools```, ```networkx```
+This package was build with Python 3.8 
+
+| Package  | Version |
+| ------------- | ------------- |
+| argparse  | 1.4.0  |
+| Bio  | 1.3.8  |
+| datetime | 4.4 |
+| gtfparse  | 1.2.1 |
+| iteration_utilities  | 0.11.0 |
+| networkx  | 2.8.1 |
+| pandas  | 1.4.2 |
+| pybedtools  | 0.9.0 |
+| pyfaidx  | 0.6.4 |
+| pyyaml  | 6.0 |
+
 
 All required packages are automatically installed if installation is done via ```pip```.
+
 
 **Install Options:**
 
@@ -34,6 +49,7 @@ pip install -e .        (Development Installation as python package: run inside 
 
 Note: if you are using conda, first install pip with: ```conda install pip```
 
+In addition to the packages listed above, you need to install *Blast Software*. This can be done via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```. 
 
 # Implemented Oligo Design Pipelines
 
@@ -70,6 +86,9 @@ Import padlock probe design pipeline as python package:
 
 ```
 import oligo_designer_toolsuite.pipelines.padlock_probe_designer as packlock_probe_designer
+
+config = './config/padlock_probe_designer.yaml'
+dir_output = './padlock_probes'
 
 annotations = packlock_probe_designer.download_annotations(config, dir_output)
 packlock_probe_designer.filter_probes(config, annotations, dir_output)
