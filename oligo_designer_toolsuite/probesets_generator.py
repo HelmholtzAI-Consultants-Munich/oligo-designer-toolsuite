@@ -54,13 +54,6 @@ class ProbesetsGenerator:
     def get_overlap_matrix(self):
         """Generate overlap matrix for probes of each gene in directory dir_in
         """  
-        def _list_files_in_dir(dir, pattern):
-            for root, dirs, files, rootfd in os.fwalk(dir, follow_symlinks=True):
-                for basename in files:
-                    if fnmatch.fnmatch(basename, pattern):
-                        filename = os.path.join(root, basename)
-                        yield filename
-
         def _get_files():
             files = []
             number_dirs = 0
@@ -318,7 +311,7 @@ class ProbesetsGenerator:
 
 
         probes_files = [f for f in os.listdir(self.dir_probes) if f.startswith('probes_')]
-        genes = [f.split('_')[1].split(".")[0] for f in probes_files]
+        genes = [f.split('probes_', -1)[1].split(".")[0] for f in probes_files]
         overlap_files = [f'overlap_matrix_{gene_id}.txt' for gene_id in genes]
         
         for gene_id, probe_f, overlap_f in zip(genes,probes_files, overlap_files):

@@ -75,8 +75,8 @@ class ProbeSequenceDesigner:
         - table at dir_out+"padlock_probes_order.yml" with final padlock probe sequences and detection oligo sequences
         
         """ 
-        probeset_files = [f for f in os.listdir(self.dir_probesets) if f.startswith("ranked_probesets_")]
-        genes = [f.split("_")[-1].split(".")[0] for f in probeset_files]
+        probeset_files = [f for f in os.listdir(self.dir_probesets) if f.startswith('ranked_probesets_')]
+        genes = [f.split('ranked_probesets_')[-1].split('.')[0] for f in probeset_files]
         probes_files = [f"probes_{gene_id}.txt" for gene_id in genes]
         
         yaml_dict = {}

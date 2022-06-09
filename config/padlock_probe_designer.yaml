@@ -15,7 +15,7 @@ file_genome_fasta:  #./data_ncbi/annotations/GCF_000001405.40_GRCh38.p14_genomic
 ### Which geneset should be used? 
 # If probes should be designed for all genes of the provided annotation, leave gene_list empty, i.e. gene_list: 
 # If probes should only be designed for specific genes, provide a file with a list of genes (each row should contain one gene name in ensemble or NCBI format), e.g. gene_list: ./data/ensemble_gene_list.txt
-file_genes: ./data/genes_ncbi_10.txt
+file_genes: #./data/genes_ncbi_10.txt
 
 
 
