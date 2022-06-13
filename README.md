@@ -49,7 +49,7 @@ pip install -e .        (Development Installation as python package: run inside 
 
 Note: if you are using conda, first install pip with: ```conda install pip```
 
-In addition to the packages listed above, you need to install *Blast Software*. This can be done via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```. 
+In addition to the packages listed above, you need to install *Blast* and *BedTools* Software. *Blast* can installed via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast``` and *BedTools* can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via Bioconda installation of BedTools with ```conda install -c bioconda bedtools```.
 
 # Implemented Oligo Design Pipelines
 
