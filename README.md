@@ -34,7 +34,7 @@ All required packages are automatically installed if installation is done via ``
 PyPI install:
 
 ```
-pip install oligo-designer-toolbox
+pip install oligo-designer-toolsuite
 ```
 
 Installation of the package via pip from source:
