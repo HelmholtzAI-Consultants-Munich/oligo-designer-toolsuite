@@ -46,8 +46,8 @@ def download_annotations(config, dir_output, download_only=False):
 
     t = time.time()
 
-    annotations = AnnotationLoader(config, dir_output)
-    annotations.load_annotations()
+    annotations = AnnotationLoader(config, dir_output) #call FTPLoader(input)
+    annotations.load_annotations() 
 
     if not download_only:
         annotations.load_genes()
