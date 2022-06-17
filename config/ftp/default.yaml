@@ -1,4 +1,4 @@
-# parameters for download of ensemble (release 104) annotation from ftp server 
+# parameters for download of ensemble (release 104) annotation from ftp server
 ftp_gene_ensemble:
   ftp_link: 'ftp.ensembl.org' # link to ftp server
   directory: 'pub/release-104/gtf/homo_sapiens' # directory that contains gene annotation file
@@ -18,7 +18,7 @@ ftp_gene_ncbi:
   #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
   #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'
   file_name: 'GCF_000001405.39_GRCh38.p13_genomic.gtf' # name of gene annotation file
-  #file_name: 'GCF_000001405.38_GRCh38.p12_genomic.gtf' 
+  #file_name: 'GCF_000001405.38_GRCh38.p12_genomic.gtf'
 
 ftp_genome_ncbi:
   ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
@@ -32,5 +32,5 @@ ftp_chr_mapping_ncbi:
   ftp_link: 'ftp.ncbi.nlm.nih.gov' # link to ftp server
   directory: 'genomes/all/annotation_releases/9606/109.20211119/GCF_000001405.39_GRCh38.p13' # directory that contains gene annotation file
   #directory: 'genomes/all/annotation_releases/9606/109/GCF_000001405.38_GRCh38.p12'
-  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers' 
+  #directory: 'refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers'
   file_name: 'assembly_report.txt' # name of chromosome mapping file

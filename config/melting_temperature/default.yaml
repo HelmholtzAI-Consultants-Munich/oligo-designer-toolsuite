@@ -18,7 +18,7 @@ Tm_parameters:
         Na: 1.25 #[mM]
         K: 75 #[mM]
         Tris: 20 #[mM]
-        Mg: 10 #[mM]    
+        Mg: 10 #[mM]
     detection_oligo:
         Na: 39 #[mM]
         K: 0 #[mM]
