@@ -45,7 +45,7 @@ class BaseDB():
 
         if annotation_source == 'NCBI':
             FTP = ftp_loader.FTPLoaderNCBI(species, genome_assembly, annotation_release)
-        elif annotation_source == 'ensemble'
+        elif annotation_source == 'ensemble':
             FTP = ftp_loader.FtpLoaderEnsemble(species, genome_assembly, annotation_release)
         
         file_annotation = FTP.download_gtf(dir_output)
