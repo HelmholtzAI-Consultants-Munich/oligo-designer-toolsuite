@@ -246,7 +246,7 @@ class AnnotationLoader:
             genes = list(genes['gene_id'].unique())
             random.shuffle(genes) #shuffle gene list for better distribution in batches
             
-            return genes[:5000]
+            return genes
 
         # load gene annotation
         self.gene_annotation = gtfparse.read_gtf(self.file_gene_gtf)
