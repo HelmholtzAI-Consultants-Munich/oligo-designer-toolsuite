@@ -480,8 +480,8 @@ class ProbeSequenceDesigner:
                     if new_pos == -1:
                         pos = p.rfind("T") - U_distance # 0
                     else:
-                        p = "".join(["U" if (i == pos+shift+new_pos) else nt for i,nt in enumerate(p)])
                         pos = pos+shift+new_pos
+                        p = p[:pos] + 'U' + p[pos+1:]
                         T_not_found = False
                         
             if fluorophor_pos == "right":

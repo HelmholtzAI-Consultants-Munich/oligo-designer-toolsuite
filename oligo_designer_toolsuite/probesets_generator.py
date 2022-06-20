@@ -15,6 +15,8 @@ import networkx as nx
 from pathlib import Path
 from functools import reduce
 
+import time
+
 ############################################
 # probe set generator class
 ############################################
@@ -76,30 +78,32 @@ class ProbesetsGenerator:
             return seqs_overlap
 
         def _compute_overlap_matrix(gene, probes):
-            matrix = pd.DataFrame(0, columns=probes.probe_id, index=probes.probe_id)
-            for i in probes.index:
-                probe1_starts =  [int(s) for s in str(probes.loc[i,'start']).split(";")]
-                probe1_ends =  [int(s) for s in str(probes.loc[i,'end']).split(";")]
-                probe1_intervals = [[start,end] for start,end in zip(probe1_starts, probe1_ends)]
-                pid1 = probes.loc[i,'probe_id']
-                for j in probes.index:
-                    probe2_starts =  [int(s) for s in str(probes.loc[j,'start']).split(";")]
-                    probe2_ends =  [int(s) for s in str(probes.loc[j,'end']).split(";")]
-                    probe2_intervals = [[start,end] for start,end in zip(probe2_starts, probe2_ends)]
-                    pid2 = probes.loc[j,'probe_id']
-                    if _get_overlap(probe1_intervals, probe2_intervals):
-                        matrix.loc[pid1,pid2] = 1
-                        matrix.loc[pid2,pid1] = 1
-                    else:
-                        matrix.loc[pid1,pid2] = 0
-                        matrix.loc[pid2,pid1] = 0
-                    if j > i:
-                        break
+            probes_copy = probes.astype('string')
+            probes_copy['starts'] = probes_copy['start'].str.split(';')
+            probes_copy['ends'] = probes_copy['end'].str.split(';')
+            probes_copy['intervals'] = [[[int(start[i]), int(end[i])] for i in range(len(start))] 
+                                        for start, end in zip(probes_copy['starts'], probes_copy['ends'])]
+
+
+            intervals = probes_copy.intervals.values
+            overlaps = [[_get_overlap(intervals[i], intervals[j]) for i in range(len(intervals)) if i > j] 
+                        for j in range(len(intervals))]
+            
+            for i in range(len(overlaps)):
+                overlaps[i].insert(0, True)
+                overlaps[i] = [False] * (len(overlaps[0]) - len(overlaps[i])) + overlaps[i]
+                
+            overlaps = np.array([np.array(overlaps_i) for overlaps_i in overlaps]).astype('int32')
+            overlaps = np.maximum(overlaps, overlaps.transpose())
+            
+            matrix = pd.DataFrame(overlaps, columns=probes.probe_id, index=probes.probe_id)
+            
             matrix.to_csv(os.path.join(self.dir_overlapmatrix, 'overlap_matrix_{}.txt'.format(gene)), sep='\t')
+
 
         def _get_overlap_matrix(files):
 
-            #jobs = []
+            jobs = []
             for idx in files.index:
                 files_gene = files.iloc[idx]
                 for index, value in files_gene.items():
@@ -109,16 +113,16 @@ class ProbesetsGenerator:
                     elif not pd.isna(value):
                         probes.append(pd.read_csv(value, sep='\t'))
                 probes = pd.concat(probes, axis=0, ignore_index=True)
-            
-                _compute_overlap_matrix(gene, probes)
-                #proc = multiprocessing.Process(target=_compute_overlap_matrix, args=(gene, probes, ))
-                #jobs.append(proc)
-                #proc.start()
+                
+                proc = multiprocessing.Process(target=_compute_overlap_matrix, args=(gene, probes, ))
+                jobs.append(proc)
+                proc.start()
 
-            #for job in jobs:
-            #    job.join()
+            for job in jobs:
+                job.join()
 
         files = _get_files()
+
         _get_overlap_matrix(files)
 
 
