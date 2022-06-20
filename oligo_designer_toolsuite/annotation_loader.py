@@ -246,7 +246,7 @@ class AnnotationLoader:
             genes = list(genes['gene_id'].unique())
             random.shuffle(genes) #shuffle gene list for better distribution in batches
             
-            return genes
+            return genes[:5000]
 
         # load gene annotation
         self.gene_annotation = gtfparse.read_gtf(self.file_gene_gtf)
@@ -390,13 +390,7 @@ class AnnotationLoader:
                 transcript_exons[transcript_id][int(exon_number)] = [exon_id, start, end]
                 transcript_info[transcript_id] = [gene_id, seqname, strand]
                 
-            if not ('transcript' in self.gene_annotation['feature'].values):
-                delete_ids = []
-                for transcript_id in transcript_exons:
-                    if transcript_id not in transcript_info:
-                        delete_ids.append(transcript_id)
-                for transcript_id in delete_ids:
-                    del transcript_exons[transcript_id]
+            transcript_exons = {transcript_id: transcript_exons[transcript_id] for transcript_id in transcript_exons if transcript_id in transcript_info}
                 
             return transcript_exons, transcript_info
 
@@ -710,19 +704,19 @@ class AnnotationLoader:
         pyfaidx.Fasta(self.file_genome_fasta)
 
         # create probes in parallele 
-        #jobs = []
+        jobs = []
         for batch_id in range(self.number_batchs): 
             genes_batch = self.genes[(self.batch_size * batch_id):(min(self.batch_size * (batch_id+1), len(self.genes)+1))]
-            _get_probes(batch_id, genes_batch)
+            # _get_probes(batch_id, genes_batch)
         
-            #proc = multiprocessing.Process(target=_get_probes, args=(batch_id, genes_batch, ))
-            #jobs.append(proc)
-            #proc.start()
+            proc = multiprocessing.Process(target=_get_probes, args=(batch_id, genes_batch, ))
+            jobs.append(proc)
+            proc.start()
 
         #print('\n {} \n'.format(jobs))
 
-        #for job in jobs:
-        #    job.join()
+        for job in jobs:
+            job.join()
 
         # remove index file
         os.remove('{}.fai'.format(self.file_genome_fasta))

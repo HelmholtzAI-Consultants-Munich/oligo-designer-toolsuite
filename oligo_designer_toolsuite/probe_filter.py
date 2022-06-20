@@ -164,17 +164,17 @@ class ProbeFilter:
         self.duplicated_sequences = _get_duplicated_sequences()
                 
         # run filter with multiprocess
-        #jobs = []
+        jobs = []
         for batch_id in range(self.number_batchs):
-            _filter_probes_exactmatch(batch_id)
-            #proc = multiprocessing.Process(target=_filter_probes_exactmatch, args=(batch_id, ))
-            #jobs.append(proc)
-            #proc.start()
+            # _filter_probes_exactmatch(batch_id)
+            proc = multiprocessing.Process(target=_filter_probes_exactmatch, args=(batch_id, ))
+            jobs.append(proc)
+            proc.start()
 
         #print('\n {} \n'.format(jobs))
 
-        #for job in jobs:
-        #    job.join()  
+        for job in jobs:
+            job.join()  
 
 
     def run_blast_search(self):   
@@ -201,17 +201,17 @@ class ProbeFilter:
         out, err = cmd()
 
         # run blast with multi process
-        #jobs = []
+        jobs = []
         for batch_id in range(self.number_batchs):
-            _run_blast(batch_id)
-            #proc = multiprocessing.Process(target=_run_blast, args=(batch_id, ))
-            #jobs.append(proc)
-            #proc.start()
+            # _run_blast(batch_id)
+            proc = multiprocessing.Process(target=_run_blast, args=(batch_id, ))
+            jobs.append(proc)
+            proc.start()
 
         #print('\n {} \n'.format(jobs))
 
-        #for job in jobs:
-        #    job.join()   
+        for job in jobs:
+            job.join()   
 
     
     def filter_probes_by_blast_results(self):
@@ -338,17 +338,17 @@ class ProbeFilter:
                 for gene_id in self.removed_genes:
                     output.write(f'{gene_id}\t0\n')
 
-        #jobs = []
+        jobs = []
         for batch_id in range(self.number_batchs):
-            _process_blast_results(batch_id)
-            #proc = multiprocessing.Process(target=_process_blast_results, args=(batch_id, ))
-            #jobs.append(proc)
-            #proc.start()
+            # _process_blast_results(batch_id)
+            proc = multiprocessing.Process(target=_process_blast_results, args=(batch_id, ))
+            jobs.append(proc)
+            proc.start()
 
         #print('\n {} \n'.format(jobs))
         
-        #for job in jobs:
-        #    job.join()
+        for job in jobs:
+            job.join()
         
         _write_removed_genes()
 
