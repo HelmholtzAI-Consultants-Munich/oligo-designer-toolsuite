@@ -14,15 +14,19 @@ from Bio import SeqIO
 
 
 class BaseFtpLoader:
-    """Base class for downloading annotations from different FTP servers."""
+    """Base class for downloading annotations from different FTP servers.
 
-    def __init__(self) -> None:
+    :param dir_output: Path to directory for downloaded files.
+    :type dir_output: string
+    """
+
+    def __init__(self, dir_output) -> None:
         """Constructor method"""
-
+        self.dir_output = dir_output
         # set logger
         self.logging = logging.getLogger("probe_designer")
 
-    def ftp_download(self, ftp_link, ftp_directory, file_name, dir_output):
+    def download(self, ftp_link, ftp_directory, file_name):
 
         """
         Download file from ftp server.
@@ -32,8 +36,6 @@ class BaseFtpLoader:
         :type ftp_directory: string
         :param file_name: Name of target file.
         :type file_name: string
-        :param dir_output: Path to directory for downloaded files.
-        :type dir_output: string
         :return: Path to downloaded file.
         :rtype: string
         """
@@ -46,7 +48,7 @@ class BaseFtpLoader:
 
         for file in files:
             if re.match(file_name, file):
-                file_output = os.path.join(dir_output, file)
+                file_output = os.path.join(self.dir_output, file)
                 ftp.retrbinary("RETR " + file, open(file_output, "wb").write)
 
         ftp.quit()
@@ -69,32 +71,17 @@ class BaseFtpLoader:
 
         return file_output
 
-    def base_download_gtf(self, ftp_link, ftp_directory, file_name, dir_output):
-        """Download gene annotation in gtf file format from ftp server and unzip file.
+    def download_and_decompress(self, ftp_link, ftp_directory, file_name):
+        """Download genome sequence from ftp server and unzip file.
 
-        :return: Path to downloaded gene gtf file.
-        :rtype: string
-        """
-        file_gene_gtf_gz = self.ftp_download(
-            ftp_link, ftp_directory, file_name, dir_output
-        )
-        file_gene_gtf = self.decompress_gzip(file_gene_gtf_gz)
-
-        return file_gene_gtf
-
-    def base_download_fasta(self, ftp_link, ftp_directory, file_name, dir_output):
-        """Download genome sequence in fasta file format from ftp server and unzip file.
-
-        :return: Path to downloaded genome fasta file.
+        :return: Path to downloaded file.
         :rtype: string
         """
 
-        file_genome_fasta_gz = self.ftp_download(
-            ftp_link, ftp_directory, file_name, dir_output
-        )
-        file_genome_fasta = self.decompress_gzip(file_genome_fasta_gz)
+        file_download = self.download(ftp_link, ftp_directory, file_name)
+        file_unzipped = self.decompress_gzip(file_download)
 
-        return file_genome_fasta
+        return file_unzipped
 
 
 class FtpLoaderEnsemble(BaseFtpLoader):
@@ -107,14 +94,16 @@ class FtpLoaderEnsemble(BaseFtpLoader):
     :type genome_assembly: string
     """
 
-    def __init__(self, species, genome_assembly, annotation_release) -> None:
+    def __init__(
+        self, dir_output, species, genome_assembly, annotation_release
+    ) -> None:
         """Constructor method"""
-        super().__init__()
+        super().__init__(dir_output)
         self.species = species
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
 
-    def get_params(self, dir_output):
+    def get_params(self):
         """Get directory and file name for gtf and fasta files from Ensembl server
         :param dir_output: Path to directory for downloaded files.
         :type dir_output: string
@@ -122,7 +111,7 @@ class FtpLoaderEnsemble(BaseFtpLoader):
         :rtype: tuple of strings
         """
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self.ftp_link = self.generate_FTP_link()
 
@@ -132,9 +121,7 @@ class FtpLoaderEnsemble(BaseFtpLoader):
             species_id = "mus_musculus"
 
         if self.annotation_release == "current":
-            file_readme = self.ftp_download(
-                self.ftp_link, "pub/", "current_README", dir_output
-            )
+            file_readme = self.download(self.ftp_link, "pub/", "current_README")
             with open(file_readme, "r") as handle:
                 for line in handle:
                     if line.startswith("Ensembl Release"):
@@ -155,20 +142,20 @@ class FtpLoaderEnsemble(BaseFtpLoader):
     def generate_FTP_link(self):
         return "ftp.ensembl.org"
 
-    def download_gtf(self, dir_output):
+    def download_gtf(self):
         """Download gene annotation in gtf file format from ensembl and unzip file.
 
         :return: Path to downloaded gene gtf file.
         :rtype: string
         """
-        ftp_directory_gtf, _, ftp_file_gtf, _ = self.get_params(dir_output)
-        file_gene_gtf = self.base_download_gtf(
-            self.ftp_link, ftp_directory_gtf, ftp_file_gtf, dir_output
+        ftp_directory_gtf, _, ftp_file_gtf, _ = self.get_params()
+        file_gene_gtf = self.download_and_decompress(
+            self.ftp_link, ftp_directory_gtf, ftp_file_gtf
         )
 
         return file_gene_gtf
 
-    def download_fasta(self, dir_output):
+    def download_fasta(self):
         """
         Download genome sequence in fasta file format from Ensembl and unzip file.
         Map chromosome annotation to Ref-Seq accession number.
@@ -176,10 +163,10 @@ class FtpLoaderEnsemble(BaseFtpLoader):
         :rtype: string
         """
 
-        _, ftp_directory_fasta, _, ftp_file_fasta = self.get_params(dir_output)
+        _, ftp_directory_fasta, _, ftp_file_fasta = self.get_params()
 
-        file_genome_fasta = self.base_download_fasta(
-            self.ftp_link, ftp_directory_fasta, ftp_file_fasta, dir_output
+        file_genome_fasta = self.download_and_decompress(
+            self.ftp_link, ftp_directory_fasta, ftp_file_fasta
         )
 
         return file_genome_fasta
@@ -195,16 +182,18 @@ class FTPLoaderNCBI(BaseFtpLoader):
     :type genome_assembly: string
     """
 
-    def __init__(self, species, genome_assembly, annotation_release) -> None:
+    def __init__(
+        self, dir_output, species, genome_assembly, annotation_release
+    ) -> None:
         """Constructor method"""
-        super().__init__()
+        super().__init__(dir_output)
         self.species = species
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
 
         self.ftp_link = self.generate_FTP_link()
 
-    def get_params(self, dir_output):
+    def get_params(self):
         """Get directory and file name for gtf and fasta files from NCBI server
         :param dir_output: Path to directory for downloaded files.
         :type dir_output: string
@@ -212,7 +201,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :rtype: tuple of strings
         """
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         if self.species == "human":
             ftp_directory = "refseq/H_sapiens/annotation/annotation_releases/"
@@ -224,9 +213,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
         else:
             ftp_directory = ftp_directory + f"{self.annotation_release}/"
 
-        file_readme = self.ftp_download(
-            self.ftp_link, ftp_directory, "README", dir_output
-        )
+        file_readme = self.download(self.ftp_link, ftp_directory, "README")
         with open(file_readme, "r") as handle:
             for line in handle:
                 if line.startswith("ASSEMBLY NAME:"):
@@ -247,9 +234,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
     def generate_FTP_link(self):
         return "ftp.ncbi.nlm.nih.gov"
 
-    def _download_mapping_chr_names(
-        self, ftp_directory, ftp_file_chr_mapping, dir_output
-    ):
+    def _download_mapping_chr_names(self, ftp_directory, ftp_file_chr_mapping):
         """Download file with mapping of chromosome names between GenBank and Ref-Seq accession number
         from ftp server and create a mapping dictionary.
 
@@ -259,9 +244,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :rtype: dict
         """
 
-        file_mapping = self.ftp_download(
-            self.ftp_link, ftp_directory, ftp_file_chr_mapping, dir_output
-        )
+        file_mapping = self.download(self.ftp_link, ftp_directory, ftp_file_chr_mapping)
 
         # skip comment lines but keep last comment line for header
         with open(file_mapping) as handle:
@@ -295,7 +278,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         return mapping
 
-    def _map_chr_names_gene_gtf(self, file_gene_gtf, mapping, dir_output):
+    def _map_chr_names_gene_gtf(self, file_gene_gtf, mapping):
 
         """Process gene annotation file downloaded from NCBI: map chromosome annotation to Ref-Seq.
         :param file_gene_gtf: Path to gtf file with gene annotation.
@@ -303,7 +286,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
         :type mapping: dict
         """
-        file_tmp = os.path.join(dir_output, "temp.gtf")
+        file_tmp = os.path.join(self.dir_output, "temp.gtf")
 
         # write comment lines to new file
         with open(file_tmp, "w") as handle_out:
@@ -338,7 +321,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
             gene_annotation.to_csv(handle_out, sep="\t", header=False, index=False)
         os.replace(file_tmp, file_gene_gtf)
 
-    def _map_chr_names_genome_fasta(self, file_genome_fasta, mapping, dir_output):
+    def _map_chr_names_genome_fasta(self, file_genome_fasta, mapping):
 
         """Process genome sequence file downloaded from NCBI: map chromosome annotation to Ref-Seq.
         :param file_genome_fasta: Path to fasta file with genome sequence.
@@ -347,7 +330,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :type mapping: dict
         """
 
-        file_tmp = os.path.join(dir_output, "temp.fna")
+        file_tmp = os.path.join(self.dir_output, "temp.fna")
 
         with open(file_tmp, "w") as handle:
             for chromosome_sequnece in SeqIO.parse(file_genome_fasta, "fasta"):
@@ -368,7 +351,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         os.replace(file_tmp, file_genome_fasta)
 
-    def download_gtf(self, dir_output, mapping=None):
+    def download_gtf(self, mapping=None):
         """Download gene annotation in gtf file format from NCBI and unzip file.
         Map chromosome annotation to Ref-Seq accession number.
         :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
@@ -376,21 +359,17 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :return: Path to downloaded gene gtf file.
         :rtype: string
         """
-        ftp_directory, ftp_file_gtf, _, ftp_file_chr_mapping = self.get_params(
-            dir_output
-        )
-        mapping = self._download_mapping_chr_names(
-            ftp_directory, ftp_file_chr_mapping, dir_output
-        )
-        file_gene_gtf = self.base_download_gtf(
-            self.ftp_link, ftp_directory, ftp_file_gtf, dir_output
+        ftp_directory, ftp_file_gtf, _, ftp_file_chr_mapping = self.get_params()
+        mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
+        file_gene_gtf = self.download_and_decompress(
+            self.ftp_link, ftp_directory, ftp_file_gtf
         )
 
-        self._map_chr_names_gene_gtf(file_gene_gtf, mapping, dir_output)
+        self._map_chr_names_gene_gtf(file_gene_gtf, mapping)
 
         return file_gene_gtf
 
-    def download_fasta(self, dir_output, mapping=None):
+    def download_fasta(self, mapping=None):
         """
         Download genome sequence in fasta file format from NCBI and unzip file.
         Map chromosome annotation to Ref-Seq accession number.
@@ -405,15 +384,15 @@ class FTPLoaderNCBI(BaseFtpLoader):
             _,
             self.ftp_file_fasta,
             self.ftp_file_chr_mapping,
-        ) = self.get_params(dir_output)
+        ) = self.get_params()
 
         mapping = self._download_mapping_chr_names(
-            self.ftp_directory, self.ftp_file_chr_mapping, dir_output
+            self.ftp_directory, self.ftp_file_chr_mapping
         )
 
-        file_genome_fasta = self.base_download_fasta(
-            self.ftp_link, self.ftp_directory, self.ftp_file_fasta, dir_output
+        file_genome_fasta = self.download_and_decompress(
+            self.ftp_link, self.ftp_directory, self.ftp_file_fasta
         )
-        self._map_chr_names_genome_fasta(file_genome_fasta, mapping, dir_output)
+        self._map_chr_names_genome_fasta(file_genome_fasta, mapping)
 
         return file_genome_fasta
