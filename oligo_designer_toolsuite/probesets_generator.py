@@ -51,6 +51,7 @@ class ProbesetsGenerator:
         self.Tm_params = [config['Tm_opt'], config['Tm_min'], config['Tm_max']]
         self.GC_params = [config['GC_content_opt'], config['GC_content_min'], config['GC_content_max']]
         self.min_probes_per_gene = config['min_probes_per_gene']
+        self.n_batches = config['number_batchs']
 
 
     def get_overlap_matrix(self):
@@ -77,44 +78,58 @@ class ProbesetsGenerator:
                     seqs_overlap |= overlap > -1
             return seqs_overlap
 
-        def _compute_overlap_matrix(gene, probes):
-            probes_copy = probes.astype('string')
-            probes_copy['starts'] = probes_copy['start'].str.split(';')
-            probes_copy['ends'] = probes_copy['end'].str.split(';')
-            probes_copy['intervals'] = [[[int(start[i]), int(end[i])] for i in range(len(start))] 
-                                        for start, end in zip(probes_copy['starts'], probes_copy['ends'])]
+        def _compute_overlap_matrix(gene_list, probes_list):
+            for gene, probes in zip(gene_list, probes_list):
+                probes_copy = probes.astype('string')
+                probes_copy['starts'] = probes_copy['start'].str.split(';')
+                probes_copy['ends'] = probes_copy['end'].str.split(';')
+                probes_copy['intervals'] = [[[int(start[i]), int(end[i])] for i in range(len(start))] 
+                                            for start, end in zip(probes_copy['starts'], probes_copy['ends'])]
 
 
-            intervals = probes_copy.intervals.values
-            overlaps = [[_get_overlap(intervals[i], intervals[j]) for i in range(len(intervals)) if i > j] 
-                        for j in range(len(intervals))]
-            
-            for i in range(len(overlaps)):
-                overlaps[i].insert(0, True)
-                overlaps[i] = [False] * (len(overlaps[0]) - len(overlaps[i])) + overlaps[i]
+                intervals = probes_copy.intervals.values
+                overlaps = [[_get_overlap(intervals[i], intervals[j]) for i in range(len(intervals)) if i > j] 
+                            for j in range(len(intervals))]
                 
-            overlaps = np.array([np.array(overlaps_i) for overlaps_i in overlaps]).astype('int32')
-            overlaps = np.maximum(overlaps, overlaps.transpose())
-            
-            matrix = pd.DataFrame(overlaps, columns=probes.probe_id, index=probes.probe_id)
-            
-            matrix.to_csv(os.path.join(self.dir_overlapmatrix, 'overlap_matrix_{}.txt'.format(gene)), sep='\t')
+                for i in range(len(overlaps)):
+                    overlaps[i].insert(0, True)
+                    overlaps[i] = [False] * (len(overlaps[0]) - len(overlaps[i])) + overlaps[i]
+                    
+                overlaps = np.array([np.array(overlaps_i) for overlaps_i in overlaps]).astype('int32')
+                overlaps = np.maximum(overlaps, overlaps.transpose())
+                
+                matrix = pd.DataFrame(overlaps, columns=probes.probe_id, index=probes.probe_id)
+                
+                matrix.to_csv(os.path.join(self.dir_overlapmatrix, 'overlap_matrix_{}.txt'.format(gene)), sep='\t')
 
 
         def _get_overlap_matrix(files):
-
+            logging.info(self.n_batches)
+            
+            n_genes_per_job = len(files) // self.n_batches
+            
             jobs = []
-            for idx in files.index:
-                files_gene = files.iloc[idx]
-                for index, value in files_gene.items():
-                    if index == 'gene':
-                        gene = value
-                        probes = []
-                    elif not pd.isna(value):
-                        probes.append(pd.read_csv(value, sep='\t'))
-                probes = pd.concat(probes, axis=0, ignore_index=True)
+            for i in range(self.n_batches):
+                start = i * n_genes_per_job
+                end = start + n_genes_per_job
+                batch_files = files[start:end] if i < self.n_batches - 1 else files[start:]
+            
+                gene_list = []
+                probes_list = []
+                for idx in range(len(batch_files)):
+                    files_gene = batch_files.iloc[idx]
+                    for index, value in files_gene.items():
+                        if index == 'gene':
+                            gene = value
+                            probes = []
+                        elif not pd.isna(value):
+                            probes.append(pd.read_csv(value, sep='\t'))
+                    probes = pd.concat(probes, axis=0, ignore_index=True)
+                    
+                    gene_list.append(gene)
+                    probes_list.append(probes)
                 
-                proc = multiprocessing.Process(target=_compute_overlap_matrix, args=(gene, probes, ))
+                proc = multiprocessing.Process(target=_compute_overlap_matrix, args=(gene_list, probes_list, ))
                 jobs.append(proc)
                 proc.start()
 
