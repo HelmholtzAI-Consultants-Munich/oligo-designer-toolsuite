@@ -2,7 +2,7 @@
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers can customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
-Various tools exist that provide custom design of oligo sequences depending on the area of application. Interestingly, all those pipelines have many common basic processing steps, ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos. Despite the fact that most tools apply the same basic processing steps, each newly developed tool usually uses its own implementation and different versions of package dependencies for those basic processing steps. As a consequence, the comparability of tools that differ only in certain steps is hampered, but also the development of new tools and the update of existing tools is slowed down, because developers do not have a common resource for basic functionalities to fall back on. We tackle this issue by providing such a common resource in our *Oligo Designer Toolsuite*. This Toolsuite is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps. 
+Various tools exist that provide custom design of oligo sequences depending on the area of application. Interestingly, all those pipelines have many common basic processing steps, ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos. Despite the fact that most tools apply the same basic processing steps, each newly developed tool usually uses its own implementation and different versions of package dependencies for those basic processing steps. As a consequence, the comparability of tools that differ only in certain steps is hampered, but also the development of new tools and the update of existing tools is slowed down, because developers do not have a common resource for basic functionalities to fall back on. We tackle this issue by providing such a common resource in our *Oligo Designer Toolsuite*. This Toolsuite is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps.
 
 ![](docs/figures/oligo_design.png)
 
@@ -10,7 +10,7 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 **Requirements:**
 
-This package was build with Python 3.8 
+This package was build with Python 3.8
 
 | Package  | Version |
 | ------------- | ------------- |
@@ -40,7 +40,7 @@ pip install oligo-designer-toolbox
 Installation of the package via pip from source:
 
 ```
-git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git         
+git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
 
 pip install .        (Installation as python package: run inside directory)
 
@@ -49,7 +49,7 @@ pip install -e .        (Development Installation as python package: run inside 
 
 Note: if you are using conda, first install pip with: ```conda install pip```
 
-In addition to the packages listed above, you need to install *Blast Software*. This can be done via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```. 
+In addition to the packages listed above, you need to install *Blast Software*. This can be done via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```.
 
 # Implemented Oligo Design Pipelines
 
@@ -62,7 +62,7 @@ A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and
 
 **Command-Line Call:**
 
-To create padlock probes you can run the pipeline with 
+To create padlock probes you can run the pipeline with
 
 ```
 padlock_probe_designer -c ./config/padlock_probe_designer.yaml -o output/ [-d False]
