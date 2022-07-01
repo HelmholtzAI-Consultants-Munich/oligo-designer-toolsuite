@@ -97,7 +97,7 @@ class BaseFtpLoader:
                 )
 
 
-class FtpLoaderEnsemble(BaseFtpLoader):
+class FtpLoaderEnsembl(BaseFtpLoader):
     """Class for downloading annotations from Ensembl, inheriting from BaseFtpLoader.
     :param species: available species: human or mouse
     :type species: string
@@ -377,7 +377,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
         if file_type.casefold() == "gtf".casefold():
             self._map_chr_names_gene_gtf(output_file, mapping)
 
-        elif file_type.casefold() == "gtf".casefold():
+        elif file_type.casefold() == "fasta".casefold():
             self._map_chr_names_genome_fasta(output_file, mapping)
 
         return output_file
