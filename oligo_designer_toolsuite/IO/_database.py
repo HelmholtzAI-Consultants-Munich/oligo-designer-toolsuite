@@ -6,7 +6,6 @@ from pathlib import Path
 
 import _data_parser as data_parser
 import _ftp_loader as ftp_loader
-import gtfparse
 import pandas as pd
 import pyfaidx
 from Bio import SeqIO
@@ -1056,7 +1055,7 @@ class NcbiDB(BaseDB):
         )
         self.file_annotation = ftp.download_files("gtf")
         self.file_sequence = ftp.download_files("fasta")
-        self.annotation = gtfparse.read_gtf(self.file_annotation)
+        self.annotation = data_parser.read_gtf(self.file_annotation)
 
     def create_reference_DB(
         self,
@@ -1181,7 +1180,7 @@ class EnsemblDB(BaseDB):
         )
         self.file_annotation = ftp.download_files("gtf")
         self.file_sequence = ftp.download_files("fasta")
-        self.annotation = gtfparse.read_gtf(self.file_annotation)
+        self.annotation = data_parser.read_gtf(self.file_annotation)
 
     def create_reference_DB(
         self,
@@ -1315,7 +1314,7 @@ class CustomDB(BaseDB):
 
         self.file_annotation = file_annotation
         self.file_sequence = file_sequence
-        self.annotation = gtfparse.read_gtf(self.file_annotation)
+        self.annotation = data_parser.read_gtf(self.file_annotation)
 
     def create_reference_DB(
         self,
