@@ -1,3 +1,4 @@
+import csv
 import logging
 import os
 import shutil
@@ -366,6 +367,12 @@ def check_fasta_format(file):
     with open(file, "r") as handle:
         fasta = SeqIO.parse(handle, "fasta")
         return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
+
+
+def check_tsv_format(file):
+    with open(file, "r") as tsv:
+        read_tsv = csv.reader(tsv, delimiter="\t")
+        return any(read_tsv)
 
 
 def merge_fasta(files_fasta, file_merged_fasta):
