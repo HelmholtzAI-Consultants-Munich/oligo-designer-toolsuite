@@ -4,11 +4,12 @@ import shutil
 import warnings
 from pathlib import Path
 
-import _data_parser as data_parser
-import _ftp_loader as ftp_loader
+import IO._data_parser as data_parser
+import IO._ftp_loader as ftp_loader
 import pandas as pd
 import pyfaidx
 from Bio import SeqIO
+from oligo_transcript_generation._gene_transcript import GeneTranscript
 
 
 class BaseDB:
@@ -20,10 +21,10 @@ class BaseDB:
         self,
         probe_length_min,
         probe_length_max,
+        filters,
         species=None,
         genome_assembly=None,
         annotation_release=None,
-        filters=None,
     ):
         """Initializes the class.
 
@@ -54,6 +55,7 @@ class BaseDB:
         self.oligos_DB = None
         self.file_annotation = None
         self.file_sequence = None
+        self.gene_transcript = None
 
     def read_reference_DB(self, file_reference_DB):
         """Saves the path of a previously generated reference DB in the <self.file_reference_DB> attribute.
@@ -71,7 +73,7 @@ class BaseDB:
 
     def read_oligos_DB(self, file_oligos_DB):
         """Reads a previously generated oligos DB and saves it in the <self.oligos_DB> attribute as a dictionary.
-        The order of columns is : gene_id, probe_sequence, 'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', all the additional info computed by the filtersing class.
+        The order of columns is : gene_id, probe_sequence, 'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', all the additional info computed by the filtering class.
 
         :param file_oligos_DB: path of the oligos_DB file
         :type file_oligos_DB: str
@@ -83,10 +85,8 @@ class BaseDB:
                 raise ValueError("Database has incorrect format!")
         else:
             raise ValueError("Database file does not exist!")
-        if os.path.exists(file_oligos_DB):
-            self.file_oligos_DB = file_oligos_DB
-        else:
-            raise ValueError("Database file does not exist!")
+
+        self.file_oligos_DB = file_oligos_DB
 
         self.oligos_DB = {}
         handle_probe = open(self.file_oligos_DB, "r")
@@ -138,16 +138,15 @@ class BaseDB:
 
     def write_oligos_DB(self):
         """Writes the data structure self.oligos_DB in a tsv file in the <self.file_oligos_DB> path.
-        The order of columns is : gene_id, probe_sequence, 'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', all the additional info computed by the filtersing class.
+        The order of columns is : gene_id, probe_sequence, 'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', all the additional info computed by the filtering class.
         """
 
         with open(self.file_oligos_DB, "w") as handle_probe:
             columns = ["gene_id", "probe_sequence"]
-            # find all the other names of the columns (depend on the filterss applied)
+            # find all the other names of the columns (depend on the filters applied)
             tmp = list(self.oligos_DB.values())[0]
-            tmp = list(list(tmp.values())[0].keys())
+            tmp = list(list(tmp.values())[0].keys())  # what if the gene has no oligos?
             columns.extend(tmp)
-            print(columns)
             handle_probe.write("\t".join(columns) + "\n")
 
             for gene_id, probe in self.oligos_DB.items():
@@ -194,7 +193,7 @@ class BaseDB:
         :type block_size: int, optional
         """
 
-        def get_files_fasta():
+        def get_files_fasta(genome, gene_transcript, gene_CDS):
             """generates the fasta files that will compose the reference_DB
 
             :return: list of the fasta files
@@ -209,7 +208,9 @@ class BaseDB:
                 (
                     file_gene_transcript_annotation,
                     file_gene_transcript_fasta,
-                ) = self.__generate_gene_transcript(block_size, False, dir_output)
+                ) = self.gene_transcript.generate_for_reference(
+                    block_size, dir_output
+                )  # call the outer class to generate the gene trascript
                 os.remove(
                     file_gene_transcript_annotation
                 )  # not required anymore in this case
@@ -222,482 +223,8 @@ class BaseDB:
         if block_size is None:  # when not specified define it automatically
             block_size = self.probe_length_max + 5
 
-        files_fasta = get_files_fasta()
+        files_fasta = get_files_fasta(genome, gene_transcript, gene_CDS)
         data_parser.merge_fasta(files_fasta, self.file_reference_DB)
-
-    def __generate_gene_transcript(
-        self, block_size, oligos, dir_output="./output/annotation"
-    ):
-        """Creates a fasta file containing the whole transcriptome. The file contains also the exon junctions, which are the union of two consecuteive exons and
-        for each exon we consider only the last/ first <block_size> base pairs. The required compoutations are different between for the transcriptome for the reference and
-        the oligos sequences, the variable <oligos> defines which computations should be made.
-
-        :param block_size: size of the exon juctions
-        :type block_size: int
-        :param oligos: coputations for oligos or reference
-        :type oligos: bool
-        :param dir_output: folder where the fasta file will be saved, defaults to './output/annotation'
-        :type dir_output: str, optional
-        """
-
-        def _load_exon_annotation():
-            """Retrive exon annotation from loaded gene annotation.
-
-            :return: Exon annotation
-            :rtype: pandas.DataFrame
-            """
-            exon_annotation = self.annotation.loc[self.annotation["feature"] == "exon"]
-            exon_annotation = exon_annotation.assign(source="unknown")
-
-            if not "exon_id" in exon_annotation.columns:
-                exon_annotation["exon_id"] = (
-                    exon_annotation["transcript_id"]
-                    + "_exon"
-                    + exon_annotation["exon_number"]
-                )
-
-            # there are some exon annotations which have the same start and end coordinates and can't be saved as fasta from bedtools
-            exon_annotation = exon_annotation[
-                (exon_annotation.end - exon_annotation.start) > 0
-            ]
-            exon_annotation.reset_index(inplace=True, drop=True)
-            exon_annotation["start"] -= 1
-
-            return exon_annotation
-
-        def _load_unique_exons(exon_annotation):
-            """Merge overlapping exons, which have the same start and end coordinates.
-            Save transcript information for those exons.
-
-            :param exon_annotation: Exon annotation
-            :type exon_annotation: pandas.DataFrame
-            :return: Merged exon annotation
-            :rtype: pandas.DataFrame
-            """
-
-            exon_annotation["region"] = (
-                exon_annotation["seqname"]
-                + "_"
-                + exon_annotation["start"].astype("str")
-                + "_"
-                + exon_annotation["end"].astype("str")
-                + "_"
-                + exon_annotation["strand"]
-            )
-
-            aggregate_function = {
-                "gene_id": "first",
-                "transcript_id": ":".join,
-                "exon_id": ":".join,
-                "seqname": "first",
-                "start": "first",
-                "end": "first",
-                "score": "first",
-                "strand": "first",
-            }
-            merged_exons = exon_annotation.groupby(exon_annotation["region"]).aggregate(
-                aggregate_function
-            )
-
-            merged_exons["score"] = 0
-            merged_exons["thickStart"] = merged_exons["start"]
-            merged_exons["thickEnd"] = merged_exons["end"]
-            merged_exons["itemRgb"] = 0
-            merged_exons["blockCount"] = 1
-            merged_exons["block_sizes"] = merged_exons["end"] - merged_exons["start"]
-            merged_exons["blockStarts"] = 0
-            merged_exons["gene_transcript_exon_id"] = (
-                merged_exons["gene_id"]
-                + "_tid"
-                + merged_exons["transcript_id"]
-                + "_eid"
-                + merged_exons["exon_id"]
-            )
-            merged_exons = merged_exons[
-                [
-                    "gene_id",
-                    "gene_transcript_exon_id",
-                    "seqname",
-                    "start",
-                    "end",
-                    "score",
-                    "strand",
-                    "thickStart",
-                    "thickEnd",
-                    "itemRgb",
-                    "blockCount",
-                    "block_sizes",
-                    "blockStarts",
-                ]
-            ]
-
-            return merged_exons
-
-        def _merge_containing_exons(unique_exons):
-            """Merge exons that are contained in a larger exon, e.g. have the same start coordinates but different end coordinates, into one entry.
-
-            :param unique_exons: Dataframe with annotation of unique exons, where overlapping exons are merged.
-            :type unique_exons: pandas.DataFrame
-            :return: Dataframe with annotation of merged exons, where containing exons are merged.
-            :rtype: pandas.DataFrame
-            """
-
-            aggregate_function = {
-                "gene_id": "first",
-                "gene_transcript_exon_id": ":".join,
-                "seqname": "first",
-                "start": "min",
-                "end": "max",
-                "score": "first",
-                "strand": "first",
-                "thickStart": "min",
-                "thickEnd": "max",
-                "itemRgb": "first",
-                "blockCount": "first",
-                "block_sizes": "max",
-                "blockStarts": "first",
-            }
-
-            unique_exons["region_start"] = (
-                unique_exons["seqname"]
-                + "_"
-                + unique_exons["start"].astype("str")
-                + "_"
-                + unique_exons["strand"]
-            )
-            merged_unique_exons = unique_exons.groupby(
-                unique_exons["region_start"]
-            ).aggregate(aggregate_function)
-
-            merged_unique_exons["region_end"] = (
-                merged_unique_exons["seqname"]
-                + "_"
-                + merged_unique_exons["end"].astype("str")
-                + "_"
-                + merged_unique_exons["strand"]
-            )
-            merged_unique_exons = merged_unique_exons.groupby(
-                merged_unique_exons["region_end"]
-            ).aggregate(aggregate_function)
-
-            return merged_unique_exons
-
-        def _load_exon_junctions(block_size, exon_annotation):
-            """Get all possible exon junctions from the transcript annotation.
-            Merge overlapping exons jucntions, which have the same satrt and end coordinates.
-            Save transcript information for those exons.
-
-            :param block_size: Size of the exon junction regions, i.e. <block_size> bp upstream of first exon
-                and <block_size> bp downstream of second exon.
-            :type block_size: int
-            :return: Dataframe with annotation of exons junctions, where overlapping exons junctions are merged.
-            :rtype: pandas.DataFrame
-            """
-            transcript_exons, transcript_info = _get_transcript_exons_and_info(
-                exon_annotation
-            )
-            exon_junction_list = _get_exon_junction_list(
-                block_size, transcript_exons, transcript_info
-            )
-
-            exon_junctions = pd.DataFrame(
-                exon_junction_list,
-                columns=[
-                    "region",
-                    "gene_id",
-                    "transcript_id",
-                    "exon_id",
-                    "seqname",
-                    "start",
-                    "end",
-                    "score",
-                    "strand",
-                    "thickStart",
-                    "thickEnd",
-                    "itemRgb",
-                    "blockCount",
-                    "block_sizes",
-                    "blockStarts",
-                ],
-            )
-            aggregate_function = {
-                "gene_id": "first",
-                "transcript_id": ":".join,
-                "exon_id": ":".join,
-                "seqname": "first",
-                "start": "first",
-                "end": "first",
-                "score": "first",
-                "strand": "first",
-                "thickStart": "first",
-                "thickEnd": "first",
-                "itemRgb": "first",
-                "blockCount": "first",
-                "block_sizes": "first",
-                "blockStarts": "first",
-            }
-            merged_exon_junctions = exon_junctions.groupby(
-                exon_junctions["region"]
-            ).aggregate(aggregate_function)
-
-            merged_exon_junctions["gene_transcript_exon_id"] = (
-                merged_exon_junctions["gene_id"]
-                + "_tid"
-                + merged_exon_junctions["transcript_id"]
-                + "_eid"
-                + merged_exon_junctions["exon_id"]
-            )
-            merged_exon_junctions = merged_exon_junctions[
-                [
-                    "gene_id",
-                    "gene_transcript_exon_id",
-                    "seqname",
-                    "start",
-                    "end",
-                    "score",
-                    "strand",
-                    "thickStart",
-                    "thickEnd",
-                    "itemRgb",
-                    "blockCount",
-                    "block_sizes",
-                    "blockStarts",
-                ]
-            ]
-
-            return merged_exon_junctions
-
-        def _get_transcript_exons_and_info(exon_annotation):
-            """Get list of exons that belong to a transcript.
-            Save information about each transcript, i.e. gene ID, chromosome and strand.
-
-            :param exon_annotation: Exon annotation.
-            :type exon_annotation: pandas.DataFrame
-            :return: Two dictionaries: transcript - exon mapping and transcript information.
-            :rtype: dict
-            """
-            transcripts = self.annotation.loc[self.annotation["transcript_id"] != ""]
-            transcripts = sorted(list(transcripts["transcript_id"].unique()))
-            transcript_exons = {key: {} for key in transcripts}
-            transcript_info = dict()
-
-            for (
-                transcript_id,
-                exon_number,
-                exon_id,
-                start,
-                end,
-                gene_id,
-                seqname,
-                strand,
-            ) in zip(
-                exon_annotation["transcript_id"],
-                exon_annotation["exon_number"],
-                exon_annotation["exon_id"],
-                exon_annotation["start"],
-                exon_annotation["end"],
-                exon_annotation["gene_id"],
-                exon_annotation["seqname"],
-                exon_annotation["strand"],
-            ):
-                transcript_exons[transcript_id][int(exon_number)] = [
-                    exon_id,
-                    start,
-                    end,
-                ]
-                transcript_info[transcript_id] = [gene_id, seqname, strand]
-
-            if not ("transcript" in self.annotation["feature"].values):
-                delete_ids = []
-                for transcript_id in transcript_exons:
-                    if transcript_id not in transcript_info:
-                        delete_ids.append(transcript_id)
-                for transcript_id in delete_ids:
-                    del transcript_exons[transcript_id]
-
-            return transcript_exons, transcript_info
-
-        def _get_exon_junction_list(block_size, transcript_exons, transcript_info):
-            """Get list of all possible exon junctions and save all required information for bed12 file.
-
-            :param block_size: Size of the exon junction regions, i.e. <block_size> bp upstream of first exon
-                and <block_size> bp downstream of second exon.
-            :type block_size: int
-            :param transcript_exons: Transcript - exon mapping.
-            :type transcript_exons: dict
-            :param transcript_info: Transcript information.
-            :type transcript_info: dict
-            :return: List of exon junctions.
-            :rtype: list
-            """
-            exon_junction_list = []
-
-            for transcript, exons in transcript_exons.items():
-                gene_id = transcript_info[transcript][0]
-                seqname = transcript_info[transcript][1]
-                strand = transcript_info[transcript][2]
-
-                if strand == "+":
-                    exons = [
-                        entry[1] for entry in sorted(exons.items())
-                    ]  # return only exon attributes sorted by exon number
-                elif strand == "-":
-                    exons = [
-                        entry[1] for entry in sorted(exons.items(), reverse=True)
-                    ]  # return only exon attributes sorted by exon number -> reverse sort on minus strand
-
-                for idx, attributes in enumerate(exons):
-                    if idx == 0:  # first exon of transcript
-                        exon_upstream = attributes
-                        exons_small = []
-                    elif ((idx + 1) < len(exons)) & (
-                        (attributes[2] - attributes[1]) < block_size
-                    ):  # if exon is not the last exon of transcript and shorter than probe block_size but not the last exon -> create sequence with neighboring exons
-                        exons_small.append(attributes)
-                    else:
-                        exon_downstream = attributes
-                        block_size_up = min(
-                            block_size, (exon_upstream[2] - exon_upstream[1])
-                        )  # catch case that first or last exon < block_size
-                        block_size_down = min(
-                            block_size, (exon_downstream[2] - exon_downstream[1])
-                        )  # catch case that first or last exon < block_size
-                        start_up = exon_upstream[2] - block_size_up
-                        end_down = exon_downstream[1] + block_size_down
-
-                        if exons_small == []:
-                            blockCount = 2
-                            block_size_length_entry = "{},{}".format(
-                                block_size_up, block_size_down
-                            )
-                            block_size_start_entry = "{},{}".format(
-                                0, exon_downstream[1] - start_up
-                            )
-                        else:
-                            blockCount = len(exons_small) + 2
-                            block_size_length_entry = (
-                                str(block_size_up)
-                                + ","
-                                + ",".join(
-                                    [
-                                        str(attributes[2] - attributes[1])
-                                        for attributes in exons_small
-                                    ]
-                                )
-                                + ","
-                                + str(block_size_down)
-                            )
-                            block_size_start_entry = (
-                                "0,"
-                                + ",".join(
-                                    [
-                                        str(
-                                            attributes[1] - start_up,
-                                        )
-                                        for attributes in exons_small
-                                    ]
-                                )
-                                + ","
-                                + str(exon_downstream[1] - start_up)
-                            )
-                            exons_small = []
-
-                        exon_junction_list.append(
-                            [
-                                "{}_{}_{}_{}".format(
-                                    seqname, start_up, end_down, strand
-                                ),
-                                gene_id,
-                                transcript,
-                                "{}_{}".format(exon_upstream[0], exon_downstream[0]),
-                                seqname,
-                                start_up,
-                                end_down,
-                                0,
-                                strand,
-                                start_up,
-                                end_down,
-                                0,
-                                blockCount,
-                                block_size_length_entry,
-                                block_size_start_entry,
-                            ]
-                        )
-                        exon_upstream = attributes
-
-            return exon_junction_list
-
-        # get annotation of exons and
-        exons_annotation = _load_exon_annotation()
-        # merge exon annotations for the same region
-        unique_exons = _load_unique_exons(exons_annotation)
-        if not oligos:  # only for the reference class
-            unique_exons = _merge_containing_exons(unique_exons)
-        # get exon junction annotation
-        exon_junctions_probes = _load_exon_junctions(block_size, exons_annotation)
-        # concatenate the two annotations
-        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_probes])
-        gene_transcript_annotation = gene_transcript_annotation.sort_values(
-            by=["gene_id"]
-        )
-        gene_transcript_annotation.reset_index(inplace=True, drop=True)
-        # save the gene transcript annotation
-        file_gene_transcript_annotation = os.path.join(
-            dir_output, "gene_transcript.bed"
-        )
-        # for the oligos we don't need the fasta file and we need the gene, transcript, exon informations
-        if oligos:
-            file_gene_transcript_fasta = None
-            gene_transcript_annotation[
-                [
-                    "seqname",
-                    "start",
-                    "end",
-                    "gene_id",
-                    "gene_transcript_exon_id",
-                    "score",
-                    "strand",
-                    "thickStart",
-                    "thickEnd",
-                    "itemRgb",
-                    "blockCount",
-                    "block_sizes",
-                    "blockStarts",
-                ]
-            ].to_csv(
-                file_gene_transcript_annotation, sep="\t", header=False, index=False
-            )
-        else:
-            gene_transcript_annotation[
-                [
-                    "seqname",
-                    "start",
-                    "end",
-                    "gene_id",
-                    "score",
-                    "strand",
-                    "thickStart",
-                    "thickEnd",
-                    "itemRgb",
-                    "blockCount",
-                    "block_sizes",
-                    "blockStarts",
-                ]
-            ].to_csv(
-                file_gene_transcript_annotation, sep="\t", header=False, index=False
-            )
-            # create the fasta file
-            file_gene_transcript_fasta = os.path.join(
-                dir_output, "gene_transcript.fasta"
-            )
-            data_parser.get_sequence_from_annotation(
-                file_gene_transcript_annotation,
-                self.file_sequence,
-                file_gene_transcript_fasta,
-                split=True,
-            )
-
-        return file_gene_transcript_annotation, file_gene_transcript_fasta
 
     def __generate_gene_CDS():
         """'Creates a fasta file containing the whole transcriptome."""
@@ -725,15 +252,15 @@ class BaseDB:
         :type write: bool, optional
         """
 
-        def create_target_region():
+        def create_target_region(region, genes):
             """cretares the annotation file for the specified region."""
 
             if region == "genome":
                 file_region_annotation = None
                 # TODO
             elif region == "gene_transcript":
-                file_region_annotation, _ = self.__generate_gene_transcript(
-                    self.probe_length_max - 1, True, dir_output
+                file_region_annotation = self.gene_transcript.generate_for_oligos(
+                    self.probe_length_max - 1, dir_output, genes
                 )
             elif region == "gene_CDS":
                 file_region_annotation = None
@@ -752,7 +279,7 @@ class BaseDB:
             random.shuffle(genes)
             return genes
 
-        file_region_annotation = create_target_region()
+        file_region_annotation = create_target_region(region, genes)
         if genes is None:
             genes = get_gene_list_from_annotation()
         self.oligos_DB = self.__generate_oligos(
@@ -922,10 +449,9 @@ class BaseDB:
                             probe_start = start + i
                             probe_end = start + i + probe_length
 
-                            # if we fulfill all the conditions, add the probe to the list of probes for this gene (still to implent)
-                            # fulfills, info = filter
-                            # if fulfills:  add the probe to the list of probes for this gene
-                            if probe_sequence in gene_probes[gene_id]:
+                            if (
+                                probe_sequence in gene_probes[gene_id]
+                            ):  # already checked if fulfills
                                 gene_probes[gene_id][probe_sequence][
                                     "transcript_id"
                                 ].append(transcript_id)
@@ -938,17 +464,27 @@ class BaseDB:
                                 gene_probes[gene_id][probe_sequence]["end"].append(
                                     probe_end
                                 )
-                            else:
-                                loaded_probes += 1
-                                gene_probes[gene_id][probe_sequence] = {
-                                    "transcript_id": [transcript_id],
-                                    "exon_id": [exon_id],
-                                    "chromosome": chrom,
-                                    "start": [probe_start],
-                                    "end": [probe_end],
-                                    "strand": strand,
-                                }
 
+                            else:
+                                # check if the probe fulfills the filters conditions
+                                fulfills, additional_features = self.filter_oligo(
+                                    probe_sequence
+                                )
+                                if fulfills:
+                                    loaded_probes += 1
+                                    gene_probes[gene_id][probe_sequence] = {
+                                        "transcript_id": [transcript_id],
+                                        "exon_id": [exon_id],
+                                        "chromosome": chrom,
+                                        "start": [probe_start],
+                                        "end": [probe_end],
+                                        "strand": strand,
+                                    }
+                                    gene_probes[gene_id][probe_sequence].update(
+                                        additional_features
+                                    )
+
+            print(f"the total number of probes found: {loaded_probes}")
             return gene_probes
 
         # create index file
@@ -990,8 +526,23 @@ class BaseDB:
 
         return probes
 
-    def filter_oligos(self):
-        """applies the used-defined filters."""
+    def filter_oligo(self, sequence):
+        """Applies the used-defined filters and returns the result and the additional computed features
+
+        :param sequence: _description_
+        :type sequence: _type_
+        :return: _description_
+        :rtype: _type_
+        """
+
+        fulfills = True
+        additional_features = {}
+        for filter in self.filters:
+            out, feat = filter.apply(sequence)
+            if not out:  # stop at the first false we obtain
+                return False, {}
+            additional_features.update(feat)
+        return fulfills, additional_features
 
 
 class NcbiDB(BaseDB):
@@ -1001,11 +552,11 @@ class NcbiDB(BaseDB):
         self,
         probe_length_min,
         probe_length_max,
+        filters,
         species=None,
         genome_assembly=None,
         annotation_release=None,
         dir_output="./output/annotation",
-        filters=None,
     ):
         """Sets species, genome_assembly, annotation_release to a predefined value if thay are not given in input
             Dowloads the fasta and annotation files from the NCBI server and stores them in the dir_output folder
@@ -1044,6 +595,7 @@ class NcbiDB(BaseDB):
         super().__init__(
             probe_length_min,
             probe_length_max,
+            filters,
             species,
             genome_assembly,
             annotation_release,
@@ -1055,7 +607,7 @@ class NcbiDB(BaseDB):
         )
         self.file_annotation = ftp.download_files("gtf")
         self.file_sequence = ftp.download_files("fasta")
-        self.annotation = data_parser.read_gtf(self.file_annotation)
+        self.gene_transcript = GeneTranscript(self.file_sequence, self.file_annotation)
 
     def create_reference_DB(
         self,
@@ -1126,11 +678,11 @@ class EnsemblDB(BaseDB):
         self,
         probe_length_min,
         probe_length_max,
+        filters,
         species=None,
         genome_assembly=None,
         annotation_release=None,
         dir_output="./output/annotation",
-        filters=None,
     ):
         """Sets species, genome_assembly, annotation_release to a predefined value if thay are not given in input
             Dowloads the fasta and annotation files from the Ensemble server and stores them in the dir_output folder
@@ -1169,6 +721,7 @@ class EnsemblDB(BaseDB):
         super().__init__(
             probe_length_min,
             probe_length_max,
+            filters,
             species,
             genome_assembly,
             annotation_release,
@@ -1180,7 +733,7 @@ class EnsemblDB(BaseDB):
         )
         self.file_annotation = ftp.download_files("gtf")
         self.file_sequence = ftp.download_files("fasta")
-        self.annotation = data_parser.read_gtf(self.file_annotation)
+        self.gene_transcript = GeneTranscript(self.file_sequence, self.file_annotation)
 
     def create_reference_DB(
         self,
@@ -1251,12 +804,12 @@ class CustomDB(BaseDB):
         self,
         probe_length_min,
         probe_length_max,
+        filters,
         species=None,
         genome_assembly=None,
         annotation_release=None,
         file_annotation=None,
         file_sequence=None,
-        filters=None,
     ):
         """Sets species, genome_assembly, annotation_release to 'unknown' if thay are not given in input
             Saves the path of the user defined annoation and fasta file
@@ -1280,7 +833,7 @@ class CustomDB(BaseDB):
         """
         if species is None:
             species = "unknown"
-            warnings.warn(f"Species not specified.")
+            warnings.warn("Species not specified.")
 
         if genome_assembly is None:
             genome_assembly = "unknown"
@@ -1293,10 +846,10 @@ class CustomDB(BaseDB):
         super().__init__(
             probe_length_min,
             probe_length_max,
+            filters,
             species,
             genome_assembly,
             annotation_release,
-            filters,
         )
 
         # check the filles format
@@ -1314,7 +867,7 @@ class CustomDB(BaseDB):
 
         self.file_annotation = file_annotation
         self.file_sequence = file_sequence
-        self.annotation = data_parser.read_gtf(self.file_annotation)
+        self.gene_transcript = GeneTranscript(self.file_sequence, self.file_annotation)
 
     def create_reference_DB(
         self,
