@@ -64,7 +64,7 @@ class GeneTranscript:
                 "thickStart",
                 "thickEnd",
                 "itemRgb",
-                "blockCount",
+                "block_count",
                 "block_sizes",
                 "blockStarts",
             ]
@@ -133,7 +133,7 @@ class GeneTranscript:
                 "thickStart",
                 "thickEnd",
                 "itemRgb",
-                "blockCount",
+                "block_count",
                 "block_sizes",
                 "blockStarts",
             ]
@@ -220,7 +220,7 @@ class GeneTranscript:
         merged_exons["thickStart"] = merged_exons["start"]
         merged_exons["thickEnd"] = merged_exons["end"]
         merged_exons["itemRgb"] = 0
-        merged_exons["blockCount"] = 1
+        merged_exons["block_count"] = 1
         merged_exons["block_sizes"] = merged_exons["end"] - merged_exons["start"]
         merged_exons["blockStarts"] = 0
         merged_exons["gene_transcript_exon_id"] = (
@@ -242,7 +242,7 @@ class GeneTranscript:
                 "thickStart",
                 "thickEnd",
                 "itemRgb",
-                "blockCount",
+                "block_count",
                 "block_sizes",
                 "blockStarts",
             ]
@@ -270,7 +270,7 @@ class GeneTranscript:
             "thickStart": "min",
             "thickEnd": "max",
             "itemRgb": "first",
-            "blockCount": "first",
+            "block_count": "first",
             "block_sizes": "max",
             "blockStarts": "first",
         }
@@ -332,7 +332,7 @@ class GeneTranscript:
                 "thickStart",
                 "thickEnd",
                 "itemRgb",
-                "blockCount",
+                "block_count",
                 "block_sizes",
                 "blockStarts",
             ],
@@ -349,7 +349,7 @@ class GeneTranscript:
             "thickStart": "first",
             "thickEnd": "first",
             "itemRgb": "first",
-            "blockCount": "first",
+            "block_count": "first",
             "block_sizes": "first",
             "blockStarts": "first",
         }
@@ -376,7 +376,7 @@ class GeneTranscript:
                 "thickStart",
                 "thickEnd",
                 "itemRgb",
-                "blockCount",
+                "block_count",
                 "block_sizes",
                 "blockStarts",
             ]
@@ -486,7 +486,7 @@ class GeneTranscript:
                     end_down = exon_downstream[1] + block_size_down
 
                     if exons_small == []:
-                        blockCount = 2
+                        block_count = 2
                         block_size_length_entry = "{},{}".format(
                             block_size_up, block_size_down
                         )
@@ -494,7 +494,7 @@ class GeneTranscript:
                             0, exon_downstream[1] - start_up
                         )
                     else:
-                        blockCount = len(exons_small) + 2
+                        block_count = len(exons_small) + 2
                         block_size_length_entry = (
                             str(block_size_up)
                             + ","
@@ -536,7 +536,7 @@ class GeneTranscript:
                             start_up,
                             end_down,
                             0,
-                            blockCount,
+                            block_count,
                             block_size_length_entry,
                             block_size_start_entry,
                         ]
