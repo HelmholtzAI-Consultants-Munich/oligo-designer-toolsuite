@@ -1,4 +1,5 @@
 import os
+import random
 
 import IO._data_parser as data_parser
 import pandas as pd
@@ -8,6 +9,14 @@ class GeneTranscript:
     """Class that creates the transcriptome for the whole genome or for a set of genes."""
 
     def __init__(self, file_sequence, file_annotation):
+        """Initialize the class
+
+        :param file_sequence: pathe to the fasta file
+        :type file_sequence: str
+        :param file_annotation: path to the gtf annotation file
+        :type file_annotation: str
+        """
+
         self.file_sequence = file_sequence
         self.file_annotation = file_annotation
         self.annotation = data_parser.read_gtf(
@@ -15,8 +24,17 @@ class GeneTranscript:
         )  # dataframe with annotation file
 
     def generate_for_reference(self, block_size, dir_output="./output/annotation"):
-        # does also teh merging ad generates the fasta file
-        # returns the path of the annotation and fasta files
+        """Creates a fasta file containing the whole transcriptome and its annotation file for the reference DB. The file contains also the exon junctions, which are the union of two consecuteive exons and
+        for each exon we consider only the last/ first <block_size> base pairs.
+        The annotation file is in bed12 format, which allows split annotations, which are needed to get sequences for exon junctions.
+
+        :param block_size: size of the exon juctions
+        :type block_size: int
+        :param dir_output: folder where the fasta file will be saved, defaults to './output/annotation'
+        :type dir_output: str, optional
+        :return: path to fatsa and annotation files
+        :rtype: str, str
+        """
 
         # get annotation of exons and
         exons_annotation = self.__load_exon_annotation()
@@ -65,6 +83,17 @@ class GeneTranscript:
     def generate_for_oligos(
         self, block_size, dir_output="./output/annotation", genes=None
     ):
+        """Creates a annotation file fro the whole transcriptome for teh oligos DB. The file contains also the exon junctions, which are the union of two consecuteive exons and
+        for each exon we consider only the last/ first <block_size> base pairs.
+        The annotation file is in bed12 format, which allows split annotations, which are needed to get sequences for exon junctions.
+
+        :param block_size: size of the exon juctions
+        :type block_size: int
+        :param dir_output: folder where the fasta file will be saved, defaults to './output/annotation'
+        :type dir_output: str, optional
+        :return: path to fatsa and annotation files
+        :rtype: str, str
+        """
         # can take in input a list of genes for witch the transcriptome will be generated
         # returns the path of the annotation file
         if genes is None:
@@ -110,6 +139,18 @@ class GeneTranscript:
             ]
         ].to_csv(file_gene_transcript_annotation, sep="\t", header=False, index=False)
         return file_gene_transcript_annotation
+
+    def get_genes_from_annotation(self):
+        """generates all the different genes in the annotation file of the specified region.
+
+        :return: liato fo all the genes
+        :rtype: list of str
+        """
+
+        genes = self.annotation.loc[self.annotation["feature"] == "gene"]
+        genes = list(genes["gene_id"].unique())
+        random.shuffle(genes)
+        return genes
 
     def __load_exon_annotation(self, annotation_genes=None):
         """Retrive exon annotation from loaded gene annotation.
