@@ -178,17 +178,12 @@ class FTPLoaderNCBI(BaseFtpLoader):
     :type species: string
     :param annotation_release: release number (e.g. 109 or 109.20211119) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/.
     :type annotation_release: string
-    :param genome_assembly: genome assembly for species | for human: GRCh37 or GRCh38 | for mouse: GRCm38 or GRCm39
-    :type genome_assembly: string
     """
 
-    def __init__(
-        self, dir_output, species, genome_assembly, annotation_release
-    ) -> None:
+    def __init__(self, dir_output, species, annotation_release) -> None:
         """Constructor method"""
         super().__init__(dir_output)
         self.species = species
-        self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
 
         self.ftp_link = self.generate_FTP_link()
