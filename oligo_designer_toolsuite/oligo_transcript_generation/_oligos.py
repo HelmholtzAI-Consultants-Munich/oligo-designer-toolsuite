@@ -205,8 +205,6 @@ class Oligos:
                                     "end": [probe_end],
                                     "strand": strand,
                                 }
-
-            print(f"the total number of probes found: {loaded_probes}")
             return gene_probes
 
         region_annotation = pd.read_csv(
