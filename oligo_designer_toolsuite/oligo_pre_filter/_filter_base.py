@@ -1,15 +1,16 @@
-import warnings
+from abc import ABC, abstractmethod
 
 from Bio.SeqUtils import GC
 from Bio.SeqUtils import MeltingTemp as mt
 
 
-class Filter:
+class Filter(ABC):
     """Base class that gives the structure."""
 
     def __init__(self) -> None:
         pass
 
+    @abstractmethod
     def apply(self, sequence):
         """Applies teh filters and returns if the sequence fulfillts the constraints and the additional features computed in a dictionary.
         If this method is not reimplemented in teh filters gives a warning and returns True.
@@ -19,9 +20,6 @@ class Filter:
         :return: True
         :rtype: bool
         """
-
-        warnings.warn(f"No apply function  for {type(self).__name__}")
-        return True, {}
 
 
 class MaskedSequences(Filter):
