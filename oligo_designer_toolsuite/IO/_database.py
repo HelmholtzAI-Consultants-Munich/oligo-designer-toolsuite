@@ -185,8 +185,12 @@ class CustomDB:
         with open(self.file_oligos_DB, "w") as handle_probe:
             columns = ["gene_id", "probe_sequence"]
             # find all the other names of the columns (depend on the filters applied)
-            tmp = list(self.oligos_DB.values())[0]
-            tmp = list(list(tmp.values())[0].keys())  # what if the gene has no oligos?
+            genes = list(self.oligos_DB.keys())
+            i = 0
+            while self.oligos_DB[genes[i]] == {}:
+                i += 1
+            tmp = self.oligos_DB[genes[i]]
+            tmp = list(list(tmp.values())[0].keys())
             columns.extend(tmp)
             handle_probe.write("\t".join(columns) + "\n")
 

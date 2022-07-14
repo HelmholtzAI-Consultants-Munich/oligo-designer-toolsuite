@@ -196,25 +196,15 @@ class Oligos:
                                 )
 
                             else:
-                                # check if the probe fulfills the filters conditions
-                                fulfills, additional_features = self.filter(
-                                    probe_sequence
-                                )
-                                if fulfills:
-                                    loaded_probes += 1
-                                    gene_probes[gene_id][probe_sequence] = {
-                                        "transcript_id": [transcript_id],
-                                        "exon_id": [exon_id],
-                                        "chromosome": chrom,
-                                        "start": [probe_start],
-                                        "end": [probe_end],
-                                        "strand": strand,
-                                    }
-                                    gene_probes[gene_id][probe_sequence].update(
-                                        additional_features
-                                    )
-
-            print(f"the total number of probes found: {loaded_probes}")
+                                loaded_probes += 1
+                                gene_probes[gene_id][probe_sequence] = {
+                                    "transcript_id": [transcript_id],
+                                    "exon_id": [exon_id],
+                                    "chromosome": chrom,
+                                    "start": [probe_start],
+                                    "end": [probe_end],
+                                    "strand": strand,
+                                }
             return gene_probes
 
         region_annotation = pd.read_csv(
@@ -247,6 +237,7 @@ class Oligos:
                 )
             ]
             probes.update(_get_probes(batch_id, genes_batch))
+        probes = self.filter_oligos_DB(probes)
 
         return probes
 
@@ -261,9 +252,32 @@ class Oligos:
 
         fulfills = True
         additional_features = {}
-        for filter in self.filters:
-            out, feat = filter.apply(sequence)
+        for filt in self.filters:
+            out, feat = filt.apply(sequence)
             if not out:  # stop at the first false we obtain
                 return False, {}
             additional_features.update(feat)
         return fulfills, additional_features
+
+    def filter_oligos_DB(self, oligos_DB):
+        """Filter the database of probes based on teh given filters
+
+        :param oligos_DB: da5tabase of probes
+        :type oligos_DB: dict
+        :return: filtered oligos DB
+        :rtype: dict
+        """
+
+        loaded_probes = 0
+        gene_ids = list(oligos_DB.keys())
+        for gene_id in gene_ids:
+            probes_sequences = list(oligos_DB[gene_id].keys())
+            for probe_sequence in probes_sequences:
+                fulfills, additional_features = self.filter(probe_sequence)
+                if fulfills:
+                    oligos_DB[gene_id][probe_sequence].update(additional_features)
+                    loaded_probes += 1
+                else:
+                    del oligos_DB[gene_id][probe_sequence]
+        print(f"the total number of probes found: {loaded_probes}")
+        return oligos_DB
