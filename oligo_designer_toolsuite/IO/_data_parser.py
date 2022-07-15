@@ -19,7 +19,7 @@ from six.moves import intern
 def read_gtf(
     filepath_or_buffer,
     expand_attribute_column=True,
-    infer_biotype_column=False,
+    infer_biotype_column=True,
     column_converters={},
     usecols=None,
     features=None,
@@ -289,7 +289,7 @@ def expand_attribute_strings(
             # Ensembl release 79 added values like:
             #   transcript_support_level "1 (assigned to previous version 5)";
             # ...which gets mangled by splitting on spaces.
-            parts = kv.strip().split(" ", 2)[:2]
+            parts = kv.strip().split(" ", -1)[:2]
 
             if len(parts) != 2:
                 continue
@@ -380,7 +380,7 @@ def merge_fasta(files_fasta, file_merged_fasta):
     if files_fasta == []:
         raise ValueError("No fasta files provided for merge.")
 
-    with open(file_merged_fasta, "w") as handle_DB:
+    with open(file_merged_fasta, "wb") as handle_DB:
         for file in files_fasta:
             if os.path.exists(file):
                 shutil.copyfileobj(open(file, "rb"), handle_DB)
