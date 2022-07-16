@@ -15,8 +15,25 @@ class ProbeFilterExact(ProbeFilterBase):
 
     :param"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(
+        self,
+        number_batches,
+        ligation_region,
+        dir_output,
+        file_transcriptome_fasta,
+        file_probe_info,
+        genes,
+        min_probes_per_gene,
+    ):
+        super().__init__(
+            number_batches,
+            ligation_region,
+            dir_output,
+            file_transcriptome_fasta,
+            file_probe_info,
+            genes,
+            min_probes_per_gene,
+        )
 
         self.duplicated_sequences = None
 
@@ -58,110 +75,77 @@ class ProbeFilterExact(ProbeFilterBase):
             self.dir_annotations, "probes_sequence_batch{}.fna".format(batch_id)
         )
 
-        probes_info = pd.read_csv(
-            file_probe_info_batch,
-            sep="\t",
-            dtype={
-                "gene_id": str,
-                "transcript_id": str,
-                "exon_id": str,
-                "probe_sequence": str,
-                "chromosome": str,
-                "start": str,
-                "end": str,
-                "strand": str,
-                "GC_content": float,
-                "melting_temperature": float,
-                "melt_temp_arm1": float,
-                "melt_temp_arm2": float,
-                "melt_temp_dif_arms": float,
-                "length": int,
-                "ligation_site": int,
-            },
-        )
+        probes_info = pd.read_csv(file_probe_info_batch, sep="\t")
+
         os.remove(file_probe_info_batch)
 
         probes_info_filtered = probes_info[
-            ~probes_info.probe_sequence.isin(self.duplicated_sequences)
+            ~probes_info["probe_sequence"].isin(self.duplicated_sequences)
         ]
         probes_info_filtered.reset_index(inplace=True, drop=True)
         probe_ids = [
             f"{g_id}_pid{i}" for i, g_id in enumerate(probes_info_filtered["gene_id"])
         ]
         probes_info_filtered.insert(0, "probe_id", probe_ids)
-        _write_probes(
+
+        self._write_probes(
             probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
         )
 
-
-def _write_probes(
-    self, probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
-):
-    """Save filtered probe information in tsv file. Save probe sequences as fasta file.
-    :param probes_info_filtered: Dataframe with probe information, filtered based on sequence properties.
-    :type probes_info_filtered: pandas.DataFrame
-    :param file_probe_info_batch: Path to tsv file with probe info.
-    :type file_probe_info_batch: string
-    :param file_probe_fasta_batch: Path to fast file with probe sequences.
-    :type file_probe_fasta_batch: string
-    """
-    # save info table
-    probes_info_filtered[
-        [
-            "probe_id",
-            "probe_sequence",
-            "gene_id",
-            "transcript_id",
-            "exon_id",
-            "chromosome",
-            "start",
-            "end",
-            "strand",
-            "GC_content",
-            "melting_temperature",
-            "melt_temp_arm1",
-            "melt_temp_arm2",
-            "melt_temp_dif_arms",
-            "length",
-            "ligation_site",
-        ]
-    ].to_csv(file_probe_info_batch, sep="\t", index=False)
-
-    # save sequence of probes in fasta format
-    genes = probes_info_filtered.gene_id.unique()
-    self.number_subbatches = (len(genes) // self.max_genes_in_batch) + 1
-    for subbatch_id in range(self.number_subbatches):
-        file_probe_fasta_subbatch = file_probe_fasta_batch.replace(
-            ".fna", "_{}.fna".format(subbatch_id)
+    def _write_probes(
+        self, probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
+    ):
+        """Save filtered probe information in tsv file. Save probe sequences as fasta file.
+        :param probes_info_filtered: Dataframe with probe information, filtered based on sequence properties.
+        :type probes_info_filtered: pandas.DataFrame
+        :param file_probe_info_batch: Path to tsv file with probe info.
+        :type file_probe_info_batch: string
+        :param file_probe_fasta_batch: Path to fasta file with probe sequences.
+        :type file_probe_fasta_batch: string
+        """
+        # save info table
+        probes_info_filtered.to_csv(
+            file_probe_info_batch, sep="\t", header=True, index=False
         )
 
-        genes_subbatch = genes[
-            (subbatch_id * self.max_genes_in_batch) : (
-                (subbatch_id + 1) * self.max_genes_in_batch
+        # save sequence of probes in fasta format
+        genes = probes_info_filtered.gene_id.unique()
+        self.number_subbatches = (len(genes) // self.max_genes_in_batch) + 1
+        for subbatch_id in range(self.number_subbatches):
+            file_probe_fasta_subbatch = file_probe_fasta_batch.replace(
+                ".fna", "_{}.fna".format(subbatch_id)
             )
-        ]
-        probes_info_filtered_subbatch = probes_info_filtered.loc[
-            probes_info_filtered["gene_id"].isin(genes_subbatch)
-        ].copy()
-        probes_info_filtered_subbatch.reset_index(inplace=True, drop=True)
 
-        output = []
-        for row in probes_info_filtered_subbatch.index:
-            header = probes_info_filtered_subbatch.iloc[
-                row, probes_info_filtered_subbatch.columns.get_loc("probe_id")
+            genes_subbatch = genes[
+                (subbatch_id * self.max_genes_in_batch) : (
+                    (subbatch_id + 1) * self.max_genes_in_batch
+                )
             ]
-            sequence = Seq(
-                probes_info_filtered_subbatch.iloc[
-                    row, probes_info_filtered_subbatch.columns.get_loc("probe_sequence")
-                ]
-            )
-            output.append(SeqRecord(sequence, header, "", ""))
+            probes_info_filtered_subbatch = probes_info_filtered.loc[
+                probes_info_filtered["gene_id"].isin(genes_subbatch)
+            ].copy()
+            probes_info_filtered_subbatch.reset_index(inplace=True, drop=True)
 
-        with open(file_probe_fasta_subbatch, "w") as handle:
-            SeqIO.write(output, handle, "fasta")
+            output = []
+            for row in probes_info_filtered_subbatch.index:
+                header = probes_info_filtered_subbatch.iloc[
+                    row, probes_info_filtered_subbatch.columns.get_loc("probe_id")
+                ]
+
+                sequence = Seq(
+                    probes_info_filtered_subbatch.iloc[
+                        row,
+                        probes_info_filtered_subbatch.columns.get_loc("probe_sequence"),
+                    ]
+                )
+                output.append(SeqRecord(sequence, header, "", ""))
+
+            with open(file_probe_fasta_subbatch, "w") as handle:
+                SeqIO.write(output, handle, "fasta")
 
     def apply(self):
-        # get list of exact matches in probes pool
+        self.create_batches()
+
         self.duplicated_sequences = self._get_duplicated_sequences()
 
         # run filter with multiprocess
