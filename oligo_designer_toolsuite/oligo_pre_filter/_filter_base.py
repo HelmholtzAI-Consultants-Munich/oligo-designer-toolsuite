@@ -14,6 +14,7 @@ class Filter(ABC):
     def apply(self, sequence):
         """Applies teh filters and returns if the sequence fulfillts the constraints and the additional features computed in a dictionary.
         If this method is not reimplemented in teh filters gives a warning and returns True.
+        The aditional computed features must be float type.
 
         :param sequence: sequence to be filtered
         :type sequence: str
@@ -61,7 +62,7 @@ class GCContent(Filter):
 
         GC_content = round(GC(sequence), 2)
         sequence_features = {"GC_content": GC_content}
-        if GC_content >= self.GC_content_min and GC_content <= self.GC_content_max:
+        if self.GC_content_min < GC_content < self.GC_content_max:
             return True, sequence_features
         return False, {}  # if false the additional features are not been saved anyway
 
@@ -112,7 +113,7 @@ class MeltingTemperature(Filter):
 
         Tm = self.__get_Tm(sequence)
         sequence_features = {"melt_temp": Tm}
-        if Tm >= self.Tm_min and Tm <= self.Tm_max:
+        if self.Tm_min < Tm < self.Tm_max:
             return True, sequence_features
         return False, {}
 
