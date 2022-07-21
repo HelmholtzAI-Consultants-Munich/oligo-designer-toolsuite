@@ -12,10 +12,6 @@ from ._filter_base import ProbeFilterBase
 
 
 class ProbeFilterExact(ProbeFilterBase):
-    """This class filters probes based on exact matches. This process can be executed in a parallel fashion where no_batches = number threads.
-
-    :param"""
-
     def __init__(
         self,
         number_batches,
@@ -23,20 +19,59 @@ class ProbeFilterExact(ProbeFilterBase):
         dir_output,
         file_probe_info,
         genes,
+        n_jobs,
         dir_annotations,
     ):
+        """This class filters probes based on exact matches. This process can be executed in a parallel fashion where number batches defaults to number processes."""
         super().__init__(
             number_batches,
             ligation_region,
             dir_output,
             file_probe_info,
             genes,
+            n_jobs,
             dir_annotations,
         )
 
         self.duplicated_sequences = None
 
-    def _get_duplicated_sequences(self, number_batches):
+    def create_batches(self):
+
+        probeinfo_tsv = pd.read_csv(self.file_probe_info, sep="\t", header=0)
+
+        batch_size = int(len(self.genes) / self.number_batches) + (
+            len(self.genes) % self.number_batches > 0
+        )
+
+        for batch_id in range(self.number_batches):
+
+            file_probe_info_batch = os.path.join(
+                self.dir_annotations, "probes_info_batch{}.txt".format(batch_id)
+            )
+
+            file_probe_sequence_batch = os.path.join(
+                self.dir_annotations, "probes_sequence_batch{}.txt".format(batch_id)
+            )
+
+            # batch probe info
+            genes_batch = self.genes[
+                (batch_size * batch_id) : (
+                    min(batch_size * (batch_id + 1), len(self.genes) + 1)
+                )
+            ]
+
+            probeinfo = probeinfo_tsv.loc[
+                probeinfo_tsv["gene_id"].isin(genes_batch)
+            ].copy()
+            probeinfo.reset_index(inplace=True, drop=True)
+            probeinfo.to_csv(file_probe_info_batch, sep="\t", header=True, index=False)
+
+            sequences = probeinfo[probeinfo.columns[1]]
+            with open(file_probe_sequence_batch, "w") as handle_out:
+                for seq in sequences:
+                    handle_out.write(seq + "\n")
+
+    def _get_duplicated_sequences(self):
         """Get a list of probe sequences that have a exact match within the pool of all
         possible probe sequences for the list of input genes.
         :return: List of probe sequences with exact matches in the pool of probes.
@@ -44,7 +79,7 @@ class ProbeFilterExact(ProbeFilterBase):
         """
         sequences = []
 
-        for batch_id in range(number_batches):
+        for batch_id in range(self.number_batches):
             file_probe_sequence_batch = os.path.join(
                 self.dir_annotations, "probes_sequence_batch{}.txt".format(batch_id)
             )
@@ -95,7 +130,7 @@ class ProbeFilterExact(ProbeFilterBase):
         self, probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
     ):
         """Save filtered probe information in tsv file. Save probe sequences as fasta file.
-        :param probes_info_filtered: Dataframe with probe information, filtered based on sequence properties.
+        :param probes_info_filtered: Dataframe with probe information, where exact matches have been filtered out.
         :type probes_info_filtered: pandas.DataFrame
         :param file_probe_info_batch: Path to tsv file with probe info.
         :type file_probe_info_batch: string
@@ -109,7 +144,6 @@ class ProbeFilterExact(ProbeFilterBase):
 
         # save sequence of probes in fasta format
         genes = probes_info_filtered.gene_id.unique()
-        self.number_subbatches = (len(genes) // self.max_genes_in_batch) + 1
         for subbatch_id in range(self.number_subbatches):
             file_probe_fasta_subbatch = file_probe_fasta_batch.replace(
                 ".fna", "_{}.fna".format(subbatch_id)
@@ -142,28 +176,23 @@ class ProbeFilterExact(ProbeFilterBase):
             with open(file_probe_fasta_subbatch, "w") as handle:
                 SeqIO.write(output, handle, "fasta")
 
-    def apply(self, number_batches):
-        self.create_batches(number_batches)
+    def apply(self):
+        self.logging.info("Creating batches")
+        self.create_batches()
 
-        self.duplicated_sequences = self._get_duplicated_sequences(number_batches)
+        self.duplicated_sequences = self._get_duplicated_sequences()
 
         # run filter with joblib
 
         start_time = time.perf_counter()
         with parallel_backend("loky"):
-            Parallel(n_jobs=2)(
+            """Parallel(n_jobs=self.n_jobs)(
+                delayed(self._filter_probes_exactmatch)(batch_id)
+                for batch_id in range(self.number_batches)
+            )"""
+            Parallel(n_jobs=self.n_jobs, prefer="threads")(
                 delayed(self._filter_probes_exactmatch)(batch_id)
                 for batch_id in range(self.number_batches)
             )
-            # Parallel(n_jobs=3, prefer="threads")(delayed(self._filter_probes_exactmatch)(batch_id) for batch_id in range(self.number_batches))
         finish_time = time.perf_counter()
-        print(f"Program finished in {finish_time-start_time} seconds")
-
-        """proc = multiprocessing.Process(
-            target=self._filter_probes_exactmatch, args=(batch_id,)
-        )
-        jobs.append(proc)
-        proc.start()
-
-    for job in jobs:
-        job.join()"""
+        self.logging.info(f"Exact matches filtered in {finish_time-start_time} seconds")
