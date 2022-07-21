@@ -149,7 +149,6 @@ class Oligos:
 
             gene_probes = {key: {} for key in genes_batch}
             total_probes = 0
-            loaded_probes = 0
 
             # parse the exon fasta sequence file
             for exon in SeqIO.parse(file_region_fasta_batch, "fasta"):
@@ -179,9 +178,7 @@ class Oligos:
                             probe_start = start + i
                             probe_end = start + i + probe_length
 
-                            if (
-                                probe_sequence in gene_probes[gene_id]
-                            ):  # already checked if fulfills
+                            if probe_sequence in gene_probes[gene_id]:
                                 gene_probes[gene_id][probe_sequence][
                                     "transcript_id"
                                 ].append(transcript_id)
@@ -196,7 +193,6 @@ class Oligos:
                                 )
 
                             else:
-                                loaded_probes += 1
                                 gene_probes[gene_id][probe_sequence] = {
                                     "transcript_id": [transcript_id],
                                     "exon_id": [exon_id],
@@ -204,6 +200,7 @@ class Oligos:
                                     "start": [probe_start],
                                     "end": [probe_end],
                                     "strand": strand,
+                                    "length": probe_length,
                                 }
             return gene_probes
 
@@ -279,5 +276,4 @@ class Oligos:
                     loaded_probes += 1
                 else:
                     del oligos_DB[gene_id][probe_sequence]
-        print(f"the total number of probes found: {loaded_probes}")
         return oligos_DB

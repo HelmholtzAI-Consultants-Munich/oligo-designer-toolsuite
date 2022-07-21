@@ -380,7 +380,7 @@ def merge_fasta(files_fasta, file_merged_fasta):
     if files_fasta == []:
         raise ValueError("No fasta files provided for merge.")
 
-    with open(file_merged_fasta, "w") as handle_DB:
+    with open(file_merged_fasta, "wb") as handle_DB:
         for file in files_fasta:
             if os.path.exists(file):
                 shutil.copyfileobj(open(file, "rb"), handle_DB)

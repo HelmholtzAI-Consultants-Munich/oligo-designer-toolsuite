@@ -135,7 +135,7 @@ class CustomDB:
         line = handle_probe.readline()
         columns = line.split("\t")
         columns[-1] = columns[-1][0:-1]  # delete \n in the last word
-        add_features = len(columns) > 8
+        add_features = len(columns) > 9
         # read the first line
         line = handle_probe.readline()
         line = line.split("\t")
@@ -147,13 +147,20 @@ class CustomDB:
         self.oligos_DB[current_gene][sequence]["transcript_id"] = line[2].split(";")
         self.oligos_DB[current_gene][sequence]["exon_id"] = line[3].split(";")
         self.oligos_DB[current_gene][sequence]["chromosome"] = line[4]
-        self.oligos_DB[current_gene][sequence]["start"] = line[5].split(";")
-        self.oligos_DB[current_gene][sequence]["end"] = line[6].split(";")
+        self.oligos_DB[current_gene][sequence]["start"] = list(
+            map(int, line[5].split(";"))
+        )
+        self.oligos_DB[current_gene][sequence]["end"] = list(
+            map(int, line[6].split(";"))
+        )
         self.oligos_DB[current_gene][sequence]["strand"] = line[7]
+        self.oligos_DB[current_gene][sequence]["length"] = int(line[8])
         # retrive the remaining features if they were computed
         if add_features:
-            for i, column in enumerate(columns[8:]):
-                self.oligos_DB[current_gene][sequence][column] = line[i + 8]
+            for i, column in enumerate(columns[9:]):
+                self.oligos_DB[current_gene][sequence][column] = float(
+                    line[i + 9]
+                )  # assume that all the additional features are floats numbers
         # read the rest of the file
         for line in handle_probe:
             line = line.split("\t")
@@ -167,13 +174,18 @@ class CustomDB:
             self.oligos_DB[current_gene][sequence]["transcript_id"] = line[2].split(";")
             self.oligos_DB[current_gene][sequence]["exon_id"] = line[3].split(";")
             self.oligos_DB[current_gene][sequence]["chromosome"] = line[4]
-            self.oligos_DB[current_gene][sequence]["start"] = line[5].split(";")
-            self.oligos_DB[current_gene][sequence]["end"] = line[6].split(";")
+            self.oligos_DB[current_gene][sequence]["start"] = list(
+                map(int, line[5].split(";"))
+            )
+            self.oligos_DB[current_gene][sequence]["end"] = list(
+                map(int, line[6].split(";"))
+            )
             self.oligos_DB[current_gene][sequence]["strand"] = line[7]
+            self.oligos_DB[current_gene][sequence]["length"] = int(line[8])
             # retrive the remaining features if they were computed
             if add_features:
-                for i, column in enumerate(columns[8:]):
-                    self.oligos_DB[current_gene][sequence][column] = line[i + 8]
+                for i, column in enumerate(columns[9:]):
+                    self.oligos_DB[current_gene][sequence][column] = float(line[i + 9])
 
         handle_probe.close()
 
@@ -197,7 +209,7 @@ class CustomDB:
             for gene_id, probe in self.oligos_DB.items():
                 for probe_sequence, probe_attributes in probe.items():
                     # write the basic information information we compute for each probe
-                    output = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
+                    output = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
                         gene_id,
                         probe_sequence,
                         ";".join(probe_attributes["transcript_id"]),
@@ -206,10 +218,11 @@ class CustomDB:
                         ";".join(str(s) for s in probe_attributes["start"]),
                         ";".join(str(e) for e in probe_attributes["end"]),
                         probe_attributes["strand"],
+                        probe_attributes["length"],
                     )
                     # if we computed additional features we write also those
-                    if len(columns) > 8:
-                        for column in columns[8:]:
+                    if len(columns) > 9:
+                        for column in columns[9:]:
                             output += "\t{}".format(probe_attributes[column])
                         # \n at the end f the string
                     output += "\n"
@@ -268,7 +281,7 @@ class CustomDB:
         Path(dir_output).mkdir(parents=True, exist_ok=True)
         self.file_reference_DB = os.path.join(
             dir_output,
-            f"reference_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_genome_{genome}_gene_transcript_{gene_transcript}",
+            f"reference_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_genome_{genome}_gene_transcript_{gene_transcript}.fna",
         )
 
         if block_size is None:  # when not specified define it automatically
@@ -328,7 +341,7 @@ class CustomDB:
         Path(dir_output).mkdir(parents=True, exist_ok=True)
         self.file_oligos_DB = os.path.join(
             dir_output,
-            f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}",
+            f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.tsv",
         )
         file_region_annotation = create_target_region(region, genes)
         if genes is None:
