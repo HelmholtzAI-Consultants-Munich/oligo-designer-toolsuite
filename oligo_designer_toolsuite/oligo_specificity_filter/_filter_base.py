@@ -3,6 +3,8 @@ import os
 from abc import abstractmethod
 from pathlib import Path
 
+import joblib
+
 
 class ProbeFilterBase:
 
@@ -62,7 +64,7 @@ class ProbeFilterBase:
             self.number_subbatches = number_subbatches
 
         if n_jobs == None:
-            self.n_jobs = self.number_batches
+            self.n_jobs = joblib.cpu_count()
         else:
             self.n_jobs = n_jobs
 

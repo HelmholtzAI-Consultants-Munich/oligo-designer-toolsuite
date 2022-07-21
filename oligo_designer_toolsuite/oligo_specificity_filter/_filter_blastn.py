@@ -91,7 +91,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
                     strand="plus",
                     word_size=self.word_size,
                     perc_identity=self.percent_identity,
-                    num_threads=1,
+                    num_threads=self.n_jobs,
                 )
                 out, err = cmd()
 
@@ -102,6 +102,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
             input_file=self.file_transcriptome_fasta, dbtype="nucl"
         )
         out, err = cmd()
+
         finish_time = time.perf_counter()
 
         self.logging.info(f"Blast database created in {finish_time-start_time} seconds")
@@ -109,13 +110,10 @@ class ProbeFilterBlastn(ProbeFilterBase):
         # run blast in parallel
         start_time = time.perf_counter()
         with parallel_backend("loky"):
-            """Parallel(n_jobs=self.n_jobs)(
-                delayed(_run_blast)(batch_id)
-                for batch_id in range(self.number_batches)
-            )"""
-            Parallel(n_jobs=self.n_jobs, prefer="threads")(
+            Parallel(n_jobs=self.n_jobs)(
                 delayed(_run_blast)(batch_id) for batch_id in range(self.number_batches)
             )
+
         finish_time = time.perf_counter()
         self.logging.info(
             f"Blast alignmnet search finished in {finish_time-start_time} seconds"
@@ -322,14 +320,11 @@ class ProbeFilterBlastn(ProbeFilterBase):
 
         start_time = time.perf_counter()
         with parallel_backend("loky"):
-            """Parallel(n_jobs=self.n_jobs)(
-                delayed(_process_blast_results)(batch_id)
-                for batch_id in range(self.number_batches)
-            )"""
-            Parallel(n_jobs=self.n_jobs, prefer="threads")(
+            Parallel(n_jobs=self.n_jobs)(
                 delayed(_process_blast_results)(batch_id)
                 for batch_id in range(self.number_batches)
             )
+
         finish_time = time.perf_counter()
 
         self.logging.info(
@@ -342,6 +337,13 @@ class ProbeFilterBlastn(ProbeFilterBase):
         shutil.rmtree(self.dir_blast)
         for file in os.listdir(self.dir_annotations):
             if re.search("probes_*", file):
+                os.remove(os.path.join(self.dir_annotations, file))
+
+        for file in os.listdir(self.dir_annotations):
+            if re.search(
+                "reference_DB_unknown_unknown_Custom_release_unknown_genome_False_gene_transcript_True.n*",
+                file,
+            ):
                 os.remove(os.path.join(self.dir_annotations, file))
 
     def apply(self):
