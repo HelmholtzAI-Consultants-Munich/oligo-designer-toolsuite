@@ -16,9 +16,9 @@ class TestDBGeneration(unittest.TestCase):
     """Tests that the oligos DB and reference DB generated are correct"""
 
     @classmethod
-    def setUpClass(self) -> None:
+    def setUpClass(cls) -> None:
         """Define the classes and the filter parameters"""
-        self.genes = [
+        cls.genes = [
             "WASH7P",
             "DDX11L1",
             "TRNT",
@@ -31,7 +31,7 @@ class TestDBGeneration(unittest.TestCase):
             "LOC112268402_1",
         ]
 
-        self.Tm_parameters = {
+        cls.Tm_parameters = {
             "check": True,
             "strict": True,
             "c_seq": None,
@@ -51,7 +51,7 @@ class TestDBGeneration(unittest.TestCase):
             "Mg": 10,  # [mM]
         }
 
-        self.Tm_correction_parameters = {
+        cls.Tm_correction_parameters = {
             "DMSO": 0,
             "DMSOfactor": 0.75,
             "fmdfactor": 0.65,
@@ -65,20 +65,42 @@ class TestDBGeneration(unittest.TestCase):
         melting_temperature = MeltingTemperature(
             Tm_min=52,
             Tm_max=67,
-            Tm_parameters=self.Tm_parameters,
-            Tm_correction_parameters=self.Tm_correction_parameters,
+            Tm_parameters=cls.Tm_parameters,
+            Tm_correction_parameters=cls.Tm_correction_parameters,
         )
         arms_tm = PadlockArms(
             min_arm_length=10,
             max_Tm_dif=2,
             Tm_min=38,
             Tm_max=49,
-            Tm_parameters=self.Tm_parameters,
-            Tm_correction_parameters=self.Tm_correction_parameters,
+            Tm_parameters=cls.Tm_parameters,
+            Tm_correction_parameters=cls.Tm_correction_parameters,
         )
 
-        self.filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
-        self.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=self.filters)
+        cls.filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
+        cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters)
+
+    def test_transcriptome(self):
+        """Test that the reference DB created is correct"""
+        self.db.create_reference_DB()
+        file_computed = "output/annotation/gene_trascript_computed.fna"
+        # let's check only the first 200 000 lines
+        with open(self.db.file_reference_DB, mode="r") as complete:
+            with open(file_computed, mode="w+") as truncated:
+                for x in range(200000):
+                    line = complete.readline()
+                    truncated.write(line)
+        file_correct_full = "data/gene_trascript copy.fna"
+        file_correct = "data/gene_trascript.fna"
+        with open(file_correct_full, mode="r") as complete:
+            with open(file_correct, mode="w") as truncated:
+                for x in range(200000):
+                    line = complete.readline()
+                    truncated.write(line)
+        self.assertTrue(
+            filecmp.cmp(file_computed, file_correct),
+            "The gene transcript computed do not correspond to the correct one",
+        )
 
     def test_list_sequences(self):
         """Test that the oligos DB created is correct"""
@@ -118,20 +140,11 @@ class TestDBGeneration(unittest.TestCase):
                 f"The oligos DB changes when it is written and read for {sequence}.",
             )
 
-    def test_transcriptome(self):
-        """Test that the reference DB created is correct"""
-        self.db.create_reference_DB()
-        file_computed = self.db.file_reference_DB
-        file_correct = "data/gene_trascript.fna"
-        self.assertTrue(
-            filecmp.cmp(file_computed, file_correct),
-            "The gene transcript computed do not correspond to the correct one",
-        )
-
     @classmethod
     def tearDownClass(cls) -> None:
         """Delete all the files dowloaded."""
         shutil.rmtree("output")
+        del cls.db
 
 
 # run the tets
