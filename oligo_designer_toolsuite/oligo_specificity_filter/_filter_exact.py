@@ -186,7 +186,7 @@ class ProbeFilterExact(ProbeFilterBase):
 
         start_time = time.perf_counter()
         with parallel_backend("loky"):
-            Parallel(n_jobs=self.n_jobs)(
+            Parallel()(
                 delayed(self._filter_probes_exactmatch)(batch_id)
                 for batch_id in range(self.number_batches)
             )
