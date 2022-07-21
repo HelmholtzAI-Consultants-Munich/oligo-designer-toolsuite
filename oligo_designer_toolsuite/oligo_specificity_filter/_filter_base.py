@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from abc import abstractmethod
 from pathlib import Path
 
@@ -70,7 +71,11 @@ class ProbeFilterBase:
 
         # set logger
         log_file = os.path.join(self.dir_output, "logs/filter_probes.log")
-        logging.basicConfig(filename=log_file, filemode="w", level=logging.INFO)
+        file_handler = logging.FileHandler(filename=log_file)
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        handlers = [file_handler, stdout_handler]
+
+        logging.basicConfig(level=logging.INFO, handlers=handlers)
         self.logging = logging.getLogger("filter_probes")
 
         # set directory

@@ -110,7 +110,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         # run blast in parallel
         start_time = time.perf_counter()
         with parallel_backend("loky"):
-            Parallel(n_jobs=self.n_jobs)(
+            Parallel()(
                 delayed(_run_blast)(batch_id) for batch_id in range(self.number_batches)
             )
 
@@ -320,7 +320,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
 
         start_time = time.perf_counter()
         with parallel_backend("loky"):
-            Parallel(n_jobs=self.n_jobs)(
+            Parallel()(
                 delayed(_process_blast_results)(batch_id)
                 for batch_id in range(self.number_batches)
             )
