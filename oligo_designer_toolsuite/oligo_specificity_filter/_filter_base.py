@@ -21,20 +21,19 @@ class ProbeFilterBase:
         dir_output,
         file_probe_info,
         genes,
-        min_probes_per_gene,
         dir_annotations=None,
         number_subbatches=1,
         max_genes_in_batch=300,
     ):
-        self.number_batches = number_batches
+        self.number_batches = (number_batches,)
         self.ligation_region = ligation_region
         self.dir_output = dir_output
         self.number_subbatches = number_subbatches  # if number of genes in batch > max_genes_in_batch then split batch into multiple subbatches
         self.max_genes_in_batch = max_genes_in_batch  # if more than 300 genes in one batch split into subbatches to reduce required memory for loading blast results
-        self.min_probes_per_gene = min_probes_per_gene
         self.file_probe_info = file_probe_info
         self.genes = genes
         self.removed_genes = genes
+
         # set logger
         self.logging = logging.getLogger("filter_probes")
 
@@ -45,18 +44,15 @@ class ProbeFilterBase:
         else:
             self.dir_annotations = dir_annotations
 
-    def create_batches(self):
+    def create_batches(self, number_batches):
 
         probeinfo_tsv = pd.read_csv(self.file_probe_info, sep="\t", header=0)
 
-        # import glob
-
-        # self.number_batches = len(glob.glob(os.path.join(self.dir_annotations, 'region*.fna')))
-
-        batch_size = int(len(self.genes) / self.number_batches) + (
-            len(self.genes) % self.number_batches > 0
+        batch_size = int(len(self.genes) / number_batches) + (
+            len(self.genes) % number_batches > 0
         )
-        for batch_id in range(self.number_batches):
+
+        for batch_id in range(number_batches):
 
             file_probe_info_batch = os.path.join(
                 self.dir_annotations, "probes_info_batch{}.txt".format(batch_id)
@@ -65,18 +61,6 @@ class ProbeFilterBase:
             file_probe_sequence_batch = os.path.join(
                 self.dir_annotations, "probes_sequence_batch{}.txt".format(batch_id)
             )
-
-            # Get sequences from fasta batches and add to txt file
-            """sequences=[]
-
-            with open(file_region_fasta_batch, 'r') as handle:
-                for record in SeqIO.parse(handle, "fasta"):
-                    sequences.append(str(record.seq))
-
-
-            with open(file_probe_sequence_batch, 'w') as handle_out:
-                for seq in sequences:
-                    handle_out.write(seq + '\n')"""
 
             # batch probe info
             genes_batch = self.genes[
