@@ -1,12 +1,12 @@
-import glob
-import multiprocessing
 import os
 import re
 import shutil
+import time
 from pathlib import Path
 
 import pandas as pd
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
+from joblib import Parallel, delayed, parallel_backend
 
 from ._filter_base import ProbeFilterBase
 
@@ -24,7 +24,6 @@ class ProbeFilterBlastn(ProbeFilterBase):
         dir_output,
         file_probe_info,
         genes,
-        min_probes_per_gene,
         word_size,
         percent_identity,
         probe_length_min,
@@ -32,14 +31,9 @@ class ProbeFilterBlastn(ProbeFilterBase):
         coverage,
     ):
         super().__init__(
-            number_batches,
-            ligation_region,
-            dir_output,
-            file_probe_info,
-            genes,
-            min_probes_per_gene,
+            number_batches, ligation_region, dir_output, file_probe_info, genes
         )
-
+        self.number_batches = number_batches
         self.word_size = word_size
         self.percent_identity = percent_identity
         self.probe_length_min = probe_length_min
@@ -57,7 +51,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
             self.dir_output, "genes_with_insufficient_probes.txt"
         )
 
-    def run_blast_search(self):
+    def run_blast_search(self, num_threads):
         """Run BlastN alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts.
         BlastN identifies the transcript regions where probes match with a certain coverage and similarity.
         """
@@ -84,28 +78,31 @@ class ProbeFilterBlastn(ProbeFilterBase):
                     strand="plus",
                     word_size=self.word_size,
                     perc_identity=self.percent_identity,
-                    num_threads=1,
+                    num_threads=num_threads,
                 )
                 out, err = cmd()
 
         # create blast database
+        self.logging.info("Creating blast database")
+        start_time = time.perf_counter()
         cmd = NcbimakeblastdbCommandline(
             input_file=self.file_transcriptome_fasta, dbtype="nucl"
         )
         out, err = cmd()
+        finish_time = time.perf_counter()
 
-        # run blast with multi process
-        jobs = []
-        for batch_id in range(self.number_batches):
-            # _run_blast(batch_id)
-            proc = multiprocessing.Process(target=_run_blast, args=(batch_id,))
-            jobs.append(proc)
-            proc.start()
+        self.logging.info(f"Blast database created in {finish_time-start_time} seconds")
 
-        # print('\n {} \n'.format(jobs))
-
-        for job in jobs:
-            job.join()
+        # run blast in parallel
+        start_time = time.perf_counter()
+        with parallel_backend("loky"):
+            Parallel(n_jobs=2)(
+                delayed(self._run_blast)(batch_id)
+                for batch_id in range(self.number_batches)
+            )
+            # Parallel(n_jobs=3, prefer="threads")(delayed(self._filter_probes_exactmatch)(batch_id) for batch_id in range(self.number_batches))
+        finish_time = time.perf_counter()
+        self.logging.info(f"Blast run finished in {finish_time-start_time} seconds")
 
     def filter_probes_by_blast_results(self):
         """Process the output of the BlastN alignment search.
@@ -306,19 +303,19 @@ class ProbeFilterBlastn(ProbeFilterBase):
                 for gene_id in self.removed_genes:
                     output.write(f"{gene_id}\t0\n")
 
-        jobs = []
-        for batch_id in range(self.number_batches):
-            # _process_blast_results(batch_id)
-            proc = multiprocessing.Process(
-                target=_process_blast_results, args=(batch_id,)
+        start_time = time.perf_counter()
+        with parallel_backend("loky"):
+            Parallel(n_jobs=2)(
+                delayed(self._process_blast_results)(batch_id)
+                for batch_id in range(self.number_batches)
             )
-            jobs.append(proc)
-            proc.start()
+            # Parallel(n_jobs=3, prefer="threads")(delayed(self._filter_probes_exactmatch)(batch_id) for batch_id in range(self.number_batches))
+        finish_time = time.perf_counter()
+        self.logging.info(f"Blast run finished in {finish_time-start_time} seconds")
 
-        # print('\n {} \n'.format(jobs))
-
-        for job in jobs:
-            job.join()
+        self.logging.info(
+            f"Blast results processed in {finish_time-start_time} seconds"
+        )
 
         _write_removed_genes()
 
@@ -329,8 +326,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
                 os.remove(os.path.join(self.dir_annotations, file))
 
     def apply(self):
-        if len(glob.glob(self.dir_output + "/blast/blast_batch*")) == 0:
-            # self.create_batches()
-            self.run_blast_search()
+
+        self.run_blast_search()
 
         self.filter_probes_by_blast_results()

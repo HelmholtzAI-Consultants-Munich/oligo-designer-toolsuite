@@ -1,11 +1,12 @@
-import multiprocessing
 import os
+import time
 
 import iteration_utilities
 import pandas as pd
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from joblib import Parallel, delayed, parallel_backend
 
 from ._filter_base import ProbeFilterBase
 
@@ -20,24 +21,22 @@ class ProbeFilterExact(ProbeFilterBase):
         number_batches,
         ligation_region,
         dir_output,
-        file_transcriptome_fasta,
         file_probe_info,
         genes,
-        min_probes_per_gene,
+        dir_annotations,
     ):
         super().__init__(
             number_batches,
             ligation_region,
             dir_output,
-            file_transcriptome_fasta,
             file_probe_info,
             genes,
-            min_probes_per_gene,
+            dir_annotations,
         )
 
         self.duplicated_sequences = None
 
-    def _get_duplicated_sequences(self):
+    def _get_duplicated_sequences(self, number_batches):
         """Get a list of probe sequences that have a exact match within the pool of all
         possible probe sequences for the list of input genes.
         :return: List of probe sequences with exact matches in the pool of probes.
@@ -45,7 +44,7 @@ class ProbeFilterExact(ProbeFilterBase):
         """
         sequences = []
 
-        for batch_id in range(self.number_batches):
+        for batch_id in range(number_batches):
             file_probe_sequence_batch = os.path.join(
                 self.dir_annotations, "probes_sequence_batch{}.txt".format(batch_id)
             )
@@ -143,19 +142,28 @@ class ProbeFilterExact(ProbeFilterBase):
             with open(file_probe_fasta_subbatch, "w") as handle:
                 SeqIO.write(output, handle, "fasta")
 
-    def apply(self):
-        self.create_batches()
+    def apply(self, number_batches):
+        self.create_batches(number_batches)
 
-        self.duplicated_sequences = self._get_duplicated_sequences()
+        self.duplicated_sequences = self._get_duplicated_sequences(number_batches)
 
-        # run filter with multiprocess
-        jobs = []
-        for batch_id in range(self.number_batches):
-            proc = multiprocessing.Process(
-                target=self._filter_probes_exactmatch, args=(batch_id,)
+        # run filter with joblib
+
+        start_time = time.perf_counter()
+        with parallel_backend("loky"):
+            Parallel(n_jobs=2)(
+                delayed(self._filter_probes_exactmatch)(batch_id)
+                for batch_id in range(self.number_batches)
             )
-            jobs.append(proc)
-            proc.start()
+            # Parallel(n_jobs=3, prefer="threads")(delayed(self._filter_probes_exactmatch)(batch_id) for batch_id in range(self.number_batches))
+        finish_time = time.perf_counter()
+        print(f"Program finished in {finish_time-start_time} seconds")
 
-        for job in jobs:
-            job.join()
+        """proc = multiprocessing.Process(
+            target=self._filter_probes_exactmatch, args=(batch_id,)
+        )
+        jobs.append(proc)
+        proc.start()
+
+    for job in jobs:
+        job.join()"""
