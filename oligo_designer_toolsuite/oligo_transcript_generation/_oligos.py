@@ -268,10 +268,15 @@ class Oligos:
         loaded_probes = 0
         gene_ids = list(oligos_DB.keys())
         for gene_id in gene_ids:
+            id = 1
             probes_sequences = list(oligos_DB[gene_id].keys())
             for probe_sequence in probes_sequences:
                 fulfills, additional_features = self.filter(probe_sequence)
                 if fulfills:
+                    oligos_DB[gene_id][probe_sequence][
+                        "probe_id"
+                    ] = f"{gene_id}_pid{id}"
+                    id += 1
                     oligos_DB[gene_id][probe_sequence].update(additional_features)
                     loaded_probes += 1
                 else:
