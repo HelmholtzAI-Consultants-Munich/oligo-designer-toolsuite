@@ -274,7 +274,9 @@ class CustomDB:
         handle_probe.close()
 
     def write_oligos_DB_gtf(self):
-
+        """Writes the data structure self.oligos_DB in a gtf file in the <self.file_oligos_DB_gtf> path.
+        The additional features are written in the 9th column.
+        """
         with open(self.file_oligos_DB_gtf, "w") as handle_gtf:
             # write some comment?
             source = "oligo-designer-toolsuite"
