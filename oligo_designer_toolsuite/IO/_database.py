@@ -7,6 +7,9 @@ from pathlib import Path
 import IO._data_parser as data_parser
 import IO._ftp_loader as ftp_loader
 import pyfaidx
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from oligo_transcript_generation._gene_transcript import GeneTranscript
 from oligo_transcript_generation._oligos import Oligos
 
@@ -90,6 +93,7 @@ class CustomDB:
         self.file_reference_DB = None
         self.file_oligos_DB_tsv = None
         self.file_oligos_DB_gtf = None
+        self.file_oligos_DB_fasta = None
         self.oligos_DB = None
 
         self.file_sequence = file_sequence
@@ -114,11 +118,13 @@ class CustomDB:
         else:
             raise ValueError("Database file does not exist!")
 
-    def read_oligos_DB_gtf(self, file_oligos_DB_gtf):
+    def read_oligos_DB_gtf(self, file_oligos_DB_gtf, file_oligos_DB_fasta):
         """Create the oligo db dictionary from a gtf file.
 
         :param file_oligos_DB_gtf: Path to the file.
         :type file_oligos_DB_gtf: str
+        :param file_oligos_DB_fasta: Path to the file.
+        :type file_oligos_DB_fasta: str
         :raises ValueError: When the file given has the wrong format.
         :raises ValueError: When the path given does not exist.
         """
@@ -131,10 +137,20 @@ class CustomDB:
         else:
             raise ValueError("Database file does not exist!")
 
+        if os.path.exists(file_oligos_DB_fasta):
+            if data_parser.check_fasta_format(file_oligos_DB_fasta):
+                self.file_oligos_DB_fasta = file_oligos_DB_fasta
+            else:
+                raise ValueError("Database has incorrect format!")
+        else:
+            raise ValueError("Database file does not exist!")
+
         oligos_df = data_parser.read_gtf(self.file_oligos_DB_gtf)
+        oligos_fasta = SeqIO.parse(self.file_oligos_DB_fasta, "fasta")
         self.oligos_DB = {}
         # compute the additional columns
         columns_fixed = [
+            "probe_sequence",
             "transcript_id",
             "exon_id",
             "chromosome",
@@ -142,7 +158,6 @@ class CustomDB:
             "end",
             "strand",
             "length",
-            "probe_id",
         ]
         columns_df = list(oligos_df.columns)
         # remove the columns we don't need
@@ -152,7 +167,6 @@ class CustomDB:
         columns_df.remove("score")
         columns_df.remove("frame")
         columns_df.remove("gene_id")
-        columns_df.remove("probe_sequence")
         additional_columns = [
             column for column in columns_df if (column not in columns_fixed)
         ]
@@ -164,12 +178,19 @@ class CustomDB:
             if row["gene_id"] != current_gene:
                 current_gene = row["gene_id"]
                 self.oligos_DB[current_gene] = {}
-            if (
-                row["probe_sequence"] != current_probe
-            ):  # easier to compare that the whole seqeunce
-                current_probe = row["probe_sequence"]
+            if row["seqname"] != current_probe:
+                current_probe = row["seqname"]
+                self.oligos_DB[current_gene][current_probe] = {}
+                oligo_fasta = next(oligos_fasta)
+                probe_sequence = oligo_fasta.seq
+                assert (
+                    oligo_fasta.id == current_probe
+                )  # check that the fasta and gtf file are in sync
                 self.oligos_DB[current_gene][current_probe] = {}
                 # add all the values
+                self.oligos_DB[current_gene][current_probe][
+                    "probe_sequence"
+                ] = probe_sequence
                 self.oligos_DB[current_gene][current_probe]["transcript_id"] = [
                     row["transcript_id"]
                 ]
@@ -187,7 +208,6 @@ class CustomDB:
                 self.oligos_DB[current_gene][current_probe]["length"] = int(
                     row["length"]
                 )
-                self.oligos_DB[current_gene][current_probe]["probe_id"] = row["seqname"]
                 for column in additional_columns:
                     self.oligos_DB[current_gene][current_probe][column] = float(
                         row[column]
@@ -228,25 +248,25 @@ class CustomDB:
             if line[2] != current_gene:
                 current_gene = line[2]
                 self.oligos_DB[current_gene] = {}
-            sequence = line[1]
+            probe_id = line[0]
             # what if we have duplicated sequences?
-            self.oligos_DB[current_gene][sequence] = {}
-            self.oligos_DB[current_gene][sequence]["transcript_id"] = line[3].split(";")
-            self.oligos_DB[current_gene][sequence]["exon_id"] = line[4].split(";")
-            self.oligos_DB[current_gene][sequence]["chromosome"] = line[5]
-            self.oligos_DB[current_gene][sequence]["start"] = list(
+            self.oligos_DB[current_gene][probe_id] = {}
+            self.oligos_DB[current_gene][probe_id]["probe_sequence"] = Seq(line[1])
+            self.oligos_DB[current_gene][probe_id]["transcript_id"] = line[3].split(";")
+            self.oligos_DB[current_gene][probe_id]["exon_id"] = line[4].split(";")
+            self.oligos_DB[current_gene][probe_id]["chromosome"] = line[5]
+            self.oligos_DB[current_gene][probe_id]["start"] = list(
                 map(int, line[6].split(";"))
             )
-            self.oligos_DB[current_gene][sequence]["end"] = list(
+            self.oligos_DB[current_gene][probe_id]["end"] = list(
                 map(int, line[7].split(";"))
             )
-            self.oligos_DB[current_gene][sequence]["strand"] = line[8]
-            self.oligos_DB[current_gene][sequence]["length"] = int(line[9])
-            self.oligos_DB[current_gene][sequence]["probe_id"] = line[0]
+            self.oligos_DB[current_gene][probe_id]["strand"] = line[8]
+            self.oligos_DB[current_gene][probe_id]["length"] = int(line[9])
             # retrive the remaining features if they were computed
             if add_features:
                 for i, column in enumerate(columns[10:]):
-                    self.oligos_DB[current_gene][sequence][column] = float(line[i + 10])
+                    self.oligos_DB[current_gene][probe_id][column] = float(line[i + 10])
             return current_gene
 
         if os.path.exists(file_oligos_DB_tsv):
@@ -278,38 +298,50 @@ class CustomDB:
         The additional features are written in the 9th column.
         """
         with open(self.file_oligos_DB_gtf, "w") as handle_gtf:
-            # write some comment?
-            source = "oligo-designer-toolsuite"
-            feature = "Oligonucleotide"
-            score = "."
-            frame = "."
-            for gene_id, probe in self.oligos_DB.items():
-                for probe_sequence, probe_attributes in probe.items():
-                    for i in range(len(probe_attributes["start"])):
-                        # write the annotation file
-                        probe_id = probe_attributes["probe_id"]
-                        start = str(probe_attributes["start"][i])
-                        end = str(probe_attributes["end"][i])
-                        strand = probe_attributes["strand"]
-                        output = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t".format(
-                            probe_id, source, feature, start, end, score, strand, frame
-                        )
-                        # add all the oher features
-                        output += f'gene_id "{gene_id}"; '
-                        output += f'probe_sequence "{probe_sequence}"; '
-                        probe_attributes_copy = copy.deepcopy(probe_attributes)
-                        # delete already written features
-                        del probe_attributes_copy["start"]
-                        del probe_attributes_copy["end"]
-                        del probe_attributes_copy["strand"]
-                        del probe_attributes_copy["probe_id"]
-                        for key, value in probe_attributes_copy.items():
-                            if type(value) == list:
-                                output += f'{key} "{value[i]}"; '
-                            else:
-                                output += f'{key} "{value}"; '
-                        output += "\n"
-                        handle_gtf.write(output)
+            with open(self.file_oligos_DB_fasta, "w") as handle_fasta:
+                source = "oligo-designer-toolsuite"
+                feature = "Oligonucleotide"
+                score = "."
+                frame = "."
+                output_fasta = []
+                for gene_id, probe in self.oligos_DB.items():
+                    for probe_id, probe_attributes in probe.items():
+                        output_fasta.append(
+                            SeqRecord(
+                                probe_attributes["probe_sequence"], probe_id, "", ""
+                            )
+                        )  # write the sequence in the fasta file
+                        for i in range(len(probe_attributes["start"])):
+                            # write the annotation file
+                            start = str(probe_attributes["start"][i])
+                            end = str(probe_attributes["end"][i])
+                            strand = probe_attributes["strand"]
+                            output = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t".format(
+                                probe_id,
+                                source,
+                                feature,
+                                start,
+                                end,
+                                score,
+                                strand,
+                                frame,
+                            )
+                            # add all the oher features
+                            output += f'gene_id "{gene_id}"; '
+                            probe_attributes_copy = copy.deepcopy(probe_attributes)
+                            # delete already written features
+                            del probe_attributes_copy["start"]
+                            del probe_attributes_copy["end"]
+                            del probe_attributes_copy["strand"]
+                            del probe_attributes_copy["probe_sequence"]
+                            for key, value in probe_attributes_copy.items():
+                                if type(value) == list:
+                                    output += f'{key} "{value[i]}"; '
+                                else:
+                                    output += f'{key} "{value}"; '
+                            output += "\n"
+                            handle_gtf.write(output)
+                SeqIO.write(output_fasta, handle_fasta, "fasta")
 
     def write_oligos_DB_tsv(self):
         """Writes the data structure self.oligos_DB in a tsv file in the <self.file_oligos_DB_tsv> path.
@@ -341,11 +373,11 @@ class CustomDB:
             handle_probe.write("\t".join(columns) + "\n")
 
             for gene_id, probe in self.oligos_DB.items():
-                for probe_sequence, probe_attributes in probe.items():
+                for probe_id, probe_attributes in probe.items():
                     # write the basic information information we compute for each probe
                     output = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
-                        probe_attributes["probe_id"],
-                        probe_sequence,
+                        probe_id,
+                        probe_attributes["probe_sequence"],
                         gene_id,
                         ";".join(probe_attributes["transcript_id"]),
                         ";".join(probe_attributes["exon_id"]),
@@ -483,6 +515,10 @@ class CustomDB:
         self.file_oligos_DB_gtf = os.path.join(
             dir_output,
             f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.gtf",
+        )
+        self.file_oligos_DB_fasta = os.path.join(
+            dir_output,
+            f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fasta",
         )
         file_region_annotation = create_target_region(region, genes)
         if genes is None:

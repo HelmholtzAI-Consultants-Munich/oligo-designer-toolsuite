@@ -103,8 +103,8 @@ class TestDBGeneration(unittest.TestCase):
         def oligos_DB_to_list(oligos_DB):
             sequences = []
             for gene in oligos_DB.keys():
-                for sequence in oligos_DB[gene]:
-                    sequences.append(sequence)
+                for sequence in oligos_DB[gene].keys():
+                    sequences.append(oligos_DB[gene][sequence]["probe_sequence"])
             sequences.sort()  # needed to compare
             return sequences
 
@@ -145,7 +145,9 @@ class TestDBGeneration(unittest.TestCase):
         """Test that if write and read the oligos DB in gtf format, the oligos DB does not change."""
         self.db.create_oligos_DB(genes=[self.genes[0]])
         DB_correct = self.db.oligos_DB
-        self.db.read_oligos_DB_gtf(self.db.file_oligos_DB_gtf)  # overwrite the dict
+        self.db.read_oligos_DB_gtf(
+            self.db.file_oligos_DB_gtf, self.db.file_oligos_DB_fasta
+        )  # overwrite the dict
         for sequence in DB_correct[self.genes[0]].keys():
             self.assertDictEqual(
                 DB_correct[self.genes[0]][sequence],
