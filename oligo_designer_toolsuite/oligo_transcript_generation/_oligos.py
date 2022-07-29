@@ -149,6 +149,9 @@ class Oligos:
 
             gene_probes = {key: {} for key in genes_batch}
             total_probes = 0
+            current_gene = ""  # delte this if we peocess one gene at a time in parallel
+            id = 1
+            gene_sequences = {}  # associate each sequence to its id
 
             # parse the exon fasta sequence file
             for exon in SeqIO.parse(file_region_fasta_batch, "fasta"):
@@ -177,23 +180,31 @@ class Oligos:
                             ) = _parse_header(exon.id)
                             probe_start = start + i
                             probe_end = start + i + probe_length
+                            # reset the index when we change gene
+                            if current_gene != gene_id:
+                                id = 1
+                                current_gene = gene_id
+                                gene_sequences = {}
 
-                            if probe_sequence in gene_probes[gene_id]:
-                                gene_probes[gene_id][probe_sequence][
-                                    "transcript_id"
-                                ].append(transcript_id)
-                                gene_probes[gene_id][probe_sequence]["exon_id"].append(
+                            if probe_sequence in gene_sequences:
+                                probe_id = gene_sequences[probe_sequence]
+                                gene_probes[gene_id][probe_id]["transcript_id"].append(
+                                    transcript_id
+                                )
+                                gene_probes[gene_id][probe_id]["exon_id"].append(
                                     exon_id
                                 )
-                                gene_probes[gene_id][probe_sequence]["start"].append(
+                                gene_probes[gene_id][probe_id]["start"].append(
                                     probe_start
                                 )
-                                gene_probes[gene_id][probe_sequence]["end"].append(
-                                    probe_end
-                                )
+                                gene_probes[gene_id][probe_id]["end"].append(probe_end)
 
                             else:
-                                gene_probes[gene_id][probe_sequence] = {
+                                probe_id = f"{gene_id}_{id}"
+                                gene_sequences[probe_sequence] = probe_id
+                                id += 1
+                                gene_probes[gene_id][probe_id] = {
+                                    "probe_sequence": probe_sequence,
                                     "transcript_id": [transcript_id],
                                     "exon_id": [exon_id],
                                     "chromosome": chrom,
@@ -268,17 +279,14 @@ class Oligos:
         loaded_probes = 0
         gene_ids = list(oligos_DB.keys())
         for gene_id in gene_ids:
-            id = 1
-            probes_sequences = list(oligos_DB[gene_id].keys())
-            for probe_sequence in probes_sequences:
-                fulfills, additional_features = self.filter(probe_sequence)
+            probes_id = list(oligos_DB[gene_id].keys())
+            for probe_id in probes_id:
+                fulfills, additional_features = self.filter(
+                    oligos_DB[gene_id][probe_id]["probe_sequence"]
+                )
                 if fulfills:
-                    oligos_DB[gene_id][probe_sequence][
-                        "probe_id"
-                    ] = f"{gene_id}_pid{id}"
-                    id += 1
-                    oligos_DB[gene_id][probe_sequence].update(additional_features)
+                    oligos_DB[gene_id][probe_id].update(additional_features)
                     loaded_probes += 1
                 else:
-                    del oligos_DB[gene_id][probe_sequence]
+                    del oligos_DB[gene_id][probe_id]
         return oligos_DB
