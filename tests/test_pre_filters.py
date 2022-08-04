@@ -6,9 +6,13 @@ from Bio.SeqUtils import MeltingTemp as mt
 
 sys.path.append("../oligo_designer_toolsuite")
 
-from oligo_pre_filter._filter_base import GCContent, MaskedSequences, MeltingTemperature
-from oligo_pre_filter._filter_padlock_probes import PadlockArms
-from oligo_transcript_generation._oligos import Oligos
+from oligo_designer_toolsuite.oligo_pre_filter._filter_base import (
+    GCContent,
+    MaskedSequences,
+    MeltingTemperature,
+)
+from oligo_designer_toolsuite.oligo_pre_filter._filter_padlock_probes import PadlockArms
+from oligo_designer_toolsuite.oligo_transcript_generation._oligos import Oligos
 
 
 class TestPreFilters(unittest.TestCase):
@@ -120,4 +124,4 @@ class TestPreFilters(unittest.TestCase):
 
 
 # run the tets
-unittest.main()
+# unittest.main()
