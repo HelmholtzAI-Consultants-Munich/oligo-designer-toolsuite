@@ -14,24 +14,23 @@ from ._filter_base import ProbeFilterBase
 class ProbeFilterBlastn(ProbeFilterBase):
     def __init__(
         self,
-        number_batches,
+        n_jobs,
         file_transcriptome_fasta,
-        ligation_region,
         dir_output,
         file_probe_info,
         genes,
-        n_jobs,
         word_size,
         percent_identity,
         coverage,
         probe_length_min,
         probe_length_max,
+        ligation_region=0,
     ):
         """This class filters probes based on the blast alignment tool
 
         :param file_transcriptome_fasta: path to fasta file containing all probes
         :type file_transcriptome_fasta: str
-        :param word_size: #word size for the blastn seed (exact match to target)
+        :param word_size: word size for the blastn seed (exact match to target)
         :type word_size: int
         :param percent_identity: maximum similarity between probes and target sequences, ranging from 0 to 100% (no missmatch)
         :type percent_identity: int
@@ -43,21 +42,20 @@ class ProbeFilterBlastn(ProbeFilterBase):
         :type probe_length_max: int
 
         """
-        super().__init__(
-            number_batches, ligation_region, dir_output, file_probe_info, genes, n_jobs
-        )
-        self.number_batches = number_batches
+        super().__init__(n_jobs, dir_output, file_probe_info, genes)
+
         self.word_size = word_size
         self.percent_identity = percent_identity
         self.coverage = coverage
         self.file_transcriptome_fasta = file_transcriptome_fasta
         self.probe_length_min = probe_length_min
         self.probe_length_max = probe_length_max
+        self.ligation_region = ligation_region
 
         self.dir_blast = os.path.join(self.dir_output, "blast")
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
 
-        self.dir_probes = os.path.join(self.dir_output, "probes")
+        self.dir_probes = os.path.join(self.dir_output, "probes_blast")
         Path(self.dir_probes).mkdir(parents=True, exist_ok=True)
 
         self.file_removed_genes = os.path.join(
@@ -110,9 +108,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         # run blast in parallel
         start_time = time.perf_counter()
         with parallel_backend("loky"):
-            Parallel()(
-                delayed(_run_blast)(batch_id) for batch_id in range(self.number_batches)
-            )
+            Parallel()(delayed(_run_blast)(batch_id) for batch_id in range(self.n_jobs))
 
         finish_time = time.perf_counter()
         self.logging.info(
@@ -322,7 +318,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         with parallel_backend("loky"):
             Parallel()(
                 delayed(_process_blast_results)(batch_id)
-                for batch_id in range(self.number_batches)
+                for batch_id in range(self.n_jobs)
             )
 
         finish_time = time.perf_counter()
