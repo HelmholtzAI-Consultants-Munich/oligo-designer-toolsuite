@@ -7,10 +7,14 @@ from Bio.SeqUtils import MeltingTemp as mt
 
 sys.path.append("../oligo_designer_toolsuite")
 
-from IO._data_parser import check_gtf_format
-from IO._database import NcbiDB
-from oligo_pre_filter._filter_base import GCContent, MaskedSequences, MeltingTemperature
-from oligo_pre_filter._filter_padlock_probes import PadlockArms
+from oligo_designer_toolsuite.IO._data_parser import check_gtf_format
+from oligo_designer_toolsuite.IO._database import CustomDB
+from oligo_designer_toolsuite.oligo_pre_filter._filter_base import (
+    GCContent,
+    MaskedSequences,
+    MeltingTemperature,
+)
+from oligo_designer_toolsuite.oligo_pre_filter._filter_padlock_probes import PadlockArms
 
 
 class TestDBGeneration(unittest.TestCase):
@@ -79,19 +83,29 @@ class TestDBGeneration(unittest.TestCase):
         )
 
         cls.filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
-        cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters)
+        # cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output')
+        dir_annotation = "/home/francesco/Desktop/Work/NCBI"
+        annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
+        sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
+        cls.db = CustomDB(
+            probe_length_min=30,
+            probe_length_max=40,
+            file_annotation=annotation,
+            file_sequence=sequence,
+            filters=cls.filters,
+        )
 
     def test_transcriptome(self):
         """Test that the reference DB created is correct"""
-        self.db.create_reference_DB()
-        file_computed = "output/annotation/gene_trascript_computed.fna"
+        self.db.create_reference_DB(dir_output="tests/output")
+        file_computed = "tests/output/gene_trascript_computed.fna"
         # let's check only the first 200 000 lines
         with open(self.db.file_reference_DB, mode="r") as complete:
             with open(file_computed, mode="w+") as truncated:
                 for x in range(200000):
                     line = complete.readline()
                     truncated.write(line)
-        file_correct = "data/gene_trascript.fna"
+        file_correct = "tests/data/gene_trascript.fna"
         self.assertTrue(
             filecmp.cmp(file_computed, file_correct),
             "The gene transcript computed do not correspond to the correct one",
@@ -114,9 +128,9 @@ class TestDBGeneration(unittest.TestCase):
                 sequences = [line.rstrip() for line in lines]
             return sequences
 
-        self.db.create_oligos_DB(genes=self.genes)
+        self.db.create_oligos_DB(genes=self.genes, dir_output="tests/output")
         sequences_computed = oligos_DB_to_list(self.db.oligos_DB)
-        sequences_correct = list_from_file("data/sequences_10_genes.txt")
+        sequences_correct = list_from_file("tests/data/sequences_10_genes.txt")
         sequences_correct.sort()
         self.assertListEqual(
             sequences_computed,
@@ -126,7 +140,7 @@ class TestDBGeneration(unittest.TestCase):
 
     def test_read_write_oligos_DB_tsv(self):
         """Tetst that if write and read the oligos DB in tsv format, the oligos DB does not change."""
-        self.db.create_oligos_DB(genes=[self.genes[0]])
+        self.db.create_oligos_DB(genes=[self.genes[0]], dir_output="tests/output")
         DB_correct = self.db.oligos_DB
         self.db.read_oligos_DB_tsv(self.db.file_oligos_DB_tsv)  # overwrite the dict
         for sequence in DB_correct[self.genes[0]].keys():
@@ -138,12 +152,12 @@ class TestDBGeneration(unittest.TestCase):
 
     def test_write_oligos_DB_gtf(self):
         """Test that the gtf file created is in the correct format"""
-        self.db.create_oligos_DB(genes=[self.genes[0]])
+        self.db.create_oligos_DB(genes=[self.genes[0]], dir_output="tests/output")
         self.assertTrue(check_gtf_format(self.db.file_oligos_DB_gtf))
 
     def test_read_write_oligos_DB_gtf(self):
         """Test that if write and read the oligos DB in gtf format, the oligos DB does not change."""
-        self.db.create_oligos_DB(genes=[self.genes[0]])
+        self.db.create_oligos_DB(genes=[self.genes[0]], dir_output="tests/output")
         DB_correct = self.db.oligos_DB
         self.db.read_oligos_DB_gtf(
             self.db.file_oligos_DB_gtf, self.db.file_oligos_DB_fasta
@@ -158,9 +172,9 @@ class TestDBGeneration(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         """Delete all the files dowloaded."""
-        shutil.rmtree("output")
+        shutil.rmtree("tests/output")
         del cls.db
 
 
-# run the tets
-unittest.main()
+# run the tests
+# unittest.main()
