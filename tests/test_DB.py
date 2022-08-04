@@ -93,11 +93,12 @@ class TestDBGeneration(unittest.TestCase):
             file_annotation=annotation,
             file_sequence=sequence,
             filters=cls.filters,
+            dir_output="tests/output",
         )
 
     def test_transcriptome(self):
         """Test that the reference DB created is correct"""
-        self.db.create_reference_DB(dir_output="tests/output")
+        self.db.create_reference_DB(dir_reference_DB="reference")
         file_computed = "tests/output/gene_trascript_computed.fna"
         # let's check only the first 200 000 lines
         with open(self.db.file_reference_DB, mode="r") as complete:
@@ -128,7 +129,7 @@ class TestDBGeneration(unittest.TestCase):
                 sequences = [line.rstrip() for line in lines]
             return sequences
 
-        self.db.create_oligos_DB(genes=self.genes, dir_output="tests/output")
+        self.db.create_oligos_DB(genes=self.genes)
         sequences_computed = oligos_DB_to_list(self.db.oligos_DB)
         sequences_correct = list_from_file("tests/data/sequences_10_genes.txt")
         sequences_correct.sort()
@@ -140,33 +141,40 @@ class TestDBGeneration(unittest.TestCase):
 
     def test_read_write_oligos_DB_tsv(self):
         """Tetst that if write and read the oligos DB in tsv format, the oligos DB does not change."""
-        self.db.create_oligos_DB(genes=[self.genes[0]], dir_output="tests/output")
+        self.db.create_oligos_DB(genes=[self.genes[0]])
+        self.db.write_oligos_DB(format="tsv", dir_oligos_DB="prefiltered_probes")
         DB_correct = self.db.oligos_DB
-        self.db.read_oligos_DB_tsv(self.db.file_oligos_DB_tsv)  # overwrite the dict
-        for sequence in DB_correct[self.genes[0]].keys():
+        self.db.read_oligos_DB(
+            format="tsv", file_oligos_DB_tsv=self.db.file_oligos_DB_tsv
+        )  # overwrite the dict
+        for probe_id in DB_correct[self.genes[0]].keys():
             self.assertDictEqual(
-                DB_correct[self.genes[0]][sequence],
-                self.db.oligos_DB[self.genes[0]][sequence],
-                f"The oligos DB changes when it is written and read for {sequence} in tsv fromat. \nThe correct dict is \n {DB_correct[self.genes[0]][sequence]} \n and the computed one is \n {self.db.oligos_DB[self.genes[0]][sequence]}",
+                DB_correct[self.genes[0]][probe_id],
+                self.db.oligos_DB[self.genes[0]][probe_id],
+                f"The oligos DB changes when it is written and read for {probe_id} in tsv fromat. \nThe correct dict is \n {DB_correct[self.genes[0]][probe_id]} \n and the computed one is \n {self.db.oligos_DB[self.genes[0]][probe_id]}",
             )
 
     def test_write_oligos_DB_gtf(self):
         """Test that the gtf file created is in the correct format"""
-        self.db.create_oligos_DB(genes=[self.genes[0]], dir_output="tests/output")
+        self.db.create_oligos_DB(genes=[self.genes[0]])
+        self.db.write_oligos_DB(format="gtf", dir_oligos_DB="prefiltered_probes")
         self.assertTrue(check_gtf_format(self.db.file_oligos_DB_gtf))
 
     def test_read_write_oligos_DB_gtf(self):
         """Test that if write and read the oligos DB in gtf format, the oligos DB does not change."""
-        self.db.create_oligos_DB(genes=[self.genes[0]], dir_output="tests/output")
+        self.db.create_oligos_DB(genes=[self.genes[0]])
+        self.db.write_oligos_DB(format="gtf", dir_oligos_DB="prefiltered_probes")
         DB_correct = self.db.oligos_DB
-        self.db.read_oligos_DB_gtf(
-            self.db.file_oligos_DB_gtf, self.db.file_oligos_DB_fasta
+        self.db.read_oligos_DB(
+            format="gtf",
+            file_oligos_DB_gtf=self.db.file_oligos_DB_gtf,
+            file_oligos_DB_fasta=self.db.file_oligos_DB_fasta,
         )  # overwrite the dict
-        for sequence in DB_correct[self.genes[0]].keys():
+        for probe_id in DB_correct[self.genes[0]].keys():
             self.assertDictEqual(
-                DB_correct[self.genes[0]][sequence],
-                self.db.oligos_DB[self.genes[0]][sequence],
-                f"The oligos DB changes when it is written and read for {sequence} in gtf format. \nThe correct dict is \n {DB_correct[self.genes[0]][sequence]} \n and the computed one is \n {self.db.oligos_DB[self.genes[0]][sequence]}",
+                DB_correct[self.genes[0]][probe_id],
+                self.db.oligos_DB[self.genes[0]][probe_id],
+                f"The oligos DB changes when it is written and read for {probe_id} in gtf format. \nThe correct dict is \n {DB_correct[self.genes[0]][probe_id]} \n and the computed one is \n {self.db.oligos_DB[self.genes[0]][probe_id]}",
             )
 
     @classmethod
