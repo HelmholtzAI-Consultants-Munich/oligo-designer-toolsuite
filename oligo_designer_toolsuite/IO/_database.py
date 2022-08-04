@@ -4,14 +4,17 @@ import shutil
 import warnings
 from pathlib import Path
 
-import IO._data_parser as data_parser
-import IO._ftp_loader as ftp_loader
 import pyfaidx
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from oligo_transcript_generation._gene_transcript import GeneTranscript
-from oligo_transcript_generation._oligos import Oligos
+
+import oligo_designer_toolsuite.IO._data_parser as data_parser
+import oligo_designer_toolsuite.IO._ftp_loader as ftp_loader
+from oligo_designer_toolsuite.oligo_transcript_generation._gene_transcript import (
+    GeneTranscript,
+)
+from oligo_designer_toolsuite.oligo_transcript_generation._oligos import Oligos
 
 
 class CustomDB:
@@ -31,6 +34,7 @@ class CustomDB:
         annotation_source=None,
         file_annotation=None,
         file_sequence=None,
+        dir_output="output",
     ):
         """Sets species, genome_assembly, annotation_release to 'unknown' if thay are not given in input
             Saves the path of the user defined annoation and fasta file and initializes the
@@ -83,6 +87,8 @@ class CustomDB:
         if not data_parser.check_fasta_format(file_sequence):
             raise ValueError("Sequence File has incorrect format!")
 
+        self.dir_output = os.path.join(dir_output, "annotation")  # choose a different
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
         self.species = species
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
@@ -104,6 +110,7 @@ class CustomDB:
             self.probe_length_min, self.probe_length_max, self.file_sequence, filters
         )
 
+    # move read ad write to data parser and leave 2 methods read and write wich take as input teh type and the folder where to write (optional)
     def read_reference_DB(self, file_reference_DB):
         """Saves the path of a previously generated reference DB in the <self.file_reference_DB> attribute.
 
@@ -295,7 +302,8 @@ class CustomDB:
 
     def write_oligos_DB_gtf(self):
         """Writes the data structure self.oligos_DB in a gtf file in the <self.file_oligos_DB_gtf> path.
-        The additional features are written in the 9th column.
+        The additional features are written in the 9th column and the sequence of the probes is written on a separate fasta fila
+        with heading the probe_id.
         """
         with open(self.file_oligos_DB_gtf, "w") as handle_gtf:
             with open(self.file_oligos_DB_fasta, "w") as handle_fasta:
@@ -397,77 +405,70 @@ class CustomDB:
 
     def create_reference_DB(
         self,
-        genome=False,
-        gene_transcript=True,
-        gene_CDS=False,
-        dir_output="./output/annotation",
+        region="gene_transcript",
         block_size=None,
     ):
-        """Creates a fasta file for each of the region selected (genome, gene_transcript, gene_CDS) which will be used for alignements.
+        """Creates a fasta file for each of the region selected (genome, gene_transcript, gene_CDS) which will be used for alignements, default is "gene_transcript".
         If not specified the exon juctions size is set to <probe_length_max> + 5.
 
-        :param genome: create the reference file for the whole genome, defaults to False
-        :type genome: bool, optional
-        :param gene_transcript: create the reference file for the gene transcript, defaults to True
-        :type gene_transcript: bool, optional
-        :param gene_CDS: create the reference file for the coding region, defaults to False
-        :type gene_CDS: bool, optional
-        :param dir_output: folder where the fasta file will be saved, defaults to './output/annotation'
-        :type dir_output: str, optional
+        :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS"
+        :type region: str
         :param block_size: size of the exon junctions, defaults to None
         :type block_size: int, optional
         """
 
-        def get_files_fasta(genome, gene_transcript, gene_CDS):
+        def get_files_fasta(region):
             """generates the fasta files that will compose the reference_DB
 
+            :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS".
+            :type region: str
             :return: list of the fasta files
             :rtype: list of str
             """
-            files_fasta = []
-            if genome:
-                file_genome = os.path.join(dir_output, "genome.fna")
-                shutil.copyfile(self.file_sequence, file_genome)
-                files_fasta.append(file_genome)
-            if gene_transcript:
+            file_fasta = None
+            if region == "genome":
+                file_fasta = os.path.join(self.dir_output, "genome.fna")
+                shutil.copyfile(self.file_sequence, file_fasta)
+            elif region == "gene_transcript":
                 (
                     file_gene_transcript_annotation,
                     file_gene_transcript_fasta,
                 ) = self.gene_transcript.generate_for_reference(
-                    block_size, dir_output
+                    block_size, self.dir_output
                 )  # call the outer class to generate the gene trascript
                 os.remove(
                     file_gene_transcript_annotation
                 )  # not required anymore in this case
-                files_fasta.append(file_gene_transcript_fasta)
-            if gene_CDS:
+                file_fasta = file_gene_transcript_fasta
+            elif region == "gene_CDS":
                 # generate gene cds
                 warnings.warn("Gene CDS not implemented yet")
-            return files_fasta
+            else:
+                raise ValueError(
+                    f"The given region does not exists. You selected {region}"
+                )
+            return file_fasta
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
         self.file_reference_DB = os.path.join(
-            dir_output,
-            f"reference_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_genome_{genome}_gene_transcript_{gene_transcript}.fna",
+            self.dir_output,
+            f"reference_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fna",
         )
 
         if block_size is None:  # when not specified define it automatically
             block_size = self.probe_length_max + 5
 
-        files_fasta = get_files_fasta(genome, gene_transcript, gene_CDS)
-        data_parser.merge_fasta(files_fasta, self.file_reference_DB)
+        self.file_reference_DB = get_files_fasta(region)
 
     def __generate_gene_CDS():
         """'Creates a fasta file containing the whole transcriptome."""
         # should be implemented in an external class
         raise NotImplementedError
 
-    def create_oligos_DB(
+    def create_oligos_DB(  # does not automatically write, we haveto call it speately
         self,
         genes=None,
         region="gene_transcript",
-        number_batchs=1,
-        dir_output="./output/annotation",
+        n_jobs=2,
         write_tsv=True,
         write_gtf=True,
     ):
@@ -480,8 +481,6 @@ class CustomDB:
         :type region: str, optional
         :param number_batchs: probes are computes in batches of genes, defaults to 1
         :type number_batchs: int, optional
-        :param dir_output: folder where the file will be written, defaults to './output/annotation'
-        :type dir_output: str, optional
         :param write: write the file, defaults to True
         :type write: bool, optional
         """
@@ -495,7 +494,7 @@ class CustomDB:
                 # TODO
             elif region == "gene_transcript":
                 file_region_annotation = self.gene_transcript.generate_for_oligos(
-                    self.probe_length_max - 1, dir_output, genes
+                    self.probe_length_max - 1, self.dir_output, genes
                 )
             elif region == "gene_CDS":
                 file_region_annotation = None
@@ -507,24 +506,23 @@ class CustomDB:
                 )
             return file_region_annotation
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
         self.file_oligos_DB_tsv = os.path.join(
-            dir_output,
+            self.dir_output,
             f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.tsv",
         )
         self.file_oligos_DB_gtf = os.path.join(
-            dir_output,
+            self.dir_output,
             f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.gtf",
         )
         self.file_oligos_DB_fasta = os.path.join(
-            dir_output,
+            self.dir_output,
             f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fasta",
         )
         file_region_annotation = create_target_region(region, genes)
         if genes is None:
             genes = self.gene_transcript.get_genes_from_annotation()
         self.oligos_DB = self.oligos.generate(
-            file_region_annotation, genes, number_batchs, dir_output
+            file_region_annotation, genes, n_jobs, self.dir_output
         )
         if write_tsv:
             self.write_oligos_DB_tsv()
@@ -545,7 +543,7 @@ class NcbiDB(CustomDB):
         filters,
         species=None,
         annotation_release=None,
-        dir_output="./output/annotation",
+        dir_output="output",
     ):
         """Sets species, genome_assembly, annotation_release to a predefined value if thay are not given in input
             Dowloads the fasta and annotation files from the NCBI server and stores them in the dir_output folder
@@ -575,9 +573,10 @@ class NcbiDB(CustomDB):
 
         genome_assembly = "GRCh38"
         annotation_source = "NCBI"
+        self.dir_output = os.path.join(dir_output, "annotation")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
-        ftp = ftp_loader.FTPLoaderNCBI(dir_output, species, annotation_release)
+        ftp = ftp_loader.FTPLoaderNCBI(self.dir_output, species, annotation_release)
         file_annotation = ftp.download_files("gtf")
         file_sequence = ftp.download_files("fasta")
 
@@ -591,6 +590,7 @@ class NcbiDB(CustomDB):
             annotation_source,
             file_annotation,
             file_sequence,
+            dir_output,
         )
 
 
@@ -605,7 +605,7 @@ class EnsemblDB(CustomDB):
         species=None,
         genome_assembly=None,
         annotation_release=None,
-        dir_output="./output/annotation",
+        dir_output="output",
     ):
         """Sets species, genome_assembly, annotation_release to a predefined value if thay are not given in input
             Dowloads the fasta and annotation files from the Ensemble server and stores them in the dir_output folder
@@ -620,7 +620,7 @@ class EnsemblDB(CustomDB):
         :type genome_assembly: str, optional
         :param annotation_release: annotation_release of the files to dowload, defaults to None
         :type annotation_release: str, optional
-        :param dir_output: directory where the files are saved, defaults to './output/annotation'
+        :param dir_output: directory where the files are saved, defaults to 'output'
         :type dir_output: str, optional
         :param filters: list of filters classes already initialized, defaults to None
         :type filters: list of classes, optional
@@ -642,10 +642,11 @@ class EnsemblDB(CustomDB):
             )
 
         annotation_source = "Ensembl"
+        self.dir_output = os.path.join(dir_output, "annotation")
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
         ftp = ftp_loader.FtpLoaderEnsembl(
-            dir_output, species, genome_assembly, annotation_release
+            self.dir_output, species, genome_assembly, annotation_release
         )
         file_annotation = ftp.download_files("gtf")
         file_sequence = ftp.download_files("fasta")
@@ -660,4 +661,5 @@ class EnsemblDB(CustomDB):
             annotation_source,
             file_annotation,
             file_sequence,
+            dir_output,
         )

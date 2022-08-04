@@ -1,8 +1,9 @@
 import os
 import random
 
-import IO._data_parser as data_parser
 import pandas as pd
+
+import oligo_designer_toolsuite.IO._data_parser as data_parser
 
 
 class GeneTranscript:
