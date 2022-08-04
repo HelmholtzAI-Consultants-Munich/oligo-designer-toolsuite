@@ -1,3 +1,4 @@
+import copy
 import csv
 import logging
 import os
@@ -10,6 +11,8 @@ import pandas as pd
 import pybedtools
 from BCBio import GFF
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from six import string_types
 from six.moves import intern
 
@@ -388,3 +391,273 @@ def merge_fasta(files_fasta, file_merged_fasta):
                 os.remove(file)
             else:
                 raise ValueError(f"Fasta file {file} does not exist!")
+
+
+def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
+    """Create the oligo db dictionary from a gtf file.
+
+    :param file_oligos_DB_gtf: Path to the file.
+    :type file_oligos_DB_gtf: str
+    :param file_oligos_DB_fasta: Path to the file.
+    :type file_oligos_DB_fasta: str
+    :raises ValueError: When the file given has the wrong format.
+    :raises ValueError: When the path given does not exist.
+    """
+
+    if os.path.exists(file_oligos_DB_gtf):
+        if not check_gtf_format(file_oligos_DB_gtf):
+            raise ValueError("Database has incorrect format!")
+    else:
+        raise ValueError("Database file does not exist!")
+
+    if os.path.exists(file_oligos_DB_fasta):
+        if not check_fasta_format(file_oligos_DB_fasta):
+            raise ValueError("Database has incorrect format!")
+    else:
+        raise ValueError("Database file does not exist!")
+
+    oligos_df = read_gtf(file_oligos_DB_gtf)
+    oligos_fasta = SeqIO.parse(file_oligos_DB_fasta, "fasta")
+    oligos_DB = {}
+    # compute the additional columns
+    columns_fixed = [
+        "probe_sequence",
+        "transcript_id",
+        "exon_id",
+        "chromosome",
+        "start",
+        "end",
+        "strand",
+        "length",
+    ]
+    columns_df = list(oligos_df.columns)
+    # remove the columns we don't need
+    columns_df.remove("seqname")
+    columns_df.remove("source")
+    columns_df.remove("feature")
+    columns_df.remove("score")
+    columns_df.remove("frame")
+    columns_df.remove("gene_id")
+    additional_columns = [
+        column for column in columns_df if (column not in columns_fixed)
+    ]
+    # crated the oligos db
+    current_gene = ""
+    current_probe = ""
+    for index in range(len(oligos_df)):
+        row = oligos_df.iloc[index]
+        if row["gene_id"] != current_gene:
+            current_gene = row["gene_id"]
+            oligos_DB[current_gene] = {}
+        if row["seqname"] != current_probe:
+            current_probe = row["seqname"]
+            oligos_DB[current_gene][current_probe] = {}
+            oligo_fasta = next(oligos_fasta)
+            probe_sequence = oligo_fasta.seq
+            assert (
+                oligo_fasta.id == current_probe
+            )  # check that the fasta and gtf file are in sync
+            oligos_DB[current_gene][current_probe] = {}
+            # add all the values
+            oligos_DB[current_gene][current_probe]["probe_sequence"] = probe_sequence
+            oligos_DB[current_gene][current_probe]["transcript_id"] = [
+                row["transcript_id"]
+            ]
+            oligos_DB[current_gene][current_probe]["exon_id"] = [row["exon_id"]]
+            oligos_DB[current_gene][current_probe]["chromosome"] = row["chromosome"]
+            oligos_DB[current_gene][current_probe]["start"] = [int(row["start"])]
+            oligos_DB[current_gene][current_probe]["end"] = [int(row["end"])]
+            oligos_DB[current_gene][current_probe]["strand"] = row["strand"]
+            oligos_DB[current_gene][current_probe]["length"] = int(row["length"])
+            for column in additional_columns:
+                oligos_DB[current_gene][current_probe][column] = float(row[column])
+        else:
+            # append the values saved as a list
+            oligos_DB[current_gene][current_probe]["transcript_id"].append(
+                row["transcript_id"]
+            )
+            oligos_DB[current_gene][current_probe]["exon_id"].append(row["exon_id"])
+            oligos_DB[current_gene][current_probe]["start"].append(row["start"])
+            oligos_DB[current_gene][current_probe]["end"].append(row["end"])
+    return oligos_DB
+
+
+def read_oligos_DB_tsv(file_oligos_DB_tsv):
+    """Reads a previously generated oligos DB and saves it in the <oligos_DB> attribute as a dictionary.
+    The order of columns is : probe_id, probe_sequence, gene_id,  'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', all the additional info computed by the filtering class.
+
+    :param file_oligos_DB_tsv: path of the oligos_DB file
+    :type file_oligos_DB_tsv: str
+    :return: oligos_DB
+    :rtype: dict
+    """
+
+    def parse_line_tsv(line, oligos_DB, current_gene, add_features):
+        """Parses the lines of the tsv file of the oligos db and puts teh data in the dictionary.
+
+        :param line: current line of the tsv file
+        :type line: str
+        :param current_gene: gene until wich we have created the dictionary
+        :type current_gene: str
+        :return: current gene we are after this iteration
+        :rtype: str
+        """
+        line = line.split("\t")
+        line[-1] = line[-1][0:-1]
+        if line[2] != current_gene:
+            current_gene = line[2]
+            oligos_DB[current_gene] = {}
+        probe_id = line[0]
+        # what if we have duplicated sequences?
+        oligos_DB[current_gene][probe_id] = {}
+        oligos_DB[current_gene][probe_id]["probe_sequence"] = Seq(line[1])
+        oligos_DB[current_gene][probe_id]["transcript_id"] = line[3].split(";")
+        oligos_DB[current_gene][probe_id]["exon_id"] = line[4].split(";")
+        oligos_DB[current_gene][probe_id]["chromosome"] = line[5]
+        oligos_DB[current_gene][probe_id]["start"] = list(map(int, line[6].split(";")))
+        oligos_DB[current_gene][probe_id]["end"] = list(map(int, line[7].split(";")))
+        oligos_DB[current_gene][probe_id]["strand"] = line[8]
+        oligos_DB[current_gene][probe_id]["length"] = int(line[9])
+        # retrive the remaining features if they were computed
+        if add_features:
+            for i, column in enumerate(columns[10:]):
+                oligos_DB[current_gene][probe_id][column] = float(line[i + 10])
+        return current_gene, oligos_DB
+
+    if os.path.exists(file_oligos_DB_tsv):
+        if not check_tsv_format(file_oligos_DB_tsv):
+            raise ValueError("Database has incorrect format!")
+    else:
+        raise ValueError("Database file does not exist!")
+
+    oligos_DB = {}
+    handle_probe = open(file_oligos_DB_tsv, "r")
+    # read the header
+    line = handle_probe.readline()
+    columns = line.split("\t")
+    columns[-1] = columns[-1][0:-1]  # delete \n in the last word
+    add_features = len(columns) > 10
+    # read the rest of the file
+    current_gene = ""
+    for line in handle_probe:
+        current_gene, oligos_DB = parse_line_tsv(
+            line, oligos_DB, current_gene, add_features
+        )
+
+    handle_probe.close()
+    return oligos_DB
+
+
+def write_oligos_DB_gtf(oligos_DB, file_oligos_DB_gtf, file_oligos_DB_fasta):
+    """Writes the data structure oligos_DB in a gtf file in the <file_oligos_DB_gtf> path.
+    The additional features are written in the 9th column and the sequence of the probes is written on a separate fasta fila
+    with heading the probe_id.
+
+    :param oligos_DB: oligos_DB dictionary
+    :type oligos_DB: dict
+    :param file_oligos_DB_gtf: path of the gtf file
+    :type file_oligos_DB_gtf: str
+    :param file_oligos_DB_fasta: path of the fasta file
+    :type file_oligos_DB_fasta: str
+    """
+    with open(file_oligos_DB_gtf, "w") as handle_gtf:
+        with open(file_oligos_DB_fasta, "w") as handle_fasta:
+            source = "oligo-designer-toolsuite"
+            feature = "Oligonucleotide"
+            score = "."
+            frame = "."
+            output_fasta = []
+            for gene_id, probe in oligos_DB.items():
+                for probe_id, probe_attributes in probe.items():
+                    output_fasta.append(
+                        SeqRecord(probe_attributes["probe_sequence"], probe_id, "", "")
+                    )  # write the sequence in the fasta file
+                    for i in range(len(probe_attributes["start"])):
+                        # write the annotation file
+                        start = str(probe_attributes["start"][i])
+                        end = str(probe_attributes["end"][i])
+                        strand = probe_attributes["strand"]
+                        output = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t".format(
+                            probe_id,
+                            source,
+                            feature,
+                            start,
+                            end,
+                            score,
+                            strand,
+                            frame,
+                        )
+                        # add all the oher features
+                        output += f'gene_id "{gene_id}"; '
+                        probe_attributes_copy = copy.deepcopy(probe_attributes)
+                        # delete already written features
+                        del probe_attributes_copy["start"]
+                        del probe_attributes_copy["end"]
+                        del probe_attributes_copy["strand"]
+                        del probe_attributes_copy["probe_sequence"]
+                        for key, value in probe_attributes_copy.items():
+                            if type(value) == list:
+                                output += f'{key} "{value[i]}"; '
+                            else:
+                                output += f'{key} "{value}"; '
+                        output += "\n"
+                        handle_gtf.write(output)
+            SeqIO.write(output_fasta, handle_fasta, "fasta")
+
+
+def write_oligos_DB_tsv(oligos_DB, file_oligos_DB_tsv):
+    """Writes the data structure self.oligos_DB in a tsv file in the <self.file_oligos_DB_tsv> path.
+    The order of columns is : gene_id, probe_sequence, 'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', 'length', all the additional info computed by the filtering class.
+
+    :param oligos_DB: oligos_DB dictionary
+    :type oligos_DB: dict
+    :param file_oligos_DB_tsv: path of the tsv file
+    :type file_oligos_DB_tsv: str
+    """
+
+    with open(file_oligos_DB_tsv, "w") as handle_probe:
+        columns = [
+            "probe_id",
+            "probe_sequence",
+            "gene_id",
+            "transcript_id",
+            "exon_id",
+            "chromosome",
+            "start",
+            "end",
+            "strand",
+            "length",
+        ]  # keep fixed the structure for these coulums
+        # find all the other names of the columns (depend on the filters applied)
+        genes = list(oligos_DB.keys())
+        i = 0
+        while oligos_DB[genes[i]] == {}:
+            i += 1
+        tmp = oligos_DB[genes[i]]
+        tmp = list(list(tmp.values())[0].keys())
+        additional_columns = [column for column in tmp if (column not in columns)]
+        columns.extend(additional_columns)
+        handle_probe.write("\t".join(columns) + "\n")
+
+        for gene_id, probe in oligos_DB.items():
+            for probe_id, probe_attributes in probe.items():
+                # write the basic information information we compute for each probe
+                output = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
+                    probe_id,
+                    probe_attributes["probe_sequence"],
+                    gene_id,
+                    ";".join(probe_attributes["transcript_id"]),
+                    ";".join(probe_attributes["exon_id"]),
+                    probe_attributes["chromosome"],
+                    ";".join(str(s) for s in probe_attributes["start"]),
+                    ";".join(str(e) for e in probe_attributes["end"]),
+                    probe_attributes["strand"],
+                    probe_attributes["length"],
+                )
+                # if we computed additional features we write also those
+                if len(additional_columns) > 0:
+                    for column in additional_columns:
+                        output += "\t{}".format(probe_attributes[column])
+                    # \n at the end f the string
+                output += "\n"
+                handle_probe.write(output)
