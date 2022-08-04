@@ -14,22 +14,18 @@ from ._filter_base import ProbeFilterBase
 class ProbeFilterExact(ProbeFilterBase):
     def __init__(
         self,
-        number_batches,
-        ligation_region,
+        n_jobs,
         dir_output,
         file_probe_info,
         genes,
-        n_jobs,
         dir_annotations,
     ):
         """This class filters probes based on exact matches. This process can be executed in a parallel fashion where number batches defaults to number processes."""
         super().__init__(
-            number_batches,
-            ligation_region,
+            n_jobs,
             dir_output,
             file_probe_info,
             genes,
-            n_jobs,
             dir_annotations,
         )
 
@@ -39,11 +35,11 @@ class ProbeFilterExact(ProbeFilterBase):
 
         probeinfo_tsv = pd.read_csv(self.file_probe_info, sep="\t", header=0)
 
-        batch_size = int(len(self.genes) / self.number_batches) + (
-            len(self.genes) % self.number_batches > 0
+        batch_size = int(len(self.genes) / self.n_jobs) + (
+            len(self.genes) % self.n_jobs > 0
         )
 
-        for batch_id in range(self.number_batches):
+        for batch_id in range(self.n_jobs):
 
             file_probe_info_batch = os.path.join(
                 self.dir_annotations, "probes_info_batch{}.txt".format(batch_id)
@@ -79,7 +75,7 @@ class ProbeFilterExact(ProbeFilterBase):
         """
         sequences = []
 
-        for batch_id in range(self.number_batches):
+        for batch_id in range(self.n_jobs):
             file_probe_sequence_batch = os.path.join(
                 self.dir_annotations, "probes_sequence_batch{}.txt".format(batch_id)
             )
@@ -188,7 +184,7 @@ class ProbeFilterExact(ProbeFilterBase):
         with parallel_backend("loky"):
             Parallel()(
                 delayed(self._filter_probes_exactmatch)(batch_id)
-                for batch_id in range(self.number_batches)
+                for batch_id in range(self.n_jobs)
             )
 
         finish_time = time.perf_counter()

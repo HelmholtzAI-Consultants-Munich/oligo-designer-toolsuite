@@ -1,13 +1,13 @@
 import logging
 import os
 import sys
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 import joblib
 
 
-class ProbeFilterBase:
+class ProbeFilterBase(ABC):
 
     """This is the base class for all filter classes
 
@@ -18,30 +18,24 @@ class ProbeFilterBase:
 
     def __init__(
         self,
-        number_batches,
-        ligation_region,
+        n_jobs,
         dir_output,
         file_probe_info,
         genes,
-        n_jobs=None,
         dir_annotations=None,
         number_subbatches=None,
         max_genes_in_batch=300,
     ):
         """This is the base class for all filter classes
 
-        :param number_batches: How many batches of files to split data into for filtering
-        :type number_batches: int
-        :param ligation_region: If ligation region is present
-        :type ligation_region: bool
+        :param n_jobs: numbers of jobs to run in parallel when filtering the probes
+        :type n_jobs: int
         :param dir_output: output directory to write file containing filtered probes to
         :type dir_output: str
         :param file_probe_info: gtf file containing probe info
         :type file_probe_info: str
         :param genes: list of genes given by user
         :type genes: list
-        :param n_jobs: number of processes to run in parallel when filtering probes, defaults to number_batches
-        :type n_jobs: int, optional
         :param dir_annotations: directory storing file annotations of probes, defaults to None
         :type dir_annotations: str, optional
         :param number_subbatches: number of subbatches to split batched data into to control how many genes are in one batch, defaults to None
@@ -49,8 +43,6 @@ class ProbeFilterBase:
         :param max_genes_in_batch: max number of genes allowed in a batch, defaults to 300
         :type max_genes_in_batch: int, optional
         """
-        self.number_batches = number_batches
-        self.ligation_region = ligation_region
         self.dir_output = dir_output
         self.max_genes_in_batch = max_genes_in_batch  # if more than 300 genes in one batch split into subbatches to reduce required memory for loading blast results
         self.file_probe_info = file_probe_info
