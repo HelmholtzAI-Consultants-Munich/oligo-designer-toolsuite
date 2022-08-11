@@ -103,17 +103,13 @@ class FtpLoaderEnsembl(BaseFtpLoader):
     :type species: string
     :param annotation_release: release number of annotation or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
     :type annotation_release: string
-    :param genome_assembly: genome assembly for species | for human: GRCh37 or GRCh38 | for mouse: GRCm38 or GRCm39
-    :type genome_assembly: string
     """
 
-    def __init__(
-        self, dir_output, species, genome_assembly, annotation_release
-    ) -> None:
+    def __init__(self, dir_output, species, annotation_release) -> None:
         """Constructor method"""
         super().__init__(dir_output)
         self.species = species
-        self.genome_assembly = genome_assembly
+        self.genome_assembly_placeholder = "[^\.]*"
         self.annotation_release = annotation_release
 
     def get_params(self, file_type):
@@ -146,12 +142,12 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         if file_type.casefold() == "gtf".casefold():
 
             ftp_directory = f"pub/release-{annotation_release}/gtf/{species_id}/"
-            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly}.{annotation_release}.gtf"
+            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly_placeholder}.{annotation_release}.gtf"
 
         elif file_type.casefold() == "fasta".casefold():
 
             ftp_directory = f"pub/release-{annotation_release}/fasta/{species_id}/dna/"
-            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly}.dna_rm.primary_assembly.fa"
+            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly_placeholder}.dna_rm.primary_assembly.fa"
 
         return ftp_directory, ftp_file
 
@@ -167,6 +163,11 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         ftp_directory, ftp_file = self.get_params(file_type)
         output_file = self.download_and_decompress(
             self.ftp_link, ftp_directory, ftp_file
+        )
+
+        genome_assembly = re.search("\.([^\.]*)\.", output_file)
+        print(
+            f"File path of downloaded file: {output_file}\n genome assembly: {genome_assembly.group(1)}"
         )
 
         return output_file
@@ -232,7 +233,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
             f"{assembly_accession}_{assembly_name}_assembly_report.txt"
         )
 
-        return ftp_directory, ftp_file, ftp_file_chr_mapping
+        return ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name
 
     def generate_FTP_link(self):
         return "ftp.ncbi.nlm.nih.gov"
@@ -363,7 +364,9 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :rtype: string
         """
 
-        ftp_directory, ftp_file, ftp_file_chr_mapping = self.get_params(file_type)
+        ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name = self.get_params(
+            file_type
+        )
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
         output_file = self.download_and_decompress(
             self.ftp_link, ftp_directory, ftp_file
@@ -374,5 +377,9 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         elif file_type.casefold() == "fasta".casefold():
             self._map_chr_names_genome_fasta(output_file, mapping)
+
+        print(
+            f"File path of downloaded file: {output_file}\n assembly name: {assembly_name}"
+        )
 
         return output_file

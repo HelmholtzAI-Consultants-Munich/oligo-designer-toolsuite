@@ -234,14 +234,10 @@ def parse_gtf(
                     for s in df[fix_quotes_column]
                 ]
             dataframes.append(df)
-    except Exception as e:
-        raise ParsingError(str(e))
+    except:
+        print("An error occured when parsing the gtf file")
     df = pd.concat(dataframes)
     return df
-
-
-class ParsingError(Exception):
-    pass
 
 
 def expand_attribute_strings(
