@@ -9,6 +9,7 @@ from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommand
 from joblib import Parallel, delayed, parallel_backend
 
 from ._filter_base import ProbeFilterBase
+from ._utils import _load_probes_info, _write_output, _write_removed_genes
 
 
 class ProbeFilterBlastn(ProbeFilterBase):
@@ -17,7 +18,6 @@ class ProbeFilterBlastn(ProbeFilterBase):
         n_jobs,
         file_transcriptome_fasta,
         dir_output,
-        file_probe_info,
         genes,
         word_size,
         percent_identity,
@@ -42,7 +42,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         :type probe_length_max: int
 
         """
-        super().__init__(n_jobs, dir_output, file_probe_info, genes)
+        super().__init__(n_jobs, dir_output, genes)
 
         self.word_size = word_size
         self.percent_identity = percent_identity
@@ -59,7 +59,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         Path(self.dir_probes).mkdir(parents=True, exist_ok=True)
 
         self.file_removed_genes = os.path.join(
-            self.dir_output, "genes_with_insufficient_probes.txt"
+            self.dir_probes, "genes_with_insufficient_probes.txt"
         )
 
     def run_blast_search(self):
@@ -123,46 +123,12 @@ class ProbeFilterBlastn(ProbeFilterBase):
 
         def _process_blast_results(batch_id):
 
-            probes_info = _load_probes_info(batch_id)
+            probes_info = _load_probes_info(self, batch_id)
 
             num_probes_wo_match = 0
             for subbatch_id in range(self.number_subbatches):
                 blast_results = _read_blast_output(batch_id, subbatch_id)
                 num_probes_wo_match += _filter_probes_blast(probes_info, blast_results)
-
-        def _load_probes_info(batch_id):
-            """Load filtered probe information from tsv file
-            :param batch_id: Batch ID.
-            :type batch_id: int
-            :return: Dataframe with probe information, filtered based on sequence properties.
-            :rtype: pandas.DataFrame
-            """
-            file_probe_info_batch = os.path.join(
-                self.dir_annotations, "probes_info_batch{}.txt".format(batch_id)
-            )
-            probes_info = pd.read_csv(
-                file_probe_info_batch,
-                sep="\t",
-                dtype={
-                    "probe_id": str,
-                    "gene_id": str,
-                    "probe_sequence": str,
-                    "transcript_id": str,
-                    "exon_id": str,
-                    "chromosome": str,
-                    "start": str,
-                    "end": str,
-                    "strand": str,
-                    "GC_content": float,
-                    "melting_temperature": float,
-                    "melt_temp_arm1": float,
-                    "melt_temp_arm2": float,
-                    "dif_melt_temp_arms": float,
-                    "ligation_site": int,
-                },
-            )
-
-            return probes_info
 
         def _read_blast_output(batch_id, subbatch_id):
             """Load the output of the BlastN alignment search into a DataFrame and process the results.
@@ -283,37 +249,11 @@ class ProbeFilterBlastn(ProbeFilterBase):
                 probes_wo_match_gene = probes_wo_match_gene["query"].unique()
 
                 if len(probes_wo_match_gene) > 0:  # gene has to have at least one probe
-                    _write_output(probes_info, gene_id, probes_wo_match_gene)
+                    _write_output(self, probes_info, gene_id, probes_wo_match_gene)
 
             return len(probes_wo_match["query"].unique())
 
-        def _write_output(probes_info, gene_id, probes_wo_match):
-            """Write results of probe design pipeline to file and create one file with suitable probes per gene.
-            :param probes_info: Dataframe with probe information, filtered based on sequence properties.
-            :type probes_info: pandas.DataFrame
-            :param gene_id: Gene ID of processed gene.
-            :type gene_id: string
-            :param probes_wo_match: List of suitable probes that don't have matches in the transcriptome.
-            :type probes_wo_match: list
-            """
-            file_output = os.path.join(self.dir_probes, "probes_{}.txt".format(gene_id))
-            valid_probes = probes_info[probes_info["probe_id"].isin(probes_wo_match)]
-            valid_probes.to_csv(file_output, sep="\t", index=False)
-
-        def _write_removed_genes():
-            """Write list of genes for which not enough probes could be designed for."""
-
-            # create file where removed genes are saved
-            _, _, probe_files = next(os.walk(self.dir_probes))
-            for probe_file in probe_files:
-                gene_id = probe_file[len("probes_") : -len(".txt")]
-                if gene_id in self.removed_genes:
-                    self.removed_genes.remove(gene_id)
-
-            with open(self.file_removed_genes, "w") as output:
-                for gene_id in self.removed_genes:
-                    output.write(f"{gene_id}\t0\n")
-
+        # Parallelize filtering of probes
         start_time = time.perf_counter()
         with parallel_backend("loky"):
             Parallel()(
@@ -327,7 +267,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
             f"Blast results processed in {finish_time-start_time} seconds"
         )
 
-        _write_removed_genes()
+        _write_removed_genes(self)
 
         # remove intermediate files
         shutil.rmtree(self.dir_blast)
@@ -342,7 +282,18 @@ class ProbeFilterBlastn(ProbeFilterBase):
             ):
                 os.remove(os.path.join(self.dir_annotations, file))
 
-    def apply(self):
+    def apply(self, probe_info):
+
+        """filter_exact=ProbeFilterExact(
+        self.n_jobs,
+        self.dir_output,
+        self.genes,
+        self.dir_annotations)
+
+        filter_exact.apply(probe_info)"""
+
+        # Filter out exact matches
+        self.filter_probes_exactmatch(probe_info)
 
         self.run_blast_search()
 
