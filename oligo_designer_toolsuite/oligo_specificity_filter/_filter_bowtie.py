@@ -8,6 +8,7 @@ import pandas as pd
 from joblib import Parallel, delayed, parallel_backend
 
 from ._filter_base import ProbeFilterBase
+from ._utils import _load_probes_info, _write_output, _write_removed_genes
 
 
 class ProbeFilterBowtie(ProbeFilterBase):
@@ -15,7 +16,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
         self,
         n_jobs,
         dir_output,
-        file_probe_info,
+        probe_info,
         genes,
         probe_length_min,
         probe_length_max,
@@ -36,7 +37,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
 
         """
-        super().__init__(n_jobs, dir_output, file_probe_info, genes)
+        super().__init__(n_jobs, dir_output, probe_info, genes)
 
         self.n_jobs = n_jobs
         self.file_transcriptome_fasta = file_transcriptome_fasta
@@ -148,7 +149,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
         def _process_bowtie_results(batch_id):
 
-            probes_info = _load_probes_info(batch_id)
+            probes_info = _load_probes_info(self, batch_id)
 
             num_probes_wo_match = 0
             for subbatch_id in range(self.number_subbatches):
@@ -156,40 +157,6 @@ class ProbeFilterBowtie(ProbeFilterBase):
                 num_probes_wo_match += _filter_probes_bowtie(
                     probes_info, bowtie_results
                 )
-
-        def _load_probes_info(batch_id):
-            """Load filtered probe information from tsv file
-            :param batch_id: Batch ID.
-            :type batch_id: int
-            :return: Dataframe with probe information, filtered based on sequence properties.
-            :rtype: pandas.DataFrame
-            """
-            file_probe_info_batch = os.path.join(
-                self.dir_annotations, "probes_info_batch{}.txt".format(batch_id)
-            )
-            probes_info = pd.read_csv(
-                file_probe_info_batch,
-                sep="\t",
-                dtype={
-                    "probe_id": str,
-                    "gene_id": str,
-                    "probe_sequence": str,
-                    "transcript_id": str,
-                    "exon_id": str,
-                    "chromosome": str,
-                    "start": str,
-                    "end": str,
-                    "strand": str,
-                    "GC_content": float,
-                    "melting_temperature": float,
-                    "melt_temp_arm1": float,
-                    "melt_temp_arm2": float,
-                    "dif_melt_temp_arms": float,
-                    "ligation_site": int,
-                },
-            )
-
-            return probes_info
 
         def _read_bowtie_output(batch_id, subbatch_id):
             """Load the output of the bowtie alignment search into a DataFrame and process the results.
@@ -262,36 +229,9 @@ class ProbeFilterBowtie(ProbeFilterBase):
                 probes_wo_match_gene = probes_wo_match_gene["probe_id"].unique()
 
                 if len(probes_wo_match_gene) > 0:  # gene has to have at least one probe
-                    _write_output(probes_info, gene_id, probes_wo_match_gene)
+                    _write_output(self, probes_info, gene_id, probes_wo_match_gene)
 
             return len(probes_wo_match["probe_id"].unique())
-
-        def _write_output(probes_info, gene_id, probes_wo_match):
-            """Write results of probe design pipeline to file and create one file with suitable probes per gene.
-            :param probes_info: Dataframe with probe information, filtered based on sequence properties.
-            :type probes_info: pandas.DataFrame
-            :param gene_id: Gene ID of processed gene.
-            :type gene_id: string
-            :param probes_wo_match: List of suitable probes that don't have matches in the transcriptome.
-            :type probes_wo_match: list
-            """
-            file_output = os.path.join(self.dir_probes, "probes_{}.txt".format(gene_id))
-            valid_probes = probes_info[probes_info["probe_id"].isin(probes_wo_match)]
-            valid_probes.to_csv(file_output, sep="\t", index=False)
-
-        def _write_removed_genes():
-            """Write list of genes for which not enough probes could be designed for."""
-
-            # create file where removed genes are saved
-            _, _, probe_files = next(os.walk(self.dir_probes))
-            for probe_file in probe_files:
-                gene_id = probe_file[len("probes_") : -len(".txt")]
-                if gene_id in self.removed_genes:
-                    self.removed_genes.remove(gene_id)
-
-            with open(self.file_removed_genes, "w") as output:
-                for gene_id in self.removed_genes:
-                    output.write(f"{gene_id}\t0\n")
 
         # Parallelize filtering of probes
         start_time = time.perf_counter()
@@ -307,7 +247,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
             f"Bowtie results processed in {finish_time-start_time} seconds"
         )
 
-        _write_removed_genes()
+        _write_removed_genes(self)
 
         # remove intermediate files
         for file in os.listdir(self.dir_bowtie):

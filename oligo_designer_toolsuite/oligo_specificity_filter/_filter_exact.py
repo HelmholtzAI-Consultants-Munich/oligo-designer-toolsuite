@@ -1,12 +1,10 @@
 import os
-import time
 
 import iteration_utilities
 import pandas as pd
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from joblib import Parallel, delayed, parallel_backend
 
 from ._filter_base import ProbeFilterBase
 
@@ -16,24 +14,25 @@ class ProbeFilterExact(ProbeFilterBase):
         self,
         n_jobs,
         dir_output,
-        file_probe_info,
         genes,
         dir_annotations,
     ):
-        """This class filters probes based on exact matches. This process can be executed in a parallel fashion where number batches defaults to number processes."""
+        """This class filters probes based on exact matches. This process can be executed in a parallel fashion where number batches defaults to number processes.
+        :param write_probes: write
+        :type file_transcriptome_fasta: str"""
         super().__init__(
             n_jobs,
             dir_output,
-            file_probe_info,
             genes,
             dir_annotations,
         )
 
         self.duplicated_sequences = None
 
-    def create_batches(self):
+    def create_batches(self, probe_info):
 
-        probeinfo_tsv = pd.read_csv(self.file_probe_info, sep="\t", header=0)
+        df = pd.DataFrame.from_dict(probe_info)
+        probeinfo_tsv = pd.read_csv(df, sep="\t", header=0)
 
         batch_size = int(len(self.genes) / self.n_jobs) + (
             len(self.genes) % self.n_jobs > 0
@@ -118,9 +117,10 @@ class ProbeFilterExact(ProbeFilterBase):
         ]
         probes_info_filtered.insert(0, "probe_id", probe_ids)
 
-        self._write_probes(
-            probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
-        )
+        if self.write_probes == True:
+            self._write_probes(
+                probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
+            )
 
     def _write_probes(
         self, probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
@@ -172,15 +172,15 @@ class ProbeFilterExact(ProbeFilterBase):
             with open(file_probe_fasta_subbatch, "w") as handle:
                 SeqIO.write(output, handle, "fasta")
 
-    def apply(self):
+    def apply(self, probe_info):
         self.logging.info("Creating batches")
-        self.create_batches()
+        self.create_batches(probe_info)
 
         self.duplicated_sequences = self._get_duplicated_sequences()
 
         # run filter with joblib
 
-        start_time = time.perf_counter()
+        """start_time = time.perf_counter()
         with parallel_backend("loky"):
             Parallel()(
                 delayed(self._filter_probes_exactmatch)(batch_id)
@@ -188,4 +188,4 @@ class ProbeFilterExact(ProbeFilterBase):
             )
 
         finish_time = time.perf_counter()
-        self.logging.info(f"Exact matches filtered in {finish_time-start_time} seconds")
+        self.logging.info(f"Exact matches filtered in {finish_time-start_time} seconds")"""
