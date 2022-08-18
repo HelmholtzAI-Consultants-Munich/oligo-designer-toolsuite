@@ -16,16 +16,12 @@ class ProbeFilterBowtie(ProbeFilterBase):
         self,
         n_jobs,
         dir_output,
-        probe_info,
-        genes,
-        probe_length_min,
-        probe_length_max,
         file_transcriptome_fasta,
         min_mismatches=4,
         mismatch_region=None,
     ):
         """This class filters probes based on the Bowtie short read alignment tool.
-        User can customize the filtering by specifying the min_mismatches per probe and mismatch_region, the region that should only be considered for counting mismatches.
+        The user can customize the filtering by specifying the min_mismatches per probe and mismatch_region, the region that should only be considered for counting mismatches.
         That is, all probes with number mismatches less than min_mismatches inside the mismatch_region are filtered out.
 
         :param file_transcriptome_fasta: path to fasta file containing all probes
@@ -37,13 +33,10 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
 
         """
-        super().__init__(n_jobs, dir_output, probe_info, genes)
+        super().__init__(n_jobs, dir_output)
 
         self.n_jobs = n_jobs
         self.file_transcriptome_fasta = file_transcriptome_fasta
-        self.probe_length_min = probe_length_min
-        self.probe_length_max = probe_length_max
-        self.genes = genes
 
         if min_mismatches > 4:
             raise ValueError(
@@ -145,7 +138,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
         """Use bowtie results to filter probes based on number of mismatches and mismatch position
 
         :return: Text file for each gene containing the filtered probes for that gene. Additionally, a text file containing a list of genes with insufficient number of probes is returned.
-        :rtype: Text files"""
+        :rtype: Txt files"""
 
         def _process_bowtie_results(batch_id):
 
@@ -160,8 +153,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
         def _read_bowtie_output(batch_id, subbatch_id):
             """Load the output of the bowtie alignment search into a DataFrame and process the results.
-            :param batch_id: Batch ID.
-            :type batch_id: int
+
             :return: DataFrame with processed bowtie alignment search results.
             :rtype: pandas.DataFrame
             """
@@ -265,6 +257,11 @@ class ProbeFilterBowtie(ProbeFilterBase):
             ):
                 os.remove(os.path.join(self.dir_annotations, file))
 
-    def apply(self):
+    def apply(self, probe_info):
+        """Apply bowtie filter to all batches in parallel"""
+
+        # Filter out exact matches
+        self.filter_probes_exactmatch(probe_info)
+
         self.run_bowtie()
         self.filter_probes_by_bowtie_results()

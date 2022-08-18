@@ -18,7 +18,6 @@ class ProbeFilterBlastn(ProbeFilterBase):
         n_jobs,
         file_transcriptome_fasta,
         dir_output,
-        genes,
         word_size,
         percent_identity,
         coverage,
@@ -40,9 +39,10 @@ class ProbeFilterBlastn(ProbeFilterBase):
         :type probe_length_min: int
         :param probe_length_max: maximum length of the probes created
         :type probe_length_max: int
-
+        :param ligation_region: coverage between probes and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
+        :type ligation_region: int
         """
-        super().__init__(n_jobs, dir_output, genes)
+        super().__init__(n_jobs, dir_output)
 
         self.word_size = word_size
         self.percent_identity = percent_identity
@@ -116,10 +116,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         )
 
     def filter_probes_by_blast_results(self):
-        """Process the output of the BlastN alignment search
-        :param batch_id: Batch ID.
-        :type batch_id: int
-        """
+        """Process the output of the BlastN alignment search"""
 
         def _process_blast_results(batch_id):
 
@@ -132,8 +129,6 @@ class ProbeFilterBlastn(ProbeFilterBase):
 
         def _read_blast_output(batch_id, subbatch_id):
             """Load the output of the BlastN alignment search into a DataFrame and process the results.
-            :param batch_id: Batch ID.
-            :type batch_id: int
             :return: DataFrame with processed blast alignment search results.
             :rtype: pandas.DataFrame
             """
@@ -283,14 +278,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
                 os.remove(os.path.join(self.dir_annotations, file))
 
     def apply(self, probe_info):
-
-        """filter_exact=ProbeFilterExact(
-        self.n_jobs,
-        self.dir_output,
-        self.genes,
-        self.dir_annotations)
-
-        filter_exact.apply(probe_info)"""
+        """Apply blastN filter to all batches in parallel"""
 
         # Filter out exact matches
         self.filter_probes_exactmatch(probe_info)
