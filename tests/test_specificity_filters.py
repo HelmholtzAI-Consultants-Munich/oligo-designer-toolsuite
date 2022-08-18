@@ -1,4 +1,4 @@
-def test_filter_exact():
+def test_filter_bowtie():
     pass
 
 
