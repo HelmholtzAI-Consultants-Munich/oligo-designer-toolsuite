@@ -1,59 +1,47 @@
 import logging
 import os
 import sys
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import iteration_utilities
 import joblib
+import pandas as pd
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from joblib import Parallel, delayed, parallel_backend
+
+from ..IO._data_parser import write_oligos_DB_tsv
 
 
 class ProbeFilterBase(ABC):
-
-    """This is the base class for all filter classes
-
-    :param number_batches: How many batches of files to split data into for filtering
-    :type number_batches: int
-    :param ligation_region: If ligation region is present
-    :type ligation_region: bool"""
-
     def __init__(
         self,
         n_jobs,
         dir_output,
-        genes,
         dir_annotations=None,
         number_subbatches=None,
         max_genes_in_batch=300,
-        write_to_file=True,
     ):
-        """This is the base class for all filter classes
+        """This is the base class for all probe filter classes
 
         :param n_jobs: numbers of jobs to run in parallel when filtering the probes
         :type n_jobs: int
         :param dir_output: output directory to write file containing filtered probes to
         :type dir_output: str
-        :param genes: list of genes given by user
-        :type genes: list
         :param dir_annotations: directory storing file annotations of probes, defaults to None
         :type dir_annotations: str, optional
         :param number_subbatches: number of subbatches to split batched data into to control how many genes are in one batch, defaults to None
-        :type dir_annotations: int, optional
+        :type number_subbatches: int, optional
         :param max_genes_in_batch: max number of genes allowed in a batch, defaults to 300
         :type max_genes_in_batch: int, optional
         """
         self.dir_output = dir_output
         self.max_genes_in_batch = max_genes_in_batch  # if more than 300 genes in one batch split into subbatches to reduce required memory for loading blast results
-        self.genes = genes
-        self.removed_genes = genes
         self.duplicated_sequences = None
-        self.write_to_file = write_to_file
-
-        if number_subbatches == None:
-            self.number_subbatches = (
-                len(genes) // self.max_genes_in_batch
-            ) + 1  # if number of genes in batch > max_genes_in_batch then split batch into multiple subbatches
-        else:
-            self.number_subbatches = number_subbatches
+        self.number_subbatches = number_subbatches
 
         if n_jobs == None:
             self.n_jobs = joblib.cpu_count()
@@ -78,15 +66,33 @@ class ProbeFilterBase(ABC):
 
     @abstractmethod
     def apply(self, probe_info):
-        """
+        """Apply filter to list of all possible probes in probe_info dictionary given user-specified genes and save output in dir_output
+
         :param probe_info: probe info of user-specified genes
         :type probe_info: dict
-        Apply filter to list of all possible probes in probe_info dictionary given user-specified genes and save output in dir_output"""
+        """
 
-    '''def create_batches(self, probe_info):
+    def create_batches(self, probe_info):
+        """Create batches of files that subdivide the probe info such that all probes of a gene are in one batch. These batches are then used as input to the filters. Number of batches is equal to n_jobs.
 
-        df = pd.DataFrame.from_dict(probe_info)
-        probeinfo_tsv = pd.read_csv(df, sep="\t", header=0)
+        :param probe_info: probe info of user-specified genes
+        :type probe_info: dict
+        """
+
+        write_oligos_DB_tsv(probe_info, self.dir_annotations + "tmp.tsv")
+        probeinfo_tsv = pd.read_csv(
+            self.dir_annotations + "tmp.tsv", sep="\t", header=0
+        )
+        os.remove(self.dir_annotations + "tmp.tsv")
+
+        self.genes = list(probe_info.keys())
+
+        self.removed_genes = self.genes
+
+        if self.number_subbatches == None:
+            self.number_subbatches = (
+                len(self.genes) // self.max_genes_in_batch
+            ) + 1  # if number of genes in batch > max_genes_in_batch then split batch into multiple subbatches
 
         batch_size = int(len(self.genes) / self.n_jobs) + (
             len(self.genes) % self.n_jobs > 0
@@ -121,7 +127,7 @@ class ProbeFilterBase(ABC):
                     handle_out.write(seq + "\n")
 
     def _get_duplicated_sequences(self):
-        """Get a list of probe sequences that have a exact match within the pool of all
+        """Get a list of probe sequences that have an exact match within the pool of all
         possible probe sequences for the list of input genes.
         :return: List of probe sequences with exact matches in the pool of probes.
         :rtype: list
@@ -166,15 +172,10 @@ class ProbeFilterBase(ABC):
             ~probes_info["probe_sequence"].isin(self.duplicated_sequences)
         ]
         probes_info_filtered.reset_index(inplace=True, drop=True)
-        probe_ids = [
-            f"{g_id}_pid{i}" for i, g_id in enumerate(probes_info_filtered["gene_id"])
-        ]
-        probes_info_filtered.insert(0, "probe_id", probe_ids)
 
-        if self.write_probes==True:
-            self._write_probes(
-                probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
-            )
+        self._write_probes(
+            probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
+        )
 
     def _write_probes(
         self, probes_info_filtered, file_probe_info_batch, file_probe_fasta_batch
@@ -227,6 +228,8 @@ class ProbeFilterBase(ABC):
                 SeqIO.write(output, handle, "fasta")
 
     def filter_probes_exactmatch(self, probe_info):
+        """Parallelize filtering of exact matches from input dictionary"""
+
         self.logging.info("Creating batches")
         self.create_batches(probe_info)
 
@@ -242,4 +245,4 @@ class ProbeFilterBase(ABC):
             )
 
         finish_time = time.perf_counter()
-        self.logging.info(f"Exact matches filtered in {finish_time-start_time} seconds")'''
+        self.logging.info(f"Exact matches filtered in {finish_time-start_time} seconds")
