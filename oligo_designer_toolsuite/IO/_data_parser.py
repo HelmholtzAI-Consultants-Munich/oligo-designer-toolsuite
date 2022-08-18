@@ -22,7 +22,7 @@ from six.moves import intern
 def read_gtf(
     filepath_or_buffer,
     expand_attribute_column=True,
-    infer_biotype_column=False,
+    infer_biotype_column=True,
     column_converters={},
     usecols=None,
     features=None,
@@ -237,14 +237,10 @@ def parse_gtf(
                     for s in df[fix_quotes_column]
                 ]
             dataframes.append(df)
-    except Exception as e:
-        raise ParsingError(str(e))
+    except:
+        print("An error occured when parsing the gtf file")
     df = pd.concat(dataframes)
     return df
-
-
-class ParsingError(Exception):
-    pass
 
 
 def expand_attribute_strings(
@@ -292,7 +288,7 @@ def expand_attribute_strings(
             # Ensembl release 79 added values like:
             #   transcript_support_level "1 (assigned to previous version 5)";
             # ...which gets mangled by splitting on spaces.
-            parts = kv.strip().split(" ", 2)[:2]
+            parts = kv.strip().split(" ", -1)[:2]
 
             if len(parts) != 2:
                 continue
