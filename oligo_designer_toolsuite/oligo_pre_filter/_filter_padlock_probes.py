@@ -1,5 +1,6 @@
 from Bio.SeqUtils import MeltingTemp as mt
-from oligo_pre_filter._filter_base import Filter
+
+from oligo_designer_toolsuite.oligo_pre_filter._filter_base import Filter
 
 
 class PadlockArms(Filter):
