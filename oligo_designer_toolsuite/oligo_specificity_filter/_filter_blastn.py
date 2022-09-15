@@ -18,6 +18,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         n_jobs,
         file_transcriptome_fasta,
         dir_output,
+        dir_annotations,
         word_size,
         percent_identity,
         coverage,
@@ -42,7 +43,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
         :param ligation_region: coverage between probes and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
         :type ligation_region: int
         """
-        super().__init__(n_jobs, dir_output)
+        super().__init__(n_jobs, dir_output, dir_annotations)
 
         self.word_size = word_size
         self.percent_identity = percent_identity
@@ -160,7 +161,7 @@ class ProbeFilterBlastn(ProbeFilterBase):
             )
 
             blast_results["query_gene_id"] = (
-                blast_results["query"].str.split("_pid").str[0]
+                blast_results["query"].str.split("_").str[0]
             )
             blast_results["target_gene_id"] = (
                 blast_results["target"].str.split("::").str[0]

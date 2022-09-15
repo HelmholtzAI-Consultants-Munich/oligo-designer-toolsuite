@@ -10,15 +10,19 @@ from joblib import Parallel, delayed, parallel_backend
 from ._filter_base import ProbeFilterBase
 from ._utils import _load_probes_info, _write_output, _write_removed_genes
 
+# TODO: Add ligation region
+
 
 class ProbeFilterBowtie(ProbeFilterBase):
     def __init__(
         self,
         n_jobs,
         dir_output,
+        dir_annotations,
         file_transcriptome_fasta,
         min_mismatches=4,
         mismatch_region=None,
+        ligation_region=0,
     ):
         """This class filters probes based on the Bowtie short read alignment tool.
         The user can customize the filtering by specifying the min_mismatches per probe and mismatch_region, the region that should only be considered for counting mismatches.
@@ -33,10 +37,11 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
 
         """
-        super().__init__(n_jobs, dir_output)
+        super().__init__(n_jobs, dir_output, dir_annotations)
 
         self.n_jobs = n_jobs
         self.file_transcriptome_fasta = file_transcriptome_fasta
+        self.ligation_region = ligation_region
 
         if min_mismatches > 4:
             raise ValueError(
@@ -109,6 +114,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
                 process = Popen(command, shell=True, cwd=self.dir_bowtie).wait()
 
+        index_exists = False
         # Check if bowtie index exists
         for file in os.listdir(self.dir_bowtie):
             if re.search("^transcriptome*", file):
@@ -189,7 +195,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
             )
 
             bowtie_results["query_gene_id"] = (
-                bowtie_results["query"].str.split("_pid").str[0]
+                bowtie_results["query"].str.split("_").str[0]
             )
             bowtie_results["reference_gene_id"] = (
                 bowtie_results["reference"].str.split("::").str[0]
@@ -213,6 +219,11 @@ class ProbeFilterBowtie(ProbeFilterBase):
             probes_wo_match = probes_info[
                 ~probes_info["probe_id"].isin(probes_with_match)
             ]
+
+            # TODO: Add ligation region filter
+
+            # if self.ligation_region > 0:
+            #     probes_wo_match=probes_wo_match[(probes_wo_match.start.astype('int32')>=probes_wo_match.ligation_site - (self.ligation_region - 1)) | (probes_wo_match.end.astype('int32')<=probes_wo_match.ligation_site + self.ligation_region)]
 
             for gene_id in probes_info["gene_id"].unique():
                 probes_wo_match_gene = probes_wo_match[
