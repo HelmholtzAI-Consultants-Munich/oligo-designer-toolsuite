@@ -79,11 +79,9 @@ class ProbeFilterBase(ABC):
         :type probe_info: dict
         """
 
-        write_oligos_DB_tsv(probe_info, self.dir_annotations + "tmp.tsv")
+        write_oligos_DB_tsv(probe_info, self.dir_annotations + "/tmp.tsv")
         probeinfo_tsv = pd.read_csv(
-            self.dir_annotations + "tmp.tsv",
-            sep="\t",
-            header=0,  # dtype={probe_id: str, probe_sequence: str, gene_id: str, transcript_id: str, exon_id, chromosome, start, end, strand, length, GC_content, melt_temp, melt_temp_arm1, melt_temp_arm2, dif_melt_temp_arms, ligation_site]
+            self.dir_annotations + "/tmp.tsv", sep="\t", header=0
         )
 
         # #remove semi-colon in start and end columns of probe info dataframe
@@ -95,7 +93,7 @@ class ProbeFilterBase(ABC):
         # probeinfo_tsv[start_index]=probeinfo_tsv[start_index].str.split(';')[0]
         # probeinfo_tsv[end_index]=probeinfo_tsv[end_index].str.split(';')[0]'
 
-        os.remove(self.dir_annotations + "tmp.tsv")
+        os.remove(self.dir_annotations + "/tmp.tsv")
 
         self.genes = list(probe_info.keys())
 
