@@ -102,9 +102,10 @@ class CustomDB:
         self.oligos_DB = None
 
         self.file_sequence = file_sequence
+        self.file_annotation = file_annotation
         # create index file
         pyfaidx.Fasta(self.file_sequence)
-        self.gene_transcript = GeneTranscript(self.file_sequence, file_annotation)
+        self.gene_transcript = None
         self.oligos = Oligos(
             self.probe_length_min, self.probe_length_max, self.file_sequence, filters
         )
@@ -217,7 +218,7 @@ class CustomDB:
         :return: path of the file written
         :rtype: str
         """
-
+        self.gene_transcript = GeneTranscript(self.file_sequence, self.file_annotation)
         if dir_reference_DB is None:
             dir_reference_DB = self.dir_annotation
         else:
@@ -305,6 +306,10 @@ class CustomDB:
         self.file_name_oligos_DB_tsv = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.tsv"
         self.file_name_oligos_DB_gtf = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.gtf"
         self.file_name_oligos_DB_fasta = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fasta"
+        if self.gene_transcript is None:
+            self.gene_transcript = GeneTranscript(
+                self.file_sequence, self.file_annotation
+            )
         file_region_annotation = create_target_region(region, genes)
         if genes is None:
             genes = self.gene_transcript.get_genes_from_annotation()
