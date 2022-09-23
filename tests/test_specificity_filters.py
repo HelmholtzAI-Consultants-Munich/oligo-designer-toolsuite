@@ -12,9 +12,6 @@ from oligo_designer_toolsuite.oligo_specificity_filter._filter_blastn import (
 from oligo_designer_toolsuite.oligo_specificity_filter._filter_bowtie import (
     ProbeFilterBowtie,
 )
-from oligo_designer_toolsuite.oligo_specificity_filter._filter_bowtie2 import (
-    ProbeFilterBowtie2,
-)
 
 cwd = os.getcwd()
 
@@ -93,21 +90,21 @@ def test_filter_bowtie_all_matches():
     assert not blast_sample_output.empty
 
 
-def test_filter_bowtie2_format():
+# def test_filter_bowtie2_format():
 
-    # Run Bowtie2 filter
-    bowtie2_filter = ProbeFilterBowtie2(
-        n_jobs, dir_output, dir_annotations, file_transcriptome_fasta
-    )
+#     # Run Bowtie2 filter
+#     bowtie2_filter = ProbeFilterBowtie2(
+#         n_jobs, dir_output, dir_annotations, file_transcriptome_fasta
+#     )
 
-    bowtie2_filter.apply(probe_info_dict_no_match)
+#     bowtie2_filter.apply(probe_info_dict_no_match)
 
-    df_correct_format = pd.read_csv(probe_info_dict_no_match)
+#     df_correct_format = pd.read_csv(file_probe_info_no_match)
 
-    bowtie_sample_output = pd.read_csv(cwd + "/probes_bowtie2/probes_WASH7P.txt")
-    assert (
-        df_correct_format.columns().tolist() == bowtie_sample_output.columns().tolist()
-    )
+#     bowtie_sample_output = pd.read_csv(cwd + "/probes_bowtie2/probes_WASH7P.txt")
+#     assert (
+#         df_correct_format.columns().tolist() == bowtie_sample_output.columns().tolist()
+#     )
 
 
 def test_filter_blast_format():

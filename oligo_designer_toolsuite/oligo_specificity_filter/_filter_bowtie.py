@@ -34,6 +34,8 @@ class ProbeFilterBowtie(ProbeFilterBase):
         :type min_mismatches: int
         :param mismatch_region: The region of the probe where the mismatches are considered. Probes that have less than min_mismatches in the first L bases (where L is a number 5 or greater) are filtered out
         :type mismatch_region: int
+        :param ligation_region: coverage between probes and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
+        :type ligation_region: int
 
 
         """
@@ -215,7 +217,19 @@ class ProbeFilterBowtie(ProbeFilterBase):
                 bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
             ]
 
+            if self.ligation_region > 0:
+
+                bowtie_results_matches = bowtie_results.merge(
+                    probes_info[["probe_id", "ligation_site"]],
+                    left_on="query",
+                    right_on="probe_id",
+                    how="inner",
+                )
+
+                # get mismatch positions
+
             probes_with_match = bowtie_results_matches["query"].unique()
+
             probes_wo_match = probes_info[
                 ~probes_info["probe_id"].isin(probes_with_match)
             ]
