@@ -8,7 +8,12 @@ import pandas as pd
 from joblib import Parallel, delayed, parallel_backend
 
 from ._filter_base import ProbeFilterBase
-from ._utils import _load_probes_info, _write_output, _write_removed_genes
+from ._utils import (
+    _load_probes_info,
+    _write_output,
+    _write_removed_genes,
+    mismatch_in_ligation,
+)
 
 # TODO: Add ligation region
 
@@ -219,25 +224,65 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
             if self.ligation_region > 0:
 
-                bowtie_results_matches = bowtie_results.merge(
+                # Get probes where mismatch positions are given
+                bowtie_results_matches_mismatch_positions = bowtie_results_matches[
+                    bowtie_results_matches["mismatch_positions"].notna()
+                ]
+                # Extract positions
+                positions = (
+                    bowtie_results_matches_mismatch_positions["mismatch_positions"]
+                    .str.split(",")
+                    .apply(lambda x: [elem.split(":")[0] for elem in x])
+                )
+                # add positions to bowtie results
+                bowtie_results_positions = bowtie_results_matches.merge(
+                    positions, left_index=True, right_index=True, how="left"
+                )
+
+                bowtie_results_add_ligation = bowtie_results_positions.merge(
                     probes_info[["probe_id", "ligation_site"]],
                     left_on="query",
                     right_on="probe_id",
                     how="inner",
                 )
 
-                # get mismatch positions
+                # Calculate ligation region and search if mismatch is in this region
+                bowtie_results_add_ligation[
+                    "ligation_region_start"
+                ] = bowtie_results_add_ligation.ligation_site - (
+                    self.ligation_region - 1
+                )
+                bowtie_results_add_ligation["ligation_region_end"] = (
+                    bowtie_results_add_ligation.ligation_site + self.ligation_region
+                )
+
+                bowtie_results_add_ligation.rename(
+                    columns={"mismatch_positions_y": "positions"}, inplace=True
+                )
+                bowtie_results_add_ligation["mismatch_in_ligation"] = [
+                    False for i in range(len(bowtie_results_add_ligation))
+                ]
+
+                # Calculate number of mismatches in ligation region
+                bowtie_results_add_ligation_notna = bowtie_results_add_ligation[
+                    bowtie_results_add_ligation["positions"].notna()
+                ]
+                bowtie_results_add_ligation_notna = (
+                    bowtie_results_add_ligation_notna.apply(
+                        mismatch_in_ligation, axis=1
+                    )
+                )
+
+                # filter out probes where there is mismatch in ligation region
+                bowtie_results_matches = bowtie_results_add_ligation_notna[
+                    bowtie_results_add_ligation_notna["mismatch_in_ligation"] == False
+                ]
 
             probes_with_match = bowtie_results_matches["query"].unique()
 
             probes_wo_match = probes_info[
                 ~probes_info["probe_id"].isin(probes_with_match)
             ]
-
-            # TODO: Add ligation region filter
-
-            # if self.ligation_region > 0:
-            #     probes_wo_match=probes_wo_match[(probes_wo_match.start.astype('int32')>=probes_wo_match.ligation_site - (self.ligation_region - 1)) | (probes_wo_match.end.astype('int32')<=probes_wo_match.ligation_site + self.ligation_region)]
 
             for gene_id in probes_info["gene_id"].unique():
                 probes_wo_match_gene = probes_wo_match[
