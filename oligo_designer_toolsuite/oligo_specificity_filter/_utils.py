@@ -65,3 +65,16 @@ def _write_removed_genes(self):
     with open(self.file_removed_genes, "w") as output:
         for gene_id in self.removed_genes:
             output.write(f"{gene_id}\t0\n")
+
+
+def mismatch_in_ligation(row):
+    mismatches_in_region = []
+    for mismatch in row["positions"]:
+        if int(mismatch) >= int(row["ligation_region_start"]) and int(mismatch) <= int(
+            row["ligation_region_end"]
+        ):
+            mismatches_in_region.append(True)
+    if len(mismatches_in_region) > 0:
+        row["mismatch_in_ligation"] = mismatches_in_region[0]
+        row["num_mismatches_in_ligation"] = len(mismatches_in_region)
+    return row

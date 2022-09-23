@@ -3,9 +3,6 @@ import os
 import pandas as pd
 
 from oligo_designer_toolsuite.IO._data_parser import read_oligos_DB_tsv
-
-# import sys
-# sys.path.append("../oligo_designer_toolsuite")
 from oligo_designer_toolsuite.oligo_specificity_filter._filter_blastn import (
     ProbeFilterBlastn,
 )
@@ -19,10 +16,6 @@ n_jobs = 1
 ligation_region = 0
 dir_output = cwd + "/output"
 dir_annotations = cwd + "/data"
-file_probe_info = (
-    dir_annotations
-    + "/oligo_DB_unknown_unknown_Custom_release_unknown_gene_transcript.tsv"
-)
 min_probes_per_gene = 2
 file_transcriptome_fasta = (
     dir_annotations
@@ -41,7 +34,13 @@ mismatch_region = 5
 
 probe_info_dict_match = read_oligos_DB_tsv(file_probe_info_match)
 probe_info_dict_no_match = read_oligos_DB_tsv(file_probe_info_no_match)
-probe_info_dict = read_oligos_DB_tsv(file_probe_info)
+
+# Initialize parameters to test ligation region argument
+file_probe_info_ligation_match = dir_annotations + "/oligo_DB_ligation_match.tsv"
+file_probe_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_nomatch.tsv"
+
+probe_info_dict_ligation_match = read_oligos_DB_tsv(file_probe_info_ligation_match)
+probe_info_dict_ligation_no_match = read_oligos_DB_tsv(file_probe_info_ligation_nomatch)
 
 
 def test_filter_bowtie_format():
@@ -88,23 +87,6 @@ def test_filter_bowtie_all_matches():
         header=None,
     )
     assert not blast_sample_output.empty
-
-
-# def test_filter_bowtie2_format():
-
-#     # Run Bowtie2 filter
-#     bowtie2_filter = ProbeFilterBowtie2(
-#         n_jobs, dir_output, dir_annotations, file_transcriptome_fasta
-#     )
-
-#     bowtie2_filter.apply(probe_info_dict_no_match)
-
-#     df_correct_format = pd.read_csv(file_probe_info_no_match)
-
-#     bowtie_sample_output = pd.read_csv(cwd + "/probes_bowtie2/probes_WASH7P.txt")
-#     assert (
-#         df_correct_format.columns().tolist() == bowtie_sample_output.columns().tolist()
-#     )
 
 
 def test_filter_blast_format():
@@ -159,4 +141,47 @@ def test_filter_blast_all_matches():
     assert not blast_sample_output.empty
 
 
-# TODO: Check if ligation filter works for all filters
+def test_filter_ligation_bowtie_match():
+
+    bowtie_filter = ProbeFilterBowtie(
+        n_jobs,
+        dir_output,
+        dir_annotations,
+        file_transcriptome_fasta,
+        min_mismatches,
+        mismatch_region,
+        ligation_region=10,
+    )
+
+    bowtie_filter.apply(probe_info_dict_ligation_match)
+
+    # Check that gene of matching probe is added to file genes_with_insufficient_probes.txt
+    bowtie_sample_output = pd.read_csv(
+        dir_output + "/probes_bowtie/genes_with_insufficient_probes.txt",
+        sep="\t",
+        header=None,
+    )
+    assert not bowtie_sample_output.empty
+
+
+def test_filter_ligation_bowtie_no_match():
+
+    bowtie_filter = ProbeFilterBowtie(
+        n_jobs,
+        dir_output,
+        dir_annotations,
+        file_transcriptome_fasta,
+        min_mismatches,
+        mismatch_region,
+        ligation_region=10,
+    )
+
+    bowtie_filter.apply(probe_info_dict_ligation_no_match)
+
+    # Check that file genes_with_insufficient_probes.txt is empty
+    bowtie_sample_output = pd.read_csv(
+        dir_output + "/probes_bowtie/probes_WASH7P.txt",
+        sep="\t",
+        header=None,
+    )
+    assert not bowtie_sample_output.empty
