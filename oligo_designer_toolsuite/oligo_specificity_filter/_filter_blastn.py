@@ -281,8 +281,11 @@ class ProbeFilterBlastn(ProbeFilterBase):
     def apply(self, probe_info):
         """Apply blastN filter to all batches in parallel"""
 
-        # Filter out exact matches
-        self.filter_probes_exactmatch(probe_info)
+        # # Filter out exact matches
+        # self.filter_probes_exactmatch(probe_info)
+
+        self.logging.info("Creating batches")
+        self.create_batches(probe_info)
 
         self.run_blast_search()
 
