@@ -17,10 +17,9 @@ ligation_region = 0
 dir_output = cwd + "/output"
 dir_annotations = cwd + "/data"
 min_probes_per_gene = 2
-file_transcriptome_fasta = (
-    dir_annotations
-    + "/reference_DB_unknown_unknown_Custom_release_unknown_genome_False_gene_transcript_True"
-)
+file_transcriptome_fasta = dir_annotations + "/reference_sample.fna"
+file_transcriptome_fasta2 = dir_annotations + "/reference_sample2.fna"
+
 
 file_probe_info_match = dir_annotations + "/oligo_DB_match.tsv"
 file_probe_info_no_match = dir_annotations + "/oligo_DB_no_match.tsv"
@@ -147,7 +146,7 @@ def test_filter_ligation_bowtie_match():
         n_jobs,
         dir_output,
         dir_annotations,
-        file_transcriptome_fasta,
+        file_transcriptome_fasta2,
         min_mismatches,
         mismatch_region,
         ligation_region=10,
@@ -170,7 +169,7 @@ def test_filter_ligation_bowtie_no_match():
         n_jobs,
         dir_output,
         dir_annotations,
-        file_transcriptome_fasta,
+        file_transcriptome_fasta2,
         min_mismatches,
         mismatch_region,
         ligation_region=10,

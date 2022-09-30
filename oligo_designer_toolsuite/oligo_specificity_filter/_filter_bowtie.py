@@ -15,8 +15,6 @@ from ._utils import (
     mismatch_in_ligation,
 )
 
-# TODO: Add ligation region
-
 
 class ProbeFilterBowtie(ProbeFilterBase):
     def __init__(
@@ -33,6 +31,8 @@ class ProbeFilterBowtie(ProbeFilterBase):
         The user can customize the filtering by specifying the min_mismatches per probe and mismatch_region, the region that should only be considered for counting mismatches.
         That is, all probes with number mismatches less than min_mismatches inside the mismatch_region are filtered out.
 
+        Use conda install -c bioconda bowtie to install Bowtie package
+
         :param file_transcriptome_fasta: path to fasta file containing all probes
         :type file_transcriptome_fasta: str
         :param min_mismatches: Threshhold value on the number of mismatches required for each probe. Probes where the number of mismatches are greater than or equal to this threshhold are considered valid. Possible values range from 0 to 4.
@@ -46,7 +46,6 @@ class ProbeFilterBowtie(ProbeFilterBase):
         """
         super().__init__(n_jobs, dir_output, dir_annotations)
 
-        self.n_jobs = n_jobs
         self.file_transcriptome_fasta = file_transcriptome_fasta
         self.ligation_region = ligation_region
 
@@ -330,8 +329,11 @@ class ProbeFilterBowtie(ProbeFilterBase):
     def apply(self, probe_info):
         """Apply bowtie filter to all batches in parallel"""
 
-        # Filter out exact matches
-        self.filter_probes_exactmatch(probe_info)
+        # # Filter out exact matches
+        # self.filter_probes_exactmatch(probe_info)
+
+        self.logging.info("Creating batches")
+        self.create_batches(probe_info)
 
         self.run_bowtie()
         self.filter_probes_by_bowtie_results()

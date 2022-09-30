@@ -268,8 +268,11 @@ class ProbeFilterBowtie2(ProbeFilterBase):
     def apply(self, probe_info):
         """Apply bowtie 2 filter to all batches in parallel"""
 
-        # Filter out exact matches
-        self.filter_probes_exactmatch(probe_info)
+        # # Filter out exact matches
+        # self.filter_probes_exactmatch(probe_info)
+
+        self.logging.info("Creating batches")
+        self.create_batches(probe_info)
 
         self.run_bowtie2()
         self.filter_probes_by_bowtie2_results()

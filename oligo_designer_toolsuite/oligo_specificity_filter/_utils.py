@@ -68,6 +68,7 @@ def _write_removed_genes(self):
 
 
 def mismatch_in_ligation(row):
+    # Checks if mismatches are in ligation region, and if True, counts and stores how many mismatches are in ligation region
     mismatches_in_region = []
     for mismatch in row["positions"]:
         if int(mismatch) >= int(row["ligation_region_start"]) and int(mismatch) <= int(
