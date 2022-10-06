@@ -71,7 +71,7 @@ class ProbeFilterBase(ABC):
         """
 
     def create_batches(self, probe_info):
-        """Create batches of files that subdivide the probe info such that all probes of a gene are in one batch. These batches are then used as input to the filters. Number of batches is equal to n_jobs.
+        """Create batches of files that subdivide the probes and probe info such that all probes of a gene are in one batch. These batches are then used as input to the filters. Number of batches is equal to n_jobs.
 
         :param probe_info: probe info of user-specified genes
         :type probe_info: dict
@@ -157,7 +157,7 @@ class ProbeFilterBase(ABC):
                     with open(file_probe_sequence_subbatch, "w") as handle:
                         SeqIO.write(output, handle, "fasta")
 
-        # Get new n_jobs and number_subbatches (since empty files have been removed)
+        # Redefine n_jobs and number_subbatches (since empty files have been removed)
         n_jobs = []
         number_subbatches = []
         for file in os.listdir(self.dir_annotations):
@@ -168,5 +168,3 @@ class ProbeFilterBase(ABC):
 
         self.n_jobs = int(max(n_jobs))
         self.number_subbatches = int(max(number_subbatches)) + 1
-        # print(type(self.n_jobs))
-        # return x #self.n_jobs, self.number_subbatches

@@ -28,7 +28,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
         ligation_region=0,
     ):
         """This class filters probes based on the Bowtie short read alignment tool.
-        The user can customize the filtering by specifying the min_mismatches per probe and mismatch_region, the region that should only be considered for counting mismatches.
+        The user can customize the filtering by specifying the min_mismatches per probe and mismatch_region, the region that should be considered for counting mismatches.
         That is, all probes with number mismatches less than min_mismatches inside the mismatch_region are filtered out.
 
         Use conda install -c bioconda bowtie to install Bowtie package
@@ -37,9 +37,9 @@ class ProbeFilterBowtie(ProbeFilterBase):
         :type file_transcriptome_fasta: str
         :param min_mismatches: Threshhold value on the number of mismatches required for each probe. Probes where the number of mismatches are greater than or equal to this threshhold are considered valid. Possible values range from 0 to 4.
         :type min_mismatches: int
-        :param mismatch_region: The region of the probe where the mismatches are considered. Probes that have less than min_mismatches in the first L bases (where L is a number 5 or greater) are filtered out
+        :param mismatch_region: The region of the probe where the mismatches are considered. Probes that have less than min_mismatches in the first L bases (where L is 5 or greater) are filtered out
         :type mismatch_region: int
-        :param ligation_region: coverage between probes and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
+        :param ligation_region: Coverage between probes and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site). Probes with no mismatches in the ligation region are filtered out. If ligation_region = 0, omit this requirement
         :type ligation_region: int
 
 
@@ -210,7 +210,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
             return bowtie_results
 
         def _filter_probes_bowtie(probes_info, bowtie_results):
-            """Use the results of the Bowtie alignement search to remove probes with high similarity (i.e. low number of mismatches) based on user defined thresholds.
+            """Use the results of the Bowtie alignment search to remove probes with high similarity (i.e. low number of mismatches) based on user defined thresholds.
             :param probes_info: Dataframe with probe information, filtered based on sequence properties.
             :type probes_info: pandas.DataFrame
             :param blast_results: DataFrame with processed bowtie alignment search results.
@@ -227,7 +227,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
                 bowtie_results_matches_mismatch_positions = bowtie_results_matches[
                     bowtie_results_matches["mismatch_positions"].notna()
                 ]
-                # Extract positions
+                # Extract positions (Positions of mismatches given in bowtie output)
                 positions = (
                     bowtie_results_matches_mismatch_positions["mismatch_positions"]
                     .str.split(",")
@@ -245,7 +245,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
                     how="inner",
                 )
 
-                # Calculate ligation region and search if mismatch is in this region
+                # Calculate ligation region
                 bowtie_results_add_ligation[
                     "ligation_region_start"
                 ] = bowtie_results_add_ligation.ligation_site - (
@@ -258,11 +258,12 @@ class ProbeFilterBowtie(ProbeFilterBase):
                 bowtie_results_add_ligation.rename(
                     columns={"mismatch_positions_y": "positions"}, inplace=True
                 )
+
+                # Search if mismatch is in ligation region. mismatch_in_ligation method is used to calculate number of mismatches in ligation region
                 bowtie_results_add_ligation["mismatch_in_ligation"] = [
                     False for i in range(len(bowtie_results_add_ligation))
                 ]
 
-                # Calculate number of mismatches in ligation region
                 bowtie_results_add_ligation_notna = bowtie_results_add_ligation[
                     bowtie_results_add_ligation["positions"].notna()
                 ]
@@ -272,7 +273,7 @@ class ProbeFilterBowtie(ProbeFilterBase):
                     )
                 )
 
-                # filter out probes where there is mismatch in ligation region
+                # filter out probes where there is at least one mismatch in ligation region
                 bowtie_results_matches = bowtie_results_add_ligation_notna[
                     bowtie_results_add_ligation_notna["mismatch_in_ligation"] == False
                 ]
@@ -328,9 +329,6 @@ class ProbeFilterBowtie(ProbeFilterBase):
 
     def apply(self, probe_info):
         """Apply bowtie filter to all batches in parallel"""
-
-        # # Filter out exact matches
-        # self.filter_probes_exactmatch(probe_info)
 
         self.logging.info("Creating batches")
         self.create_batches(probe_info)

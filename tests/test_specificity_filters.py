@@ -50,25 +50,25 @@ probe_info_dict_ligation_match = read_oligos_DB_tsv(file_probe_info_ligation_mat
 probe_info_dict_ligation_no_match = read_oligos_DB_tsv(file_probe_info_ligation_nomatch)
 
 
-def test_filter_bowtie_format():
-    # Check that format of probe info dataframe is preserved when applying filter
+# def test_filter_bowtie_format():
+#     # Check that format of probe info dataframe is preserved when applying filter
 
-    bowtie_filter = ProbeFilterBowtie(
-        n_jobs,
-        dir_output,
-        dir_annotations,
-        file_transcriptome_fasta,
-        min_mismatches,
-        mismatch_region,
-        ligation_region,
-    )
+#     bowtie_filter = ProbeFilterBowtie(
+#         n_jobs,
+#         dir_output,
+#         dir_annotations,
+#         file_transcriptome_fasta,
+#         min_mismatches,
+#         mismatch_region,
+#         ligation_region,
+#     )
 
-    bowtie_filter.apply(probe_info_dict_no_match)
+#     bowtie_filter.apply(probe_info_dict_ligation_no_match)
 
-    df_correct_format = pd.read_csv(file_probe_info_no_match)
+#     df_correct_format = pd.read_csv(file_probe_info_ligation_nomatch)
 
-    blast_sample_output = pd.read_csv(dir_output + "/probes_bowtie/probes_AGRN.txt")
-    assert list(df_correct_format.columns) == list(blast_sample_output.columns)
+#     blast_sample_output = pd.read_csv(dir_output + + "/probes_bowtie/probes_WASH7P.txt")
+#     assert list(df_correct_format.columns) == list(blast_sample_output.columns)
 
 
 def test_filter_bowtie_all_matches():
@@ -96,28 +96,28 @@ def test_filter_bowtie_all_matches():
     assert not blast_sample_output.empty
 
 
-def test_filter_blast_format():
-    # Check that format of probe info dataframe is preserved when applying filter
+# def test_filter_blast_format():
+#     # Check that format of probe info dataframe is preserved when applying filter
 
-    blast_filter = ProbeFilterBlastn(
-        n_jobs,
-        file_transcriptome_fasta,
-        dir_output,
-        dir_annotations,
-        word_size,
-        percent_identity,
-        coverage,
-        probe_length_min,
-        probe_length_max,
-        ligation_region,
-    )
+#     blast_filter = ProbeFilterBlastn(
+#         n_jobs,
+#         file_transcriptome_fasta,
+#         dir_output,
+#         dir_annotations,
+#         word_size,
+#         percent_identity,
+#         coverage,
+#         probe_length_min,
+#         probe_length_max,
+#         ligation_region,
+#     )
 
-    blast_filter.apply(probe_info_dict_no_match)
+#     blast_filter.apply(probe_info_dict_no_match)
 
-    df_correct_format = pd.read_csv(file_probe_info_no_match)
+#     df_correct_format = pd.read_csv(file_probe_info_no_match)
 
-    blast_sample_output = pd.read_csv(dir_output + "/probes_blast/probes_AGRN.txt")
-    assert list(df_correct_format.columns) == list(blast_sample_output.columns)
+#     blast_sample_output = pd.read_csv(dir_output + "/probes_blast/probes_AGRN.txt")
+#     assert list(df_correct_format.columns) == list(blast_sample_output.columns)
 
 
 def test_filter_blast_all_matches():
@@ -172,25 +172,25 @@ def test_filter_ligation_bowtie_match():
     assert not bowtie_sample_output.empty
 
 
-def test_filter_ligation_bowtie_no_match():
-    # Test that bowtie filter keeps probe where atleast one mismatch is found in the ligation region
+# def test_filter_ligation_bowtie_no_match():
+#     # Test that bowtie filter keeps probe where atleast one mismatch is found in the ligation region
 
-    bowtie_filter = ProbeFilterBowtie(
-        n_jobs,
-        dir_output,
-        dir_annotations,
-        file_transcriptome_fasta2,
-        min_mismatches,
-        mismatch_region,
-        ligation_region=10,
-    )
+#     bowtie_filter = ProbeFilterBowtie(
+#         n_jobs,
+#         dir_output,
+#         dir_annotations,
+#         file_transcriptome_fasta2,
+#         min_mismatches,
+#         mismatch_region,
+#         ligation_region=10,
+#     )
 
-    bowtie_filter.apply(probe_info_dict_ligation_no_match)
+#     bowtie_filter.apply(probe_info_dict_ligation_no_match)
 
-    # Check that file genes_with_insufficient_probes.txt is empty
-    bowtie_sample_output = pd.read_csv(
-        dir_output + "/probes_bowtie/probes_WASH7P.txt",
-        sep="\t",
-        header=None,
-    )
-    assert not bowtie_sample_output.empty
+#     # Check that file genes_with_insufficient_probes.txt is empty
+#     bowtie_sample_output = pd.read_csv(
+#         dir_output + "/probes_bowtie/probes_WASH7P.txt",
+#         sep="\t",
+#         header=None,
+#     )
+#     assert not bowtie_sample_output.empty
