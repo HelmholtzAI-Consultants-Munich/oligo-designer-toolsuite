@@ -10,9 +10,6 @@ from joblib import Parallel, delayed, parallel_backend
 from ._filter_base import ProbeFilterBase
 from ._utils import _load_probes_info, _write_output, _write_removed_genes
 
-# TODO: Add optional user defined arguments for bowtie command line
-# Throw error when wrong min_score format is used
-
 
 class ProbeFilterBowtie2(ProbeFilterBase):
     def __init__(
@@ -23,6 +20,15 @@ class ProbeFilterBowtie2(ProbeFilterBase):
         file_transcriptome_fasta,
         min_score=None,
     ):
+        """This class filters probes based on the Bowtie 2 read alignment tool. It is recommended to use Bowtie 2 instead of Bowtie for reads longer than about 50 bp, as it gives better performance.
+        The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives a alignmnet score to each probe. The higher the score, the more simlar the read sequence is to the reference sequence. The min_score parameter filters out probes with an aligment score greater than min_score
+
+        Use conda install -c bioconda bowtie2 to install the Bowtie 2 package
+
+        :param file_transcriptome_fasta: path to fasta file containing all probes
+        :type file_transcriptome_fasta: str
+        :param min_score: User defined threshhold for alignmnent score. If specified, the Bowtie 2 filter filters out probes with an aligment score greater than min_score. If None, min_score defaults to -0.6 + -0.6 * L, where L is the read length
+        """
 
         super().__init__(n_jobs, dir_output, dir_annotations)
 
@@ -41,15 +47,14 @@ class ProbeFilterBowtie2(ProbeFilterBase):
         )
 
     def run_bowtie2(self):
-        """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts.
-        Bowtie identifies all allignments between the probes and transcripts and returns the number of mismatches and mismatch position for each alignment.
+        """Run Bowtie 2 alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts.
 
         :return: DataFrame with processed bowtie alignment search results.
         :rtype: pandas.DataFrame
         """
 
         def _run_bowtie2_batch(batch_id):
-            """Run Bowtie alignment tool for all probes of one batch
+            """Run Bowtie 2 alignment tool for all probes of one batch
             :param batch_id: Batch ID.
             :type batch_id: int
             """
@@ -93,7 +98,7 @@ class ProbeFilterBowtie2(ProbeFilterBase):
                 index_exists = True
                 break
 
-        # Create bowtie index if none exists
+        # Create bowtie2 index if none exists
         if not index_exists:
             command1 = (
                 "bowtie2-build -f "
@@ -267,9 +272,6 @@ class ProbeFilterBowtie2(ProbeFilterBase):
 
     def apply(self, probe_info):
         """Apply bowtie 2 filter to all batches in parallel"""
-
-        # # Filter out exact matches
-        # self.filter_probes_exactmatch(probe_info)
 
         self.logging.info("Creating batches")
         self.create_batches(probe_info)
