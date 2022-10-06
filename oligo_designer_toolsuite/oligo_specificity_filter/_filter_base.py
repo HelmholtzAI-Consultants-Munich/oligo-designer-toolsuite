@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -92,7 +93,7 @@ class ProbeFilterBase(ABC):
                 len(self.genes) // self.max_genes_in_batch
             ) + 1  # if number of genes in batch > max_genes_in_batch then split batch into multiple subbatches
 
-        batch_size = int(len(self.genes) / self.n_jobs) + (
+        self.batch_size = int(len(self.genes) / self.n_jobs) + (
             len(self.genes) % self.n_jobs > 0
         )
 
@@ -104,8 +105,8 @@ class ProbeFilterBase(ABC):
 
             # batch probe info
             genes_batch = self.genes[
-                (batch_size * batch_id) : (
-                    min(batch_size * (batch_id + 1), len(self.genes) + 1)
+                (self.batch_size * batch_id) : (
+                    min(self.batch_size * (batch_id + 1), len(self.genes) + 1)
                 )
             ]
 
@@ -113,14 +114,12 @@ class ProbeFilterBase(ABC):
                 probeinfo_tsv["gene_id"].isin(genes_batch)
             ].copy()
             probeinfo_batch.reset_index(inplace=True, drop=True)
-            probeinfo_batch.to_csv(
-                file_probe_info_batch, sep="\t", header=True, index=False
-            )
 
-            # sequences = probeinfo[probeinfo.columns[1]]
-            # with open(file_probe_sequence_batch, "w") as handle_out:
-            #     for seq in sequences:
-            #         handle_out.write(seq + "\n")
+            if not probeinfo_batch.empty:
+
+                probeinfo_batch.to_csv(
+                    file_probe_info_batch, sep="\t", header=True, index=False
+                )
 
             for subbatch_id in range(self.number_subbatches):
 
@@ -134,6 +133,7 @@ class ProbeFilterBase(ABC):
                         (subbatch_id + 1) * self.max_genes_in_batch
                     )
                 ]
+
                 probes_info_subbatch = probeinfo_batch.loc[
                     probeinfo_batch["gene_id"].isin(genes_subbatch)
                 ].copy()
@@ -153,5 +153,20 @@ class ProbeFilterBase(ABC):
                     )
                     output.append(SeqRecord(sequence, header, "", ""))
 
-                with open(file_probe_sequence_subbatch, "w") as handle:
-                    SeqIO.write(output, handle, "fasta")
+                if len(output) > 0:
+                    with open(file_probe_sequence_subbatch, "w") as handle:
+                        SeqIO.write(output, handle, "fasta")
+
+        # Get new n_jobs and number_subbatches (since empty files have been removed)
+        n_jobs = []
+        number_subbatches = []
+        for file in os.listdir(self.dir_annotations):
+            if re.search("probes_sequence*", file):
+                x = re.findall("\d", file)
+                n_jobs.append(x[0])
+                number_subbatches.append(x[1])
+
+        self.n_jobs = int(max(n_jobs))
+        self.number_subbatches = int(max(number_subbatches)) + 1
+        # print(type(self.n_jobs))
+        # return x #self.n_jobs, self.number_subbatches

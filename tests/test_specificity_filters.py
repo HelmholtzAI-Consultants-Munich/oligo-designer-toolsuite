@@ -12,29 +12,37 @@ from oligo_designer_toolsuite.oligo_specificity_filter._filter_bowtie import (
 
 cwd = os.getcwd()
 
+# Specify parameters
 n_jobs = 1
 ligation_region = 0
 dir_output = cwd + "/output"
 dir_annotations = cwd + "/data"
 min_probes_per_gene = 2
+
+# Reference transcriptome files for tests
 file_transcriptome_fasta = dir_annotations + "/reference_sample.fna"
 file_transcriptome_fasta2 = dir_annotations + "/reference_sample2.fna"
 
-
+# Files containing probe info for tests
 file_probe_info_match = dir_annotations + "/oligo_DB_match.tsv"
 file_probe_info_no_match = dir_annotations + "/oligo_DB_no_match.tsv"
+
+# blastn parameters
 word_size = 10
 percent_identity = 80
 probe_length_min = 30
 probe_length_max = 40
 coverage = 50
+
+# bowtie parameters
 min_mismatches = 4
 mismatch_region = 5
 
+# Get probe info dictionary to use as input to filters
 probe_info_dict_match = read_oligos_DB_tsv(file_probe_info_match)
 probe_info_dict_no_match = read_oligos_DB_tsv(file_probe_info_no_match)
 
-# Initialize parameters to test ligation region argument
+# Parameters to test ligation region argument
 file_probe_info_ligation_match = dir_annotations + "/oligo_DB_ligation_match.tsv"
 file_probe_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_nomatch.tsv"
 
@@ -43,8 +51,8 @@ probe_info_dict_ligation_no_match = read_oligos_DB_tsv(file_probe_info_ligation_
 
 
 def test_filter_bowtie_format():
+    # Check that format of probe info dataframe is preserved when applying filter
 
-    # Run Bowtie filter
     bowtie_filter = ProbeFilterBowtie(
         n_jobs,
         dir_output,
@@ -89,7 +97,7 @@ def test_filter_bowtie_all_matches():
 
 
 def test_filter_blast_format():
-    # Check that filter outputs correct file format
+    # Check that format of probe info dataframe is preserved when applying filter
 
     blast_filter = ProbeFilterBlastn(
         n_jobs,
@@ -141,6 +149,7 @@ def test_filter_blast_all_matches():
 
 
 def test_filter_ligation_bowtie_match():
+    # Test that bowtie filter filters out probe where no mismatches are found in the ligation region
 
     bowtie_filter = ProbeFilterBowtie(
         n_jobs,
@@ -164,6 +173,7 @@ def test_filter_ligation_bowtie_match():
 
 
 def test_filter_ligation_bowtie_no_match():
+    # Test that bowtie filter keeps probe where atleast one mismatch is found in the ligation region
 
     bowtie_filter = ProbeFilterBowtie(
         n_jobs,
