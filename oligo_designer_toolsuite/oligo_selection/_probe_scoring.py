@@ -6,12 +6,9 @@ import pandas as pd
 class ProbeScoring(ABC):
     """Template class for scoring the probes and the sets of probes"""
 
-    def __init__(self):
-        """Initialize the class"""
-
     def apply(self, probes, probes_indices):
         """Scores all the probes using the defiend scoring function. The scores are both saved in the dictionary
-        and in a pandas.Series, which will be used for convenience in the selection of the sets.
+        and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
 
         :param probes: dictionary containing the probes
         :type probes: dict
@@ -38,14 +35,15 @@ class ProbeScoring(ABC):
         :rtype: float
         """
 
+
+class SetScoring(ABC):
     @abstractmethod
-    def get_probeset(clique_probes, n):
-        """From a set of non-overlapping probes extracts the best subset of n probes and its score. Recieven in input
-        a pandas serues with the probes id as index and the score as value. The return is a list with the id of the selected
-        probes and the score of the set.
-        REMARK: the set can have different scores with increasing relevance, whenre the less relevan scores are used in case of
-        ties, in this case the scores are saved in a sublist which is compared in lexographiocal order in the sorting procedure,
-        therefore in case the fist scores are equal the sording is done according to the second one and so on.
+    def apply(clique_probes, n):
+        """From a set of non-overlapping probes extracts the best subset of n probes and its score. Recieves in input
+        a pandas series with the probes id as index and the score as value. The return is a list with the id of the selected
+        probes and the scores of the set.
+        REMARK: the set can have different scores with increasing relevance, where the less relevan scores are used in case of
+        ties. Therefore in case the fist scores are equal the sording is done according to the second one and so on.
 
         :param clique_probes: Series of a set of non overlapping probes
         :type clique_probes: pandas.Series
@@ -56,7 +54,7 @@ class ProbeScoring(ABC):
         """
 
 
-class PadlockScoring(ProbeScoring):
+class PadlockProbeScoring(ProbeScoring):
     """Scoring class for padlock."""
 
     def __init__(
@@ -82,7 +80,6 @@ class PadlockScoring(ProbeScoring):
         :type GC_weight: int, optional
         """
 
-        super().__init__()
         self.Tm_min = Tm_min
         self.Tm_opt = Tm_opt
         self.Tm_max = Tm_max
@@ -91,7 +88,7 @@ class PadlockScoring(ProbeScoring):
         self.GC_max = GC_max
         self.Tm_weight = Tm_weight
         self.GC_weight = GC_weight
-        self.generate_scoring_functions()
+        self.__generate_scoring_functions()
 
     def scoring_function(self, probe):
         """Computes the score of the given probe
@@ -111,7 +108,7 @@ class PadlockScoring(ProbeScoring):
             GC_dif
         )
 
-    def generate_scoring_functions(self):
+    def __generate_scoring_functions(self):
         """Computes relevant parts of the scoring function."""
         # define the error function for the melting temperature
         Tm_dif_max = self.Tm_max - self.Tm_opt
@@ -132,9 +129,14 @@ class PadlockScoring(ProbeScoring):
                 GC_dif > 0
             ) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
 
-    def get_probeset(self, clique_probes, n):
+
+class PadlockSetScoring(SetScoring):
+    def __init__(self) -> None:
+        pass
+
+    def apply(self, clique_probes, n):
         """From a set of non-overlapping probes extracts the best subset of n probes and its scores. The scores are, in order of relevance,
-         the maximal probe score in the set and the avreage of the scores
+         the maximal probe score in the set and the avreage of the scores.
 
         :param clique_probes: Series of a set of non overlapping probes
         :type clique_probes: pandas.Series
@@ -148,5 +150,5 @@ class PadlockScoring(ProbeScoring):
         probeset_error_max = best_n_probes.max()
         probeset_error_sum = best_n_probes.sum()
         probeset = best_n_probes.index.tolist()
-        probeset.append([probeset_error_max, probeset_error_sum])
+        probeset += [probeset_error_max, probeset_error_sum]
         return probeset
