@@ -17,6 +17,7 @@ class ProbesetGenerator:
         min_n_probes_per_gene,
         DB,  # database class containing all the probes, better naming
         probes_scoring,
+        set_scoring,
         n_jobs=None,
         dir_probe_sets="probe_sets",  # write the output
         heurustic_selection=None,
@@ -53,6 +54,7 @@ class ProbesetGenerator:
         )
         self.heurustic_selection = heurustic_selection
         self.probes_scoring = probes_scoring
+        self.set_scoring = set_scoring
 
     def get_probe_sets(self, n_sets=50):
         """Generates in parallel the probesets and returns the DB class updated containing only the probes that belong to a set and with additional fields
@@ -63,6 +65,7 @@ class ProbesetGenerator:
         :return: Updated DB class
         :rtype: CustomDB class
         """
+
         genes = list(self.DB.oligos_DB.keys())
         # generate batches
         genes_per_batch = ceil(len(genes) / self.n_jobs)
@@ -71,33 +74,41 @@ class ProbesetGenerator:
             for i in range(self.n_jobs)
         ]
         # get the probe set for this gene in parallel
-        updated_oligos_DB = Parallel(
-            n_jobs=self.n_jobs
-        )(  # there should be an explicit return
+        updated_oligos_DB = Parallel(n_jobs=self.n_jobs)(
             delayed(self._get_probe_set_for_batch)(batch, self.DB.oligos_DB, n_sets)
             for batch in genes_batches
         )
         # restore the oligo DB
         for batch, DB_batch in zip(genes_batches, updated_oligos_DB):
             for gene, probes in zip(batch, DB_batch):
-                if probes is not None:  # if some sets have been found
-                    self.DB.oligos_DB[gene] = probes
-                else:
+                if probes is None:  # if some sets have been found
                     del self.DB.oligos_DB[gene]
+                else:
+                    self.DB.probesets[gene] = probes["probesets"]
+                    del probes["probesets"]
+                    self.DB.oligos_DB[gene] = probes
+
         """
         # get the probe set for this gene in parallel
         updated_oligos_DB = Parallel(n_jobs=self.n_jobs)( #there should be an explicit return
             delayed(self._get_probe_set_for_gene)(gene, self.DB.oligos_DB[gene], n_sets)
             for gene in genes
         )
+
+        updated_oligos_DB = []
+        for gene in genes:
+            updated_oligos_DB.append(self._get_probe_set_for_gene(gene, self.DB.oligos_DB[gene], n_sets))
         #restore the oligo DB
-        for gene, probes in zip(genes, updated_oligos_DB):
-            if probes is not None: # if some sets have been found
-                self.DB.oligos_DB[gene] = probes
-            else:
-                del self.DB.oligos_DB[gene]
+
         """
-        # should return the updated db class?
+
+        for gene, probes in zip(genes, updated_oligos_DB):
+            if probes is None:  # if some sets have been found
+                del self.DB.oligos_DB[gene]
+            else:
+                self.DB.probesets[gene] = probes["probesets"]
+                del probes["probesets"]
+                self.DB.oligos_DB[gene] = probes
         return self.DB
 
     def _get_probe_set_for_batch(self, batch, oligos_DB, n_sets):
@@ -159,11 +170,12 @@ class ProbesetGenerator:
                     if row[i] not in updated_probes:
                         updated_probes[row[i]] = probes[row[i]]
                         updated_probes[row[i]]["set_id"] = [set_id]
-                        updated_probes[row[i]]["set_score"] = [row[-1]]
+                        updated_probes[row[i]]["set_score"] = [list(row[n:])]
                     else:
                         updated_probes[row[i]]["set_id"].append(set_id)
-                        updated_probes[row[i]]["set_score"].append(row[-1])
-            # add also the probesets?
+                        updated_probes[row[i]]["set_score"].append(list(row[n:]))
+            # add also the probesets
+            updated_probes["probesets"] = probesets
             return updated_probes
 
     def _get_overlapping_matrix(self, probes):
@@ -187,7 +199,7 @@ class ProbesetGenerator:
         # probes_copy = copy.deepcopy(probes)  # probes is a mutable object (dictionary), hence is passed by reference
         intervals = []
         probes_indices = []
-        for i, probe_id in enumerate(probes.keys()):
+        for probe_id in probes.keys():
             probes_indices.append(probe_id)  # keep track of the indices
             interval = []
             for start, end in zip(probes[probe_id]["start"], probes[probe_id]["end"]):
@@ -212,7 +224,10 @@ class ProbesetGenerator:
             np.ones((len(intervals), len(intervals)), dtype=int) - overlapping_matrix
         )
         overlapping_matrix = pd.DataFrame(
-            data=overlapping_matrix, columns=probes_indices, index=probes_indices
+            data=overlapping_matrix,
+            columns=probes_indices,
+            index=probes_indices,
+            dtype=int,
         )
 
         return overlapping_matrix
@@ -260,7 +275,7 @@ class ProbesetGenerator:
             probes, probes_scores, heuristic_set = self.heurustic_selection(
                 probes, probes_scores, overlapping_matrix, n
             )
-            heuristic_probeset = self.probes_scoring.get_probeset(
+            heuristic_probeset = self.set_scoring.apply(
                 heuristic_set, n
             )  # make it a list as for all the other cliques for future use
             # recompute the cliques
@@ -280,18 +295,21 @@ class ProbesetGenerator:
             if len(clique) >= n:
                 # Get probe_ids of clique, maybe create a function
                 clique_probes = probes_scores.iloc[clique]
-                probeset = self.probes_scoring.get_probeset(clique_probes, n)
+                probeset = self.set_scoring.apply(clique_probes, n)
                 probesets.append(probeset)
         # put the sets in a dataframe
         probesets = pd.DataFrame(
-            columns=[f"probe_{i}" for i in range(n)] + ["set_score"], data=probesets
+            columns=[f"probe_{i}" for i in range(n)]
+            + [f"set_score_{i}" for i in range(len(probesets[0]) - n)],
+            data=probesets,
         )
         # add the heurustuc best set, if is in the best n-sets then it will be kept
         if heuristic_probeset:
             probesets.loc[len(probesets)] = heuristic_probeset
         # Sort probesets by score
-        probesets = probesets.sort_values("set_score", ascending=True)
+        probesets.drop_duplicates(inplace=True, subset=probesets.columns[:-1])
+        probesets.sort_values(list(probesets.columns[n:]), ascending=True, inplace=True)
         probesets = probesets.head(n_sets)
-        probesets = probesets.reset_index(drop=True)
+        probesets.reset_index(drop=True, inplace=True)
 
         return n, probesets, probes
