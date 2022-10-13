@@ -4,9 +4,10 @@ import warnings
 from pathlib import Path
 
 import pyfaidx
+from joblib import cpu_count
 
-import oligo_designer_toolsuite.IO._data_parser as _data_parser
-import oligo_designer_toolsuite.IO._ftp_loader as _ftp_loader
+import oligo_designer_toolsuite.IO._data_parser as data_parser
+import oligo_designer_toolsuite.IO._ftp_loader as ftp_loader
 from oligo_designer_toolsuite.oligo_transcript_generation._gene_transcript import (
     GeneTranscript,
 )
@@ -101,10 +102,10 @@ class CustomDB:
         if file_sequence == None:
             raise ValueError("Sequence File not defined!")
 
-        if not _data_parser.check_gtf_format(file_annotation):
+        if not data_parser.check_gtf_format(file_annotation):
             raise ValueError("Annotation File has incorrect format!")
 
-        if not _data_parser.check_fasta_format(file_sequence):
+        if not data_parser.check_fasta_format(file_sequence):
             raise ValueError("Sequence File has incorrect format!")
 
         self.dir_output = dir_output
@@ -145,7 +146,7 @@ class CustomDB:
 
         """
         if os.path.exists(file_reference_DB):
-            if _data_parser.check_fasta_format(file_reference_DB):
+            if data_parser.check_fasta_format(file_reference_DB):
                 self.file_reference_DB = file_reference_DB
             else:
                 raise ValueError("Database has incorrect format!")
@@ -174,12 +175,12 @@ class CustomDB:
         """
 
         if format == "tsv":
-            self.oligos_DB = _data_parser.read_oligos_DB_tsv(file_oligos_DB_tsv)
+            self.oligos_DB = data_parser.read_oligos_DB_tsv(file_oligos_DB_tsv)
             self.file_oligos_DB_tsv = (
                 file_oligos_DB_tsv  # already checked if it is a tsv file
             )
         elif format == "gtf":
-            self.oligos_DB = _data_parser.read_oligos_DB_gtf(
+            self.oligos_DB = data_parser.read_oligos_DB_gtf(
                 file_oligos_DB_gtf, file_oligos_DB_fasta
             )
             self.file_oligos_DB_gtf = file_oligos_DB_gtf
@@ -213,7 +214,7 @@ class CustomDB:
                 self.dir_oligos_DB,
                 self.file_name_oligos_DB_tsv,
             )
-            _data_parser.write_oligos_DB_tsv(self.oligos_DB, self.file_oligos_DB_tsv)
+            data_parser.write_oligos_DB_tsv(self.oligos_DB, self.file_oligos_DB_tsv)
             return self.file_name_oligos_DB_tsv
         elif format == "gtf":
             self.file_oligos_DB_gtf = os.path.join(
@@ -224,7 +225,7 @@ class CustomDB:
                 self.dir_oligos_DB,
                 self.file_name_oligos_DB_fasta,
             )
-            _data_parser.write_oligos_DB_gtf(
+            data_parser.write_oligos_DB_gtf(
                 self.oligos_DB, self.file_oligos_DB_gtf, self.file_oligos_DB_fasta
             )
             return self.file_name_oligos_DB_gtf, self.file_name_oligos_DB_fasta
@@ -307,7 +308,7 @@ class CustomDB:
         self,
         genes=None,
         region="gene_transcript",
-        n_jobs=2,
+        n_jobs=None,
     ):
         """
         Creates the DB containing all the oligo sequence extracted form the given <region> and belonging the the specified genes. If no genes are specified then
@@ -346,13 +347,19 @@ class CustomDB:
         self.file_name_oligos_DB_tsv = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.tsv"
         self.file_name_oligos_DB_gtf = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.gtf"
         self.file_name_oligos_DB_fasta = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fasta"
+
         if self.gene_transcript is None:
             self.gene_transcript = GeneTranscript(
                 self.file_sequence, self.file_annotation
             )
         file_region_annotation = create_target_region(region, genes)
+
         if genes is None:
             genes = self.gene_transcript.get_genes_from_annotation()
+
+        if n_jobs is None:
+            n_jobs = cpu_count()
+
         self.oligos_DB = self.oligos.generate(
             file_region_annotation, genes, n_jobs, self.dir_annotation
         )
@@ -423,7 +430,7 @@ class NcbiDB(CustomDB):
         dir_annotation = os.path.join(dir_output, "annotation")
         Path(dir_annotation).mkdir(parents=True, exist_ok=True)
 
-        ftp = _ftp_loader.FTPLoaderNCBI(dir_annotation, species, annotation_release)
+        ftp = ftp_loader.FTPLoaderNCBI(dir_annotation, species, annotation_release)
         file_annotation = ftp.download_files("gtf")
         file_sequence = ftp.download_files("fasta")
 
@@ -513,7 +520,7 @@ class EnsemblDB(CustomDB):
         dir_annotation = os.path.join(dir_output, "annotation")
 
         Path(dir_annotation).mkdir(parents=True, exist_ok=True)
-        ftp = _ftp_loader.FtpLoaderEnsembl(
+        ftp = ftp_loader.FtpLoaderEnsembl(
             dir_annotation, species, genome_assembly, annotation_release
         )
         file_annotation = ftp.download_files("gtf")
