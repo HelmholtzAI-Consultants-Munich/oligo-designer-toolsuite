@@ -84,6 +84,9 @@ class TestDBGeneration(unittest.TestCase):
 
         cls.filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
         # cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output')
+
+        # If the anotation and fasta files are already saved on the machine, it is possible to direclty use them
+        # instead of downloading them again.
         dir_annotation = "/home/francesco/Desktop/Work/NCBI"
         annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
         sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
@@ -92,6 +95,10 @@ class TestDBGeneration(unittest.TestCase):
             probe_length_max=40,
             file_annotation=annotation,
             file_sequence=sequence,
+            species="unknown",
+            genome_assembly="unknown",
+            annotation_release="unknown",
+            annotation_source="unknown",
             filters=cls.filters,
             dir_output="tests/output",
         )
