@@ -3,7 +3,7 @@ import random
 
 import pandas as pd
 
-import oligo_designer_toolsuite.IO._data_parser as data_parser
+import oligo_designer_toolsuite.IO._data_parser as _data_parser
 
 
 class GeneTranscript:
@@ -20,7 +20,7 @@ class GeneTranscript:
 
         self.file_sequence = file_sequence
         self.file_annotation = file_annotation
-        self.annotation = data_parser.read_gtf(
+        self.annotation = _data_parser.read_gtf(
             self.file_annotation
         )  # dataframe with annotation file
 
@@ -71,7 +71,7 @@ class GeneTranscript:
             ]
         ].to_csv(file_gene_transcript_annotation, sep="\t", header=False, index=False)
         # create the fasta file
-        data_parser.get_sequence_from_annotation(
+        _data_parser.get_sequence_from_annotation(
             file_gene_transcript_annotation,
             self.file_sequence,
             file_gene_transcript_fasta,

@@ -4,7 +4,7 @@ import pandas as pd
 from Bio import SeqIO
 from joblib import Parallel, delayed
 
-import oligo_designer_toolsuite.IO._data_parser as data_parser
+import oligo_designer_toolsuite.IO._data_parser as _data_parser
 
 
 class Oligos:
@@ -106,7 +106,7 @@ class Oligos:
             ].to_csv(file_region_bed, sep="\t", header=False, index=False)
 
             # get sequence for exons
-            data_parser.get_sequence_from_annotation(
+            _data_parser.get_sequence_from_annotation(
                 file_region_bed,
                 self.file_sequence,
                 file_region_fasta,
