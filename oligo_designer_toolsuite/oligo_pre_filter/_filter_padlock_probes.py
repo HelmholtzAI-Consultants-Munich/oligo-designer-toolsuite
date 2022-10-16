@@ -1,9 +1,9 @@
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.oligo_pre_filter._filter_base import Filter
+from oligo_designer_toolsuite.oligo_pre_filter._filter_base import PreFilterBase
 
 
-class PadlockArms(Filter):
+class PadlockArms(PreFilterBase):
     """Filters the sequences by arms Tm -> UPDATE"""
 
     def __init__(

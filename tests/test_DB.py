@@ -15,6 +15,7 @@ from oligo_designer_toolsuite.oligo_pre_filter._filter_base import (
     MeltingTemperature,
 )
 from oligo_designer_toolsuite.oligo_pre_filter._filter_padlock_probes import PadlockArms
+from oligo_designer_toolsuite.oligo_pre_filter.pre_filter import PreFilter
 
 
 class TestDBGeneration(unittest.TestCase):
@@ -82,8 +83,8 @@ class TestDBGeneration(unittest.TestCase):
             Tm_correction_parameters=cls.Tm_correction_parameters,
         )
 
-        cls.filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
-        # cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output')
+        filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
+        # cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, dir_output='tests/output')
 
         # If the anotation and fasta files are already saved on the machine, it is possible to direclty use them
         # instead of downloading them again.
@@ -99,9 +100,10 @@ class TestDBGeneration(unittest.TestCase):
             genome_assembly="unknown",
             annotation_release="unknown",
             annotation_source="unknown",
-            filters=cls.filters,
             dir_output="tests/output",
         )
+
+        cls.pre_filter = PreFilter(filters=filters)
 
     def test_transcriptome(self):
         """Test that the reference DB created is correct"""
@@ -137,6 +139,7 @@ class TestDBGeneration(unittest.TestCase):
             return sequences
 
         self.db.create_oligos_DB(genes=self.genes)
+        self.db = self.pre_filter.apply(self.db)
         sequences_computed = oligos_DB_to_list(self.db.oligos_DB)
         sequences_correct = list_from_file("tests/data/sequences_10_genes.txt")
         sequences_correct.sort()

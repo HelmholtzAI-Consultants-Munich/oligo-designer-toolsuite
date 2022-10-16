@@ -10,7 +10,7 @@ import oligo_designer_toolsuite.IO._data_parser as _data_parser
 class Oligos:
     """Creates the oligo sequences belonging to the given genes and filters them according to a list of filters given in input"""
 
-    def __init__(self, probe_length_min, probe_length_max, file_sequence, filters):
+    def __init__(self, probe_length_min, probe_length_max, file_sequence):
         """Initialize the class
 
         :param probe_length_min: minimum length of the probes created
@@ -19,13 +19,11 @@ class Oligos:
         :type probe_length_max: int_
         :param file_sequence: path to the fasta file of the whole genome
         :type file_sequence: str
-        :param filters: list of filters classes already initialized
-        :type filters: list of classes
+
         """
         self.probe_length_min = probe_length_min
         self.probe_length_max = probe_length_max
         self.file_sequence = file_sequence
-        self.filters = filters
 
     def generate(self, file_region_annotation, genes, n_jobs, dir_output):
         """Get the fasta sequence of all possible probes with user-defined length for all input genes and store the in a dictionary.
@@ -207,7 +205,6 @@ class Oligos:
             # filter probes based on user-defined filters
             gene_oligo_DB = {}
             gene_oligo_DB[gene] = gene_probes
-            gene_oligo_DB = self.filter_oligos_DB(gene_oligo_DB)
 
             return gene_oligo_DB
 
@@ -240,45 +237,3 @@ class Oligos:
             probes.update(result)
 
         return probes
-
-    def filter(self, sequence):
-        """Applies the used-defined filters and returns the result and the additional computed features
-
-        :param sequence: sequence to check
-        :type sequence: Bio.Seq
-        :return: if the filters are fulfilled and the additional features computed
-        :rtype: bool, dict
-        """
-
-        fulfills = True
-        additional_features = {}
-        for filt in self.filters:
-            out, feat = filt.apply(sequence)
-            if not out:  # stop at the first false we obtain
-                return False, {}
-            additional_features.update(feat)
-        return fulfills, additional_features
-
-    def filter_oligos_DB(self, oligos_DB):
-        """Filter the database of probes based on teh given filters
-
-        :param oligos_DB: da5tabase of probes
-        :type oligos_DB: dict
-        :return: filtered oligos DB
-        :rtype: dict
-        """
-
-        loaded_probes = 0
-        gene_ids = list(oligos_DB.keys())
-        for gene_id in gene_ids:
-            probes_id = list(oligos_DB[gene_id].keys())
-            for probe_id in probes_id:
-                fulfills, additional_features = self.filter(
-                    oligos_DB[gene_id][probe_id]["probe_sequence"]
-                )
-                if fulfills:
-                    oligos_DB[gene_id][probe_id].update(additional_features)
-                    loaded_probes += 1
-                else:
-                    del oligos_DB[gene_id][probe_id]
-        return oligos_DB
