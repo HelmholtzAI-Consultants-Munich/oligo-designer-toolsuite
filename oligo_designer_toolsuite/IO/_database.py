@@ -25,8 +25,6 @@ class CustomDB:
     :type probe_length_min: int
     :param probe_length_max: maximum length of the probes created
     :type probe_length_max: int
-    :param filters: list of filters classes already initialized
-    :type filters: list of classes
     :param species: species of the fasta and gtf files, defaults to None
     :type species: str, optional
     :param genome_assembly: genome_assembly of the fasta and gtf files, defaults to None
@@ -46,7 +44,6 @@ class CustomDB:
         self,
         probe_length_min,
         probe_length_max,
-        filters,
         species=None,
         genome_assembly=None,
         annotation_release=None,
@@ -132,7 +129,7 @@ class CustomDB:
         pyfaidx.Fasta(self.file_sequence)
         self.gene_transcript = None
         self.oligos = Oligos(
-            self.probe_length_min, self.probe_length_max, self.file_sequence, filters
+            self.probe_length_min, self.probe_length_max, self.file_sequence
         )
         self.probesets = (
             {}

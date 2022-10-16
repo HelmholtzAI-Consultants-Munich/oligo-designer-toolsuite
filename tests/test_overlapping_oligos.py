@@ -16,7 +16,7 @@ from oligo_designer_toolsuite.oligo_selection._resolve_overlapping_oligos import
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def oligos_database():
     # database = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output')
 
@@ -34,7 +34,6 @@ def oligos_database():
         annotation_source="unknown",
         file_annotation=annotation,
         file_sequence=sequence,
-        filters=None,
         dir_output="tests/output",
     )
     database.read_oligos_DB(
@@ -48,7 +47,7 @@ def oligos_database():
 
 
 @pytest.fixture()
-def probeset_generator(oligos_database):
+def probeset_generator():
     padlock_scoring = PadlockProbeScoring(
         Tm_min=52, Tm_opt=60, Tm_max=67, GC_min=40, GC_opt=50, GC_max=60
     )
@@ -56,7 +55,6 @@ def probeset_generator(oligos_database):
     probeset_generator = ProbesetGenerator(
         n_probes_per_gene=5,
         min_n_probes_per_gene=2,
-        DB=oligos_database,
         probes_scoring=padlock_scoring,
         set_scoring=set_scoring,
         heurustic_selection=padlock_heuristic_selection,
@@ -66,8 +64,8 @@ def probeset_generator(oligos_database):
 
 
 # check we obtain the same result
-def test_probesets_generation(probeset_generator):
-    oligos_database = probeset_generator.get_probe_sets(n_sets=100)
+def test_probesets_generation(probeset_generator, oligos_database):
+    oligos_database = probeset_generator.get_probe_sets(DB=oligos_database, n_sets=100)
     for gene in oligos_database.probesets.keys():
         computed_sets = oligos_database.probesets[gene]
         true_sets = pd.read_csv(

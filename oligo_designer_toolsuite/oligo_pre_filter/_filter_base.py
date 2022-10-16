@@ -4,7 +4,7 @@ from Bio.SeqUtils import GC
 from Bio.SeqUtils import MeltingTemp as mt
 
 
-class Filter(ABC):
+class PreFilterBase(ABC):
     """Base class that gives the structure."""
 
     def __init__(self) -> None:
@@ -23,7 +23,7 @@ class Filter(ABC):
         """
 
 
-class MaskedSequences(Filter):
+class MaskedSequences(PreFilterBase):
     """Filters the sequences containing a masked nucleotide."""
 
     def __init__(self) -> None:
@@ -43,7 +43,7 @@ class MaskedSequences(Filter):
         return True, {}
 
 
-class GCContent(Filter):
+class GCContent(PreFilterBase):
     """Filters the sequences by the GC content."""
 
     def __init__(self, GC_content_min, GC_content_max) -> None:
@@ -67,7 +67,7 @@ class GCContent(Filter):
         return False, {}  # if false the additional features are not been saved anyway
 
 
-class MeltingTemperature(Filter):
+class MeltingTemperature(PreFilterBase):
     """Filters the sequences by the melting temperature."""
 
     def __init__(self, Tm_min, Tm_max, Tm_parameters, Tm_correction_parameters) -> None:

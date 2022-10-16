@@ -15,7 +15,6 @@ class ProbesetGenerator:
         self,
         n_probes_per_gene,
         min_n_probes_per_gene,
-        DB,  # database class containing all the probes, better naming
         probes_scoring,
         set_scoring,
         n_jobs=None,
@@ -28,8 +27,6 @@ class ProbesetGenerator:
         :type n_probes_per_gene: int
         :param min_n_probes_per_gene: minimum number of probes that each set should contain
         :type min_n_probes_per_gene: int
-        :param DB: class containg the oligo sequences and their features
-        :type DB: CustomDB class
         :param probes_scoring: class that scores hte probes and the sets of probes
         :type probes_scoring: ProbeScoring class
         :param n_jobs: number of cores to use if None all the available cores are used, defaults to None
@@ -46,27 +43,31 @@ class ProbesetGenerator:
             self.n_jobs = n_jobs
         self.n_probes_per_gene = n_probes_per_gene
         self.min_n_probes_per_gene = min_n_probes_per_gene
-        self.DB = DB
-        self.dir_probe_sets = os.path.join(self.DB.dir_output, dir_probe_sets)
-        Path(self.dir_probe_sets).mkdir(parents=True, exist_ok=True)
-        self.file_removed_genes = os.path.join(
-            self.DB.dir_output, "genes_with_insufficient_probes.txt"
-        )
         self.heurustic_selection = heurustic_selection
         self.probes_scoring = probes_scoring
         self.set_scoring = set_scoring
+        self.dir_probe_sets = dir_probe_sets
 
-    def get_probe_sets(self, n_sets=50):
+    def get_probe_sets(self, DB, n_sets=50):
         """Generates in parallel the probesets and returns the DB class updated containing only the probes that belong to a set and with additional fields
         containing information about the sets, namely "set_id" and "set_score".
 
+        :param DB: class containg the oligo sequences and their features
+        :type DB: CustomDB class
         :param n_sets: maximal number of sets that will be generated, defaults to 50
         :type n_sets: int, optional
         :return: Updated DB class
         :rtype: CustomDB class
         """
 
-        genes = list(self.DB.oligos_DB.keys())
+        # crete the folders where the files migh be written
+        self.dir_probe_sets = os.path.join(DB.dir_output, self.dir_probe_sets)
+        Path(self.dir_probe_sets).mkdir(parents=True, exist_ok=True)
+        self.file_removed_genes = os.path.join(
+            DB.dir_output, "genes_with_insufficient_probes.txt"
+        )
+        #
+        genes = list(DB.oligos_DB.keys())
         # generate batches
         genes_per_batch = ceil(len(genes) / self.n_jobs)
         genes_batches = [
@@ -75,41 +76,38 @@ class ProbesetGenerator:
         ]
         # get the probe set for this gene in parallel
         updated_oligos_DB = Parallel(n_jobs=self.n_jobs)(
-            delayed(self._get_probe_set_for_batch)(batch, self.DB.oligos_DB, n_sets)
+            delayed(self._get_probe_set_for_batch)(batch, DB.oligos_DB, n_sets)
             for batch in genes_batches
         )
         # restore the oligo DB
         for batch, DB_batch in zip(genes_batches, updated_oligos_DB):
             for gene, probes in zip(batch, DB_batch):
                 if probes is None:  # if some sets have been found
-                    del self.DB.oligos_DB[gene]
+                    del DB.oligos_DB[gene]
                 else:
-                    self.DB.probesets[gene] = probes["probesets"]
+                    DB.probesets[gene] = probes["probesets"]
                     del probes["probesets"]
-                    self.DB.oligos_DB[gene] = probes
+                    DB.oligos_DB[gene] = probes
 
         """
         # get the probe set for this gene in parallel
         updated_oligos_DB = Parallel(n_jobs=self.n_jobs)( #there should be an explicit return
-            delayed(self._get_probe_set_for_gene)(gene, self.DB.oligos_DB[gene], n_sets)
+            delayed(self._get_probe_set_for_gene)(gene, DB.oligos_DB[gene], n_sets)
             for gene in genes
         )
 
-        updated_oligos_DB = []
-        for gene in genes:
-            updated_oligos_DB.append(self._get_probe_set_for_gene(gene, self.DB.oligos_DB[gene], n_sets))
-        #restore the oligo DB
 
-        """
 
         for gene, probes in zip(genes, updated_oligos_DB):
             if probes is None:  # if some sets have been found
-                del self.DB.oligos_DB[gene]
+                del DB.oligos_DB[gene]
             else:
-                self.DB.probesets[gene] = probes["probesets"]
+                DB.probesets[gene] = probes["probesets"]
                 del probes["probesets"]
-                self.DB.oligos_DB[gene] = probes
-        return self.DB
+                DB.oligos_DB[gene] = probes
+        """
+
+        return DB
 
     def _get_probe_set_for_batch(self, batch, oligos_DB, n_sets):
         """Generate the probesets for the batch of genes. It returns a list of dictionaries containing the probes that belong to a set and with additional fields

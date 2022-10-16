@@ -7,7 +7,7 @@ def padlock_heuristic_selection(
     """This method tries to find empirically a good set of teh padlock design of probes. For teh best n_trials probes a set is cretaed
     by adding one by one the best non overlapping probe untiil a set is created. The best obtained set saved and returned. Moreover, foor how this particular
     scoring method works we know that all the probes with a higher score than the worse probe of the best set are going to yield a worse set the one just found,
-     hence are deleted form the dictionary and the series of scores.
+    hence are deleted form the dictionary and the series of scores.
 
     :param probes: dictionary with all the probes
     :type probes: dict
