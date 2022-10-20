@@ -58,7 +58,6 @@ def probeset_generator():
         probes_scoring=padlock_scoring,
         set_scoring=set_scoring,
         heurustic_selection=padlock_heuristic_selection,
-        n_jobs=2,
     )
     return probeset_generator
 

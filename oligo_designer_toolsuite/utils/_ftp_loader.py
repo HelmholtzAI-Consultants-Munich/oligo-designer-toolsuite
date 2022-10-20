@@ -1,5 +1,3 @@
-# import pybedtools
-
 import gzip
 import itertools
 import logging

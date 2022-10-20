@@ -5,7 +5,7 @@ from pathlib import Path
 import networkx as nx
 import numpy as np
 import pandas as pd
-from joblib import Parallel, cpu_count, delayed
+from joblib import Parallel, delayed
 
 
 class ProbesetGenerator:
@@ -17,7 +17,6 @@ class ProbesetGenerator:
         min_n_probes_per_gene,
         probes_scoring,
         set_scoring,
-        n_jobs=None,
         dir_probe_sets="probe_sets",  # write the output
         heurustic_selection=None,
     ) -> None:
@@ -29,18 +28,12 @@ class ProbesetGenerator:
         :type min_n_probes_per_gene: int
         :param probes_scoring: class that scores hte probes and the sets of probes
         :type probes_scoring: ProbeScoring class
-        :param n_jobs: number of cores to use if None all the available cores are used, defaults to None
-        :type n_jobs: int, optional
         :param dir_probe_sets: directory where the sets are written
         :type dir_probe_sets: str
         :param heurustic_selection: functions that preselects the probes
         :type dir_probe_sets: func
         """
 
-        if n_jobs is None:
-            self.n_jobs = cpu_count()
-        else:
-            self.n_jobs = n_jobs
         self.n_probes_per_gene = n_probes_per_gene
         self.min_n_probes_per_gene = min_n_probes_per_gene
         self.heurustic_selection = heurustic_selection
@@ -48,7 +41,7 @@ class ProbesetGenerator:
         self.set_scoring = set_scoring
         self.dir_probe_sets = dir_probe_sets
 
-    def get_probe_sets(self, DB, n_sets=50):
+    def get_probe_sets(self, DB, n_sets=50, n_jobs=None):
         """Generates in parallel the probesets and returns the DB class updated containing only the probes that belong to a set and with additional fields
         containing information about the sets, namely "set_id" and "set_score".
 
@@ -56,6 +49,8 @@ class ProbesetGenerator:
         :type DB: CustomDB class
         :param n_sets: maximal number of sets that will be generated, defaults to 50
         :type n_sets: int, optional
+        :param n_jobs: nr of cores used, if None the value set in DB class is used, defaults to None
+        :type n_jobs: int
         :return: Updated DB class
         :rtype: CustomDB class
         """
@@ -63,19 +58,20 @@ class ProbesetGenerator:
         # crete the folders where the files migh be written
         self.dir_probe_sets = os.path.join(DB.dir_output, self.dir_probe_sets)
         Path(self.dir_probe_sets).mkdir(parents=True, exist_ok=True)
-        self.file_removed_genes = os.path.join(
-            DB.dir_output, "genes_with_insufficient_probes.txt"
-        )
-        #
+        self.file_removed_genes = DB.file_removed_genes
+        # set the number of cores
+        if n_jobs is None:
+            n_jobs = DB.n_jobs
+
         genes = list(DB.oligos_DB.keys())
         # generate batches
-        genes_per_batch = ceil(len(genes) / self.n_jobs)
+        genes_per_batch = ceil(len(genes) / n_jobs)
         genes_batches = [
             genes[genes_per_batch * i : min(len(genes) + 1, genes_per_batch * (i + 1))]
-            for i in range(self.n_jobs)
+            for i in range(n_jobs)
         ]
         # get the probe set for this gene in parallel
-        updated_oligos_DB = Parallel(n_jobs=self.n_jobs)(
+        updated_oligos_DB = Parallel(n_jobs=n_jobs)(
             delayed(self._get_probe_set_for_batch)(batch, DB.oligos_DB, n_sets)
             for batch in genes_batches
         )
@@ -91,13 +87,11 @@ class ProbesetGenerator:
 
         """
         # get the probe set for this gene in parallel
-        updated_oligos_DB = Parallel(n_jobs=self.n_jobs)( #there should be an explicit return
+        updated_oligos_DB = Parallel(n_jobs=n_jobs)( #there should be an explicit return
             delayed(self._get_probe_set_for_gene)(gene, DB.oligos_DB[gene], n_sets)
             for gene in genes
         )
-
-
-
+        # restore the oligo DB
         for gene, probes in zip(genes, updated_oligos_DB):
             if probes is None:  # if some sets have been found
                 del DB.oligos_DB[gene]
@@ -154,7 +148,7 @@ class ProbesetGenerator:
         if probesets is None:  # value passed as a parameter
             # gene is added to the lsit of genes with insufficient sets
             with open(self.file_removed_genes, "a") as handle:
-                handle.write(f"{gene}\t{n}\n")
+                handle.write(f"{gene}\tOligo_selection\n")
             # gene is not required anymore
             return None
         else:
