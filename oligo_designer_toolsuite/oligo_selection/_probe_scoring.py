@@ -4,7 +4,7 @@ import pandas as pd
 
 
 class ProbeScoring(ABC):
-    """Template class for scoring the probes and the sets of probes"""
+    """Template class for scoring the probes."""
 
     def apply(self, probes, probes_indices):
         """Scores all the probes using the defiend scoring function. The scores are both saved in the dictionary
@@ -37,6 +37,8 @@ class ProbeScoring(ABC):
 
 
 class SetScoring(ABC):
+    """Template class for scoring the stest of probes."""
+
     @abstractmethod
     def apply(clique_probes, n):
         """From a set of non-overlapping probes extracts the best subset of n probes and its score. Recieves in input
@@ -55,29 +57,32 @@ class SetScoring(ABC):
 
 
 class PadlockProbeScoring(ProbeScoring):
-    """Scoring class for padlock."""
+    """Probes scoring class for the padlock experiment.
+
+
+    :param Tm_min: minimal melting temperature
+    :type Tm_min: float
+    :param Tm_opt: minimal melting temperature
+    :type Tm_opt: float
+    :param Tm_max: maximal melting temperature
+    :type Tm_max: float
+    :param GC_min: minimal percentage of guanine and cytosine
+    :type GC_min: float
+    :param GC_opt: optimal percentage of guanine and cytosine
+    :type GC_opt: float
+    :param GC_max: maximal percentage of guanine and cytosine
+    :type GC_max: float
+    :param Tm_weight: relevance of the melting temperature in the scoring function, defaults to 1
+    :type Tm_weight: int, optional
+    :param GC_weight: relevance of the GC content in the scoring function, defaults to 1
+    :type GC_weight: int, optional
+    """
 
     def __init__(
         self, Tm_min, Tm_opt, Tm_max, GC_min, GC_opt, GC_max, Tm_weight=1, GC_weight=1
     ):
-        """Initialize the class
-
-        :param Tm_min: minimal melting temperature
-        :type Tm_min: float
-        :param Tm_opt: minimal melting temperature
-        :type Tm_opt: float
-        :param Tm_max: maximal melting temperature
-        :type Tm_max: float
-        :param GC_min: minimal percentage of guanine and cytosine
-        :type GC_min: float
-        :param GC_opt: optimal percentage of guanine and cytosine
-        :type GC_opt: float
-        :param GC_max: maximal percentage of guanine and cytosine
-        :type GC_max: float
-        :param Tm_weight: relevance of the melting temperature in the scoring function, defaults to 1
-        :type Tm_weight: int, optional
-        :param GC_weight: relevance of the GC content in the scoring function, defaults to 1
-        :type GC_weight: int, optional
+        """
+        Initialize the class
         """
 
         self.Tm_min = Tm_min
@@ -131,6 +136,8 @@ class PadlockProbeScoring(ProbeScoring):
 
 
 class PadlockSetScoring(SetScoring):
+    """Scoring class for the sets of probes for the padlock experiment."""
+
     def __init__(self) -> None:
         pass
 

@@ -1,10 +1,20 @@
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.oligo_pre_filter._filter_base import PreFilterBase
+from . import PreFilterBase
 
 
 class PadlockArms(PreFilterBase):
-    """Filters the sequences by arms Tm -> UPDATE"""
+    """Filters the sequences by arms melting temperature.
+
+    :param min_arm_length: minimum arm length
+    :type min_arm_length: int
+    :param max_Tm_dif: maximum difference between meltin temperature of arms
+    :type max_Tm_dif: float
+    :param Tm_min: minimum melting temperature
+    :type Tm_min: float
+    :param Tm_max: maximum melting temperature
+    :type Tm_max: float
+    """
 
     def __init__(
         self,
@@ -15,17 +25,7 @@ class PadlockArms(PreFilterBase):
         Tm_parameters,
         Tm_correction_parameters,
     ) -> None:
-        """Initialize the class
-
-        :param min_arm_length: minimum arm length
-        :type min_arm_length: int
-        :param max_Tm_dif: maximum difference between meltin temperature of arms
-        :type max_Tm_dif: float
-        :param Tm_min: minimum melting temperature
-        :type Tm_min: float
-        :param Tm_max: maximum melting temperature
-        :type Tm_max: float
-        """
+        """Initialize the class"""
 
         super().__init__()
         self.min_arm_length = min_arm_length

@@ -6,12 +6,9 @@ from pathlib import Path
 import pyfaidx
 from joblib import cpu_count
 
-import oligo_designer_toolsuite.IO._data_parser as data_parser
-import oligo_designer_toolsuite.IO._ftp_loader as ftp_loader
-from oligo_designer_toolsuite.oligo_transcript_generation._gene_transcript import (
-    GeneTranscript,
-)
-from oligo_designer_toolsuite.oligo_transcript_generation._oligos import Oligos
+from ..oligo_transcript_generation import GeneTranscript, Oligos
+from ..utils import _data_parser
+from ..utils._ftp_loader import FtpLoaderEnsembl, FTPLoaderNCBI
 
 
 class CustomDB:
@@ -37,6 +34,10 @@ class CustomDB:
     :type file_annotation: str, optional
     :param file_sequence: path to the fasta file, defaults to None
     :type file_sequence: str, optional
+    :param n_jobs: standard nr of cores used in the pipeline, if None all the available cores are used, defaults to None
+    :type n_jobs: int
+    :param dir_output: directory name where the results will be written
+    :type dir_output: str
 
     """
 
@@ -50,31 +51,11 @@ class CustomDB:
         annotation_source=None,
         file_annotation=None,
         file_sequence=None,
+        n_jobs=None,
         dir_output="output",
     ):
         """
-        Sets species, genome_assembly, annotation_release to 'unknown' if thay are not given in input
-            Saves the path of the user defined annoation and fasta file and initializes the
-
-        :param probe_length_min: minimum length of the probes created
-        :type probe_length_min: int
-        :param probe_length_max: maximum length of the probes created
-        :type probe_length_max: int
-        :param filters: list of filters classes already initialized
-        :type filters: list of classes
-        :param species: species of the fasta and gtf files, defaults to None
-        :type species: str, optional
-        :param genome_assembly: genome_assembly of the fasta and gtf files, defaults to None
-        :type genome_assembly: str, optional
-        :param annotation_release: annotation_release of the fasta and gtf files, defaults to None
-        :type annotation_release: str, optional
-        :param annotation_source: source of the fasta and gtf files, defaults to None
-        :type annotation_source: str, optional
-        :param file_annotation: path to the gtf annotation file, defaults to None
-        :type file_annotation: str, optional
-        :param file_sequence: path to the fasta file, defaults to None
-        :type file_sequence: str, optional
-
+        Constructor
         """
         if species is None:
             species = "unknown"
@@ -99,23 +80,30 @@ class CustomDB:
         if file_sequence == None:
             raise ValueError("Sequence File not defined!")
 
-        if not data_parser.check_gtf_format(file_annotation):
+        if not _data_parser.check_gtf_format(file_annotation):
             raise ValueError("Annotation File has incorrect format!")
 
-        if not data_parser.check_fasta_format(file_sequence):
+        if not _data_parser.check_fasta_format(file_sequence):
             raise ValueError("Sequence File has incorrect format!")
 
         self.dir_output = dir_output
-        self.dir_annotation = os.path.join(
-            dir_output, "annotation"
-        )  # choose a different
+        self.dir_annotation = os.path.join(dir_output, "annotation")
         Path(self.dir_annotation).mkdir(parents=True, exist_ok=True)
+        # Initialize the file for genes with insufficient probes
+        self.file_removed_genes = os.path.join(
+            self.dir_output, "genes_with_insufficient_probes.txt"
+        )
+        with open(self.file_removed_genes, "a") as handle:
+            handle.write(f"Gene\tPipeline step\n")
         self.species = species
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
         self.annotation_source = annotation_source
         self.probe_length_max = probe_length_max
         self.probe_length_min = probe_length_min
+        if n_jobs is None:
+            n_jobs = cpu_count()
+        self.n_jobs = n_jobs
 
         self.file_reference_DB = None
         self.file_oligos_DB_tsv = None
@@ -129,7 +117,10 @@ class CustomDB:
         pyfaidx.Fasta(self.file_sequence)
         self.gene_transcript = None
         self.oligos = Oligos(
-            self.probe_length_min, self.probe_length_max, self.file_sequence
+            self.probe_length_min,
+            self.probe_length_max,
+            self.file_sequence,
+            self.n_jobs,
         )
         self.probesets = (
             {}
@@ -143,7 +134,7 @@ class CustomDB:
 
         """
         if os.path.exists(file_reference_DB):
-            if data_parser.check_fasta_format(file_reference_DB):
+            if _data_parser.check_fasta_format(file_reference_DB):
                 self.file_reference_DB = file_reference_DB
             else:
                 raise ValueError("Database has incorrect format!")
@@ -172,12 +163,12 @@ class CustomDB:
         """
 
         if format == "tsv":
-            self.oligos_DB = data_parser.read_oligos_DB_tsv(file_oligos_DB_tsv)
+            self.oligos_DB = _data_parser.read_oligos_DB_tsv(file_oligos_DB_tsv)
             self.file_oligos_DB_tsv = (
                 file_oligos_DB_tsv  # already checked if it is a tsv file
             )
         elif format == "gtf":
-            self.oligos_DB = data_parser.read_oligos_DB_gtf(
+            self.oligos_DB = _data_parser.read_oligos_DB_gtf(
                 file_oligos_DB_gtf, file_oligos_DB_fasta
             )
             self.file_oligos_DB_gtf = file_oligos_DB_gtf
@@ -211,7 +202,7 @@ class CustomDB:
                 self.dir_oligos_DB,
                 self.file_name_oligos_DB_tsv,
             )
-            data_parser.write_oligos_DB_tsv(self.oligos_DB, self.file_oligos_DB_tsv)
+            _data_parser.write_oligos_DB_tsv(self.oligos_DB, self.file_oligos_DB_tsv)
             return self.file_name_oligos_DB_tsv
         elif format == "gtf":
             self.file_oligos_DB_gtf = os.path.join(
@@ -222,7 +213,7 @@ class CustomDB:
                 self.dir_oligos_DB,
                 self.file_name_oligos_DB_fasta,
             )
-            data_parser.write_oligos_DB_gtf(
+            _data_parser.write_oligos_DB_gtf(
                 self.oligos_DB, self.file_oligos_DB_gtf, self.file_oligos_DB_fasta
             )
             return self.file_name_oligos_DB_gtf, self.file_name_oligos_DB_fasta
@@ -305,7 +296,6 @@ class CustomDB:
         self,
         genes=None,
         region="gene_transcript",
-        n_jobs=None,
     ):
         """
         Creates the DB containing all the oligo sequence extracted form the given <region> and belonging the the specified genes. If no genes are specified then
@@ -354,11 +344,8 @@ class CustomDB:
         if genes is None:
             genes = self.gene_transcript.get_genes_from_annotation()
 
-        if n_jobs is None:
-            n_jobs = cpu_count()
-
         self.oligos_DB = self.oligos.generate(
-            file_region_annotation, genes, n_jobs, self.dir_annotation
+            file_region_annotation, genes, self.dir_annotation
         )
         # clean folder
         os.remove(file_region_annotation)
@@ -395,22 +382,7 @@ class NcbiDB(CustomDB):
         dir_output="output",
     ):
         """
-        Sets species, genome_assembly, annotation_release to a predefined value if thay are not given in input
-        Dowloads the fasta and annotation files from the NCBI server and stores them in the dir_output folder
-
-        :param probe_length_min: minimum length of the probes created
-        :type probe_length_min: int
-        :param probe_length_max: maximum length of the probes created
-        :type probe_length_max: int
-        :param species: species of the files to dowload, defaults to None
-        :type species: str, optional
-        :param annotation_release: annotation_release of the files to dowload, defaults to None
-        :type annotation_release: str, optional
-        :param dir_output: directory where the files are saved, defaults to './output/annotation'
-        :type dir_output: str, optional
-        :param filters: list of filters classes already initialized, defaults to None
-        :type filters: list of classes, optional
-
+        Constructor
         """
         if species is None:
             species = "human"
@@ -427,7 +399,7 @@ class NcbiDB(CustomDB):
         dir_annotation = os.path.join(dir_output, "annotation")
         Path(dir_annotation).mkdir(parents=True, exist_ok=True)
 
-        ftp = ftp_loader.FTPLoaderNCBI(dir_annotation, species, annotation_release)
+        ftp = FTPLoaderNCBI(dir_annotation, species, annotation_release)
         file_annotation = ftp.download_files("gtf")
         file_sequence = ftp.download_files("fasta")
 
@@ -479,24 +451,9 @@ class EnsemblDB(CustomDB):
         dir_output="output",
     ):
         """
-        Sets species, genome_assembly, annotation_release to a predefined value if thay are not given in input.
-        Dowloads the fasta and annotation files from the Ensemble server and stores them in the dir_output folder
-
-        :param probe_length_min: minimum length of the probes created
-        :type probe_length_min: int
-        :param probe_length_max: maximum length of the probes created
-        :type probe_length_max: int
-        :param species: species of the files to dowload, defaults to None
-        :type species: str, optional
-        :param genome_assembly: genome_assembly of the files to dowload, defaults to None
-        :type genome_assembly: str, optional
-        :param annotation_release: annotation_release of the files to dowload, defaults to None
-        :type annotation_release: str, optional
-        :param dir_output: directory where the files are saved, defaults to 'output'
-        :type dir_output: str, optional
-        :param filters: list of filters classes already initialized, defaults to None
-        :type filters: list of classes, optional
+        Constructor
         """
+
         if species is None:  # change to some standard values for Ensemble
             species = "human"
             warnings.warn(f"No species defined. Using default species {species}!")
@@ -517,7 +474,7 @@ class EnsemblDB(CustomDB):
         dir_annotation = os.path.join(dir_output, "annotation")
 
         Path(dir_annotation).mkdir(parents=True, exist_ok=True)
-        ftp = ftp_loader.FtpLoaderEnsembl(
+        ftp = FtpLoaderEnsembl(
             dir_annotation, species, genome_assembly, annotation_release
         )
         file_annotation = ftp.download_files("gtf")
