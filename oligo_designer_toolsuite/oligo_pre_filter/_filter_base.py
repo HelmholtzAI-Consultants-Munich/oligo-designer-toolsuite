@@ -4,7 +4,7 @@ from Bio.SeqUtils import GC
 from Bio.SeqUtils import MeltingTemp as mt
 
 
-class Filter(ABC):
+class PreFilterBase(ABC):
     """Base class that gives the structure."""
 
     def __init__(self) -> None:
@@ -12,18 +12,18 @@ class Filter(ABC):
 
     @abstractmethod
     def apply(self, sequence):
-        """Applies teh filters and returns if the sequence fulfillts the constraints and the additional features computed in a dictionary.
-        If this method is not reimplemented in teh filters gives a warning and returns True.
+        """Applies the filters to a given sequence and if it fulfillts the constraints returns ``True`` and the additional features computed stored in a dictionary.
+        If this method is not reimplemented in the filters classes it will give a warning.
         The aditional computed features must be float type.
 
         :param sequence: sequence to be filtered
         :type sequence: str
-        :return: True
-        :rtype: bool
+        :return: constraints outcome, dictionary with the additional features
+        :rtype: bool, dict
         """
 
 
-class MaskedSequences(Filter):
+class MaskedSequences(PreFilterBase):
     """Filters the sequences containing a masked nucleotide."""
 
     def __init__(self) -> None:
@@ -43,20 +43,27 @@ class MaskedSequences(Filter):
         return True, {}
 
 
-class GCContent(Filter):
-    """Filters the sequences by the GC content."""
+class GCContent(PreFilterBase):
+    """Filters the sequences by the GC content.
+
+    :param GC_content_min: minumum GC content value that the oligos need to have
+    :type GC_content_min: float
+    :param GC_content_max: maximum GC content value that the oligos need to have
+    :type GC_content_max: float
+    """
 
     def __init__(self, GC_content_min, GC_content_max) -> None:
+        """Constructor"""
         super().__init__()
         self.GC_content_min = GC_content_min
         self.GC_content_max = GC_content_max
 
     def apply(self, sequence):
-        """Applies the filter and returns True if the GC content is between the min and max values and the GC content.
+        """Applies the filter and returns True if the GC content is between the min and max values.
 
         :param sequence: sequence to be filtered
         :type sequence: str
-        :return: True if the constrined is fulfilled and the GC content
+        :return: True if the constrined is fulfilled, the GC content
         :rtype: bool and dict
         """
 
@@ -67,21 +74,21 @@ class GCContent(Filter):
         return False, {}  # if false the additional features are not been saved anyway
 
 
-class MeltingTemperature(Filter):
-    """Filters the sequences by the melting temperature."""
+class MeltingTemperature(PreFilterBase):
+    """Filters the sequences by the melting temperature.
+
+    :param Tm_min: minimum melting temperature
+    :type Tm_min: float
+    :param Tm_max: maximum melting temperature
+    :type Tm_max: float
+    :param Tm_parameters: parameters to compute the melting temperature
+    :type Tm_parameters: dict
+    :param Tm_correction_parameters: parameters to correct the melting temperature
+    :type Tm_correction_parameters: dict
+    """
 
     def __init__(self, Tm_min, Tm_max, Tm_parameters, Tm_correction_parameters) -> None:
-        """Initializes the class.
-
-        :param Tm_min: minimum melting temperature
-        :type Tm_min: float
-        :param Tm_max: maximum melting temperature
-        :type Tm_max: float
-        :param Tm_parameters: parameters to compute the melting temperature
-        :type Tm_parameters: dict
-        :param Tm_correction_parameters: parameters to correct the melting temperature
-        :type Tm_correction_parameters: dict
-        """
+        """Initializes the class."""
 
         super().__init__()
         self.Tm_min = Tm_min
