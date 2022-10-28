@@ -148,14 +148,14 @@ def parse_gtf(
     :param filepath_or_buffer: Path to GTF file (may be gzip compressed) or buffer object such as StringIO
     :type filepath_or_buffer: str or buffer object
     :param chunksize: Return the data in chunks of size chunksize
-    :type chunksize:int
+    :type chunksize: int
     :param features: Ignore entries which don't correspond to one of the supplied features.
     :type features: set or None
     :param intern_columns: These columns are short strings which should be interned
     :type intern_columns:  list
-    :param fix_quotes_columns: Most commonly the 'attribute' column which had broken quotes on
-        some Ensembl release GTF files.
+    :param fix_quotes_columns: Most commonly the 'attribute' column which had broken quotes on some Ensembl release GTF files.
     :type fix_quotes_columns: list
+
     """
 
     if features is not None:
@@ -265,9 +265,9 @@ def expand_attribute_strings(
     :param usecols: If not None, then only expand columns included in this set, otherwise use all columns.
     :type usecols: list of str or None
 
-    :return: OrderedDict of column->value list mappings, in the order they
-    appeared in the attribute strings.
+    :return: OrderedDict of column->value list mappings, in the order they appeared in the attribute strings.
     :rtype: OrderedDict
+
     """
     n = len(attribute_strings)
 
@@ -341,7 +341,9 @@ def expand_attribute_strings(
 def get_sequence_from_annotation(
     file_bed, file_reference_fasta, file_fasta, split=False
 ):
-    """Get sequence for regions annotated in file_bed using file_reference_fasta and save the output as a fasta file in file_fasta.
+    """
+    Get sequence for regions annotated in file_bed using file_reference_fasta and save the output as a fasta file in file_fasta.
+
     :param file_bed: Path to bed file with annotated genomic regions.
     :type file_bed: string
     :param file_reference_fasta: Path to fasta file with reference sequence, e.g. transcriptome.
@@ -394,12 +396,15 @@ def merge_fasta(files_fasta, file_merged_fasta):
 
 
 def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
-    """Create the oligo db dictionary from a gtf file.
+    """
+    Create the oligo db dictionary from a gtf file.
 
     :param file_oligos_DB_gtf: Path to the file.
     :type file_oligos_DB_gtf: str
     :param file_oligos_DB_fasta: Path to the file.
     :type file_oligos_DB_fasta: str
+    :return: oligos_DB
+    :rtype: dict
     :raises ValueError: When the file given has the wrong format.
     :raises ValueError: When the path given does not exist.
     """
@@ -483,8 +488,15 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
 
 
 def read_oligos_DB_tsv(file_oligos_DB_tsv):
-    """Reads a previously generated oligos DB and saves it in the <oligos_DB> attribute as a dictionary.
-    The order of columns is : probe_id, probe_sequence, gene_id,  'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', all the additional info computed by the filtering class.
+    """
+    Reads a previously generated oligos DB and saves it in the ``oligos_DB`` attribute as a dictionary.
+    The order of columns is :
+
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+    | probe_id | probe_sequence | gene_id | transcript_id | exon_id | chromosome | start | end | strand | length | additional feat. |
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+
+    all the additional info computed by the filtering class.
 
     :param file_oligos_DB_tsv: path of the oligos_DB file
     :type file_oligos_DB_tsv: str
@@ -549,7 +561,8 @@ def read_oligos_DB_tsv(file_oligos_DB_tsv):
 
 
 def write_oligos_DB_gtf(oligos_DB, file_oligos_DB_gtf, file_oligos_DB_fasta):
-    """Writes the data structure oligos_DB in a gtf file in the <file_oligos_DB_gtf> path.
+    """
+    Writes the data structure oligos_DB in a gtf file in the ``file_oligos_DB_gtf`` path.
     The additional features are written in the 9th column and the sequence of the probes is written on a separate fasta fila
     with heading the probe_id.
 
@@ -606,8 +619,15 @@ def write_oligos_DB_gtf(oligos_DB, file_oligos_DB_gtf, file_oligos_DB_fasta):
 
 
 def write_oligos_DB_tsv(oligos_DB, file_oligos_DB_tsv):
-    """Writes the data structure self.oligos_DB in a tsv file in the <self.file_oligos_DB_tsv> path.
-    The order of columns is : gene_id, probe_sequence, 'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', 'length', all the additional info computed by the filtering class.
+    """
+    Writes the data structure self.oligos_DB in a tsv file in the ``file_oligos_DB_tsv`` path.
+    The order of columns is:
+
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+    | probe_id | probe_sequence | gene_id | transcript_id | exon_id | chromosome | start | end | strand | length | additional feat. |
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+
+    Where all the additional info computed by the filtering class.
 
     :param oligos_DB: oligos_DB dictionary
     :type oligos_DB: dict

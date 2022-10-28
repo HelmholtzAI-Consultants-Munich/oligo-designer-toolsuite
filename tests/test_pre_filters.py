@@ -12,7 +12,7 @@ from oligo_designer_toolsuite.oligo_pre_filter._filter_base import (
     MeltingTemperature,
 )
 from oligo_designer_toolsuite.oligo_pre_filter._filter_padlock_probes import PadlockArms
-from oligo_designer_toolsuite.oligo_transcript_generation._oligos import Oligos
+from oligo_designer_toolsuite.oligo_pre_filter._pre_filter import PreFilter
 
 
 class TestPreFilters(unittest.TestCase):
@@ -67,17 +67,19 @@ class TestPreFilters(unittest.TestCase):
             Tm_correction_parameters=self.Tm_correction_parameters,
         )
 
-        self.filters = [
+        filters = [
             self.masked_sequences,
             self.GC_content,
             self.melting_temperature,
             self.arms_tm,
         ]
-        self.oligos = Oligos(None, None, None, self.filters)
+        self.pre_filter = PreFilter(filters=filters)
 
     def tets_positive_outcome(self):
         """Tests that a correct sequences passes all the filers."""
-        fulfills, _ = self.oligos.filter(Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA"))
+        fulfills, _ = self.pre_filter.filter_sequence(
+            Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
+        )
         self.assertEqual(
             fulfills,
             True,

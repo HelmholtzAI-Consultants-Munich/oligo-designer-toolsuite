@@ -1,5 +1,3 @@
-# import pybedtools
-
 import gzip
 import itertools
 import logging
@@ -27,9 +25,9 @@ class BaseFtpLoader:
         self.logging = logging.getLogger("probe_designer")
 
     def download(self, ftp_link, ftp_directory, file_name):
-
         """
         Download file from ftp server.
+
         :param ftp_link: Link to ftp server.
         :type ftp_link: string
         :param ftp_directory: Path to directory for target files.
@@ -58,6 +56,7 @@ class BaseFtpLoader:
     def decompress_gzip(self, file_gzip):
         """
         Decompress zip files.
+
         :param file_gzip: Path to zipped file.
         :type file_gzip: string
         :return: Path to unzipped file.
@@ -99,6 +98,7 @@ class BaseFtpLoader:
 
 class FtpLoaderEnsembl(BaseFtpLoader):
     """Class for downloading annotations from Ensembl, inheriting from BaseFtpLoader.
+
     :param species: available species: human or mouse
     :type species: string
     :param annotation_release: release number of annotation or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
@@ -118,6 +118,7 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
     def get_params(self, file_type):
         """Get directory and file name for gtf and fasta files from Ensembl server
+
         :param dir_output: Path to directory for downloaded files.
         :type dir_output: string
         :return: ftp directories and file names of gtf and fasta files from Ensembl server.
@@ -174,6 +175,7 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
 class FTPLoaderNCBI(BaseFtpLoader):
     """Class for downloading annotations from NCBI, inheriting from BaseFtpLoader.
+
     :param species: available species: human or mouse
     :type species: string
     :param annotation_release: release number (e.g. 109 or 109.20211119) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/.
@@ -190,6 +192,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
     def get_params(self, file_type):
         """Get directory and file name for specified file type from NCBI server
+
         :param file_type: File type to download (e.g. gtf or fasta)
         :type file_type: string
         :return: ftp directories and file names of specified file type from NCBI server.
@@ -284,6 +287,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
     def _map_chr_names_gene_gtf(self, ftp_file, mapping):
 
         """Process gene annotation file downloaded from NCBI: map chromosome annotation to Ref-Seq.
+
         :param file_gene_gtf: Path to gtf file with gene annotation.
         :type file_gene_gtf: string
         :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
@@ -327,6 +331,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
     def _map_chr_names_genome_fasta(self, ftp_file, mapping):
 
         """Process genome sequence file downloaded from NCBI: map chromosome annotation to Ref-Seq.
+
         :param file_genome_fasta: Path to fasta file with genome sequence.
         :type file_genome_fasta: string
         :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
@@ -357,6 +362,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
     def download_files(self, file_type, mapping=None):
         """Download gene annotation in file_type format from NCBI and unzip file.
         Map chromosome annotation to Ref-Seq accession number.
+
         :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
         :type mapping: dict
         :return: Path to downloaded file.
