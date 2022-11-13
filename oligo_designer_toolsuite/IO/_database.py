@@ -30,6 +30,7 @@ class CustomDB:
         annotation_source=None,
         file_annotation=None,
         file_sequence=None,
+        min_probes_per_gene=0,
         dir_output="output",
     ):
         """Sets species, genome_assembly, annotation_release to 'unknown' if thay are not given in input
@@ -53,6 +54,10 @@ class CustomDB:
         :type file_annotation: str, optional
         :param file_sequence: path to the fasta file, defaults to None
         :type file_sequence: str, optional
+        :param min_probes_per_gene: minimum number of probes a gene should contain, reahed this threshold is deleted from the database, defaults to 0
+        :type min_probes_per_gene: int, optional
+        :param dir_output: path to the output directory where all the files will be written, defaults to "output"
+        :type dir_output: str, optional
         """
         if species is None:
             species = "unknown"
@@ -88,12 +93,16 @@ class CustomDB:
             dir_output, "annotation"
         )  # choose a different
         Path(self.dir_annotation).mkdir(parents=True, exist_ok=True)
+        self.file_removed_genes = os.path.join(
+            dir_output, "genes_with_insufficient_probes.txt"
+        )
         self.species = species
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
         self.annotation_source = annotation_source
         self.probe_length_max = probe_length_max
         self.probe_length_min = probe_length_min
+        self.min_probes_per_gene = min_probes_per_gene
 
         self.file_reference_DB = None
         self.file_oligos_DB_tsv = None
@@ -313,6 +322,21 @@ class CustomDB:
         )
         # clean folder
         os.remove(file_region_annotation)
+
+    def remove_genes_with_insufficient_probes(self, pipeline_step, write=True):
+        """Deletes from the `oligo_DB` the genes which do not have any more probes, and writes them in a file with the name of the step of teh pipeline at which they have been deleted.
+
+        :param pipeline_step: name of the step of the pipeline
+        :type pipeline_step: str
+        """
+
+        genes = list(self.oligos_DB.keys())
+        for gene in genes:
+            if len(list(self.oligos_DB[gene].keys())) <= self.min_probes_per_gene:
+                del self.oligos_DB[gene]
+                if write:
+                    with open(self.file_removed_genes, "a") as hanlde:
+                        hanlde.write(f"{gene}\t{pipeline_step}\n")
 
 
 class NcbiDB(CustomDB):
