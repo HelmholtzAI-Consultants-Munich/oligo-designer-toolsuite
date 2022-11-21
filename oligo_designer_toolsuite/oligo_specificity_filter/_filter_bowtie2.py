@@ -11,7 +11,8 @@ from . import SpecificityFilterBase
 
 class Bowtie2(SpecificityFilterBase):
     """This class filters probes based on the Bowtie 2 read alignment tool. It is recommended to use Bowtie 2 instead of Bowtie for reads longer than about 50 bp, as it gives better performance.
-    The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives a alignmnet score to each probe. The higher the score, the more simlar the read sequence is to the reference sequence. The min_score parameter filters out probes with an aligment score greater than min_score
+    The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives a alignmnet score to each probe. The higher the score, the more simlar the read sequence is to the reference sequence.
+    The min_score parameter filters out probes with an aligment score greater than min_score
 
     Use ``conda install -c bioconda bowtie2 to install the Bowtie 2 package``
 
