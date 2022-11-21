@@ -1,6 +1,6 @@
-# Oligo Designer Toolsuite
-
 ![stability-wip](https://img.shields.io/badge/stability-work_in_progress-lightgrey.svg)
+
+# Oligo Designer Toolsuite
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers can customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
