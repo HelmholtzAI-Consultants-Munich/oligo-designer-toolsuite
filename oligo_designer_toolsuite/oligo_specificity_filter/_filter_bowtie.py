@@ -10,30 +10,31 @@ from . import SpecificityFilterBase
 
 
 class Bowtie(SpecificityFilterBase):
-    def __init__(self, dir_specificity, min_mismatches=4, mismatch_region=None):
-        """This class filters probes based on the Bowtie short read alignment tool.
-        The user can customize the filtering by specifying the min_mismatches per probe and mismatch_region, the region that should be considered for counting mismatches.
-        That is, all probes with number mismatches less than min_mismatches inside the mismatch_region are filtered out.
+    """This class filters probes based on the Bowtie short read alignment tool.
+    The user can customize the filtering by specifying the num_mismatches per probe and mismatch_region, the region that should be considered for counting mismatches.
+    That is, all probes with number mismatches higher than num_mismatches inside the mismatch_region are filtered out.
 
-        Use conda install -c bioconda bowtie to install Bowtie package
+    Use ``conda install -c bioconda bowtie to install Bowtie package``
 
-        :param file_transcriptome_fasta: path to fasta file containing all probes
-        :type file_transcriptome_fasta: str
-        :param min_mismatches: Threshhold value on the number of mismatches required for each probe. Probes where the number of mismatches are greater than or equal to this threshhold are considered valid. Possible values range from 0 to 4.
-        :type min_mismatches: int
-        :param mismatch_region: The region of the probe where the mismatches are considered. Probes that have less than min_mismatches in the first L bases (where L is 5 or greater) are filtered out
-        :type mismatch_region: int
+    :param dir_specificity: directory where alignement temporary files can be written
+    :type dir_specificity: str
+    :param num_mismatches: Threshhold value on the number of mismatches required for each probe. Probes where the number of mismatches greater than this threshhold are considered valid. Possible values range from 0 to 3.
+    :type num_mismatches: int
+    :param mismatch_region: The region of the probe where the mismatches are considered. Probes that have less than or equal to num_mismatches in the first L bases (where L is 5 or greater) are filtered out.
+    If ``None`` then the whole sequence is considered, defaults to None
+    :type mismatch_region: int
+    """
 
+    def __init__(self, dir_specificity, num_mismatches=3, mismatch_region=None):
 
-        """
         super().__init__(dir_specificity)
 
-        if min_mismatches > 4:
+        if num_mismatches > 3:
             raise ValueError(
-                "Choice of min_mismatches out of range for bowtie allignment tool. Please choose a value no greater than 4"
+                "Choice of min_mismatches out of range for bowtie allignment tool. Please choose a value no greater than 3"
             )
         else:
-            self.min_mismatches = min_mismatches
+            self.num_mismatches = num_mismatches
 
         if mismatch_region < 5:
             raise ValueError(
@@ -49,42 +50,52 @@ class Bowtie(SpecificityFilterBase):
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
     def apply(self, oligo_DB, file_reference_DB, n_jobs):
-        """Apply bowtie filter to all batches in parallel"""
+        """Apply the bowtie filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
+        The filtered database is returned.
 
+        :param oligo_DB: database containing the probes and their features
+        :type oligo_DB: dict
+        :param file_reference_DB: path to the file that will be used as reference for the alignement
+        :type file_reference_DB: str
+        :param n_jobs: number of simultaneous parallel computations
+        :type n_jobs: int
+        :return: probe info of user-specified genes
+        :rtype : dict
+        """
         # Some bowtie initializations, change the names
         index_exists = False
+        index_name = os.path.basename(file_reference_DB)
         # Check if bowtie index exists
         for file in os.listdir(self.dir_bowtie):
-            if re.search("^reference*", file):
+            if re.search(f"^{index_name}.*", file):
                 index_exists = True
                 break
 
         # Create bowtie index if none exists
         if not index_exists:
-            command1 = "bowtie-build " + file_reference_DB + " reference"
+            command1 = "bowtie-build " + file_reference_DB + " " + index_name
             process = Popen(command1, shell=True, cwd=self.dir_bowtie).wait()
 
         genes = list(oligo_DB.keys())
         filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_bowtie)(oligo_DB[gene], gene) for gene in genes
+            delayed(self._run_bowtie)(oligo_DB[gene], gene, index_name)
+            for gene in genes
         )
 
         # reconstruct the oligos_DB
         for gene, filtered_oligo_DB in zip(genes, filtered_oligo_DBs):
             oligo_DB[gene] = filtered_oligo_DB
-        # remove the files
-        for file in os.listdir(self.dir_bowtie):
-            os.remove(os.path.join(self.dir_bowtie, file))
-        for file in os.listdir(self.dir_fasta):
-            os.remove(os.path.join(self.dir_fasta, file))
+
         return oligo_DB
 
-    def _run_bowtie(self, gene_DB, gene):
+    def _run_bowtie(self, gene_DB, gene, index_name):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts.
         Bowtie identifies all allignments between the probes and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
-        :return: DataFrame with processed bowtie alignment search results.
-        :rtype: pandas.DataFrame
+        :param gene_DB: database containing the probes form one gene
+        :type gene_DB: dict
+        :param gene: id of thet gene processed
+        :type gene: str
         """
 
         file_probe_fasta_gene = self._create_fasta_file(gene_DB, self.dir_fasta, gene)
@@ -94,9 +105,11 @@ class Bowtie(SpecificityFilterBase):
         )
         if self.mismatch_region is not None:
             command = (
-                "bowtie reference -f -a -n "
-                + str(self.min_mismatches - 1)
-                + "-l"
+                "bowtie -x "
+                + index_name
+                + " -f -a -n "
+                + str(self.num_mismatches)
+                + " -l "
                 + str(self.mismatch_region)
                 + " "
                 + file_probe_fasta_gene
@@ -105,8 +118,10 @@ class Bowtie(SpecificityFilterBase):
             )
         else:
             command = (
-                "bowtie reference -f -a -v "
-                + str(self.min_mismatches - 1)
+                "bowtie -x "
+                + index_name
+                + " -f -a -v "
+                + str(self.num_mismatches)
                 + " "
                 + file_probe_fasta_gene
                 + " "
@@ -120,14 +135,13 @@ class Bowtie(SpecificityFilterBase):
         # filter the DB based on the bowtie results
         matching_probes = self._find_matching_probes(gene_DB, bowtie_results)
         filtered_gene_DB = self._filter_matching_probes(gene_DB, matching_probes)
+        # remove the temporary files
+        os.remove(os.path.join(self.dir_bowtie, file_bowtie_gene))
+        os.remove(os.path.join(self.dir_fasta, file_probe_fasta_gene))
         return filtered_gene_DB
 
     def _read_bowtie_output(self, file_bowtie_gene):
-        """Load the output of the bowtie alignment search into a DataFrame and process the results.
-
-        :return: DataFrame with processed bowtie alignment search results.
-        :rtype: pandas.DataFrame
-        """
+        """Load the output of the bowtie alignment search into a DataFrame and process the results."""
         bowtie_results = pd.read_csv(
             file_bowtie_gene,
             header=None,
@@ -165,18 +179,29 @@ class Bowtie(SpecificityFilterBase):
 
     def _find_matching_probes(self, gene_DB, bowtie_results):
         """Use the results of the Bowtie alignment search to identify probes with high similarity (i.e. low number of mismatches) based on user defined thresholds.
-        :param probes_info: Dataframe with probe information, filtered based on sequence properties.
-        :type probes_info: pandas.DataFrame
-        :param blast_results: DataFrame with processed bowtie alignment search results.
-        :type blast_results: pandas.DataFrame
+
+        :param bowtie_results: DataFrame with processed bowtie alignment search results.
+        :type bowtie_results: pandas.DataFrame
         """
+
         bowtie_matches = bowtie_results[
             bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
         ]
+
         probes_with_match = bowtie_matches["query"].unique()
         return probes_with_match
 
     def _filter_matching_probes(self, gene_DB, matching_probes):
+        """Filer out form the database the sequences with a match.
+
+        :param gene_DB: dictionary with all the probes belonging to the current gene
+        :type gene_DB: dict
+        :param matching_probes: list of the probes with a match
+        :type matching_probes: list
+        :return: gene_DB withou the matching probes
+        :rtype: dict
+        """
+
         probe_ids = list(gene_DB.keys())
         for probe_id in probe_ids:
             if probe_id in matching_probes:

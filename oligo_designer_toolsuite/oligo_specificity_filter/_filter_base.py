@@ -6,18 +6,10 @@ from Bio.SeqRecord import SeqRecord
 
 
 class SpecificityFilterBase(ABC):
-    """This is the base class for all probe filter classes
+    """This is the base class for all specificity filter classes
 
-    :param n_jobs: numbers of jobs to run in parallel when filtering the probes
-    :type n_jobs: int
-    :param dir_output: output directory to write file containing filtered probes to
-    :type dir_output: str
-    :param dir_annotations: directory storing file annotations of probes, defaults to None
-    :type dir_annotations: str, optional
-    :param number_subbatches: number of subbatches to split batched data into to control how many genes are in one batch, defaults to None
-    :type number_subbatches: int, optional
-    :param max_genes_in_batch: max number of genes allowed in a batch, defaults to 300
-    :type max_genes_in_batch: int, optional
+    :param dir_specificity: directory where alignement temporary files can be written
+    :type dir_specificity: str
     """
 
     def __init__(self, dir_specificity):
@@ -30,15 +22,31 @@ class SpecificityFilterBase(ABC):
 
     @abstractmethod
     def apply(self, oligo_DB, file_reference_DB, n_jobs):
-        """Apply filter to list of all possible probes in probe_info dictionary given user-specified genes and save output in dir_output;
-        Temporary files can be written in the `self.dir_specificiy` folder, but they must be removed.
+        """Apply filter to list of all possible probes in probe_info dictionary and filter out the probes which don't fulfill the requiremetns.
+        Temporary files can be written in the ``self.dir_specificiy``folder, but they must be removed.
 
-        :param probe_info: probe info of user-specified genes
-        :type probe_info: dict
+        :param oligo_DB: database containing the probes adn their features
+        :type oligo_DB: dict
+        :param file_reference_DB: path to the file that will be used as reference for the alignement tools
+        :type file_reference_DB: str
+        :param n_jobs: number of simultaneous parallel computations
+        :type n_jobs: int
+        :return: probe info of user-specified genes
+        :rtype : dict
         """
 
     def _create_fasta_file(self, gene_DB, dir, gene):
+        """Creates a fasta file with all the probes of a specific gene. The fasta files are then used by the alignement tools.
 
+        :param gene_DB: database with all the probes contained in one gene
+        :type gene_DB: dict
+        :param dir: path to the directory where the files will be stored
+        :type dir: str
+        :param gene: id of the gene we are processing
+        :type gene: str
+        :return: path of the fasta file generated
+        :rtype: str
+        """
         file_fasta_gene = os.path.join(dir, f"probes_{gene}.fna")
         output = []
         for probe_id in gene_DB.keys():
