@@ -5,13 +5,30 @@ from . import SpecificityFilterBase
 
 
 class ExactMatches(SpecificityFilterBase):
+    """This class filters probes based duplicates found in the ``oligos_DB``. That is, probes with the same sequences but belonging to the same gene are filtered out.
+
+    :param dir_specificity: directory where alignement temporary files can be written
+    :type dir_specificity: str
+    """
+
     def __init__(self, dir_specificity):
-        """This class filters probes based on exact matches."""
+        """Counstructor."""
 
         super().__init__(dir_specificity)
 
     def apply(self, oligo_DB, file_reference_DB, n_jobs):
-        """Parallelize filtering of exact matches from input dictionary"""
+        """Apply the filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and at the same time are generated at most ``n_job`` jobs.
+        The filtered database is returned.
+
+        :param oligo_DB: database containing the probes and their features
+        :type oligo_DB: dict
+        :param file_reference_DB: path to the file that will be used as reference for the alignement tools
+        :type file_reference_DB: str
+        :param n_jobs: number of simultaneous parallel computations
+        :type n_jobs: int
+        :return: probe info of user-specified genes
+        :rtype : dict
+        """
 
         duplicated_sequences = self._get_duplicated_sequences(oligo_DB)
 
@@ -28,9 +45,10 @@ class ExactMatches(SpecificityFilterBase):
         return oligo_DB
 
     def _get_duplicated_sequences(self, oligo_DB):
-        """Get a list of probe sequences that have an exact match within the pool of all
-        possible probe sequences for the list of input genes.
+        """Get a list of probe sequences that have an exact match within the oligos_DB.
 
+        :param oligo_DB: database with all the probes and their features
+        :type oligo_DB: dict
         :return: List of probe sequences with exact matches in the pool of probes.
         :rtype: list
         """
@@ -51,10 +69,12 @@ class ExactMatches(SpecificityFilterBase):
         return duplicated_sequences
 
     def _filter_exactmatch_gene(self, gene_oligo_DB, duplicated_sequences):
-        """Remove sequences with exact matches within the pool of all possible probe sequences for the list of input genes.
+        """Remove sequences with exact matches.
 
-        :param batch_id: Batch ID.
-        :type batch_id: int
+        :param gene_oligo_DB: database with all the probes from one gene
+        :type gene_oligo_DB: dict
+        :param duplicated_sequences: list of the sequences which have duplicates
+        :type duplicated_sequences: list
         """
         propbes_ids = list(gene_oligo_DB.keys())
         for probe_id in propbes_ids:

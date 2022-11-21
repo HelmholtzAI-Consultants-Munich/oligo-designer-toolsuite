@@ -1,2 +1,2 @@
 probe_id	probe_sequence	gene_id	transcript_id	exon_id	chromosome	start	end	strand	length	GC_content	melt_temp	melt_temp_arm1	melt_temp_arm2	dif_melt_temp_arms	ligation_site
-WASH7P_18677	CAAGGTGTTCTCCAGTGCCAAGTACCCTGCTC	WASH7P	NR_024540.1	NR_024540.1_exon4_NR_024540.1_exon3	1	18057	18089	-	32	56.25	62.47	45.27	43.54	1.73	17.0
+WASH7P_1	CAAGGTGTTCTCCAGTGCCAAGTACCCTGCTC	WASH7P	NR_024540.1	NR_024540.1_exon4_NR_024540.1_exon3	1	18057	18089	-	32	56.25	62.47	45.27	43.54	1.73	17.0
