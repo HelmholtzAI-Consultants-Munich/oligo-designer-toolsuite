@@ -236,8 +236,8 @@ class CustomDB:
         def get_files_fasta(region, dir_reference_DB, file_reference_DB):
             """generates the fasta files that will compose the reference_DB and writes it in <file_reference_DB>
 
-            :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS".
-            :type region: str
+            :param region: the region to use for the reference DB
+            :type region: {'genome', 'gene_transcript', 'gene_CDS'}
             :param dir_reference_DB: path of the directory where to write the intermediate files.
             :type dir_reference_DB: str
             :param file_reference_DB: path of the file where to write the reference_DB.
@@ -254,7 +254,7 @@ class CustomDB:
                 warnings.warn("Gene CDS not implemented yet")
             else:
                 raise ValueError(
-                    f"The given region does not exists. You selected {region}"
+                    f"The given region does not exists. You selected {region} but only 'genome', 'gene_transcript', 'gene_CDS' are available."
                 )
 
         self.file_reference_DB = os.path.join(
