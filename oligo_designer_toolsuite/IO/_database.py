@@ -142,7 +142,7 @@ class CustomDB:
         """Create the oligo db dictionary from a file. It can take both a tsv file of a gtf and fasta file and the format of file to process is defined by <format>.
 
         :param format: format of file to process
-        :type format: str
+        :type format: {'tsv', 'gtf'}
         :param file_oligos_DB_gtf: Path to the file.
         :type file_oligos_DB_gtf: str
         :param file_oligos_DB_fasta: Path to the file.
@@ -171,7 +171,7 @@ class CustomDB:
         if None it will be set as the dir_annotation.
 
         :param format: format of file to write
-        :type format: str
+        :type format: {'tsv', 'gtf'}
         :param dir_oligos_DB: path of the sub-directory where to write the file, defaults to None
         :type dir_oligos_DB: str, optional
         :return: path of the file written
