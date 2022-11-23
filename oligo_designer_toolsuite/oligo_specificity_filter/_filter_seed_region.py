@@ -31,7 +31,7 @@ class BowtieSeedRegion(SpecificityFilterBase):
 
         if num_mismatches > 3:
             raise ValueError(
-                "Choice of num_mismatches out of range for bowtie allignment tool. Please choose a value no greater than 4"
+                "Choice of num_mismatches out of range for bowtie allignment tool. Please choose a value no greater than 3"
             )
         else:
             self.num_mismatches = num_mismatches
