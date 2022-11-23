@@ -90,7 +90,7 @@ class Blastn(SpecificityFilterBase):
         return oligo_DB
 
     def _run_blast(self, gene_DB, gene, database_name):
-        """Run BlastN alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts.
+        """Run BlastN alignment tool to find regions of local similarity between sequences, where sequences are probes and background sequences (e.g. transcript, genome, etc.).
         BlastN identifies the transcript regions where probes match with a certain coverage and similarity.
 
         :param gene_DB: database containing the probes form one gene
