@@ -219,7 +219,7 @@ class CustomDB:
 
         :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS"
         :type region: str
-        :param block_size: size of the exon junctions. When specified as None, the block size is set to <probe_length_max> + 5, defaults to None
+        :param block_size: size of the exon junctions. When specified as None, the block size is set to ``probe_length_max`` + 5, defaults to None
         :type block_size: int, optional
         :param dir_reference_DB: path of the sub-directory where to write the file, defaults to None
         :type dir_reference_DB: str, optional
