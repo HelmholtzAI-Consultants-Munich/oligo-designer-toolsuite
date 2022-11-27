@@ -20,6 +20,7 @@ class SpecificityFilter:
         :return: filtered DB class
         :rtype: CustomDB class
         """
+
         if n_jobs is None:
             n_jobs = DB.n_jobs
 

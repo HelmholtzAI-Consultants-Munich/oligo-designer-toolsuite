@@ -10,14 +10,14 @@ from . import SpecificityFilterBase
 
 
 class BowtieSeedRegion(SpecificityFilterBase):
-    """This class filters probes based on the Bowtie short read alignment tool on a specific region of the probe. The region take in consideration is created according to the ``seed_region_creation`` class.
-    The user can customize the filtering by specifying the num_mismatches, and all probes with number mismatches lower or equal to min_mismatches inside the mismatch_region are filtered out.
+    """This class filters probes based on the Bowtie short read alignment tool on a specific sub-region of the probe. The region taken in consideration is created according to the ``seed_region_creation`` class.
+    The user can customize the filtering by specifying the num_mismatches, and all probes with number mismatches lower or equal to num_mismatches inside the mismatch_region are filtered out.
 
     Use conda install -c bioconda bowtie to install Bowtie package
 
     :param file_transcriptome_fasta: path to fasta file containing all probes
     :type file_transcriptome_fasta: str
-    :param seed_region_creation: The region of the probe where the mismatches are considered. Probes that have less than min_mismatches in the first L bases (where L is 5 or greater) are filtered out
+    :param seed_region_creation: Class to generate the region of the probe where the mismatches are considered. Probes that have less than min_mismatches in the seed region are filtered out
     :type seed_region_creation: SeedRegionCreationBase class
     :param num_mismatches: Threshhold value on the number of mismatches required for each probe. Probes where the number of mismatches are greater than or equal to this threshhold are considered valid. Possible values range from 0 to 3.
     :type num_mismatches: int

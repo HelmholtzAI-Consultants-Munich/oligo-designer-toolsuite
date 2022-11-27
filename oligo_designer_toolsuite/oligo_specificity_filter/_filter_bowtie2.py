@@ -74,11 +74,7 @@ class Bowtie2(SpecificityFilterBase):
         # reconstruct the oligos_DB
         for gene, filtered_oligo_DB in zip(genes, filtered_oligo_DBs):
             oligo_DB[gene] = filtered_oligo_DB
-        # remove the files
-        """for file in os.listdir(self.dir_bowtie2):
-            os.remove(os.path.join(self.dir_bowtie2, file))
-        for file in os.listdir(self.dir_fasta):
-            os.remove(os.path.join(self.dir_fasta, file))"""
+
         return oligo_DB
 
     def _run_bowtie2(self, gene_DB, gene, index_name):
@@ -124,6 +120,7 @@ class Bowtie2(SpecificityFilterBase):
         # filter the DB based on the bowtie results
         matching_probes = self._find_matching_probes(bowtie2_results)
         filtered_gene_DB = self._filter_matching_probes(gene_DB, matching_probes)
+        # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie2, file_bowtie2_gene))
         os.remove(os.path.join(self.dir_fasta, file_probe_fasta_gene))
         return filtered_gene_DB

@@ -82,11 +82,7 @@ class Blastn(SpecificityFilterBase):
         # reconstruct the oligos db and return it
         for gene, filtered_oligo_DB in zip(genes, filtered_oligo_DBs):
             oligo_DB[gene] = filtered_oligo_DB
-        # remove the files
-        """for file in os.listdir(self.dir_blast):
-            os.remove(os.path.join(self.dir_blast, file))
-        for file in os.listdir(self.dir_fasta):
-            os.remove(os.path.join(self.dir_fasta, file))"""
+
         return oligo_DB
 
     def _run_blast(self, gene_DB, gene, database_name):
@@ -116,9 +112,9 @@ class Blastn(SpecificityFilterBase):
         # read the reuslts of the blast seatch
         blast_results = self._read_blast_output(file_blast_gene)
         # filter the DB based on the blast results
-        matching_probes = self._find_matching_probes(gene_DB, blast_results)
+        matching_probes = self._find_matching_probes(blast_results)
         filtered_gene_DB = self._filter_matching_probes(gene_DB, matching_probes)
-        # remove tempoary files
+        # remove temporary files
         os.remove(os.path.join(self.dir_blast, file_blast_gene))
         os.remove(os.path.join(self.dir_fasta, file_probe_fasta_gene))
         return filtered_gene_DB
@@ -154,7 +150,7 @@ class Blastn(SpecificityFilterBase):
         blast_results["target_gene_id"] = blast_results["target"].str.split("::").str[0]
         return blast_results
 
-    def _find_matching_probes(self, gene_DB, blast_results):
+    def _find_matching_probes(self, blast_results):
         """Use the results of the BlastN alignement search to remove probes with high similarity,
         probe coverage and ligation site coverage based on user defined thresholds.
 

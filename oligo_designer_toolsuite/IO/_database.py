@@ -119,7 +119,7 @@ class CustomDB:
         )
 
     def read_reference_DB(self, file_reference_DB):
-        """Saves the path of a previously generated reference DB in the <self.file_reference_DB> attribute.
+        """Saves the path of a previously generated reference DB in the ``self.file_reference_DB`` attribute.
 
         :param file_reference_DB: path of the reference_DB file
         :type file_reference_DB: str
@@ -139,7 +139,7 @@ class CustomDB:
         file_oligos_DB_gtf=None,
         file_oligos_DB_fasta=None,
     ):
-        """Create the oligo db dictionary from a file. It can take both a tsv file of a gtf and fasta file and the format of file to process is defined by <format>.
+        """Create the oligo db dictionary from a file. It can take both a tsv file of a gtf and fasta file and the format of file to process is defined by ``format``.
 
         :param format: format of file to process
         :type format: {'tsv', 'gtf'}
@@ -166,8 +166,8 @@ class CustomDB:
             raise ValueError(f"{format} not recognized as a format!")
 
     def write_oligos_DB(self, format, dir_oligos_DB=None):
-        """Writes the data structure self.oligos_DB in a file in the <file_oligos_DB_*> path.
-        The fromat of teh file is defined by <format>. <file_oligos_DB_tsv> is the sub-diretory of dir_output where the file will be written,
+        """Writes the data structure self.oligos_DB in a file in the ``file_oligos_DB_*`` path.
+        The fromat of teh file is defined by ``format``. ``file_oligos_DB_tsv`` is the sub-diretory of dir_output where the file will be written,
         if None it will be set as the dir_annotation.
 
         :param format: format of file to write
@@ -214,7 +214,7 @@ class CustomDB:
         dir_reference_DB=None,
     ):
         """Creates a fasta file for each of the region selected (genome, gene_transcript, gene_CDS) which will be used for alignements, default is "gene_transcript".
-        If not specified the exon juctions size is set to <probe_length_max> + 5. <dir_reference_DB> is the subdirectiory of dir_out where the reference file will be written,
+        If not specified the exon juctions size is set to ``probe_length_max`` + 5. ``dir_reference_DB`` is the subdirectiory of dir_out where the reference file will be written,
         if None it will be set to dir_annotation.
 
         :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS"
@@ -234,7 +234,7 @@ class CustomDB:
             Path(dir_reference_DB).mkdir(parents=True, exist_ok=True)
 
         def get_files_fasta(region, dir_reference_DB, file_reference_DB):
-            """generates the fasta files that will compose the reference_DB and writes it in <file_reference_DB>
+            """generates the fasta files that will compose the reference_DB and writes it in ``file_reference_DB``
 
             :param region: the region to use for the reference DB
             :type region: {'genome', 'gene_transcript', 'gene_CDS'}
@@ -279,7 +279,7 @@ class CustomDB:
         region="gene_transcript",
         n_jobs=2,
     ):
-        """creates the DB containing all the oligo sequence extracted form the given <region> and belonging the the specified genes. If no genes are specified then
+        """creates the DB containing all the oligo sequence extracted form the given ``region`` and belonging the the specified genes. If no genes are specified then
         will be used all the genes.
 
         :param genes: genes for which compute the probes, defaults to None
