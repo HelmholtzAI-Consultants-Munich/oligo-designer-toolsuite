@@ -56,7 +56,3 @@ class SpecificityFilterBase(ABC):
         with open(file_fasta_gene, "w") as handle:
             SeqIO.write(output, handle, "fasta")
         return file_fasta_gene
-
-    def __del__(self):
-        if os.path.exists(self.dir_specificity):
-            pass  # shutil.rmtree(self.dir_specificity)
