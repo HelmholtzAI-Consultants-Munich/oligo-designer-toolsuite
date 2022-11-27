@@ -1,4 +1,7 @@
 import os
+import shutil
+
+import pytest
 
 from oligo_designer_toolsuite.IO._data_parser import read_oligos_DB_tsv
 from oligo_designer_toolsuite.oligo_specificity_filter import (
@@ -43,6 +46,12 @@ mismatch_region = 5
 # Parameters to test ligation region argument
 file_probe_info_ligation_match = dir_annotations + "/oligo_DB_ligation_match.tsv"
 file_probe_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_no_match.tsv"
+
+
+@pytest.fixture(autouse=True)
+def run_around_tess():
+    yield
+    shutil.rmtree(dir_output)
 
 
 def test_filter_exact_matches():
