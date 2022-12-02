@@ -3,13 +3,12 @@ import re
 from pathlib import Path
 from subprocess import Popen
 
-import pandas as pd
 from joblib import Parallel, delayed
 
-from . import SpecificityFilterBase
+from . import Bowtie
 
 
-class BowtieSeedRegion(SpecificityFilterBase):
+class BowtieSeedRegion(Bowtie):
     """This class filters probes based on the Bowtie short read alignment tool on a specific sub-region of the probe. The region taken in consideration is created according to the ``seed_region_creation`` class.
     The user can customize the filtering by specifying the num_mismatches, and all probes with number mismatches lower or equal to num_mismatches inside the mismatch_region are filtered out.
 
@@ -116,67 +115,6 @@ class BowtieSeedRegion(SpecificityFilterBase):
         os.remove(os.path.join(self.dir_seed_region, file_bowtie_gene))
         os.remove(os.path.join(self.dir_fasta, file_probe_fasta_gene))
         return filtered_gene_DB
-
-    def _read_bowtie_output(self, file_bowtie_gene):
-        """Load the output of the bowtie alignment search into a DataFrame and process the results.
-
-        :return: DataFrame with processed bowtie alignment search results.
-        :rtype: pandas.DataFrame
-        """
-        bowtie_results = pd.read_csv(
-            file_bowtie_gene,
-            header=None,
-            sep="\t",
-            low_memory=False,
-            names=[
-                "query",
-                "strand",
-                "reference",
-                "ref_start",
-                "query_sequence",
-                "read_quality",
-                "num_instances",
-                "mismatch_positions",
-            ],
-            engine="c",
-            dtype={
-                "query": str,
-                "strand": str,
-                "reference": str,
-                "ref_start": int,
-                "query_sequence": str,
-                "read_quality": str,
-                "num_instances": int,
-                "mismatch_positions": str,
-            },
-        )
-        # return the real matches, that is the ones not belonging to the same gene of the query probe
-        bowtie_results["query_gene_id"] = bowtie_results["query"].str.split("_").str[0]
-        bowtie_results["reference_gene_id"] = (
-            bowtie_results["reference"].str.split("::").str[0]
-        )
-
-        return bowtie_results
-
-    def _find_matching_probes(self, bowtie_results):
-        """Use the results of the Bowtie alignment search to identify probes with high similarity (i.e. low number of mismatches) based on user defined thresholds.
-        :param probes_info: Dataframe with probe information, filtered based on sequence properties.
-        :type probes_info: pandas.DataFrame
-        :param blast_results: DataFrame with processed bowtie alignment search results.
-        :type blast_results: pandas.DataFrame
-        """
-        bowtie_matches = bowtie_results[
-            bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
-        ]
-        probes_with_match = bowtie_matches["query"].unique()
-        return probes_with_match
-
-    def _filter_matching_probes(self, gene_DB, matching_probes):
-        probe_ids = list(gene_DB.keys())
-        for probe_id in probe_ids:
-            if probe_id in matching_probes:
-                del gene_DB[probe_id]
-        return gene_DB
 
     def _extract_seed_regions(self, oligo_DB):
         """geneate a new oligos DB containing only the seed regions of the probes."""

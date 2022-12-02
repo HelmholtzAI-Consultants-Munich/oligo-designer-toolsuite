@@ -83,7 +83,7 @@ class TestDBGeneration(unittest.TestCase):
         )
 
         cls.filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
-        # cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output')
+        # cls.db = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output') # exact version here
         dir_annotation = "/home/francesco/Desktop/Work/NCBI"
         annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
         sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
