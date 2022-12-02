@@ -62,6 +62,7 @@ class Blastn(SpecificityFilterBase):
         # Check if blast database exists
         for file in os.listdir(self.dir_blast):
             if re.search(f"^{database_name}.*", file):
+                database_exists = True
                 break
 
         if not database_exists:
@@ -91,7 +92,7 @@ class Blastn(SpecificityFilterBase):
 
         :param gene_DB: database containing the probes form one gene
         :type gene_DB: dict
-        :param gene: id of thet gene processed
+        :param gene: id of the gene processed
         :type gene: str
         """
         # run the blast search and write the results
@@ -171,19 +172,3 @@ class Blastn(SpecificityFilterBase):
         probes_with_match = blast_matches_filtered["query"].unique()
 
         return probes_with_match
-
-    def _filter_matching_probes(self, gene_DB, matching_probes):
-        """Filer out form the database the sequences with a match.
-
-        :param gene_DB: dictionary with all the probes belonging to the current gene
-        :type gene_DB: dict
-        :param matching_probes: list of the probes with a match
-        :type matching_probes: list
-        :return: gene_DB withou the matching probes
-        :rtype: dict
-        """
-        probe_ids = list(gene_DB.keys())
-        for probe_id in probe_ids:
-            if probe_id in matching_probes:
-                del gene_DB[probe_id]
-        return gene_DB

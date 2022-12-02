@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class SeedRegionCreationBase(ABC):
-    """Base class tfor all the seed region creation classes"""
+    """Base class for all the seed region creation classes"""
 
     def __init__(self):
         pass
@@ -11,14 +11,14 @@ class SeedRegionCreationBase(ABC):
     def apply(self, oligo_DB):
         """To each probe in the oligo DB add the  `start` and `end` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
 
-        :param oligo_DB: database containin all teh oligo sequences and their features
+        :param oligo_DB: database containing all the oligo sequences and their features
         :type oligo_DB: dict
         """
         return oligo_DB
 
 
 class SeedRegionCreationStandard(SeedRegionCreationBase):
-    """Standard seed region creation where the relative coordinates of the seed region are directly passed as arguments. If the end positionis bigger than teh length of the probe the seed region ends where teh probe ends.
+    """Standard seed region creation where the relative coordinates of the seed region are directly passed as arguments. If the end positionis bigger than the length of the probe the seed region ends where the probe ends.
 
     :param start: relative coordinate of the start of the seed region (counting starts from 0)
     :type start: int
@@ -34,7 +34,7 @@ class SeedRegionCreationStandard(SeedRegionCreationBase):
     def apply(self, oligo_DB):
         """To each probe in the oligo DB add a tuple `(start,end)` with key "seed_region" which indicate the relative coordinates of the start and the end of the seed region.
 
-        :param oligo_DB: database containin all teh oligo sequences and their features
+        :param oligo_DB: database containing all the oligo sequences and their features
         :type oligo_DB: dict
         """
         for gene in oligo_DB.keys():
@@ -48,7 +48,7 @@ class SeedRegionCreationStandard(SeedRegionCreationBase):
 
 class SeedRegionCreationPercentage(SeedRegionCreationBase):
     """The seed region relative coordinates are give as a percentage with respect to the probe length in [0,1].
-        For example if is requested a seed region betwee 0.3 and 0.7,  then teh start and end positions woudl be:
+        For example if is requested a seed region betwee 0.3 and 0.7,  then the start and end positions woudl be:
         - (3,7) for a probe of 10 basis
         - (6,14) for a probe of 20 bases
     r
@@ -61,7 +61,7 @@ class SeedRegionCreationPercentage(SeedRegionCreationBase):
     def __init__(self, start, end):
         super().__init__()
         if start < 0 or start > 1:
-            raise ValueError("Etart position must be in the interval [0,1]!")
+            raise ValueError("Start position must be in the interval [0,1]!")
         self.start = start
         if end < 0 or end > 1:
             raise ValueError("End position must be in the interval [0,1]!")
@@ -70,7 +70,7 @@ class SeedRegionCreationPercentage(SeedRegionCreationBase):
     def apply(self, oligo_DB):
         """To each probe in the oligo DB add a tuple `(start,end)` with key "seed_region" which indicate the relative coordinates of the start and the end of the seed region.
 
-        :param oligo_DB: database containin all teh oligo sequences and their features
+        :param oligo_DB: database containing all the oligo sequences and their features
         :type oligo_DB: dict
         """
         for gene in oligo_DB.keys():
@@ -86,7 +86,7 @@ class SeedRegionCreationPercentage(SeedRegionCreationBase):
 
 
 class LigationRegionCreation(SeedRegionCreationBase):
-    """Seed regionused in the Paddlock probe designer pipeline, the region extends by `ligation_region_size` number of bases in both directions starting from the ligation site.
+    """Seed region used in the Padlock probe designer pipeline, the region extends by `ligation_region_size` number of bases in both directions starting from the ligation site.
     To keep the dimention of the region 2*`ligation_region_size` the left size is expanded by 1 base less.
 
     **Remark:** it is required to have a ligation site argument for each probe in the datset, which can be computed with the `PadlockArms` filter in the prefilterig step
@@ -102,7 +102,7 @@ class LigationRegionCreation(SeedRegionCreationBase):
     def apply(self, oligo_DB):
         """To each probe in the oligo DB add a tuple `(start,end)` with key "seed_region" which indicate the relative coordinates of the start and the end of the seed region.
 
-        :param oligo_DB: database containin all teh oligo sequences and their features
+        :param oligo_DB: database containing all the oligo sequences and their features
         :type oligo_DB: dict
         """
         # check if the feature ligation site has been already computed

@@ -6,19 +6,19 @@ from subprocess import Popen
 import pandas as pd
 from joblib import Parallel, delayed
 
-from . import SpecificityFilterBase
+from . import Bowtie
 
 
-class Bowtie2(SpecificityFilterBase):
+class Bowtie2(Bowtie):
     """This class filters probes based on the Bowtie 2 read alignment tool. It is recommended to use Bowtie 2 instead of Bowtie for reads longer than about 50 bp, as it gives better performance.
-    The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives a alignmnet score to each probe. The higher the score, the more simlar the read sequence is to the reference sequence.
-    The min_score parameter filters out probes with an aligment score greater than min_score
+    The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives an alignment score to each probe. The higher the score, the more similar the read sequence is to the reference sequence.
+    The min_score parameter filters out probes with an alignment score greater than min_score
 
     Use ``conda install -c bioconda bowtie2 to install the Bowtie 2 package``
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
-    :param min_score: User defined threshhold for alignmnent score. If specified, the Bowtie 2 filter filters out probes with an aligment score greater than min_score. If None, min_score defaults to -0.6 + -0.6 * L, where L is the read length
+    :param min_score: User defined threshold for alignment score. If specified, the Bowtie 2 filter filters out probes with an alignment score greater than min_score. If None, min_score defaults to -0.6 + -0.6 * L, where L is the read length
     :type min_score: float
     """
 
@@ -82,7 +82,7 @@ class Bowtie2(SpecificityFilterBase):
 
         :param gene_DB: database containing the probes form one gene
         :type gene_DB: dict
-        :param gene: id of thet gene processed
+        :param gene: id of the gene processed
         :type gene: str
         """
 
@@ -171,33 +171,3 @@ class Bowtie2(SpecificityFilterBase):
             bowtie2_results["reference"].str.split("::").str[0]
         )
         return bowtie2_results
-
-    def _find_matching_probes(self, bowtie2_results):
-        """Use the results of the Bowtie 2 alignement search to remove probes with high similarity (i.e. low number of mismatches represented by a high alignment score) based on user-defined min_score.
-
-        :param bowtie2_results: DataFrame with processed bowtie alignment search results.
-        :type bowtie2_results: pandas.DataFrame
-        """
-
-        bowtie2_matches = bowtie2_results[
-            bowtie2_results["query_gene_id"] != bowtie2_results["reference_gene_id"]
-        ]
-        probes_with_match = bowtie2_matches["query"].unique()
-        return probes_with_match
-
-    def _filter_matching_probes(self, gene_DB, matching_probes):
-        """Filer out form the database the sequences with a match.
-
-        :param gene_DB: dictionary with all the probes belonging to the current gene
-        :type gene_DB: dict
-        :param matching_probes: list of the probes with a match
-        :type matching_probes: list
-        :return: gene_DB withou the matching probes
-        :rtype: dict
-        """
-
-        probe_ids = list(gene_DB.keys())
-        for probe_id in probe_ids:
-            if probe_id in matching_probes:
-                del gene_DB[probe_id]
-        return gene_DB

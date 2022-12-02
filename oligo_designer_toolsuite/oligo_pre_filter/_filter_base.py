@@ -12,9 +12,9 @@ class Filter(ABC):
 
     @abstractmethod
     def apply(self, sequence):
-        """Applies teh filters and returns if the sequence fulfillts the constraints and the additional features computed in a dictionary.
-        If this method is not reimplemented in teh filters gives a warning and returns True.
-        The aditional computed features must be float type.
+        """Applies the filters and returns if the sequence fulfillts the constraints and the additional features computed in a dictionary.
+        If this method is not reimplemented in the filters gives a warning and returns True.
+        The additional computed features must be float type.
 
         :param sequence: sequence to be filtered
         :type sequence: str

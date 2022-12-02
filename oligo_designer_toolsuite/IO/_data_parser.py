@@ -440,8 +440,7 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
     # crated the oligos db
     current_gene = ""
     current_probe = ""
-    for index in range(len(oligos_df)):
-        row = oligos_df.iloc[index]
+    for row in oligos_df:
         if row["gene_id"] != current_gene:
             current_gene = row["gene_id"]
             oligos_DB[current_gene] = {}
@@ -450,8 +449,12 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
             oligos_DB[current_gene][current_probe] = {}
             oligo_fasta = next(oligos_fasta)
             probe_sequence = oligo_fasta.seq
+            if oligo_fasta.id != current_probe:
+                raise ValueError(
+                    "The sequences in the gtf file and the fasta files do not correspond!"
+                )
             assert (
-                oligo_fasta.id == current_probe
+                oligo_fasta.id == current_probe,
             )  # check that the fasta and gtf file are in sync
             oligos_DB[current_gene][current_probe] = {}
             # add all the values
@@ -489,7 +492,7 @@ def read_oligos_DB_tsv(file_oligos_DB_tsv):
     """
 
     def parse_line_tsv(line, oligos_DB, current_gene, add_features):
-        """Parses the lines of the tsv file of the oligos db and puts teh data in the dictionary.
+        """Parses the lines of the tsv file of the oligos db and puts the data in the dictionary.
 
         :param line: current line of the tsv file
         :type line: str

@@ -167,7 +167,7 @@ class CustomDB:
 
     def write_oligos_DB(self, format, dir_oligos_DB=None):
         """Writes the data structure self.oligos_DB in a file in the ``file_oligos_DB_*`` path.
-        The fromat of teh file is defined by ``format``. ``file_oligos_DB_tsv`` is the sub-diretory of dir_output where the file will be written,
+        The fromat of the file is defined by ``format``. ``file_oligos_DB_tsv`` is the sub-diretory of dir_output where the file will be written,
         if None it will be set as the dir_annotation.
 
         :param format: format of file to write
@@ -214,7 +214,7 @@ class CustomDB:
         dir_reference_DB=None,
     ):
         """Creates a fasta file for each of the region selected (genome, gene_transcript, gene_CDS) which will be used for alignements, default is "gene_transcript".
-        If not specified the exon juctions size is set to ``probe_length_max`` + 5. ``dir_reference_DB`` is the subdirectiory of dir_out where the reference file will be written,
+        If not specified the exon junctions size is set to ``probe_length_max`` + 5. ``dir_reference_DB`` is the subdirectory of dir_out where the reference file will be written,
         if None it will be set to dir_annotation.
 
         :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS"
@@ -273,14 +273,14 @@ class CustomDB:
         # should be implemented in an external class
         raise NotImplementedError
 
-    def create_oligos_DB(  # does not automatically write, we have to call it speately
+    def create_oligos_DB(
         self,
         genes=None,
         region="gene_transcript",
         n_jobs=2,
     ):
         """creates the DB containing all the oligo sequence extracted form the given ``region`` and belonging the the specified genes. If no genes are specified then
-        will be used all the genes.
+        will be used all the genes. The database created is not written automatically to the disk, the ``write_oligos_DB`` method hes to be called separately.
 
         :param genes: genes for which compute the probes, defaults to None
         :type genes: list of str, optional
@@ -324,7 +324,8 @@ class CustomDB:
         os.remove(file_region_annotation)
 
     def remove_genes_with_insufficient_probes(self, pipeline_step, write=True):
-        """Deletes from the `oligo_DB` the genes which do not have any more probes, and writes them in a file with the name of the step of teh pipeline at which they have been deleted.
+        """Deletes from the ``oligo_DB`` the genes which have less than ``min_probes_per_gene`` probes,
+        and optionally writes them in a file with the name of the step of the pipeline at which they have been deleted.
 
         :param pipeline_step: name of the step of the pipeline
         :type pipeline_step: str
