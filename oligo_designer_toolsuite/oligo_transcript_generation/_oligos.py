@@ -44,7 +44,7 @@ class Oligos:
         """
 
         def _get_probes(gene, region_annotation):
-            """Get the fasta sequence of all possible probes for all genes in the batch.
+            """Get the fasta sequence of all possible probes in the gene.
 
             :param gene: gene for which probes should be designed.
             :type gene: str
