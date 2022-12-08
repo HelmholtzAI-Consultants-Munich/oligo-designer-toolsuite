@@ -3,7 +3,7 @@ import random
 
 import pandas as pd
 
-import oligo_designer_toolsuite.IO._data_parser as data_parser
+import oligo_designer_toolsuite.utils._data_parser as data_parser
 
 
 class GeneTranscript:
