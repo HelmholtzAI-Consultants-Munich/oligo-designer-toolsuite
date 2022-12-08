@@ -4,7 +4,7 @@ import pandas as pd
 from Bio import SeqIO
 from joblib import Parallel, delayed
 
-import oligo_designer_toolsuite.IO._data_parser as data_parser
+import oligo_designer_toolsuite.utils._data_parser as data_parser
 
 
 class Oligos:

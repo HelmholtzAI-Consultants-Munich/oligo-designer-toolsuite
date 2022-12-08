@@ -7,7 +7,6 @@ from Bio.SeqUtils import MeltingTemp as mt
 
 sys.path.append("../oligo_designer_toolsuite")
 
-from oligo_designer_toolsuite.IO._data_parser import check_gtf_format
 from oligo_designer_toolsuite.IO._database import CustomDB
 from oligo_designer_toolsuite.oligo_pre_filter._filter_base import (
     GCContent,
@@ -15,6 +14,7 @@ from oligo_designer_toolsuite.oligo_pre_filter._filter_base import (
     MeltingTemperature,
 )
 from oligo_designer_toolsuite.oligo_pre_filter._filter_padlock_probes import PadlockArms
+from oligo_designer_toolsuite.utils._data_parser import check_gtf_format
 
 
 class TestDBGeneration(unittest.TestCase):

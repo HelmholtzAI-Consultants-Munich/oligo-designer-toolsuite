@@ -237,10 +237,14 @@ def parse_gtf(
                     for s in df[fix_quotes_column]
                 ]
             dataframes.append(df)
-    except:
-        print("An error occured when parsing the gtf file")
+    except Exception as e:
+        raise ParsingError(str(e))
     df = pd.concat(dataframes)
     return df
+
+
+class ParsingError(Exception):
+    pass
 
 
 def expand_attribute_strings(
@@ -337,7 +341,9 @@ def expand_attribute_strings(
 def get_sequence_from_annotation(
     file_bed, file_reference_fasta, file_fasta, split=False
 ):
-    """Get sequence for regions annotated in file_bed using file_reference_fasta and save the output as a fasta file in file_fasta.
+    """
+    Get sequence for regions annotated in file_bed using file_reference_fasta and save the output as a fasta file in file_fasta.
+
     :param file_bed: Path to bed file with annotated genomic regions.
     :type file_bed: string
     :param file_reference_fasta: Path to fasta file with reference sequence, e.g. transcriptome.
@@ -390,7 +396,8 @@ def merge_fasta(files_fasta, file_merged_fasta):
 
 
 def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
-    """Create the oligo db dictionary from a gtf file.
+    """
+    Create the oligo db dictionary from a gtf file.
 
     :param file_oligos_DB_gtf: Path to the file.
     :type file_oligos_DB_gtf: str
@@ -440,7 +447,7 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
     # crated the oligos db
     current_gene = ""
     current_probe = ""
-    for row in oligos_df:
+    for _, row in oligos_df.iterrows():
         if row["gene_id"] != current_gene:
             current_gene = row["gene_id"]
             oligos_DB[current_gene] = {}
@@ -453,9 +460,6 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
                 raise ValueError(
                     "The sequences in the gtf file and the fasta files do not correspond!"
                 )
-            assert (
-                oligo_fasta.id == current_probe,
-            )  # check that the fasta and gtf file are in sync
             oligos_DB[current_gene][current_probe] = {}
             # add all the values
             oligos_DB[current_gene][current_probe]["probe_sequence"] = probe_sequence
@@ -482,8 +486,15 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
 
 
 def read_oligos_DB_tsv(file_oligos_DB_tsv):
-    """Reads a previously generated oligos DB and saves it in the <oligos_DB> attribute as a dictionary.
-    The order of columns is : probe_id, probe_sequence, gene_id,  'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', all the additional info computed by the filtering class.
+    """
+    Reads a previously generated oligos DB and saves it in the ``oligos_DB`` attribute as a dictionary.
+    The order of columns is :
+
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+    | probe_id | probe_sequence | gene_id | transcript_id | exon_id | chromosome | start | end | strand | length | additional feat. |
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+
+    all the additional info computed by the filtering class.
 
     :param file_oligos_DB_tsv: path of the oligos_DB file
     :type file_oligos_DB_tsv: str
@@ -548,7 +559,8 @@ def read_oligos_DB_tsv(file_oligos_DB_tsv):
 
 
 def write_oligos_DB_gtf(oligos_DB, file_oligos_DB_gtf, file_oligos_DB_fasta):
-    """Writes the data structure oligos_DB in a gtf file in the <file_oligos_DB_gtf> path.
+    """
+    Writes the data structure ``oligos_DB`` in a gtf file in the ``file_oligos_DB_gtf`` path.
     The additional features are written in the 9th column and the sequence of the probes is written on a separate fasta fila
     with heading the probe_id.
 
@@ -605,8 +617,15 @@ def write_oligos_DB_gtf(oligos_DB, file_oligos_DB_gtf, file_oligos_DB_fasta):
 
 
 def write_oligos_DB_tsv(oligos_DB, file_oligos_DB_tsv):
-    """Writes the data structure self.oligos_DB in a tsv file in the <self.file_oligos_DB_tsv> path.
-    The order of columns is : gene_id, probe_sequence, 'transcript_id', 'exon_id', 'chromosome', 'start', 'end', 'strand', 'length', all the additional info computed by the filtering class.
+    """
+    Writes the data structure ``oligos_DB`` in a tsv file in the ``file_oligos_DB_tsv`` path.
+    The order of columns is:
+
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+    | probe_id | probe_sequence | gene_id | transcript_id | exon_id | chromosome | start | end | strand | length | additional feat. |
+    +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+
+
+    Where all the additional info computed by the filtering class.
 
     :param oligos_DB: oligos_DB dictionary
     :type oligos_DB: dict

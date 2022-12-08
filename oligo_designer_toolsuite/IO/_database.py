@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pyfaidx
 
-import oligo_designer_toolsuite.IO._data_parser as data_parser
-import oligo_designer_toolsuite.IO._ftp_loader as ftp_loader
+import oligo_designer_toolsuite.utils._data_parser as data_parser
+import oligo_designer_toolsuite.utils._ftp_loader as ftp_loader
 from oligo_designer_toolsuite.oligo_transcript_generation._gene_transcript import (
     GeneTranscript,
 )
