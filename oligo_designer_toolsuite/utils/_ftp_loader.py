@@ -26,7 +26,6 @@ class BaseFtpLoader:
         self.logging = logging.getLogger("probe_designer")
 
     def download(self, ftp_link, ftp_directory, file_name):
-
         """
         Download file from ftp server.
 

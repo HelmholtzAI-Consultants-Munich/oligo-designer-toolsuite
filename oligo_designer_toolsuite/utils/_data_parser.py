@@ -148,14 +148,14 @@ def parse_gtf(
     :param filepath_or_buffer: Path to GTF file (may be gzip compressed) or buffer object such as StringIO
     :type filepath_or_buffer: str or buffer object
     :param chunksize: Return the data in chunks of size chunksize
-    :type chunksize:int
+    :type chunksize: int
     :param features: Ignore entries which don't correspond to one of the supplied features.
     :type features: set or None
     :param intern_columns: These columns are short strings which should be interned
     :type intern_columns:  list
-    :param fix_quotes_columns: Most commonly the 'attribute' column which had broken quotes on
-        some Ensembl release GTF files.
+    :param fix_quotes_columns: Most commonly the 'attribute' column which had broken quotes on some Ensembl release GTF files.
     :type fix_quotes_columns: list
+
     """
 
     if features is not None:
@@ -262,9 +262,9 @@ def expand_attribute_strings(
     :param usecols: If not None, then only expand columns included in this set, otherwise use all columns.
     :type usecols: list of str or None
 
-    :return: OrderedDict of column->value list mappings, in the order they
-    appeared in the attribute strings.
+    :return: OrderedDict of column->value list mappings, in the order they appeared in the attribute strings.
     :rtype: OrderedDict
+
     """
     n = len(attribute_strings)
 
@@ -400,6 +400,8 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
     :type file_oligos_DB_gtf: str
     :param file_oligos_DB_fasta: Path to the file.
     :type file_oligos_DB_fasta: str
+    :return: oligos_DB
+    :rtype: dict
     :raises ValueError: When the file given has the wrong format.
     :raises ValueError: When the path given does not exist.
     """
