@@ -22,7 +22,7 @@ from six.moves import intern
 def read_gtf(
     filepath_or_buffer,
     expand_attribute_column=True,
-    infer_biotype_column=False,
+    infer_biotype_column=True,
     column_converters={},
     usecols=None,
     features=None,
@@ -237,14 +237,11 @@ def parse_gtf(
                     for s in df[fix_quotes_column]
                 ]
             dataframes.append(df)
-    except Exception as e:
-        raise ParsingError(str(e))
+    except Exception:
+        print("An error occurred while parsing the gtf file.")
+        raise
     df = pd.concat(dataframes)
     return df
-
-
-class ParsingError(Exception):
-    pass
 
 
 def expand_attribute_strings(
@@ -292,7 +289,7 @@ def expand_attribute_strings(
             # Ensembl release 79 added values like:
             #   transcript_support_level "1 (assigned to previous version 5)";
             # ...which gets mangled by splitting on spaces.
-            parts = kv.strip().split(" ", 2)[:2]
+            parts = kv.strip().split(" ", -1)[:2]
 
             if len(parts) != 2:
                 continue
@@ -449,8 +446,7 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
     # crated the oligos db
     current_gene = ""
     current_probe = ""
-    for index in range(len(oligos_df)):
-        row = oligos_df.iloc[index]
+    for _, row in oligos_df.iterrows():
         if row["gene_id"] != current_gene:
             current_gene = row["gene_id"]
             oligos_DB[current_gene] = {}
@@ -459,9 +455,10 @@ def read_oligos_DB_gtf(file_oligos_DB_gtf, file_oligos_DB_fasta):
             oligos_DB[current_gene][current_probe] = {}
             oligo_fasta = next(oligos_fasta)
             probe_sequence = oligo_fasta.seq
-            assert (
-                oligo_fasta.id == current_probe
-            )  # check that the fasta and gtf file are in sync
+            if oligo_fasta.id != current_probe:
+                raise ValueError(
+                    "The sequences in the gtf file and the fasta files do not correspond!"
+                )
             oligos_DB[current_gene][current_probe] = {}
             # add all the values
             oligos_DB[current_gene][current_probe]["probe_sequence"] = probe_sequence
@@ -505,7 +502,7 @@ def read_oligos_DB_tsv(file_oligos_DB_tsv):
     """
 
     def parse_line_tsv(line, oligos_DB, current_gene, add_features):
-        """Parses the lines of the tsv file of the oligos db and puts teh data in the dictionary.
+        """Parses the lines of the tsv file of the oligos db and puts the data in the dictionary.
 
         :param line: current line of the tsv file
         :type line: str
@@ -562,7 +559,7 @@ def read_oligos_DB_tsv(file_oligos_DB_tsv):
 
 def write_oligos_DB_gtf(oligos_DB, file_oligos_DB_gtf, file_oligos_DB_fasta):
     """
-    Writes the data structure oligos_DB in a gtf file in the ``file_oligos_DB_gtf`` path.
+    Writes the data structure ``oligos_DB`` in a gtf file in the ``file_oligos_DB_gtf`` path.
     The additional features are written in the 9th column and the sequence of the probes is written on a separate fasta fila
     with heading the probe_id.
 
@@ -620,7 +617,7 @@ def write_oligos_DB_gtf(oligos_DB, file_oligos_DB_gtf, file_oligos_DB_fasta):
 
 def write_oligos_DB_tsv(oligos_DB, file_oligos_DB_tsv):
     """
-    Writes the data structure self.oligos_DB in a tsv file in the ``file_oligos_DB_tsv`` path.
+    Writes the data structure ``oligos_DB`` in a tsv file in the ``file_oligos_DB_tsv`` path.
     The order of columns is:
 
     +----------+----------------+---------+---------------+---------+------------+-------+-----+--------+--------+------------------+

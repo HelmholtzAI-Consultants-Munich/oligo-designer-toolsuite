@@ -9,13 +9,14 @@ from ._data_parser import (
     write_oligos_DB_gtf,
     write_oligos_DB_tsv,
 )
-from ._ftp_loader import FtpLoaderEnsembl, FTPLoaderNCBI
+from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FTPLoaderNCBI
 
 __all__ = [
     "read_oligos_DB_gtf",
     "read_oligos_DB_tsv",
     "write_oligos_DB_gtf",
     "write_oligos_DB_tsv",
+    "BaseFtpLoader",
     "FTPLoaderNCBI",
     "FtpLoaderEnsembl",
     "read_gtf",

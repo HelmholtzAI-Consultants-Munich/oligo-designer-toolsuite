@@ -3,16 +3,12 @@ import shutil
 import pandas as pd
 import pytest
 
-from oligo_designer_toolsuite.IO._database import CustomDB
-from oligo_designer_toolsuite.oligo_selection._heuristic_methods import (
-    padlock_heuristic_selection,
-)
-from oligo_designer_toolsuite.oligo_selection._probe_scoring import (
+from oligo_designer_toolsuite.IO import CustomDB
+from oligo_designer_toolsuite.oligo_selection import (
     PadlockProbeScoring,
     PadlockSetScoring,
-)
-from oligo_designer_toolsuite.oligo_selection._resolve_overlapping_oligos import (
     ProbesetGenerator,
+    padlock_heuristic_selection,
 )
 
 
