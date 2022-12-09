@@ -11,7 +11,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatches,
     LigationRegionCreation,
 )
-from oligo_designer_toolsuite.utils._data_parser import read_oligos_DB_tsv
+from oligo_designer_toolsuite.utils import read_oligos_DB_tsv
 
 cwd = os.getcwd()
 

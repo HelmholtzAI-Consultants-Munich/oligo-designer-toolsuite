@@ -3,24 +3,24 @@ import random
 
 import pandas as pd
 
-import oligo_designer_toolsuite.utils._data_parser as data_parser
+from ..utils._data_parser import get_sequence_from_annotation, read_gtf
 
 
 class GeneTranscript:
-    """Class that creates the transcriptome for the whole genome or for a set of genes."""
+    """Creates the transcriptome for the whole genome or for a set of genes.
+
+    :param file_sequence: pathe to the fasta file
+    :type file_sequence: str
+    :param file_annotation: path to the gtf annotation file
+    :type file_annotation: str
+    """
 
     def __init__(self, file_sequence, file_annotation):
-        """Initialize the class
-
-        :param file_sequence: pathe to the fasta file
-        :type file_sequence: str
-        :param file_annotation: path to the gtf annotation file
-        :type file_annotation: str
-        """
+        """Initialize the class."""
 
         self.file_sequence = file_sequence
         self.file_annotation = file_annotation
-        self.annotation = data_parser.read_gtf(
+        self.annotation = read_gtf(
             self.file_annotation
         )  # dataframe with annotation file
 
@@ -71,7 +71,7 @@ class GeneTranscript:
             ]
         ].to_csv(file_gene_transcript_annotation, sep="\t", header=False, index=False)
         # create the fasta file
-        data_parser.get_sequence_from_annotation(
+        get_sequence_from_annotation(
             file_gene_transcript_annotation,
             self.file_sequence,
             file_gene_transcript_fasta,
