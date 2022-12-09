@@ -12,7 +12,8 @@ from Bio import SeqIO
 
 
 class BaseFtpLoader:
-    """Base class for downloading annotations from different FTP servers.
+    """
+    Base class for downloading annotations from different FTP servers.
 
     :param dir_output: Path to directory for downloaded files.
     :type dir_output: string
@@ -97,27 +98,25 @@ class BaseFtpLoader:
 
 
 class FtpLoaderEnsembl(BaseFtpLoader):
-    """Class for downloading annotations from Ensembl, inheriting from BaseFtpLoader.
+    """
+    Class for downloading annotations from Ensembl, inheriting from BaseFtpLoader.
 
     :param species: available species: human or mouse
     :type species: string
     :param annotation_release: release number of annotation or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
     :type annotation_release: string
-    :param genome_assembly: genome assembly for species | for human: GRCh37 or GRCh38 | for mouse: GRCm38 or GRCm39
-    :type genome_assembly: string
     """
 
-    def __init__(
-        self, dir_output, species, genome_assembly, annotation_release
-    ) -> None:
+    def __init__(self, dir_output, species, annotation_release) -> None:
         """Constructor method"""
         super().__init__(dir_output)
         self.species = species
-        self.genome_assembly = genome_assembly
+        self.genome_assembly_placeholder = "[^\.]*"
         self.annotation_release = annotation_release
 
     def get_params(self, file_type):
-        """Get directory and file name for gtf and fasta files from Ensembl server
+        """
+        Get directory and file name for gtf and fasta files from Ensembl server
 
         :param dir_output: Path to directory for downloaded files.
         :type dir_output: string
@@ -147,12 +146,12 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         if file_type.casefold() == "gtf".casefold():
 
             ftp_directory = f"pub/release-{annotation_release}/gtf/{species_id}/"
-            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly}.{annotation_release}.gtf"
+            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly_placeholder}.{annotation_release}.gtf"
 
         elif file_type.casefold() == "fasta".casefold():
 
             ftp_directory = f"pub/release-{annotation_release}/fasta/{species_id}/dna/"
-            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly}.dna_rm.primary_assembly.fa"
+            ftp_file = f"{species_id.capitalize()}.{self.genome_assembly_placeholder}.dna_rm.primary_assembly.fa"
 
         return ftp_directory, ftp_file
 
@@ -160,7 +159,8 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         return "ftp.ensembl.org"
 
     def download_files(self, file_type):
-        """Download gene annotation in file_type format from ensembl and unzip file.
+        """
+        Download gene annotation in file_type format from ensembl and unzip file.
 
         :return: Path to downloaded file.
         :rtype: string
@@ -170,11 +170,17 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             self.ftp_link, ftp_directory, ftp_file
         )
 
+        genome_assembly = re.search("\.([^\.]*)\.", output_file)
+        print(
+            f"File path of downloaded file: {output_file}\n genome assembly: {genome_assembly.group(1)}"
+        )
+
         return output_file
 
 
 class FTPLoaderNCBI(BaseFtpLoader):
-    """Class for downloading annotations from NCBI, inheriting from BaseFtpLoader.
+    """
+    Class for downloading annotations from NCBI, inheriting from BaseFtpLoader.
 
     :param species: available species: human or mouse
     :type species: string
@@ -191,7 +197,8 @@ class FTPLoaderNCBI(BaseFtpLoader):
         self.ftp_link = self.generate_FTP_link()
 
     def get_params(self, file_type):
-        """Get directory and file name for specified file type from NCBI server
+        """
+        Get directory and file name for specified file type from NCBI server
 
         :param file_type: File type to download (e.g. gtf or fasta)
         :type file_type: string
@@ -235,13 +242,14 @@ class FTPLoaderNCBI(BaseFtpLoader):
             f"{assembly_accession}_{assembly_name}_assembly_report.txt"
         )
 
-        return ftp_directory, ftp_file, ftp_file_chr_mapping
+        return ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name
 
     def generate_FTP_link(self):
         return "ftp.ncbi.nlm.nih.gov"
 
     def _download_mapping_chr_names(self, ftp_directory, ftp_file_chr_mapping):
-        """Download file with mapping of chromosome names between GenBank and Ref-Seq accession number
+        """
+        Download file with mapping of chromosome names between GenBank and Ref-Seq accession number
         from ftp server and create a mapping dictionary.
 
         :param ftp_file_chr_mapping: Name of file that should be downloaded from ftp server
@@ -286,7 +294,8 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
     def _map_chr_names_gene_gtf(self, ftp_file, mapping):
 
-        """Process gene annotation file downloaded from NCBI: map chromosome annotation to Ref-Seq.
+        """
+        Process gene annotation file downloaded from NCBI: map chromosome annotation to Ref-Seq.
 
         :param file_gene_gtf: Path to gtf file with gene annotation.
         :type file_gene_gtf: string
@@ -330,7 +339,8 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
     def _map_chr_names_genome_fasta(self, ftp_file, mapping):
 
-        """Process genome sequence file downloaded from NCBI: map chromosome annotation to Ref-Seq.
+        """
+        Process genome sequence file downloaded from NCBI: map chromosome annotation to Ref-Seq.
 
         :param file_genome_fasta: Path to fasta file with genome sequence.
         :type file_genome_fasta: string
@@ -360,7 +370,8 @@ class FTPLoaderNCBI(BaseFtpLoader):
         os.replace(file_tmp, ftp_file)
 
     def download_files(self, file_type, mapping=None):
-        """Download gene annotation in file_type format from NCBI and unzip file.
+        """
+        Download gene annotation in file_type format from NCBI and unzip file.
         Map chromosome annotation to Ref-Seq accession number.
 
         :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
@@ -369,7 +380,9 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :rtype: string
         """
 
-        ftp_directory, ftp_file, ftp_file_chr_mapping = self.get_params(file_type)
+        ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name = self.get_params(
+            file_type
+        )
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
         output_file = self.download_and_decompress(
             self.ftp_link, ftp_directory, ftp_file
@@ -380,5 +393,9 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         elif file_type.casefold() == "fasta".casefold():
             self._map_chr_names_genome_fasta(output_file, mapping)
+
+        print(
+            f"File path of downloaded file: {output_file}\n assembly name: {assembly_name}"
+        )
 
         return output_file

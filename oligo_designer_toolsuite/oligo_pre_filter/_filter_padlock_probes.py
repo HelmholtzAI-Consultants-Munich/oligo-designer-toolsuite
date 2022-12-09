@@ -86,7 +86,7 @@ class PadlockArms(PreFilterBase):
 
         if Tm_found:
             arm_features = {
-                "melt_temp_rm1": Tm_arm1,
+                "melt_temp_arm1": Tm_arm1,
                 "melt_temp_arm2": Tm_arm2,
                 "dif_melt_temp_arms": Tm_dif,
                 "ligation_site": ligation_site,

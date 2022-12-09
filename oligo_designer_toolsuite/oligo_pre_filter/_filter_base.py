@@ -12,7 +12,8 @@ class PreFilterBase(ABC):
 
     @abstractmethod
     def apply(self, sequence):
-        """Applies the filters to a given sequence and if it fulfillts the constraints returns ``True`` and the additional features computed stored in a dictionary.
+        """
+        Applies the filters to a given sequence and if it fulfillts the constraints returns ``True`` and the additional features computed stored in a dictionary.
         If this method is not reimplemented in the filters classes it will give a warning.
         The aditional computed features must be float type.
 

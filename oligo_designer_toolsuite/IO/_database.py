@@ -7,8 +7,7 @@ import pyfaidx
 from joblib import cpu_count
 
 from ..oligo_transcript_generation import GeneTranscript, Oligos
-from ..utils import _data_parser
-from ..utils._ftp_loader import FtpLoaderEnsembl, FTPLoaderNCBI
+from ..utils import FtpLoaderEnsembl, FTPLoaderNCBI, _data_parser
 
 
 class CustomDB:
@@ -53,6 +52,7 @@ class CustomDB:
         file_sequence=None,
         n_jobs=None,
         dir_output="output",
+        min_probes_per_gene=0,
     ):
         """
         Constructor
@@ -101,6 +101,7 @@ class CustomDB:
         self.annotation_source = annotation_source
         self.probe_length_max = probe_length_max
         self.probe_length_min = probe_length_min
+        self.min_probes_per_gene = min_probes_per_gene
         if n_jobs is None:
             n_jobs = cpu_count()
         self.n_jobs = n_jobs
@@ -127,7 +128,7 @@ class CustomDB:
         )  # will be used later in the gereration of non overlpping sets
 
     def read_reference_DB(self, file_reference_DB):
-        """Saves the path of a previously generated reference DB in the <self.file_reference_DB> attribute.
+        """Saves the path of a previously generated reference DB in the ``self.file_reference_DB`` attribute.
 
         :param file_reference_DB: path of the reference_DB file
         :type file_reference_DB: str
@@ -149,10 +150,10 @@ class CustomDB:
         file_oligos_DB_fasta=None,
     ):
         """
-        Create the oligo db dictionary from a file. It can take both a tsv file of a gtf and fasta file and the format of file to process is defined by <format>.
+        Create the oligo db dictionary from a file. It can take both a tsv file of a gtf and fasta file and the format of file to process is defined by ``format``.
 
         :param format: format of file to process
-        :type format: str
+        :type format: {'tsv', 'gtf'}
         :param file_oligos_DB_gtf: Path to the file.
         :type file_oligos_DB_gtf: str
         :param file_oligos_DB_fasta: Path to the file.
@@ -178,12 +179,12 @@ class CustomDB:
 
     def write_oligos_DB(self, format, dir_oligos_DB=None):
         """
-        Writes the data structure self.oligos_DB in a file in the <file_oligos_DB_*> path.
-        The fromat of teh file is defined by <format>. <file_oligos_DB_tsv> is the sub-diretory of dir_output where the file will be written,
-        if None it will be set as the dir_annotation.
+        Writes the data structure self.oligos_DB in a file.
+        The fromat of the file is defined by ``format``. ``dir_oligos_DB`` is the sub-diretory of ``dir_output`` where the file will be written,
+        if None it will be set as the ``dir_annotation``.
 
         :param format: format of file to write
-        :type format: str
+        :type format: {'tsv', 'gtf'}
         :param dir_oligos_DB: path of the sub-directory where to write the file, defaults to None
         :type dir_oligos_DB: str, optional
         :return: path of the file written
@@ -228,12 +229,12 @@ class CustomDB:
     ):
         """
         Creates a fasta file for each of the region selected (genome, gene_transcript, gene_CDS) which will be used for alignements, default is "gene_transcript".
-        If not specified the exon juctions size is set to <probe_length_max> + 5. <dir_reference_DB> is the subdirectiory of dir_out where the reference file will be written,
+        If not specified the exon junctions size is set to ``probe_length_max`` + 5. ``dir_reference_DB`` is the subdirectory of dir_out where the reference file will be written,
         if None it will be set to dir_annotation.
 
         :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS"
         :type region: str
-        :param block_size: size of the exon junctions, defaults to None
+        :param block_size: size of the exon junctions. When specified as None, the block size is set to ``probe_length_max`` + 5, defaults to None
         :type block_size: int, optional
         :param dir_reference_DB: path of the sub-directory where to write the file, defaults to None
         :type dir_reference_DB: str, optional
@@ -250,10 +251,10 @@ class CustomDB:
 
         def get_files_fasta(region, dir_reference_DB, file_reference_DB):
             """
-            generates the fasta files that will compose the reference_DB and writes it in <file_reference_DB>
+            Generates the fasta files that will compose the reference_DB and writes it in ``file_reference_DB``
 
-            :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS".
-            :type region: str
+            :param region: the region to use for the reference DB
+            :type region: {'genome', 'gene_transcript', 'gene_CDS'}
             :param dir_reference_DB: path of the directory where to write the intermediate files.
             :type dir_reference_DB: str
             :param file_reference_DB: path of the file where to write the reference_DB.
@@ -271,7 +272,7 @@ class CustomDB:
                 warnings.warn("Gene CDS not implemented yet")
             else:
                 raise ValueError(
-                    f"The given region does not exists. You selected {region}"
+                    f"The given region does not exists. You selected {region} but only 'genome', 'gene_transcript', 'gene_CDS' are available."
                 )
 
         self.file_reference_DB = os.path.join(
@@ -292,14 +293,14 @@ class CustomDB:
         # should be implemented in an external class
         raise NotImplementedError
 
-    def create_oligos_DB(  # does not automatically write, we have to call it speately
+    def create_oligos_DB(
         self,
         genes=None,
         region="gene_transcript",
     ):
         """
-        Creates the DB containing all the oligo sequence extracted form the given <region> and belonging the the specified genes. If no genes are specified then
-        will be used all the genes.
+        Creates the DB containing all the oligo sequence extracted form the given ``region`` and belonging the the specified genes. If no genes are specified then
+        will be used all the genes. The database created is not written automatically to the disk, the ``write_oligos_DB`` method hes to be called separately.
 
         :param genes: genes for which compute the probes, defaults to None
         :type genes: list of str, optional
@@ -349,6 +350,22 @@ class CustomDB:
         )
         # clean folder
         os.remove(file_region_annotation)
+
+    def remove_genes_with_insufficient_probes(self, pipeline_step, write=True):
+        """Deletes from the ``oligo_DB`` the genes which have less than ``min_probes_per_gene`` probes,
+        and optionally writes them in a file with the name of the step of the pipeline at which they have been deleted.
+
+        :param pipeline_step: name of the step of the pipeline
+        :type pipeline_step: str
+        """
+
+        genes = list(self.oligos_DB.keys())
+        for gene in genes:
+            if len(list(self.oligos_DB[gene].keys())) <= self.min_probes_per_gene:
+                del self.oligos_DB[gene]
+                if write:
+                    with open(self.file_removed_genes, "a") as hanlde:
+                        hanlde.write(f"{gene}\t{pipeline_step}\n")
 
 
 class NcbiDB(CustomDB):
