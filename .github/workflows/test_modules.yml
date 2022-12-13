@@ -18,8 +18,6 @@ jobs:
         python-version: 3.8
     - name: Add conda to system path
       run: |
-        wget https://repo.anaconda.com/miniconda/Miniconda3-py38_4.12.0-Linux-x86_64.sh
-        bash Miniconda3-py38_4.12.0-Linux-x86_64.sh
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
