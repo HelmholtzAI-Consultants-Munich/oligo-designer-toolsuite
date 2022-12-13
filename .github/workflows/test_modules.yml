@@ -25,8 +25,5 @@ jobs:
     - name: Install dependencies
       run: |
         conda update -n base -c defaults conda
-        conda install -c bioconda bowtie
-        conda install -c bioconda bowtie2
         conda install -c bioconda blast
         conda install -c bioconda bedtools
-        pip install -e .
