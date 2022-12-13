@@ -25,3 +25,5 @@ jobs:
         conda update -n base -c defaults conda
         conda install -c bioconda blast
         conda install -c bioconda bedtools
+        conda install -c bioconda bowtie
+        conda install -c bioconda bowtie2
