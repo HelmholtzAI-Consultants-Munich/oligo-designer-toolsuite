@@ -17,6 +17,7 @@ setup(
         "networkx",
         "omegaconf",
         "hydra-core",
+        "joblib",
     ],
     long_description=open("README.md").read(),
     author="Lisa Barros de Andrade e Sousa",
