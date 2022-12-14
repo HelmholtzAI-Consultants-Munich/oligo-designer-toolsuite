@@ -18,6 +18,7 @@ setup(
         "omegaconf",
         "hydra-core",
         "joblib",
+        "bcbio-gff",
     ],
     long_description=open("README.md").read(),
     author="Lisa Barros de Andrade e Sousa",
