@@ -22,7 +22,6 @@ jobs:
         auto-activate-base: true
     - name: Install dependencies
       run: |
-        conda create -n "oligo_env"
-        conda activate oligo_env
         conda install -c bioconda blast
         conda install -c bioconda bedtools
+        pip install .
