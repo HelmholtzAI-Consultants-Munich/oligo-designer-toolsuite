@@ -82,9 +82,9 @@ class MeltingTemperature(PreFilterBase):
     :type Tm_min: float
     :param Tm_max: maximum melting temperature
     :type Tm_max: float
-    :param Tm_parameters: parameters to compute the melting temperature
+    :param Tm_parameters: parameters to compute the melting temperature, for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
     :type Tm_parameters: dict
-    :param Tm_correction_parameters: parameters to correct the melting temperature
+    :param Tm_correction_parameters: parameters to correct the melting temperature,for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
     :type Tm_correction_parameters: dict
     """
 
