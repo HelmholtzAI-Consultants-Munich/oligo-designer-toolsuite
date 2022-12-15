@@ -8,7 +8,7 @@ from Bio.SeqUtils import MeltingTemp as mt
 sys.path.append("../oligo_designer_toolsuite")
 
 from oligo_designer_toolsuite.IO import CustomDB
-from oligo_designer_toolsuite.oligo_pre_filter import (
+from oligo_designer_toolsuite.oligo_property_filter import (
     GCContent,
     MaskedSequences,
     MeltingTemperature,
