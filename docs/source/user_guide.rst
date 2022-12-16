@@ -8,6 +8,8 @@ standardized API and can be combined individually
 depending on the required processing steps. Each step takes in input a database containg oligo sequences and
 returns a database with the same structure.
 
+For more detailed infomration look at teh toutorial in the next section.
+
 Oligos DB
 ---------
 
@@ -50,40 +52,25 @@ On a high level, the steps of the pipeline correspond to teh modules od the pack
 - **Selection**: generation of the best sets of oligos based on an application-spercific scoring function
 
 
-Each step of the pipeline is mode of:
+Each step of the pipeline is mede of:
 
-- **general module**:
+- **application-specific modules**: experiment specific functionalities (e.g. filters fro GC content)
 
-- **application-specific modules**:
+- **general module**: modules that combine the application-specific modules in a modular way. They take the database containing the oligo sequences and the experiment specific functionalities and apply the latter to the database.
 
-The pipeline is split into different steps, each of which has a specific
-task. For each step, we have
-
--  a class containing the basic functionalities in common between all
-   the possible diverse experimental designs
--  Other classes that share the same structure and contain the
-   functionalities specific to an experimental design are given as input
-   to the basic class. The basic structure is explicitly stated in ABC
-   classes, hence is possible to develop new functionalities which would
-   perfectly integrate in the pipeline.
 
 At the beginning all the possible oligo sequences are created and stored
-in a dictionary, then at each step are filtered in order to keep only
-the best ones for the purpose.
+in the database class (``CustomDB``, ``NCBIDB``, ``EnsembleDB``) in a dictionary (``oligos_DB``).
 
-Passing the whole class allows at each step the write the
-intermediate result in a consistent format. Moreover, in case of
-necessity, it would be possible to create a new DB class by simply
-reading a previous intermediate step and running the pipeline from that
-point onwards.
-
-Possible use cases of this functionality are:
-
--  save time in running two different pipelines which share some of the
-   fist steps
--  recover from a broken pipeline
+At each step a step-specific module will take as input the database class, perform the necessary computations and update the ``oligos_DB``.
 
 Output
 ------
 
-The pipeline returns the best set of sequences for each requested gene.
+The pipeline returns the best set of sequences for each requested gene. They are stored in a ``pandas.DataFrame`` with the following structure:
+
++-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
+| probeset_id | probe_0  | probe_1  | probe_2  |  ...  | probe_n  | set_score_1 | set_score_2 |  ...  |
++-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
+| 0           | AGRN_184 | AGRN_133 | AGRN_832 |  ...  | AGRN_706 | 0.3445      | 1.2332      |  ...  |
++-------------+----------+----------+-----+----+-------+----------+-------------+-------------+-------+

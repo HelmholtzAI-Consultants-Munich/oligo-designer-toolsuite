@@ -3,7 +3,7 @@ Installation
 
 **Requirements:**
 
-This package was build with Python 3.8
+This package was build with Python 3.10
 
 =================== =======
 Package             Version
@@ -18,6 +18,9 @@ pandas              1.4.2
 pybedtools          0.9.0
 pyfaidx             0.6.4
 pyyaml              6.0
+joblib		    1.2.0
+bcbio-gff 	    0.6.9
+six                 1.16.0
 =================== =======
 
 All required packages are automatically installed if installation is
@@ -44,8 +47,15 @@ Installation of the package via pip from source:
 Note: if you are using conda, first install pip with:
 ``conda install pip``
 
-In addition to the packages listed above, you need to install *Blast
-Software*. This can be done via `NCBI
+In addition to the packages listed above, you need to install **Blast
+Software**, **BedTools**, **Bowtie** and **Bowtie2**.
+
+**Blast** can be instelled via `NCBI
 webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__
 or via ``Bioconda`` installation of Blast with
 ``conda install -c bioconda blast``.
+
+**BedTools** can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__
+or via Bioconda installation of BedTools with ``conda install -c bioconda bedtools``.
+
+**Bowtie** and **Bowtie2** can be installed with ``conda install -c bioconda bowtie to install Bowtie package`` and ``conda install -c bioconda bowtie2 to install the Bowtie 2 package``.

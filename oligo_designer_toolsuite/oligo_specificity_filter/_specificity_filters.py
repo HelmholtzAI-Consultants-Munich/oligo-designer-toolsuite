@@ -3,7 +3,8 @@ from . import SpecificityFilterBase
 
 
 class SpecificityFilter:
-    """This class applies the specificity filters given in input sequentially to a ``CustomDB`` class.
+    """
+    This class applies the specificity filters given in input sequentially to a ``CustomDB`` class.
 
     :param filters: List of all the filter classes that we want to apply to the database
     :type filters: list of ``SpecificityFilterBase`` class
@@ -16,13 +17,16 @@ class SpecificityFilter:
         filters: list[SpecificityFilterBase],
         write_genes_with_insufficient_probes: bool = True,
     ):
-        """Constructor."""
+        """
+        Constructor.
+        """
 
         self.filters = filters
         self.write_genes_with_insufficient_probes = write_genes_with_insufficient_probes
 
     def apply(self, database: CustomDB, n_jobs: int = None):
-        """Applies all the class filter sequentially to the ``oligos_DB`` stored in the data_base class given in input. Each filter parallelized and ``n_jobs`` represents the maximum number of cores available.
+        """
+        Applies all the class filter sequentially to the ``oligos_DB`` stored in the data_base class given in input. Each filter parallelized and ``n_jobs`` represents the maximum number of cores available.
 
         :param data_base: Database class to filter.
         :type data_base: CustomDB class
