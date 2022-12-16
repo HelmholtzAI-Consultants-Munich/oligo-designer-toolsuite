@@ -78,7 +78,7 @@ class PadlockSequenceDesigner:
 
             oligos_DB_gene = oligos_DB[gene]
             probesets_gene = probesets[gene]
-            probeset = self.best_probeset_with_possible_detection_oligos(
+            probeset = self._best_probeset_with_possible_detection_oligos(
                 probesets_gene, oligos_DB_gene, minT=2
             )
 
@@ -93,14 +93,14 @@ class PadlockSequenceDesigner:
                 ligation_idx = len(target_mRNA) - int(
                     oligos_DB_gene[probe_id]["ligation_site"]
                 )
-                full_seq, sub_seqs = self.get_padlock_probe(
+                full_seq, sub_seqs = self._get_padlock_probe(
                     gene_idx,
                     complementary_seq,
                     ligation_idx,
                     barcode_seed=0,
                     barcode_length=4,
                 )
-                det_oligo_seq, det_oligo_Tm = self.get_detection_oligo(
+                det_oligo_seq, det_oligo_Tm = self._get_detection_oligo(
                     complementary_seq, ligation_idx, minT=2
                 )
 
@@ -177,7 +177,7 @@ class PadlockSequenceDesigner:
         ) as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
-    def best_probeset_with_possible_detection_oligos(
+    def _best_probeset_with_possible_detection_oligos(
         self, probesets_gene: pd.DataFrame, oligos_DB_gene: dict, minT: int = 2
     ):
         """Get row index of best probeset for which all detection oligos can be designed
@@ -237,7 +237,7 @@ class PadlockSequenceDesigner:
             if col.startswith("probe_")
         ]  # return the first set
 
-    def get_padlock_probe(
+    def _get_padlock_probe(
         self,
         gene_idx,
         complementary_seq,
@@ -381,7 +381,7 @@ class PadlockSequenceDesigner:
 
         return full_seq, sub_seqs
 
-    def get_detection_oligo(self, probe_sequence, ligation_site, minT=2):
+    def _get_detection_oligo(self, probe_sequence, ligation_site, minT=2):
         """Get detection oligo sequence for a given probe
 
         Detection oligos have the same sequence as the complementary sequence (i.e. `probe_sequence`) but shortend and
@@ -510,7 +510,7 @@ class PadlockSequenceDesigner:
 
             return best_oligo, best_Tm_dif
 
-        def exchange_T_with_U(probe, minT=2, U_distance=5):
+        def _exchange_T_with_U(probe, minT=2, U_distance=5):
             """Exchange 2 T(hymines) with U(racils) and find best side for fluorophore (closest U)
 
             Arguments
@@ -591,7 +591,7 @@ class PadlockSequenceDesigner:
         )
 
         # exchange T's with U (for enzymatic degradation of oligos)
-        oligo_seq, fluorophor_pos = exchange_T_with_U(
+        oligo_seq, fluorophor_pos = _exchange_T_with_U(
             best_oligo, minT=minT, U_distance=5
         )
 
