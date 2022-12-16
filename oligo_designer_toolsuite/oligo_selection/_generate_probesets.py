@@ -6,17 +6,17 @@ import pandas as pd
 from joblib import Parallel, delayed
 
 from ..IO import CustomDB
-from . import ProbeScoring, SetScoring
+from ..oligo_efficiency import ProbeScoringBase, SetScoringBase
 
 
 class ProbesetGenerator:
     """This class is used to generate ranked, non-overlapping probe sets. Each probe is scored according to the given ``probes_scoring`` class
     and the sets according to the given ``set_scoring`` calss.
 
-    :param n_probes_per_gene: optimal number of probes that each set should contain
-    :type n_probes_per_gene: int
-    :param min_n_probes_per_gene: minimum number of probes that each set should contain
-    :type min_n_probes_per_gene: int
+    :param probeset_size: optimal number of probes that each set should contain
+    :type probeset_size: int
+    :param min_probeset_size: minimum number of probes that each set should contain
+    :type min_probeset_size: int
     :param probes_scoring: class that scores hte probes and the sets of probes
     :type probes_scoring: ProbeScoring class
     :param dir_probe_sets: directory where the sets are written
@@ -28,30 +28,30 @@ class ProbesetGenerator:
 
     def __init__(
         self,
-        n_probes_per_gene: int,
-        min_n_probes_per_gene: int,
-        probes_scoring: ProbeScoring,
-        set_scoring: SetScoring,
+        probeset_size: int,
+        min_probeset_size: int,
+        probes_scoring: ProbeScoringBase,
+        set_scoring: SetScoringBase,
         heurustic_selection: Callable = None,
         write_genes_with_insufficient_probes: bool = True,
     ) -> None:
         """Initialize the class."""
 
-        self.n_probes_per_gene = n_probes_per_gene
-        self.min_n_probes_per_gene = min_n_probes_per_gene
+        self.probeset_size = probeset_size
+        self.min_probeset_size = min_probeset_size
         self.heurustic_selection = heurustic_selection
         self.probes_scoring = probes_scoring
         self.set_scoring = set_scoring
         self.write_genes_with_insufficient_probes = write_genes_with_insufficient_probes
 
-    def get_probe_sets(self, database: CustomDB, n_sets: int = 50, n_jobs: int = None):
+    def apply(self, database: CustomDB, n_sets: int = 50, n_jobs: int = None):
         """Generates in parallel the probesets and selects the best ``n_sets`` according to the
         The database class is updated, in particular form the ``oligos_DB`` are filtered out all the probes that don't belong to any probeset and in the class attruibute ``probesets`` are stored
         the computed probesets. The latter is a dictionary having as keys the genes names and as values a pandas.DataFrame containinig the probesets. The strucutre of the pandas.DataFrame is the following:
 
         +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
         | probeset_id | probe_0  | probe_1  | probe_2  |  ...  | probe_n  | set_score_1 | set_score_2 |  ...  |
-        +-------------+----------+----------+-----+----+-------+----------+-------------+-------------+-------+
+        +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
         | 0           | AGRN_184 | AGRN_133 | AGRN_832 |  ...  | AGRN_706 | 0.3445      | 1.2332      |  ...  |
         +-------------+----------+----------+-----+----+-------+----------+-------------+-------------+-------+
 
@@ -204,7 +204,7 @@ class ProbesetGenerator:
         G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
         # First check if there are no cliques with n probes
         cliques = nx.algorithms.clique.find_cliques(G)
-        n = self.n_probes_per_gene
+        n = self.probeset_size
         n_max = 0
         for clique in cliques:
             n_max = max(len(clique), n_max)
@@ -212,14 +212,14 @@ class ProbesetGenerator:
                 break
         if n_max < n:
             if (
-                n_max <= self.min_n_probes_per_gene
+                n_max <= self.min_probeset_size
             ):  # in this case we don't need to compute the sets
                 return n_max, None, None
             else:
                 n = n_max
         # if we have an heuristic apply it
         heuristic_probeset = None
-        if self.heurustic_selection is not None and n == self.n_probes_per_gene:
+        if self.heurustic_selection is not None and n == self.probeset_size:
             # apply the heuristic
             probes, probes_scores, heuristic_set = self.heurustic_selection(
                 probes, probes_scores, overlapping_matrix, n

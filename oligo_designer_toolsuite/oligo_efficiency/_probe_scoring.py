@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
 import pandas as pd
 
 
-class ProbeScoring(ABC):
+class ProbeScoringBase(ABC):
     """Template class for scoring the probes."""
 
-    def apply(self, probes, probes_indices):
+    def apply(self, probes: dict, probes_indices: np.array):
         """Scores all the probes using the defiend scoring function. The scores are both saved in the dictionary
         and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
 
@@ -26,7 +27,7 @@ class ProbeScoring(ABC):
         return probes, probes_scores
 
     @abstractmethod
-    def scoring_function(self, probe):
+    def scoring_function(self, probe: dict):
         """Computes the score of the given probe
 
         :param probe: dictionary containing all th efeatures of the given probe
@@ -36,27 +37,7 @@ class ProbeScoring(ABC):
         """
 
 
-class SetScoring(ABC):
-    """Template class for scoring the stest of probes."""
-
-    @abstractmethod
-    def apply(clique_probes, n):
-        """From a set of non-overlapping probes extracts the best subset of n probes and its score. Recieves in input
-        a pandas series with the probes id as index and the score as value. The return is a list with the id of the selected
-        probes and the scores of the set.
-        REMARK: the set can have different scores with increasing relevance, where the less relevan scores are used in case of
-        ties. Therefore in case the fist scores are equal the sording is done according to the second one and so on.
-
-        :param clique_probes: Series of a set of non overlapping probes
-        :type clique_probes: pandas.Series
-        :param n: size of teh set
-        :type n: int
-        :return: optimal set and its score
-        :rtype: list
-        """
-
-
-class PadlockProbeScoring(ProbeScoring):
+class PadlockProbeScoring(ProbeScoringBase):
     """Probes scoring class for the padlock experiment.
 
 
@@ -79,7 +60,15 @@ class PadlockProbeScoring(ProbeScoring):
     """
 
     def __init__(
-        self, Tm_min, Tm_opt, Tm_max, GC_min, GC_opt, GC_max, Tm_weight=1, GC_weight=1
+        self,
+        Tm_min: float,
+        Tm_opt: float,
+        Tm_max: float,
+        GC_content_min: float,
+        GC_content_opt: float,
+        GC_content_max: float,
+        Tm_weight: float = 1,
+        GC_weight: float = 1,
     ):
         """
         Initialize the class
@@ -88,9 +77,9 @@ class PadlockProbeScoring(ProbeScoring):
         self.Tm_min = Tm_min
         self.Tm_opt = Tm_opt
         self.Tm_max = Tm_max
-        self.GC_min = GC_min
-        self.GC_opt = GC_opt
-        self.GC_max = GC_max
+        self.GC_min = GC_content_min
+        self.GC_opt = GC_content_opt
+        self.GC_max = GC_content_max
         self.Tm_weight = Tm_weight
         self.GC_weight = GC_weight
         self.__generate_scoring_functions()
@@ -133,29 +122,3 @@ class PadlockProbeScoring(ProbeScoring):
             self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (
                 GC_dif > 0
             ) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
-
-
-class PadlockSetScoring(SetScoring):
-    """Scoring class for the sets of probes for the padlock experiment."""
-
-    def __init__(self) -> None:
-        pass
-
-    def apply(self, clique_probes, n):
-        """From a set of non-overlapping probes extracts the best subset of n probes and its scores. The scores are, in order of relevance,
-         the maximal probe score in the set and the avreage of the scores.
-
-        :param clique_probes: Series of a set of non overlapping probes
-        :type clique_probes: pandas.Series
-        :param n: size of teh set
-        :type n: int
-        :return: optimal set and its score
-        :rtype: list
-        """
-        best_n_probes = clique_probes.sort_values(ascending=True).head(n)
-        # Calculate performance of probeset
-        probeset_error_max = best_n_probes.max()
-        probeset_error_sum = best_n_probes.sum()
-        probeset = best_n_probes.index.tolist()
-        probeset += [probeset_error_max, probeset_error_sum]
-        return probeset
