@@ -24,10 +24,10 @@ class Blastn(SpecificityFilterBase):
 
     def __init__(
         self,
-        dir_specificity,
-        word_size,
-        percent_identity,
-        coverage,
+        dir_specificity: str,
+        word_size: int,
+        percent_identity: float,
+        coverage: float,
     ):
         """Constructor."""
         super().__init__(dir_specificity)
@@ -42,7 +42,7 @@ class Blastn(SpecificityFilterBase):
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
-    def apply(self, oligo_DB, file_reference_DB, n_jobs):
+    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
         """Apply the blastn filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 

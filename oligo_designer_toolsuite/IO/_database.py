@@ -34,25 +34,27 @@ class CustomDB:
     :param file_sequence: path to the fasta file, defaults to None
     :type file_sequence: str, optional
     :param n_jobs: standard nr of cores used in the pipeline, if None all the available cores are used, defaults to None
-    :type n_jobs: int
+    :type n_jobs: int, optional
     :param dir_output: directory name where the results will be written
     :type dir_output: str
+    :param min_probes_per_gene: minimum number of probes that a gene must have before it is removed from the database, defaults to 0
+    :type min_probes_per_gene: int, optional
 
     """
 
     def __init__(
         self,
-        probe_length_min,
-        probe_length_max,
-        species=None,
-        genome_assembly=None,
-        annotation_release=None,
-        annotation_source=None,
-        file_annotation=None,
-        file_sequence=None,
-        n_jobs=None,
-        dir_output="output",
-        min_probes_per_gene=0,
+        probe_length_min: int,
+        probe_length_max: int,
+        species: str = None,
+        genome_assembly: str = None,
+        annotation_release: str = None,
+        annotation_source: str = None,
+        file_annotation: str = None,
+        file_sequence: str = None,
+        n_jobs: int = None,
+        dir_output: str = "output",
+        min_probes_per_gene: int = 0,
     ):
         """
         Constructor
@@ -127,7 +129,7 @@ class CustomDB:
             {}
         )  # will be used later in the gereration of non overlpping sets
 
-    def read_reference_DB(self, file_reference_DB):
+    def read_reference_DB(self, file_reference_DB: str):
         """Saves the path of a previously generated reference DB in the ``self.file_reference_DB`` attribute.
 
         :param file_reference_DB: path of the reference_DB file
@@ -144,10 +146,10 @@ class CustomDB:
 
     def read_oligos_DB(
         self,
-        format,
-        file_oligos_DB_tsv=None,
-        file_oligos_DB_gtf=None,
-        file_oligos_DB_fasta=None,
+        format: str,
+        file_oligos_DB_tsv: str = None,
+        file_oligos_DB_gtf: str = None,
+        file_oligos_DB_fasta: str = None,
     ):
         """
         Create the oligo db dictionary from a file. It can take both a tsv file of a gtf and fasta file and the format of file to process is defined by ``format``.
@@ -237,9 +239,9 @@ class CustomDB:
 
     def create_reference_DB(
         self,
-        region="gene_transcript",
-        block_size=None,
-        dir_reference_DB="reference",
+        region: str = "gene_transcript",
+        block_size: int = None,
+        dir_reference_DB: str = "reference",
     ):
         """
         Creates a fasta file for each of the region selected (genome, gene_transcript, gene_CDS) which will be used for alignements, default is "gene_transcript".
@@ -255,7 +257,10 @@ class CustomDB:
         :rtype: str
 
         """
-        self.gene_transcript = GeneTranscript(self.file_sequence, self.file_annotation)
+        if self.gene_transcript is None:
+            self.gene_transcript = GeneTranscript(
+                self.file_sequence, self.file_annotation
+            )
 
         dir_reference_DB = os.path.join(self.dir_output, dir_reference_DB)
         Path(dir_reference_DB).mkdir(parents=True, exist_ok=True)
@@ -306,8 +311,8 @@ class CustomDB:
 
     def create_oligos_DB(
         self,
-        genes=None,
-        region="gene_transcript",
+        genes: list[str] = None,
+        region: str = "gene_transcript",
     ):
         """
         Creates the DB containing all the oligo sequence extracted form the given ``region`` and belonging the the specified genes. If no genes are specified then
@@ -362,7 +367,9 @@ class CustomDB:
         # clean folder
         os.remove(file_region_annotation)
 
-    def remove_genes_with_insufficient_probes(self, pipeline_step, write=True):
+    def remove_genes_with_insufficient_probes(
+        self, pipeline_step: str, write: bool = True
+    ):
         """Deletes from the ``oligo_DB`` the genes which have less than ``min_probes_per_gene`` probes,
         and optionally writes them in a file with the name of the step of the pipeline at which they have been deleted.
 
@@ -396,19 +403,23 @@ class NcbiDB(CustomDB):
     :type species: str, optional
     :param annotation_release: annotation_release of the files to dowload, defaults to None
     :type annotation_release: str, optional
+    :param n_jobs: standard nr of cores used in the pipeline, if None all the available cores are used, defaults to None
+    :type n_jobs: int, optional
     :param dir_output: directory where the files are saved, defaults to './output/annotation'
     :type dir_output: str, optional
-    :param filters: list of filters classes already initialized, defaults to None
-    :type filters: list of classes, optional
+    :param min_probes_per_gene: minimum number of probes that a gene must have before it is removed from the database, defaults to 0
+    :type min_probes_per_gene: int, optional
     """
 
     def __init__(
         self,
-        probe_length_min,
-        probe_length_max,
-        species=None,
-        annotation_release=None,
-        dir_output="output",
+        probe_length_min: int,
+        probe_length_max: int,
+        species: str = None,
+        annotation_release: str = None,
+        n_jobs: int = None,
+        dir_output: str = "output",
+        min_probes_per_gene: int = 0,
     ):
         """
         Constructor
@@ -440,7 +451,9 @@ class NcbiDB(CustomDB):
             annotation_source,
             file_annotation,
             file_sequence,
+            n_jobs,
             dir_output,
+            min_probes_per_gene,
         )
 
 
@@ -461,19 +474,23 @@ class EnsemblDB(CustomDB):
     :type genome_assembly: str, optional
     :param annotation_release: annotation_release of the files to dowload, defaults to None
     :type annotation_release: str, optional
+    :param n_jobs: standard nr of cores used in the pipeline, if None all the available cores are used, defaults to None
+    :type n_jobs: int, optional
     :param dir_output: directory where the files are saved, defaults to 'output'
     :type dir_output: str, optional
-    :param filters: list of filters classes already initialized, defaults to None
-    :type filters: list of classes, optional
+    :param min_probes_per_gene: minimum number of probes that a gene must have before it is removed from the database, defaults to 0
+    :type min_probes_per_gene: int, optional
     """
 
     def __init__(
         self,
-        probe_length_min,
-        probe_length_max,
-        species=None,
-        annotation_release=None,
-        dir_output="output",
+        probe_length_min: int,
+        probe_length_max: int,
+        species: str = None,
+        annotation_release: str = None,
+        n_jobs: int = None,
+        dir_output: str = "output",
+        min_probes_per_gene: int = 0,
     ):
         """
         Constructor
@@ -493,9 +510,7 @@ class EnsemblDB(CustomDB):
         dir_annotation = os.path.join(dir_output, "annotation")
 
         Path(dir_annotation).mkdir(parents=True, exist_ok=True)
-        ftp = FtpLoaderEnsembl(
-            dir_annotation, species, genome_assembly, annotation_release
-        )
+        ftp = FtpLoaderEnsembl(dir_annotation, species, annotation_release)
         file_annotation, genome_assembly = ftp.download_files("gtf")
         file_sequence, _ = ftp.download_files("fasta")
 
@@ -508,5 +523,7 @@ class EnsemblDB(CustomDB):
             annotation_source,
             file_annotation,
             file_sequence,
+            n_jobs,
             dir_output,
+            min_probes_per_gene,
         )

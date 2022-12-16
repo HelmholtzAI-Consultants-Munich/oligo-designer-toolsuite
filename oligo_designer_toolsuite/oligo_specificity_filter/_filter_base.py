@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
+from ..IO import CustomDB
+
 
 class SpecificityFilterBase(ABC):
     """This is the base class for all specificity filter classes
@@ -12,7 +14,7 @@ class SpecificityFilterBase(ABC):
     :type dir_specificity: str
     """
 
-    def __init__(self, dir_specificity):
+    def __init__(self, dir_specificity: str):
         """Construnctor"""
 
         self.dir_specificity = (
@@ -21,7 +23,7 @@ class SpecificityFilterBase(ABC):
         os.makedirs(self.dir_specificity, exist_ok=True)
 
     @abstractmethod
-    def apply(self, oligo_DB, file_reference_DB, n_jobs):
+    def apply(self, oligo_DB: CustomDB, file_reference_DB: str, n_jobs: int):
         """Apply filter to list of all possible probes in probe_info dictionary and filter out the probes which don't fulfill the requirements.
         Temporary files can be written in the ``self.dir_specificiy``folder, but they must be removed.
 
@@ -57,7 +59,7 @@ class SpecificityFilterBase(ABC):
             SeqIO.write(output, handle, "fasta")
         return file_fasta_gene
 
-    def _filter_matching_probes(self, gene_DB, matching_probes):
+    def _filter_matching_probes(self, gene_DB: dict, matching_probes: list[str]):
         """Filer out form the database the sequences with a match.
 
         :param gene_DB: dictionary with all the probes belonging to the current gene

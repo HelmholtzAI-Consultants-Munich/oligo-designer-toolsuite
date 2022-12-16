@@ -141,7 +141,7 @@ class PadlockSequenceDesigner:
                     "melting_temperature",
                     "melt_temp_arm1",
                     "melt_temp_arm2",
-                    "melt_temp_dif_arms",
+                    "dif_melt_temp_arms",
                 ]:
                     yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = float(
                         oligos_DB_gene[probe_id][key]

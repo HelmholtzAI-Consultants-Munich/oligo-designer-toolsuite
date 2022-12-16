@@ -24,8 +24,8 @@ class Bowtie2(Bowtie):
 
     def __init__(
         self,
-        dir_specificity,
-        min_score=None,
+        dir_specificity: str,
+        min_score: float = None,
     ):
         """Constructor."""
         super().__init__(dir_specificity)
@@ -38,7 +38,7 @@ class Bowtie2(Bowtie):
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
-    def apply(self, oligo_DB, file_reference_DB, n_jobs):
+    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
         """Apply the bowtie2 filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 
@@ -62,7 +62,14 @@ class Bowtie2(Bowtie):
 
         # Create bowtie2 index if none exists
         if not index_exists:
-            command1 = "bowtie2-build -f " + file_reference_DB + " " + index_name
+            command1 = (
+                "bowtie2-build --threads "
+                + str(n_jobs)
+                + " -f "
+                + file_reference_DB
+                + " "
+                + index_name
+            )
             process = Popen(command1, shell=True, cwd=self.dir_bowtie2).wait()
 
         genes = list(oligo_DB.keys())
