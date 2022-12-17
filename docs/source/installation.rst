@@ -45,17 +45,27 @@ Installation of the package via pip from source:
    pip install -e .        (Development Installation as python package: run inside directory)
 
 Note: if you are using conda, first install pip with:
-``conda install pip``
+::
 
-In addition to the packages listed above, you need to install **Blast
-Software**, **BedTools**, **Bowtie** and **Bowtie2**.
+	conda install pip
 
-**Blast** can be instelled via `NCBI
-webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__
-or via ``Bioconda`` installation of Blast with
-``conda install -c bioconda blast``.
+In addition to the packages listed above, you need to install **Blast Software**, **BedTools**, **Bowtie** and **Bowtie2**.
 
-**BedTools** can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__
-or via Bioconda installation of BedTools with ``conda install -c bioconda bedtools``.
+- **Blast** can be instelled via `NCBI webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__ or via ``Bioconda`` installation of Blast with:
 
-**Bowtie** and **Bowtie2** can be installed with ``conda install -c bioconda bowtie to install Bowtie package`` and ``conda install -c bioconda bowtie2 to install the Bowtie 2 package``.
+	::
+
+		conda install -c bioconda blast
+
+- **BedTools** can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__ or via Bioconda installation of BedTools with:
+
+	::
+
+		conda install -c bioconda bedtools
+
+- **Bowtie** and **Bowtie2** can be installed with :
+
+	::
+
+		conda install -c bioconda bowtie to install Bowtie package
+		conda install -c bioconda bowtie2 to install the Bowtie 2 package
