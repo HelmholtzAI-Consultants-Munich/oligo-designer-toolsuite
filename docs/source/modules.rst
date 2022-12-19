@@ -1,5 +1,7 @@
+oligo_designer_toolsuite
+========================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
    oligo_designer_toolsuite

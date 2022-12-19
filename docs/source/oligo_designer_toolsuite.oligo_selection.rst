@@ -1,6 +1,8 @@
-oligo\_selection
+oligo\_designer\_toolsuite.oligo\_selection package
 ===================================================
 
+Module contents
+---------------
 
 .. automodule:: oligo_designer_toolsuite.oligo_selection
    :members:
