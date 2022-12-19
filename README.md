@@ -8,11 +8,20 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 ![](docs/figures/oligo_design.png)
 
+
+## Documentation
+
+For the complete documentation of the package, working principles and toutorials refer to the [Read the Docs documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/).
+
+
+
 ## Installation
 
-**Requirements:**
+The installation of the package can be partially done via pip, however some additional components need to be installed separately.
 
-This package was build with Python 3.8
+### Pip installation
+
+This package was build with Python 3.10
 
 | Package  | Version |
 | ------------- | ------------- |
@@ -26,9 +35,12 @@ This package was build with Python 3.8
 | pybedtools  | 0.9.0 |
 | pyfaidx  | 0.6.4 |
 | pyyaml  | 6.0 |
+| joblib | 1.2.0 |
+| bcbio-gff  | 0.6.9 |
+| six  | 1.16.0 |
 
 
-All required packages are automatically installed if installation is done via ```pip```.
+All packages listed above are automatically installed if the installation is done via ```pip```.
 
 
 **Install Options:**
@@ -51,51 +63,19 @@ pip install -e .        (Development Installation as python package: run inside 
 
 Note: if you are using conda, first install pip with: ```conda install pip```
 
-In addition to the packages listed above, you need to install *Blast Software*. This can be done via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast```.
+### Additional packages
 
-# Implemented Oligo Design Pipelines
+In addition to the packages listed above, you need to install **Blast Software**, **BedTools**, **Bowtie** and **Bowtie2**.
 
-## Padlock Probe Design
+- **Blast** can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)  or via ```Bioconda``` installation of Blast with:
 
-A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is 40nt.
+		conda install -c bioconda blast
 
+- **BedTools** can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via Bioconda installation of BedTools with:
 
-### Usage
+		conda install -c bioconda bedtools
 
-**Command-Line Call:**
+- **Bowtie** and **Bowtie2** can be installed with :
 
-To create padlock probes you can run the pipeline with
-
-```
-padlock_probe_designer -c ./config/padlock_probe_designer.yaml -o output/ [-d False]
-````
-
-where:
-
-- ```-c```: config file, which contains parameter settings, specific to padlock probe design, *./config/padlock_probe_designer.yaml* contains default parameter settings
-- ```-o```: output folder, where results of pipeline are stored
-  - ```annotations```folder: downloaded gene and genome annotation as well as constructed transcriptome
-  - ```probes```folder: list of probes per gene, which fulfill user-defined criteria, given in config file
-  - ```probesets```folder: sets of non-overlapping probes per gene, ranked by best set criteria
-  - ```padlock_probes```folder: final padlock probe sequences per gene, ready to order
-- ```-d```: optional, 'download only' option, where only gene and genome annotation files are downloaded but no probes generated, default: False
-
-All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
-
-**Python Import:**
-
-Import padlock probe design pipeline as python package:
-
-```
-import oligo_designer_toolsuite.pipelines.padlock_probe_designer as packlock_probe_designer
-
-config = './config/padlock_probe_designer.yaml'
-dir_output = './padlock_probes'
-
-annotations = packlock_probe_designer.download_annotations(config, dir_output)
-packlock_probe_designer.filter_probes(config, annotations, dir_output)
-del annotations # free memory
-
-packlock_probe_designer.generate_probe_sets(config, dir_output)
-packlock_probe_designer.design_padlock_probes(config, dir_output)
-```
+		conda install -c bioconda bowtie to install Bowtie package
+		conda install -c bioconda bowtie2 to install the Bowtie 2 package

@@ -8,12 +8,12 @@ standardized API and can be combined individually
 depending on the required processing steps. Each step takes in input a database containg oligo sequences and
 returns a database with the same structure.
 
-For more detailed infomration look at teh toutorial in the next section.
+For more detailed infomration look at the toutorial in the next section.
 
 Oligos DB
 ---------
 
-The class that contains the database of teh oligos and all the related functionalities (e.g. read, witrite, ...) is ''IO.CustomDB''.
+The class that contains the database of the oligos and all the related functionalities (e.g. read, witrite, ...) is ''IO.CustomDB''.
 It creates the olios sequences for a given set of genes and stores them in a disctionay (``oligos_DB``) with a JSON format.
 
 The dictionary contains all the probes and their features, the structure is the following:
@@ -41,7 +41,7 @@ The dictionary contains all the probes and their features, the structure is the 
 Working principle
 -----------------
 
-On a high level, the steps of the pipeline correspond to teh modules od the package, in particular:
+On a high level, the steps of the pipeline correspond to the modules od the package, in particular:
 
 - **IO**: generation of the oligo sequences
 

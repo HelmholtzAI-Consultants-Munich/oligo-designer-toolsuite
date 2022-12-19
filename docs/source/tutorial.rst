@@ -27,7 +27,7 @@ Once the configuration file has been set up we have to read its content:
     config_file = "../config/padlock_probe_designer.yaml"
     with open(config_file, 'r') as y:
     config = yaml.safe_load(y)
-    dir_output = os.path.join(os.path.dirname(os.getcwd()), config["dir_output"]) # create the complete path for teh output directory
+    dir_output = os.path.join(os.path.dirname(os.getcwd()), config["dir_output"]) # create the complete path for the output directory
 
 Oligo sequences generation
 ``````````````````````````

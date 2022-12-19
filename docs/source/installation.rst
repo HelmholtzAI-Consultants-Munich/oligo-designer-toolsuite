@@ -1,7 +1,10 @@
 Installation
 ============
 
-**Requirements:**
+The installation of the package can be partially done via pip, however some additional components need to be installed separately.
+
+Pip installation
+----------------
 
 This package was build with Python 3.10
 
@@ -23,7 +26,7 @@ bcbio-gff 	    0.6.9
 six                 1.16.0
 =================== =======
 
-All required packages are automatically installed if installation is
+All packages listed above are automatically installed if the installation is
 done via ``pip``.
 
 **Install Options:**
@@ -32,7 +35,7 @@ PyPI install:
 
 ::
 
-   pip install oligo-designer-toolbox
+   pip install oligo-designer-toolsuite
 
 Installation of the package via pip from source:
 
@@ -48,6 +51,10 @@ Note: if you are using conda, first install pip with:
 ::
 
 	conda install pip
+
+
+Additional packages
+-------------------
 
 In addition to the packages listed above, you need to install **Blast Software**, **BedTools**, **Bowtie** and **Bowtie2**.
 
