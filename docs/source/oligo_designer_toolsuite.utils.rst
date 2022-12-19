@@ -1,4 +1,4 @@
-utils
+oligo\_designer\_toolsuite.utils package
 ========================================
 
 Module contents
