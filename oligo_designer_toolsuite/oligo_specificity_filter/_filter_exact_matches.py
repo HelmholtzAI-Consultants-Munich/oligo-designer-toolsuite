@@ -11,12 +11,12 @@ class ExactMatches(SpecificityFilterBase):
     :type dir_specificity: str
     """
 
-    def __init__(self, dir_specificity):
+    def __init__(self, dir_specificity: str):
         """Counstructor."""
 
         super().__init__(dir_specificity)
 
-    def apply(self, oligo_DB, file_reference_DB, n_jobs):
+    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
         """Apply the filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 

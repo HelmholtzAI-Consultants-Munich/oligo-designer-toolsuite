@@ -1,55 +1,61 @@
-import os
-
 from joblib import Parallel, delayed
 
+from ..IO import CustomDB
+from . import PropertyFilterBase
 
-class PreFilter:
+
+class PropertyFilter:
     """
     Applies sequentially all the specified pre-filters based on the sequences features. All the probes not fulfilling all the constraints are deleted form the database.
 
     :param filters: list of filters classes already initialized
     :type filters: list of classes
+    :param write_genes_with_insufficient_probes: if True genes with insufficient probes are written in a file, defaults to True
+    :type write_genes_with_insufficient_probes: bool, optional
     """
 
-    def __init__(self, filters) -> None:
+    def __init__(
+        self,
+        filters: list[PropertyFilterBase],
+        write_genes_with_insufficient_probes: bool = True,
+    ) -> None:
         """
         Constructor.
         """
 
         self.filters = filters
+        self.write_genes_with_insufficient_probes = write_genes_with_insufficient_probes
 
-    def apply(self, DB, n_jobs=None):
+    def apply(self, database: CustomDB, n_jobs: int = None):
         """Filters the database of probes based on the given filters
 
-        :param DB: database class containig the probes and their features
-        :type DB: CustomDB class
-        :param n_jobs: nr of cores used, if None the value set in DB class is used, defaults to None
+        :param database: database class containig the probes and their features
+        :type database: CustomDB class
+        :param n_jobs: nr of cores used, if None the value set in database class is used, defaults to None
         :type n_jobs: int
         :return: database classs cointainig filtered oligos
         :rtype: CustomDB class
         """
         # TODO make it parallel and take into account that some genes might disappear
         if n_jobs is None:
-            n_jobs = DB.n_jobs
-        file_removed_genes = os.path.join(
-            DB.dir_output, "genes_with_insufficient_probes.txt"
-        )
-        oligos_DB = DB.oligos_DB
+            n_jobs = database.n_jobs
+
+        oligos_DB = database.oligos_DB
         gene_ids = list(oligos_DB.keys())
         filtered_probes = Parallel(n_jobs=n_jobs)(
             delayed(self._filter_gene)(oligos_DB[gene]) for gene in gene_ids
         )
         oligos_DB = {}
         for probes_gene, gene in zip(filtered_probes, gene_ids):
-            if probes_gene == {}:
-                # all teh probes were filtered out
-                with open(DB.file_removed_genes, "a") as handle:
-                    handle.write(f"{gene}\tPre filter\n")
-            else:
-                oligos_DB[gene] = probes_gene
+            oligos_DB[gene] = probes_gene
 
-        DB.oligos_DB = oligos_DB
-        return DB
+        database.remove_genes_with_insufficient_probes(
+            pipeline_step="property filter",
+            write=self.write_genes_with_insufficient_probes,
+        )
+
+        database.oligos_DB = oligos_DB
+        return database
 
     def _filter_gene(self, probes_gene):
         probes_id = list(probes_gene.keys())

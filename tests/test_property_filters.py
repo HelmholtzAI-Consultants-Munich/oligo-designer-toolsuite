@@ -6,13 +6,17 @@ from Bio.SeqUtils import MeltingTemp as mt
 
 sys.path.append("../oligo_designer_toolsuite")
 
-from oligo_designer_toolsuite.oligo_pre_filter._filter_base import (
+from oligo_designer_toolsuite.oligo_property_filter._filter_base import (
     GCContent,
     MaskedSequences,
     MeltingTemperature,
 )
-from oligo_designer_toolsuite.oligo_pre_filter._filter_padlock_probes import PadlockArms
-from oligo_designer_toolsuite.oligo_pre_filter._pre_filter import PreFilter
+from oligo_designer_toolsuite.oligo_property_filter._filter_padlock_probes import (
+    PadlockArms,
+)
+from oligo_designer_toolsuite.oligo_property_filter._property_filter import (
+    PropertyFilter,
+)
 
 
 class TestPreFilters(unittest.TestCase):
@@ -60,9 +64,9 @@ class TestPreFilters(unittest.TestCase):
         )
         self.arms_tm = PadlockArms(
             min_arm_length=10,
-            max_Tm_dif=2,
-            Tm_min=40,
-            Tm_max=43,
+            max_arm_Tm_dif=2,
+            arm_Tm_min=40,
+            arm_Tm_max=43,
             Tm_parameters=self.Tm_parameters,
             Tm_correction_parameters=self.Tm_correction_parameters,
         )
@@ -73,7 +77,7 @@ class TestPreFilters(unittest.TestCase):
             self.melting_temperature,
             self.arms_tm,
         ]
-        self.pre_filter = PreFilter(filters=filters)
+        self.pre_filter = PropertyFilter(filters=filters)
 
     def tets_positive_outcome(self):
         """Tests that a correct sequences passes all the filers."""
