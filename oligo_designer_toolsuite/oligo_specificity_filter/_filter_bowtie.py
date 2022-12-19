@@ -25,7 +25,9 @@ class Bowtie(SpecificityFilterBase):
     :type mismatch_region: int
     """
 
-    def __init__(self, dir_specificity, num_mismatches=3, mismatch_region=None):
+    def __init__(
+        self, dir_specificity: str, num_mismatches: int = 3, mismatch_region: int = None
+    ):
 
         super().__init__(dir_specificity)
 
@@ -49,7 +51,7 @@ class Bowtie(SpecificityFilterBase):
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
-    def apply(self, oligo_DB, file_reference_DB, n_jobs):
+    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
         """Apply the bowtie filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 
@@ -73,7 +75,14 @@ class Bowtie(SpecificityFilterBase):
 
         # Create bowtie index if none exists
         if not index_exists:
-            command1 = "bowtie-build " + file_reference_DB + " " + index_name
+            command1 = (
+                "bowtie-build --threads "
+                + str(n_jobs)
+                + " -f "
+                + file_reference_DB
+                + " "
+                + index_name
+            )
             process = Popen(command1, shell=True, cwd=self.dir_bowtie).wait()
 
         genes = list(oligo_DB.keys())

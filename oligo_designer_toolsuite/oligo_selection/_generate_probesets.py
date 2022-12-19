@@ -1,131 +1,101 @@
-import os
-from math import ceil
-from pathlib import Path
+from typing import Callable
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 
+from ..IO import CustomDB
+from ..oligo_efficiency import ProbeScoringBase, SetScoringBase
+
 
 class ProbesetGenerator:
-    """This class is used to generate ranked, non-overlapping probe sets."""
+    """This class is used to generate ranked, non-overlapping probe sets. Each probe is scored according to the given ``probes_scoring`` class
+    and the sets according to the given ``set_scoring`` calss.
+
+    :param probeset_size: optimal number of probes that each set should contain
+    :type probeset_size: int
+    :param min_probeset_size: minimum number of probes that each set should contain
+    :type min_probeset_size: int
+    :param probes_scoring: class that scores hte probes and the sets of probes
+    :type probes_scoring: ProbeScoring class
+    :param dir_probe_sets: directory where the sets are written
+    :type dir_probe_sets: str
+    :param heurustic_selection: functions that preselects the probes making the seach of the best probesets less demanding
+    :type dir_probe_sets: Callable
+    :param write_genes_with_insufficient_probes: if True genes with insufficient probes are written in a file, defaults to True
+    :type write_genes_with_insufficient_probes: bool, optional"""
 
     def __init__(
         self,
-        n_probes_per_gene,
-        min_n_probes_per_gene,
-        probes_scoring,
-        set_scoring,
-        dir_probe_sets="probe_sets",  # write the output
-        heurustic_selection=None,
+        probeset_size: int,
+        min_probeset_size: int,
+        probes_scoring: ProbeScoringBase,
+        set_scoring: SetScoringBase,
+        heurustic_selection: Callable = None,
+        write_genes_with_insufficient_probes: bool = True,
     ) -> None:
-        """Initialize the class.
+        """Initialize the class."""
 
-        :param n_probes_per_gene: optimal number of probes that each set should contain
-        :type n_probes_per_gene: int
-        :param min_n_probes_per_gene: minimum number of probes that each set should contain
-        :type min_n_probes_per_gene: int
-        :param probes_scoring: class that scores hte probes and the sets of probes
-        :type probes_scoring: ProbeScoring class
-        :param dir_probe_sets: directory where the sets are written
-        :type dir_probe_sets: str
-        :param heurustic_selection: functions that preselects the probes
-        :type dir_probe_sets: func
-        """
-
-        self.n_probes_per_gene = n_probes_per_gene
-        self.min_n_probes_per_gene = min_n_probes_per_gene
+        self.probeset_size = probeset_size
+        self.min_probeset_size = min_probeset_size
         self.heurustic_selection = heurustic_selection
         self.probes_scoring = probes_scoring
         self.set_scoring = set_scoring
-        self.dir_probe_sets = dir_probe_sets
+        self.write_genes_with_insufficient_probes = write_genes_with_insufficient_probes
 
-    def get_probe_sets(self, DB, n_sets=50, n_jobs=None):
-        """Generates in parallel the probesets and returns the DB class updated containing only the probes that belong to a set and with additional fields
-        containing information about the sets, namely "set_id" and "set_score".
+    def apply(self, database: CustomDB, n_sets: int = 50, n_jobs: int = None):
+        """Generates in parallel the probesets and selects the best ``n_sets`` according to the
+        The database class is updated, in particular form the ``oligos_DB`` are filtered out all the probes that don't belong to any probeset and in the class attruibute ``probesets`` are stored
+        the computed probesets. The latter is a dictionary having as keys the genes names and as values a pandas.DataFrame containinig the probesets. The strucutre of the pandas.DataFrame is the following:
 
-        :param DB: class containg the oligo sequences and their features
-        :type DB: CustomDB class
+        +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
+        | probeset_id | probe_0  | probe_1  | probe_2  |  ...  | probe_n  | set_score_1 | set_score_2 |  ...  |
+        +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
+        | 0           | AGRN_184 | AGRN_133 | AGRN_832 |  ...  | AGRN_706 | 0.3445      | 1.2332      |  ...  |
+        +-------------+----------+----------+-----+----+-------+----------+-------------+-------------+-------+
+
+        :param database: class containg the oligo sequences and their features
+        :type database: CustomDB class
         :param n_sets: maximal number of sets that will be generated, defaults to 50
         :type n_sets: int, optional
-        :param n_jobs: nr of cores used, if None the value set in DB class is used, defaults to None
+        :param n_jobs: nr of cores used, if None the value set in database class is used, defaults to None
         :type n_jobs: int
-        :return: Updated DB class
+        :return: Updated database class
         :rtype: CustomDB class
         """
 
-        # crete the folders where the files migh be written
-        self.dir_probe_sets = os.path.join(DB.dir_output, self.dir_probe_sets)
-        Path(self.dir_probe_sets).mkdir(parents=True, exist_ok=True)
-        self.file_removed_genes = DB.file_removed_genes
         # set the number of cores
         if n_jobs is None:
-            n_jobs = DB.n_jobs
+            n_jobs = database.n_jobs
 
-        genes = list(DB.oligos_DB.keys())
-        # generate batches
-        genes_per_batch = ceil(len(genes) / n_jobs)
-        genes_batches = [
-            genes[genes_per_batch * i : min(len(genes) + 1, genes_per_batch * (i + 1))]
-            for i in range(n_jobs)
-        ]
+        genes = list(database.oligos_DB.keys())
         # get the probe set for this gene in parallel
-        updated_oligos_DB = Parallel(n_jobs=n_jobs)(
-            delayed(self._get_probe_set_for_batch)(batch, DB.oligos_DB, n_sets)
-            for batch in genes_batches
-        )
-        # restore the oligo DB
-        for batch, DB_batch in zip(genes_batches, updated_oligos_DB):
-            for gene, probes in zip(batch, DB_batch):
-                if probes is None:  # if some sets have been found
-                    del DB.oligos_DB[gene]
-                else:
-                    DB.probesets[gene] = probes["probesets"]
-                    del probes["probesets"]
-                    DB.oligos_DB[gene] = probes
-
-        """
-        # get the probe set for this gene in parallel
-        updated_oligos_DB = Parallel(n_jobs=n_jobs)( #there should be an explicit return
-            delayed(self._get_probe_set_for_gene)(gene, DB.oligos_DB[gene], n_sets)
+        updated_oligos_DB = Parallel(
+            n_jobs=n_jobs
+        )(  # there should be an explicit return
+            delayed(self._get_probe_set_for_gene)(
+                gene, database.oligos_DB[gene], n_sets
+            )
             for gene in genes
         )
-        # restore the oligo DB
+        # restore the oligo database
         for gene, probes in zip(genes, updated_oligos_DB):
             if probes is None:  # if some sets have been found
-                del DB.oligos_DB[gene]
+                database.oligos_DB[gene] = {}  # probeset is not generated
             else:
-                DB.probesets[gene] = probes["probesets"]
+                database.probesets[gene] = probes["probesets"]
                 del probes["probesets"]
-                DB.oligos_DB[gene] = probes
-        """
+                database.oligos_DB[gene] = probes
+        database.remove_genes_with_insufficient_probes(
+            pipeline_step="probeset generation",
+            write=self.write_genes_with_insufficient_probes,
+        )
 
-        return DB
+        return database
 
-    def _get_probe_set_for_batch(self, batch, oligos_DB, n_sets):
-        """Generate the probesets for the batch of genes. It returns a list of dictionaries containing the probes that belong to a set and with additional fields
-        containing information about the sets, namely "set_id" and "set_score".
-
-        :param batch: listo of the genes in teh batch
-        :type batch: list
-        :param oligos_DB: daatabse containing all the probes
-        :type oligos_DB: class CustomDB
-        :param n_sets: number of sets to generate
-        :type n_sets: int
-        :return: list of the updated dictionaries
-        :rtype: list
-        """
-        updated_oligos_DB = []
-        for gene in batch:
-            updated_oligos_DB.append(
-                self._get_probe_set_for_gene(gene, oligos_DB[gene], n_sets)
-            )
-        return updated_oligos_DB
-
-    def _get_probe_set_for_gene(self, gene, probes, n_sets):
-        """Generate the probesets for a gene. It returns the dictionary containing the probes that belong to a set and with additional fields
-        containing information about the sets, namely "set_id" and "set_score".
+    def _get_probe_set_for_gene(self, gene: str, probes: dict, n_sets: int):
+        """Generate the probesets for a gene.
 
         :param gene: gene for whihc the probesets are computed
         :type gene: str
@@ -146,26 +116,14 @@ class ProbesetGenerator:
         del overlapping_matrix  # free some memory
         # write the set
         if probesets is None:  # value passed as a parameter
-            # gene is added to the lsit of genes with insufficient sets
-            with open(self.file_removed_genes, "a") as handle:
-                handle.write(f"{gene}\tOligo_selection\n")
-            # gene is not required anymore
-            return None
+            return None  # no more probes are left for this gene
         else:
-            probesets.to_csv(
-                os.path.join(self.dir_probe_sets, f"probeset_{gene}.tsv"), sep="\t"
-            )
             # update the dictionary adding the key sets for the probes in a set and  delleting the probes not included in any set
             updated_probes = {}
             for set_id, row in probesets.iterrows():
-                for i in range(n):
+                for i in range(1, n + 1):
                     if row[i] not in updated_probes:
                         updated_probes[row[i]] = probes[row[i]]
-                        updated_probes[row[i]]["set_id"] = [set_id]
-                        updated_probes[row[i]]["set_score"] = [list(row[n:])]
-                    else:
-                        updated_probes[row[i]]["set_id"].append(set_id)
-                        updated_probes[row[i]]["set_score"].append(list(row[n:]))
             # add also the probesets
             updated_probes["probesets"] = probesets
             return updated_probes
@@ -188,7 +146,6 @@ class ProbesetGenerator:
                         return True
             return False
 
-        # probes_copy = copy.deepcopy(probes)  # probes is a mutable object (dictionary), hence is passed by reference
         intervals = []
         probes_indices = []
         for probe_id in probes.keys():
@@ -247,7 +204,7 @@ class ProbesetGenerator:
         G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
         # First check if there are no cliques with n probes
         cliques = nx.algorithms.clique.find_cliques(G)
-        n = self.n_probes_per_gene
+        n = self.probeset_size
         n_max = 0
         for clique in cliques:
             n_max = max(len(clique), n_max)
@@ -255,14 +212,14 @@ class ProbesetGenerator:
                 break
         if n_max < n:
             if (
-                n_max <= self.min_n_probes_per_gene
+                n_max <= self.min_probeset_size
             ):  # in this case we don't need to compute the sets
                 return n_max, None, None
             else:
                 n = n_max
         # if we have an heuristic apply it
         heuristic_probeset = None
-        if self.heurustic_selection is not None and n == self.n_probes_per_gene:
+        if self.heurustic_selection is not None and n == self.probeset_size:
             # apply the heuristic
             probes, probes_scores, heuristic_set = self.heurustic_selection(
                 probes, probes_scores, overlapping_matrix, n
@@ -303,5 +260,6 @@ class ProbesetGenerator:
         probesets.sort_values(list(probesets.columns[n:]), ascending=True, inplace=True)
         probesets = probesets.head(n_sets)
         probesets.reset_index(drop=True, inplace=True)
+        probesets.insert(0, "probeset_id", probesets.index)
 
         return n, probesets, probes

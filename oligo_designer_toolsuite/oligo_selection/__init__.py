@@ -1,21 +1,11 @@
 """
-From the fileterd oligos sequences generates teh best performing sets according to the selected scoring function.
+From the fileterd oligos sequences generates the best performing sets according to teh efficiency scores obtained form the correct efficiency score for teh ``oligo_efficiency`` package.
 """
 
+from ._generate_probesets import ProbesetGenerator
 from ._heuristic_methods import padlock_heuristic_selection
-from ._probe_scoring import (
-    PadlockProbeScoring,
-    PadlockSetScoring,
-    ProbeScoring,
-    SetScoring,
-)
-from ._resolve_overlapping_oligos import ProbesetGenerator
 
 __all__ = [
     "ProbesetGenerator",
-    "PadlockSetScoring",
-    "ProbeScoring",
-    "PadlockProbeScoring",
-    "SetScoring",
     "padlock_heuristic_selection",
 ]

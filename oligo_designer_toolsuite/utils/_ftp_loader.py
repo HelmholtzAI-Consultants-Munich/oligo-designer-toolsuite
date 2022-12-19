@@ -162,8 +162,8 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         """
         Download gene annotation in file_type format from ensembl and unzip file.
 
-        :return: Path to downloaded file.
-        :rtype: string
+        :return: Path to downloaded file and genome assembly name.
+        :rtype: string, string
         """
         ftp_directory, ftp_file = self.get_params(file_type)
         output_file = self.download_and_decompress(
@@ -171,11 +171,8 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         )
 
         genome_assembly = re.search("\.([^\.]*)\.", output_file)
-        print(
-            f"File path of downloaded file: {output_file}\n genome assembly: {genome_assembly.group(1)}"
-        )
 
-        return output_file
+        return output_file, genome_assembly
 
 
 class FTPLoaderNCBI(BaseFtpLoader):
@@ -376,8 +373,8 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
         :type mapping: dict
-        :return: Path to downloaded file.
-        :rtype: string
+        :return: Path to downloaded file and genome assembly name.
+        :rtype: string, string
         """
 
         ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name = self.get_params(
@@ -394,8 +391,4 @@ class FTPLoaderNCBI(BaseFtpLoader):
         elif file_type.casefold() == "fasta".casefold():
             self._map_chr_names_genome_fasta(output_file, mapping)
 
-        print(
-            f"File path of downloaded file: {output_file}\n assembly name: {assembly_name}"
-        )
-
-        return output_file
+        return output_file, assembly_name

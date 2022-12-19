@@ -11,7 +11,7 @@ class SeedRegionCreationBase(ABC):
         pass
 
     @abstractmethod
-    def apply(self, oligo_DB):
+    def apply(self, oligo_DB: dict):
         """
         Generates the relative coordinates of the seed region for each probe and stores them in the ``oligo_DB`` database.
         To each probe in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
@@ -22,7 +22,7 @@ class SeedRegionCreationBase(ABC):
         :rtype: dict
         """
 
-    def _update_oligo_DB(self, oligo_DB):
+    def _update_oligo_DB(self, oligo_DB: dict):
         """To each probe in the oligo DB add the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
 
         :param oligo_DB: database containing all the oligo sequences and their features
@@ -38,7 +38,7 @@ class SeedRegionCreationBase(ABC):
         return oligo_DB
 
     @abstractmethod
-    def _create_seed_region(self, probe_DB):
+    def _create_seed_region(self, probe_DB: dict):
         """
         This method actually defines the start and end point of the seed region according to the given conditions.
 
@@ -58,12 +58,12 @@ class SeedRegionCreationStandard(SeedRegionCreationBase):
     :type end: int
     """
 
-    def __init__(self, start, end):
+    def __init__(self, start: int, end: int):
         super().__init__()
         self.start = start
         self.end = end
 
-    def apply(self, oligo_DB):
+    def apply(self, oligo_DB: dict):
         """
         Generates the relative coordinates of the seed region for each probe and stores them in the ``oligo_DB`` database.
         To each probe in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
@@ -103,7 +103,7 @@ class SeedRegionCreationPercentage(SeedRegionCreationBase):
     :type end: float
     """
 
-    def __init__(self, start, end):
+    def __init__(self, start: float, end: float):
         super().__init__()
         if start < 0 or start > 1:
             raise ValueError("Start position must be in the interval [0,1]!")
@@ -112,7 +112,7 @@ class SeedRegionCreationPercentage(SeedRegionCreationBase):
             raise ValueError("End position must be in the interval [0,1]!")
         self.end = end
 
-    def apply(self, oligo_DB):
+    def apply(self, oligo_DB: dict):
         """
         Generates the relative coordinates of the seed region for each probe and stores them in the ``oligo_DB`` database.
         To each probe in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
@@ -151,11 +151,11 @@ class LigationRegionCreation(SeedRegionCreationBase):
     :type ligation_region_size: int
     """
 
-    def __init__(self, ligation_region_size):
+    def __init__(self, ligation_region_size: int):
         super().__init__()
         self.ligation_region_size = ligation_region_size
 
-    def apply(self, oligo_DB):
+    def apply(self, oligo_DB: dict):
         """
         Generates the relative coordinates of the seed region for each probe and stores them in the ``oligo_DB`` database.
         To each probe in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.

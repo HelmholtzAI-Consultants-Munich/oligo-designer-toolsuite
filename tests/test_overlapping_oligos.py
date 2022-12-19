@@ -4,9 +4,11 @@ import pandas as pd
 import pytest
 
 from oligo_designer_toolsuite.IO import CustomDB
-from oligo_designer_toolsuite.oligo_selection import (
+from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockProbeScoring,
     PadlockSetScoring,
+)
+from oligo_designer_toolsuite.oligo_selection import (
     ProbesetGenerator,
     padlock_heuristic_selection,
 )
@@ -49,8 +51,8 @@ def probeset_generator():
     )
     set_scoring = PadlockSetScoring()
     probeset_generator = ProbesetGenerator(
-        n_probes_per_gene=5,
-        min_n_probes_per_gene=2,
+        probeset_size=5,
+        min_probeset_size=2,
         probes_scoring=padlock_scoring,
         set_scoring=set_scoring,
         heurustic_selection=padlock_heuristic_selection,
@@ -60,9 +62,12 @@ def probeset_generator():
 
 # check we obtain the same result
 def test_probesets_generation(probeset_generator, oligos_database):
-    oligos_database = probeset_generator.get_probe_sets(DB=oligos_database, n_sets=100)
+    oligos_database = probeset_generator.get_probe_sets(
+        database=oligos_database, n_sets=100
+    )
     for gene in oligos_database.probesets.keys():
         computed_sets = oligos_database.probesets[gene]
+        computed_sets.drop(columns=["probeset_id"], inplace=True)
         true_sets = pd.read_csv(
             f"tests/data/probesets/ranked_probesets_{gene}.txt",
             sep="\t",
@@ -74,6 +79,8 @@ def test_probesets_generation(probeset_generator, oligos_database):
         true_sets.reset_index(inplace=True, drop=True)
         computed_sets.sort_values(by=list(computed_sets.columns), inplace=True)
         computed_sets.reset_index(inplace=True, drop=True)
+        print(true_sets)
+        print(computed_sets)
         assert true_sets.equals(
             computed_sets
         ), f"Sets for {gene} are not computed correctly!"
@@ -127,10 +134,17 @@ def test_non_overlapping_sets(probeset_generator):
         [0, 0, 1, 1, 0],
     ]
     overlapping_matrix = pd.DataFrame(data=data, index=index, columns=index)
-    data = [["A_0", "A_1", "A_2", 1.5, 2.0], ["A_4", "A_2", "A_3", 2.0, 4.5]]
+    data = [[0, "A_0", "A_1", "A_2", 1.5, 2.0], [1, "A_4", "A_2", "A_3", 2.0, 4.5]]
     true_sets = pd.DataFrame(
         data=data,
-        columns=["probe_0", "probe_1", "probe_2", "set_score_0", "set_score_1"],
+        columns=[
+            "probeset_id",
+            "probe_0",
+            "probe_1",
+            "probe_2",
+            "set_score_0",
+            "set_score_1",
+        ],
     )
     _, computed_sets, _ = probeset_generator._get_non_overlapping_sets(
         probes, overlapping_matrix, 100

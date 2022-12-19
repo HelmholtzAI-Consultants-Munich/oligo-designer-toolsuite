@@ -45,7 +45,7 @@ class BowtieSeedRegion(Bowtie):
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
-    def apply(self, oligo_DB, file_reference_DB, n_jobs):
+    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
         """Apply bowtie filter to all batches in parallel"""
         # generater the seed region coordinates
         oligo_DB = self.seed_region_creation.apply(oligo_DB)
@@ -60,7 +60,14 @@ class BowtieSeedRegion(Bowtie):
                 break
         # Create bowtie index if none exists
         if not index_exists:
-            command1 = "bowtie-build " + file_reference_DB + " " + index_name
+            command1 = (
+                "bowtie-build --threads "
+                + str(n_jobs)
+                + " -f "
+                + file_reference_DB
+                + " "
+                + index_name
+            )
             process = Popen(command1, shell=True, cwd=self.dir_seed_region).wait()
 
         oligo_DB_seed = self._extract_seed_regions(oligo_DB)
