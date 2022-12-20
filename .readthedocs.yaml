@@ -11,6 +11,6 @@ sphinx:
 
 # Explicitly set the version of Python and its requirements
 python:
-  setup_py_install: true
+  install: true
   install:
     - requirements: docs/requirements.txt
