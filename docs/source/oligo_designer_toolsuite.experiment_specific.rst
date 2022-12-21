@@ -1,8 +1,5 @@
-oligo\_designer\_toolsuite.experiment\_specific package
+experiment\_specific
 =======================================================
-
-Module contents
----------------
 
 .. automodule:: oligo_designer_toolsuite.experiment_specific
    :members:
