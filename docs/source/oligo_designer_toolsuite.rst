@@ -1,26 +1,13 @@
-oligo\_designer\_toolsuite package
+oligo\_designer\_toolsuite
 ==================================
 
-Subpackages
------------
-
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    oligo_designer_toolsuite.IO
-   oligo_designer_toolsuite.experiment_specific
-   oligo_designer_toolsuite.oligo_efficiency
    oligo_designer_toolsuite.oligo_property_filter
-   oligo_designer_toolsuite.oligo_selection
    oligo_designer_toolsuite.oligo_specificity_filter
+   oligo_designer_toolsuite.oligo_selection
+   oligo_designer_toolsuite.experiment_specific
    oligo_designer_toolsuite.oligo_transcript_generation
-   oligo_designer_toolsuite.pipelines
    oligo_designer_toolsuite.utils
-
-Module contents
----------------
-
-.. automodule:: oligo_designer_toolsuite
-   :members:
-   :undoc-members:
-   :show-inheritance:
