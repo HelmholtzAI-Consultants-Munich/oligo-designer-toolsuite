@@ -9,3 +9,4 @@ joblib
 pyyaml
 pybedtools
 bcbio-gff
+iteration_utilities
