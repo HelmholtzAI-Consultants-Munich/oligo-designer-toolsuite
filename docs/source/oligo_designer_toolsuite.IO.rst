@@ -1,8 +1,6 @@
-oligo\_designer\_toolsuite.IO package
+IO
 =====================================
 
-Module contents
----------------
 
 .. automodule:: oligo_designer_toolsuite.IO
    :members:

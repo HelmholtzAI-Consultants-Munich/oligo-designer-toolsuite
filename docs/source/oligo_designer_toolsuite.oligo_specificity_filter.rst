@@ -1,8 +1,5 @@
-oligo\_designer\_toolsuite.oligo\_specificity\_filter package
+oligo\_specificity\_filter
 =============================================================
-
-Module contents
----------------
 
 .. automodule:: oligo_designer_toolsuite.oligo_specificity_filter
    :members:

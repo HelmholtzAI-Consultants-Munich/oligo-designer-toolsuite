@@ -1,8 +1,5 @@
-oligo\_designer\_toolsuite.pipelines package
+pipelines
 ============================================
-
-Module contents
----------------
 
 .. automodule:: oligo_designer_toolsuite.pipelines
    :members:

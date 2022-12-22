@@ -1,8 +1,6 @@
-oligo\_designer\_toolsuite.oligo\_transcript\_generation package
+oligo\_transcript\_generation
 ================================================================
 
-Module contents
----------------
 
 .. automodule:: oligo_designer_toolsuite.oligo_transcript_generation
    :members:
