@@ -8,7 +8,7 @@ build:
 # Build from the docs/ directory with Sphinx
 sphinx:
   configuration: docs/source/conf.py
-
+  
 python:
   install:
     - requirements: docs/requirements.txt
