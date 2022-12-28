@@ -1,6 +1,6 @@
 from joblib import Parallel, delayed
 
-from ..IO import CustomDB
+from ..IO import CustomOligoDB
 from . import PropertyFilterBase
 
 
@@ -26,7 +26,7 @@ class PropertyFilter:
         self.filters = filters
         self.write_genes_with_insufficient_probes = write_genes_with_insufficient_probes
 
-    def apply(self, database: CustomDB, n_jobs: int = None):
+    def apply(self, database: CustomOligoDB, n_jobs: int = None):
         """Filters the database of probes based on the given filters
 
         :param database: database class containig the probes and their features

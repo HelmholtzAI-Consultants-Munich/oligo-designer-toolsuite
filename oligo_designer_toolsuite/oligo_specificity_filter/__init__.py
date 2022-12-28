@@ -1,5 +1,5 @@
 """
-This package contains all the specificifity filters, which run aligne methods to detect sequences that have potential off-target regions.
+This package contains all the specificifity filters, which detect and filter out sequences that have potential off-target regions.
 """
 
 from ._filter_base import SpecificityFilterBase

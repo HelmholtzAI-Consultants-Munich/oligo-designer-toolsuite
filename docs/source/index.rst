@@ -20,7 +20,7 @@ Welcome to oligo-designer-toolsuite's documentation!
    :maxdepth: 2
    :caption: API Documentation:
 
-   modules
+   oligo_designer_toolsuite
 
 Indices and tables
 ==================

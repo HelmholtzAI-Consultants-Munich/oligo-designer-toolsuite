@@ -20,14 +20,20 @@ class Oligos:
     :type n_jobs: int
     """
 
-    def __init__(self, probe_length_min, probe_length_max, file_sequence, n_jobs):
+    def __init__(
+        self,
+        probe_length_min: int,
+        probe_length_max: int,
+        file_sequence: str,
+        n_jobs: int,
+    ):
         """Initialize the class."""
         self.probe_length_min = probe_length_min
         self.probe_length_max = probe_length_max
         self.file_sequence = file_sequence
         self.n_jobs = n_jobs
 
-    def generate(self, file_region_annotation, genes, dir_output):
+    def generate(self, file_region_annotation: str, genes: list[str], dir_output: str):
         """Get the fasta sequence of all possible probes with user-defined length for all input genes and store the in a dictionary.
         Generated probes are filtered by the filters give in input and the features computed for the  filters are added to the dictionary.
 

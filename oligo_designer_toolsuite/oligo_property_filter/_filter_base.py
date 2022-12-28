@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from Bio.SeqUtils import GC
 from Bio.SeqUtils import MeltingTemp as mt
+from Bio.SeqUtils import Seq
 
 
 class PropertyFilterBase(ABC):
@@ -11,7 +12,7 @@ class PropertyFilterBase(ABC):
         pass
 
     @abstractmethod
-    def apply(self, sequence):
+    def apply(self, sequence: str):
         """
         Applies the filters to a given sequence and if it fulfillts the constraints returns ``True`` and the additional features computed stored in a dictionary.
         If this method is not reimplemented in the filters classes it will give a warning.
@@ -30,7 +31,7 @@ class MaskedSequences(PropertyFilterBase):
     def __init__(self) -> None:
         super().__init__()
 
-    def apply(self, sequence):
+    def apply(self, sequence: Seq):
         """Applies the filter and returns True if there isn't any masked nucleotide.
 
         :param sequence: sequence to be filtered
@@ -53,13 +54,13 @@ class GCContent(PropertyFilterBase):
     :type GC_content_max: float
     """
 
-    def __init__(self, GC_content_min, GC_content_max) -> None:
+    def __init__(self, GC_content_min: float, GC_content_max: float) -> None:
         """Constructor"""
         super().__init__()
         self.GC_content_min = GC_content_min
         self.GC_content_max = GC_content_max
 
-    def apply(self, sequence):
+    def apply(self, sequence: Seq):
         """Applies the filter and returns True if the GC content is between the min and max values.
 
         :param sequence: sequence to be filtered
@@ -88,7 +89,13 @@ class MeltingTemperature(PropertyFilterBase):
     :type Tm_correction_parameters: dict
     """
 
-    def __init__(self, Tm_min, Tm_max, Tm_parameters, Tm_correction_parameters) -> None:
+    def __init__(
+        self,
+        Tm_min: float,
+        Tm_max: float,
+        Tm_parameters: dict,
+        Tm_correction_parameters: dict,
+    ) -> None:
         """Initializes the class."""
 
         super().__init__()
@@ -97,7 +104,7 @@ class MeltingTemperature(PropertyFilterBase):
         self.Tm_parameters = Tm_parameters
         self.Tm_correction_parameters = Tm_correction_parameters
 
-    def __get_Tm(self, sequence):
+    def __get_Tm(self, sequence: Seq):
         """Computes the melting temperature of the sequence.
 
         :param sequence: sequence for which the melting temperature is computed
@@ -110,7 +117,7 @@ class MeltingTemperature(PropertyFilterBase):
         Tm_corrected = round(mt.chem_correction(Tm, **self.Tm_correction_parameters), 2)
         return Tm_corrected
 
-    def apply(self, sequence):
+    def apply(self, sequence: Seq):
         """Applies the filter and returns True if the melting temperature is between the min and max values and the melting temperature.
 
         :param sequence: sequence to be filtered

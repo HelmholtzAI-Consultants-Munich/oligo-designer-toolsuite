@@ -1,4 +1,4 @@
-oligo\_designer\_toolsuite.oligo\_efficiency package
+oligo\_efficiency package
 ====================================================
 
 .. automodule:: oligo_designer_toolsuite.oligo_efficiency
