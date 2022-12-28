@@ -1,5 +1,5 @@
 """
-From the fileterd oligos sequences generates the best performing sets according to teh efficiency scores obtained form the correct efficiency score for teh ``oligo_efficiency`` package.
+This module generates the best performing sets according to the efficiency scores obtained form the ``oligo_efficiency`` module.
 """
 
 from ._generate_probesets import ProbesetGenerator

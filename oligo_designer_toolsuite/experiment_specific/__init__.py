@@ -1,4 +1,4 @@
-"""Steps of teh pipeline that are specific for a single experiment.
+"""Steps of the pipeline that are used in a specific experiment.
 """
 
 from ._padlock_sequence_designer import PadlockSequenceDesigner

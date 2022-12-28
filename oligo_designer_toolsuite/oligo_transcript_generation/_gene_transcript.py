@@ -1,5 +1,6 @@
 import os
 import random
+import re
 
 import pandas as pd
 
@@ -15,17 +16,18 @@ class GeneTranscript:
     :type file_annotation: str
     """
 
-    def __init__(self, file_sequence, file_annotation):
+    def __init__(self, file_sequence: str, file_annotation: str):
         """Initialize the class."""
 
         self.file_sequence = file_sequence
         self.file_annotation = file_annotation
-        self.annotation = read_gtf(
-            self.file_annotation
-        )  # dataframe with annotation file
+        self.annotation = self.__get_annotation()
 
     def generate_for_reference(
-        self, block_size, file_gene_transcript_fasta, dir_out="output/annotation"
+        self,
+        block_size: int,
+        file_gene_transcript_fasta: str,
+        dir_out: str = "output/annotation",
     ):
         """Creates a fasta file containing the whole transcriptome and its annotation file for the reference DB. The file contains also the exon junctions, which are the union of two consecuteive exons and
         for each exon we consider only the last/ first <block_size> base pairs.
@@ -81,7 +83,10 @@ class GeneTranscript:
         return file_gene_transcript_fasta
 
     def generate_for_oligos(
-        self, block_size, dir_output="output/annotation", genes=None
+        self,
+        block_size: int,
+        dir_output: str = "output/annotation",
+        genes: list[str] = None,
     ):
         """Creates a annotation file fro the whole transcriptome for teh oligos DB. The file contains also the exon junctions, which are the union of two consecuteive exons and
         for each exon we consider only the last/ first <block_size> base pairs.
@@ -544,3 +549,32 @@ class GeneTranscript:
                     exon_upstream = attributes
 
         return exon_junction_list
+
+    def __get_annotation(self):
+        """
+        Parsing the gtf file is computationally expensive, therefore we store the result and reuse it in the future
+        """
+        dir_annotation = os.path.dirname(self.file_annotation)
+        parsed_annotation_file = (
+            os.path.basename(self.file_annotation).split(".gtf")[0] + ".pkl"
+        )  # file name without extension
+        # check if the gtf file has been already parsed
+        exists = False
+        for file in os.listdir(dir_annotation):
+            if re.match(f"^{parsed_annotation_file}$", file):
+                exists = True
+                break
+
+        if exists == False:
+            annotation = read_gtf(
+                self.file_annotation
+            )  # dataframe with annotation file
+            # store the result for later use
+            annotation.to_pickle(os.path.join(dir_annotation, parsed_annotation_file))
+        else:
+            # read the parsed gtf file
+            annotation = pd.read_pickle(
+                os.path.join(dir_annotation, parsed_annotation_file)
+            )
+
+        return annotation

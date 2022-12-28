@@ -11,7 +11,7 @@ import pandas as pd
 import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
-from ..IO import CustomDB
+from ..IO import CustomOligoDB
 
 ############################################
 # probe set generator class
@@ -51,7 +51,9 @@ class PadlockSequenceDesigner:
         self.Tm_parameters = Tm_parameters
         self.Tm_correction_parameters = Tm_correction_parameters
 
-    def design_padlocks(self, database: CustomDB, dir_padlock: str = "padlock_probes"):
+    def design_padlocks(
+        self, database: CustomOligoDB, dir_padlock: str = "padlock_probes"
+    ):
         """Design final padlock probe sequences for the probesets in the given database.
 
         Saves in a subfolder of ``databse.dir_output`` called ``dir_padlock`` the following files:

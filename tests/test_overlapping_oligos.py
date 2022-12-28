@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 import pytest
 
-from oligo_designer_toolsuite.IO import CustomDB
+from oligo_designer_toolsuite.IO import CustomOligoDB
 from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockProbeScoring,
     PadlockSetScoring,
@@ -16,14 +16,14 @@ from oligo_designer_toolsuite.oligo_selection import (
 
 @pytest.fixture()
 def oligos_database():
-    # database = NcbiDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output')
+    # database = NcbiOligoDB(probe_length_min=30, probe_length_max=40, filters=cls.filters, dir_output='tests/output')
 
     # If the anotation and fasta files are already saved on the machine, it is possible to direclty use them
     # instead of downloading them again.
     dir_annotation = "/home/francesco/Desktop/Work/NCBI"
     annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
     sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
-    database = CustomDB(
+    database = CustomOligoDB(
         probe_length_min=30,
         probe_length_max=40,
         species="unknown",
@@ -47,7 +47,12 @@ def oligos_database():
 @pytest.fixture()
 def probeset_generator():
     padlock_scoring = PadlockProbeScoring(
-        Tm_min=52, Tm_opt=60, Tm_max=67, GC_min=40, GC_opt=50, GC_max=60
+        Tm_min=52,
+        Tm_opt=60,
+        Tm_max=67,
+        GC_content_min=40,
+        GC_content_opt=50,
+        GC_content_max=60,
     )
     set_scoring = PadlockSetScoring()
     probeset_generator = ProbesetGenerator(
@@ -62,9 +67,7 @@ def probeset_generator():
 
 # check we obtain the same result
 def test_probesets_generation(probeset_generator, oligos_database):
-    oligos_database = probeset_generator.get_probe_sets(
-        database=oligos_database, n_sets=100
-    )
+    oligos_database = probeset_generator.apply(database=oligos_database, n_sets=100)
     for gene in oligos_database.probesets.keys():
         computed_sets = oligos_database.probesets[gene]
         computed_sets.drop(columns=["probeset_id"], inplace=True)

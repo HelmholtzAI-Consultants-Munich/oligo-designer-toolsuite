@@ -4,8 +4,6 @@ from abc import ABC, abstractmethod
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-from ..IO import CustomDB
-
 
 class SpecificityFilterBase(ABC):
     """This is the base class for all specificity filter classes
@@ -23,7 +21,7 @@ class SpecificityFilterBase(ABC):
         os.makedirs(self.dir_specificity, exist_ok=True)
 
     @abstractmethod
-    def apply(self, oligo_DB: CustomDB, file_reference_DB: str, n_jobs: int):
+    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
         """Apply filter to list of all possible probes in probe_info dictionary and filter out the probes which don't fulfill the requirements.
         Temporary files can be written in the ``self.dir_specificiy``folder, but they must be removed.
 

@@ -10,7 +10,7 @@ from . import Bowtie
 
 class BowtieSeedRegion(Bowtie):
     """This class filters probes based on the Bowtie short read alignment tool on a specific sub-region of the probe. The region taken in consideration is created according to the ``seed_region_creation`` class.
-    The user can customize the filtering by specifying the num_mismatches, and all probes with number mismatches lower or equal to num_mismatches inside the mismatch_region are filtered out.
+    The user can customize the filtering by specifying the num_mismatches, and all probes with number mismatches lower or equal to num_mismatches inside the seed region are filtered out.
 
     Use conda install -c bioconda bowtie to install Bowtie package
 

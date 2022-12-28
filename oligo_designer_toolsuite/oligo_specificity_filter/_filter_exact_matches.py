@@ -5,7 +5,7 @@ from . import SpecificityFilterBase
 
 
 class ExactMatches(SpecificityFilterBase):
-    """This class filters probes based duplicates found in the ``oligos_DB``. That is, probes with the same sequences but belonging to the same gene are filtered out.
+    """This class filters probes based duplicates found in the ``oligos_DB``. That is, probes with the same sequences but belonging to different genes are filtered out.
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str

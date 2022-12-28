@@ -1,4 +1,5 @@
 from Bio.SeqUtils import MeltingTemp as mt
+from Bio.SeqUtils import Seq
 
 from . import PropertyFilterBase
 
@@ -22,12 +23,12 @@ class PadlockArms(PropertyFilterBase):
 
     def __init__(
         self,
-        min_arm_length,
-        max_arm_Tm_dif,
-        arm_Tm_min,
-        arm_Tm_max,
-        Tm_parameters,
-        Tm_correction_parameters,
+        min_arm_length: int,
+        max_arm_Tm_dif: float,
+        arm_Tm_min: float,
+        arm_Tm_max: float,
+        Tm_parameters: dict,
+        Tm_correction_parameters: dict,
     ) -> None:
         """Initialize the class"""
 
@@ -39,7 +40,7 @@ class PadlockArms(PropertyFilterBase):
         self.Tm_parameters = Tm_parameters
         self.Tm_correction_parameters = Tm_correction_parameters
 
-    def __get_Tm(self, sequence):
+    def __get_Tm(self, sequence: Seq):
         """Computes the melting temperature of the sequence.
 
         :param sequence: sequence for which the melting temperature is computed
@@ -99,7 +100,7 @@ class PadlockArms(PropertyFilterBase):
             arm_features = {}
         return Tm_found, arm_features
 
-    def apply(self, sequence):
+    def apply(self, sequence: Seq):
         """Applies the filter to the sequence.
 
         :param sequence: sequence for which the filter is applied

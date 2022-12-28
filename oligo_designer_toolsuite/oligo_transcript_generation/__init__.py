@@ -1,5 +1,5 @@
 """
-Generates the reference file and the oligos sequences according to the givein parameters.
+Generates the reference file and the oligos sequences according to the given parameters.
 """
 
 

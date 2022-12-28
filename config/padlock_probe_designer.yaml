@@ -8,14 +8,14 @@ file_format: tsv # fromat of the written files, can be "tas" or "gtf"
 
 ### Parameters for genome and gene annotation
 # Which annotation should be used? Ensemble or NCBI?
-source: ncbi # available sources: 'ncbi', 'ensemble' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
+source: custom # available sources: 'ncbi', 'ensembl' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
 species: human # available species: human or mouse
 annotation_release: current # release number (e.g. 109 or 109.20211119 for ncbi) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/ or for ensemble at ftp.ensembl.org/pub/
 min_probes_per_gene: 0 # minimum number of probes that a gene must have before it gets deleted
 # If 'custom' was choosen,  provide a gene annotation (gtf) and genome file (fasta), e.g. file_gene_gtf: ./data/Homo_sapiens.GRCh38.104.gtf and the relative information
 file_annotation: # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.gtf
 file_sequence: # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.fna
-genome_assembly: GRCh38.p14
+genome_assembly: GRCh38
 annotation_source: NCBI
 
 
@@ -24,7 +24,7 @@ annotation_source: NCBI
 probe_length_min: 38 #min length of probes
 probe_length_max: 45 #max length of probes
 file_genes: ../data/genes_ncbi_10.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
-
+block_size: 50
 
 ### Parameters for the property filers
 GC_content_min: 40 #minimum GC content of probes

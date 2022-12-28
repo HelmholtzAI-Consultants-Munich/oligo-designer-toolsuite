@@ -30,7 +30,7 @@ class ProbeScoringBase(ABC):
     def scoring_function(self, probe: dict):
         """Computes the score of the given probe
 
-        :param probe: dictionary containing all th efeatures of the given probe
+        :param probe: dictionary containing all the features of the given probe
         :type probe: dict
         :return: score of the probe
         :rtype: float
@@ -87,7 +87,7 @@ class PadlockProbeScoring(ProbeScoringBase):
     def scoring_function(self, probe):
         """Computes the score of the given probe
 
-        :param probe: dictionary containing all th efeatures of the given probe
+        :param probe: dictionary containing all the features of the given probe
         :type probe: dict
         :return: score of the probe
         :rtype: float
