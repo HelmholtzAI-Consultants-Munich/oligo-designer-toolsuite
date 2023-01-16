@@ -1,6 +1,6 @@
 ### General parameters
 dir_output: output # name of the directory where the output files will be written
-n_jobs: 12 # number of cores used to run the pipeline
+n_jobs: 2 # number of cores used to run the pipeline
 write_removed_genes: True # write in a file the removed genes
 write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline
 file_format: tsv # fromat of the written files, can be "tas" or "gtf"
