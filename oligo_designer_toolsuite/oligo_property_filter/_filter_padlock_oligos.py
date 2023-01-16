@@ -54,19 +54,19 @@ class PadlockArms(PropertyFilterBase):
         return Tm_corrected
 
     def __find_arms(self, sequence):
-        """Find the ligation site for the two padlock probe arms according melting temperature constraints
-            The search starts in the center of the probe and shifts alternating 1 more nucleotide to the right and to
+        """Find the ligation site for the two padlock oligo arms according melting temperature constraints
+            The search starts in the center of the oligo and shifts alternating 1 more nucleotide to the right and to
             the left.
 
         :param sequence: sequence for which the arms are computed
         :type sequence: str
         """
 
-        probe_length = len(sequence)
-        ligation_site = probe_length // 2
+        oligo_length = len(sequence)
+        ligation_site = oligo_length // 2
 
         arms_long_enough = (ligation_site >= self.min_arm_length) and (
-            (probe_length - ligation_site) >= self.min_arm_length
+            (oligo_length - ligation_site) >= self.min_arm_length
         )
         Tm_found = False
         sign_factor = 1  # switch between positive and negative shift
@@ -86,7 +86,7 @@ class PadlockArms(PropertyFilterBase):
                 sign_factor *= -1
                 shift += 1
                 arms_long_enough = (ligation_site >= self.min_arm_length) and (
-                    (probe_length - ligation_site) >= self.min_arm_length
+                    (oligo_length - ligation_site) >= self.min_arm_length
                 )
 
         if Tm_found:

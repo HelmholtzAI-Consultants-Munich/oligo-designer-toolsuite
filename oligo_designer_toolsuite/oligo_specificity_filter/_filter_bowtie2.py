@@ -10,15 +10,15 @@ from . import Bowtie
 
 
 class Bowtie2(Bowtie):
-    """This class filters probes based on the Bowtie 2 read alignment tool. It is recommended to use Bowtie 2 instead of Bowtie for reads longer than about 50 bp, as it gives better performance.
-    The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives an alignment score to each probe. The higher the score, the more similar the read sequence is to the reference sequence.
-    The min_score parameter filters out probes with an alignment score greater than min_score
+    """This class filters oligos based on the Bowtie 2 read alignment tool. It is recommended to use Bowtie 2 instead of Bowtie for reads longer than about 50 bp, as it gives better performance.
+    The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives an alignment score to each oligo. The higher the score, the more similar the read sequence is to the reference sequence.
+    The min_score parameter filters out oligos with an alignment score greater than min_score
 
     Use ``conda install -c bioconda bowtie2 to install the Bowtie 2 package``
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
-    :param min_score: User defined threshold for alignment score. If specified, the Bowtie 2 filter filters out probes with an alignment score greater than min_score. If None, min_score defaults to -0.6 + -0.6 * L, where L is the read length
+    :param min_score: User defined threshold for alignment score. If specified, the Bowtie 2 filter filters out oligos with an alignment score greater than min_score. If None, min_score defaults to -0.6 + -0.6 * L, where L is the read length
     :type min_score: float
     """
 
@@ -42,13 +42,13 @@ class Bowtie2(Bowtie):
         """Apply the bowtie2 filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 
-        :param oligo_DB: database containing the probes and their features
+        :param oligo_DB: database containing the oligos and their features
         :type oligo_DB: dict
         :param file_reference_DB: path to the file that will be used as reference for the alignement
         :type file_reference_DB: str
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
-        :return: probe info of user-specified genes
+        :return: oligo info of user-specified genes
         :rtype : dict
         """
         # Some bowtie initializations, change the names
@@ -87,13 +87,13 @@ class Bowtie2(Bowtie):
     def _run_bowtie2(self, gene_DB, gene, index_name):
         """Run Bowtie 2 alignment tool to find regions of local similarity between sequences and reference.
 
-        :param gene_DB: database containing the probes form one gene
+        :param gene_DB: database containing the oligos form one gene
         :type gene_DB: dict
         :param gene: id of the gene processed
         :type gene: str
         """
 
-        file_probe_fasta_gene = self._create_fasta_file(gene_DB, self.dir_fasta, gene)
+        file_oligo_fasta_gene = self._create_fasta_file(gene_DB, self.dir_fasta, gene)
         file_bowtie2_gene = os.path.join(
             self.dir_bowtie2,
             f"bowtie2_{gene}",
@@ -106,7 +106,7 @@ class Bowtie2(Bowtie):
                 + " --no-hd --no-unal -x "
                 + index_name
                 + " -U "
-                + file_probe_fasta_gene
+                + file_oligo_fasta_gene
                 + " -S "
                 + file_bowtie2_gene
             )
@@ -116,7 +116,7 @@ class Bowtie2(Bowtie):
                 + " --no-hd --no-unal -x "
                 + index_name
                 + " -U "
-                + file_probe_fasta_gene
+                + file_oligo_fasta_gene
                 + " -S "
                 + file_bowtie2_gene
             )
@@ -125,11 +125,11 @@ class Bowtie2(Bowtie):
         # read the results of the bowtie search
         bowtie2_results = self._read_bowtie2_output(file_bowtie2_gene)
         # filter the DB based on the bowtie results
-        matching_probes = self._find_matching_probes(bowtie2_results)
-        filtered_gene_DB = self._filter_matching_probes(gene_DB, matching_probes)
+        matching_oligos = self._find_matching_oligos(bowtie2_results)
+        filtered_gene_DB = self._filter_matching_oligos(gene_DB, matching_oligos)
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie2, file_bowtie2_gene))
-        os.remove(os.path.join(self.dir_fasta, file_probe_fasta_gene))
+        os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
         return filtered_gene_DB
 
     def _read_bowtie2_output(self, file_bowtie2_gene):

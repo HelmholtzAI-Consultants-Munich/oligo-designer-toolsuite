@@ -8,7 +8,7 @@ from ._filter_base import (
     MeltingTemperature,
     PropertyFilterBase,
 )
-from ._filter_padlock_probes import PadlockArms
+from ._filter_padlock_oligos import PadlockArms
 from ._property_filter import PropertyFilter
 
 __all__ = [

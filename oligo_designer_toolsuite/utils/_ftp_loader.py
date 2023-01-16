@@ -1,6 +1,5 @@
 import gzip
 import itertools
-import logging
 import os
 import re
 import shutil
@@ -22,8 +21,6 @@ class BaseFtpLoader:
     def __init__(self, dir_output: str) -> None:
         """Constructor method"""
         self.dir_output = dir_output
-        # set logger
-        self.logging = logging.getLogger("probe_designer")
 
     def _download(self, ftp_link: str, ftp_directory: str, file_name: str):
         """

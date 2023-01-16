@@ -4,41 +4,41 @@ import numpy as np
 import pandas as pd
 
 
-class ProbeScoringBase(ABC):
-    """Template class for scoring the probes."""
+class OligoScoringBase(ABC):
+    """Template class for scoring the oligos."""
 
-    def apply(self, probes: dict, probes_indices: np.array):
-        """Scores all the probes using the defiend scoring function. The scores are both saved in the dictionary
+    def apply(self, oligos: dict, oligos_indices: np.array):
+        """Scores all the oligos using the defiend scoring function. The scores are both saved in the dictionary
         and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
 
-        :param probes: dictionary containing the probes
-        :type probes: dict
-        :param probes_indices: list of the indices of the probes used as a reference to keep the ordering of the probes consistent
-        :type probes_indices: np.array
-        :return: updated dictionary of the probes, series with the computed scores
+        :param oligos: dictionary containing the oligos
+        :type oligos: dict
+        :param oligos_indices: list of the indices of the oligos used as a reference to keep the ordering of the oligos consistent
+        :type oligos_indices: np.array
+        :return: updated dictionary of the oligos, series with the computed scores
         :rtype: dict, pandas.Series
         """
 
-        probes_scores = pd.Series(index=probes_indices, dtype=float)
-        for probe_id in probes_indices:
-            score = self.scoring_function(probes[probe_id])
-            probes[probe_id]["probe_score"] = score
-            probes_scores[probe_id] = score
-        return probes, probes_scores
+        oligos_scores = pd.Series(index=oligos_indices, dtype=float)
+        for oligo_id in oligos_indices:
+            score = self.scoring_function(oligos[oligo_id])
+            oligos[oligo_id]["oligo_score"] = score
+            oligos_scores[oligo_id] = score
+        return oligos, oligos_scores
 
     @abstractmethod
-    def scoring_function(self, probe: dict):
-        """Computes the score of the given probe
+    def scoring_function(self, oligo: dict):
+        """Computes the score of the given oligo
 
-        :param probe: dictionary containing all the features of the given probe
-        :type probe: dict
-        :return: score of the probe
+        :param oligo: dictionary containing all the features of the given oligo
+        :type oligo: dict
+        :return: score of the oligo
         :rtype: float
         """
 
 
-class PadlockProbeScoring(ProbeScoringBase):
-    """Probes scoring class for the padlock experiment.
+class PadlockOligoScoring(OligoScoringBase):
+    """Oligos scoring class for the padlock experiment.
 
 
     :param Tm_min: minimal melting temperature
@@ -84,20 +84,20 @@ class PadlockProbeScoring(ProbeScoringBase):
         self.GC_weight = GC_weight
         self.__generate_scoring_functions()
 
-    def scoring_function(self, probe):
-        """Computes the score of the given probe
+    def scoring_function(self, oligo):
+        """Computes the score of the given oligo
 
-        :param probe: dictionary containing all the features of the given probe
-        :type probe: dict
-        :return: score of the probe
+        :param oligo: dictionary containing all the features of the given oligo
+        :type oligo: dict
+        :return: score of the oligo
         :rtype: float
         """
         # distance from the optimal melting temperature weightend by the how far is the optimum from the min/ max
         # teh scoring is the lower teh better
         Tm_dif = (
-            probe["melting_temperature"] - self.Tm_opt
+            oligo["melting_temperature"] - self.Tm_opt
         )  # check the names of the columns
-        GC_dif = probe["GC_content"] - self.GC_opt
+        GC_dif = oligo["GC_content"] - self.GC_opt
         return self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(
             GC_dif
         )

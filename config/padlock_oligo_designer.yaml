@@ -8,10 +8,10 @@ file_format: tsv # fromat of the written files, can be "tas" or "gtf"
 
 ### Parameters for genome and gene annotation
 # Which annotation should be used? Ensemble or NCBI?
-source: custom # available sources: 'ncbi', 'ensembl' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
+source: ncbi # available sources: 'ncbi', 'ensembl' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
 species: human # available species: human or mouse
 annotation_release: current # release number (e.g. 109 or 109.20211119 for ncbi) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/ or for ensemble at ftp.ensembl.org/pub/
-min_probes_per_gene: 0 # minimum number of probes that a gene must have before it gets deleted
+min_oligos_per_gene: 0 # minimum number of oligos that a gene must have before it gets deleted
 # If 'custom' was choosen,  provide a gene annotation (gtf) and genome file (fasta), e.g. file_gene_gtf: ./data/Homo_sapiens.GRCh38.104.gtf and the relative information
 file_annotation: # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.gtf
 file_sequence: # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.fna
@@ -21,17 +21,17 @@ annotation_source: NCBI
 
 
 ### Parameters for oligo sequences generation
-probe_length_min: 38 #min length of probes
-probe_length_max: 45 #max length of probes
-file_genes: ../data/genes_ncbi_10.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
+oligo_length_min: 38 #min length of oligos
+oligo_length_max: 45 #max length of oligos
+file_genes: ../tutorials/data/genes_ncbi_10.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
 block_size: 50
 
 ### Parameters for the property filers
-GC_content_min: 40 #minimum GC content of probes
-GC_content_max: 60 #maximum GC content of probes
-Tm_min: 52 #55 #minimum melting temperature of probes
-Tm_max: 67 #63 #maximum melting temperature of probes
-# probe arms
+GC_content_min: 40 #minimum GC content of oligos
+GC_content_max: 60 #maximum GC content of oligos
+Tm_min: 52 #55 #minimum melting temperature of oligos
+Tm_max: 67 #63 #maximum melting temperature of oligos
+# oligo arms
 min_arm_length: 10 #min length of each arm
 max_arm_Tm_dif: 2 #maximum melting temperature difference of both arms
 arm_Tm_min: 38 #41 #minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)
@@ -41,26 +41,26 @@ arm_Tm_max: 49 #46 #maximum melting temperature of each arm
 ### Parameters for the specificity filters
 # Blastn parameters
 word_size: 10 #word size for the blastn seed (exact match to target)
-coverage: 50 #minimum coverage between probes and target sequence, ranging from 0 to 100% (full coverage)
-percent_identity: 80 #maximum similarity between probes and target sequences, ranging from 0 to 100% (no missmatch)
-ligation_region_size: 10 #coverage between probes and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
+coverage: 50 #minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
+percent_identity: 80 #maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
+ligation_region_size: 10 #coverage between oligos and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
 
 
 
 
 ### Parameters for the oligo efficiency
 # Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before
-Tm_opt: 60 #60 #optimal melting temperature of probes
-GC_content_opt: 50 #optimal GC content of probes
-Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
-GC_weight: 1 # weight of the GC content of the probe in the efficiency score
+Tm_opt: 60 #60 #optimal melting temperature of oligos
+GC_content_opt: 50 #optimal GC content of oligos
+Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score
+GC_weight: 1 # weight of the GC content of the oligo in the efficiency score
 
 
 
 
-### Parameters for the probesets generation
-probeset_size: 5 #ideal number of probes per probeset
-min_probeset_size: 2 #minimum number of probes per probeset
+### Parameters for the oligosets generation
+oligoset_size: 5 #ideal number of oligos per oligoset
+min_oligoset_size: 2 #minimum number of oligos per oligoset
 n_sets: 100 # maximum number of sets per gene
 
 

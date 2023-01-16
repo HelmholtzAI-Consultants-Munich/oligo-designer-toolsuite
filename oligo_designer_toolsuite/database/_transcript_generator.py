@@ -7,7 +7,7 @@ import pandas as pd
 from ..utils._data_parser import get_sequence_from_annotation, read_gtf
 
 
-class GeneTranscript:
+class TranscriptGenerator:
     """Creates the transcriptome for the whole genome or for a set of genes.
 
     :param file_sequence: pathe to the fasta file
@@ -47,9 +47,9 @@ class GeneTranscript:
         unique_exons = self.__load_unique_exons(exons_annotation)
         unique_exons = self.__merge_containing_exons(unique_exons)
         # get exon junction annotation
-        exon_junctions_probes = self.__load_exon_junctions(block_size, exons_annotation)
+        exon_junctions_oligos = self.__load_exon_junctions(block_size, exons_annotation)
         # concatenate the two annotations
-        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_probes])
+        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_oligos])
         gene_transcript_annotation = gene_transcript_annotation.sort_values(
             by=["gene_id"]
         )
@@ -112,11 +112,11 @@ class GeneTranscript:
         # merge exon annotations for the same region
         unique_exons = self.__load_unique_exons(exons_annotation)
         # get exon junction annotation
-        exon_junctions_probes = self.__load_exon_junctions(
+        exon_junctions_oligos = self.__load_exon_junctions(
             block_size, exons_annotation, annotation_genes
         )
         # concatenate the two annotations
-        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_probes])
+        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_oligos])
         gene_transcript_annotation = gene_transcript_annotation.sort_values(
             by=["gene_id"]
         )
@@ -477,7 +477,7 @@ class GeneTranscript:
                     exons_small = []
                 elif ((idx + 1) < len(exons)) & (
                     (attributes[2] - attributes[1]) < block_size
-                ):  # if exon is not the last exon of transcript and shorter than probe block_size but not the last exon -> create sequence with neighboring exons
+                ):  # if exon is not the last exon of transcript and shorter than oligo block_size but not the last exon -> create sequence with neighboring exons
                     exons_small.append(attributes)
                 else:
                     exon_downstream = attributes
