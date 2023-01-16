@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pyfaidx
 
-from ..oligo_transcript_generation import GeneTranscript
 from ..utils import FtpLoaderEnsembl, FTPLoaderNCBI, _data_parser
+from ._transcript_generator import TranscriptGenerator
 
 
 class CustomReferenceDB:
@@ -127,7 +127,7 @@ class CustomReferenceDB:
 
         """
         if self.gene_transcript is None:
-            self.gene_transcript = GeneTranscript(
+            self.gene_transcript = TranscriptGenerator(
                 self.file_sequence, self.file_annotation
             )
 

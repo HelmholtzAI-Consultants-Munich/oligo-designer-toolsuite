@@ -7,43 +7,43 @@ from joblib import Parallel, delayed
 from ..utils._data_parser import get_sequence_from_annotation
 
 
-class Oligos:
+class OligosGenerator:
     """Creates the oligo sequences belonging to the given genes.
 
-    :param probe_length_min: minimum length of the probes created
-    :type probe_length_min: int
-    :param probe_length_max: maximum length of the probes created
-    :type probe_length_max: int
+    :param oligo_length_min: minimum length of the oligos created
+    :type oligo_length_min: int
+    :param oligo_length_max: maximum length of the oligos created
+    :type oligo_length_max: int
     :param file_sequence: path to the fasta file of the whole genome
     :type file_sequence: str
-    :param n_jobs: nr of cores used to compute the probes
+    :param n_jobs: nr of cores used to compute the oligos
     :type n_jobs: int
     """
 
     def __init__(
         self,
-        probe_length_min: int,
-        probe_length_max: int,
+        oligo_length_min: int,
+        oligo_length_max: int,
         file_sequence: str,
         n_jobs: int,
     ):
         """Initialize the class."""
-        self.probe_length_min = probe_length_min
-        self.probe_length_max = probe_length_max
+        self.oligo_length_min = oligo_length_min
+        self.oligo_length_max = oligo_length_max
         self.file_sequence = file_sequence
         self.n_jobs = n_jobs
 
     def generate(self, file_region_annotation: str, genes: list[str], dir_output: str):
-        """Get the fasta sequence of all possible probes with user-defined length for all input genes and store the in a dictionary.
-        Generated probes are filtered by the filters give in input and the features computed for the  filters are added to the dictionary.
+        """Get the fasta sequence of all possible oligos with user-defined length for all input genes and store the in a dictionary.
+        Generated oligos are filtered by the filters give in input and the features computed for the  filters are added to the dictionary.
 
         :param file_region_annotation: path to the gtf annotaiton file of the region
         :type file_region_annotation: str
-        :param genes: Genes for which the probes are computed
+        :param genes: Genes for which the oligos are computed
         :type genes: list of str
         :param dir_output: directory where temporary diles are written, defaults to './output/annotation'
         :type dir_output: str, optional
-        :return: the oligos DB containing all the probes created
+        :return: the oligos DB containing all the oligos created
         :rtype: dict
         """
 
@@ -67,24 +67,24 @@ class Oligos:
                 "blockStarts",
             ],
         )
-        # compute the probes
-        probes = {}
+        # compute the oligos
+        oligos = {}
         results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self._get_probes)(gene, region_annotation) for gene in genes
+            delayed(self._get_oligos)(gene, region_annotation) for gene in genes
         )
         for result in results:
-            probes.update(result)
+            oligos.update(result)
 
-        return probes
+        return oligos
 
-    def _get_probes(self, gene, region_annotation):
-        """Get the fasta sequence of all possible probes in the current gene.
+    def _get_oligos(self, gene, region_annotation):
+        """Get the fasta sequence of all possible oligos in the current gene.
 
-        :param gene: gene for which probes should be designed.
+        :param gene: gene for which oligos should be designed.
         :type gene: str
         :param region_annotation: gtf annotation of the region
         :type region_annotation: pandas.DataFrame
-        :return: the oligos DB containing all the probes created for the gene
+        :return: the oligos DB containing all the oligos created for the gene
         :rtype: dict
         """
 
@@ -98,12 +98,12 @@ class Oligos:
         self._get_region_fasta(
             gene, region_annotation, file_region_bed, file_region_fasta
         )
-        gene_probes_batch = self._get_probes_info(gene, file_region_fasta)
+        gene_oligos_batch = self._get_oligos_info(gene, file_region_fasta)
 
         os.remove(file_region_bed)
         os.remove(file_region_fasta)
 
-        return gene_probes_batch
+        return gene_oligos_batch
 
     def _get_region_fasta(
         self, gene, region_annotation, file_region_bed, file_region_fasta
@@ -111,7 +111,7 @@ class Oligos:
         """Extract transcripts for the current batch and write transcript regions to bed file.
         Get sequence for annotated transcript regions (bed file) from genome sequence (fasta file) and write transcriptome sequences to fasta file.
 
-        :param genes_batch: Genes for which probes should be designed.
+        :param genes_batch: Genes for which oligos should be designed.
         :type genes_batch: list
         :param region_annotation: gtf annotation of the region
         :type region_annotation: pandas.DataFrame
@@ -171,21 +171,21 @@ class Oligos:
 
         return gene_id, transcript_id, exon_id, chrom, start, strand
 
-    def _get_probes_info(self, gene, file_region_fasta):
-        """Merge all probes with identical sequence that come from the same gene into one fasta entry.
-        Filter all probes based on user-defined filters and collect the additional information about each probe.
+    def _get_oligos_info(self, gene, file_region_fasta):
+        """Merge all oligos with identical sequence that come from the same gene into one fasta entry.
+        Filter all oligos based on user-defined filters and collect the additional information about each oligo.
 
-        :param gene: Gene for which probes should be designed.
+        :param gene: Gene for which oligos should be designed.
         :type genes_batch: str
         :param file_region_fasta: Path to fasta transcriptome sequence output file.
         :type file_region_fasta: string
-        :return: Mapping of probes to corresponding genes with additional information about each probe, i.e.
+        :return: Mapping of oligos to corresponding genes with additional information about each oligo, i.e.
             position (chromosome, start, end, strand), gene_id, transcript_id, exon_id
         :rtype: dict
         """
 
-        total_probes = 0
-        gene_probes = {}  # assiciate each id to the additional features
+        total_oligos = 0
+        gene_oligos = {}  # assiciate each id to the additional features
         gene_sequences = {}  # associate each sequence to its id
         id = 1
 
@@ -193,16 +193,16 @@ class Oligos:
         for exon in SeqIO.parse(file_region_fasta, "fasta"):
             sequence = exon.seq
 
-            for probe_length in range(self.probe_length_min, self.probe_length_max + 1):
-                if len(sequence) > probe_length:
-                    number_probes = len(sequence) - (probe_length - 1)
-                    probes_sequence = [
-                        sequence[i : i + probe_length] for i in range(number_probes)
+            for oligo_length in range(self.oligo_length_min, self.oligo_length_max + 1):
+                if len(sequence) > oligo_length:
+                    number_oligos = len(sequence) - (oligo_length - 1)
+                    oligos_sequence = [
+                        sequence[i : i + oligo_length] for i in range(number_oligos)
                     ]
 
-                    for i in range(number_probes):
-                        total_probes += 1
-                        probe_sequence = probes_sequence[i]
+                    for i in range(number_oligos):
+                        total_oligos += 1
+                        oligo_sequence = oligos_sequence[i]
 
                         (
                             gene_id,
@@ -212,32 +212,32 @@ class Oligos:
                             start,
                             strand,
                         ) = self._parse_header(exon.id)
-                        probe_start = start + i
-                        probe_end = start + i + probe_length
+                        oligo_start = start + i
+                        oligo_end = start + i + oligo_length
 
-                        if probe_sequence in gene_sequences:
-                            probe_id = gene_sequences[probe_sequence]
-                            gene_probes[probe_id]["transcript_id"].append(transcript_id)
-                            gene_probes[probe_id]["exon_id"].append(exon_id)
-                            gene_probes[probe_id]["start"].append(probe_start)
-                            gene_probes[probe_id]["end"].append(probe_end)
+                        if oligo_sequence in gene_sequences:
+                            oligo_id = gene_sequences[oligo_sequence]
+                            gene_oligos[oligo_id]["transcript_id"].append(transcript_id)
+                            gene_oligos[oligo_id]["exon_id"].append(exon_id)
+                            gene_oligos[oligo_id]["start"].append(oligo_start)
+                            gene_oligos[oligo_id]["end"].append(oligo_end)
 
                         else:
-                            probe_id = f"{gene_id}_{id}"
-                            gene_sequences[probe_sequence] = probe_id
+                            oligo_id = f"{gene_id}_{id}"
+                            gene_sequences[oligo_sequence] = oligo_id
                             id += 1
-                            gene_probes[probe_id] = {
-                                "probe_sequence": probe_sequence,
+                            gene_oligos[oligo_id] = {
+                                "sequence": oligo_sequence,
                                 "transcript_id": [transcript_id],
                                 "exon_id": [exon_id],
                                 "chromosome": chrom,
-                                "start": [probe_start],
-                                "end": [probe_end],
+                                "start": [oligo_start],
+                                "end": [oligo_end],
                                 "strand": strand,
-                                "length": probe_length,
+                                "length": oligo_length,
                             }
-        # filter probes based on user-defined filters
+        # filter oligos based on user-defined filters
         gene_oligo_DB = {}
-        gene_oligo_DB[gene] = gene_probes
+        gene_oligo_DB[gene] = gene_oligos
 
         return gene_oligo_DB

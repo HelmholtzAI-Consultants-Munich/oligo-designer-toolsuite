@@ -1,2 +1,2 @@
-probe_id	probe_sequence	gene_id	transcript_id	exon_id	chromosome	start	end	strand	length	GC_content	melt_temp	melt_temp_arm1	melt_temp_arm2	dif_melt_temp_arms	ligation_site
+id	sequence	gene	transcript_id	exon_id	chromosome	start	end	strand	length	GC_content	melt_temp	melt_temp_arm1	melt_temp_arm2	dif_melt_temp_arms	ligation_site
 AGRN_1	TCCTCAACAACTATAAACCCGGGACCCACTTCAC	AGRN	NM_001364727.2	NM_001364727.2_exon1_NM_001364727.2_exon2	1	1034691	1034725	+	34	50.0	61.24	44.98	43.14	1.84	20

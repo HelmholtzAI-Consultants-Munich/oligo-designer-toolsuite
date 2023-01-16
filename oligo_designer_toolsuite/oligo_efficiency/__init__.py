@@ -1,9 +1,9 @@
 """
-This module assignes a score to the probes and the probesets for their (on-target) efficiency.
+This module assignes a score to the oligos and the oligosets for their (on-target) efficiency.
 """
 
 
-from ._probe_scoring import PadlockProbeScoring, ProbeScoringBase
+from ._oligo_scoring import OligoScoringBase, PadlockOligoScoring
 from ._set_scoring import (
     AverageSetScoring,
     MaxSetScoring,
@@ -12,8 +12,8 @@ from ._set_scoring import (
 )
 
 __all__ = [
-    "ProbeScoringBase",
-    "PadlockProbeScoring",
+    "OligoScoringBase",
+    "PadlockOligoScoring",
     "SetScoringBase",
     "PadlockSetScoring",
     "AverageSetScoring",

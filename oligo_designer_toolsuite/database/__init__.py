@@ -4,7 +4,9 @@ generate the oligos database and the reference database and allow to read ad wri
 """
 
 from ._oligos_database import CustomOligoDB, EnsemblOligoDB, NcbiOligoDB
+from ._oligos_generator import OligosGenerator
 from ._reference_database import CustomReferenceDB, EnsemblReferenceDB, NcbiReferenceDB
+from ._transcript_generator import TranscriptGenerator
 
 __all__ = [
     "CustomOligoDB",
@@ -13,4 +15,6 @@ __all__ = [
     "CustomReferenceDB",
     "NcbiReferenceDB",
     "EnsemblReferenceDB",
+    "TranscriptGenerator",
+    "OligosGenerator",
 ]

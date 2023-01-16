@@ -5,8 +5,9 @@ from pathlib import Path
 import pyfaidx
 from joblib import cpu_count
 
-from ..oligo_transcript_generation import GeneTranscript, Oligos
 from ..utils import FtpLoaderEnsembl, FTPLoaderNCBI, _data_parser
+from ._oligos_generator import OligosGenerator
+from ._transcript_generator import TranscriptGenerator
 
 
 class CustomOligoDB:
@@ -17,10 +18,10 @@ class CustomOligoDB:
 
     Species, genome_assembly, annotation_release are set to 'unknown' if thay are not given in input.
 
-    :param probe_length_min: minimum length of the probes created
-    :type probe_length_min: int
-    :param probe_length_max: maximum length of the probes created
-    :type probe_length_max: int
+    :param oligo_length_min: minimum length of the oligos created
+    :type oligo_length_min: int
+    :param oligo_length_max: maximum length of the oligos created
+    :type oligo_length_max: int
     :param species: species of the fasta and gtf files, defaults to None
     :type species: str, optional
     :param genome_assembly: genome_assembly of the fasta and gtf files, defaults to None
@@ -37,15 +38,15 @@ class CustomOligoDB:
     :type n_jobs: int, optional
     :param dir_output: directory name where the results will be written
     :type dir_output: str
-    :param min_probes_per_gene: minimum number of probes that a gene must have before it is removed from the database, defaults to 0
-    :type min_probes_per_gene: int, optional
+    :param min_oligos_per_gene: minimum number of oligos that a gene must have before it is removed from the database, defaults to 0
+    :type min_oligos_per_gene: int, optional
 
     """
 
     def __init__(
         self,
-        probe_length_min: int,
-        probe_length_max: int,
+        oligo_length_min: int,
+        oligo_length_max: int,
         species: str = None,
         genome_assembly: str = None,
         annotation_release: str = None,
@@ -54,7 +55,7 @@ class CustomOligoDB:
         file_sequence: str = None,
         n_jobs: int = None,
         dir_output: str = "output",
-        min_probes_per_gene: int = 0,
+        min_oligos_per_gene: int = 0,
     ):
         """
         Constructor
@@ -91,9 +92,9 @@ class CustomOligoDB:
         self.dir_output = dir_output
         self.dir_annotation = os.path.join(dir_output, "annotation")
         Path(self.dir_annotation).mkdir(parents=True, exist_ok=True)
-        # Initialize the file for genes with insufficient probes
+        # Initialize the file for genes with insufficient oligos
         self.file_removed_genes = os.path.join(
-            self.dir_output, "genes_with_insufficient_probes.txt"
+            self.dir_output, "genes_with_insufficient_oligos.txt"
         )
         with open(self.file_removed_genes, "a") as handle:
             handle.write(f"Gene\tPipeline step\n")
@@ -101,9 +102,9 @@ class CustomOligoDB:
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
         self.annotation_source = annotation_source
-        self.probe_length_max = probe_length_max
-        self.probe_length_min = probe_length_min
-        self.min_probes_per_gene = min_probes_per_gene
+        self.oligo_length_max = oligo_length_max
+        self.oligo_length_min = oligo_length_min
+        self.min_oligos_per_gene = min_oligos_per_gene
         if n_jobs is None:
             n_jobs = cpu_count()
         self.n_jobs = n_jobs
@@ -118,13 +119,13 @@ class CustomOligoDB:
         # create index file
         pyfaidx.Fasta(self.file_sequence)
         self.gene_transcript = None
-        self.oligos = Oligos(
-            self.probe_length_min,
-            self.probe_length_max,
+        self.oligos = OligosGenerator(
+            self.oligo_length_min,
+            self.oligo_length_max,
             self.file_sequence,
             self.n_jobs,
         )
-        self.probesets = (
+        self.oligosets = (
             {}
         )  # will be used later in the gereration of non overlpping sets
 
@@ -205,21 +206,21 @@ class CustomOligoDB:
         else:
             raise ValueError(f"{format} not recognized as a format!")
 
-    def write_probesets(self, dir_probesets: str = "probesets"):
-        """Writes the data structure ``self.probesets`` in a series of files, each contains the probesets for one gene and is called "{gene}_probesets.tsv".
-        The files will be stored in a subdirectory of ``self.dir_output`` named ``dir_probesets``.
+    def write_oligosets(self, dir_oligosets: str = "oligosets"):
+        """Writes the data structure ``self.oligosets`` in a series of files, each contains the oligosets for one gene and is called "{gene}_oligosets.tsv".
+        The files will be stored in a subdirectory of ``self.dir_output`` named ``dir_oligosets``.
 
-        :param dir_probesets: subdirectory name where the files will be stored, defaults to "probesets"
-        :type dir_probesets: str, optional
+        :param dir_oligosets: subdirectory name where the files will be stored, defaults to "oligosets"
+        :type dir_oligosets: str, optional
         """
 
-        self.dir_probesets = os.path.join(self.dir_output, dir_probesets)
-        Path(self.dir_probesets).mkdir(parents=True, exist_ok=True)
+        self.dir_oligosets = os.path.join(self.dir_output, dir_oligosets)
+        Path(self.dir_oligosets).mkdir(parents=True, exist_ok=True)
 
-        for gene in self.probesets.keys():
-            file = f"{gene}_probesets.tsv"
-            path = os.path.join(self.dir_probesets, file)
-            self.probesets[gene].to_csv(path, sep="\t", index=False)
+        for gene in self.oligosets.keys():
+            file = f"{gene}_oligosets.tsv"
+            path = os.path.join(self.dir_oligosets, file)
+            self.oligosets[gene].to_csv(path, sep="\t", index=False)
 
     def __generate_gene_CDS():
         """
@@ -237,11 +238,11 @@ class CustomOligoDB:
         Creates the DB containing all the oligo sequence extracted form the given ``region`` and belonging the the specified genes. If no genes are specified then
         will be used all the genes. The database created is not written automatically to the disk, the ``write_oligos_DB`` method hes to be called separately.
 
-        :param genes: genes for which compute the probes, defaults to None
+        :param genes: genes for which compute the oligos, defaults to None
         :type genes: list of str, optional
-        :param region: region ofrm whihc generate the probes, it can be 'genome', 'gene_transcript', 'gene_CDS', defaults to 'gene_transcript'
+        :param region: region ofrm whihc generate the oligos, it can be 'genome', 'gene_transcript', 'gene_CDS', defaults to 'gene_transcript'
         :type region: str, optional
-        :param number_batchs: probes are computes in batches of genes, defaults to 1
+        :param number_batchs: oligos are computes in batches of genes, defaults to 1
         :type number_batchs: int, optional
 
         """
@@ -255,7 +256,7 @@ class CustomOligoDB:
                 # TODO
             elif region == "gene_transcript":
                 file_region_annotation = self.gene_transcript.generate_for_oligos(
-                    self.probe_length_max - 1, self.dir_annotation, genes
+                    self.oligo_length_max - 1, self.dir_annotation, genes
                 )
             elif region == "gene_CDS":
                 file_region_annotation = None
@@ -272,7 +273,7 @@ class CustomOligoDB:
         self.file_name_oligos_DB_fasta = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fasta"
 
         if self.gene_transcript is None:
-            self.gene_transcript = GeneTranscript(
+            self.gene_transcript = TranscriptGenerator(
                 self.file_sequence, self.file_annotation
             )
         file_region_annotation = create_target_region(region, genes)
@@ -286,10 +287,10 @@ class CustomOligoDB:
         # clean folder
         os.remove(file_region_annotation)
 
-    def remove_genes_with_insufficient_probes(
+    def remove_genes_with_insufficient_oligos(
         self, pipeline_step: str, write: bool = True
     ):
-        """Deletes from the ``oligo_DB`` the genes which have less than ``min_probes_per_gene`` probes,
+        """Deletes from the ``oligo_DB`` the genes which have less than ``min_oligos_per_gene`` oligos,
         and optionally writes them in a file with the name of the step of the pipeline at which they have been deleted.
 
         :param pipeline_step: name of the step of the pipeline
@@ -298,10 +299,10 @@ class CustomOligoDB:
 
         genes = list(self.oligos_DB.keys())
         for gene in genes:
-            if len(list(self.oligos_DB[gene].keys())) <= self.min_probes_per_gene:
+            if len(list(self.oligos_DB[gene].keys())) <= self.min_oligos_per_gene:
                 del self.oligos_DB[gene]
-                if gene in self.probesets:
-                    del self.probesets[gene]
+                if gene in self.oligosets:
+                    del self.oligosets[gene]
                 if write:
                     with open(self.file_removed_genes, "a") as hanlde:
                         hanlde.write(f"{gene}\t{pipeline_step}\n")
@@ -315,10 +316,10 @@ class NcbiOligoDB(CustomOligoDB):
     Dowloads the fasta and annotation files from the NCBI server and stores them in the dir_output folder.
     Moreover, it can write to a file and read the database containing all the oligos sequences.
 
-    :param probe_length_min: minimum length of the probes created
-    :type probe_length_min: int
-    :param probe_length_max: maximum length of the probes created
-    :type probe_length_max: int
+    :param oligo_length_min: minimum length of the oligos created
+    :type oligo_length_min: int
+    :param oligo_length_max: maximum length of the oligos created
+    :type oligo_length_max: int
     :param species: species of the files to dowload, defaults to None
     :type species: str, optional
     :param annotation_release: annotation_release of the files to dowload, defaults to None
@@ -327,19 +328,19 @@ class NcbiOligoDB(CustomOligoDB):
     :type n_jobs: int, optional
     :param dir_output: directory where the files are saved, defaults to './output/annotation'
     :type dir_output: str, optional
-    :param min_probes_per_gene: minimum number of probes that a gene must have before it is removed from the database, defaults to 0
-    :type min_probes_per_gene: int, optional
+    :param min_oligos_per_gene: minimum number of oligos that a gene must have before it is removed from the database, defaults to 0
+    :type min_oligos_per_gene: int, optional
     """
 
     def __init__(
         self,
-        probe_length_min: int,
-        probe_length_max: int,
+        oligo_length_min: int,
+        oligo_length_max: int,
         species: str = None,
         annotation_release: str = None,
         n_jobs: int = None,
         dir_output: str = "output",
-        min_probes_per_gene: int = 0,
+        min_oligos_per_gene: int = 0,
     ):
         """
         Constructor
@@ -363,8 +364,8 @@ class NcbiOligoDB(CustomOligoDB):
         file_sequence, _, _ = ftp.download_files("fasta")
 
         super().__init__(
-            probe_length_min,
-            probe_length_max,
+            oligo_length_min,
+            oligo_length_max,
             species,
             genome_assembly,
             annotation_release,
@@ -373,7 +374,7 @@ class NcbiOligoDB(CustomOligoDB):
             file_sequence,
             n_jobs,
             dir_output,
-            min_probes_per_gene,
+            min_oligos_per_gene,
         )
 
 
@@ -385,10 +386,10 @@ class EnsemblOligoDB(CustomOligoDB):
     Dowloads the fasta and annotation files from the Ensemble server and stores them in the dir_output folder.
     Moreover, it can write to a file and read the database containing all the oligos sequences.
 
-    :param probe_length_min: minimum length of the probes created
-    :type probe_length_min: int
-    :param probe_length_max: maximum length of the probes created
-    :type probe_length_max: int
+    :param oligo_length_min: minimum length of the oligos created
+    :type oligo_length_min: int
+    :param oligo_length_max: maximum length of the oligos created
+    :type oligo_length_max: int
     :param species: species of the files to dowload, defaults to None
     :type species: str, optional
     :param genome_assembly: genome_assembly of the files to dowload, defaults to None
@@ -399,19 +400,19 @@ class EnsemblOligoDB(CustomOligoDB):
     :type n_jobs: int, optional
     :param dir_output: directory where the files are saved, defaults to 'output'
     :type dir_output: str, optional
-    :param min_probes_per_gene: minimum number of probes that a gene must have before it is removed from the database, defaults to 0
-    :type min_probes_per_gene: int, optional
+    :param min_oligos_per_gene: minimum number of oligos that a gene must have before it is removed from the database, defaults to 0
+    :type min_oligos_per_gene: int, optional
     """
 
     def __init__(
         self,
-        probe_length_min: int,
-        probe_length_max: int,
+        oligo_length_min: int,
+        oligo_length_max: int,
         species: str = None,
         annotation_release: str = None,
         n_jobs: int = None,
         dir_output: str = "output",
-        min_probes_per_gene: int = 0,
+        min_oligos_per_gene: int = 0,
     ):
         """
         Constructor
@@ -436,8 +437,8 @@ class EnsemblOligoDB(CustomOligoDB):
         file_sequence, _, _ = ftp.download_files("fasta")
 
         super().__init__(
-            probe_length_min,
-            probe_length_max,
+            oligo_length_min,
+            oligo_length_max,
             species,
             genome_assembly,
             annotation_release,
@@ -446,5 +447,5 @@ class EnsemblOligoDB(CustomOligoDB):
             file_sequence,
             n_jobs,
             dir_output,
-            min_probes_per_gene,
+            min_oligos_per_gene,
         )

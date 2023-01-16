@@ -1,4 +1,4 @@
-from ..IO import CustomOligoDB, CustomReferenceDB
+from ..database import CustomOligoDB, CustomReferenceDB
 from . import SpecificityFilterBase
 
 
@@ -8,21 +8,21 @@ class SpecificityFilter:
 
     :param filters: List of all the filter classes that we want to apply to the database
     :type filters: list of ``SpecificityFilterBase`` class
-    :param write_genes_with_insufficient_probes: if True genes with insufficient probes are written in a file, defaults to True
-    :type write_genes_with_insufficient_probes: bool, optional
+    :param write_genes_with_insufficient_oligos: if True genes with insufficient oligos are written in a file, defaults to True
+    :type write_genes_with_insufficient_oligos: bool, optional
     """
 
     def __init__(
         self,
         filters: list[SpecificityFilterBase],
-        write_genes_with_insufficient_probes: bool = True,
+        write_genes_with_insufficient_oligos: bool = True,
     ):
         """
         Constructor.
         """
 
         self.filters = filters
-        self.write_genes_with_insufficient_probes = write_genes_with_insufficient_probes
+        self.write_genes_with_insufficient_oligos = write_genes_with_insufficient_oligos
 
     def apply(
         self,
@@ -54,7 +54,7 @@ class SpecificityFilter:
             )
 
         oligo_database.oligos_DB = oligos_DB
-        oligo_database.remove_genes_with_insufficient_probes(
-            "Specificity filter", self.write_genes_with_insufficient_probes
+        oligo_database.remove_genes_with_insufficient_oligos(
+            "Specificity filter", self.write_genes_with_insufficient_oligos
         )
         return oligo_database
