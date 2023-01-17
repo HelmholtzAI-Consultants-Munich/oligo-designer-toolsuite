@@ -20,22 +20,22 @@ n_jobs = 1
 ligation_region = 0
 dir_output = cwd + "/tests/output"
 dir_annotations = cwd + "/tests/data"
-min_probes_per_gene = 2
+min_oligos_per_gene = 2
 
 # Reference transcriptome files for tests
 file_transcriptome_fasta = dir_annotations + "/reference_sample.fna"
 file_transcriptome_fasta_ligation = dir_annotations + "/reference_sample_ligation.fna"
 
-# Files containing probe info for tests
-file_probe_info_match = dir_annotations + "/oligo_DB_match.tsv"
-file_probe_info_no_match = dir_annotations + "/oligo_DB_no_match.tsv"
-file_probe_info_exact_matches = dir_annotations + "/oligo_DB_exact_matches.tsv"
+# Files containing oligo info for tests
+file_oligo_info_match = dir_annotations + "/oligo_DB_match.tsv"
+file_oligo_info_no_match = dir_annotations + "/oligo_DB_no_match.tsv"
+file_oligo_info_exact_matches = dir_annotations + "/oligo_DB_exact_matches.tsv"
 
 # blastn parameters
 word_size = 10
 percent_identity = 80
-probe_length_min = 30
-probe_length_max = 40
+oligo_length_min = 30
+oligo_length_max = 40
 coverage = 50
 
 # bowtie parameters
@@ -44,8 +44,8 @@ mismatch_region = 5
 
 
 # Parameters to test ligation region argument
-file_probe_info_ligation_match = dir_annotations + "/oligo_DB_ligation_match.tsv"
-file_probe_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_no_match.tsv"
+file_oligo_info_ligation_match = dir_annotations + "/oligo_DB_ligation_match.tsv"
+file_oligo_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_no_match.tsv"
 
 
 @pytest.fixture(autouse=True)
@@ -57,17 +57,17 @@ def run_around_tess():
 def test_filter_exact_matches():
     # check that exact matches filters out a doubled sequence from the db
     exact_matches = ExactMatches(dir_output)
-    probe_info_dict_exact_matches = read_oligos_DB_tsv(file_probe_info_exact_matches)
-    filtered_probe_info_dict_match = exact_matches.apply(
-        probe_info_dict_exact_matches, file_transcriptome_fasta, n_jobs
+    oligo_info_dict_exact_matches = read_oligos_DB_tsv(file_oligo_info_exact_matches)
+    filtered_oligo_info_dict_match = exact_matches.apply(
+        oligo_info_dict_exact_matches, file_transcriptome_fasta, n_jobs
     )
 
     assert (
-        "WASH7P_1" not in filtered_probe_info_dict_match["WASH7P"].keys()
-    ), "A matching probe has not been filtered from exact matches!"
+        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
+    ), "A matching oligo has not been filtered from exact matches!"
     assert (
-        "AGRN_1" not in filtered_probe_info_dict_match["AGRN"].keys()
-    ), "A matching probe has not been filtered from exact mathces!"
+        "AGRN_1" not in filtered_oligo_info_dict_match["AGRN"].keys()
+    ), "A matching oligo has not been filtered from exact mathces!"
 
 
 def test_filter_bowtie_match():
@@ -78,15 +78,15 @@ def test_filter_bowtie_match():
         num_mismatches,
         mismatch_region,
     )
-    probe_info_dict_match = read_oligos_DB_tsv(file_probe_info_match)
-    filtered_probe_info_dict_match = bowtie_filter.apply(
-        probe_info_dict_match, file_transcriptome_fasta, n_jobs
+    oligo_info_dict_match = read_oligos_DB_tsv(file_oligo_info_match)
+    filtered_oligo_info_dict_match = bowtie_filter.apply(
+        oligo_info_dict_match, file_transcriptome_fasta, n_jobs
     )
 
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "WASH7P_1" not in filtered_probe_info_dict_match["WASH7P"].keys()
-    ), "A matching probe has not been filtered from Bowtie!"
+        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
+    ), "A matching oligo has not been filtered from Bowtie!"
 
 
 def test_filter_bowtie_no_match():
@@ -96,15 +96,15 @@ def test_filter_bowtie_no_match():
         num_mismatches,
         mismatch_region,
     )
-    probe_info_dict_no_match = read_oligos_DB_tsv(file_probe_info_no_match)
-    filtered_probe_info_dict_match = bowtie_filter.apply(
-        probe_info_dict_no_match, file_transcriptome_fasta, n_jobs
+    oligo_info_dict_no_match = read_oligos_DB_tsv(file_oligo_info_no_match)
+    filtered_oligo_info_dict_match = bowtie_filter.apply(
+        oligo_info_dict_no_match, file_transcriptome_fasta, n_jobs
     )
 
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "AGRN_1" in filtered_probe_info_dict_match["AGRN"].keys()
-    ), "A non matching probe has been filtered from Bowtie!"
+        "AGRN_1" in filtered_oligo_info_dict_match["AGRN"].keys()
+    ), "A non matching oligo has been filtered from Bowtie!"
 
 
 def test_filter_bowtie2_match():
@@ -113,15 +113,15 @@ def test_filter_bowtie2_match():
     bowtie2_filter = Bowtie2(
         dir_output,
     )
-    probe_info_dict_match = read_oligos_DB_tsv(file_probe_info_match)
-    filtered_probe_info_dict_match = bowtie2_filter.apply(
-        probe_info_dict_match, file_transcriptome_fasta, n_jobs
+    oligo_info_dict_match = read_oligos_DB_tsv(file_oligo_info_match)
+    filtered_oligo_info_dict_match = bowtie2_filter.apply(
+        oligo_info_dict_match, file_transcriptome_fasta, n_jobs
     )
 
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "WASH7P_1" not in filtered_probe_info_dict_match["WASH7P"].keys()
-    ), "A matching probe has not been filtered from Bowtie!"
+        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
+    ), "A matching oligo has not been filtered from Bowtie!"
 
 
 def test_filter_bowtie2_no_match():
@@ -129,15 +129,15 @@ def test_filter_bowtie2_no_match():
     bowtie2_filter = Bowtie2(
         dir_output,
     )
-    probe_info_dict_no_match = read_oligos_DB_tsv(file_probe_info_no_match)
-    filtered_probe_info_dict_match = bowtie2_filter.apply(
-        probe_info_dict_no_match, file_transcriptome_fasta, n_jobs
+    oligo_info_dict_no_match = read_oligos_DB_tsv(file_oligo_info_no_match)
+    filtered_oligo_info_dict_match = bowtie2_filter.apply(
+        oligo_info_dict_no_match, file_transcriptome_fasta, n_jobs
     )
 
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "AGRN_1" in filtered_probe_info_dict_match["AGRN"].keys()
-    ), "A non matching probe has been filtered from Bowtie!"
+        "AGRN_1" in filtered_oligo_info_dict_match["AGRN"].keys()
+    ), "A non matching oligo has been filtered from Bowtie!"
 
 
 def test_filter_blast_match():
@@ -145,55 +145,55 @@ def test_filter_blast_match():
 
     # Run blast filter
     blast_filter = Blastn(dir_output, word_size, percent_identity, coverage)
-    probe_info_dict_match = read_oligos_DB_tsv(file_probe_info_match)
-    filtered_probe_info_dict_match = blast_filter.apply(
-        probe_info_dict_match, file_transcriptome_fasta, n_jobs
+    oligo_info_dict_match = read_oligos_DB_tsv(file_oligo_info_match)
+    filtered_oligo_info_dict_match = blast_filter.apply(
+        oligo_info_dict_match, file_transcriptome_fasta, n_jobs
     )
 
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "WASH7P_1" not in filtered_probe_info_dict_match["WASH7P"].keys()
-    ), "A matching probe has not been filtered from Blast!"
+        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
+    ), "A matching oligo has not been filtered from Blast!"
 
 
 def test_filter_blast_no_match():
     # Check that blast does not filter filters out a sequence which is not a match
     blast_filter = Blastn(dir_output, word_size, percent_identity, coverage)
-    probe_info_dict_no_match = read_oligos_DB_tsv(file_probe_info_no_match)
-    filtered_probe_info_dict_match = blast_filter.apply(
-        probe_info_dict_no_match, file_transcriptome_fasta, n_jobs
+    oligo_info_dict_no_match = read_oligos_DB_tsv(file_oligo_info_no_match)
+    filtered_oligo_info_dict_match = blast_filter.apply(
+        oligo_info_dict_no_match, file_transcriptome_fasta, n_jobs
     )
 
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "AGRN_1" in filtered_probe_info_dict_match["AGRN"].keys()
-    ), "A non matching probe has been filtered from Bowtie!"
+        "AGRN_1" in filtered_oligo_info_dict_match["AGRN"].keys()
+    ), "A non matching oligo has been filtered from Bowtie!"
 
 
 def test_seed_filter_match():
     ligation_seed_region = LigationRegionCreation(ligation_region_size=10)
     seed_region_filter = BowtieSeedRegion(dir_output, ligation_seed_region)
-    probe_info_dict_ligation_match = read_oligos_DB_tsv(file_probe_info_ligation_match)
-    filtered_probe_info_dict_ligation_match = seed_region_filter.apply(
-        probe_info_dict_ligation_match, file_transcriptome_fasta_ligation, n_jobs
+    oligo_info_dict_ligation_match = read_oligos_DB_tsv(file_oligo_info_ligation_match)
+    filtered_oligo_info_dict_ligation_match = seed_region_filter.apply(
+        oligo_info_dict_ligation_match, file_transcriptome_fasta_ligation, n_jobs
     )
 
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "WASH7P_1" not in filtered_probe_info_dict_ligation_match["WASH7P"].keys()
-    ), "A  matching probe hasn't been filtered from Seed Region Filter!"
+        "WASH7P_1" not in filtered_oligo_info_dict_ligation_match["WASH7P"].keys()
+    ), "A  matching oligo hasn't been filtered from Seed Region Filter!"
 
 
 def test_seed_filter_no_match():
     ligation_seed_region = LigationRegionCreation(ligation_region_size=10)
     seed_region_filter = BowtieSeedRegion(dir_output, ligation_seed_region)
-    probe_info_dict_ligation_no_match = read_oligos_DB_tsv(
-        file_probe_info_ligation_nomatch
+    oligo_info_dict_ligation_no_match = read_oligos_DB_tsv(
+        file_oligo_info_ligation_nomatch
     )
-    filtered_probe_info_dict_ligation_no_match = seed_region_filter.apply(
-        probe_info_dict_ligation_no_match, file_transcriptome_fasta_ligation, n_jobs
+    filtered_oligo_info_dict_ligation_no_match = seed_region_filter.apply(
+        oligo_info_dict_ligation_no_match, file_transcriptome_fasta_ligation, n_jobs
     )
-    # check tha the probe has been removed form the dataset
+    # check tha the oligo has been removed form the dataset
     assert (
-        "WASH7P_1" in filtered_probe_info_dict_ligation_no_match["WASH7P"].keys()
-    ), "A non matching probe has been filtered from Seed Region Filter!"
+        "WASH7P_1" in filtered_oligo_info_dict_ligation_no_match["WASH7P"].keys()
+    ), "A non matching oligo has been filtered from Seed Region Filter!"

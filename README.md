@@ -48,7 +48,7 @@ All packages listed above are automatically installed if the installation is don
 PyPI install:
 
 ```
-pip install oligo-designer-toolbox
+pip install oligo-designer-toolsuite
 ```
 
 Installation of the package via pip from source:

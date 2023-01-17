@@ -11,10 +11,10 @@ import pandas as pd
 import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
-from ..IO import CustomDB
+from ..database import CustomOligoDB
 
 ############################################
-# probe set generator class
+# oligo set generator class
 ############################################
 
 
@@ -51,17 +51,19 @@ class PadlockSequenceDesigner:
         self.Tm_parameters = Tm_parameters
         self.Tm_correction_parameters = Tm_correction_parameters
 
-    def design_padlocks(self, database: CustomDB, dir_padlock: str = "padlock_probes"):
-        """Design final padlock probe sequences for the probesets in the given database.
+    def design_padlocks(
+        self, database: CustomOligoDB, dir_padlock: str = "padlock_oligos"
+    ):
+        """Design final padlock oligo sequences for the oligosets in the given database.
 
         Saves in a subfolder of ``databse.dir_output`` called ``dir_padlock`` the following files:
-        - table at dir_out+"padlock_probes.yml" with final padlock probe sequences, detection oligo sequences, and infos
-        - table at dir_out+"padlock_probes_order.yml" with final padlock probe sequences and detection oligo sequences
+        - table at dir_out+"padlock_oligos.yml" with final padlock oligo sequences, detection oligo sequences, and infos
+        - table at dir_out+"padlock_oligos_order.yml" with final padlock oligo sequences and detection oligo sequences
 
 
         :param database: database containging all teh infromation on the oligo sequences
         :type database: CustomDB
-        :param dir_padlock: name of the subfolder of ``databse.dir_output`` where the files will be written, defaults to "padlock_probes"
+        :param dir_padlock: name of the subfolder of ``databse.dir_output`` where the files will be written, defaults to "padlock_oligos"
         :type dir_padlock: str, optional
         """
 
@@ -69,31 +71,31 @@ class PadlockSequenceDesigner:
         Path(dir_padlock).mkdir(parents=True, exist_ok=True)
 
         oligos_DB = database.oligos_DB
-        probesets = database.probesets
+        oligosets = database.oligosets
         yaml_dict = {}
-        genes = list(probesets.keys())
+        genes = list(oligosets.keys())
 
         for gene_idx, gene in enumerate(genes):
             yaml_dict[gene] = {}
 
             oligos_DB_gene = oligos_DB[gene]
-            probesets_gene = probesets[gene]
-            probeset = self._best_probeset_with_possible_detection_oligos(
-                probesets_gene, oligos_DB_gene, minT=2
+            oligosets_gene = oligosets[gene]
+            oligoset = self._best_oligoset_with_possible_detection_oligos(
+                oligosets_gene, oligos_DB_gene, minT=2
             )
 
-            for probe_idx, probe_id in enumerate(probeset):
-                # NOTE: so far what we called "probe" is actually the sequence on the target mRNA, it was straightforward
+            for oligo_idx, oligo_id in enumerate(oligoset):
+                # NOTE: so far what we called "oligo" is actually the sequence on the target mRNA, it was straightforward
                 #       to adjust everything from here, but it would have been cleaner to take the reverse complement
                 #       from the beginning. The previous ligation_site for example needed to be adjusted which might be
                 #       confusing when looking into files generated in previous steps. Also the arm Tm's could have
                 #       changed, but the naming (arm1, arm2) still fits and Tm(seq)==Tm(rev_compl(seq)) (properly tested).
-                target_mRNA = oligos_DB_gene[probe_id]["probe_sequence"]
+                target_mRNA = oligos_DB_gene[oligo_id]["oligo_sequence"]
                 complementary_seq = str(target_mRNA.reverse_complement())
                 ligation_idx = len(target_mRNA) - int(
-                    oligos_DB_gene[probe_id]["ligation_site"]
+                    oligos_DB_gene[oligo_id]["ligation_site"]
                 )
-                full_seq, sub_seqs = self._get_padlock_probe(
+                full_seq, sub_seqs = self._get_padlock_oligo(
                     gene_idx,
                     complementary_seq,
                     ligation_idx,
@@ -104,11 +106,11 @@ class PadlockSequenceDesigner:
                     complementary_seq, ligation_idx, minT=2
                 )
 
-                yaml_dict[gene][f"{gene}_probe{probe_idx+1}"] = {}
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"] = {}
 
                 # TODO: potentially nice to also save organism, full gene name, reference genome
-                yaml_dict[gene][f"{gene}_probe{probe_idx+1}"]["probe_id"] = probe_id
-                yaml_dict[gene][f"{gene}_probe{probe_idx+1}"]["gene_id"] = gene
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["oligo_id"] = oligo_id
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["gene_id"] = gene
                 for key in [
                     "transcript_id",
                     "exon_id",
@@ -117,12 +119,12 @@ class PadlockSequenceDesigner:
                     "end",
                     "strand",
                 ]:
-                    yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = str(
-                        oligos_DB_gene[probe_id][key]
+                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = str(
+                        oligos_DB_gene[oligo_id][key]
                     )
-                yaml_dict[gene][f"{gene}_probe{probe_idx+1}"].update(
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"].update(
                     {
-                        "padlock_probe_full_sequence": str(full_seq),
+                        "padlock_oligo_full_sequence": str(full_seq),
                         "detection_oligo_sequence": str(det_oligo_seq),
                         "padlock_arm1_sequence": str(sub_seqs["arm1"]),
                         "padlock_accessory1_sequence": str(sub_seqs["accessory1"]),
@@ -143,76 +145,76 @@ class PadlockSequenceDesigner:
                     "melt_temp_arm2",
                     "dif_melt_temp_arms",
                 ]:
-                    yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = float(
-                        oligos_DB_gene[probe_id][key]
+                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = float(
+                        oligos_DB_gene[oligo_id][key]
                     )
                 for key in ["length"]:  # , "ligation_site"]:
-                    yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][key] = int(
-                        oligos_DB_gene[probe_id][key]
+                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = int(
+                        oligos_DB_gene[oligo_id][key]
                     )
-                yaml_dict[gene][f"{gene}_probe{probe_idx+1}"]["ligation_site"] = int(
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["ligation_site"] = int(
                     ligation_idx
                 )
-                yaml_dict[gene][f"{gene}_probe{probe_idx+1}"][
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][
                     "melt_temp_detection_oligo"
                 ] = float(det_oligo_Tm)
 
-        with open(os.path.join(dir_padlock, "padlock_probes.yml"), "w") as outfile:
+        with open(os.path.join(dir_padlock, "padlock_oligos.yml"), "w") as outfile:
             yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
 
         yaml_order = {}
         for gene in yaml_dict:
             yaml_order[gene] = {}
-            for probe_id in yaml_dict[gene]:
-                yaml_order[gene][probe_id] = {}
-                yaml_order[gene][probe_id]["padlock_probe_full_sequence"] = yaml_dict[
+            for oligo_id in yaml_dict[gene]:
+                yaml_order[gene][oligo_id] = {}
+                yaml_order[gene][oligo_id]["padlock_oligo_full_sequence"] = yaml_dict[
                     gene
-                ][probe_id]["padlock_probe_full_sequence"]
-                yaml_order[gene][probe_id]["detection_oligo_sequence"] = yaml_dict[
+                ][oligo_id]["padlock_oligo_full_sequence"]
+                yaml_order[gene][oligo_id]["detection_oligo_sequence"] = yaml_dict[
                     gene
-                ][probe_id]["detection_oligo_sequence"]
+                ][oligo_id]["detection_oligo_sequence"]
 
         with open(
-            os.path.join(dir_padlock, "padlock_probes_order.yml"), "w"
+            os.path.join(dir_padlock, "padlock_oligos_order.yml"), "w"
         ) as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
-    def _best_probeset_with_possible_detection_oligos(
-        self, probesets_gene: pd.DataFrame, oligos_DB_gene: dict, minT: int = 2
+    def _best_oligoset_with_possible_detection_oligos(
+        self, oligosets_gene: pd.DataFrame, oligos_DB_gene: dict, minT: int = 2
     ):
-        """Get row index of best probeset for which all detection oligos can be designed
+        """Get row index of best oligoset for which all detection oligos can be designed
 
         Criterions for detection oligo design are 1. a length constraint and 2. to have at least 2 T(hymines).
 
         TODO: The detection oligo thing is a bit annoying. Currently I don't want to set this as a constrained for
-            finding probes for a gene. Otherwise we could directly filter probes before searching for probesets
+            finding oligos for a gene. Otherwise we could directly filter oligos before searching for oligosets
             which would be great. Maybe something to think about in the future. For now we only check after having
-            the probe sets per gene.
+            the oligo sets per gene.
 
         Arguments
         ---------
-        probesets_gene: pd.DataFrame
-            Dataframe with ranked probesets. Output of get_nonoverlapping_sets in nonoverlapping_sets.py.
+        oligosets_gene: pd.DataFrame
+            Dataframe with ranked oligosets. Output of get_nonoverlapping_sets in nonoverlapping_sets.py.
         oligos_DB_gene: dict
-            Dictionary with probe infos.
+            Dictionary with oligo infos.
         minT: int
             Minimal number of T(hymines) in detection oligo.
 
         Returns
         -------
         int:
-            Numerical row index of first probeset that only contains probes for which a detection oligo can be designed.
-            If no probeset can be found the first probeset index i.e. 0 is returned.
+            Numerical row index of first oligoset that only contains oligos for which a detection oligo can be designed.
+            If no oligoset can be found the first oligoset index i.e. 0 is returned.
 
         """
-        for _, row in probesets_gene.iterrows():
-            probeset = [row[col] for col in row.index if col.startswith("probe_")]
+        for _, row in oligosets_gene.iterrows():
+            oligoset = [row[col] for col in row.index if col.startswith("oligo_")]
 
-            for probe_id in probeset:
-                target_mRNA = oligos_DB_gene[probe_id]["probe_sequence"]
+            for oligo_id in oligoset:
+                target_mRNA = oligos_DB_gene[oligo_id]["oligo_sequence"]
                 complementary_seq = str(target_mRNA.reverse_complement())
                 ligation_idx = len(target_mRNA) - int(
-                    oligos_DB_gene[probe_id]["ligation_site"]
+                    oligos_DB_gene[oligo_id]["ligation_site"]
                 )
 
                 (
@@ -223,21 +225,21 @@ class PadlockSequenceDesigner:
                 if (start_oligo_long_left is not None) and (
                     start_oligo_long_left.count("T") >= minT
                 ):
-                    return probeset
+                    return oligoset
                 elif (start_oligo_long_right is not None) and (
                     start_oligo_long_right.count("T") >= minT
                 ):
-                    return probeset
+                    return oligoset
                 elif start_oligo.count("T") >= minT:
-                    return probeset
+                    return oligoset
 
         return [
-            probesets_gene[col].iloc[0]
-            for col in probesets_gene.columns
-            if col.startswith("probe_")
+            oligosets_gene[col].iloc[0]
+            for col in oligosets_gene.columns
+            if col.startswith("oligo_")
         ]  # return the first set
 
-    def _get_padlock_probe(
+    def _get_padlock_oligo(
         self,
         gene_idx,
         complementary_seq,
@@ -245,17 +247,17 @@ class PadlockSequenceDesigner:
         barcode_seed=0,
         barcode_length=4,
     ):
-        """Get full padlock probe for a given gene and a given complementary sequence
+        """Get full padlock oligo for a given gene and a given complementary sequence
 
         Arguments
         ---------
         gene_idx: int
             Identifier for a given gene. The identifier makes sure to return the same bar code
-            for the different padlock probes of a given gene.
+            for the different padlock oligos of a given gene.
         complementary_seq: str
             Sequence that hybridises with the target RNA
         ligation_idx: int
-            Site where complementary_seq is cut in two arms according padlock probe design
+            Site where complementary_seq is cut in two arms according padlock oligo design
         barcode_seed: int
             Defines the random assignment of barcodes to each gene_idx.
         barcode_length: int
@@ -264,14 +266,14 @@ class PadlockSequenceDesigner:
         Returns
         -------
         str:
-            padlock probe sequence (5' to 3')
+            padlock oligo sequence (5' to 3')
         dict of strs:
             Individual parts of the padlock sequence
 
         """
 
         def _convert_complementary_seq_to_arms(complementary_seq, ligation_idx):
-            """Convert the complementary sequence of padlock probes to two arms with 5' to 3' convention
+            """Convert the complementary sequence of padlock oligos to two arms with 5' to 3' convention
 
             E.g.
             complementary_seq = "AAAATGCTTAAGC" ligation_idx = 7
@@ -283,7 +285,7 @@ class PadlockSequenceDesigner:
             complementary_seq: str
                 Sequence that hybridises with the target RNA
             ligation_idx: int
-                Site where complementary_seq is cut in two arms according padlock probe design
+                Site where complementary_seq is cut in two arms according padlock oligo design
 
             Returns
             -------
@@ -296,16 +298,16 @@ class PadlockSequenceDesigner:
             return [arm1, arm2]
 
         def _get_barcode(gene_idx, length=4, seed=0):
-            """Get barcode sub sequence of padlock probe for in situ sequencing
+            """Get barcode sub sequence of padlock oligo for in situ sequencing
 
-            For SCRINSHOT padlock probes this could be constant, however it makes sense to have
-            different barcodes so that the probe set could also be used for ISS experiments.
+            For SCRINSHOT padlock oligos this could be constant, however it makes sense to have
+            different barcodes so that the oligo set could also be used for ISS experiments.
 
             Arguments
             ---------
             gene_idx: int
                 Identifier for a given gene. The identifier makes sure to return the same bar code
-                for the different padlock probes of a given gene.
+                for the different padlock oligos of a given gene.
             length: int
                 Length of barcode sequence
             seed: int
@@ -332,13 +334,13 @@ class PadlockSequenceDesigner:
         def _SCRINSHOT_or_ISS_backbone_sequence(
             gene_idx, barcode_length=4, barcode_seed=0
         ):
-            """Get backbone sequence of padlock probes for SCRINSHOT or ISS
+            """Get backbone sequence of padlock oligos for SCRINSHOT or ISS
 
             Arguments
             ---------
             gene_idx: int
                 Identifier for a given gene. The identifier makes sure to return the same bar code
-                for the different padlock probes of a given gene.
+                for the different padlock oligos of a given gene.
             barcode_length: int
                 Length of barcode sequence
             barcode_seed: int
@@ -381,10 +383,10 @@ class PadlockSequenceDesigner:
 
         return full_seq, sub_seqs
 
-    def _get_detection_oligo(self, probe_sequence, ligation_site, minT=2):
-        """Get detection oligo sequence for a given probe
+    def _get_detection_oligo(self, oligo_sequence, ligation_site, minT=2):
+        """Get detection oligo sequence for a given oligo
 
-        Detection oligos have the same sequence as the complementary sequence (i.e. `probe_sequence`) but shortend and
+        Detection oligos have the same sequence as the complementary sequence (i.e. `oligo_sequence`) but shortend and
         reversed. The ligation site is placed in the middle of the detection oligo. The detection oligo is shortend to get
         its melting temperature as close as possible to config["detect_oligo_Tm_opt"] but not shorter than
         config["detect_oligo_length_min"].
@@ -392,8 +394,8 @@ class PadlockSequenceDesigner:
 
         Arguments
         ---------
-        probe_sequence: str
-            The sequence of the complementary probe
+        oligo_sequence: str
+            The sequence of the complementary oligo
         ligation_site: int
             Ligation site
         config: dict
@@ -410,24 +412,24 @@ class PadlockSequenceDesigner:
 
         """
 
-        def _get_oligo_Tm(probe_sequence, Tm_parameters, Tm_correction_parameters):
+        def _get_oligo_Tm(oligo_sequence, Tm_parameters, Tm_correction_parameters):
             """Compute the melting temperature for the detection oligo sequence
 
             #TODO: this function is not placed very nicely. Also it uses utils.get_Tm_parameters everytime we calculate a new
-                oligo. In datamodule.py we have the same function for the probe sequence instead of the oligo. Idk atm,
+                oligo. In datamodule.py we have the same function for the oligo sequence instead of the oligo. Idk atm,
                 it could be handled nicer. Not rly important atm since we only compute a handful of detection oligos.
 
             In the first step the melting temperature is calculated based on sequence and salt concentrations. In the
             second step the temperature is corrected by formamide (and DMSO) percentage.
 
-            :param probe_sequence: Sequence of probe
-            :type probe_sequence: string
+            :param oligo_sequence: Sequence of oligo
+            :type oligo_sequence: string
             :param Tm_parameters: Parameters for melting temperature calculation
             :type Tm_parameters: dict
             :param Tm_correction_parameters: Parameters for melting temperature formamide correction
             :type Tm_correction_parameters: dict
             """
-            Tm = mt.Tm_NN(probe_sequence, **Tm_parameters)
+            Tm = mt.Tm_NN(oligo_sequence, **Tm_parameters)
             Tm_corrected = round(mt.chem_correction(Tm, **Tm_correction_parameters), 2)
             return Tm_corrected
 
@@ -510,15 +512,15 @@ class PadlockSequenceDesigner:
 
             return best_oligo, best_Tm_dif
 
-        def _exchange_T_with_U(probe, minT=2, U_distance=5):
+        def _exchange_T_with_U(oligo, minT=2, U_distance=5):
             """Exchange 2 T(hymines) with U(racils) and find best side for fluorophore (closest U)
 
             Arguments
             ---------
-            probe: str
+            oligo: str
                 Sequence
             minT: int
-                Minimal number of T(hymines) in probe
+                Minimal number of T(hymines) in oligo
             U_distance: int
                 Preferred minimal distance between U(racils)
 
@@ -531,15 +533,15 @@ class PadlockSequenceDesigner:
 
             """
 
-            if probe.count("T") < minT:
+            if oligo.count("T") < minT:
                 return "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO", None
 
-            if probe.find("T") < probe[::-1].find("T"):
+            if oligo.find("T") < oligo[::-1].find("T"):
                 fluorophor_pos = "left"
-                p = probe
+                p = oligo
             else:
                 fluorophor_pos = "right"
-                p = probe[::-1]
+                p = oligo[::-1]
 
             pos = 0
             new_pos = 1
@@ -569,7 +571,7 @@ class PadlockSequenceDesigner:
             start_oligo,
             start_oligo_long_left,
             start_oligo_long_right,
-        ) = self._get_initial_oligos_for_search(probe_sequence, ligation_site)
+        ) = self._get_initial_oligos_for_search(oligo_sequence, ligation_site)
 
         # Check which of the three initial oligos is the best one
         best_oligo = start_oligo
@@ -612,7 +614,7 @@ class PadlockSequenceDesigner:
 
         return oligo_seq, oligo_Tm
 
-    def _get_initial_oligos_for_search(self, probe_sequence, ligation_site):
+    def _get_initial_oligos_for_search(self, oligo_sequence, ligation_site):
         """Get initial oligos for best oligo search
 
         We only allow a difference of 1 nt for the sequences left and right of the ligation site.
@@ -621,9 +623,9 @@ class PadlockSequenceDesigner:
 
         In a firt step we find the oligo sequence that is possible based on the location of the ligation site.
         E.g. (the "|" is only for marking the ligation site):
-            - probe_sequence = AAA|CTGCTG -> oligo = AAA|CTGC
-            - probe_sequence = AAA|CTG    -> oligo = AAA|CTG
-            - probe_sequence = AAAAA|CTG  -> oligo = AAAA|CTG
+            - oligo_sequence = AAA|CTGCTG -> oligo = AAA|CTGC
+            - oligo_sequence = AAA|CTG    -> oligo = AAA|CTG
+            - oligo_sequence = AAAAA|CTG  -> oligo = AAAA|CTG
 
         Then the following parameter scenarios can occur:
         1. The length constraint is smaller than the length of the oligo
@@ -632,7 +634,7 @@ class PadlockSequenceDesigner:
             1.2 the maximal length is odd:
                 --> three different oligos: even, longer left, longer right
         2. The length of the oligo is smaller than the length constraint
-            2.1 the length of the oligo is even (this only happens when the ligation site is exactly in the middle of an even length probe)
+            2.1 the length of the oligo is even (this only happens when the ligation site is exactly in the middle of an even length oligo)
                 --> only an even length oligo
             2.2 the length of the oligo is odd
                 2.2.1 ligation site is closer to the left
@@ -642,10 +644,10 @@ class PadlockSequenceDesigner:
 
         Arguments
         ---------
-        probe_sequence: str
-            Sequence of probe for which a detection oligo is designed
+        oligo_sequence: str
+            Sequence of oligo for which a detection oligo is designed
         ligation_site: int
-            Position of ligation site. E.g. probe_sequence="AACTG", ligation_site = 2: AA|CTG
+            Position of ligation site. E.g. oligo_sequence="AACTG", ligation_site = 2: AA|CTG
         oligo_length_max_constraint: int
             Maximal length of oligo sequence.
 
@@ -665,21 +667,21 @@ class PadlockSequenceDesigner:
         max_len_constraint_is_even = (self.detect_oligo_length_max % 2) == 0
         constraint_half_len = self.detect_oligo_length_max // 2
 
-        probe_length = len(probe_sequence)
-        oligo_half_length_max = min(ligation_site, probe_length - ligation_site)
+        oligo_length = len(oligo_sequence)
+        oligo_half_length_max = min(ligation_site, oligo_length - ligation_site)
 
-        if ligation_site == (probe_length - ligation_site):
-            oligo = probe_sequence
-        elif ligation_site > (probe_length - ligation_site):
-            oligo = probe_sequence[probe_length - 2 * oligo_half_length_max - 1 :]
+        if ligation_site == (oligo_length - ligation_site):
+            oligo = oligo_sequence
+        elif ligation_site > (oligo_length - ligation_site):
+            oligo = oligo_sequence[oligo_length - 2 * oligo_half_length_max - 1 :]
         else:
-            oligo = probe_sequence[: 2 * oligo_half_length_max + 1]
+            oligo = oligo_sequence[: 2 * oligo_half_length_max + 1]
 
         # Different scenarios
         if self.detect_oligo_length_max < len(oligo):
             # 1.1
             if max_len_constraint_is_even:
-                start_oligo = probe_sequence[
+                start_oligo = oligo_sequence[
                     ligation_site
                     - constraint_half_len : ligation_site
                     + constraint_half_len
@@ -688,18 +690,18 @@ class PadlockSequenceDesigner:
                 start_oligo_long_right = None
             # 1.2
             else:
-                start_oligo = probe_sequence[
+                start_oligo = oligo_sequence[
                     ligation_site
                     - constraint_half_len : ligation_site
                     + constraint_half_len
                 ]
-                start_oligo_long_left = probe_sequence[
+                start_oligo_long_left = oligo_sequence[
                     ligation_site
                     - constraint_half_len
                     - 1 : ligation_site
                     + constraint_half_len
                 ]
-                start_oligo_long_right = probe_sequence[
+                start_oligo_long_right = oligo_sequence[
                     ligation_site
                     - constraint_half_len : ligation_site
                     + constraint_half_len

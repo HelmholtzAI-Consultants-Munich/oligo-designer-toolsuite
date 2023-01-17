@@ -1,12 +1,13 @@
 import os
 import random
+import re
 
 import pandas as pd
 
 from ..utils._data_parser import get_sequence_from_annotation, read_gtf
 
 
-class GeneTranscript:
+class TranscriptGenerator:
     """Creates the transcriptome for the whole genome or for a set of genes.
 
     :param file_sequence: pathe to the fasta file
@@ -15,17 +16,18 @@ class GeneTranscript:
     :type file_annotation: str
     """
 
-    def __init__(self, file_sequence, file_annotation):
+    def __init__(self, file_sequence: str, file_annotation: str):
         """Initialize the class."""
 
         self.file_sequence = file_sequence
         self.file_annotation = file_annotation
-        self.annotation = read_gtf(
-            self.file_annotation
-        )  # dataframe with annotation file
+        self.annotation = self.__get_annotation()
 
     def generate_for_reference(
-        self, block_size, file_gene_transcript_fasta, dir_out="output/annotation"
+        self,
+        block_size: int,
+        file_gene_transcript_fasta: str,
+        dir_out: str = "output/annotation",
     ):
         """Creates a fasta file containing the whole transcriptome and its annotation file for the reference DB. The file contains also the exon junctions, which are the union of two consecuteive exons and
         for each exon we consider only the last/ first <block_size> base pairs.
@@ -45,9 +47,9 @@ class GeneTranscript:
         unique_exons = self.__load_unique_exons(exons_annotation)
         unique_exons = self.__merge_containing_exons(unique_exons)
         # get exon junction annotation
-        exon_junctions_probes = self.__load_exon_junctions(block_size, exons_annotation)
+        exon_junctions_oligos = self.__load_exon_junctions(block_size, exons_annotation)
         # concatenate the two annotations
-        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_probes])
+        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_oligos])
         gene_transcript_annotation = gene_transcript_annotation.sort_values(
             by=["gene_id"]
         )
@@ -81,7 +83,10 @@ class GeneTranscript:
         return file_gene_transcript_fasta
 
     def generate_for_oligos(
-        self, block_size, dir_output="output/annotation", genes=None
+        self,
+        block_size: int,
+        dir_output: str = "output/annotation",
+        genes: list[str] = None,
     ):
         """Creates a annotation file fro the whole transcriptome for teh oligos DB. The file contains also the exon junctions, which are the union of two consecuteive exons and
         for each exon we consider only the last/ first <block_size> base pairs.
@@ -107,11 +112,11 @@ class GeneTranscript:
         # merge exon annotations for the same region
         unique_exons = self.__load_unique_exons(exons_annotation)
         # get exon junction annotation
-        exon_junctions_probes = self.__load_exon_junctions(
+        exon_junctions_oligos = self.__load_exon_junctions(
             block_size, exons_annotation, annotation_genes
         )
         # concatenate the two annotations
-        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_probes])
+        gene_transcript_annotation = pd.concat([unique_exons, exon_junctions_oligos])
         gene_transcript_annotation = gene_transcript_annotation.sort_values(
             by=["gene_id"]
         )
@@ -472,7 +477,7 @@ class GeneTranscript:
                     exons_small = []
                 elif ((idx + 1) < len(exons)) & (
                     (attributes[2] - attributes[1]) < block_size
-                ):  # if exon is not the last exon of transcript and shorter than probe block_size but not the last exon -> create sequence with neighboring exons
+                ):  # if exon is not the last exon of transcript and shorter than oligo block_size but not the last exon -> create sequence with neighboring exons
                     exons_small.append(attributes)
                 else:
                     exon_downstream = attributes
@@ -544,3 +549,32 @@ class GeneTranscript:
                     exon_upstream = attributes
 
         return exon_junction_list
+
+    def __get_annotation(self):
+        """
+        Parsing the gtf file is computationally expensive, therefore we store the result and reuse it in the future
+        """
+        dir_annotation = os.path.dirname(self.file_annotation)
+        parsed_annotation_file = (
+            os.path.basename(self.file_annotation).split(".gtf")[0] + ".pkl"
+        )  # file name without extension
+        # check if the gtf file has been already parsed
+        exists = False
+        for file in os.listdir(dir_annotation):
+            if re.match(f"^{parsed_annotation_file}$", file):
+                exists = True
+                break
+
+        if exists == False:
+            annotation = read_gtf(
+                self.file_annotation
+            )  # dataframe with annotation file
+            # store the result for later use
+            annotation.to_pickle(os.path.join(dir_annotation, parsed_annotation_file))
+        else:
+            # read the parsed gtf file
+            annotation = pd.read_pickle(
+                os.path.join(dir_annotation, parsed_annotation_file)
+            )
+
+        return annotation

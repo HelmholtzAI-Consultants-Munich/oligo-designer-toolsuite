@@ -9,16 +9,16 @@ from . import Bowtie
 
 
 class BowtieSeedRegion(Bowtie):
-    """This class filters probes based on the Bowtie short read alignment tool on a specific sub-region of the probe. The region taken in consideration is created according to the ``seed_region_creation`` class.
-    The user can customize the filtering by specifying the num_mismatches, and all probes with number mismatches lower or equal to num_mismatches inside the mismatch_region are filtered out.
+    """This class filters oligos based on the Bowtie short read alignment tool on a specific sub-region of the oligo. The region taken in consideration is created according to the ``seed_region_creation`` class.
+    The user can customize the filtering by specifying the num_mismatches, and all oligos with number mismatches lower or equal to num_mismatches inside the seed region are filtered out.
 
     Use conda install -c bioconda bowtie to install Bowtie package
 
-    :param file_transcriptome_fasta: path to fasta file containing all probes
+    :param file_transcriptome_fasta: path to fasta file containing all oligos
     :type file_transcriptome_fasta: str
-    :param seed_region_creation: Class to generate the region of the probe where the mismatches are considered. Probes that have less than min_mismatches in the seed region are filtered out
+    :param seed_region_creation: Class to generate the region of the oligo where the mismatches are considered. Oligos that have less than min_mismatches in the seed region are filtered out
     :type seed_region_creation: SeedRegionCreationBase class
-    :param num_mismatches: Threshhold value on the number of mismatches required for each probe. Probes where the number of mismatches are greater than or equal to this threshhold are considered valid. Possible values range from 0 to 3.
+    :param num_mismatches: Threshhold value on the number of mismatches required for each oligo. Oligos where the number of mismatches are greater than or equal to this threshhold are considered valid. Possible values range from 0 to 3.
     :type num_mismatches: int
     """
 
@@ -86,14 +86,14 @@ class BowtieSeedRegion(Bowtie):
         return oligo_DB
 
     def _run_bowtie_seed_region(self, gene_DB_seed, gene_DB, gene, index_name):
-        """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts.
-        Bowtie identifies all allignments between the probes and transcripts and returns the number of mismatches and mismatch position for each alignment.
+        """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
+        Bowtie identifies all allignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
         :return: DataFrame with processed bowtie alignment search results.
         :rtype: pandas.DataFrame
         """
 
-        file_probe_fasta_gene = self._create_fasta_file(
+        file_oligo_fasta_gene = self._create_fasta_file(
             gene_DB_seed, self.dir_fasta, gene
         )
         file_bowtie_gene = os.path.join(
@@ -106,7 +106,7 @@ class BowtieSeedRegion(Bowtie):
             + " -f -a -v "
             + str(self.num_mismatches)
             + " "
-            + file_probe_fasta_gene
+            + file_oligo_fasta_gene
             + " "
             + file_bowtie_gene
         )
@@ -116,26 +116,26 @@ class BowtieSeedRegion(Bowtie):
         # read the results of the bowtie search
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
         # filter the DB based on the bowtie results
-        matching_probes = self._find_matching_probes(bowtie_results)
-        filtered_gene_DB = self._filter_matching_probes(gene_DB, matching_probes)
+        matching_oligos = self._find_matching_oligos(bowtie_results)
+        filtered_gene_DB = self._filter_matching_oligos(gene_DB, matching_oligos)
         # remove the temporary files
         os.remove(os.path.join(self.dir_seed_region, file_bowtie_gene))
-        os.remove(os.path.join(self.dir_fasta, file_probe_fasta_gene))
+        os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
         return filtered_gene_DB
 
     def _extract_seed_regions(self, oligo_DB):
-        """geneate a new oligos DB containing only the seed regions of the probes."""
+        """geneate a new oligos DB containing only the seed regions of the oligos."""
         oligo_DB_seed = {}
         for gene in oligo_DB.keys():
             oligo_DB_seed[gene] = {}
-            for probe_id in oligo_DB[gene].keys():
-                oligo_DB_seed[gene][probe_id] = {}
+            for oligo_id in oligo_DB[gene].keys():
+                oligo_DB_seed[gene][oligo_id] = {}
                 start, end = (
-                    oligo_DB[gene][probe_id]["seed_region_start"],
-                    oligo_DB[gene][probe_id]["seed_region_end"],
+                    oligo_DB[gene][oligo_id]["seed_region_start"],
+                    oligo_DB[gene][oligo_id]["seed_region_end"],
                 )
-                seed_region_seq = oligo_DB[gene][probe_id]["probe_sequence"][
+                seed_region_seq = oligo_DB[gene][oligo_id]["sequence"][
                     start : end + 1
                 ]  # end must be included
-                oligo_DB_seed[gene][probe_id]["probe_sequence"] = seed_region_seq
+                oligo_DB_seed[gene][oligo_id]["sequence"] = seed_region_seq
         return oligo_DB_seed
