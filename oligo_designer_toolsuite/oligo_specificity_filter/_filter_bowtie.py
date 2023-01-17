@@ -10,17 +10,17 @@ from . import SpecificityFilterBase
 
 
 class Bowtie(SpecificityFilterBase):
-    """This class filters probes based on the Bowtie short read alignment tool.
-    The user can customize the filtering by specifying the num_mismatches per probe and mismatch_region, the region that should be considered for counting mismatches.
-    That is, all probes with number mismatches higher than num_mismatches inside the mismatch_region are filtered out.
+    """This class filters oligos based on the Bowtie short read alignment tool.
+    The user can customize the filtering by specifying the num_mismatches per oligo and mismatch_region, the region that should be considered for counting mismatches.
+    That is, all oligos with number mismatches higher than num_mismatches inside the mismatch_region are filtered out.
 
     Use ``conda install -c bioconda bowtie to install Bowtie package``
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
-    :param num_mismatches: Threshold value on the number of mismatches required for each probe. Probes where the number of mismatches greater than this threshhold are considered valid. Possible values range from 0 to 3.
+    :param num_mismatches: Threshold value on the number of mismatches required for each oligo. ligos where the number of mismatches greater than this threshhold are considered valid. Possible values range from 0 to 3.
     :type num_mismatches: int
-    :param mismatch_region: The region of the probe where the mismatches are considered. Probes that have less than or equal to num_mismatches in the first L bases (where L is 5 or greater) are filtered out.
+    :param mismatch_region: The region of the oligo where the mismatches are considered. Oligos that have less than or equal to num_mismatches in the first L bases (where L is 5 or greater) are filtered out.
     If ``None`` then the whole sequence is considered, defaults to None
     :type mismatch_region: int
     """
@@ -55,13 +55,13 @@ class Bowtie(SpecificityFilterBase):
         """Apply the bowtie filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 
-        :param oligo_DB: database containing the probes and their features
+        :param oligo_DB: database containing the oligos and their features
         :type oligo_DB: dict
         :param file_reference_DB: path to the file that will be used as reference for the alignement
         :type file_reference_DB: str
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
-        :return: probe info of user-specified genes
+        :return: oligo info of user-specified genes
         :rtype : dict
         """
         # Some bowtie initializations, change the names
@@ -98,16 +98,16 @@ class Bowtie(SpecificityFilterBase):
         return oligo_DB
 
     def _run_bowtie(self, gene_DB, gene, index_name):
-        """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are probes and transcripts.
-        Bowtie identifies all alignments between the probes and transcripts and returns the number of mismatches and mismatch position for each alignment.
+        """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
+        Bowtie identifies all alignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
-        :param gene_DB: database containing the probes form one gene
+        :param gene_DB: database containing the oligos form one gene
         :type gene_DB: dict
         :param gene: id of the gene processed
         :type gene: str
         """
 
-        file_probe_fasta_gene = self._create_fasta_file(gene_DB, self.dir_fasta, gene)
+        file_oligo_fasta_gene = self._create_fasta_file(gene_DB, self.dir_fasta, gene)
         file_bowtie_gene = os.path.join(
             self.dir_bowtie,
             f"bowtie_{gene}.txt",
@@ -121,7 +121,7 @@ class Bowtie(SpecificityFilterBase):
                 + " -l "
                 + str(self.mismatch_region)
                 + " "
-                + file_probe_fasta_gene
+                + file_oligo_fasta_gene
                 + " "
                 + file_bowtie_gene
             )
@@ -132,7 +132,7 @@ class Bowtie(SpecificityFilterBase):
                 + " -f -a -v "
                 + str(self.num_mismatches)
                 + " "
-                + file_probe_fasta_gene
+                + file_oligo_fasta_gene
                 + " "
                 + file_bowtie_gene
             )
@@ -142,11 +142,11 @@ class Bowtie(SpecificityFilterBase):
         # read the results of the bowtie search
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
         # filter the DB based on the bowtie results
-        matching_probes = self._find_matching_probes(bowtie_results)
-        filtered_gene_DB = self._filter_matching_probes(gene_DB, matching_probes)
+        matching_oligos = self._find_matching_oligos(bowtie_results)
+        filtered_gene_DB = self._filter_matching_oligos(gene_DB, matching_oligos)
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie, file_bowtie_gene))
-        os.remove(os.path.join(self.dir_fasta, file_probe_fasta_gene))
+        os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
         return filtered_gene_DB
 
     def _read_bowtie_output(self, file_bowtie_gene):
@@ -178,7 +178,7 @@ class Bowtie(SpecificityFilterBase):
                 "mismatch_positions": str,
             },
         )
-        # return the real matches, that is the ones not belonging to the same gene of the query probe
+        # return the real matches, that is the ones not belonging to the same gene of the query oligo
         bowtie_results["query_gene_id"] = bowtie_results["query"].str.split("_").str[0]
         bowtie_results["reference_gene_id"] = (
             bowtie_results["reference"].str.split("::").str[0]
@@ -186,8 +186,8 @@ class Bowtie(SpecificityFilterBase):
 
         return bowtie_results
 
-    def _find_matching_probes(self, bowtie_results):
-        """Use the results of the Bowtie alignment search to identify probes with high similarity (i.e. low number of mismatches) based on user defined thresholds.
+    def _find_matching_oligos(self, bowtie_results):
+        """Use the results of the Bowtie alignment search to identify oligos with high similarity (i.e. low number of mismatches) based on user defined thresholds.
 
         :param bowtie_results: DataFrame with processed bowtie alignment search results.
         :type bowtie_results: pandas.DataFrame
@@ -197,5 +197,5 @@ class Bowtie(SpecificityFilterBase):
             bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
         ]
 
-        probes_with_match = bowtie_matches["query"].unique()
-        return probes_with_match
+        oligos_with_match = bowtie_matches["query"].unique()
+        return oligos_with_match

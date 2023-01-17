@@ -1,6 +1,5 @@
 import gzip
 import itertools
-import logging
 import os
 import re
 import shutil
@@ -19,13 +18,11 @@ class BaseFtpLoader:
     :type dir_output: string
     """
 
-    def __init__(self, dir_output) -> None:
+    def __init__(self, dir_output: str) -> None:
         """Constructor method"""
         self.dir_output = dir_output
-        # set logger
-        self.logging = logging.getLogger("probe_designer")
 
-    def download(self, ftp_link, ftp_directory, file_name):
+    def _download(self, ftp_link: str, ftp_directory: str, file_name: str):
         """
         Download file from ftp server.
 
@@ -54,7 +51,7 @@ class BaseFtpLoader:
 
         return file_output
 
-    def decompress_gzip(self, file_gzip):
+    def _decompress_gzip(self, file_gzip):
         """
         Decompress zip files.
 
@@ -71,19 +68,19 @@ class BaseFtpLoader:
 
         return file_output
 
-    def download_and_decompress(self, ftp_link, ftp_directory, file_name):
+    def _download_and_decompress(self, ftp_link, ftp_directory, file_name):
         """Download genome sequence from ftp server and unzip file.
 
         :return: Path to downloaded file.
         :rtype: string
         """
 
-        file_download = self.download(ftp_link, ftp_directory, file_name)
-        file_unzipped = self.decompress_gzip(file_download)
+        file_download = self._download(ftp_link, ftp_directory, file_name)
+        file_unzipped = self._decompress_gzip(file_download)
 
         return file_unzipped
 
-    def check_file_type(self, file_type):
+    def _check_file_type(self, file_type):
         valid_file_types = ["gtf", "fasta"]
 
         if file_type not in valid_file_types:
@@ -101,20 +98,22 @@ class FtpLoaderEnsembl(BaseFtpLoader):
     """
     Class for downloading annotations from Ensembl, inheriting from BaseFtpLoader.
 
+    :param dir_output: folder where the files will downloaded
+    :type dir_output: string
     :param species: available species: human or mouse
     :type species: string
     :param annotation_release: release number of annotation or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
     :type annotation_release: string
     """
 
-    def __init__(self, dir_output, species, annotation_release) -> None:
+    def __init__(self, dir_output: str, species: str, annotation_release: str) -> None:
         """Constructor method"""
         super().__init__(dir_output)
         self.species = species
         self.genome_assembly_placeholder = "[^\.]*"
         self.annotation_release = annotation_release
 
-    def get_params(self, file_type):
+    def _get_params(self, file_type):
         """
         Get directory and file name for gtf and fasta files from Ensembl server
 
@@ -124,11 +123,11 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         :rtype: tuple of strings
         """
 
-        self.check_file_type(file_type)
+        self._check_file_type(file_type)
 
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        self.ftp_link = self.generate_FTP_link()
+        self.ftp_link = self._generate_FTP_link()
 
         if self.species == "human":
             species_id = "homo_sapiens"
@@ -136,7 +135,7 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             species_id = "mus_musculus"
 
         if self.annotation_release == "current":
-            file_readme = self.download(self.ftp_link, "pub/", "current_README")
+            file_readme = self._download(self.ftp_link, "pub/", "current_README")
             with open(file_readme, "r") as handle:
                 for line in handle:
                     if line.startswith("Ensembl Release"):
@@ -153,57 +152,59 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             ftp_directory = f"pub/release-{annotation_release}/fasta/{species_id}/dna/"
             ftp_file = f"{species_id.capitalize()}.{self.genome_assembly_placeholder}.dna_rm.primary_assembly.fa"
 
-        return ftp_directory, ftp_file
+        return ftp_directory, ftp_file, annotation_release
 
-    def generate_FTP_link(self):
+    def _generate_FTP_link(self):
         return "ftp.ensembl.org"
 
-    def download_files(self, file_type):
+    def download_files(self, file_type: str):
         """
         Download gene annotation in file_type format from ensembl and unzip file.
 
         :return: Path to downloaded file and genome assembly name.
         :rtype: string, string
         """
-        ftp_directory, ftp_file = self.get_params(file_type)
-        output_file = self.download_and_decompress(
+        ftp_directory, ftp_file, annotation_release = self._get_params(file_type)
+        output_file = self._download_and_decompress(
             self.ftp_link, ftp_directory, ftp_file
         )
 
         genome_assembly = re.search("\.([^\.]*)\.", output_file)
 
-        return output_file, genome_assembly
+        return output_file, annotation_release, genome_assembly
 
 
 class FTPLoaderNCBI(BaseFtpLoader):
     """
     Class for downloading annotations from NCBI, inheriting from BaseFtpLoader.
 
+    :param dir_output: folder where the files will downloaded
+    :type dir_output: string
     :param species: available species: human or mouse
     :type species: string
     :param annotation_release: release number (e.g. 109 or 109.20211119) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/.
     :type annotation_release: string
     """
 
-    def __init__(self, dir_output, species, annotation_release) -> None:
+    def __init__(self, dir_output: str, species: str, annotation_release: str) -> None:
         """Constructor method"""
         super().__init__(dir_output)
         self.species = species
         self.annotation_release = annotation_release
 
-        self.ftp_link = self.generate_FTP_link()
+        self.ftp_link = self._generate_FTP_link()
 
-    def get_params(self, file_type):
+    def _get_params(self, file_type):
         """
         Get directory and file name for specified file type from NCBI server
 
-        :param file_type: File type to download (e.g. gtf or fasta)
+        :param file_type: File type to _download (e.g. gtf or fasta)
         :type file_type: string
         :return: ftp directories and file names of specified file type from NCBI server.
         :rtype: tuple of strings
         """
 
-        self.check_file_type(file_type)
+        self._check_file_type(file_type)
 
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
@@ -214,10 +215,17 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         if self.annotation_release == "current":
             ftp_directory = ftp_directory + "current/"
+            # inside current dir there is the directory containing the annotation release
+            ftp = FTP(self.ftp_link)
+            ftp.login()  # login to ftp server
+            ftp.cwd(ftp_directory)  # move to directory
+            release_folder = ftp.nlst()[0]
+            ftp.quit()
+            ftp_directory = ftp_directory + release_folder + "/"
         else:
             ftp_directory = ftp_directory + f"{self.annotation_release}/"
 
-        file_readme = self.download(self.ftp_link, ftp_directory, "README")
+        file_readme = self._download(self.ftp_link, ftp_directory, "README")
         with open(file_readme, "r") as handle:
             for line in handle:
                 if line.startswith("ASSEMBLY NAME:"):
@@ -241,7 +249,7 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         return ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name
 
-    def generate_FTP_link(self):
+    def _generate_FTP_link(self):
         return "ftp.ncbi.nlm.nih.gov"
 
     def _download_mapping_chr_names(self, ftp_directory, ftp_file_chr_mapping):
@@ -255,7 +263,9 @@ class FTPLoaderNCBI(BaseFtpLoader):
         :rtype: dict
         """
 
-        file_mapping = self.download(self.ftp_link, ftp_directory, ftp_file_chr_mapping)
+        file_mapping = self._download(
+            self.ftp_link, ftp_directory, ftp_file_chr_mapping
+        )
 
         # skip comment lines but keep last comment line for header
         with open(file_mapping) as handle:
@@ -366,22 +376,20 @@ class FTPLoaderNCBI(BaseFtpLoader):
 
         os.replace(file_tmp, ftp_file)
 
-    def download_files(self, file_type, mapping=None):
+    def download_files(self, file_type: str):
         """
         Download gene annotation in file_type format from NCBI and unzip file.
         Map chromosome annotation to Ref-Seq accession number.
 
-        :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
-        :type mapping: dict
         :return: Path to downloaded file and genome assembly name.
         :rtype: string, string
         """
 
-        ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name = self.get_params(
+        ftp_directory, ftp_file, ftp_file_chr_mapping, assembly_name = self._get_params(
             file_type
         )
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
-        output_file = self.download_and_decompress(
+        output_file = self._download_and_decompress(
             self.ftp_link, ftp_directory, ftp_file
         )
 
@@ -391,4 +399,4 @@ class FTPLoaderNCBI(BaseFtpLoader):
         elif file_type.casefold() == "fasta".casefold():
             self._map_chr_names_genome_fasta(output_file, mapping)
 
-        return output_file, assembly_name
+        return output_file, self.annotation_release, assembly_name

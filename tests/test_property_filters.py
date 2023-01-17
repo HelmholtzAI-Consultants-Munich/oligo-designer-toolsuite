@@ -11,7 +11,7 @@ from oligo_designer_toolsuite.oligo_property_filter._filter_base import (
     MaskedSequences,
     MeltingTemperature,
 )
-from oligo_designer_toolsuite.oligo_property_filter._filter_padlock_probes import (
+from oligo_designer_toolsuite.oligo_property_filter._filter_padlock_oligos import (
     PadlockArms,
 )
 from oligo_designer_toolsuite.oligo_property_filter._property_filter import (
