@@ -10,17 +10,17 @@ from ..utils._data_parser import get_sequence_from_annotation, read_gtf
 class TranscriptGenerator:
     """Creates the transcriptome for the whole genome or for a set of genes.
 
-    :param file_sequence: pathe to the fasta file
-    :type file_sequence: str
-    :param file_annotation: path to the gtf annotation file
-    :type file_annotation: str
+    :param sequence_file: pathe to the fasta file
+    :type sequence_file: str
+    :param annotation_file: path to the gtf annotation file
+    :type annotation_file: str
     """
 
-    def __init__(self, file_sequence: str, file_annotation: str):
+    def __init__(self, sequence_file: str, annotation_file: str):
         """Initialize the class."""
 
-        self.file_sequence = file_sequence
-        self.file_annotation = file_annotation
+        self.sequence_file = sequence_file
+        self.annotation_file = annotation_file
         self.annotation = self.__get_annotation()
 
     def generate_for_reference(
@@ -75,7 +75,7 @@ class TranscriptGenerator:
         # create the fasta file
         get_sequence_from_annotation(
             file_gene_transcript_annotation,
-            self.file_sequence,
+            self.sequence_file,
             file_gene_transcript_fasta,
             split=True,
         )
@@ -554,9 +554,9 @@ class TranscriptGenerator:
         """
         Parsing the gtf file is computationally expensive, therefore we store the result and reuse it in the future
         """
-        dir_annotation = os.path.dirname(self.file_annotation)
+        dir_annotation = os.path.dirname(self.annotation_file)
         parsed_annotation_file = (
-            os.path.basename(self.file_annotation).split(".gtf")[0] + ".pkl"
+            os.path.basename(self.annotation_file).split(".gtf")[0] + ".pkl"
         )  # file name without extension
         # check if the gtf file has been already parsed
         exists = False
@@ -567,7 +567,7 @@ class TranscriptGenerator:
 
         if exists == False:
             annotation = read_gtf(
-                self.file_annotation
+                self.annotation_file
             )  # dataframe with annotation file
             # store the result for later use
             annotation.to_pickle(os.path.join(dir_annotation, parsed_annotation_file))

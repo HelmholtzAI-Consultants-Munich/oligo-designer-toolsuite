@@ -7,7 +7,7 @@ from Bio.SeqUtils import MeltingTemp as mt
 
 sys.path.append("../oligo_designer_toolsuite")
 
-from oligo_designer_toolsuite.database import CustomOligoDB, CustomReferenceDB
+from oligo_designer_toolsuite.database import CustomReferenceDB, NcbiOligoDB
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContent,
     MaskedSequences,
@@ -84,28 +84,35 @@ class TestDBGeneration(unittest.TestCase):
         )
 
         filters = [masked_sequences, GC_content, melting_temperature, arms_tm]
-        # cls.oligos_db = NcbiOligoDB(oligo_length_min=30, oligo_length_max=40, dir_output='tests/output')
+        cls.oligos_db = NcbiOligoDB(
+            oligo_length_min=30,
+            oligo_length_max=40,
+            dir_output="tests/output",
+            species="human",
+            annotation_release="110",
+            n_jobs=2,
+        )
 
         # If the anotation and fasta files are already saved on the machine, it is possible to direclty use them
         # instead of downloading them again.
-        dir_annotation = "/home/francesco/Desktop/Work/NCBI"
-        annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
-        sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
-        cls.oligos_db = CustomOligoDB(
-            oligo_length_min=30,
-            oligo_length_max=40,
-            file_annotation=annotation,
-            file_sequence=sequence,
-            species="unknown",
-            genome_assembly="unknown",
-            annotation_release="unknown",
-            annotation_source="unknown",
-            dir_output="tests/output",
-        )
+        # dir_annotation = "/home/francesco/Desktop/Work/NCBI"
+        # annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
+        # sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
+        # cls.oligos_db = CustomOligoDB(
+        #     oligo_length_min=30,
+        #     oligo_length_max=40,
+        #     annotation_file=annotation,
+        #     sequence_file=sequence,
+        #     species="unknown",
+        #     genome_assembly="unknown",
+        #     annotation_release="unknown",
+        #     files_source="unknown",
+        #     dir_output="tests/output",
+        # )
         # define the reference class
         cls.reference_db = CustomReferenceDB(
-            file_annotation=cls.oligos_db.file_annotation,
-            file_sequence=cls.oligos_db.file_sequence,
+            annotation_file=cls.oligos_db.annotation_file,
+            sequence_file=cls.oligos_db.sequence_file,
             species=cls.oligos_db.species,
             genome_assembly=cls.oligos_db.genome_assembly,
             annotation_release=cls.oligos_db.annotation_release,

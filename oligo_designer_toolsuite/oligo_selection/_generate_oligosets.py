@@ -44,7 +44,9 @@ class OligosetGenerator:
         self.set_scoring = set_scoring
         self.write_genes_with_insufficient_oligos = write_genes_with_insufficient_oligos
 
-    def apply(self, database: CustomOligoDB, n_sets: int = 50, n_jobs: int = None):
+    def apply(
+        self, oligo_database: CustomOligoDB, n_sets: int = 50, n_jobs: int = None
+    ):
         """Generates in parallel the oligosets and selects the best ``n_sets`` according to the
         The database class is updated, in particular form the ``oligos_DB`` are filtered out all the oligos that don't belong to any oligoset and in the class attruibute ``oligosets`` are stored
         the computed oligosets. The latter is a dictionary having as keys the genes names and as values a pandas.DataFrame containinig the oligosets. The strucutre of the pandas.DataFrame is the following:
@@ -67,32 +69,32 @@ class OligosetGenerator:
 
         # set the number of cores
         if n_jobs is None:
-            n_jobs = database.n_jobs
+            n_jobs = oligo_database.n_jobs
 
-        genes = list(database.oligos_DB.keys())
+        genes = list(oligo_database.oligos_DB.keys())
         # get the oligo set for this gene in parallel
         updated_oligos_DB = Parallel(
             n_jobs=n_jobs
         )(  # there should be an explicit return
             delayed(self._get_oligo_set_for_gene)(
-                gene, database.oligos_DB[gene], n_sets
+                gene, oligo_database.oligos_DB[gene], n_sets
             )
             for gene in genes
         )
         # restore the oligo database
         for gene, oligos in zip(genes, updated_oligos_DB):
             if oligos is None:  # if some sets have been found
-                database.oligos_DB[gene] = {}  # oligoset is not generated
+                oligo_database.oligos_DB[gene] = {}  # oligoset is not generated
             else:
-                database.oligosets[gene] = oligos["oligosets"]
+                oligo_database.oligosets[gene] = oligos["oligosets"]
                 del oligos["oligosets"]
-                database.oligos_DB[gene] = oligos
-        database.remove_genes_with_insufficient_oligos(
+                oligo_database.oligos_DB[gene] = oligos
+        oligo_database.remove_genes_with_insufficient_oligos(
             pipeline_step="oligoset generation",
             write=self.write_genes_with_insufficient_oligos,
         )
 
-        return database
+        return oligo_database
 
     def _get_oligo_set_for_gene(self, gene: str, oligos: dict, n_sets: int):
         """Generate the oligosets for a gene.
