@@ -109,8 +109,8 @@ class PadlockSequenceDesigner:
                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"] = {}
 
                 # TODO: potentially nice to also save organism, full gene name, reference genome
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["oligo_id"] = oligo_id
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["gene_id"] = gene
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["id"] = oligo_id
+                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["gene"] = gene
                 for key in [
                     "transcript_id",
                     "exon_id",

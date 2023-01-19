@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 import pytest
 
-from oligo_designer_toolsuite.database import CustomOligoDB
+from oligo_designer_toolsuite.database import NcbiOligoDB
 from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -16,24 +16,31 @@ from oligo_designer_toolsuite.oligo_selection import (
 
 @pytest.fixture()
 def oligos_database():
-    # database = NcbiOligoDB(oligo_length_min=30, oligo_length_max=40, filters=cls.filters, dir_output='tests/output')
+    database = NcbiOligoDB(
+        oligo_length_min=30,
+        oligo_length_max=40,
+        dir_output="tests/output",
+        species="human",
+        annotation_release="110",
+        n_jobs=2,
+    )
 
     # If the anotation and fasta files are already saved on the machine, it is possible to direclty use them
     # instead of downloading them again.
-    dir_annotation = "/home/francesco/Desktop/Work/NCBI"
-    annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
-    sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
-    database = CustomOligoDB(
-        oligo_length_min=30,
-        oligo_length_max=40,
-        species="unknown",
-        genome_assembly="unknown",
-        annotation_release="unknown",
-        annotation_source="unknown",
-        file_annotation=annotation,
-        file_sequence=sequence,
-        dir_output="tests/output",
-    )
+    # dir_annotation = "/home/francesco/Desktop/Work/NCBI"
+    # annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
+    # sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
+    # database = CustomOligoDB(
+    #     oligo_length_min=30,
+    #     oligo_length_max=40,
+    #     species="unknown",
+    #     genome_assembly="unknown",
+    #     annotation_release="unknown",
+    #     files_source="unknown",
+    #     annotation_file=annotation,
+    #     sequence_file=sequence,
+    #     dir_output="tests/output",
+    # )
     database.read_oligos_DB(
         format="tsv", file_oligos_DB_tsv="tests/data/oligos_info.tsv"
     )

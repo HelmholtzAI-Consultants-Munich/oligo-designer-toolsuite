@@ -9,12 +9,12 @@ write_intermediate_steps: True # writes the oligo sequences after each step of t
 
 ### Parameters for genome and gene annotation
 source: custom # required: indicate that own annotation should be used
-file_annotation: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf # required: GTF file with gene annotation
-file_sequence: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna # required: FASTA file with genome sequence
+annotation_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf # required: GTF file with gene annotation
+sequence_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna # required: FASTA file with genome sequence
 species: human # optional: species of provided annotation, leave empty if unknown
 annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
 genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
-annotation_source: NCBI  # optional: source of provided annotation, leave empty if unknown
+files_source: NCBI  # optional: source of provided annotation, leave empty if unknown
 
 ### Parameters for oligo sequences generation
 file_genes: ./data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, set as None if all the genes are used
@@ -65,7 +65,7 @@ detect_oligo_length_max: 25 # max length of detection oligo
 detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo
 
 
-### Parameters for Melting Temperature 
+### Parameters for Melting Temperature
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:
