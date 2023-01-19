@@ -45,11 +45,11 @@ Follow this instruction to install the required additional tools:
 
 		conda install bedtools
 		
-- **Bowtie** (1.3 or higher) can be installed via [xx]() or via [Bioconda](http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
+- **Bowtie** (1.3 or higher) can be installed via [Bowtie webpage](https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie) or via [Bioconda](http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
 
 		conda install bowtie
 
-- **Bowtie2** (2.5 or higher) can be installed via [xx]() or via [Bioconda](http://bioconda.github.io/recipes/bowtie2/README.html) installation of Bowtie2 with:
+- **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) or via [Bioconda](http://bioconda.github.io/recipes/bowtie2/README.html) installation of Bowtie2 with:
 
 		conda install bowtie2
 
