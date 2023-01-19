@@ -1,37 +1,32 @@
 ### General parameters
-dir_output: output # name of the directory where the output files will be written
 n_jobs: 2 # number of cores used to run the pipeline
+dir_output: output # name of the directory where the output files will be written
+file_format: tsv # fromat of the written files, can be "tsv" or "gtf"
+min_oligos_per_gene: 0 # minimum number of oligos that a gene must have before it gets deleted
 write_removed_genes: True # write in a file the removed genes
 write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline
-file_format: tsv # fromat of the written files, can be "tas" or "gtf"
 
 
 ### Parameters for genome and gene annotation
-# Which annotation should be used? Ensemble or NCBI?
-source: ncbi # available sources: 'ncbi', 'ensembl' or 'custom', if you use custom please provide file_gene_gtf and file_genome_fasta
-species: human # available species: human or mouse
-annotation_release: current # release number (e.g. 109 or 109.20211119 for ncbi) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/ or for ensemble at ftp.ensembl.org/pub/
-min_oligos_per_gene: 0 # minimum number of oligos that a gene must have before it gets deleted
-# If 'custom' was choosen,  provide a gene annotation (gtf) and genome file (fasta), e.g. file_gene_gtf: ./data/Homo_sapiens.GRCh38.104.gtf and the relative information
-file_annotation: # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.gtf
-file_sequence: # ./data_ncbi/annotations/GCF_000001405.39_GRCh38.p13_genomic.fna
-genome_assembly: GRCh38
-annotation_source: NCBI
-
+source: ensembl # define annotation source
+species: human # currently supported species: human or mouse
+annotation_release: current # release number of annotation or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
 
 
 ### Parameters for oligo sequences generation
+file_genes: ./data/genes/ncbi_10.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
 oligo_length_min: 38 #min length of oligos
 oligo_length_max: 45 #max length of oligos
-file_genes: ../tutorials/data/genes_ncbi_10.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
 block_size: 50
 
+
 ### Parameters for the property filers
+# oligo sequence
 GC_content_min: 40 #minimum GC content of oligos
 GC_content_max: 60 #maximum GC content of oligos
 Tm_min: 52 #55 #minimum melting temperature of oligos
 Tm_max: 67 #63 #maximum melting temperature of oligos
-# oligo arms
+# padlock arms
 min_arm_length: 10 #min length of each arm
 max_arm_Tm_dif: 2 #maximum melting temperature difference of both arms
 arm_Tm_min: 38 #41 #minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)
@@ -39,13 +34,12 @@ arm_Tm_max: 49 #46 #maximum melting temperature of each arm
 
 
 ### Parameters for the specificity filters
-# Blastn parameters
+# Bowtie Ligation Region filter
+ligation_region_size: 5 #coverage between oligos and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
+# Blastn Similarity Filter
 word_size: 10 #word size for the blastn seed (exact match to target)
 coverage: 50 #minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
 percent_identity: 80 #maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
-ligation_region_size: 10 #coverage between oligos and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
-
-
 
 
 ### Parameters for the oligo efficiency
@@ -54,8 +48,6 @@ Tm_opt: 60 #60 #optimal melting temperature of oligos
 GC_content_opt: 50 #optimal GC content of oligos
 Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score
 GC_weight: 1 # weight of the GC content of the oligo in the efficiency score
-
-
 
 
 ### Parameters for the oligosets generation
@@ -70,8 +62,7 @@ detect_oligo_length_max: 25 # max length of detection oligo
 detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo
 
 
-
-### Shared parameters
+### Parameters for Melting Temperature 
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:
