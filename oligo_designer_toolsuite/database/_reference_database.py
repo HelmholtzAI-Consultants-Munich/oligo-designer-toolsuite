@@ -88,7 +88,7 @@ class CustomReferenceDB:
         self.file_annotation = file_annotation
         # create index file
         pyfaidx.Fasta(self.file_sequence)
-        self.gene_transcript = None
+        self.transcripts = None
 
     def read_reference_DB(self, file_reference_DB: str):
         """Saves the path of a previously generated reference DB in the ``self.file_reference_DB`` attribute.
@@ -108,15 +108,15 @@ class CustomReferenceDB:
     def create_reference_DB(
         self,
         block_size: int,
-        region: str = "gene_transcript",
+        region: str = "transcripts",
         dir_reference_DB: str = "reference",
     ):
         """
-        Creates a fasta file for each of the region selected (genome, gene_transcript, gene_CDS) which will be used for alignements, default is "gene_transcript".
+        Creates a fasta file for each of the region selected (genome, transcripts, CDS) which will be used for alignements, default is "transcripts".
         ``dir_reference_DB`` is the subdirectory of dir_out where the reference file will be written.
-        For the "gene_transcript", the block size are the additional bases added on the estremes of each exon.
+        For the "transcripts", the block size are the additional bases added on the estremes of each exon.
 
-        :param region: the region to use for the reference DB. Possible values are "genome", "gene_transcript", "gene_CDS"
+        :param region: the region to use for the reference DB. Possible values are "genome", "transcripts", "CDS"
         :type region: str
         :param block_size: size of the exon junctions.
         :type block_size: int
@@ -126,8 +126,8 @@ class CustomReferenceDB:
         :rtype: str
 
         """
-        if self.gene_transcript is None:
-            self.gene_transcript = TranscriptGenerator(
+        if self.transcripts is None:
+            self.transcripts = TranscriptGenerator(
                 self.file_sequence, self.file_annotation
             )
 
@@ -139,7 +139,7 @@ class CustomReferenceDB:
             Generates the fasta files that will compose the reference_DB and writes it in ``file_reference_DB``
 
             :param region: the region to use for the reference DB
-            :type region: {'genome', 'gene_transcript', 'gene_CDS'}
+            :type region: {'genome', 'transcripts', 'CDS'}
             :param dir_reference_DB: path of the directory where to write the intermediate files.
             :type dir_reference_DB: str
             :param file_reference_DB: path of the file where to write the reference_DB.
@@ -148,16 +148,16 @@ class CustomReferenceDB:
             """
             if region == "genome":
                 shutil.copyfile(self.file_sequence, file_reference_DB)
-            elif region == "gene_transcript":
-                self.gene_transcript.generate_for_reference(
+            elif region == "transcripts":
+                self.transcripts.generate_for_reference(
                     block_size, file_reference_DB, dir_reference_DB
                 )  # call the outer class to generate the gene trascript
-            elif region == "gene_CDS":
+            elif region == "CDS":
                 # generate gene cds
                 warnings.warn("Gene CDS not implemented yet")
             else:
                 raise ValueError(
-                    f"The given region does not exists. You selected {region} but only 'genome', 'gene_transcript', 'gene_CDS' are available."
+                    f"The given region does not exists. You selected {region} but only 'genome', 'transcripts', 'CDS' are available."
                 )
 
         self.file_reference_DB = os.path.join(
@@ -167,13 +167,6 @@ class CustomReferenceDB:
 
         get_files_fasta(region, dir_reference_DB, self.file_reference_DB)
         return self.file_reference_DB
-
-    def __generate_gene_CDS():
-        """
-        Creates a fasta file containing the whole transcriptome.
-        """
-        # should be implemented in an external class
-        raise NotImplementedError
 
 
 class NcbiReferenceDB(CustomReferenceDB):

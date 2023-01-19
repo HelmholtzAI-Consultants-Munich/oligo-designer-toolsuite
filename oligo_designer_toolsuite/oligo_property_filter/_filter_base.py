@@ -133,12 +133,26 @@ class MeltingTemperature(PropertyFilterBase):
         return False, {}
 
 
-"""
+class ProhibitedSequences(PropertyFilterBase):
+    """Filters the sequences containing a prohibited sequence.
 
-def _filter_by_kmer():
-    pass
+    """
+
+    def __init__(
+        self,
+    ) -> None:
+        """Initializes the class."""
+
+        super().__init__()
 
 
-def _mask_prohibited_sequences():
-    pass
-"""
+    def apply(self, sequence: Seq):
+        """Applies the filter and returns True if the oligo does not contain prohibited sequences.
+
+        :param sequence: sequence to be filtered
+        :type sequence: str
+        :return: True if the constrined is fulfilled and the melting temperature
+        :rtype: bool and dict
+        """
+
+        pass
