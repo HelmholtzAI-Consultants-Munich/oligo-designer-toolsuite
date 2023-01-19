@@ -118,7 +118,7 @@ class CustomOligoDB:
         self.file_annotation = file_annotation
         # create index file
         pyfaidx.Fasta(self.file_sequence)
-        self.gene_transcript = None
+        self.transcripts = None
         self.oligos = OligosGenerator(
             self.oligo_length_min,
             self.oligo_length_max,
@@ -222,17 +222,10 @@ class CustomOligoDB:
             path = os.path.join(self.dir_oligosets, file)
             self.oligosets[gene].to_csv(path, sep="\t", index=False)
 
-    def __generate_gene_CDS():
-        """
-        Creates a fasta file containing the whole transcriptome.
-        """
-        # should be implemented in an external class
-        raise NotImplementedError
-
     def create_oligos_DB(
         self,
         genes: list[str] = None,
-        region: str = "gene_transcript",
+        region: str = "transcripts",
     ):
         """
         Creates the DB containing all the oligo sequence extracted form the given ``region`` and belonging the the specified genes. If no genes are specified then
@@ -240,7 +233,7 @@ class CustomOligoDB:
 
         :param genes: genes for which compute the oligos, defaults to None
         :type genes: list of str, optional
-        :param region: region ofrm whihc generate the oligos, it can be 'genome', 'gene_transcript', 'gene_CDS', defaults to 'gene_transcript'
+        :param region: region ofrm whihc generate the oligos, it can be 'genome', 'transcript', 'CDS', defaults to 'transcript'
         :type region: str, optional
         :param number_batchs: oligos are computes in batches of genes, defaults to 1
         :type number_batchs: int, optional
@@ -254,11 +247,11 @@ class CustomOligoDB:
                 file_region_annotation = None
                 warnings.warn("Genome not implemented yet")
                 # TODO
-            elif region == "gene_transcript":
-                file_region_annotation = self.gene_transcript.generate_for_oligos(
+            elif region == "transcripts":
+                file_region_annotation = self.transcripts.generate_for_oligos(
                     self.oligo_length_max - 1, self.dir_annotation, genes
                 )
-            elif region == "gene_CDS":
+            elif region == "CDS":
                 file_region_annotation = None
                 warnings.warn("Gene CDS not implemented yet")
                 # TODO
@@ -272,14 +265,14 @@ class CustomOligoDB:
         self.file_name_oligos_DB_gtf = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.gtf"
         self.file_name_oligos_DB_fasta = f"oligo_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fasta"
 
-        if self.gene_transcript is None:
-            self.gene_transcript = TranscriptGenerator(
+        if self.transcripts is None:
+            self.transcripts = TranscriptGenerator(
                 self.file_sequence, self.file_annotation
             )
         file_region_annotation = create_target_region(region, genes)
 
         if genes is None:
-            genes = self.gene_transcript.get_genes_from_annotation()
+            genes = self.transcripts.get_genes_from_annotation()
 
         self.oligos_DB = self.oligos.generate(
             file_region_annotation, genes, self.dir_annotation

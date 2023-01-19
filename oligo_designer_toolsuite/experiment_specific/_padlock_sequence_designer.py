@@ -90,7 +90,7 @@ class PadlockSequenceDesigner:
                 #       from the beginning. The previous ligation_site for example needed to be adjusted which might be
                 #       confusing when looking into files generated in previous steps. Also the arm Tm's could have
                 #       changed, but the naming (arm1, arm2) still fits and Tm(seq)==Tm(rev_compl(seq)) (properly tested).
-                target_mRNA = oligos_DB_gene[oligo_id]["oligo_sequence"]
+                target_mRNA = oligos_DB_gene[oligo_id]["sequence"]
                 complementary_seq = str(target_mRNA.reverse_complement())
                 ligation_idx = len(target_mRNA) - int(
                     oligos_DB_gene[oligo_id]["ligation_site"]
@@ -211,7 +211,7 @@ class PadlockSequenceDesigner:
             oligoset = [row[col] for col in row.index if col.startswith("oligo_")]
 
             for oligo_id in oligoset:
-                target_mRNA = oligos_DB_gene[oligo_id]["oligo_sequence"]
+                target_mRNA = oligos_DB_gene[oligo_id]["sequence"]
                 complementary_seq = str(target_mRNA.reverse_complement())
                 ligation_idx = len(target_mRNA) - int(
                     oligos_DB_gene[oligo_id]["ligation_site"]
