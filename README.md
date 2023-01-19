@@ -70,12 +70,17 @@ Installation from source:
 
 ```
 git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
-cd oligo-designer-toolsuite
-
-pip install .        (Installation as python package: run inside directory)
-
-pip install -e .        (Development Installation as python package: run inside directory)
 ```
+
+- Installation as python package (run inside directory):
+
+		pip install .   
+
+
+- Development Installation as python package (run inside directory)
+
+		pip install -e .
+
 
 ## Usage
 
