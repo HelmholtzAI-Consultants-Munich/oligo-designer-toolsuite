@@ -26,7 +26,7 @@ class PropertyFilter:
         self.filters = filters
         self.write_genes_with_insufficient_oligos = write_genes_with_insufficient_oligos
 
-    def apply(self, database: CustomOligoDB, n_jobs: int = None):
+    def apply(self, oligo_database: CustomOligoDB, n_jobs: int = None):
         """Filters the database of oligos based on the given filters
 
         :param database: database class containig the oligos and their features
@@ -38,9 +38,9 @@ class PropertyFilter:
         """
         # TODO make it parallel and take into account that some genes might disappear
         if n_jobs is None:
-            n_jobs = database.n_jobs
+            n_jobs = oligo_database.n_jobs
 
-        oligos_DB = database.oligos_DB
+        oligos_DB = oligo_database.oligos_DB
         gene_ids = list(oligos_DB.keys())
         filtered_oligos = Parallel(n_jobs=n_jobs)(
             delayed(self._filter_gene)(oligos_DB[gene]) for gene in gene_ids
@@ -49,13 +49,13 @@ class PropertyFilter:
         for oligos_gene, gene in zip(filtered_oligos, gene_ids):
             oligos_DB[gene] = oligos_gene
 
-        database.remove_genes_with_insufficient_oligos(
+        oligo_database.remove_genes_with_insufficient_oligos(
             pipeline_step="property filter",
             write=self.write_genes_with_insufficient_oligos,
         )
 
-        database.oligos_DB = oligos_DB
-        return database
+        oligo_database.oligos_DB = oligos_DB
+        return oligo_database
 
     def _filter_gene(self, oligos_gene):
         oligos_id = list(oligos_gene.keys())
