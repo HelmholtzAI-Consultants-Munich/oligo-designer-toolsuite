@@ -38,9 +38,13 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
-    'nbsphinx',
-    'nbsphinx_link',
+    "autoapi.extension",
+    "nbsphinx",
+    "nbsphinx_link",
 ]
+
+autoapi_dirs = ['../../oligo_designer_toolsuite']
+
 
 # Add any paths that contain templates here, relative to this directory.
 #templates_path = ["_templates"]
