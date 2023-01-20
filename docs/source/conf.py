@@ -19,6 +19,7 @@ from pathlib import Path
 p = Path(__file__).parents[2]
 sys.path.insert(0, os.path.abspath(p))
 sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath("../../"))
 
 
@@ -40,7 +41,6 @@ release = "0.1"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
-    "sphinx.ext.todo",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     'nbsphinx',
