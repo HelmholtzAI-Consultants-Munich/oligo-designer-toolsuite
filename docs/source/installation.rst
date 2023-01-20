@@ -1,78 +1,74 @@
 Installation
 ============
 
-The installation of the package can be partially done via pip, however some additional components need to be installed separately.
+Requirements:
+-------------------
 
-Pip installation
-----------------
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda channel in your conda environment with:
 
-This package was build with Python 3.10
+::
 
-=================== =======
-Package             Version
-=================== =======
-argparse            1.4.0
-Bio                 1.3.8
-datetime            4.4
-gtfparse            1.2.1
-iteration_utilities 0.11.0
-networkx            2.8.1
-pandas              1.4.2
-pybedtools          0.9.0
-pyfaidx             0.6.4
-pyyaml              6.0
-joblib		    1.2.0
-bcbio-gff 	    0.6.9
-six                 1.16.0
-=================== =======
+	conda config --add channels bioconda
 
-All packages listed above are automatically installed if the installation is
-done via ``pip``.
 
-**Install Options:**
+Follow this instruction to install the required additional tools:
+
+- **Blast** (2.12 or higher) can be instelled via `NCBI webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__ or via `Bioconda <http://bioconda.github.io/recipes/blast/README.html>`__ installation of Blast with:
+
+	::
+
+		conda install blast
+
+- **BedTools** (2.30 or higher) can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__ or via `Bioconda](http://bioconda.github.io/recipes/bedtools/README.html>`__ installation of BedTools with:
+
+	::
+
+		conda install bedtools
+		
+- **Bowtie** (1.3 or higher) can be installed via `Bowtie webpage <https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie>`__ or via `Bioconda <http://bioconda.github.io/recipes/bowtie/README.html>`__ installation of Bowtie with:
+
+	::
+
+		conda install bowtie
+
+- **Bowtie2** (2.5 or higher) can be installed via `Bowtie2 webpage <https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2>`__ or via `Bioconda <http://bioconda.github.io/recipes/bowtie2/README.html>`__ installation of Bowtie2 with:
+
+	::
+
+		conda install bowtie2
+
+All other required packages are automatically installed if installation is done via :code:`pip`.
+
+Install Options:
+-------------------
+
+The installation of the package is done via pip. Note: if you are using conda, first install pip with: ```conda install pip```.
 
 PyPI install:
 
 ::
 
-   pip install oligo-designer-toolsuite
+	pip install oligo-designer-toolsuite
 
-Installation of the package via pip from source:
+
+Installation from source:
 
 ::
 
-   git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
-
-   pip install .        (Installation as python package: run inside directory)
-
-   pip install -e .        (Development Installation as python package: run inside directory)
-
-Note: if you are using conda, first install pip with:
-::
-
-	conda install pip
+	git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
 
 
-Additional packages
--------------------
-
-In addition to the packages listed above, you need to install **Blast Software**, **BedTools**, **Bowtie** and **Bowtie2**.
-
-- **Blast** can be instelled via `NCBI webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__ or via ``Bioconda`` installation of Blast with:
+- Installation as python package (run inside directory):
 
 	::
 
-		conda install -c bioconda blast
+		pip install .   
 
-- **BedTools** can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__ or via Bioconda installation of BedTools with:
 
-	::
-
-		conda install -c bioconda bedtools
-
-- **Bowtie** and **Bowtie2** can be installed with :
+- Development Installation as python package (run inside directory):
 
 	::
 
-		conda install -c bioconda bowtie to install Bowtie package
-		conda install -c bioconda bowtie2 to install the Bowtie 2 package
+		pip install -e . [dev]
+
+
