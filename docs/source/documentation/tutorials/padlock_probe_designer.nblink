@@ -1,8 +1,0 @@
-{
-  "path": "../../../../tutorials/padlock_probe_designer.ipynb",
-  "extra-media": [
-    "../../../../tutorials/configs/",
-    "../../../../tutorials/data/annotations/",
-    "../../../../tutorials/data/genes/"
-  ]
-}

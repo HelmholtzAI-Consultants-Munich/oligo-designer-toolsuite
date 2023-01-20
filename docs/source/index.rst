@@ -24,7 +24,7 @@ and can be combined individually depending on the required processing steps.
 |image0|
 
 
-.. |image0| image:: _static/figures/oligo_design.png
+.. |image0| image:: _figures/oligo_design.png
 
 
 
@@ -32,16 +32,16 @@ and can be combined individually depending on the required processing steps.
    :maxdepth: 1
    :caption: GETTING STARTED
 
-   documentation/getting_started/installation.rst
-   documentation/getting_started/user_guide_apply_pipelines.rst
-   documentation/getting_started/user_guide_build_pipelines.rst
+   _getting_started/installation.rst
+   _getting_started/user_guide_apply_pipelines.rst
+   _getting_started/user_guide_build_pipelines.rst
 
 
 .. toctree::
    :maxdepth: 1
    :caption: TUTORIALS
 
-   documentation/tutorials/padlock_probe_designer
+   _tutorials/padlock_probe_designer
 
 .. toctree::
    :maxdepth: 2
