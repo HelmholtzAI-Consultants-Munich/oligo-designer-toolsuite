@@ -13,7 +13,13 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../.."))
+from pathlib import Path
+
+# Add parent dir to known paths
+p = Path(__file__).parents[2]
+sys.path.insert(0, os.path.abspath(p))
+sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath("../../"))
 
 
 # -- Project information -----------------------------------------------------
@@ -37,7 +43,8 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
-    "myst_nb",
+    'nbsphinx',
+    'nbsphinx_link',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -83,8 +90,3 @@ html_static_path = ["_static"]
 # -- Extension configuration -------------------------------------------------
 
 autodoc_member_order = "bysource"
-
-# -- Options for todo extension ----------------------------------------------
-
-# If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = True
