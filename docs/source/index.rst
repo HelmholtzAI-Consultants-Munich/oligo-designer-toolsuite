@@ -41,7 +41,7 @@ and can be combined individually depending on the required processing steps.
    :maxdepth: 1
    :caption: TUTORIALS
 
-   documentation/tutorials/padlock_oligo_designer
+   documentation/tutorials/padlock_probe_designer
 
 .. toctree::
    :maxdepth: 2
