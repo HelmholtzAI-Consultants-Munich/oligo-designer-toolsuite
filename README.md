@@ -19,7 +19,7 @@ Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA tha
 
 <div align="center">
 
-<img src="docs/source/_static/figures/oligo_design.png" width="800">
+<img src="docs/source/_figures/oligo_design.png" width="800">
 	
 </div>
 
