@@ -16,7 +16,7 @@
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers can customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
-We developed the *Oligo Designer Toolsuite* as a common resource for basic functionalities in the oligo design process. This Toolsuite is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps. In addition, we already provide oligo design pipelines for specific experimental setups, e.g. Padlock Probes for Spatial Transcriptomics. 
+*Oligo Designer Toolsuite* is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps. In addition, we already provide oligo design pipelines for specific experimental setups, e.g. Padlock Probes for Spatial Transcriptomics. 
 
 <div align="center">
 
