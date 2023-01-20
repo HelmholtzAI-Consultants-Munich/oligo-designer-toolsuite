@@ -83,6 +83,7 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 
 ## License
 
+The oligo-designer-toolsuite package is MIT licensed.
 
 ## Contributing
 
