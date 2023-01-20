@@ -74,7 +74,7 @@ def oligoset_generator():
 
 # check we obtain the same result
 def test_oligosets_generation(oligoset_generator, oligos_database):
-    oligos_database = oligoset_generator.apply(database=oligos_database, n_sets=100)
+    oligos_database = oligoset_generator.apply(oligo_database=oligos_database, n_sets=100)
     for gene in oligos_database.oligosets.keys():
         computed_sets = oligos_database.oligosets[gene]
         computed_sets.drop(columns=["oligoset_id"], inplace=True)
