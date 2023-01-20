@@ -77,9 +77,9 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 		pip install .   
 
 
-- Development Installation as python package (run inside directory)
+- Development Installation as python package (run inside directory):
 
-		pip install -e .
+		pip install -e . [dev]
 
 
 ## Usage
