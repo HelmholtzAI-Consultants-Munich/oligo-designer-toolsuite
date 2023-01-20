@@ -9,7 +9,6 @@
 [Docs] | [Quickstart] | [Tutorials] |
 
 [Docs]: https://quicksetup-ai.readthedocs.io/
-[Quickstart]: https://oligo-designer-toolsuite.readthedocs.io/en/latest/installation.html
 [Tutorials]: https://oligo-designer-toolsuite.readthedocs.io/en/latest/tutorial.html
 
 </div>
@@ -20,7 +19,7 @@ Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA tha
 
 <div align="center">
 
-<img src="docs/figures/oligo_design.png" width="800">
+<img src="docs/_static/figures/oligo_design.png" width="800">
 	
 </div>
 
