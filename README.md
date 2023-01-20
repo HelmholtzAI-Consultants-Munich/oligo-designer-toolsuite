@@ -81,10 +81,6 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 
 		pip install -e . [dev]
 
-
-## Usage
-
-
 ## License
 
 

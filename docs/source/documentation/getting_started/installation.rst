@@ -19,7 +19,7 @@ Follow this instruction to install the required additional tools:
 
 		conda install blast
 
-- **BedTools** (2.30 or higher) can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__ or via `Bioconda](http://bioconda.github.io/recipes/bedtools/README.html>`__ installation of BedTools with:
+- **BedTools** (2.30 or higher) can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__ or via `Bioconda <http://bioconda.github.io/recipes/bedtools/README.html>`__ installation of BedTools with:
 
 	::
 
