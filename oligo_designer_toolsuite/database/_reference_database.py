@@ -15,18 +15,18 @@ class CustomReferenceDB:
 
     Sets species, genome_assembly, annotation_release to 'unknown' if thay are not given in input.
 
-    :param file_annotation: path to the gtf annotation file, defaults to None
-    :type file_annotation: str, optional
-    :param file_sequence: path to the fasta file, defaults to None
-    :type file_sequence: str, optional
+    :param annotation_file: path to the gtf annotation file, defaults to None
+    :type annotation_file: str, optional
+    :param sequence_file: path to the fasta file, defaults to None
+    :type sequence_file: str, optional
     :param species: species of the fasta and gtf files, defaults to None
     :type species: str, optional
     :param genome_assembly: genome_assembly of the fasta and gtf files, defaults to None
     :type genome_assembly: str, optional
     :param annotation_release: annotation_release of the fasta and gtf files, defaults to None
     :type annotation_release: str, optional
-    :param annotation_source: source of the fasta and gtf files, defaults to None
-    :type annotation_source: str, optional
+    :param files_source: source of the fasta and gtf files, defaults to None
+    :type files_source: str, optional
     :param dir_output: directory name where the results will be written
     :type dir_output: str
 
@@ -34,12 +34,12 @@ class CustomReferenceDB:
 
     def __init__(
         self,
-        file_annotation: str = None,
-        file_sequence: str = None,
+        annotation_file: str = None,
+        sequence_file: str = None,
         species: str = None,
         genome_assembly: str = None,
         annotation_release: str = None,
-        annotation_source: str = None,
+        files_source: str = None,
         dir_output: str = "output",
     ):
         """
@@ -57,21 +57,21 @@ class CustomReferenceDB:
             annotation_release = "unknown"
             warnings.warn(f"Annotation release not specified.")
 
-        if annotation_source is None:
-            annotation_source = "Custom"
+        if files_source is None:
+            files_source = "Custom"
             warnings.warn(f"Annotation source not specified.")
 
         # check the files format
-        if file_annotation == None:
+        if annotation_file == None:
             raise ValueError("Annotation File not defined!")
 
-        if file_sequence == None:
+        if sequence_file == None:
             raise ValueError("Sequence File not defined!")
 
-        if not _data_parser.check_gtf_format(file_annotation):
+        if not _data_parser.check_gtf_format(annotation_file):
             raise ValueError("Annotation File has incorrect format!")
 
-        if not _data_parser.check_fasta_format(file_sequence):
+        if not _data_parser.check_fasta_format(sequence_file):
             raise ValueError("Sequence File has incorrect format!")
 
         self.dir_output = dir_output
@@ -80,15 +80,15 @@ class CustomReferenceDB:
         self.species = species
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
-        self.annotation_source = annotation_source
+        self.files_source = files_source
 
         self.file_reference_DB = None
 
-        self.file_sequence = file_sequence
-        self.file_annotation = file_annotation
+        self.sequence_file = sequence_file
+        self.annotation_file = annotation_file
         # create index file
-        pyfaidx.Fasta(self.file_sequence)
         self.transcripts = None
+        pyfaidx.Fasta(self.sequence_file)
 
     def read_reference_DB(self, file_reference_DB: str):
         """Saves the path of a previously generated reference DB in the ``self.file_reference_DB`` attribute.
@@ -128,7 +128,7 @@ class CustomReferenceDB:
         """
         if self.transcripts is None:
             self.transcripts = TranscriptGenerator(
-                self.file_sequence, self.file_annotation
+                self.sequence_file, self.annotation_file
             )
 
         dir_reference_DB = os.path.join(self.dir_output, dir_reference_DB)
@@ -147,7 +147,7 @@ class CustomReferenceDB:
 
             """
             if region == "genome":
-                shutil.copyfile(self.file_sequence, file_reference_DB)
+                shutil.copyfile(self.sequence_file, file_reference_DB)
             elif region == "transcripts":
                 self.transcripts.generate_for_reference(
                     block_size, file_reference_DB, dir_reference_DB
@@ -162,7 +162,7 @@ class CustomReferenceDB:
 
         self.file_reference_DB = os.path.join(
             dir_reference_DB,
-            f"reference_DB_{self.species}_{self.genome_assembly}_{self.annotation_source}_release_{self.annotation_release}_{region}.fna",
+            f"reference_DB_{self.species}_{self.genome_assembly}_{self.files_source}_release_{self.annotation_release}_{region}.fna",
         )
 
         get_files_fasta(region, dir_reference_DB, self.file_reference_DB)
@@ -203,21 +203,21 @@ class NcbiReferenceDB(CustomReferenceDB):
                 f"No annotation release defined. Using default release {annotation_release}!"
             )
 
-        annotation_source = "NCBI"
+        files_source = "NCBI"
         dir_annotation = os.path.join(dir_output, "annotation")
         Path(dir_annotation).mkdir(parents=True, exist_ok=True)
 
         ftp = FTPLoaderNCBI(dir_annotation, species, annotation_release)
-        file_annotation, annotation_release, genome_assembly = ftp.download_files("gtf")
-        file_sequence, _, _ = ftp.download_files("fasta")
+        annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
+        sequence_file, _, _ = ftp.download_files("fasta")
 
         super().__init__(
-            file_annotation,
-            file_sequence,
+            annotation_file,
+            sequence_file,
             species,
             genome_assembly,
             annotation_release,
-            annotation_source,
+            files_source,
             dir_output,
         )
 
@@ -257,20 +257,20 @@ class EnsemblReferenceDB(CustomReferenceDB):
                 f"No annotation release defined. Using default release {annotation_release}!"
             )
 
-        annotation_source = "Ensembl"
+        files_source = "Ensembl"
         dir_annotation = os.path.join(dir_output, "annotation")
 
         Path(dir_annotation).mkdir(parents=True, exist_ok=True)
         ftp = FtpLoaderEnsembl(dir_annotation, species, annotation_release)
-        file_annotation, annotation_release, genome_assembly = ftp.download_files("gtf")
-        file_sequence, _, _ = ftp.download_files("fasta")
+        annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
+        sequence_file, _, _ = ftp.download_files("fasta")
 
         super().__init__(
-            file_annotation,
-            file_sequence,
+            annotation_file,
+            sequence_file,
             species,
             genome_assembly,
             annotation_release,
-            annotation_source,
+            files_source,
             dir_output,
         )

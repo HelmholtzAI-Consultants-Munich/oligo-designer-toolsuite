@@ -14,8 +14,8 @@ class OligosGenerator:
     :type oligo_length_min: int
     :param oligo_length_max: maximum length of the oligos created
     :type oligo_length_max: int
-    :param file_sequence: path to the fasta file of the whole genome
-    :type file_sequence: str
+    :param sequence_file: path to the fasta file of the whole genome
+    :type sequence_file: str
     :param n_jobs: nr of cores used to compute the oligos
     :type n_jobs: int
     """
@@ -24,13 +24,13 @@ class OligosGenerator:
         self,
         oligo_length_min: int,
         oligo_length_max: int,
-        file_sequence: str,
+        sequence_file: str,
         n_jobs: int,
     ):
         """Initialize the class."""
         self.oligo_length_min = oligo_length_min
         self.oligo_length_max = oligo_length_max
-        self.file_sequence = file_sequence
+        self.sequence_file = sequence_file
         self.n_jobs = n_jobs
 
     def generate(self, file_region_annotation: str, genes: list[str], dir_output: str):
@@ -144,7 +144,7 @@ class OligosGenerator:
         # get sequence for exons
         get_sequence_from_annotation(
             file_region_bed,
-            self.file_sequence,
+            self.sequence_file,
             file_region_fasta,
             split=True,
         )
