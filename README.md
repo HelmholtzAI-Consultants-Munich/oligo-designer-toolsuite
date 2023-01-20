@@ -6,7 +6,7 @@
 ![stability-wip](https://img.shields.io/badge/stability-work_in_progress-lightgrey.svg)
 
 	
-[Docs] | [Quickstart] | [Tutorials] |
+[Docs] | [Tutorials] |
 
 [Docs]: https://quicksetup-ai.readthedocs.io/
 [Tutorials]: https://oligo-designer-toolsuite.readthedocs.io/en/latest/tutorial.html
