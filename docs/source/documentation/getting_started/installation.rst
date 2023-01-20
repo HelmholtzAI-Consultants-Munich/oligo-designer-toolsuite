@@ -42,7 +42,7 @@ All other required packages are automatically installed if installation is done 
 Install Options:
 -------------------
 
-The installation of the package is done via pip. Note: if you are using conda, first install pip with: ```conda install pip```.
+The installation of the package is done via pip. Note: if you are using conda, first install pip with: ``conda install pip``.
 
 PyPI install:
 
