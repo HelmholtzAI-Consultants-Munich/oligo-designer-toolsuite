@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to oligo-designer-toolsuite's documentation!
+Welcome to *Oligo Designer Toolsuite*'s documentation!
 ====================================================
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease
