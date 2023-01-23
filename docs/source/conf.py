@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 # Add parent dir to known paths
-sys.path.insert(0, os.path.abspath('../../oligo_designer_toolsuite'))
+sys.path.insert(0, os.path.abspath('../../'))
 
 
 # -- Project information -----------------------------------------------------
