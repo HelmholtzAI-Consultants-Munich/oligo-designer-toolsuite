@@ -47,7 +47,7 @@ and can be combined individually depending on the required processing steps.
    :maxdepth: 2
    :caption: API Documentation:
 
-   oligo_designer_toolsuite
+   oligo_designer_toolsuite.rst
 
 
 License
