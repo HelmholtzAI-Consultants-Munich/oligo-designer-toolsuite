@@ -56,7 +56,9 @@ jobs:
     - name: Install libgcc for ubuntu
       if: matrix.os == 'ubuntu-latest'
       run: |
-        conda install -c anaconda libgcc-ng
+        #conda install -c anaconda libgcc-ng
+        conda update --all
+        
     - name: Install conda dependencies  
       run: |  
         conda install "blast>=2.12"
