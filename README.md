@@ -8,7 +8,7 @@
 	
 [Docs] | [Tutorials]
 
-[Docs]: https://quicksetup-ai.readthedocs.io/
+[Docs]: https://oligo-designer-toolsuite.readthedocs.io/
 [Tutorials]: https://oligo-designer-toolsuite.readthedocs.io/en/latest/tutorial.html
 
 </div>
