@@ -19,7 +19,7 @@ jobs:
     strategy:
       max-parallel: 12
       matrix:
-        os: [ubuntu-latest, macos-latest] #, windows-latest
+        os: [ubuntu-latest] #, macos-latest, windows-latest
         python-version: ["3.10"] #"3.7", "3.8", "3.9", , "3.11"
         
     steps:
@@ -47,6 +47,7 @@ jobs:
     
     - name: Install conda dependencies
       run: |
+        conda update conda
         conda config --add channels bioconda
         conda install bedtools
         conda install blast=2.13.0
