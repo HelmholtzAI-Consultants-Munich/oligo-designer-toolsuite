@@ -11,7 +11,7 @@ packages = ["oligo_designer_toolsuite"]
 [project]
 name = "oligo-designer-toolsuite"
 #dynamic = ["version"]
-version = 0.0.4
+version = "0.0.4"
 authors = [
   {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
   {name="Isra Mekki", email="isra.mekki@helmholtz-muenchen.de"},
@@ -33,7 +33,7 @@ classifiers = [
 ]
 dependencies = ["datetime",
                 "argparse",
-                "numpy"
+                "numpy",
                 "pandas",
                 "iteration_utilities",
                 "Bio",
