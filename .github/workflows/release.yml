@@ -13,6 +13,8 @@ jobs:
     needs: test
     name: Publish to PyPI
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 6
     steps:
       - name: Checkout Repository 
         uses: actions/checkout@v3
