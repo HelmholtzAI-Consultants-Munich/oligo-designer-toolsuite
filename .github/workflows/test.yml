@@ -48,8 +48,9 @@ jobs:
     - name: Install conda dependencies
       run: |
         conda config --add channels bioconda
-        conda install blast
         conda install bedtools
+        conda install blast
+        conda update blast
         conda install bowtie
         conda install bowtie2
         
