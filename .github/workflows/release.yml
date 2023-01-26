@@ -1,16 +1,15 @@
 name: release
 
 on:
-  push:
   release:
     types: [created]
   workflow_dispatch:
     
 jobs:
-   #test:
-     #uses: ./.github/workflows/test.yml
+   test:
+     uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test.yml@dev
    publish:
-    #needs: test
+    needs: test
     name: Publish to PyPI
     runs-on: ubuntu-latest
     steps:
