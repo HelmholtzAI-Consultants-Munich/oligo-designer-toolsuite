@@ -9,6 +9,7 @@ This packages was tested for ``Python 3.9 - 3.10`` on ubuntu. It depends on the 
 ::
 
 	conda config --add channels bioconda
+	conda config --add channels conda-forge
 
 
 Follow this instruction to install the required additional tools:
