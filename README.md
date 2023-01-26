@@ -78,7 +78,7 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 
 - Development Installation as python package (run inside directory):
 
-		pip install -e . [dev]
+		pip install -e .[dev]
 
 ## License
 
