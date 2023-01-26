@@ -55,7 +55,7 @@ jobs:
         conda update conda
         conda config --add channels bioconda
         conda install bedtools
-        conda install -c bioconda blast
+        conda install bioconda blast
         conda update blast
         conda install bowtie
         conda install bowtie2
