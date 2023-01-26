@@ -55,8 +55,8 @@ jobs:
     
     - name: Install conda dependencies
       run: |
-        conda install blast
-        conda install bedtools
+        conda install "blast>=2.12"
+        conda install "bedtools>=2.30"
         conda install bowtie2
         conda install bowtie
         
