@@ -32,6 +32,7 @@ This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. It depends on th
 
 ```
 conda config --add channels bioconda
+conda config --add channels conda-forge
 ```
 
 Follow this instruction to install the required additional tools:
@@ -80,10 +81,12 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 
 		pip install -e .[dev]
 
-## License
 
-The oligo-designer-toolsuite package is MIT licensed.
 
 ## Contributing
 
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
+
+## License
+
+```oligo-designer-toolsuite``` is released under the MIT license. See [LICENSE](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/dev/LICENSE) for additional details about it.
