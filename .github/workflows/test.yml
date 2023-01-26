@@ -53,9 +53,12 @@ jobs:
         conda --version
         conda config --show channels
     
-    - name: Install conda dependencies
+    - name: Install libgcc for ubuntu
+      if: matrix.os == 'ubuntu-latest'
       run: |
         conda install -c anaconda libgcc-ng
+    - name: Install conda dependencies  
+      run: |  
         conda install "blast>=2.12"
         conda install "bedtools>=2.30"
         conda install bowtie2
