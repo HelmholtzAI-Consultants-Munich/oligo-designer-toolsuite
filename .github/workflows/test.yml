@@ -50,7 +50,7 @@ jobs:
         conda update conda
         conda config --add channels bioconda
         conda install bedtools
-        conda install blast=2.13.0
+        conda install blast
         conda update blast
         conda install bowtie
         conda install bowtie2
