@@ -41,19 +41,19 @@ Follow this instruction to install the required additional tools:
 
 - **Blast** (2.12 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
 
-		conda install blast
+		conda install "blast>=2.12"
 
 - **BedTools** (2.30 or higher) can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via [Bioconda](http://bioconda.github.io/recipes/bedtools/README.html) installation of BedTools with:
 
-		conda install bedtools
+		conda install "bedtools>=2.30"
 		
 - **Bowtie** (1.3 or higher) can be installed via [Bowtie webpage](https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie) or via [Bioconda](http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
 
-		conda install bowtie
+		conda install "bowtie>=1.3.1"
 
 - **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) or via [Bioconda](http://bioconda.github.io/recipes/bowtie2/README.html) installation of Bowtie2 with:
 
-		conda install bowtie2
+		conda install "bowtie2>=2.5"
 
 All other required packages are automatically installed if installation is done via :code:`pip`.
 
