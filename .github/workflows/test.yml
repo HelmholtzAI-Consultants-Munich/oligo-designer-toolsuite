@@ -20,7 +20,7 @@ jobs:
       max-parallel: 12
       matrix:
         os: [macos-latest] #, ubuntu-latest, windows-latest
-        python-version: ["3.9"] #"3.7", "3.8", "3.10", , "3.11"
+        python-version: ["3.10"] #"3.7", "3.8", "3.10", , "3.11"
         
     steps:
     - name: Checkout Repository 
@@ -47,12 +47,12 @@ jobs:
         
     - name: Conda version
       run: |
+        conda update conda
         echo conda --version
         conda --version
     
     - name: Install conda dependencies
       run: |
-        conda update conda
         conda config --add channels bioconda
         conda install bedtools
         conda install blast
