@@ -52,6 +52,7 @@ jobs:
         conda update -n base -c defaults conda
         conda --version
         conda config --show channels
+        sw_vers
     
     - name: Install conda dependencies
       run: |
