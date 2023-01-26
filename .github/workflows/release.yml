@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     
 jobs:
-   testing:
+   test:
      uses: ./.github/workflows/test.yml
-  publish:
-    needs: testing
+   publish:
+    needs: test
     name: Publish to PyPI
     runs-on: ubuntu-latest
     steps:
