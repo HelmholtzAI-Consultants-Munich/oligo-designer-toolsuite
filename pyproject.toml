@@ -1,9 +1,9 @@
 [build-system]
 requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
-#build-backend = "setuptools.build_meta"
+build-backend = "setuptools.build_meta"
 
 #[tool.setuptools_scm]
-#write_to = "fgclustering/_version.py"
+#write_to = "oligo_designer_toolsuite/_version.py"
 
 [tool.setuptools]
 packages = ["oligo_designer_toolsuite"]
@@ -14,8 +14,8 @@ readme = {file = "README.md"}
 
 [project]
 name = "oligo-designer-toolsuite"
-#dynamic = ["version"]
-version = "1.0.1"
+dynamic = ["version"]
+#version = "1.0.2"
 authors = [
   {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
   {name="Isra Mekki", email="isra.mekki@helmholtz-muenchen.de"},
