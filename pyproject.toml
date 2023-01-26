@@ -51,6 +51,9 @@ dev = [
   "pytest",
 ]
 
+#[project.scripts]
+#my-client = "my_package.my_module:main_cli"
+
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
 repository = "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite"
