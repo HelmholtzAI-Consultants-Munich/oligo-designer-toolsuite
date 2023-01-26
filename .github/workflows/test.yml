@@ -47,7 +47,7 @@ jobs:
         
     - name: Conda version
       run: |
-        conda update conda
+        conda update -n base -c defaults conda
         echo conda --version
         conda --version
     
@@ -56,8 +56,8 @@ jobs:
         conda config --add channels bioconda
         conda install bedtools
         conda install "blast>=2.12"
-        conda install "bowtie>=1.3"
-        conda install "bowtie2>=2.5"
+        conda install bowtie
+        conda install bowtie2
         
     - name: Install pip dependencies
       run: |
