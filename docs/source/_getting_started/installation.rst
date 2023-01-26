@@ -20,25 +20,25 @@ Follow this instruction to install the required additional tools:
 
 	::
 
-		conda install blast
+		conda install "blast>=2.12"
 
 - **BedTools** (2.30 or higher) can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__ or via `Bioconda <http://bioconda.github.io/recipes/bedtools/README.html>`__ installation of BedTools with:
 
 	::
 
-		conda install bedtools
+		conda install "bedtools>=2.30"
 		
 - **Bowtie** (1.3 or higher) can be installed via `Bowtie webpage <https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie>`__ or via `Bioconda <http://bioconda.github.io/recipes/bowtie/README.html>`__ installation of Bowtie with:
 
 	::
 
-		conda install bowtie
+		conda install "bowtie>=1.3.1"
 
 - **Bowtie2** (2.5 or higher) can be installed via `Bowtie2 webpage <https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2>`__ or via `Bioconda <http://bioconda.github.io/recipes/bowtie2/README.html>`__ installation of Bowtie2 with:
 
 	::
 
-		conda install bowtie2
+		conda install "bowtie2>=2.5"
 
 All other required packages are automatically installed if installation is done via :code:`pip`.
 
