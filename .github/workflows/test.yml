@@ -71,4 +71,4 @@ jobs:
         pip install -e .
     
     - name: Test with pytest
-      run: pytest test_property_filters.py
+      run: pytest tests/test_property_filters.py
