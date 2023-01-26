@@ -9,7 +9,7 @@
 [Docs] | [Tutorials]
 
 [Docs]: https://oligo-designer-toolsuite.readthedocs.io/
-[Tutorials]: https://oligo-designer-toolsuite.readthedocs.io/en/latest/tutorial.html
+[Tutorials]: https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/tree/dev/tutorials
 
 </div>
 
