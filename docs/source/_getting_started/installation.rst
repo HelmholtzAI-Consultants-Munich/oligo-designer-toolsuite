@@ -4,7 +4,7 @@ Installation
 Requirements:
 -------------------
 
-This packages was tested for ``Python 3.9 - 3.10`` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda channel in your conda environment with:
+This packages was tested for ``Python 3.9 - 3.10`` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
 
 ::
 
