@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+#build-backend = "setuptools.build_meta"
+
+#[tool.setuptools_scm]
+#write_to = "fgclustering/_version.py"
+
+[tool.setuptools]
+packages = ["oligo_designer_toolsuite"]
+
+[project]
+name = "oligo-designer-toolsuite"
+#dynamic = ["version"]
+version = 0.0.4
+authors = [
+  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
+  {name="Isra Mekki", email="isra.mekki@helmholtz-muenchen.de"},
+  {name="Francesco Campi"},
+  {name="Chelsea Bright"},
+]
+maintainers = [
+  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
+  {name="Isra Mekki", email="isra.mekki@helmholtz-muenchen.de"},
+]
+description = "Develop custom oligo design pipelines."
+keywords = ["bioinformatics", "probes", "oligo nucleotides", "probe design", "oligo design"]
+readme = "README.md"
+requires-python = ">=3.9, <3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = ["datetime",
+                "argparse",
+                "numpy"
+                "pandas",
+                "iteration_utilities",
+                "Bio",
+                "bcbio-gff",
+                "pyfaidx",
+                "pybedtools",
+                "pyyaml",
+                "six",
+                "networkx",
+                "joblib",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
+[project.urls]
+documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
+repository = "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite"
