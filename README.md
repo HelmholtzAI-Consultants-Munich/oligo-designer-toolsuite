@@ -19,7 +19,7 @@ Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA tha
 
 <div align="center">
 
-<img src="docs/source/_figures/oligo_design.png" width="800">
+<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/dev/docs/source/_figures/oligo_design.png" width="800">
 	
 </div>
 
@@ -28,7 +28,7 @@ Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA tha
 
 **Requirements:**
 
-This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda channel in your conda environment with:
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
 
 ```
 conda config --add channels bioconda
