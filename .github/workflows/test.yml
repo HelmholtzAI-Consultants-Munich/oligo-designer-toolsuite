@@ -52,14 +52,13 @@ jobs:
         conda update -n base -c defaults conda
         conda --version
         conda config --show channels
-        sw_vers
     
     - name: Install conda dependencies
       run: |
-        conda install "blast=2.12.0"
-        conda install "bedtools=2.30.0"
-        conda install "bowtie=1.3.1"
-        conda install "bowtie2=2.5.0"
+        conda install "blast>=2.12.0"
+        conda install "bedtools>=2.30.0"
+        conda install "bowtie>=1.3.1"
+        conda install "bowtie2>=2.5.0"
         
     - name: Install pip dependencies
       run: |
