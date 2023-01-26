@@ -1,22 +1,19 @@
 [build-system]
 requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools_scm]
-#write_to = "oligo_designer_toolsuite/_version.py"
-use_scm_version = true
 
 [tool.setuptools]
 packages = ["oligo_designer_toolsuite"]
-
 
 [tool.setuptools.dynamic]
 #version = {attr = "my_package.VERSION"}
 readme = {file = "README.md"}
 
+[tool.setuptools_scm]
+write_to = "oligo_designer_toolsuite/_version.py"
+
 [project]
 name = "oligo-designer-toolsuite"
-# dynamic = ["version"]
+dynamic = ["version"]
 #version = "1.0.2"
 authors = [
   {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
