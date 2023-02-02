@@ -27,7 +27,7 @@ class ExactMatches(SpecificityFilterBase):
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
         :return: oligo info of user-specified genes
-        :rtype : dict
+        :rtype: dict
         """
 
         duplicated_sequences = self._get_duplicated_sequences(oligo_DB)

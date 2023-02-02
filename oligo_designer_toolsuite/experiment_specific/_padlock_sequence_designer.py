@@ -52,7 +52,7 @@ class PadlockSequenceDesigner:
         self.Tm_correction_parameters = Tm_correction_parameters
 
     def design_padlocks(
-        self, database: CustomOligoDB, dir_padlock: str = "padlock_oligos"
+        self, database: CustomOligoDB, dir_padlock: str = "padlock_sequences"
     ):
         """Design final padlock oligo sequences for the oligosets in the given database.
 

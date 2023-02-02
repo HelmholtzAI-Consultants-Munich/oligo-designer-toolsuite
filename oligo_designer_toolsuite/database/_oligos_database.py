@@ -97,7 +97,7 @@ class CustomOligoDB:
             self.dir_output, "genes_with_insufficient_oligos.txt"
         )
         with open(self.file_removed_genes, "a") as handle:
-            handle.write(f"Gene\tPipeline step\n")
+            handle.write(f"Gene\tPipeline step\tRemaining oligos\n")
         self.species = species
         self.genome_assembly = genome_assembly
         self.annotation_release = annotation_release
@@ -292,13 +292,14 @@ class CustomOligoDB:
 
         genes = list(self.oligos_DB.keys())
         for gene in genes:
-            if len(list(self.oligos_DB[gene].keys())) <= self.min_oligos_per_gene:
+            num_oligos = len(list(self.oligos_DB[gene].keys()))
+            if num_oligos <= self.min_oligos_per_gene:
                 del self.oligos_DB[gene]
                 if gene in self.oligosets:
                     del self.oligosets[gene]
                 if write:
                     with open(self.file_removed_genes, "a") as hanlde:
-                        hanlde.write(f"{gene}\t{pipeline_step}\n")
+                        hanlde.write(f"{gene}\t{pipeline_step}\t{num_oligos}\n")
 
 
 class NcbiOligoDB(CustomOligoDB):

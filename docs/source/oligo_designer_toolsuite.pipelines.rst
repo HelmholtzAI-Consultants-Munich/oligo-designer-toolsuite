@@ -1,4 +1,4 @@
-oligo\_designer\_toolsuite.pipelines package
+pipelines
 ============================================
 
 Module contents

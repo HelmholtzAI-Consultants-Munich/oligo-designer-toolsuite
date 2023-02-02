@@ -147,7 +147,7 @@ class LigationRegionCreation(SeedRegionCreationBase):
 
     **Remark:** it is required to have a ligation site argument for each oligo in the datset, which can be computed with the ``PadlockArms`` filter in the prefilterig step
 
-    :param ligation_region_size: number of basis the regioin has to expand starting from the ligation site.
+    :param ligation_region_size: number of basis the region has to expand starting from the ligation site.
     :type ligation_region_size: int
     """
 

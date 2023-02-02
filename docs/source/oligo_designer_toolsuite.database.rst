@@ -1,4 +1,4 @@
-oligo\_designer\_toolsuite.database package
+database
 ===========================================
 
 Module contents

@@ -14,7 +14,7 @@ class Bowtie2(Bowtie):
     The user can customize the filtering by specifying the min_score. The Bowtie 2 filter gives an alignment score to each oligo. The higher the score, the more similar the read sequence is to the reference sequence.
     The min_score parameter filters out oligos with an alignment score greater than min_score
 
-    Use ``conda install -c bioconda bowtie2 to install the Bowtie 2 package``
+    Use ``conda install -c bioconda bowtie2`` to install the Bowtie 2 package
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
@@ -49,7 +49,7 @@ class Bowtie2(Bowtie):
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
         :return: oligo info of user-specified genes
-        :rtype : dict
+        :rtype: dict
         """
         # Some bowtie initializations, change the names
         # Check if bowtie2 index exists
@@ -63,7 +63,7 @@ class Bowtie2(Bowtie):
         # Create bowtie2 index if none exists
         if not index_exists:
             command1 = (
-                "bowtie2-build --threads "
+                "bowtie2-build --quiet --threads "
                 + str(n_jobs)
                 + " -f "
                 + file_reference_DB
@@ -101,7 +101,7 @@ class Bowtie2(Bowtie):
 
         if self.min_score is not None:
             command = (
-                "bowtie2 -f -a --score-min "
+                "bowtie2 --quiet -f -a --score-min "
                 + str(self.min_score)
                 + " --no-hd --no-unal -x "
                 + index_name
@@ -112,7 +112,7 @@ class Bowtie2(Bowtie):
             )
         else:
             command = (
-                "bowtie2 -f -a "
+                "bowtie2 --quiet -f -a "
                 + " --no-hd --no-unal -x "
                 + index_name
                 + " -U "

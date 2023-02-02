@@ -59,6 +59,7 @@ class GCContent(PropertyFilterBase):
         super().__init__()
         self.GC_content_min = GC_content_min
         self.GC_content_max = GC_content_max
+        assert GC_content_max >= GC_content_min, "Max value is lower that min value!"
 
     def apply(self, sequence: Seq):
         """Applies the filter and returns True if the GC content is between the min and max values.
@@ -103,6 +104,7 @@ class MeltingTemperature(PropertyFilterBase):
         self.Tm_max = Tm_max
         self.Tm_parameters = Tm_parameters
         self.Tm_correction_parameters = Tm_correction_parameters
+        assert Tm_max >= Tm_min, "Max value is lower that min value!"
 
     def __get_Tm(self, sequence: Seq):
         """Computes the melting temperature of the sequence.
@@ -134,9 +136,7 @@ class MeltingTemperature(PropertyFilterBase):
 
 
 class ProhibitedSequences(PropertyFilterBase):
-    """Filters the sequences containing a prohibited sequence.
-
-    """
+    """Filters the sequences containing a prohibited sequence."""
 
     def __init__(
         self,
@@ -144,7 +144,6 @@ class ProhibitedSequences(PropertyFilterBase):
         """Initializes the class."""
 
         super().__init__()
-
 
     def apply(self, sequence: Seq):
         """Applies the filter and returns True if the oligo does not contain prohibited sequences.
@@ -154,5 +153,3 @@ class ProhibitedSequences(PropertyFilterBase):
         :return: True if the constrined is fulfilled and the melting temperature
         :rtype: bool and dict
         """
-
-        pass
