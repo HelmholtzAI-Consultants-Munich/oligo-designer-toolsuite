@@ -1,4 +1,4 @@
-oligo\_designer\_toolsuite.experiment\_specific package
+experiment\_specific
 =======================================================
 
 Module contents

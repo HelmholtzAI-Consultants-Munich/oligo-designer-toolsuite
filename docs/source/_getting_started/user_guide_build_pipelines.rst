@@ -13,8 +13,8 @@ For more detailed infomration have a look at one of the tutorials.
 Oligos DB
 ---------
 
-The class that contains the database of the oligos and all the related functionalities (e.g. read, witrite, ...) is ''database.CustomOligoDB''.
-It creates the olios sequences for a given set of genes and stores them in a dictionary (``oligos_DB``) with a JSON format. [UPDATE]
+The class that contains the database of the oligos and all the related functionalities (e.g. read, witrite, ...) is ``database.OligoDB``, .
+It creates the oligos sequences for a given set of genes and stores them as a dictionary (with a JSON format) in a class attrivute called ``oligos_DB``.
 
 The dictionary contains all the oligos and their features, the structure is the following:
 
@@ -37,12 +37,15 @@ The dictionary contains all the oligos and their features, the structure is the 
     	}
     }
 
+[TODO: fasta file for generating the probes has to be previously generated with a different class]
 
 Reference DB
 ------------
 
-TBD
+The class ``ReferenceDB`` stores the path  and additional information of a reference fasta file used for the alignement methods (Balst, Bowtie, ...). It aditionally allows to filter the fasta file
+w.r.t. a list of genes, keeping only the sequences belonging to those genes.
 
+[TODO: the fasta file is given in input and can be generated form a differet class whihc does it for both oligo and reference db]
 
 Working principle
 -----------------
@@ -67,10 +70,7 @@ Each step of the pipeline is made of:
 - **General Module**: modules that combine the application-specific modules in a modular way. They take the database containing the oligo sequences and the experiment specific functionalities and apply the latter to the database.
 
 
-At the beginning all the possible oligo sequences are created and stored
-in the database class (``CustomDB``, ``NCBIDB``, ``EnsembleDB``) in a dictionary (``oligos_DB``). [UPDATE]
-
-At each step a step-specific module will take as input the database class, perform the necessary computations and update the ``oligos_DB``. [UPDATE]
+At each step a step-specific module will take as input the database class, perform the necessary computations and update its ``oligos_DB`` attribute deleting the non suitable oligos. [UPDATE]
 
 Output
 ------

@@ -23,7 +23,7 @@ class SpecificityFilterBase(ABC):
     @abstractmethod
     def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
         """Apply filter to list of all possible oligos in oligo_info dictionary and filter out the oligos which don't fulfill the requirements.
-        Temporary files can be written in the ``self.dir_specificiy``folder, but they must be removed.
+        Temporary files can be written in the ``self.dir_specificiy`` folder, but they must be removed.
 
         :param oligo_DB: database containing the oligos and their features
         :type oligo_DB: dict
@@ -32,7 +32,7 @@ class SpecificityFilterBase(ABC):
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
         :return: oligo info of user-specified genes
-        :rtype : dict
+        :rtype: dict
         """
 
     def _create_fasta_file(self, gene_DB, dir, gene):

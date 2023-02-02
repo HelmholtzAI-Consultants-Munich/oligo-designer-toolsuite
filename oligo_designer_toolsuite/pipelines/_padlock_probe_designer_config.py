@@ -1,0 +1,446 @@
+import logging
+import os
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from datetime import datetime
+from pathlib import Path
+
+timestamp = datetime.now()
+file_logger = f"log_padlock_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt"
+logging.getLogger("padlock_probe_designer")
+logging.basicConfig(
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    level=logging.NOTSET,
+    handlers=[logging.FileHandler(file_logger), logging.StreamHandler()],
+)
+
+
+def generate_custom_config(folder: str):
+    config_file = os.path.join(folder, "padlock_probe_designer_custom.yaml")
+    lines = [
+        "### General parameters",
+        "n_jobs: 1 # number of cores used to run the pipeline",
+        "dir_output: output #path to the directory where the output files will be written",
+        "file_format: tsv # format of the written files, can be 'tsv' or 'gtf'",
+        "min_oligos_per_gene: 0 # genes with less that this number of oligos are removed",
+        "write_removed_genes: True # write in a file the removed genes",
+        "write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline",
+        "",
+        "",
+        "### Parameters for genome and gene annotation",
+        "source: custom # required: indicate that own annotation should be used",
+        "annotation_file: # required: GTF file with gene annotation",
+        "sequence_file: # required: FASTA file with genome sequence",
+        "species: human # optional: species of provided annotation, leave empty if unknown",
+        "annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown",
+        "genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown",
+        "files_source: NCBI  # optional: source of provided annotation, leave empty if unknown",
+        "",
+        "### Parameters for oligo sequences generation",
+        "file_genes: # file with all the genes used to generate the oligos sequences, leave empty if all the genes are used",
+        "oligo_length_min: 38 # minimum length of oligos",
+        "oligo_length_max: 45 # maximum length of oligos",
+        "block_size: 50 # size of the exon junctions in the transcript used for the alignement methods",
+        "",
+        "",
+        "### Parameters for the property filers",
+        "# oligo sequence",
+        "GC_content_min: 40 # minimum GC content of oligos",
+        "GC_content_max: 60 # maximum GC content of oligos",
+        "Tm_min: 52 # minimum melting temperature of oligos",
+        "Tm_max: 67 # maximum melting temperature of oligos",
+        "# padlock arms",
+        "min_arm_length: 10 # minimum length of each arm",
+        "max_arm_Tm_dif: 2 # maximum melting temperature difference of both arms",
+        "arm_Tm_min: 38 # minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)",
+        "arm_Tm_max: 49 # maximum melting temperature of each arm",
+        "",
+        "",
+        "### Parameters for the specificity filters",
+        "# Blastn Similarity Filter",
+        "word_size: 10 # word size for the blastn seed (exact match to target)",
+        "coverage: 50 # minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)",
+        "percent_identity: 80 # maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)",
+        "strand: plus # strand of the query sequence to search",
+        "# Bowtie Ligation Region filter",
+        "ligation_region_size: 5 # size of the seed region around the ligation site for bowtie seed region filter",
+        "",
+        "",
+        "### Parameters for the oligo efficiency",
+        "# Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before",
+        "Tm_opt: 60 # optimal melting temperature of oligos",
+        "GC_content_opt: 50 # optimal GC content of oligos",
+        "Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score",
+        "GC_weight: 1 # weight of the GC content of the oligo in the efficiency score",
+        "",
+        "",
+        "### Parameters for the oligosets generation",
+        "oligoset_size: 5 # ideal number of oligos per oligoset",
+        "min_oligoset_size: 2 # minimum number of oligos per oligoset",
+        "n_sets: 100 # maximum number of sets per gene",
+        "",
+        "",
+        "### Parameters for the padlock detection oligo design",
+        "detect_oligo_length_min: 18 # minimum length of detection oligo",
+        "detect_oligo_length_max: 25 # maximum length of detection oligo",
+        "detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo",
+        "",
+        "",
+        "### Parameters for Melting Temperature",
+        "# The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.",
+        "# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN",
+        "Tm_parameters:",
+        "    shared:",
+        "        check: True",
+        "        strict: True",
+        "        c_seq: null",
+        "        shift: 0",
+        "        nn_table: DNA_NN3",
+        "        tmm_table: DNA_TMM1",
+        "        imm_table: DNA_IMM1",
+        "        de_table: DNA_DE1",
+        "        dnac1: 50 #[nM]",
+        "        dnac2: 0",
+        "        selfcomp: False",
+        "        dNTPs: 0",
+        "        saltcorr: 7",
+        "    property_filter:",
+        "        Na: 1.25 #[mM]",
+        "        K: 75 #[mM]",
+        "        Tris: 20 #[mM]",
+        "        Mg: 10 #[mM]",
+        "    detection_oligo:",
+        "        Na: 39 #[mM]",
+        "        K: 0 #[mM]",
+        "        Tris: 0 #[mM]",
+        "        Mg: 0 #[mM]",
+        "",
+        "Tm_correction_parameters:",
+        "    shared:",
+        "        DMSO: 0",
+        "        DMSOfactor: 0.75",
+        "        fmdfactor: 0.65",
+        "        fmdmethod: 1",
+        "        GC: null",
+        "    property_filter:",
+        "        fmd: 20",
+        "    detection_oligo:",
+        "        fmd: 30",
+    ]
+    with open(config_file, "w") as c:
+        for line in lines:
+            c.write(line + "\n")
+    return config_file
+
+
+def generate_ncbi_config(folder: str):
+    config_file = os.path.join(folder, "padlock_probe_designer_ncbi.yaml")
+    # generate config file
+    lines = [
+        "### General parameters",
+        "n_jobs: 2 # number of cores used to run the pipeline",
+        "dir_output: output # path to the directory where the output files will be written",
+        "file_format: tsv # fromat of the written files, can be 'tsv' or 'gtf'",
+        "min_oligos_per_gene: 0 # genes with less that this number of oligos are removed",
+        "write_removed_genes: True # write in a file the removed genes",
+        "write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline",
+        "",
+        "",
+        "### Parameters for genome and gene annotation",
+        "source: ncbi # define annotation source",
+        "species: human # currently supported species: human or mouse",
+        "annotation_release: current # release number (e.g. 109 or 109.20211119 for ncbi) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/",
+        "",
+        "",
+        "### Parameters for oligo sequences generation",
+        f"file_genes: {folder}/ncbi_genes_10.txt # file with all the genes used to generate the oligos sequences, leave empty if all the genes are used",
+        "oligo_length_min: 38 # minimum length of oligos",
+        "oligo_length_max: 45 # maximum length of oligos",
+        "block_size: 50 # size of the exon junctions in the transcript used for the alignement methods",
+        "",
+        "",
+        "### Parameters for the property filers",
+        "# oligo sequence",
+        "GC_content_min: 40 # minimum GC content of oligos",
+        "GC_content_max: 60 # maximum GC content of oligos",
+        "Tm_min: 52 # minimum melting temperature of oligos",
+        "Tm_max: 67 # maximum melting temperature of oligos",
+        "# padlock arms",
+        "min_arm_length: 10 # minimum length of each arm",
+        "max_arm_Tm_dif: 2 # maximum melting temperature difference of both arms",
+        "arm_Tm_min: 38 # minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)",
+        "arm_Tm_max: 49 # maximum melting temperature of each arm",
+        "",
+        "",
+        "### Parameters for the specificity filters",
+        "# Blastn Similarity Filter",
+        "word_size: 10 # word size for the blastn seed (exact match to target)",
+        "coverage: 50 # minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)",
+        "percent_identity: 80 # maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)",
+        "strand: plus # strand of the query sequence to search",
+        "# Bowtie Ligation Region filter",
+        "ligation_region_size: 5 # size of the seed region around the ligation site for bowtie seed region filter",
+        "",
+        "",
+        "### Parameters for the oligo efficiency",
+        "# Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before",
+        "Tm_opt: 60 # optimal melting temperature of oligos",
+        "GC_content_opt: 50 # optimal GC content of oligos",
+        "Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score",
+        "GC_weight: 1 # weight of the GC content of the oligo in the efficiency score",
+        "",
+        "",
+        "### Parameters for the oligosets generation",
+        "oligoset_size: 5 # ideal number of oligos per oligoset",
+        "min_oligoset_size: 2 # minimum number of oligos per oligoset",
+        "n_sets: 100 # maximum number of sets per gene",
+        "",
+        "",
+        "### Parameters for the padlock detection oligo design",
+        "detect_oligo_length_min: 18 # minimum length of detection oligo",
+        "detect_oligo_length_max: 25 # maximum length of detection oligo",
+        "detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo",
+        "",
+        "",
+        "### Parameters for Melting Temperature",
+        "# The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.",
+        "# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN",
+        "Tm_parameters:",
+        "    shared:",
+        "        check: True",
+        "        strict: True",
+        "        c_seq: null",
+        "        shift: 0",
+        "        nn_table: DNA_NN3",
+        "        tmm_table: DNA_TMM1",
+        "        imm_table: DNA_IMM1",
+        "        de_table: DNA_DE1",
+        "        dnac1: 50 #[nM]",
+        "        dnac2: 0",
+        "        selfcomp: False",
+        "        dNTPs: 0",
+        "        saltcorr: 7",
+        "    property_filter:",
+        "        Na: 1.25 #[mM]",
+        "        K: 75 #[mM]",
+        "        Tris: 20 #[mM]",
+        "        Mg: 10 #[mM]",
+        "    detection_oligo:",
+        "        Na: 39 #[mM]",
+        "        K: 0 #[mM]",
+        "        Tris: 0 #[mM]",
+        "        Mg: 0 #[mM]",
+        "",
+        "Tm_correction_parameters:",
+        "    shared:",
+        "        DMSO: 0",
+        "        DMSOfactor: 0.75",
+        "        fmdfactor: 0.65",
+        "        fmdmethod: 1",
+        "        GC: null",
+        "    property_filter:",
+        "        fmd: 20",
+        "    detection_oligo:",
+        "        fmd: 30",
+    ]
+    with open(config_file, "w") as c:
+        for line in lines:
+            c.write(line + "\n")
+    # generate genes files
+    genes_file = os.path.join(folder, "ncbi_genes_10.txt")
+    lines = [
+        "WASH7P",
+        "DDX11L1",
+        "TRNT",
+        "NOC2L",
+        "PLEKHN1",
+        "AGRN",
+        "TTLL10",
+        "UBE2J2",
+        "DVL1",
+        "MIB2",
+    ]
+    with open(genes_file, "w") as g:
+        for line in lines:
+            g.write(line + "\n")
+    return config_file
+
+
+def generate_ensembl_config(folder: str):
+    config_file = os.path.join(folder, "padlock_probe_designer_ensembl.yaml")
+    lines = [
+        "### General parameters",
+        "n_jobs: 2 # number of cores used to run the pipeline",
+        "dir_output: output # path to the directory where the output files will be written",
+        "file_format: tsv # fromat of the written files, can be 'tsv' or 'gtf'",
+        "min_oligos_per_gene: 0 # genes with less that this number of oligos are removed",
+        "write_removed_genes: True # write in a file the removed genes",
+        "write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline",
+        "",
+        "",
+        "### Parameters for genome and gene annotation",
+        "source: ensembl # define annotation source",
+        "species: human # currently supported species: human or mouse",
+        "annotation_release: current # release number of annotation or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/",
+        "",
+        "",
+        "### Parameters for oligo sequences generation",
+        f"file_genes: {folder}/ensembl_genes_10.txt # file with all the genes used to generate the oligos sequences, leave empty  if all the genes are used",
+        "oligo_length_min: 38 # minimum length of oligos",
+        "oligo_length_max: 45 # maximum length of oligos",
+        "block_size: 50 # size of the exon junctions in the transcript used for the alignement methods",
+        "",
+        "",
+        "### Parameters for the property filers",
+        "# oligo sequence",
+        "GC_content_min: 40 # minimum GC content of oligos",
+        "GC_content_max: 60 # maximum GC content of oligos",
+        "Tm_min: 52 # minimum melting temperature of oligos",
+        "Tm_max: 67 # maximum melting temperature of oligos",
+        "# padlock arms",
+        "min_arm_length: 10 # minimum length of each arm",
+        "max_arm_Tm_dif: 2 # maximum melting temperature difference of both arms",
+        "arm_Tm_min: 38 # minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)",
+        "arm_Tm_max: 49 # maximum melting temperature of each arm",
+        "",
+        "",
+        "### Parameters for the specificity filters",
+        "# Blastn Similarity Filter",
+        "word_size: 10 # word size for the blastn seed (exact match to target)",
+        "coverage: 50 # minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)",
+        "percent_identity: 80 # maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)",
+        "strand: plus # strand of the query sequence to search",
+        "# Bowtie Ligation Region filter",
+        "ligation_region_size: 5 # size of the seed region around the ligation site for bowtie seed region filter",
+        "",
+        "",
+        "### Parameters for the oligo efficiency",
+        "# Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before",
+        "Tm_opt: 60 # optimal melting temperature of oligos",
+        "GC_content_opt: 50 # optimal GC content of oligos",
+        "Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score",
+        "GC_weight: 1 # weight of the GC content of the oligo in the efficiency score",
+        "",
+        "",
+        "### Parameters for the oligosets generation",
+        "oligoset_size: 5 # ideal number of oligos per oligoset",
+        "min_oligoset_size: 2 # minimum number of oligos per oligoset",
+        "n_sets: 100 # maximum number of sets per gene",
+        "",
+        "",
+        "### Parameters for the padlock detection oligo design",
+        "detect_oligo_length_min: 18 # minimum length of detection oligo",
+        "detect_oligo_length_max: 25 # maximum length of detection oligo",
+        "detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo",
+        "",
+        "",
+        "### Parameters for Melting Temperature",
+        "# The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.",
+        "# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN",
+        "Tm_parameters:",
+        "    shared:",
+        "        check: True",
+        "        strict: True",
+        "        c_seq: null",
+        "        shift: 0",
+        "        nn_table: DNA_NN3",
+        "        tmm_table: DNA_TMM1",
+        "        imm_table: DNA_IMM1",
+        "        de_table: DNA_DE1",
+        "        dnac1: 50 #[nM]",
+        "        dnac2: 0",
+        "        selfcomp: False",
+        "        dNTPs: 0",
+        "        saltcorr: 7",
+        "    property_filter:",
+        "        Na: 1.25 #[mM]",
+        "        K: 75 #[mM]",
+        "        Tris: 20 #[mM]",
+        "        Mg: 10 #[mM]",
+        "    detection_oligo:",
+        "        Na: 39 #[mM]",
+        "        K: 0 #[mM]",
+        "        Tris: 0 #[mM]",
+        "        Mg: 0 #[mM]",
+        "",
+        "Tm_correction_parameters:",
+        "    shared:",
+        "        DMSO: 0",
+        "        DMSOfactor: 0.75",
+        "        fmdfactor: 0.65",
+        "        fmdmethod: 1",
+        "        GC: null",
+        "    property_filter:",
+        "        fmd: 20",
+        "    detection_oligo:",
+        "        fmd: 30",
+        "",
+    ]
+    with open(config_file, "w") as c:
+        for line in lines:
+            c.write(line + "\n")
+
+    # generate the genes file
+    genes_file = os.path.join(folder, "ensembl_genes_10.txt")
+    lines = [
+        "ENSG00000000003",
+        "ENSG00000000938",
+        "ENSG00000001631",
+        "ENSG00000003393",
+        "ENSG00000004777",
+        "ENSG00000005302",
+        "ENSG00000005844",
+        "ENSG00000006071",
+        "ENSG00000274653",
+        "ENSG00000224529",
+    ]
+    with open(genes_file, "w") as g:
+        for line in lines:
+            g.write(line + "\n")
+    return config_file
+
+
+def padlock_probe_designer_config():
+    """Command line tool to generate the configuration file for the Padlock Probe Designer pipeline. For the Ncbi and Esemble sources is generated also an example gene file containig 10 genes.
+
+    To run the tool use the command: ``padlock_probe_designer_config [options]``
+    """
+
+    # get comman line arguments
+    parser = ArgumentParser(
+        prog="padlock_probe_designer_config",
+        usage="%(prog)s [options]",
+        description=padlock_probe_designer_config.__doc__,
+        formatter_class=RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="path to the folder where the config file will be saved, str",
+        type=str,
+        metavar="",
+        required=True,
+    )
+    parser.add_argument(
+        "-s",
+        "--source",
+        help="config file will be generated for this source, [custom, ncbi, ensembl]",
+        choices=["custom", "ncbi", "ensembl"],
+        metavar="",
+        required=True,
+    )
+    args = parser.parse_args()
+    Path(args.output).mkdir(parents=True, exist_ok=True)
+
+    if args.source == "custom":
+        config_file = generate_custom_config(args.output)
+    if args.source == "ncbi":
+        config_file = generate_ncbi_config(args.output)
+    if args.source == "ensembl":
+        config_file = generate_ensembl_config(args.output)
+
+    # log the name of the file
+    logging.info(f"The path of the config file is: {config_file}")
+
+
+if __name__ == "__main__":
+    padlock_probe_designer_config()
