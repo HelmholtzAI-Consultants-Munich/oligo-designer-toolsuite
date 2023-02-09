@@ -108,8 +108,11 @@ class ReferenceDatabase:
         :rtype: str
         """
         file_database = os.path.join(self.dir_output, f"{filename}.fna")
-        with open(file_database, "w") as handle_fasta:
-            SeqIO.write(self.database, handle_fasta, "fasta")
+        if self.database:
+            with open(file_database, "w") as handle_fasta:
+                SeqIO.write(self.database, handle_fasta, "fasta")
+        else:
+            raise ValueError("Database is empty! Nothing written to fasta file.")
 
         return file_database
 
@@ -122,9 +125,12 @@ class ReferenceDatabase:
         :param region_ids: List of region ids.
         :type region_ids: list
         """
-        database_filtered = []
-        for entry in self.database:
-            region, _, _ = parse_fasta_header(entry.id)
-            if region in region_ids:
-                database_filtered.append(entry)
-        self.database = database_filtered
+        if self.database:
+            database_filtered = []
+            for entry in self.database:
+                region, _, _ = parse_fasta_header(entry.id)
+                if region in region_ids:
+                    database_filtered.append(entry)
+            self.database = database_filtered
+        else:
+            raise ValueError("Can not filter. Database is empty!")
