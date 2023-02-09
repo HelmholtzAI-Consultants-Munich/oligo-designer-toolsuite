@@ -1,8 +1,6 @@
-oligo\_designer\_toolsuite package
-==================================
+oligo\_designer\_toolsuite
+==========================
 
-Subpackages
------------
 
 .. toctree::
    :maxdepth: 1
