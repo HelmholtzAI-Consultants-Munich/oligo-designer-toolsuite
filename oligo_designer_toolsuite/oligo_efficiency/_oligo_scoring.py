@@ -7,7 +7,10 @@ import pandas as pd
 class OligoScoringBase(ABC):
     """Template class for scoring the oligos."""
 
-    def apply(self, oligos: dict, oligos_indices: np.array):
+    def apply(self, 
+            oligos: dict, 
+            oligos_indices: np.array
+        ):
         """Scores all the oligos using the defiend scoring function. The scores are both saved in the dictionary
         and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
 
@@ -18,7 +21,6 @@ class OligoScoringBase(ABC):
         :return: updated dictionary of the oligos, series with the computed scores
         :rtype: dict, pandas.Series
         """
-
         oligos_scores = pd.Series(index=oligos_indices, dtype=float)
         for oligo_id in oligos_indices:
             score = self.scoring_function(oligos[oligo_id])
@@ -40,7 +42,6 @@ class OligoScoringBase(ABC):
 class PadlockOligoScoring(OligoScoringBase):
     """Oligos scoring class for the padlock experiment.
 
-
     :param Tm_min: minimal melting temperature
     :type Tm_min: float
     :param Tm_opt: minimal melting temperature
@@ -59,21 +60,17 @@ class PadlockOligoScoring(OligoScoringBase):
     :type GC_weight: int, optional
     """
 
-    def __init__(
-        self,
-        Tm_min: float,
-        Tm_opt: float,
-        Tm_max: float,
-        GC_content_min: float,
-        GC_content_opt: float,
-        GC_content_max: float,
-        Tm_weight: float = 1,
-        GC_weight: float = 1,
-    ):
-        """
-        Initialize the class
-        """
-
+    def __init__(self,
+            Tm_min: float,
+            Tm_opt: float,
+            Tm_max: float,
+            GC_content_min: float,
+            GC_content_opt: float,
+            GC_content_max: float,
+            Tm_weight: float = 1,
+            GC_weight: float = 1,
+        ):
+        """Constructor method"""
         self.Tm_min = Tm_min
         self.Tm_opt = Tm_opt
         self.Tm_max = Tm_max
@@ -98,9 +95,8 @@ class PadlockOligoScoring(OligoScoringBase):
             oligo["melting_temperature"] - self.Tm_opt
         )  # check the names of the columns
         GC_dif = oligo["GC_content"] - self.GC_opt
-        return self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(
-            GC_dif
-        )
+        score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(GC_dif)
+        return score
 
     def __generate_scoring_functions(self):
         """Computes relevant parts of the scoring function."""
@@ -110,15 +106,11 @@ class PadlockOligoScoring(OligoScoringBase):
         if Tm_dif_max == Tm_dif_min:
             self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max
         else:
-            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max * (
-                Tm_dif > 0
-            ) + abs(Tm_dif) / Tm_dif_min * (Tm_dif < 0)
+            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max * (Tm_dif > 0) + abs(Tm_dif) / Tm_dif_min * (Tm_dif < 0)
         # define the error function for the GC content
         GC_dif_max = self.GC_max - self.GC_opt
         GC_dif_min = self.GC_opt - self.GC_min
         if GC_dif_max == GC_dif_min:
             self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max
         else:
-            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (
-                GC_dif > 0
-            ) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
+            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (GC_dif > 0) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
