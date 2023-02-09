@@ -27,7 +27,18 @@ from ..utils._data_parser import (
 
 class OligoDatabase:
     """This class generates all possible oligos that can be designed for a given list of regions (e.g. genes),
-    based on the transcriptome or the gene CDS annotation or the whole genome provided as fasta file.
+    based on the transcriptome or the gene CDS annotation or the whole genome provided as fasta file. The header of 
+    each sequence must start with '>' and contain the following information: 
+    region_id, additional_information (optional) and coordinates (chrom, start, end, strand).
+
+    Input Format (per sequence):
+    >region_id::additional information::chromosome:start-end(strand)
+    sequence
+
+    Example:
+    >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
+    AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
+    
     Moreover, the database can be saved and loaded to/from a tsv file.
 
     Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
