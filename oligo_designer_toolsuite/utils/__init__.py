@@ -1,23 +1,27 @@
 """
-Additional functionalities to dowload form the NCBI and Ensembl servers and to deal with reading and writing the files
+Additional functionalities to dowload form the NCBI and Ensembl servers and to deal with sequence and annotation files
 """
 
 from ._data_parser import (
-    read_gtf,
-    read_oligos_DB_gtf,
-    read_oligos_DB_tsv,
-    write_oligos_DB_gtf,
-    write_oligos_DB_tsv,
+    check_gff_format,
+    check_fasta_format,
+    check_tsv_format,
+    get_sequence_from_annotation,
+    merge_fasta,
+    parse_fasta_header,
 )
-from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FTPLoaderNCBI
+from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
+from ._gff_parser import GffParser
 
 __all__ = [
-    "read_oligos_DB_gtf",
-    "read_oligos_DB_tsv",
-    "write_oligos_DB_gtf",
-    "write_oligos_DB_tsv",
     "BaseFtpLoader",
-    "FTPLoaderNCBI",
+    "FtpLoaderNCBI",
     "FtpLoaderEnsembl",
-    "read_gtf",
+    "GffParser",
+    "check_gff_format",
+    "check_fasta_format",
+    "check_tsv_format",
+    "get_sequence_from_annotation",
+    "merge_fasta",
+    "parse_fasta_header",
 ]
