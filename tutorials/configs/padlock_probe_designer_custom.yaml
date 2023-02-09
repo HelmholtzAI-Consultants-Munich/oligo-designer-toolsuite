@@ -1,20 +1,18 @@
 ### General parameters
 n_jobs: 1 # number of cores used to run the pipeline
 dir_output: output # name of the directory where the output files will be written
-file_format: tsv # fromat of the written files, can be "tsv" or "gtf"
 min_oligos_per_gene: 0 # minimum number of oligos that a gene must have before it gets deleted
 write_removed_genes: True # write in a file the removed genes
 write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline
 
 
-### Parameters for genome and gene annotation
-source: custom # required: indicate that own annotation should be used
+### Parameters for genomic region generation
+source: NCBI # required: indicate that own annotation should be used
 annotation_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf # required: GTF file with gene annotation
 sequence_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna # required: FASTA file with genome sequence
-species: human # optional: species of provided annotation, leave empty if unknown
+species: Homo_sapiens # optional: species of provided annotation, leave empty if unknown
 annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
 genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
-files_source: NCBI  # optional: source of provided annotation, leave empty if unknown
 
 ### Parameters for oligo sequences generation
 file_genes: ./data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, set as None if all the genes are used
@@ -23,7 +21,7 @@ oligo_length_max: 45 #max length of oligos
 block_size: 50
 
 
-### Parameters for the property filers
+### Parameters for the property filters
 # oligo sequence
 GC_content_min: 40 #minimum GC content of oligos
 GC_content_max: 60 #maximum GC content of oligos
