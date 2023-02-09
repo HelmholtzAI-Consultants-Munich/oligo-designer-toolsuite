@@ -24,7 +24,7 @@ from ..utils._gff_parser import GffParser
 
 class CustomGenomicRegionGenerator:
     """Class to generate sequences from annotated regions in GTF format and genomic fasta file.
-    Sequences are safed as fasta file with region id, additional information and coordinates in header.
+    Sequences are saved as fasta file with region id, additional information and coordinates in header.
 
     Output Format (per sequence):
     >'region_id'::'additional information'::'chromosome':'start'-'end'('strand')
