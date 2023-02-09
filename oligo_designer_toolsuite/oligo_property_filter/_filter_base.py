@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 
-from Bio.SeqUtils import GC
+from Bio.SeqUtils import gc_fraction
 from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq
 
 
 class PropertyFilterBase(ABC):
-    """Base class that gives the structure."""
+    """Base class that gives the structure for Oligo Property Filters."""
 
     def __init__(self) -> None:
         pass
@@ -14,7 +14,7 @@ class PropertyFilterBase(ABC):
     @abstractmethod
     def apply(self, sequence: str):
         """
-        Applies the filters to a given sequence and if it fulfillts the constraints returns ``True`` and the additional features computed stored in a dictionary.
+        Applies the filters to a given sequence and if the sequence fulfillts the constraints returns ``True`` and dictionary that stores additional computed features.
         If this method is not reimplemented in the filters classes it will give a warning.
         The aditional computed features must be float type.
 
@@ -26,27 +26,30 @@ class PropertyFilterBase(ABC):
 
 
 class MaskedSequences(PropertyFilterBase):
-    """Filters the sequences containing a masked nucleotide."""
+    """Checks if the sequences contains a masked nucleotide."""
 
-    def __init__(self) -> None:
+    def __init__(self, 
+            mask: str = 'N'
+        ) -> None:
+        """Constructor"""
         super().__init__()
+        self.mask = mask
 
     def apply(self, sequence: Seq):
         """Applies the filter and returns True if there isn't any masked nucleotide.
 
         :param sequence: sequence to be filtered
         :type sequence: str
-        :return: True if the constrined is fulfilled
+        :return: True if the constraint is fulfilled
         :rtype: bool
         """
-
-        if "N" in sequence:
+        if self.mask in sequence:
             return False, {}
         return True, {}
 
 
 class GCContent(PropertyFilterBase):
-    """Filters the sequences by the GC content.
+    """Checks if the GC content of a sequence lies within a user defined interval [GC_content_min, GC_content_max].
 
     :param GC_content_min: minumum GC content value that the oligos need to have
     :type GC_content_min: float
@@ -54,78 +57,95 @@ class GCContent(PropertyFilterBase):
     :type GC_content_max: float
     """
 
-    def __init__(self, GC_content_min: float, GC_content_max: float) -> None:
+    def __init__(self, 
+            GC_content_min: float, 
+            GC_content_max: float
+        ) -> None:
         """Constructor"""
         super().__init__()
         self.GC_content_min = GC_content_min
         self.GC_content_max = GC_content_max
 
     def apply(self, sequence: Seq):
-        """Applies the filter and returns True if the GC content is between the min and max values.
+        """Applies the filter and returns True if the GC content fulfills requirements.
 
         :param sequence: sequence to be filtered
         :type sequence: str
-        :return: True if the constrined is fulfilled, the GC content
-        :rtype: bool and dict
+        :return:True if the constraint is fulfilled, GC content
+        :rtype: bool, dict
         """
-
-        GC_content = round(GC(sequence), 2)
+        GC_content = round(gc_fraction(sequence)*100, 4)
         sequence_features = {"GC_content": GC_content}
         if self.GC_content_min < GC_content < self.GC_content_max:
             return True, sequence_features
         return False, {}  # if false the additional features are not been saved anyway
 
 
-class MeltingTemperature(PropertyFilterBase):
-    """Filters the sequences by the melting temperature.
+class MeltingTemperatureNN(PropertyFilterBase):
+    """Checks if the melting temperature of a sequence lies within a user defined interval [Tm_min, Tm_max].
+    The melting tenperature is computed using nearest neighbor thermodynamics.
+    The parameters for melting temperature computation can be changed from default by providing ```Tm_parameters``` 
+    dict with parameters specifications.
+    The melting temperature can be corrected for salt ions by providing a ```Tm_salt_correction_parameters```dict 
+    with parameters specifications.
+    The melting temperature can be corrected for DMSO and formamide by providing a ```Tm_chem_correction_parameters```dict 
+    with parameters specifications.
 
     :param Tm_min: minimum melting temperature
     :type Tm_min: float
     :param Tm_max: maximum melting temperature
     :type Tm_max: float
-    :param Tm_parameters: parameters to compute the melting temperature, for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+    :param Tm_parameters: parameters to compute the melting temperature, 
+        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
+        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
     :type Tm_parameters: dict
-    :param Tm_correction_parameters: parameters to correct the melting temperature,for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-    :type Tm_correction_parameters: dict
+    :param Tm_salt_correction_parameters: parameters to correct the melting temperature for salt ions, defaults to None, i.e. no correction
+        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
+        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+    :type Tm_salt_correction_parameters: dict
+    :param Tm_chem_correction_parameters: parameters to correct the melting temperature for DMSO and formamide, defaults to None, i.e. no correction
+        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
+        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+    :type Tm_chem_correction_parameters: dict
     """
-
-    def __init__(
-        self,
-        Tm_min: float,
-        Tm_max: float,
-        Tm_parameters: dict,
-        Tm_correction_parameters: dict,
-    ) -> None:
-        """Initializes the class."""
-
+    def __init__(self,
+            Tm_min: float,
+            Tm_max: float,
+            Tm_parameters: dict,
+            Tm_salt_correction_parameters: dict = None,
+            Tm_chem_correction_parameters: dict = None,
+        ) -> None:
+        """Constructor"""
         super().__init__()
         self.Tm_min = Tm_min
         self.Tm_max = Tm_max
         self.Tm_parameters = Tm_parameters
-        self.Tm_correction_parameters = Tm_correction_parameters
+        self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
+        self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
     def __get_Tm(self, sequence: Seq):
-        """Computes the melting temperature of the sequence.
+        """Computes the melting temperature of the sequence and applies salt or chemical corrections if parameters provided.
 
         :param sequence: sequence for which the melting temperature is computed
         :type sequence: str
         :return: melting temperature
         :rtype: float
         """
-
         Tm = mt.Tm_NN(sequence, **self.Tm_parameters)
-        Tm_corrected = round(mt.chem_correction(Tm, **self.Tm_correction_parameters), 2)
-        return Tm_corrected
+        if self.Tm_salt_correction_parameters is not None:
+            Tm = mt.salt_correction(Tm, **self.Tm_salt_correction_parameters)
+        if self.Tm_chem_correction_parameters is not None:
+            Tm = mt.chem_correction(Tm, **self.Tm_chem_correction_parameters)
+        return round(Tm, 4)
 
     def apply(self, sequence: Seq):
-        """Applies the filter and returns True if the melting temperature is between the min and max values and the melting temperature.
+        """Applies the filter and returns True if the melting temperature fulfills requirements.
 
         :param sequence: sequence to be filtered
         :type sequence: str
-        :return: True if the constrined is fulfilled and the melting temperature
-        :rtype: bool and dict
+        :return: True if the constraint is fulfilled, melting temperature
+        :rtype: bool, dict
         """
-
         Tm = self.__get_Tm(sequence)
         sequence_features = {"melting_temperature": Tm}
         if self.Tm_min < Tm < self.Tm_max:

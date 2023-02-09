@@ -1,7 +1,15 @@
+############################################
+# imports
+############################################
+
 from joblib import Parallel, delayed
 
-from ..database import CustomOligoDB
+from ..database import OligoDatabase
 from . import PropertyFilterBase
+
+############################################
+# Property Filter Class
+############################################
 
 
 class PropertyFilter:
@@ -10,74 +18,79 @@ class PropertyFilter:
 
     :param filters: list of filters classes already initialized
     :type filters: list of classes
-    :param write_genes_with_insufficient_oligos: if True genes with insufficient oligos are written in a file, defaults to True
-    :type write_genes_with_insufficient_oligos: bool, optional
+    :param write_regions_with_insufficient_oligos: if True, region (e.g. gene) with insufficient oligos is written in a file, defaults to True
+    :type write_regions_with_insufficient_oligos: bool, optional
     """
 
     def __init__(
         self,
         filters: list[PropertyFilterBase],
-        write_genes_with_insufficient_oligos: bool = True,
+        write_regions_with_insufficient_oligos: bool = True,
     ) -> None:
         """
         Constructor.
         """
-
         self.filters = filters
-        self.write_genes_with_insufficient_oligos = write_genes_with_insufficient_oligos
+        self.write_regions_with_insufficient_oligos = (
+            write_regions_with_insufficient_oligos
+        )
 
-    def apply(self, oligo_database: CustomOligoDB, n_jobs: int = None):
-        """Filters the database of oligos based on the given filters
+    def apply(self, oligo_database: OligoDatabase, n_jobs: int = None):
+        """Filters the database of oligos based on the given filters.
 
-        :param database: database class containig the oligos and their features
-        :type database: CustomDB class
+        :param oligo_database: database class containig the oligos and their features
+        :type oligo_database: OligoDatabase
         :param n_jobs: nr of cores used, if None the value set in database class is used, defaults to None
         :type n_jobs: int
-        :return: database classs cointainig filtered oligos
-        :rtype: CustomDB class
+        :return: oligo database class cointainig only oligos that passed the filters
+        :rtype: OligoDatabase
         """
-        # TODO make it parallel and take into account that some genes might disappear
         if n_jobs is None:
             n_jobs = oligo_database.n_jobs
 
-        oligos_DB = oligo_database.oligos_DB
-        gene_ids = list(oligos_DB.keys())
-        filtered_oligos = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_gene)(oligos_DB[gene]) for gene in gene_ids
+        oligos_database = oligo_database.database
+        region_ids = list(oligos_database.keys())
+        oligos_DB_regions = Parallel(n_jobs=n_jobs)(
+            delayed(self._filter_region)(oligos_database[region])
+            for region in region_ids
         )
-        oligos_DB = {}
-        for oligos_gene, gene in zip(filtered_oligos, gene_ids):
-            oligos_DB[gene] = oligos_gene
-
-        oligo_database.remove_genes_with_insufficient_oligos(
-            pipeline_step="property filter",
-            write=self.write_genes_with_insufficient_oligos,
+        oligos_database = {}
+        for oligos_database_region, region_id in zip(oligos_DB_regions, region_ids):
+            oligos_database[region_id] = oligos_database_region
+        oligo_database.database = oligos_database
+        oligo_database.remove_regions_with_insufficient_oligos(
+            pipeline_step="Property Filter",
+            write=self.write_regions_with_insufficient_oligos,
         )
-
-        oligo_database.oligos_DB = oligos_DB
         return oligo_database
 
-    def _filter_gene(self, oligos_gene):
-        oligos_id = list(oligos_gene.keys())
+    def _filter_region(self, oligos_database_region):
+        """Apply filters to alll oligos of a specific region.
+
+        :param oligos_database_region: Oligo database entry for one region.
+        :type oligos_database_region: dict
+        :return: Oligo database entry for one region only contaning oligos that passed the filter.
+        :rtype: dict
+        """
+        oligos_id = list(oligos_database_region.keys())
         for oligo_id in oligos_id:
             fulfills, additional_features = self._filter_sequence(
-                oligos_gene[oligo_id]["sequence"]
+                oligos_database_region[oligo_id]["sequence"]
             )
             if fulfills:
-                oligos_gene[oligo_id].update(additional_features)
+                oligos_database_region[oligo_id].update(additional_features)
             else:
-                del oligos_gene[oligo_id]
-        return oligos_gene
+                del oligos_database_region[oligo_id]
+        return oligos_database_region
 
     def _filter_sequence(self, sequence):
-        """Applies the used-defined filters and returns the result and the additional computed features
+        """Applies the user-defined filters and returns the result and the additional computed features.
 
         :param sequence: sequence to check
         :type sequence: Bio.Seq
         :return: if the filters are fulfilled and the additional features computed
         :rtype: bool, dict
         """
-
         fulfills = True
         additional_features = {}
         for filter in self.filters:
