@@ -115,7 +115,6 @@ def test_region_generator_ncbi(tmpdir_factory):
     assert check_fasta_format(ncbi_CDS) == True, "error: wrong file format"
 
 
-'''
 def test_region_generator_ensemble(tmpdir_factory):
     base_temp = tmpdir_factory.getbasetemp()
     """Test region generation of genome, transcriptome and CDS with ensemble files."""
@@ -139,7 +138,6 @@ def test_region_generator_ensemble(tmpdir_factory):
 
     ensembl_CDS = region_generator_ensembl.generate_CDS_reduced_representation()
     assert check_fasta_format(ensembl_CDS) == True, "error: wrong file format"
-'''
 
 
 def test_reference_database(file_ncbi_transcriptome):
