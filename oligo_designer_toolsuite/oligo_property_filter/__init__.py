@@ -3,10 +3,10 @@ Filter of the olgos sequences based on theire features, such as melting temperat
 """
 
 from ._filter_base import (
+    PropertyFilterBase,
     GCContent,
     MaskedSequences,
-    MeltingTemperature,
-    PropertyFilterBase,
+    MeltingTemperatureNN,
 )
 from ._filter_padlock_oligos import PadlockArms
 from ._property_filter import PropertyFilter
@@ -15,7 +15,7 @@ __all__ = [
     "PropertyFilter",
     "PropertyFilterBase",
     "MaskedSequences",
-    "MeltingTemperature",
+    "MeltingTemperatureNN",
     "GCContent",
     "PadlockArms",
 ]
