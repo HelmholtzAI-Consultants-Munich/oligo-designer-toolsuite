@@ -13,51 +13,52 @@ annotation_release: current # release number of annotation, e.g. 'release-108' o
 
 
 ### Parameters for oligo sequences generation
-file_genes: ./data/genes/ensemble_10.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
-oligo_length_min: 38 #min length of oligos
-oligo_length_max: 45 #max length of oligos
-block_size: 50
+file_genes: ./data/genes/ensemble_10.txt # file with a list the genes used to generate the oligos sequences, leave empty  if all the genes are used
+oligo_length_min: 38 # minimum length of oligos
+oligo_length_max: 45 # maximum length of oligos
+block_size: 50 # size of the exon junctions in the transcript used for the alignement methods
 
 
 ### Parameters for the property filers
 # oligo sequence
-GC_content_min: 40 #minimum GC content of oligos
-GC_content_max: 60 #maximum GC content of oligos
-Tm_min: 52 #55 #minimum melting temperature of oligos
-Tm_max: 67 #63 #maximum melting temperature of oligos
+GC_content_min: 40 # minimum GC content of oligos
+GC_content_max: 60 # maximum GC content of oligos
+Tm_min: 52 # minimum melting temperature of oligos
+Tm_max: 67 # maximum melting temperature of oligos
 # padlock arms
-min_arm_length: 10 #min length of each arm
-max_arm_Tm_dif: 2 #maximum melting temperature difference of both arms
-arm_Tm_min: 38 #41 #minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)
-arm_Tm_max: 49 #46 #maximum melting temperature of each arm
+min_arm_length: 10 # minimum length of each arm
+max_arm_Tm_dif: 2 # maximum melting temperature difference of both arms
+arm_Tm_min: 38 # minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)
+arm_Tm_max: 49 # maximum melting temperature of each arm
 
 
 ### Parameters for the specificity filters
-# Bowtie Ligation Region filter
-ligation_region_size: 5 #coverage between oligos and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
 # Blastn Similarity Filter
-word_size: 10 #word size for the blastn seed (exact match to target)
-coverage: 50 #minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
-percent_identity: 80 #maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
+word_size: 10 # word size for the blastn seed (exact match to target)
+coverage: 50 # minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
+percent_identity: 80 # maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
+strand: plus # strand of the query sequence to search
+# Bowtie Ligation Region filter
+ligation_region_size: 5 # size of the seed region around the ligation site for bowtie seed region filter
 
 
 ### Parameters for the oligo efficiency
 # Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before
-Tm_opt: 60 #60 #optimal melting temperature of oligos
-GC_content_opt: 50 #optimal GC content of oligos
+Tm_opt: 60 # optimal melting temperature of oligos
+GC_content_opt: 50 # optimal GC content of oligos
 Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score
 GC_weight: 1 # weight of the GC content of the oligo in the efficiency score
 
 
 ### Parameters for the oligosets generation
-oligoset_size: 5 #ideal number of oligos per oligoset
-min_oligoset_size: 2 #minimum number of oligos per oligoset
+oligoset_size: 5 # ideal number of oligos per oligoset
+min_oligoset_size: 2 # minimum number of oligos per oligoset
 n_sets: 100 # maximum number of sets per gene
 
 
 ### Parameters for the padlock detection oligo design
-detect_oligo_length_min: 18 # min length of detection oligo
-detect_oligo_length_max: 25 # max length of detection oligo
+detect_oligo_length_min: 18 # minimum length of detection oligo
+detect_oligo_length_max: 25 # maximum length of detection oligo
 detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo
 
 

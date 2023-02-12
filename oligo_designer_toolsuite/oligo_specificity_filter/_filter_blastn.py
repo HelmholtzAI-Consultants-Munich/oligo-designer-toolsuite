@@ -12,6 +12,7 @@ from . import SpecificityFilterBase
 class Blastn(SpecificityFilterBase):
     """This class filters oligos based on the blast alignment tool. All the oligos which have a match with a percentage identity higher
     than the one given in input are filtered out.
+
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
     :param word_size: word size for the blastn seed (exact match to target)
@@ -20,6 +21,8 @@ class Blastn(SpecificityFilterBase):
     :type percent_identity: int
     :param coverage: minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
     :type coverage: int
+    :param strand: strand of the query sequence to search
+    :type strand: str
     """
 
     def __init__(
@@ -28,6 +31,7 @@ class Blastn(SpecificityFilterBase):
         word_size: int,
         percent_identity: float,
         coverage: float,
+        strand: str,
     ):
         """Constructor."""
         super().__init__(dir_specificity)
@@ -35,6 +39,7 @@ class Blastn(SpecificityFilterBase):
         self.word_size = word_size
         self.percent_identity = percent_identity
         self.coverage = coverage
+        self.strand = strand
 
         self.dir_blast = os.path.join(self.dir_specificity, "blast")
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
@@ -53,7 +58,7 @@ class Blastn(SpecificityFilterBase):
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
         :return: oligo info of user-specified genes
-        :rtype : dict
+        :rtype: dict
         """
 
         # create blast database
@@ -103,7 +108,7 @@ class Blastn(SpecificityFilterBase):
             db=os.path.join(self.dir_blast, database_name),
             outfmt="10 qseqid sseqid length qstart qend qlen",
             out=file_blast_gene,
-            strand="plus",
+            strand=self.strand,
             word_size=self.word_size,
             perc_identity=self.percent_identity,
             num_threads=1,  # ????

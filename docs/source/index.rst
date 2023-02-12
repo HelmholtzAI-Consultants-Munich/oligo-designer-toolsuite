@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to *Oligo Designer Toolsuite*'s documentation!
-====================================================
+======================================================
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease
 diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs
