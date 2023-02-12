@@ -37,6 +37,7 @@ percent_identity = 80
 oligo_length_min = 30
 oligo_length_max = 40
 coverage = 50
+strand = "plus"
 
 # bowtie parameters
 num_mismatches = 3
@@ -144,7 +145,7 @@ def test_filter_blast_match():
     # Check that blast filter filters out a sequence that is identified as a match for user-defined threshholds
 
     # Run blast filter
-    blast_filter = Blastn(dir_output, word_size, percent_identity, coverage)
+    blast_filter = Blastn(dir_output, word_size, percent_identity, coverage, strand)
     oligo_info_dict_match = read_oligos_DB_tsv(file_oligo_info_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
         oligo_info_dict_match, file_transcriptome_fasta, n_jobs
@@ -158,7 +159,7 @@ def test_filter_blast_match():
 
 def test_filter_blast_no_match():
     # Check that blast does not filter filters out a sequence which is not a match
-    blast_filter = Blastn(dir_output, word_size, percent_identity, coverage)
+    blast_filter = Blastn(dir_output, word_size, percent_identity, coverage, strand)
     oligo_info_dict_no_match = read_oligos_DB_tsv(file_oligo_info_no_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
         oligo_info_dict_no_match, file_transcriptome_fasta, n_jobs

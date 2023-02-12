@@ -14,14 +14,13 @@ class Bowtie(SpecificityFilterBase):
     The user can customize the filtering by specifying the num_mismatches per oligo and mismatch_region, the region that should be considered for counting mismatches.
     That is, all oligos with number mismatches higher than num_mismatches inside the mismatch_region are filtered out.
 
-    Use ``conda install -c bioconda bowtie to install Bowtie package``
+    Use ``conda install -c bioconda bowtie`` to install Bowtie package
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
     :param num_mismatches: Threshold value on the number of mismatches required for each oligo. ligos where the number of mismatches greater than this threshhold are considered valid. Possible values range from 0 to 3.
     :type num_mismatches: int
-    :param mismatch_region: The region of the oligo where the mismatches are considered. Oligos that have less than or equal to num_mismatches in the first L bases (where L is 5 or greater) are filtered out.
-    If ``None`` then the whole sequence is considered, defaults to None
+    :param mismatch_region: The region of the oligo where the mismatches are considered. Oligos that have less than or equal to num_mismatches in the first L bases (where L is 5 or greater) are filtered out. If ``None`` then the whole sequence is considered, defaults to None
     :type mismatch_region: int
     """
 
@@ -62,7 +61,7 @@ class Bowtie(SpecificityFilterBase):
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
         :return: oligo info of user-specified genes
-        :rtype : dict
+        :rtype: dict
         """
         # Some bowtie initializations, change the names
         index_exists = False
@@ -76,7 +75,7 @@ class Bowtie(SpecificityFilterBase):
         # Create bowtie index if none exists
         if not index_exists:
             command1 = (
-                "bowtie-build --threads "
+                "bowtie-build --quiet --threads "
                 + str(n_jobs)
                 + " -f "
                 + file_reference_DB
@@ -114,7 +113,7 @@ class Bowtie(SpecificityFilterBase):
         )
         if self.mismatch_region is not None:
             command = (
-                "bowtie -x "
+                "bowtie --quiet -x "
                 + index_name
                 + " -f -a -n "
                 + str(self.num_mismatches)
@@ -127,7 +126,7 @@ class Bowtie(SpecificityFilterBase):
             )
         else:
             command = (
-                "bowtie -x "
+                "bowtie --quiet -x "
                 + index_name
                 + " -f -a -v "
                 + str(self.num_mismatches)

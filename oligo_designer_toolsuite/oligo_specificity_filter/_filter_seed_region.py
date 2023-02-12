@@ -46,7 +46,17 @@ class BowtieSeedRegion(Bowtie):
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
     def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
-        """Apply bowtie filter to all batches in parallel"""
+        """Apply the bowtie filter in parallel on the seed region of oligos in the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
+        The filtered database is returned.
+
+        :param oligo_DB: database containing the oligos and their features
+        :type oligo_DB: dict
+        :param file_reference_DB: path to the file that will be used as reference for the alignement
+        :type file_reference_DB: str
+        :param n_jobs: number of simultaneous parallel computations
+        :type n_jobs: int
+        :return: oligo info of user-specified genes
+        :rtype: dict"""
         # generater the seed region coordinates
         oligo_DB = self.seed_region_creation.apply(oligo_DB)
 
@@ -61,7 +71,7 @@ class BowtieSeedRegion(Bowtie):
         # Create bowtie index if none exists
         if not index_exists:
             command1 = (
-                "bowtie-build --threads "
+                "bowtie-build --quiet --threads "
                 + str(n_jobs)
                 + " -f "
                 + file_reference_DB
@@ -101,7 +111,7 @@ class BowtieSeedRegion(Bowtie):
             f"bowtie_{gene}.txt",
         )
         command = (
-            "bowtie -x "
+            "bowtie --quiet -x "
             + index_name
             + " -f -a -v "
             + str(self.num_mismatches)
