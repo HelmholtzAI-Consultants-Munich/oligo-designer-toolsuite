@@ -5,6 +5,7 @@
 import os
 import warnings
 import pandas as pd
+import time
 
 from pathlib import Path
 from copy import copy, deepcopy
@@ -27,9 +28,11 @@ from ..utils._data_parser import (
 
 class OligoDatabase:
     """This class generates all possible oligos that can be designed for a given list of regions (e.g. genes),
-    based on the transcriptome or the gene CDS annotation or the whole genome provided as fasta file. The header of 
-    each sequence must start with '>' and contain the following information: 
-    region_id, additional_information (optional) and coordinates (chrom, start, end, strand).
+    based on the transcriptome or the gene CDS annotation or the whole genome provided as fasta file. 
+    
+    The header of each sequence must start with '>' and contain the following information: 
+    region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
+    where the region_id is compulsory and the other fileds are opional.
 
     Input Format (per sequence):
     >region_id::additional information::chromosome:start-end(strand)
@@ -41,7 +44,7 @@ class OligoDatabase:
     
     Moreover, the database can be saved and loaded to/from a tsv file.
 
-    Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
+    files_Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
 
     :param file_fasta: Path to the fasta file.
     :type file_fasta: str
@@ -51,8 +54,8 @@ class OligoDatabase:
     :type oligo_length_max: int
     :param min_oligos_per_region: Minimum number of oligos per region, if lower, region is removed from database, defaults to 0.
     :type min_oligos_per_region: int, optional
-    :param source: Source of annotations, e.g. NCBI, defaults to None.
-    :type source: str, optional
+    :param files_source: files_Source of annotations, e.g. NCBI, defaults to None.
+    :type files_source: str, optional
     :param species: Species of annotation, e.g. Homo_sapiens, defaults to None.
     :type species: str, optional
     :param annotation_release: Release number of annotation, e.g. 110, defaults to None.
@@ -71,7 +74,7 @@ class OligoDatabase:
         oligo_length_min: int,
         oligo_length_max: int,
         min_oligos_per_region: int = 0,
-        source: str = None,
+        files_source: str = None,
         species: str = None,
         annotation_release: str = None,
         genome_assembly: str = None,
@@ -90,9 +93,9 @@ class OligoDatabase:
         self.oligo_length_max = oligo_length_max
         self.min_oligos_per_region = min_oligos_per_region
 
-        if source is None:
-            source = "custom"
-            warnings.warn(f"No source defined. Using default source {source}!")
+        if files_source is None:
+            files_source = "custom"
+            warnings.warn(f"No files_source defined. Using default files_source {files_source}!")
 
         if species is None:
             species = "unknown"
@@ -110,7 +113,7 @@ class OligoDatabase:
                 f"No genome assembly defined. Using default genome assembly {genome_assembly}!"
             )
 
-        self.source = source
+        self.files_source = files_source
         self.species = species
         self.annotation_release = annotation_release
         self.genome_assembly = genome_assembly
@@ -135,7 +138,7 @@ class OligoDatabase:
         with open(self.file_removed_regions, "a") as handle:
             handle.write(f"Region\tPipeline step\n")
 
-    def create_oligo_database(
+    def create_database(
         self,
         region_ids: list[str] = None,
     ):
@@ -177,7 +180,7 @@ class OligoDatabase:
 
         self.database = database
 
-    def load_oligo_database(self, file_database: str):
+    def load_database(self, file_database: str):
         """
         Loads a previously generated oligos database and saves it in the ``database`` attribute as a dictionary.
         The order of columns is :
@@ -228,7 +231,7 @@ class OligoDatabase:
 
         self.database = database
 
-    def save_oligo_database(
+    def write_database(
         self,
         filename: str = "oligo_database",
     ):
@@ -247,12 +250,13 @@ class OligoDatabase:
         :return: Path to database file (tsv file).
         :rtype: str
         """
-        file_database = os.path.join(self.dir_output, f"{filename}.tsv")
+        
+        file_database = os.path.join(self.dir_output, filename)
         file_tsv_content = []
+        #database = deepcopy(self.database)
+        
 
-        database = deepcopy(self.database)
-
-        for region_id, oligo_dict in database.items():
+        for region_id, oligo_dict in self.database.items():
             for oligo_id, oligo_attributes in oligo_dict.items():
                 entry = {"region_id": region_id, "oligo_id": oligo_id}
                 entry.update(oligo_attributes)
@@ -262,10 +266,11 @@ class OligoDatabase:
                 entry["additional_information_fasta"] = "__MATCHSEQ__".join(
                     entry["additional_information_fasta"]
                 )
-                file_tsv_content.append(pd.DataFrame(entry, index=[0]))
+                file_tsv_content.append(entry)
 
-        file_tsv_content = pd.concat(file_tsv_content)
+        file_tsv_content = pd.DataFrame(data=file_tsv_content)
         file_tsv_content.to_csv(file_database, sep="\t", index=False)
+
 
         return file_database
 
@@ -304,7 +309,7 @@ class OligoDatabase:
 
         return file_fasta
 
-    def write_oligosets(self, dir_oligosets: str = "oligosets"):
+    def write_oligosets(self, folder: str = "oligosets"):
         """Writes the data structure ``self.oligosets`` in a series of files, each contains the oligosets for one gene and is called "{gene}_oligosets.tsv".
         The files will be stored in a subdirectory of ``self.dir_output``.
 
@@ -313,7 +318,7 @@ class OligoDatabase:
         :return: Path to oligosets directory.
         :rtype: str
         """
-        dir_oligosets = os.path.join(self.dir_output, dir_oligosets)
+        dir_oligosets = os.path.join(self.dir_output, folder)
         Path(dir_oligosets).mkdir(parents=True, exist_ok=True)
 
         for region_id in self.oligosets.keys():
@@ -384,16 +389,19 @@ class OligoDatabase:
             # once we have the correct start and end corrdinates we turn them again into 0-based coordinates
             # by subtracting 1. This needs to be done afterwards because on the minus strand the start has a
             # higher number than the end, which needs to be sorted and turned into 0-based index
-            for i in range(len(coordinates["start"])):
-                list_of_coordinates.extend(
-                    list(
-                        range(
-                            coordinates["start"][i] + 1,
-                            coordinates["end"][i] + 1,
+            if coordinates["start"][0] is None: # teh header doesn't contain position information
+                list_of_coordinates = [None for i in range(len(seq))]
+            else:
+                for i in range(len(coordinates["start"])):
+                    list_of_coordinates.extend(
+                        list(
+                            range(
+                                coordinates["start"][i] + 1,
+                                coordinates["end"][i] + 1,
+                            )
                         )
                     )
-                )
-            # sort reverse on minus strand caus the sequence is translated into
+                # sort reverse on minus strand caus the sequence is translated into
             # the reverse complement by fasta -strand option
             if oligo_strand == "-":
                 list_of_coordinates.reverse()

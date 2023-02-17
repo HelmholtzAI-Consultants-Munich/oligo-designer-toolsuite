@@ -8,7 +8,7 @@ write_intermediate_steps: True # writes the oligo sequences after each step of t
 
 ### Parameters for genome and gene annotation
 source: ensembl # define annotation source
-species: Homo_sapiens # species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
+species: homo_sapiens # species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
 annotation_release: current # release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
 
 

@@ -18,3 +18,5 @@ __all__ = [
     "NcbiGenomicRegionGenerator",
     "EnsemblGenomicRegionGenerator",
 ]
+
+classes = __all__

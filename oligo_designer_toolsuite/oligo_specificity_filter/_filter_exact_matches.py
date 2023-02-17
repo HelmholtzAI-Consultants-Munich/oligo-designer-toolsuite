@@ -5,7 +5,7 @@ from . import SpecificityFilterBase
 
 
 class ExactMatches(SpecificityFilterBase):
-    """This class filters oligos based duplicates found in the ``oligos_DB``. That is, oligos with the same sequences but belonging to different genes are filtered out.
+    """This class filters oligos based duplicates found in the ``oligos_DB``. That is, oligos with the same sequences but belonging to different regions are filtered out.
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
@@ -16,48 +16,48 @@ class ExactMatches(SpecificityFilterBase):
 
         super().__init__(dir_specificity)
 
-    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
-        """Apply the filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and at the same time are generated at most ``n_job`` jobs.
+    def apply(self, database: dict, file_reference: str, n_jobs: int):
+        """Apply the filter in parallel on the given ``database``. Each jobs filters a single region, and at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 
-        :param oligo_DB: database containing the oligos and their features
-        :type oligo_DB: dict
-        :param file_reference_DB: path to the file that will be used as reference for the alignement tools
-        :type file_reference_DB: str
+        :param database: database containing the oligos and their features
+        :type database: dict
+        :param file_reference: path to the file that will be used as reference for the alignement tools
+        :type file_reference: str
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
-        :return: oligo info of user-specified genes
+        :return: oligo info of user-specified regions
         :rtype: dict
         """
 
-        duplicated_sequences = self._get_duplicated_sequences(oligo_DB)
+        duplicated_sequences = self._get_duplicated_sequences(database)
 
         # run filter with joblib
-        genes = list(oligo_DB.keys())
+        regions = list(database.keys())
         filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_exactmatch_gene)(oligo_DB[gene], duplicated_sequences)
-            for gene in genes
+            delayed(self._filter_exactmatch_gene)(database[region], duplicated_sequences)
+            for region in regions
         )
         # reconstruct the database
-        for gene, filtered_oligo_DB in zip(genes, filtered_oligo_DBs):
-            oligo_DB[gene] = filtered_oligo_DB
+        for region, filtered_oligo_DB in zip(regions, filtered_oligo_DBs):
+            database[region] = filtered_oligo_DB
 
-        return oligo_DB
+        return database
 
-    def _get_duplicated_sequences(self, oligo_DB):
+    def _get_duplicated_sequences(self, database):
         """Get a list of oligo sequences that have an exact match within the oligos_DB.
 
-        :param oligo_DB: database with all the oligos and their features
-        :type oligo_DB: dict
+        :param database: database with all the oligos and their features
+        :type database: dict
         :return: List of oligo sequences with exact matches in the pool of oligos.
         :rtype: list
         """
         # extract all the sequences
         sequences = []
-        for gene in oligo_DB.keys():
-            for oligo_id in oligo_DB[gene].keys():
+        for region in database.keys():
+            for oligo_id in database[region].keys():
                 sequences.append(
-                    oligo_DB[gene][oligo_id]["sequence"].upper()
+                    database[region][oligo_id]["sequence"].upper()
                 )  # sequences might be also written in lower letters
         # find the duplicates within the database
         duplicated_sequences = list(
@@ -68,17 +68,17 @@ class ExactMatches(SpecificityFilterBase):
 
         return duplicated_sequences
 
-    def _filter_exactmatch_gene(self, gene_oligo_DB, duplicated_sequences):
+    def _filter_exactmatch_gene(self, database_region, duplicated_sequences):
         """Remove sequences with exact matches.
 
-        :param gene_oligo_DB: database with all the oligos from one gene
-        :type gene_oligo_DB: dict
+        :param database_region: database with all the oligos from one region
+        :type database_region: dict
         :param duplicated_sequences: list of the sequences which have duplicates
         :type duplicated_sequences: list
         """
-        propbes_ids = list(gene_oligo_DB.keys())
+        propbes_ids = list(database_region.keys())
         for oligo_id in propbes_ids:
-            if gene_oligo_DB[oligo_id]["sequence"].upper() in duplicated_sequences:
-                del gene_oligo_DB[oligo_id]
+            if database_region[oligo_id]["sequence"].upper() in duplicated_sequences:
+                del database_region[oligo_id]
 
-        return gene_oligo_DB
+        return database_region

@@ -11,7 +11,7 @@ import pandas as pd
 import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
-from ..database import CustomOligoDB
+from ..database import OligoDatabase
 
 ############################################
 # oligo set generator class
@@ -40,7 +40,7 @@ class PadlockSequenceDesigner:
         detect_oligo_length_max: int,
         detect_oligo_Tm_opt: float,
         Tm_parameters: dict,
-        Tm_correction_parameters: dict,
+        Tm_chem_correction_parameters: dict,
     ):
         """Constructor method"""
 
@@ -49,39 +49,39 @@ class PadlockSequenceDesigner:
         self.detect_oligo_length_max = detect_oligo_length_max
         self.detect_oligo_Tm_opt = detect_oligo_Tm_opt
         self.Tm_parameters = Tm_parameters
-        self.Tm_correction_parameters = Tm_correction_parameters
+        self.Tm_correction_parameters = Tm_chem_correction_parameters
 
     def design_padlocks(
-        self, database: CustomOligoDB, dir_padlock: str = "padlock_sequences"
+        self, oligo_database: OligoDatabase, dir_padlock: str = "padlock_sequences"
     ):
         """Design final padlock oligo sequences for the oligosets in the given database.
 
-        Saves in a subfolder of ``databse.dir_output`` called ``dir_padlock`` the following files:
+        Saves in a subfolder of ``oligo_databse.dir_output`` called ``dir_padlock`` the following files:
         - table at dir_out+"padlock_oligos.yml" with final padlock oligo sequences, detection oligo sequences, and infos
         - table at dir_out+"padlock_oligos_order.yml" with final padlock oligo sequences and detection oligo sequences
 
 
-        :param database: database containging all teh infromation on the oligo sequences
-        :type database: CustomDB
-        :param dir_padlock: name of the subfolder of ``databse.dir_output`` where the files will be written, defaults to "padlock_oligos"
+        :param oligo_database: database containging all teh infromation on the oligo sequences
+        :type oligo_database: OligoDatabase
+        :param dir_padlock: name of the subfolder of ``oligo_databse.dir_output`` where the files will be written, defaults to "padlock_oligos"
         :type dir_padlock: str, optional
         """
 
-        dir_padlock = os.path.join(database.dir_output, dir_padlock)
+        dir_padlock = os.path.join(oligo_database.dir_output, dir_padlock)
         Path(dir_padlock).mkdir(parents=True, exist_ok=True)
 
-        oligos_DB = database.oligos_DB
-        oligosets = database.oligosets
+        database = oligo_database.database
+        oligosets = oligo_database.oligosets
         yaml_dict = {}
-        genes = list(oligosets.keys())
+        regions = list(oligosets.keys())
 
-        for gene_idx, gene in enumerate(genes):
-            yaml_dict[gene] = {}
+        for region_idx, region in enumerate(regions):
+            yaml_dict[region] = {}
 
-            oligos_DB_gene = oligos_DB[gene]
-            oligosets_gene = oligosets[gene]
+            database_region = database[region]
+            oligosets_region = oligosets[region]
             oligoset = self._best_oligoset_with_possible_detection_oligos(
-                oligosets_gene, oligos_DB_gene, minT=2
+                oligosets_region, database_region, minT=2
             )
 
             for oligo_idx, oligo_id in enumerate(oligoset):
@@ -90,13 +90,13 @@ class PadlockSequenceDesigner:
                 #       from the beginning. The previous ligation_site for example needed to be adjusted which might be
                 #       confusing when looking into files generated in previous steps. Also the arm Tm's could have
                 #       changed, but the naming (arm1, arm2) still fits and Tm(seq)==Tm(rev_compl(seq)) (properly tested).
-                target_mRNA = oligos_DB_gene[oligo_id]["sequence"]
+                target_mRNA = database_region[oligo_id]["sequence"]
                 complementary_seq = str(target_mRNA.reverse_complement())
                 ligation_idx = len(target_mRNA) - int(
-                    oligos_DB_gene[oligo_id]["ligation_site"]
+                    database_region[oligo_id]["ligation_site"]
                 )
                 full_seq, sub_seqs = self._get_padlock_oligo(
-                    gene_idx,
+                    region_idx,
                     complementary_seq,
                     ligation_idx,
                     barcode_seed=0,
@@ -106,23 +106,22 @@ class PadlockSequenceDesigner:
                     complementary_seq, ligation_idx, minT=2
                 )
 
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"] = {}
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"] = {}
 
-                # TODO: potentially nice to also save organism, full gene name, reference genome
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["id"] = oligo_id
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["gene"] = gene
+                # TODO: potentially nice to also save organism, full region name, reference genome
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"]["id"] = oligo_id
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"]["region"] = region
                 for key in [
-                    "transcript_id",
-                    "exon_id",
+                    "additional_information_fasta",
                     "chromosome",
                     "start",
                     "end",
                     "strand",
                 ]:
-                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = str(
-                        oligos_DB_gene[oligo_id][key]
+                    yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = str(
+                        database_region[oligo_id][key]
                     )
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"].update(
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"].update(
                     {
                         "padlock_oligo_full_sequence": str(full_seq),
                         "detection_oligo_sequence": str(det_oligo_seq),
@@ -145,17 +144,17 @@ class PadlockSequenceDesigner:
                     "melt_temp_arm2",
                     "dif_melt_temp_arms",
                 ]:
-                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = float(
-                        oligos_DB_gene[oligo_id][key]
+                    yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = float(
+                        database_region[oligo_id][key]
                     )
                 for key in ["length"]:  # , "ligation_site"]:
-                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = int(
-                        oligos_DB_gene[oligo_id][key]
+                    yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = int(
+                        database_region[oligo_id][key]
                     )
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["ligation_site"] = int(
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"]["ligation_site"] = int(
                     ligation_idx
                 )
-                yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][
                     "melt_temp_detection_oligo"
                 ] = float(det_oligo_Tm)
 
@@ -163,15 +162,15 @@ class PadlockSequenceDesigner:
             yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
 
         yaml_order = {}
-        for gene in yaml_dict:
-            yaml_order[gene] = {}
-            for oligo_id in yaml_dict[gene]:
-                yaml_order[gene][oligo_id] = {}
-                yaml_order[gene][oligo_id]["padlock_oligo_full_sequence"] = yaml_dict[
-                    gene
+        for region in yaml_dict:
+            yaml_order[region] = {}
+            for oligo_id in yaml_dict[region]:
+                yaml_order[region][oligo_id] = {}
+                yaml_order[region][oligo_id]["padlock_oligo_full_sequence"] = yaml_dict[
+                    region
                 ][oligo_id]["padlock_oligo_full_sequence"]
-                yaml_order[gene][oligo_id]["detection_oligo_sequence"] = yaml_dict[
-                    gene
+                yaml_order[region][oligo_id]["detection_oligo_sequence"] = yaml_dict[
+                    region
                 ][oligo_id]["detection_oligo_sequence"]
 
         with open(
@@ -180,20 +179,20 @@ class PadlockSequenceDesigner:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
     def _best_oligoset_with_possible_detection_oligos(
-        self, oligosets_gene: pd.DataFrame, oligos_DB_gene: dict, minT: int = 2
+        self, oligosets_region: pd.DataFrame, oligos_DB_gene: dict, minT: int = 2
     ):
         """Get row index of best oligoset for which all detection oligos can be designed
 
         Criterions for detection oligo design are 1. a length constraint and 2. to have at least 2 T(hymines).
 
         TODO: The detection oligo thing is a bit annoying. Currently I don't want to set this as a constrained for
-            finding oligos for a gene. Otherwise we could directly filter oligos before searching for oligosets
+            finding oligos for a region. Otherwise we could directly filter oligos before searching for oligosets
             which would be great. Maybe something to think about in the future. For now we only check after having
-            the oligo sets per gene.
+            the oligo sets per region.
 
         Arguments
         ---------
-        oligosets_gene: pd.DataFrame
+        oligosets_region: pd.DataFrame
             Dataframe with ranked oligosets. Output of get_nonoverlapping_sets in nonoverlapping_sets.py.
         oligos_DB_gene: dict
             Dictionary with oligo infos.
@@ -207,7 +206,7 @@ class PadlockSequenceDesigner:
             If no oligoset can be found the first oligoset index i.e. 0 is returned.
 
         """
-        for _, row in oligosets_gene.iterrows():
+        for _, row in oligosets_region.iterrows():
             oligoset = [row[col] for col in row.index if col.startswith("oligo_")]
 
             for oligo_id in oligoset:
@@ -234,32 +233,32 @@ class PadlockSequenceDesigner:
                     return oligoset
 
         return [
-            oligosets_gene[col].iloc[0]
-            for col in oligosets_gene.columns
+            oligosets_region[col].iloc[0]
+            for col in oligosets_region.columns
             if col.startswith("oligo_")
         ]  # return the first set
 
     def _get_padlock_oligo(
         self,
-        gene_idx,
+        region_idx,
         complementary_seq,
         ligation_idx,
         barcode_seed=0,
         barcode_length=4,
     ):
-        """Get full padlock oligo for a given gene and a given complementary sequence
+        """Get full padlock oligo for a given region and a given complementary sequence
 
         Arguments
         ---------
-        gene_idx: int
-            Identifier for a given gene. The identifier makes sure to return the same bar code
-            for the different padlock oligos of a given gene.
+        region_idx: int
+            Identifier for a given region. The identifier makes sure to return the same bar code
+            for the different padlock oligos of a given region.
         complementary_seq: str
             Sequence that hybridises with the target RNA
         ligation_idx: int
             Site where complementary_seq is cut in two arms according padlock oligo design
         barcode_seed: int
-            Defines the random assignment of barcodes to each gene_idx.
+            Defines the random assignment of barcodes to each region_idx.
         barcode_length: int
             Length of barcode sequence
 
@@ -297,7 +296,7 @@ class PadlockSequenceDesigner:
 
             return [arm1, arm2]
 
-        def _get_barcode(gene_idx, length=4, seed=0):
+        def _get_barcode(region_idx, length=4, seed=0):
             """Get barcode sub sequence of padlock oligo for in situ sequencing
 
             For SCRINSHOT padlock oligos this could be constant, however it makes sense to have
@@ -305,13 +304,13 @@ class PadlockSequenceDesigner:
 
             Arguments
             ---------
-            gene_idx: int
-                Identifier for a given gene. The identifier makes sure to return the same bar code
-                for the different padlock oligos of a given gene.
+            region_idx: int
+                Identifier for a given region. The identifier makes sure to return the same bar code
+                for the different padlock oligos of a given region.
             length: int
                 Length of barcode sequence
             seed: int
-                Defines the random assignment of barcodes to each gene_idx.
+                Defines the random assignment of barcodes to each region_idx.
 
             Returns
             -------
@@ -324,27 +323,27 @@ class PadlockSequenceDesigner:
             random.seed(seed)
             random.shuffle(barcodes)
 
-            if gene_idx >= len(barcodes):
+            if region_idx >= len(barcodes):
                 raise ValueError(
                     "Barcode index exceeds number of possible combinations of barcodes. Increase barcode length?"
                 )
 
-            return barcodes[gene_idx]
+            return barcodes[region_idx]
 
         def _SCRINSHOT_or_ISS_backbone_sequence(
-            gene_idx, barcode_length=4, barcode_seed=0
+            region_idx, barcode_length=4, barcode_seed=0
         ):
             """Get backbone sequence of padlock oligos for SCRINSHOT or ISS
 
             Arguments
             ---------
-            gene_idx: int
-                Identifier for a given gene. The identifier makes sure to return the same bar code
-                for the different padlock oligos of a given gene.
+            region_idx: int
+                Identifier for a given region. The identifier makes sure to return the same bar code
+                for the different padlock oligos of a given region.
             barcode_length: int
                 Length of barcode sequence
             barcode_seed: int
-                Defines the random assignment of barcodes to each gene_idx.
+                Defines the random assignment of barcodes to each region_idx.
 
             Returns
             -------
@@ -356,7 +355,7 @@ class PadlockSequenceDesigner:
             """
             accessory1 = "TCCTCTATGATTACTGAC"
             ISS_anchor = "TGCGTCTATTTAGTGGAGCC"
-            barcode = _get_barcode(gene_idx, length=barcode_length, seed=barcode_seed)
+            barcode = _get_barcode(region_idx, length=barcode_length, seed=barcode_seed)
             accessory2 = "CTATCTTCTTT"
 
             sub_seqs = {
@@ -373,7 +372,7 @@ class PadlockSequenceDesigner:
         sub_seqs = {"arm1": arms[0]}
 
         backbone_seq, backbone_sub_seqs = _SCRINSHOT_or_ISS_backbone_sequence(
-            gene_idx, barcode_seed=barcode_seed, barcode_length=barcode_length
+            region_idx, barcode_seed=barcode_seed, barcode_length=barcode_length
         )
 
         sub_seqs.update(backbone_sub_seqs)
@@ -412,7 +411,7 @@ class PadlockSequenceDesigner:
 
         """
 
-        def _get_oligo_Tm(oligo_sequence, Tm_parameters, Tm_correction_parameters):
+        def _get_oligo_Tm(oligo_sequence, Tm_parameters, Tm_chem_correction_parameters):
             """Compute the melting temperature for the detection oligo sequence
 
             #TODO: this function is not placed very nicely. Also it uses utils.get_Tm_parameters everytime we calculate a new
@@ -426,11 +425,11 @@ class PadlockSequenceDesigner:
             :type oligo_sequence: string
             :param Tm_parameters: Parameters for melting temperature calculation
             :type Tm_parameters: dict
-            :param Tm_correction_parameters: Parameters for melting temperature formamide correction
-            :type Tm_correction_parameters: dict
+            :param Tm_chem_correction_parameters: Parameters for melting temperature formamide correction
+            :type Tm_chem_correction_parameters: dict
             """
             Tm = mt.Tm_NN(oligo_sequence, **Tm_parameters)
-            Tm_corrected = round(mt.chem_correction(Tm, **Tm_correction_parameters), 2)
+            Tm_corrected = round(mt.chem_correction(Tm, **Tm_chem_correction_parameters), 2)
             return Tm_corrected
 
         def _find_best_oligo(start_oligo, best_oligo, best_Tm_dif, minT, get_Tm_dif):

@@ -10,7 +10,7 @@ oligo\_designer\_toolsuite
    oligo_designer_toolsuite.oligo_property_filter
    oligo_designer_toolsuite.oligo_efficiency
    oligo_designer_toolsuite.oligo_selection
-   oligo_designer_toolsuite.experiment_specific
+   oligo_designer_toolsuite.sequence_design
    oligo_designer_toolsuite.pipelines
    oligo_designer_toolsuite.utils
 

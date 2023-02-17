@@ -11,39 +11,39 @@ class SeedRegionCreationBase(ABC):
         pass
 
     @abstractmethod
-    def apply(self, oligo_DB: dict):
+    def apply(self, database: dict):
         """
-        Generates the relative coordinates of the seed region for each oligo and stores them in the ``oligo_DB`` database.
+        Generates the relative coordinates of the seed region for each oligo and stores them in the ``database`` database.
         To each oligo in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
 
-        :param oligo_DB: database containing all the oligo sequences and their features
-        :type oligo_DB: dict
-        :return: Oligo_DB with added start and end position of the seed region for each oligo
+        :param database: database containing all the oligo sequences and their features
+        :type database: dict
+        :return: database with added start and end position of the seed region for each oligo
         :rtype: dict
         """
 
-    def _update_oligo_DB(self, oligo_DB: dict):
+    def _update_database(self, database: dict):
         """To each oligo in the oligo DB add the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
 
-        :param oligo_DB: database containing all the oligo sequences and their features
-        :type oligo_DB: dict
-        :return: Oligo_DB with added start and end position of the seed region for each oligo
+        :param database: database containing all the oligo sequences and their features
+        :type database: dict
+        :return: database with added start and end position of the seed region for each oligo
         :rtype: dict
         """
-        for gene in oligo_DB.keys():
-            for oligo_id in oligo_DB[gene].keys():
-                start, end = self._create_seed_region(oligo_DB[gene][oligo_id])
-                oligo_DB[gene][oligo_id]["seed_region_start"] = start
-                oligo_DB[gene][oligo_id]["seed_region_end"] = end
-        return oligo_DB
+        for region in database.keys():
+            for oligo_id in database[region].keys():
+                start, end = self._create_seed_region(database[region][oligo_id])
+                database[region][oligo_id]["seed_region_start"] = start
+                database[region][oligo_id]["seed_region_end"] = end
+        return database
 
     @abstractmethod
-    def _create_seed_region(self, oligo_DB: dict):
+    def _create_seed_region(self, database: dict):
         """
         This method actually defines the start and end point of the seed region according to the given conditions.
 
-        :param oligo_DB: Dictionalry containing all the information of the oligo
-        :type oligo_DB: dict
+        :param database: Dictionalry containing all the information of the oligo
+        :type database: dict
         :return: Start and end position of the seed region of the given oligo
         :rtype: int, int
         """
@@ -63,31 +63,31 @@ class SeedRegionCreationStandard(SeedRegionCreationBase):
         self.start = start
         self.end = end
 
-    def apply(self, oligo_DB: dict):
+    def apply(self, database: dict):
         """
-        Generates the relative coordinates of the seed region for each oligo and stores them in the ``oligo_DB`` database.
+        Generates the relative coordinates of the seed region for each oligo and stores them in the ``database`` database.
         To each oligo in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
 
-        :param oligo_DB: database containing all the oligo sequences and their features
-        :type oligo_DB: dict
-        :return: Oligo_DB with added start and end position of the seed region for each oligo
+        :param database: database containing all the oligo sequences and their features
+        :type database: dict
+        :return: database with added start and end position of the seed region for each oligo
         :rtype: dict
         """
-        oligo_DB = super()._update_oligo_DB(oligo_DB)
-        return oligo_DB
+        database = super()._update_database(database)
+        return database
 
-    def _create_seed_region(self, oligo_DB):
+    def _create_seed_region(self, database):
         """
         This method actually defines the start and end point of the seed region according to the given conditions.
         To each oligo in the oligo DB the relative coordinates of the start and the end of the seed region are given as arguments of the class.
 
-        :param oligo_DB: Dictionalry containing all the information of the oligo
-        :type oligo_DB: dict
+        :param database: Dictionalry containing all the information of the oligo
+        :type database: dict
         :return: Start and end position of the seed region of the given oligo
         :rtype: int, int
         """
         start = int(self.start)
-        end = int(min(self.end, oligo_DB["length"]))
+        end = int(min(self.end, database["length"]))
         return start, end
 
 
@@ -112,30 +112,30 @@ class SeedRegionCreationPercentage(SeedRegionCreationBase):
             raise ValueError("End position must be in the interval [0,1]!")
         self.end = end
 
-    def apply(self, oligo_DB: dict):
+    def apply(self, database: dict):
         """
-        Generates the relative coordinates of the seed region for each oligo and stores them in the ``oligo_DB`` database.
+        Generates the relative coordinates of the seed region for each oligo and stores them in the ``database`` database.
         To each oligo in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
 
-        :param oligo_DB: database containing all the oligo sequences and their features
-        :type oligo_DB: dict
-        :return: Oligo_DB with added start and end position of the seed region for each oligo
+        :param database: database containing all the oligo sequences and their features
+        :type database: dict
+        :return: database with added start and end position of the seed region for each oligo
         :rtype: dict
         """
-        oligo_DB = super()._update_oligo_DB(oligo_DB)
-        return oligo_DB
+        database = super()._update_database(database)
+        return database
 
-    def _create_seed_region(self, oligo_DB):
+    def _create_seed_region(self, database):
         """
         This method actually defines the start and end point of the seed region according to the given conditions.
 
-        :param oligo_DB: Dictionalry containing all the information of the oligo
-        :type oligo_DB: dict
+        :param database: Dictionalry containing all the information of the oligo
+        :type database: dict
         :return: Start and end position of the seed region of the given oligo
         :rtype: int, int
         """
 
-        length = oligo_DB["length"]
+        length = database["length"]
         start = int(round(self.start * length))
         end = int(round(self.end * length))
         return start, end
@@ -155,44 +155,44 @@ class LigationRegionCreation(SeedRegionCreationBase):
         super().__init__()
         self.ligation_region_size = ligation_region_size
 
-    def apply(self, oligo_DB: dict):
+    def apply(self, database: dict):
         """
-        Generates the relative coordinates of the seed region for each oligo and stores them in the ``oligo_DB`` database.
+        Generates the relative coordinates of the seed region for each oligo and stores them in the ``database`` database.
         To each oligo in the oligo DB are added the  ``start`` and ``end`` values with key "seed_region_start" and "seed_region_end" which indicate the relative coordinates of the start and the end (included) of the seed region.
 
-        :param oligo_DB: database containing all the oligo sequences and their features
-        :type oligo_DB: dict
-        :return: Oligo_DB with added start and end position of the seed region for each oligo
+        :param database: database containing all the oligo sequences and their features
+        :type database: dict
+        :return: database with added start and end position of the seed region for each oligo
         :rtype: dict
         """
         # check if the feature ligation site has been already computed
-        genes = list(oligo_DB.keys())
+        genes = list(database.keys())
         i = 0
-        while oligo_DB[genes[i]] == {}:  # make sure we are not in an empty gene
+        while database[genes[i]] == {}:  # make sure we are not in an empty region
             i += 1
-        oligo_id = list(oligo_DB[genes[i]].keys())[0]
-        if "ligation_site" not in oligo_DB[genes[i]][oligo_id].keys():
+        oligo_id = list(database[genes[i]].keys())[0]
+        if "ligation_site" not in database[genes[i]][oligo_id].keys():
             raise KeyError("The ligation site has not been computed!")
 
-        oligo_DB = super()._update_oligo_DB(oligo_DB)
-        return oligo_DB
+        database = super()._update_database(database)
+        return database
 
-    def _create_seed_region(self, oligo_DB):
+    def _create_seed_region(self, database):
         """
         This method actually defines the start and end point of the seed region according to the given conditions.
 
-        :param oligo_DB: Dictionalry containing all the information of the oligo
-        :type oligo_DB: dict
+        :param database: Dictionalry containing all the information of the oligo
+        :type database: dict
         :return: Start and end position of the seed region of the given oligo
         :rtype: int, int
         """
 
-        ligation_site = oligo_DB["ligation_site"]
+        ligation_site = database["ligation_site"]
         start = int(max(ligation_site - (self.ligation_region_size - 1), 0))
         end = int(
             min(
                 ligation_site + self.ligation_region_size,
-                oligo_DB["length"],
+                database["length"],
             )
         )
         return start, end

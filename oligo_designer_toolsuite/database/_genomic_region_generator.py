@@ -7,6 +7,7 @@ import copy
 import shutil
 import warnings
 import pandas as pd
+from time import time
 
 pd.options.mode.chained_assignment = None
 
@@ -24,7 +25,12 @@ from ..utils._gff_parser import GffParser
 
 class CustomGenomicRegionGenerator:
     """Class to generate sequences from annotated regions in GTF format and genomic fasta file.
+    
     Sequences are saved as fasta file with region id, additional information and coordinates in header.
+    he header of each sequence must start with '>' and contain the following information: 
+    region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
+    where the region_id is compulsory and the other fileds are opional.
+
 
     Output Format (per sequence):
     >'region_id'::'additional information'::'chromosome':'start'-'end'('strand')
@@ -38,8 +44,8 @@ class CustomGenomicRegionGenerator:
     :type annotation_file: str
     :param sequence_file: Fasta file with genome sequence.
     :type sequence_file: str
-    :param source: Source of annotations, e.g. NCBI, defaults to None.
-    :type source: str, optional
+    :param files_source: Source of annotations, e.g. NCBI, defaults to None.
+    :type files_source: str, optional
     :param species: Species of annotation, e.g. Homo_sapiens, defaults to None.
     :type species: str, optional
     :param annotation_release: Release number of annotation, e.g. 110, defaults to None.
@@ -54,16 +60,16 @@ class CustomGenomicRegionGenerator:
         self,
         annotation_file: str,
         sequence_file: str,
-        source: str = None,
+        files_source: str = None,
         species: str = None,
         annotation_release: str = None,
         genome_assembly: str = None,
         dir_output: str = "output",
     ):
         """Constructor"""
-        if source is None:
-            source = "custom"
-            warnings.warn(f"No source defined. Using default source {source}!")
+        if files_source is None:
+            files_source = "custom"
+            warnings.warn(f"No source defined. Using default source {files_source}!")
 
         if species is None:
             species = "unknown"
@@ -81,7 +87,7 @@ class CustomGenomicRegionGenerator:
                 f"No genome assembly defined. Using default genome assembly {genome_assembly}!"
             )
 
-        self.source = source
+        self.files_source = files_source
         self.species = species
         self.annotation_release = annotation_release
         self.genome_assembly = genome_assembly
@@ -112,7 +118,7 @@ class CustomGenomicRegionGenerator:
             "block_sizes",
             "blockStarts",
         ]
-        self.FASTA_HEDAER = f"source={self.source};species={self.species};annotation_release={self.annotation_release};genome_assemly={self.genome_assembly}"
+        self.FASTA_HEDAER = f"source={self.files_source};species={self.species};annotation_release={self.annotation_release};genome_assemly={self.genome_assembly}"
 
     def generate_genome(self):
         """Generate a fasta file with the genome sequences.
@@ -123,7 +129,7 @@ class CustomGenomicRegionGenerator:
         file_genome_fasta = self._get_fasta_file_name("genome")
 
         shutil.copyfile(self.sequence_file, file_genome_fasta)
-        self._add_header_to_fasta_file(file_genome_fasta)
+        # self._add_header_to_fasta_file(file_genome_fasta)
         return file_genome_fasta
 
     def generate_transcript_reduced_representation(
@@ -159,7 +165,8 @@ class CustomGenomicRegionGenerator:
             include_exon_junctions,
             exon_junction_size,
         )
-        self._add_header_to_fasta_file(file_transcriptome_fasta)
+
+        # self._add_header_to_fasta_file(file_transcriptome_fasta)
         return file_transcriptome_fasta
 
     def generate_CDS_reduced_representation(
@@ -194,7 +201,7 @@ class CustomGenomicRegionGenerator:
             include_exon_junctions,
             exon_junction_size,
         )
-        self._add_header_to_fasta_file(file_CDS_fasta)
+        # self._add_header_to_fasta_file(file_CDS_fasta)
         return file_CDS_fasta
 
     def _get_fasta_file_name(
@@ -267,6 +274,7 @@ class CustomGenomicRegionGenerator:
         list_annotations = []
         # merge exon annotations for the same region
         unique_exons = self._get_unique_exons(exons)
+
         list_annotations.append(unique_exons)
         # merges exons with with same start but different end or different start but same end coordinates
         # since oligos are also created from this transcriptome, disable this function
@@ -277,6 +285,7 @@ class CustomGenomicRegionGenerator:
             exon_junctions = self._get_exon_junction_annotation(
                 exons, exon_junction_size
             )
+
             unique_exon_junctions = self._get_unique_exon_junctions(exon_junctions)
             list_annotations.append(unique_exon_junctions)
 
@@ -373,6 +382,7 @@ class CustomGenomicRegionGenerator:
         :return: Dataframe with exon junctions.
         :rtype: pandas.DataFrame
         """
+
         transcript_exons, transcript_info = self._get_transcript_exons_and_info(exons)
         exon_junction_list = []
 
@@ -460,7 +470,6 @@ class CustomGenomicRegionGenerator:
                     region_down = (
                         f"{seqid}:{end_down-block_size_down}-{end_down}({strand})"
                     )
-
                     exon_junction_list.append(
                         [
                             ";".join(
@@ -623,7 +632,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         dir_output: str = "output/annotation",
     ):
         """Constructor"""
-        source = "NCBI"
+        files_source = "NCBI"
         if taxon is None:
             taxon = "vertebrate_mammalian"
             warnings.warn(f"No taxon defined. Using default taxon {taxon}!")
@@ -647,7 +656,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         super().__init__(
             annotation_file,
             sequence_file,
-            source,
+            files_source,
             species,
             annotation_release,
             genome_assembly,
@@ -675,7 +684,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
         dir_output: str = "output/annotation",
     ):
         """Constructor"""
-        source = "Ensemble"
+        files_source = "Ensemble"
         if species is None:
             species = "homo_sapiens"
             warnings.warn(f"No species defined. Using default species {species}!")
@@ -695,7 +704,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
         super().__init__(
             annotation_file,
             sequence_file,
-            source,
+            files_source,
             species,
             annotation_release,
             genome_assembly,

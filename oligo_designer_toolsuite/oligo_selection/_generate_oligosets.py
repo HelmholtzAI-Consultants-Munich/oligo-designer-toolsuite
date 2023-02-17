@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 
-from ..database import CustomOligoDB
+from ..database import OligoDatabase
 from ..oligo_efficiency import OligoScoringBase, SetScoringBase
 
 
@@ -23,8 +23,8 @@ class OligosetGenerator:
     :type dir_oligo_sets: str
     :param heurustic_selection: functions that preselects the oligos making the seach of the best oligosets less demanding
     :type dir_oligo_sets: Callable
-    :param write_genes_with_insufficient_oligos: if True genes with insufficient oligos are written in a file, defaults to True
-    :type write_genes_with_insufficient_oligos: bool, optional"""
+    :param write_regions_with_insufficient_oligos: if True regions with insufficient oligos are written in a file, defaults to True
+    :type write_regions_with_insufficient_oligos: bool, optional"""
 
     def __init__(
         self,
@@ -33,7 +33,7 @@ class OligosetGenerator:
         oligos_scoring: OligoScoringBase,
         set_scoring: SetScoringBase,
         heurustic_selection: Callable = None,
-        write_genes_with_insufficient_oligos: bool = True,
+        write_regions_with_insufficient_oligos: bool = True,
     ) -> None:
         """Initialize the class."""
 
@@ -42,14 +42,14 @@ class OligosetGenerator:
         self.heurustic_selection = heurustic_selection
         self.oligos_scoring = oligos_scoring
         self.set_scoring = set_scoring
-        self.write_genes_with_insufficient_oligos = write_genes_with_insufficient_oligos
+        self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
 
     def apply(
-        self, oligo_database: CustomOligoDB, n_sets: int = 50, n_jobs: int = None
+        self, oligo_database: OligoDatabase, n_sets: int = 50, n_jobs: int = None
     ):
         """Generates in parallel the oligosets and selects the best ``n_sets`` according to the
         The database class is updated, in particular form the ``oligos_DB`` are filtered out all the oligos that don't belong to any oligoset and in the class attruibute ``oligosets`` are stored
-        the computed oligosets. The latter is a dictionary having as keys the genes names and as values a pandas.DataFrame containinig the oligosets. The strucutre of the pandas.DataFrame is the following:
+        the computed oligosets. The latter is a dictionary having as keys the regions names and as values a pandas.DataFrame containinig the oligosets. The strucutre of the pandas.DataFrame is the following:
 
         +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
         | oligoset_id | oligo_0  | oligo_1  | oligo_2  |  ...  | oligo_n  | set_score_1 | set_score_2 |  ...  |
@@ -57,86 +57,86 @@ class OligosetGenerator:
         | 0           | AGRN_184 | AGRN_133 | AGRN_832 |  ...  | AGRN_706 | 0.3445      | 1.2332      |  ...  |
         +-------------+----------+----------+-----+----+-------+----------+-------------+-------------+-------+
 
-        :param database: class containg the oligo sequences and their features
-        :type database: CustomDB class
+        :param oligo_database: class containg the oligo sequences and their features
+        :type oligo_database: OligoDatabase class
         :param n_sets: maximal number of sets that will be generated, defaults to 50
         :type n_sets: int, optional
         :param n_jobs: nr of cores used, if None the value set in database class is used, defaults to None
         :type n_jobs: int
         :return: Updated database class
-        :rtype: CustomDB class
+        :rtype: OligoDatabase class
         """
 
         # set the number of cores
         if n_jobs is None:
             n_jobs = oligo_database.n_jobs
 
-        genes = list(oligo_database.oligos_DB.keys())
-        # get the oligo set for this gene in parallel
-        updated_oligos_DB = Parallel(
+        regions = list(oligo_database.database.keys())
+        # get the oligo set for this region in parallel
+        database_regions = Parallel(
             n_jobs=n_jobs
         )(  # there should be an explicit return
             delayed(self._get_oligo_set_for_gene)(
-                gene, oligo_database.oligos_DB[gene], n_sets
+                region, oligo_database.database[region], n_sets
             )
-            for gene in genes
+            for region in regions
         )
-        # restore the oligo database
-        for gene, oligos in zip(genes, updated_oligos_DB):
-            if oligos is None:  # if some sets have been found
-                oligo_database.oligos_DB[gene] = {}  # oligoset is not generated
+        # restore the database
+        for region, database_region in zip(regions, database_regions):
+            if database_region is None:  # if no sets have been found
+                oligo_database.database[region] = {}  # oligoset is not generated
             else:
-                oligo_database.oligosets[gene] = oligos["oligosets"]
-                del oligos["oligosets"]
-                oligo_database.oligos_DB[gene] = oligos
-        oligo_database.remove_genes_with_insufficient_oligos(
+                oligo_database.oligosets[region] = database_region["oligosets"]
+                del database_region["oligosets"]
+                oligo_database.database[region] = database_region
+        oligo_database.remove_regions_with_insufficient_oligos(
             pipeline_step="oligoset generation",
-            write=self.write_genes_with_insufficient_oligos,
+            write=self.write_regions_with_insufficient_oligos,
         )
 
         return oligo_database
 
-    def _get_oligo_set_for_gene(self, gene: str, oligos: dict, n_sets: int):
-        """Generate the oligosets for a gene.
+    def _get_oligo_set_for_gene(self, region: str, database_region: dict, n_sets: int):
+        """Generate the oligosets for a region.
 
-        :param gene: gene for whihc the oligosets are computed
-        :type gene: str
-        :param oligos: dictionary with the information about the oligos
-        :type oligos: dict
+        :param region: region for which the oligosets are computed
+        :type region: str
+        :param database_region: dictionary with the information about the oligos in the region
+        :type database_region: dict
         :param n_sets: number of sets to generate
         :type n_sets: int
         :return: updated_oligos
         :rtype: dict
         """
         # create the overlapping matrix
-        overlapping_matrix = self._get_overlapping_matrix(oligos)
+        overlapping_matrix = self._get_overlapping_matrix(database_region)
         # create the set
-        n, oligosets, oligos = self._get_non_overlapping_sets(
-            oligos, overlapping_matrix, n_sets
+        n, oligosets, database_region = self._get_non_overlapping_sets(
+            database_region, overlapping_matrix, n_sets
         )
         # delete the useless variable to free some memory(overlapping matrix)
         del overlapping_matrix  # free some memory
         # write the set
         if oligosets is None:  # value passed as a parameter
-            return None  # no more oligos are left for this gene
+            return None  # no more oligos are left for this region
         else:
             # update the dictionary adding the key sets for the oligos in a set and  delleting the oligos not included in any set
-            updated_oligos = {}
+            updated_database_region = {}
             for set_id, row in oligosets.iterrows():
                 for i in range(1, n + 1):
-                    if row[i] not in updated_oligos:
-                        updated_oligos[row[i]] = oligos[row[i]]
+                    if row[i] not in updated_database_region:
+                        updated_database_region[row[i]] = database_region[row[i]]
             # add also the oligosets
-            updated_oligos["oligosets"] = oligosets
-            return updated_oligos
+            updated_database_region["oligosets"] = oligosets
+            return updated_database_region
 
-    def _get_overlapping_matrix(self, oligos):
+    def _get_overlapping_matrix(self, database_region):
         """Creates a matrix that encodes the overlapping of different oligos. the matrix has dimensions n_oligos * n_oligos where each
         row and column belong to a oligo. Each entry contains 1 if the the correspondent oligos don't overlap and 0 if they overlap, this
         is done because in the next this matrix will be used as an adjacency matrix and the sets of non overlapping oligos are cliques of this graph.
 
-        :pram oligos: dictionary containing all the oligos
-        :type oligos: dict
+        :pram database_region: dictionary containing all the oligos of the region
+        :type database_region: dict
         :return: overlapping matrix
         :rtype: pandas.DataFrame
         """
@@ -150,10 +150,10 @@ class OligosetGenerator:
 
         intervals = []
         oligos_indices = []
-        for oligo_id in oligos.keys():
+        for oligo_id in database_region.keys():
             oligos_indices.append(oligo_id)  # keep track of the indices
             interval = []
-            for start, end in zip(oligos[oligo_id]["start"], oligos[oligo_id]["end"]):
+            for start, end in zip(database_region[oligo_id]["start"], database_region[oligo_id]["end"]):
                 interval.append(
                     [start, end]
                 )  # save a list of couples of [start,end] of the duplicates of that oligo
@@ -183,13 +183,13 @@ class OligosetGenerator:
 
         return overlapping_matrix
 
-    def _get_non_overlapping_sets(self, oligos, overlapping_matrix, n_sets):
+    def _get_non_overlapping_sets(self, database_region, overlapping_matrix, n_sets):
         """Generates the non overlapping sets and return the best n_sets. Firstly the oligos are scored and then, if it is available,
         an heuristic method is used to reduce the number of oligos to the more promising ones. Then all the possible combination of non overlapping
         sets are considered and the best n-sets are returned.
 
-        :param oligos: dictionary containing all the oligos
-        :type oligos: dict
+        :param database_region: dictionary containing all the oligos of the region
+        :type database_region: dict
         :param overlapping_matrix: matrix containig information about which oligos overlap
         :type overlapping_matrix: pandas.DataFrame
         :param n_sets: number of sets to generate
@@ -199,8 +199,8 @@ class OligosetGenerator:
         """
         oligo_indices = np.array(overlapping_matrix.index)
         # Score oligos and create a pd series with the same order of oligos as in overlapping matrix
-        oligos, oligos_scores = self.oligos_scoring.apply(
-            oligos, oligo_indices
+        database_region, oligos_scores = self.oligos_scoring.apply(
+            database_region, oligo_indices
         )  # add a entry score to the oligos
         # Represent overlap matrix as graph
         G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
@@ -223,8 +223,8 @@ class OligosetGenerator:
         heuristic_oligoset = None
         if self.heurustic_selection is not None and n == self.oligoset_size:
             # apply the heuristic
-            oligos, oligos_scores, heuristic_set = self.heurustic_selection(
-                oligos, oligos_scores, overlapping_matrix, n
+            database_region, oligos_scores, heuristic_set = self.heurustic_selection(
+                database_region, oligos_scores, overlapping_matrix, n
             )
             heuristic_oligoset = self.set_scoring.apply(
                 heuristic_set, n
@@ -264,4 +264,4 @@ class OligosetGenerator:
         oligosets.reset_index(drop=True, inplace=True)
         oligosets.insert(0, "oligoset_id", oligosets.index)
 
-        return n, oligosets, oligos
+        return n, oligosets, database_region
