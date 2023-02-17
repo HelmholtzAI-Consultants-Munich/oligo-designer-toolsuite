@@ -134,20 +134,28 @@ def parse_fasta_header(header):
     header = header.split("::")
     region = header[0]
 
-    header_coordinates = header[-1].split(";")
-    coordinates = {}
-
-    for header_coordinate in header_coordinates:
-        coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
-        coordinates.setdefault("start", []).append(
-            int(header_coordinate.split(":")[1].split("-")[0])
-        )
-        coordinates.setdefault("end", []).append(
-            int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
-        )
-        coordinates.setdefault("strand", []).append(
-            header_coordinate.split("(")[1].split(")")[0]
-        )
+    if len(header) == 1:
+        coordinates = {
+            "chromosome": [None],
+            "start": [None],
+            "end": [None],
+            "strand": [None],
+        }
+    
+    else:
+        header_coordinates = header[-1].split(";")
+        coordinates = {}
+        for header_coordinate in header_coordinates:
+            coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
+            coordinates.setdefault("start", []).append(
+                int(header_coordinate.split(":")[1].split("-")[0])
+            )
+            coordinates.setdefault("end", []).append(
+                int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
+            )
+            coordinates.setdefault("strand", []).append(
+                header_coordinate.split("(")[1].split(")")[0]
+            )
 
     if len(header) > 2:
         additional_information = header[1]

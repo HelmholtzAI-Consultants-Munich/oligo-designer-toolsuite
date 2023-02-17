@@ -38,23 +38,23 @@ class Bowtie2(Bowtie):
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
-    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
-        """Apply the bowtie2 filter in parallel on the given ``oligo_DB``. Each jobs filters a single gene, and  at the same time are generated at most ``n_job`` jobs.
+    def apply(self, database: dict, file_reference: str, n_jobs: int):
+        """Apply the bowtie2 filter in parallel on the given ``database``. Each jobs filters a single region, and  at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
 
-        :param oligo_DB: database containing the oligos and their features
-        :type oligo_DB: dict
-        :param file_reference_DB: path to the file that will be used as reference for the alignement
-        :type file_reference_DB: str
+        :param database: database containing the oligos and their features
+        :type database: dict
+        :param file_reference: path to the file that will be used as reference for the alignement
+        :type file_reference: str
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
-        :return: oligo info of user-specified genes
+        :return: oligo info of user-specified regions
         :rtype: dict
         """
         # Some bowtie initializations, change the names
         # Check if bowtie2 index exists
         index_exists = False
-        index_name = os.path.basename(file_reference_DB)
+        index_name = os.path.basename(file_reference)
         for file in os.listdir(self.dir_bowtie2):
             if re.search(f"^{index_name}.*", file):
                 index_exists = True
@@ -66,37 +66,37 @@ class Bowtie2(Bowtie):
                 "bowtie2-build --quiet --threads "
                 + str(n_jobs)
                 + " -f "
-                + file_reference_DB
+                + file_reference
                 + " "
                 + index_name
             )
             process = Popen(command1, shell=True, cwd=self.dir_bowtie2).wait()
 
-        genes = list(oligo_DB.keys())
-        filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_bowtie2)(oligo_DB[gene], gene, index_name)
-            for gene in genes
+        regions = list(database.keys())
+        filtered_database_regions = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_bowtie2)(database[region], region, index_name)
+            for region in regions
         )
 
         # reconstruct the oligos_DB
-        for gene, filtered_oligo_DB in zip(genes, filtered_oligo_DBs):
-            oligo_DB[gene] = filtered_oligo_DB
+        for region, filtered_database_region in zip(regions, filtered_database_regions):
+            database[region] = filtered_database_region
 
-        return oligo_DB
+        return database
 
-    def _run_bowtie2(self, gene_DB, gene, index_name):
+    def _run_bowtie2(self, database_region, region, index_name):
         """Run Bowtie 2 alignment tool to find regions of local similarity between sequences and reference.
 
-        :param gene_DB: database containing the oligos form one gene
-        :type gene_DB: dict
-        :param gene: id of the gene processed
-        :type gene: str
+        :param database_region: database containing the oligos form one region
+        :type database_region: dict
+        :param region: id of the region processed
+        :type region: str
         """
 
-        file_oligo_fasta_gene = self._create_fasta_file(gene_DB, self.dir_fasta, gene)
+        file_oligo_fasta_gene = self._create_fasta_file(database_region, self.dir_fasta, region)
         file_bowtie2_gene = os.path.join(
             self.dir_bowtie2,
-            f"bowtie2_{gene}",
+            f"bowtie2_{region}",
         )
 
         if self.min_score is not None:
@@ -126,11 +126,11 @@ class Bowtie2(Bowtie):
         bowtie2_results = self._read_bowtie2_output(file_bowtie2_gene)
         # filter the DB based on the bowtie results
         matching_oligos = self._find_matching_oligos(bowtie2_results)
-        filtered_gene_DB = self._filter_matching_oligos(gene_DB, matching_oligos)
+        filtered_database_region = self._filter_matching_oligos(database_region, matching_oligos)
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie2, file_bowtie2_gene))
         os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
-        return filtered_gene_DB
+        return filtered_database_region
 
     def _read_bowtie2_output(self, file_bowtie2_gene):
         """Load the output of the bowtie 2 alignment search into a DataFrame and process the results."""

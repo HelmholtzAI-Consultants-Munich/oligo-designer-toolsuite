@@ -16,9 +16,11 @@ from ..utils._data_parser import check_fasta_format, parse_fasta_header
 
 class ReferenceDatabase:
     """This class stores a refernce database, which is created from
-    a sequence fasta file. The header of each sequence must start with '>' and contain the
-    following information: region_id, additional_information (optional) and coordinates
-    (chrom, start, end, strand).
+    a sequence fasta file. 
+    The header of each sequence must start with '>' and contain the following information: 
+    region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
+    where the region_id is compulsory and the other fileds are opional.
+
 
     Input Format (per sequence):
     >region_id::additional information::chromosome:start-end(strand)
@@ -30,8 +32,8 @@ class ReferenceDatabase:
 
     :param file_fasta: Path to the fasta file.
     :type file_fasta: str
-    :param source: Source of annotations, e.g. NCBI, defaults to None.
-    :type source: str, optional
+    :param files_source: files_Source of annotations, e.g. NCBI, defaults to None.
+    :type files_source: str, optional
     :param species: Species of annotation, e.g. Homo_sapiens, defaults to None.
     :type species: str, optional
     :param annotation_release: Release number of annotation, e.g. 110, defaults to None.
@@ -45,16 +47,16 @@ class ReferenceDatabase:
     def __init__(
         self,
         file_fasta: str,
-        source: str = None,
+        files_source: str = None,
         species: str = None,
         annotation_release: str = None,
         genome_assembly: str = None,
         dir_output: str = "output",
     ):
         """Constructor"""
-        if source is None:
-            source = "custom"
-            warnings.warn(f"No source defined. Using default source {source}!")
+        if files_source is None:
+            files_source = "custom"
+            warnings.warn(f"No files_source defined. Using default files_source {files_source}!")
 
         if species is None:
             species = "unknown"
@@ -72,7 +74,7 @@ class ReferenceDatabase:
                 f"No genome assembly defined. Using default genome assembly {genome_assembly}!"
             )
 
-        self.source = source
+        self.files_source = files_source
         self.species = species
         self.annotation_release = annotation_release
         self.genome_assembly = genome_assembly
@@ -133,4 +135,4 @@ class ReferenceDatabase:
                     database_filtered.append(entry)
             self.database = database_filtered
         else:
-            raise ValueError("Can not filter. Database is empty!")
+            raise ValueError("Can not filter. Database is empty! Call the method load_fasta_into_database() first.")

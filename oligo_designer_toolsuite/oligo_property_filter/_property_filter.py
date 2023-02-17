@@ -48,40 +48,40 @@ class PropertyFilter:
         if n_jobs is None:
             n_jobs = oligo_database.n_jobs
 
-        oligos_database = oligo_database.database
-        region_ids = list(oligos_database.keys())
-        oligos_DB_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_region)(oligos_database[region])
+        database = oligo_database.database
+        region_ids = list(database.keys())
+        database_regions = Parallel(n_jobs=n_jobs)(
+            delayed(self._filter_region)(database[region])
             for region in region_ids
         )
-        oligos_database = {}
-        for oligos_database_region, region_id in zip(oligos_DB_regions, region_ids):
-            oligos_database[region_id] = oligos_database_region
-        oligo_database.database = oligos_database
+        database = {}
+        for database_region, region_id in zip(database_regions, region_ids):
+            database[region_id] = database_region
+        oligo_database.database = database
         oligo_database.remove_regions_with_insufficient_oligos(
             pipeline_step="Property Filter",
             write=self.write_regions_with_insufficient_oligos,
         )
         return oligo_database
 
-    def _filter_region(self, oligos_database_region):
+    def _filter_region(self, database_region):
         """Apply filters to alll oligos of a specific region.
 
-        :param oligos_database_region: Oligo database entry for one region.
-        :type oligos_database_region: dict
+        :param database_region: Oligo database entry for one region.
+        :type database_region: dict
         :return: Oligo database entry for one region only contaning oligos that passed the filter.
         :rtype: dict
         """
-        oligos_id = list(oligos_database_region.keys())
+        oligos_id = list(database_region.keys())
         for oligo_id in oligos_id:
             fulfills, additional_features = self._filter_sequence(
-                oligos_database_region[oligo_id]["sequence"]
+                database_region[oligo_id]["sequence"]
             )
             if fulfills:
-                oligos_database_region[oligo_id].update(additional_features)
+                database_region[oligo_id].update(additional_features)
             else:
-                del oligos_database_region[oligo_id]
-        return oligos_database_region
+                del database_region[oligo_id]
+        return database_region
 
     def _filter_sequence(self, sequence):
         """Applies the user-defined filters and returns the result and the additional computed features.

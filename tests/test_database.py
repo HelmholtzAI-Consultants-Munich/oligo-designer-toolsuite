@@ -78,7 +78,7 @@ def file_ncbi_transcriptome(tmpdir_factory):
     region_generator_ncbi = CustomGenomicRegionGenerator(
         annotation_file_ncbi,
         sequence_file_ncbi,
-        source="NCBI",
+        files_source="NCBI",
         species="Homo_sapiens",
         annotation_release="110",
         genome_assembly="GRCh38",
@@ -96,7 +96,7 @@ def test_region_generator_ncbi(tmpdir_factory):
     region_generator_ncbi = CustomGenomicRegionGenerator(
         annotation_file_ncbi,
         sequence_file_ncbi,
-        source="NCBI",
+        files_source="NCBI",
         species="Homo_sapiens",
         annotation_release="110",
         genome_assembly="GRCh38",
@@ -121,7 +121,7 @@ def test_region_generator_ensemble(tmpdir_factory):
     region_generator_ensembl = CustomGenomicRegionGenerator(
         annotation_file_ensemble,
         sequence_file_ensemble,
-        source="Ensembl",
+        files_source="Ensembl",
         species="Homo_sapiens",
         annotation_release="108",
         genome_assembly="GRCh38",
@@ -144,7 +144,7 @@ def test_reference_database(file_ncbi_transcriptome):
     """Test creation of reference database as well as load, write and filter functionalities."""
     reference = ReferenceDatabase(
         file_ncbi_transcriptome,
-        source="NCBI",
+        files_source="NCBI",
         species="Homo_sapiens",
         annotation_release="110",
         genome_assembly="GRCh38",
@@ -172,7 +172,7 @@ def test_oligo_database(file_ncbi_transcriptome):
         oligo_length_min=90,
         oligo_length_max=90,
         min_oligos_per_region=0,
-        source="NCBI",
+        files_source="NCBI",
         species="Homo_sapiens",
         annotation_release="110",
         genome_assembly="GRCh38",
@@ -182,8 +182,8 @@ def test_oligo_database(file_ncbi_transcriptome):
     database = oligos.database
 
     # check if database changes when saved and loaded
-    file_database = oligos.save_oligo_database()
-    oligos.load_oligo_database(file_database)
+    file_database = oligos.write_database()
+    oligos.load_database(file_database)
     for oligo_id in database[genes[0]].keys():
         assert (
             database[genes[0]][oligo_id] == oligos.database[genes[0]][oligo_id]
@@ -210,7 +210,7 @@ def test_oligo_database_filters(file_ncbi_transcriptome):
         oligo_length_min=90,
         oligo_length_max=90,
         min_oligos_per_region=0,
-        source="NCBI",
+        files_source="NCBI",
         species="Homo_sapiens",
         annotation_release="110",
         genome_assembly="GRCh38",
