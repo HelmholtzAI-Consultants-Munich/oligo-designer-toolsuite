@@ -142,8 +142,8 @@ class SeedRegionCreationPercentage(SeedRegionCreationBase):
 
 
 class LigationRegionCreation(SeedRegionCreationBase):
-    """Seed region used in the Padlock oligo designer pipeline, the region extends by ``ligation_region_size`` number of bases in both directions starting from the ligation site.
-    To keep the dimention of the region 2*``ligation_region_size`` the left size is expanded by 1 base less.
+    """The seed region is extended by ``ligation_region_size`` number of bases in both directions starting from the ligation site.
+    To keep the dimension of the region 2*``ligation_region_size`` the left size is expanded by 1 base less.
 
     **Remark:** it is required to have a ligation site argument for each oligo in the datset, which can be computed with the ``PadlockArms`` filter in the prefilterig step
 

@@ -7,7 +7,6 @@ import copy
 import shutil
 import warnings
 import pandas as pd
-from time import time
 
 pd.options.mode.chained_assignment = None
 
@@ -25,9 +24,9 @@ from ..utils._gff_parser import GffParser
 
 class CustomGenomicRegionGenerator:
     """Class to generate sequences from annotated regions in GTF format and genomic fasta file.
-    
+
     Sequences are saved as fasta file with region id, additional information and coordinates in header.
-    he header of each sequence must start with '>' and contain the following information: 
+    he header of each sequence must start with '>' and contain the following information:
     region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
     where the region_id is compulsory and the other fileds are opional.
 
@@ -309,7 +308,7 @@ class CustomGenomicRegionGenerator:
             strand=True,
             nameOnly=True,
         )
-        # os.remove(file_transcriptome_bed)
+        os.remove(file_transcriptome_bed)
 
     def _get_unique_exons(self, exons):
         """Merge overlapping exons, which have the same start and end coordinates.
@@ -629,7 +628,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         taxon: str = None,
         species: str = None,
         annotation_release: str = None,
-        dir_output: str = "output/annotation",
+        dir_output: str = "output",
     ):
         """Constructor"""
         files_source = "NCBI"
@@ -647,9 +646,10 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
                 f"No annotation release defined. Using default release {annotation_release}!"
             )
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
+        self.dir_output = os.path.join(dir_output, "annotation")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ftp = FtpLoaderNCBI(dir_output, taxon, species, annotation_release)
+        ftp = FtpLoaderNCBI(self.dir_output, taxon, species, annotation_release)
         annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
         sequence_file, _, _ = ftp.download_files("fasta")
 
@@ -660,6 +660,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
             species,
             annotation_release,
             genome_assembly,
+            dir_output,
         )
 
 
@@ -681,7 +682,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
         self,
         species: str = None,
         annotation_release: str = None,
-        dir_output: str = "output/annotation",
+        dir_output: str = "output",
     ):
         """Constructor"""
         files_source = "Ensemble"
@@ -695,9 +696,10 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
                 f"No annotation release defined. Using default release {annotation_release}!"
             )
 
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
+        self.dir_output = os.path.join(dir_output, "annotation")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ftp = FtpLoaderEnsembl(dir_output, species, annotation_release)
+        ftp = FtpLoaderEnsembl(self.dir_output, species, annotation_release)
         annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
         sequence_file, _, _ = ftp.download_files("fasta")
 
@@ -708,4 +710,5 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
             species,
             annotation_release,
             genome_assembly,
+            dir_output,
         )

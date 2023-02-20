@@ -16,8 +16,8 @@ from ..utils._data_parser import check_fasta_format, parse_fasta_header
 
 class ReferenceDatabase:
     """This class stores a refernce database, which is created from
-    a sequence fasta file. 
-    The header of each sequence must start with '>' and contain the following information: 
+    a sequence fasta file.
+    The header of each sequence must start with '>' and contain the following information:
     region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
     where the region_id is compulsory and the other fileds are opional.
 
@@ -56,7 +56,9 @@ class ReferenceDatabase:
         """Constructor"""
         if files_source is None:
             files_source = "custom"
-            warnings.warn(f"No files_source defined. Using default files_source {files_source}!")
+            warnings.warn(
+                f"No files_source defined. Using default files_source {files_source}!"
+            )
 
         if species is None:
             species = "unknown"
@@ -135,4 +137,6 @@ class ReferenceDatabase:
                     database_filtered.append(entry)
             self.database = database_filtered
         else:
-            raise ValueError("Can not filter. Database is empty! Call the method load_fasta_into_database() first.")
+            raise ValueError(
+                "Can not filter. Database is empty! Call the method load_fasta_into_database() first."
+            )

@@ -7,11 +7,11 @@ write_removed_genes: True # write in a file the removed genes
 write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline
 
 
-### Parameters for genome and gene annotation
-source: ncbi # define annotation source
-taxon: vertebrate_mammalian # taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
-species: Homo_sapiens # species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name
-annotation_release: current # release number of annotation e.g. '109' or '109.20211119'  or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/
+### Parameters for genomic region generator that creates fasta file
+source: ncbi # required: indicate that NCBI annotation should be used
+taxon: vertebrate_mammalian # required: taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
+species: Homo_sapiens # required: species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name
+annotation_release: current # required: release number of annotation e.g. '109' or '109.20211119'  or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/
 
 
 ### Parameters for oligo sequences generation
