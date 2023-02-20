@@ -20,7 +20,7 @@ from oligo_designer_toolsuite.database import (
     OligoDatabase,
     ReferenceDatabase,
 )
-from oligo_designer_toolsuite.sequence_design import PadlockSequenceDesigner
+from oligo_designer_toolsuite.sequence_design import PadlockSequence
 from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -44,12 +44,14 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._padlock_probe_designer_config import (
+    generate_custom_config,
     generate_ncbi_config,
+    generate_ensembl_config,
 )
 
 
 def oligo_database_info(oligo_database: dict):
-    """Counts the number of oligos and genees in the database."""
+    """Count the number of oligos and genes in the database."""
 
     regions = oligo_database.keys()
     num_regions = len(regions)
@@ -60,12 +62,23 @@ def oligo_database_info(oligo_database: dict):
     return num_regions, num_oligos
 
 
-def generate_config_file(directory: str):
+def generate_config_file(directory: str, source: str):
     directory = os.path.join(directory, "config")
     Path(directory).mkdir(parents=True, exist_ok=True)
-    config_file = generate_ncbi_config(directory)  # function generating the config file
+    if source == "custom":
+        config_file = generate_custom_config(
+            directory
+        )  # function generating the config file
+    elif source == "ncbi":
+        config_file = generate_ncbi_config(
+            directory
+        )  # function generating the config file
+    elif source == "ensembl":
+        config_file = generate_ensembl_config(
+            directory
+        )  # function generating the config file
     warnings.warn(
-        f"No config file was given, a file is generatede automatically in '{config_file}'."
+        f"No config file was given, a file is generated automatically in '{config_file}'."
     )
     return config_file
 
@@ -92,15 +105,6 @@ def initialize_parameters(parser: ArgumentParser):
         "--n_jobs",
         help="number of cores used, int",
         type=int,
-        default=None,
-        metavar="",
-    )
-    # TODO how to use all the genes? add a worning if no info is added
-    parser.add_argument(
-        "-g",
-        "--file_genes",
-        help="path to a file containing the genes used to generate the oligos, if empty all the genes are used, str",
-        type=str,
         default=None,
         metavar="",
     )
@@ -131,7 +135,7 @@ def initialize_parameters(parser: ArgumentParser):
     parser.add_argument(
         "-s",
         "--source",
-        help="how to obtain the genomic files: dowload them from a server [ncbi, ensembl] or provide the files directly [custom]",
+        help="how to obtain the genomic files: download them from a server [ncbi, ensembl] or provide the files directly [custom]",
         choices=["ncbi", "ensembl", "custom"],
         default=None,
         metavar="",
@@ -139,56 +143,81 @@ def initialize_parameters(parser: ArgumentParser):
     parser.add_argument(
         "-tx",
         "--taxon",
-        help="taxon of the species, only ofr [ncbi], str",
+        help="[source: ncbi] taxon of the species, [archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral]",
+        choices=[
+            "archaea",
+            "bacteria",
+            "fungi",
+            "invertebrate",
+            "mitochondrion",
+            "plant",
+            "plasmid",
+            "plastid",
+            "protozoa",
+            "vertebrate_mammalian",
+            "vertebrate_other",
+            "viral",
+        ],
         default=None,
         metavar="",
     )
     parser.add_argument(
         "-sp",
         "--species",
-        help="species name in the server folder, str",
+        help="species name, for valid NCBI species name see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/, for valid Ensembl species name see http://ftp.ensembl.org/pub/release-108/gtf/, str",
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--annotation_release",
-        help="annotation release number or 'current' for the latest version, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-af",
-        "--annotation_file",
-        help="path to the annotation file (only for custom source), str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-sf",
-        "--sequence_file",
-        help="path to the sequence file (only for custom source), str",
+        help="release number of annotation, e.g. 'release-108' (Ensembl) or '109' (NCBI) or 'current' to use most recent annotation release, str",
         type=str,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--genome_assembly",
-        help="(only for custom source), str",
+        help="[source: custom] genome assembly of provided annotation, str",
         type=str,
         default=None,
         metavar="",
     )
     parser.add_argument(
-        "--files_source",
-        help="original source of the genomic files (only for custom source), [NCBI, Ensembl]",
-        choices=["NCBI", "Ensembl"],
+        "-fa",
+        "--file_annotation",
+        help="[source: custom] path to GTF file with gene annotation, str",
+        type=str,
         default=None,
         metavar="",
     )
     parser.add_argument(
-        "-mol",
+        "-fs",
+        "--file_sequence",
+        help="[source: custom] path to FASTA file with genome sequence, str",
+        type=str,
+        default=None,
+        metavar="",
+    )
+
+    parser.add_argument(
+        "-fsrc",
+        "--files_source",
+        help="[source: custom] original source of the genomic files, e.g. NCBI, str",
+        type=str,
+        default=None,
+        metavar="",
+    )
+    # TODO how to use all the genes? add a worning if no info is added
+    parser.add_argument(
+        "-fg",
+        "--file_genes",
+        help="path to file with a list of the genes that are used to generate the oligos sequences, if empty all the genes are used, str",
+        type=str,
+        default=None,
+        metavar="",
+    )
+    parser.add_argument(
+        "-olm",
         "--oligo_length_min",
         help="minimum length of oligos, int",
         type=int,
@@ -196,7 +225,7 @@ def initialize_parameters(parser: ArgumentParser):
         metavar="",
     )
     parser.add_argument(
-        "-Mol",
+        "-olM",
         "--oligo_length_max",
         help="max length of oligos, int",
         type=int,
@@ -375,7 +404,7 @@ def initialize_parameters(parser: ArgumentParser):
     args = parser.parse_args()
     args = vars(args)
     if args["config"] is None:
-        args["config"] = generate_config_file(args["output"])
+        args["config"] = generate_config_file(args["output"], args["source"])
 
     # read the config file
     with open(args["config"], "r") as handle:
@@ -429,7 +458,7 @@ def padlock_probe_designer():
     dir_output = os.path.abspath(config["output"])
     Path(dir_output).mkdir(parents=True, exist_ok=True)
 
-    logging.info("#########Parameter settings#########")
+    logging.info("######### Parameter settings #########")
     for item, value in config.items():
         logging.info("{}: {}".format(item, value))
     logging.info(f"Results will be saved to: {config['output']}")
@@ -445,46 +474,48 @@ def padlock_probe_designer():
         # dowload the fasta files formthe NCBI server
         region_generator = NcbiGenomicRegionGenerator(
             taxon=config["taxon"],
-            species=config["species"], 
-            annotation_release=config["annotation_release"], 
-            dir_output=dir_output
+            species=config["species"],
+            annotation_release=config["annotation_release"],
+            dir_output=dir_output,
         )
     elif config["source"] == "ensembl":
         # dowload the fasta files formthe NCBI server
         region_generator = EnsemblGenomicRegionGenerator(
-            species=config["species"], 
-            annotation_release=config["annotation_release"], 
-            dir_output=dir_output
+            species=config["species"],
+            annotation_release=config["annotation_release"],
+            dir_output=dir_output,
         )
     elif config["source"] == "custom":
         # use already dowloaded files
         region_generator = CustomGenomicRegionGenerator(
-            annotation_file=config["annotation_file"], 
-            sequence_file=config["sequence_file"], 
-            files_source=config["source"], 
-            species=config["species"], 
-            annotation_release=config["annotation_release"], 
+            annotation_file=config["file_annotation"],
+            sequence_file=config["file_sequence"],
+            files_source=config["files_source"],
+            species=config["species"],
+            annotation_release=config["annotation_release"],
             genome_assembly=config["genome_assembly"],
-            dir_output=dir_output
+            dir_output=dir_output,
         )
-    file_transcriptome = region_generator.generate_transcript_reduced_representation(include_exon_junctions=True, exon_junction_size=2*config["oligo_length_max"])
-    
+    file_transcriptome = region_generator.generate_transcript_reduced_representation(
+        include_exon_junctions=True, exon_junction_size=2 * config["oligo_length_max"]
+    )
+
     # oligo database
     oligo_database = OligoDatabase(
-        file_fasta = file_transcriptome,
-        oligo_length_min = config["oligo_length_min"],
-        oligo_length_max = config["oligo_length_max"],
-        min_oligos_per_region = config["min_oligos_per_gene"],
-        files_source = region_generator.files_source,
-        species = region_generator.species,
-        annotation_release = region_generator.annotation_release,
-        genome_assembly = region_generator.genome_assembly,
-        n_jobs = config["n_jobs"],
-        dir_output=dir_output
+        file_fasta=file_transcriptome,
+        oligo_length_min=config["oligo_length_min"],
+        oligo_length_max=config["oligo_length_max"],
+        min_oligos_per_region=config["min_oligos_per_gene"],
+        files_source=region_generator.files_source,
+        species=region_generator.species,
+        annotation_release=region_generator.annotation_release,
+        genome_assembly=region_generator.genome_assembly,
+        n_jobs=config["n_jobs"],
+        dir_output=dir_output,
     )
     if config["write_removed_genes"]:
         logging.info(
-            f"The genes with less than {config['min_oligos_per_gene']} probes will be removed and their names will be stored in '{oligo_database.file_removed_regions}'."
+            f"Genes with <= {config['min_oligos_per_gene']} probes will be removed from the oligo database and their names will be stored in '{oligo_database.file_removed_regions}'."
         )
 
     ######## Property filters ########
@@ -497,8 +528,10 @@ def padlock_probe_designer():
     Tm_params["imm_table"] = getattr(mt, Tm_params["imm_table"])
     Tm_params["de_table"] = getattr(mt, Tm_params["de_table"])
 
-    Tm_correction_param = config["Tm_correction_parameters"]["shared"].copy()
-    Tm_correction_param.update(config["Tm_correction_parameters"]["property_filter"])
+    Tm_chem_correction_param = config["Tm_chem_correction_param"]["shared"].copy()
+    Tm_chem_correction_param.update(
+        config["Tm_chem_correction_param"]["property_filter"]
+    )
 
     # initialize the filters clasees
     masked_sequences = MaskedSequences()
@@ -509,7 +542,7 @@ def padlock_probe_designer():
         Tm_min=config["Tm_min"],
         Tm_max=config["Tm_max"],
         Tm_parameters=Tm_params,
-        Tm_chem_correction_parameters=Tm_correction_param,
+        Tm_chem_correction_parameters=Tm_chem_correction_param,
     )
     padlock_arms = PadlockArms(
         min_arm_length=config["min_arm_length"],
@@ -517,7 +550,7 @@ def padlock_probe_designer():
         arm_Tm_min=config["arm_Tm_min"],
         arm_Tm_max=config["arm_Tm_max"],
         Tm_parameters=Tm_params,
-        Tm_chem_correction_parameters=Tm_correction_param,
+        Tm_chem_correction_parameters=Tm_chem_correction_param,
     )
     # create the list of filters
     filters = [masked_sequences, gc_content, melting_temperature, padlock_arms]
@@ -591,7 +624,7 @@ def padlock_probe_designer():
 
     ######## Padlock sequences ########
 
-    # preprocessing of themelting temperature parameters
+    # preprocessing of the melting temperature parameters
     Tm_params = config["Tm_parameters"]["shared"].copy()
     Tm_params.update(config["Tm_parameters"]["detection_oligo"])
     Tm_params["nn_table"] = getattr(mt, Tm_params["nn_table"])
@@ -599,15 +632,18 @@ def padlock_probe_designer():
     Tm_params["imm_table"] = getattr(mt, Tm_params["imm_table"])
     Tm_params["de_table"] = getattr(mt, Tm_params["de_table"])
 
-    Tm_correction_param = config["Tm_correction_parameters"]["shared"].copy()
-    Tm_correction_param.update(config["Tm_correction_parameters"]["detection_oligo"])
+    Tm_chem_correction_param = config["Tm_chem_correction_param"]["shared"].copy()
+    Tm_chem_correction_param.update(
+        config["Tm_chem_correction_param"]["detection_oligo"]
+    )
     # initilize the padlock sequence designer class
-    padlock_sequence_designer = PadlockSequenceDesigner(
+    padlock_sequence = PadlockSequence(
         detect_oligo_length_min=config["detect_oligo_length_min"],
         detect_oligo_length_max=config["detect_oligo_length_max"],
         detect_oligo_Tm_opt=config["detect_oligo_Tm_opt"],
         Tm_parameters=Tm_params,
-        Tm_chem_correction_parameters=Tm_correction_param,
+        Tm_chem_correction_parameters=Tm_chem_correction_param,
+        dir_output=dir_output,
     )
 
     ######## Pipeline ########
@@ -615,7 +651,7 @@ def padlock_probe_designer():
     # read the genes file
     if config["file_genes"] is None:
         warnings.warn(
-            "No file containing the genes was provided, all the genes are ussed to generate the probes. This chioce can use a lot of resources."
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
         )
         genes = None
     else:
@@ -625,11 +661,12 @@ def padlock_probe_designer():
 
     # generate the oligo sequences from gene transcripts
     oligo_database.create_database(region_ids=genes)
+    if config["write_intermediate_steps"]:
+        oligo_database.write_database(filename="oligo_database_initial.txt")
 
     num_genes_init, num_oligos_init = oligo_database_info(oligo_database.database)
-    logging.info(f"Probes generation:")
     logging.info(
-        f"at the beginning the database contains {num_oligos_init} probes from {num_genes_init} genes."
+        f"Step - Generate Probes: the database contains {num_oligos_init} probes from {num_genes_init} genes."
     )
 
     # apply property filter to the database
@@ -638,15 +675,11 @@ def padlock_probe_designer():
     )
     # write the intermediate result in a file
     if config["write_intermediate_steps"]:
-        oligo_database.write_database(filename="oligo_database_property_filter")
+        oligo_database.write_database(filename="oligo_database_property_filter.txt")
 
     num_genes_prop, num_oligos_prop = oligo_database_info(oligo_database.database)
-    logging.info(f"Property filters: ")
     logging.info(
-        f"after the property filters have been applied the database contains {num_oligos_prop} probes from {num_genes_prop} genes,"
-    )
-    logging.info(
-        f"{num_oligos_init - num_oligos_prop} probes and {num_genes_init - num_genes_prop} genes have been deleted in this step."
+        f"Step - Filter Probes by Sequence Property: the database contains {num_oligos_prop} probes from {num_genes_prop} genes, while {num_oligos_init - num_oligos_prop} probes and {num_genes_init - num_genes_prop} genes have been deleted in this step."
     )
 
     # apply specificty filters to the database
@@ -657,14 +690,10 @@ def padlock_probe_designer():
     )
     # write the intermediate result
     if config["write_intermediate_steps"]:
-        oligo_database.write_database(filename="oligo_database_specificity_filters")
+        oligo_database.write_database(filename="oligo_database_specificity_filters.txt")
     num_genes_spec, num_oligos_spec = oligo_database_info(oligo_database.database)
-    logging.info(f"Specificity filters:")
     logging.info(
-        f"after the specificity filters have been applied the database contains {num_oligos_spec} probes from {num_genes_spec} genes, "
-    )
-    logging.info(
-        f"{num_oligos_prop - num_oligos_spec} probes and {num_genes_prop - num_genes_spec} genes have been deleted in this step."
+        f"Step - Filter Probes by Specificity: the database contains {num_oligos_spec} probes from {num_genes_spec} genes, while {num_oligos_prop - num_oligos_spec} probes and {num_genes_prop - num_genes_spec} genes have been deleted in this step."
     )
 
     # generate the oligoset
@@ -674,24 +703,17 @@ def padlock_probe_designer():
     # write the intermediate result
     if config["write_intermediate_steps"]:
         oligo_database.write_oligosets(folder="oligosets")
+        oligo_database.write_database(filename="oligo_database_oligosets.txt")
     num_genes_set, num_oligos_set = oligo_database_info(oligo_database.database)
-    logging.info(f"Oligosets generation:")
     logging.info(
-        f"after the oligosets have been generated the database contains {num_oligos_set} probes from {num_genes_set} genes, "
-    )
-    logging.info(
-        f"{num_oligos_spec - num_oligos_set} probes and {num_genes_spec - num_genes_set} genes have been deleted in this step."
+        f"Step - Generate Oligosets: the database contains {num_oligos_set} probes from {num_genes_set} genes, while {num_oligos_spec - num_oligos_set} probes and {num_genes_spec - num_genes_set} genes have been deleted in this step."
     )
 
     # generate the padlock sequence
-    padlock_sequence_designer.design_padlocks(
-        oligo_database=oligo_database, dir_padlock="padlock_sequences"
-    )
-    logging.info(f"Padlock sequences generation: ")
+    padlock_sequence.design_final_padlock_sequence(oligo_database=oligo_database)
     logging.info(
-        f"padlock sequences have been written in '{os.path.join(oligo_database.dir_output, 'padlock_sequences')}'."
+        f"Step - Design Final Padlock Sequences: padlock sequences are stored in '{os.path.join(padlock_sequence.dir_output, 'padlock_sequences')}' directory."
     )
-
     logging.info("######### End Pipeline #########")
 
 

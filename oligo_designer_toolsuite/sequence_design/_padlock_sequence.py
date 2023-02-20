@@ -2,13 +2,14 @@
 # imports
 ############################################
 
-import itertools
 import os
+import yaml
 import random
-from pathlib import Path
+import itertools
 
 import pandas as pd
-import yaml
+
+from pathlib import Path
 from Bio.SeqUtils import MeltingTemp as mt
 
 from ..database import OligoDatabase
@@ -18,7 +19,7 @@ from ..database import OligoDatabase
 ############################################
 
 
-class PadlockSequenceDesigner:
+class PadlockSequence:
     """
     This class is used to design the final padlock sequences.
 
@@ -41,6 +42,7 @@ class PadlockSequenceDesigner:
         detect_oligo_Tm_opt: float,
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
+        dir_output: str = "output",
     ):
         """Constructor method"""
 
@@ -51,25 +53,20 @@ class PadlockSequenceDesigner:
         self.Tm_parameters = Tm_parameters
         self.Tm_correction_parameters = Tm_chem_correction_parameters
 
-    def design_padlocks(
-        self, oligo_database: OligoDatabase, dir_padlock: str = "padlock_sequences"
-    ):
+        self.dir_output = os.path.join(dir_output, "padlock_sequences")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+
+    def design_final_padlock_sequence(self, oligo_database: OligoDatabase):
         """Design final padlock oligo sequences for the oligosets in the given database.
 
-        Saves in a subfolder of ``oligo_databse.dir_output`` called ``dir_padlock`` the following files:
+        Saves in a subfolder of ``dir_output`` called ``padlock_sequences`` the following files:
         - table at dir_out+"padlock_oligos.yml" with final padlock oligo sequences, detection oligo sequences, and infos
         - table at dir_out+"padlock_oligos_order.yml" with final padlock oligo sequences and detection oligo sequences
 
 
         :param oligo_database: database containging all teh infromation on the oligo sequences
         :type oligo_database: OligoDatabase
-        :param dir_padlock: name of the subfolder of ``oligo_databse.dir_output`` where the files will be written, defaults to "padlock_oligos"
-        :type dir_padlock: str, optional
         """
-
-        dir_padlock = os.path.join(oligo_database.dir_output, dir_padlock)
-        Path(dir_padlock).mkdir(parents=True, exist_ok=True)
-
         database = oligo_database.database
         oligosets = oligo_database.oligosets
         yaml_dict = {}
@@ -118,13 +115,18 @@ class PadlockSequenceDesigner:
                     "end",
                     "strand",
                 ]:
-                    yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = str(
-                        database_region[oligo_id][key]
-                    )
+                    if len(database_region[oligo_id][key]) == 1:
+                        yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = str(
+                            database_region[oligo_id][key][0]
+                        )
+                    else:
+                        yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][
+                            key
+                        ] = ",".join(str(database_region[oligo_id][key]))
                 yaml_dict[region][f"{region}_oligo{oligo_idx+1}"].update(
                     {
-                        "padlock_oligo_full_sequence": str(full_seq),
-                        "detection_oligo_sequence": str(det_oligo_seq),
+                        "padlock_probe_full_sequence": str(full_seq),
+                        "detection_probe_sequence": str(det_oligo_seq),
                         "padlock_arm1_sequence": str(sub_seqs["arm1"]),
                         "padlock_accessory1_sequence": str(sub_seqs["accessory1"]),
                         "padlock_ISS_anchor_sequence": str(sub_seqs["ISS_anchor"]),
@@ -151,14 +153,14 @@ class PadlockSequenceDesigner:
                     yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = int(
                         database_region[oligo_id][key]
                     )
-                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"]["ligation_site"] = int(
-                    ligation_idx
-                )
                 yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][
-                    "melt_temp_detection_oligo"
+                    "ligation_site"
+                ] = int(ligation_idx)
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][
+                    "melt_temp_detection_probe"
                 ] = float(det_oligo_Tm)
 
-        with open(os.path.join(dir_padlock, "padlock_oligos.yml"), "w") as outfile:
+        with open(os.path.join(self.dir_output, "padlock_probes.yml"), "w") as outfile:
             yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
 
         yaml_order = {}
@@ -166,15 +168,15 @@ class PadlockSequenceDesigner:
             yaml_order[region] = {}
             for oligo_id in yaml_dict[region]:
                 yaml_order[region][oligo_id] = {}
-                yaml_order[region][oligo_id]["padlock_oligo_full_sequence"] = yaml_dict[
+                yaml_order[region][oligo_id]["padlock_probe_full_sequence"] = yaml_dict[
                     region
-                ][oligo_id]["padlock_oligo_full_sequence"]
-                yaml_order[region][oligo_id]["detection_oligo_sequence"] = yaml_dict[
+                ][oligo_id]["padlock_probe_full_sequence"]
+                yaml_order[region][oligo_id]["detection_probe_sequence"] = yaml_dict[
                     region
-                ][oligo_id]["detection_oligo_sequence"]
+                ][oligo_id]["detection_probe_sequence"]
 
         with open(
-            os.path.join(dir_padlock, "padlock_oligos_order.yml"), "w"
+            os.path.join(self.dir_output, "padlock_probes_order.yml"), "w"
         ) as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
@@ -429,7 +431,9 @@ class PadlockSequenceDesigner:
             :type Tm_chem_correction_parameters: dict
             """
             Tm = mt.Tm_NN(oligo_sequence, **Tm_parameters)
-            Tm_corrected = round(mt.chem_correction(Tm, **Tm_chem_correction_parameters), 2)
+            Tm_corrected = round(
+                mt.chem_correction(Tm, **Tm_chem_correction_parameters), 2
+            )
             return Tm_corrected
 
         def _find_best_oligo(start_oligo, best_oligo, best_Tm_dif, minT, get_Tm_dif):
@@ -472,7 +476,6 @@ class PadlockSequenceDesigner:
             Tm_dif = best_Tm_dif
             count = 0
             while oligo_length > self.detect_oligo_length_min:
-
                 if bool(count % 2):
                     oligo = oligo[1:]
                 else:
@@ -494,7 +497,6 @@ class PadlockSequenceDesigner:
             Tm_dif = best_Tm_dif
             count = 0
             while oligo_length > self.detect_oligo_length_min:
-
                 if bool(count % 2):
                     oligo = oligo[:-1]
                 else:
