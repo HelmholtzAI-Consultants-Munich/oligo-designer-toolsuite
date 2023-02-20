@@ -1,4 +1,4 @@
-oligo\_designer\_toolsuite.oligo\_selection package
+oligo\_selection
 ===================================================
 
 Module contents

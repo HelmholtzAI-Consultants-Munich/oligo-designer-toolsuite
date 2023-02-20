@@ -2,15 +2,15 @@ import numpy as np
 
 
 def padlock_heuristic_selection(
-    oligos, oligos_scores, overlapping_matrix, n_oligo, n_trials=10000
+    database_region, oligos_scores, overlapping_matrix, n_oligo, n_trials=10000
 ):
     """This method tries to find empirically a good set of teh padlock design of oligos. For teh best n_trials oligos a set is cretaed
     by adding one by one the best non overlapping oligo untiil a set is created. The best obtained set saved and returned. Moreover, foor how this particular
     scoring method works we know that all the oligos with a higher score than the worse oligo of the best set are going to yield a worse set the one just found,
     hence are deleted form the dictionary and the series of scores.
 
-    :param oligos: dictionary with all the oligos
-    :type oligos: dict
+    :param database_region: dictionary with all the oligos of the region
+    :type database_region: dict
     :param oligos_scores: scores of the oligos
     :type oligos_scores: pandas.Series
     :param overlapping_matrix: matrix containig information about the overlapping of the oligos
@@ -54,6 +54,6 @@ def padlock_heuristic_selection(
     for oligo_id in oligos_scores.index:
         if oligos_scores[oligo_id] > max_score:
             # delete the oligo, both dictionary and dataframe are passed as a reference
-            del oligos[oligo_id]
+            del database_region[oligo_id]
             oligos_scores.drop(oligo_id, inplace=True)
-    return oligos, oligos_scores, best_set
+    return database_region, oligos_scores, best_set

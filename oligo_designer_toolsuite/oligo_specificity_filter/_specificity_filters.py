@@ -1,4 +1,4 @@
-from ..database import CustomOligoDB, CustomReferenceDB
+from ..database import OligoDatabase, ReferenceDatabase
 from . import SpecificityFilterBase
 
 
@@ -8,26 +8,26 @@ class SpecificityFilter:
 
     :param filters: List of all the filter classes that we want to apply to the database
     :type filters: list of ``SpecificityFilterBase`` class
-    :param write_genes_with_insufficient_oligos: if True genes with insufficient oligos are written in a file, defaults to True
-    :type write_genes_with_insufficient_oligos: bool, optional
+    :param write_regions_with_insufficient_oligos: if True genes with insufficient oligos are written in a file, defaults to True
+    :type write_regions_with_insufficient_oligos: bool, optional
     """
 
     def __init__(
         self,
         filters: list[SpecificityFilterBase],
-        write_genes_with_insufficient_oligos: bool = True,
+        write_regions_with_insufficient_oligos: bool = True,
     ):
         """
         Constructor.
         """
 
         self.filters = filters
-        self.write_genes_with_insufficient_oligos = write_genes_with_insufficient_oligos
+        self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
 
     def apply(
         self,
-        oligo_database: CustomOligoDB,
-        reference_database: CustomReferenceDB,
+        oligo_database: OligoDatabase,
+        reference_database: ReferenceDatabase,
         n_jobs: int = None,
     ):
         """
@@ -47,14 +47,14 @@ class SpecificityFilter:
         if n_jobs is None:
             n_jobs = oligo_database.n_jobs
 
-        oligos_DB = oligo_database.oligos_DB
+        database = oligo_database.database
         for filter in self.filters:
-            oligos_DB = filter.apply(
-                oligos_DB, reference_database.file_reference_DB, n_jobs
+            database = filter.apply(
+                database, reference_database.file_fasta, n_jobs
             )
 
-        oligo_database.oligos_DB = oligos_DB
-        oligo_database.remove_genes_with_insufficient_oligos(
-            "Specificity filter", self.write_genes_with_insufficient_oligos
+        oligo_database.database = database
+        oligo_database.remove_regions_with_insufficient_oligos(
+            "Specificity filter", self.write_regions_with_insufficient_oligos
         )
         return oligo_database
