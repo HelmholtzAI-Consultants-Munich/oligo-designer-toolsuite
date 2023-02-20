@@ -1,11 +1,23 @@
+############################################
+# imports
+############################################
+
 from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq
 
 from . import PropertyFilterBase
 
+############################################
+# Padlock Filter Classes
+############################################
 
 class PadlockArms(PropertyFilterBase):
-    """Filters the sequences by arms melting temperature.
+    """Checks if the melting temperature of a padlock arms lies within a user defined interval [arm_Tm_min, arm_Tm_max] and fulfills sequence length requirements.
+    The melting tenperature is computed using nearest neighbor thermodynamics.
+    The parameters for melting temperature computation can be changed from default by providing ```Tm_parameters``` 
+    dict with parameters specifications.
+    The melting temperature can be corrected for DMSO and formamide by providing a ```Tm_chem_correction_parameters```dict 
+    with parameters specifications.
 
     :param min_arm_length: minimum arm length
     :type min_arm_length: int
@@ -15,21 +27,24 @@ class PadlockArms(PropertyFilterBase):
     :type arm_Tm_min: float
     :param arm_Tm_max: maximum melting temperature
     :type arm_Tm_max: float
-    :param Tm_parameters: parameters to compute the melting temperature, for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+    :param Tm_parameters: parameters to compute the melting temperature, 
+        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
+        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
     :type Tm_parameters: dict
-    :param Tm_correction_parameters: parameters to correct the melting temperature,for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-    :type Tm_correction_parameters: dict
+    :param Tm_chem_correction_parameters: parameters to correct the melting temperature for DMSO and formamide, defaults to None, i.e. no correction
+        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
+        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+    :type Tm_chem_correction_parameters: dict
     """
 
-    def __init__(
-        self,
-        min_arm_length: int,
-        max_arm_Tm_dif: float,
-        arm_Tm_min: float,
-        arm_Tm_max: float,
-        Tm_parameters: dict,
-        Tm_correction_parameters: dict,
-    ) -> None:
+    def __init__(self,
+            min_arm_length: int,
+            max_arm_Tm_dif: float,
+            arm_Tm_min: float,
+            arm_Tm_max: float,
+            Tm_parameters: dict,
+            Tm_chem_correction_parameters: dict = None,
+        ) -> None:
         """Initialize the class"""
 
         super().__init__()
@@ -38,30 +53,29 @@ class PadlockArms(PropertyFilterBase):
         self.arm_Tm_min = arm_Tm_min
         self.arm_Tm_max = arm_Tm_max
         self.Tm_parameters = Tm_parameters
-        self.Tm_correction_parameters = Tm_correction_parameters
+        self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
     def __get_Tm(self, sequence: Seq):
-        """Computes the melting temperature of the sequence.
+        """Computes the melting temperature of the sequence and applies chemical corrections if parameters provided.
 
         :param sequence: sequence for which the melting temperature is computed
         :type sequence: str
         :return: melting temperature
         :rtype: float
         """
-
         Tm = mt.Tm_NN(sequence, **self.Tm_parameters)
-        Tm_corrected = round(mt.chem_correction(Tm, **self.Tm_correction_parameters), 2)
-        return Tm_corrected
+        if self.Tm_chem_correction_parameters is not None:
+            Tm = mt.chem_correction(Tm, **self.Tm_chem_correction_parameters)
+        return round(Tm, 4)
 
     def __find_arms(self, sequence):
-        """Find the ligation site for the two padlock oligo arms according melting temperature constraints
+        """Find the ligation site for the two padlock oligo arms according to melting temperature constraints.
             The search starts in the center of the oligo and shifts alternating 1 more nucleotide to the right and to
             the left.
 
         :param sequence: sequence for which the arms are computed
         :type sequence: str
         """
-
         oligo_length = len(sequence)
         ligation_site = oligo_length // 2
 
@@ -101,13 +115,12 @@ class PadlockArms(PropertyFilterBase):
         return Tm_found, arm_features
 
     def apply(self, sequence: Seq):
-        """Applies the filter to the sequence.
+        """Applies the filter and returns True if the melting temperature fulfills requirements.
 
         :param sequence: sequence for which the filter is applied
         :type sequence: str
         :return: Tm_found, arm_features
         :rtype: bool, dict
         """
-
         Tm_found, arm_features = self.__find_arms(sequence)
         return Tm_found, arm_features

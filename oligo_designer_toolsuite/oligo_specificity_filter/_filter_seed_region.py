@@ -45,10 +45,20 @@ class BowtieSeedRegion(Bowtie):
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
-    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
-        """Apply bowtie filter to all batches in parallel"""
+    def apply(self, database: dict, file_reference_DB: str, n_jobs: int):
+        """Apply the bowtie filter in parallel on the seed region of oligos in the given ``database``. Each jobs filters a single region, and  at the same time are generated at most ``n_job`` jobs.
+        The filtered database is returned.
+
+        :param database: database containing the oligos and their features
+        :type database: dict
+        :param file_reference_DB: path to the file that will be used as reference for the alignement
+        :type file_reference_DB: str
+        :param n_jobs: number of simultaneous parallel computations
+        :type n_jobs: int
+        :return: oligo info of user-specified regions
+        :rtype: dict"""
         # generater the seed region coordinates
-        oligo_DB = self.seed_region_creation.apply(oligo_DB)
+        database = self.seed_region_creation.apply(database)
 
         # Some bowtie initializations, change the names
         index_exists = False
@@ -61,7 +71,7 @@ class BowtieSeedRegion(Bowtie):
         # Create bowtie index if none exists
         if not index_exists:
             command1 = (
-                "bowtie-build --threads "
+                "bowtie-build --quiet --threads "
                 + str(n_jobs)
                 + " -f "
                 + file_reference_DB
@@ -70,22 +80,22 @@ class BowtieSeedRegion(Bowtie):
             )
             process = Popen(command1, shell=True, cwd=self.dir_seed_region).wait()
 
-        oligo_DB_seed = self._extract_seed_regions(oligo_DB)
-        genes = list(oligo_DB_seed.keys())
+        oligo_DB_seed = self._extract_seed_regions(database)
+        regions = list(oligo_DB_seed.keys())
         filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
             delayed(self._run_bowtie_seed_region)(
-                oligo_DB_seed[gene], oligo_DB[gene], gene, index_name
+                oligo_DB_seed[region], database[region], region, index_name
             )
-            for gene in genes
+            for region in regions
         )
 
         # reconstruct the oligos_DB
-        for gene, filtered_oligo_DB in zip(genes, filtered_oligo_DBs):
-            oligo_DB[gene] = filtered_oligo_DB
+        for region, filtered_oligo_DB in zip(regions, filtered_oligo_DBs):
+            database[region] = filtered_oligo_DB
 
-        return oligo_DB
+        return database
 
-    def _run_bowtie_seed_region(self, gene_DB_seed, gene_DB, gene, index_name):
+    def _run_bowtie_seed_region(self, database_region_seed, gene_DB, region, index_name):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
         Bowtie identifies all allignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
@@ -94,14 +104,14 @@ class BowtieSeedRegion(Bowtie):
         """
 
         file_oligo_fasta_gene = self._create_fasta_file(
-            gene_DB_seed, self.dir_fasta, gene
+            database_region_seed, self.dir_fasta, region
         )
         file_bowtie_gene = os.path.join(
             self.dir_seed_region,
-            f"bowtie_{gene}.txt",
+            f"bowtie_{region}.txt",
         )
         command = (
-            "bowtie -x "
+            "bowtie --quiet -x "
             + index_name
             + " -f -a -v "
             + str(self.num_mismatches)
@@ -117,25 +127,25 @@ class BowtieSeedRegion(Bowtie):
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
         # filter the DB based on the bowtie results
         matching_oligos = self._find_matching_oligos(bowtie_results)
-        filtered_gene_DB = self._filter_matching_oligos(gene_DB, matching_oligos)
+        filtered_database_region = self._filter_matching_oligos(gene_DB, matching_oligos)
         # remove the temporary files
         os.remove(os.path.join(self.dir_seed_region, file_bowtie_gene))
         os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
-        return filtered_gene_DB
+        return filtered_database_region
 
-    def _extract_seed_regions(self, oligo_DB):
+    def _extract_seed_regions(self, database):
         """geneate a new oligos DB containing only the seed regions of the oligos."""
         oligo_DB_seed = {}
-        for gene in oligo_DB.keys():
-            oligo_DB_seed[gene] = {}
-            for oligo_id in oligo_DB[gene].keys():
-                oligo_DB_seed[gene][oligo_id] = {}
+        for region in database.keys():
+            oligo_DB_seed[region] = {}
+            for oligo_id in database[region].keys():
+                oligo_DB_seed[region][oligo_id] = {}
                 start, end = (
-                    oligo_DB[gene][oligo_id]["seed_region_start"],
-                    oligo_DB[gene][oligo_id]["seed_region_end"],
+                    database[region][oligo_id]["seed_region_start"],
+                    database[region][oligo_id]["seed_region_end"],
                 )
-                seed_region_seq = oligo_DB[gene][oligo_id]["sequence"][
+                seed_region_seq = database[region][oligo_id]["sequence"][
                     start : end + 1
                 ]  # end must be included
-                oligo_DB_seed[gene][oligo_id]["sequence"] = seed_region_seq
+                oligo_DB_seed[region][oligo_id]["sequence"] = seed_region_seq
         return oligo_DB_seed

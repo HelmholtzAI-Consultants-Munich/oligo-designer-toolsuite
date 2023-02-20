@@ -21,25 +21,25 @@ class SpecificityFilterBase(ABC):
         os.makedirs(self.dir_specificity, exist_ok=True)
 
     @abstractmethod
-    def apply(self, oligo_DB: dict, file_reference_DB: str, n_jobs: int):
+    def apply(self, oligo_database: dict, file_reference: str, n_jobs: int):
         """Apply filter to list of all possible oligos in oligo_info dictionary and filter out the oligos which don't fulfill the requirements.
-        Temporary files can be written in the ``self.dir_specificiy``folder, but they must be removed.
+        Temporary files can be written in the ``self.dir_specificiy`` folder, but they must be removed.
 
-        :param oligo_DB: database containing the oligos and their features
-        :type oligo_DB: dict
-        :param file_reference_DB: path to the file that will be used as reference for the alignement tools
-        :type file_reference_DB: str
+        :param oligo_database: database containing the oligos and their features
+        :type oligo_database: dict
+        :param file_reference: path to the file that will be used as reference for the alignement tools
+        :type file_reference: str
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
         :return: oligo info of user-specified genes
-        :rtype : dict
+        :rtype: dict
         """
 
-    def _create_fasta_file(self, gene_DB, dir, gene):
+    def _create_fasta_file(self, database_region, dir, gene):
         """Creates a fasta file with all the oligos of a specific gene. The fasta files are then used by the alignement tools.
 
-        :param gene_DB: database with all the oligos contained in one gene
-        :type gene_DB: dict
+        :param database_region: database with all the oligos contained in one gene
+        :type database_region: dict
         :param dir: path to the directory where the files will be stored
         :type dir: str
         :param gene: id of the gene we are processing
@@ -49,24 +49,24 @@ class SpecificityFilterBase(ABC):
         """
         file_fasta_gene = os.path.join(dir, f"oligos_{gene}.fna")
         output = []
-        for oligo_id in gene_DB.keys():
-            output.append(SeqRecord(gene_DB[oligo_id]["sequence"], oligo_id, "", ""))
+        for oligo_id in database_region.keys():
+            output.append(SeqRecord(database_region[oligo_id]["sequence"], oligo_id, "", ""))
         with open(file_fasta_gene, "w") as handle:
             SeqIO.write(output, handle, "fasta")
         return file_fasta_gene
 
-    def _filter_matching_oligos(self, gene_DB: dict, matching_oligos: list[str]):
+    def _filter_matching_oligos(self, database_region: dict, matching_oligos: list[str]):
         """Filer out form the database the sequences with a match.
 
-        :param gene_DB: dictionary with all the oligos belonging to the current gene
-        :type gene_DB: dict
+        :param database_region: dictionary with all the oligos belonging to the current gene
+        :type database_region: dict
         :param matching_oligos: list of the oligos with a match
         :type matching_oligos: list
-        :return: gene_DB without the matching oligos
+        :return: database_region without the matching oligos
         :rtype: dict
         """
-        oligo_ids = list(gene_DB.keys())
+        oligo_ids = list(database_region.keys())
         for oligo_id in oligo_ids:
             if oligo_id in matching_oligos:
-                del gene_DB[oligo_id]
-        return gene_DB
+                del database_region[oligo_id]
+        return database_region

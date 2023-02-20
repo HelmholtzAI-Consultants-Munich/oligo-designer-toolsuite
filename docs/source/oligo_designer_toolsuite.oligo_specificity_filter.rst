@@ -1,4 +1,4 @@
-oligo\_designer\_toolsuite.oligo\_specificity\_filter package
+oligo\_specificity\_filter
 =============================================================
 
 Module contents
