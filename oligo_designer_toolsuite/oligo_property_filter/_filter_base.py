@@ -172,3 +172,68 @@ class ProhibitedSequences(PropertyFilterBase):
         :return: True if the constrined is fulfilled and the melting temperature
         :rtype: bool and dict
         """
+
+class GCClamp(PropertyFilterBase):
+    """ Filters the sequences by the presence of a GC Clamp: one of the n 3' terminal bases must be G or C
+    :param n: number of terminal bases to check for a G or a C
+    :type  n: int
+
+
+    """
+    def __init__(self, n:int) -> None:
+        super().__init__()
+        self.n = n
+
+    def apply(self, sequence: Seq):
+        """Applies the filter and returns True if there is a GC clamp
+
+        :param sequence: sequence to be filtered
+        :type sequence: str
+        :return: True if the constrain is fulfilled
+        :rtype: bool
+        """
+        for i in range (self.n):
+            if (sequence[-i-1]=='G' or sequence[-i-1]=='C'):
+                return True, {}
+        return False, {}
+
+class ConsecutiveRepeats(PropertyFilterBase):
+    """Filters the sequences by consecutive repeats.
+
+    :param Repeat_num_max: maximum number of consecutive repeats that the oligos can not have
+    :type Repeat_num_max: int
+    """
+
+    def __init__(self, repeat_num_max: int) -> None:
+        """Constructor"""
+        super().__init__()
+
+        self.repeat_num_max = repeat_num_max
+
+    def apply(self, sequence: Seq):
+        """Applies the filter and returns True if the number of consecutive repeats are lower the max values.
+
+        :param sequence: sequence to be filtered
+        :type sequence: str
+        :return: True if the constrined is fulfilled, the max consecutive repeats
+        :rtype: bool and dict
+        """
+        repeat_num_max = self.repeat_num_max
+
+        if repeat_num_max <= 0:
+            self.repeat_num_max = 1
+            repeat_num_max = self.repeat_num_max
+
+        elif repeat_num_max >= len(sequence):
+            repeat_num_max = len(sequence) - 1
+            # max_num_repeat is changed to length of sequence - 1
+
+        AA_consecutive_repeat_min = min([len(set(kmer)) for kmer in
+                                         (sequence[i:i + repeat_num_max + 1] for i in
+                                          range(len(sequence) - repeat_num_max))])
+
+        sequence_features = {"Consecutive_repeat_min": AA_consecutive_repeat_min}
+
+        if (AA_consecutive_repeat_min != 1) | (repeat_num_max == 1):
+            return True, sequence_features
+        return False, {}  # if false the additional features are not been saved anyway
