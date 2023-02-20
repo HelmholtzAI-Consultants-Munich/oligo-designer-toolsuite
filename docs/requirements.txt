@@ -13,3 +13,4 @@ Bio
 pyyaml
 networkx
 joblib
+seqfold
