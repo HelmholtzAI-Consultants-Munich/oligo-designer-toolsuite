@@ -96,6 +96,7 @@ class PrimerProbes:
             genome_assembly = self.region_generator.genome_assembly,
             dir_output=self.dir_output
         )
+        reference_database1.load_fasta_into_database()
 
 
         #second blast against 3' end of other primers
@@ -124,6 +125,7 @@ class PrimerProbes:
         fasta_reference_database3 = self.blast_filter2._create_fasta_file(T7_dict, self.dir_specificity3, 'T7')
         self.reference_database3= ReferenceDatabase(
             file_fasta = fasta_reference_database3)
+        self-reference_database3.load_fasta_into_database()
         
 
     def create_primer1(self):
@@ -148,6 +150,7 @@ class PrimerProbes:
         fasta_reference_database2 = self.blast_filter2._create_fasta_file(trimmed_primers, self.dir_specificity2, 'primers')
         reference_database2= ReferenceDatabase(
             file_fasta = fasta_reference_database2)
+        reference_database2.load_fasta_into_database()
         specificity_filter2 = SpecificityFilter(filters=[self.blast_filter2], write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
         oligo_database = specificity_filter2.apply(oligo_database=oligo_database, reference_database=reference_database2, n_jobs=self.config["n_jobs"])
         if self.config["write_intermediate_steps"]:
@@ -158,7 +161,7 @@ class PrimerProbes:
         oligo_database = specificity_filter3.apply(oligo_database=oligo_database, reference_database=self.reference_database3, n_jobs=self.config["n_jobs"])
         
         
-        primer1_file_database = oligo_database[1:self.num_probes].write_database(filename="primer1_database.txt")
+        primer1_file_database = oligo_database.write_database(filename="primer1_database.txt")
         
         
 
