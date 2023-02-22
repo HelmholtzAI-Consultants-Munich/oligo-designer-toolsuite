@@ -3,8 +3,13 @@ from oligo_designer_toolsuite.pipelines import  (
     ReadoutProbes,
     PrimerProbes
 )
+from oligo_designer_toolsuite.oligo_specificity_filter import (
+    SpecificityFilter,
+    Blastn,
+)
 from oligo_designer_toolsuite.database import CustomGenomicRegionGenerator, NcbiGenomicRegionGenerator, EnsemblGenomicRegionGenerator
-from _merfish_code_book import get_binary_sequences
+from oligo_designer_toolsuite.database import ReferenceDatabase
+from ._merfish_code_book import get_binary_sequences
 import numpy as np
 from Bio.Seq import Seq
 import yaml
@@ -119,7 +124,41 @@ class MerfishProbeDesigner:
         assembled_probes_file_database = target_probes.write_database(filename="merfish_assembled_probes.txt")
 
 
-        #blast against tRNA and rRNA highly expressed genes
+        #blast against highly expressed genes
+        reference_database = ReferenceDatabase(
+            file_fasta = self.file_transcriptome,
+            files_source = self.region_generator.files_source,
+            species = self.region_generator.species,
+            annotation_release = self.region_generator.annotation_release,
+            genome_assembly = self.region_generator.genome_assembly,
+            dir_output=self.dir_output
+        )
+        reference_database.load_fasta_into_database()
+        if self.config["probe_setup"]["file_highly_expressed_genes"] is None:
+            warnings.warn(
+                "No file containing the highly expressed genes was provided, all the genes be used."
+            )
+            genes = None
+        else:
+            with open(self.config["probe_setup"]["file_highly_expressed_genes"]) as handle:
+                lines = handle.readlines()
+                genes = [line.rstrip() for line in lines]
+            reference_database.filter_database(genes)
+            
+        dir_specificity = os.path.join(self.dir_output, "specificity_temporary") 
+        blastn = Blastn(
+            dir_specificity=dir_specificity, 
+            word_size=self.config["probe_setup"]["blast2_word_size"],
+            percent_identity=self.config["percent_identity"],
+            coverage=self.config["coverage"],
+            strand=self.config["strand"],
+        )
+        specificity_filter = SpecificityFilter(filters=[blastn], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
+        # filter the database
+        assembled_probes = specificity_filter.apply(oligo_database=target_probes, reference_database=reference_database, n_jobs=self.config["n_jobs"])
+
+        #save final probes in a file        
+        final_probes_file_database = target_probes.write_database(filename="merfish_final_probes.txt")
 
 
 
