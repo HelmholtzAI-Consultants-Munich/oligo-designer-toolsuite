@@ -105,12 +105,9 @@ targeting_sequences_setup:
   #back_ground_DB: GRCh38? #remove > 1 cellular RNA species Target
 
 probe_setup:
-  first_blast:
-      word_size: 14
-      back_ground_DB: #rRNAs or tRNAs
-  second_blast:
-      word_size: 17
-      back_ground_DB: #highly expressed genes
+  blast1_word_size: 14 #back_ground_DB: #rRNAs or tRNAs
+  blast2_word_size: 17 #back_ground_DB: #highly expressed genes
+  file_highly_expressed_genes: #highly expressed genes 
 
 ### Parameters for Melting Temperature
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
