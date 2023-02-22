@@ -1,5 +1,5 @@
 import unittest
-from random import random
+import random
 from scipy.spatial.distance import hamming
 
 
