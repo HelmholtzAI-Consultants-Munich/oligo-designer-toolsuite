@@ -27,7 +27,6 @@ class Secondary_struct(PropertyFilterBase):
         :return: True if the constrined is fulfilled
         :rtype: bool
         """
-        
-        if (dg(Seq, temp = self.T)< self.DG):
+        if (dg(sequence, temp = self.T)< self.DG):
                 return False,{}
         return True,{}
