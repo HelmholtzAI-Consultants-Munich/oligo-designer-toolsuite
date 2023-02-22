@@ -3,12 +3,14 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     PropertyFilter,
     MaskedSequences,
     GCContent,
-    MeltingTemperature,
+    MeltingTemperatureNN,
     ConsecutiveRepeats,
     Secondary_struct
 )
 from Bio.SeqUtils import MeltingTemp as mt
-from oligo_designer_toolsuite.database import CustomOligoDB, NcbiOligoDB, EnsemblOligoDB
+from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.database import ReferenceDatabase
+from oligo_designer_toolsuite.database import CustomGenomicRegionGenerator, NcbiGenomicRegionGenerator, EnsemblGenomicRegionGenerator
 from Bio.Seq import Seq
 import os
 import yaml
@@ -23,63 +25,51 @@ class TargetProbes:
 
     def __init__(
             self,
-            config_file
+            config,
+            dir_output,
+            file_transcriptome,
+            region_generator
     ):
-        self.config_file= config_file
-        with open(self.config_file, 'r') as yaml_file:
-            self.config = yaml.safe_load(yaml_file)
-        self.dir_output = os.path.join(os.path.dirname(os.getcwd()), self.config["dir_output"]) 
+        self.config= config
+        self.dir_output = os.path.join(dir_output, "target_probes")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+        self.file_transcriptome = file_transcriptome
+        self.region_generator = region_generator
+
 
     def create_target(self):
 
+        # creating the database
         # define the database class
-        if self.config["source"] == "ncbi":
-            # dowload the fasta files formthe NCBI server
-            oligo_database = NcbiOligoDB(
-                oligo_length_min=self.config["oligo_length_min"],
-                oligo_length_max=self.config["oligo_length_max"],
-                species=self.config["species"],
-                annotation_release=self.config["annotation_release"],
-                n_jobs=self.config["n_jobs"],
-                dir_output=self.dir_output,
-                min_oligos_per_gene=self.config["min_oligos_per_gene"],
-                )
-        elif self.config["source"] == "ensembl":
-            # dowload the fasta files formthe NCBI server
-            oligo_database = EnsemblOligoDB(
-                oligo_length_min=self.config["oligo_length_min"],
-                oligo_length_max=self.config["oligo_length_max"],
-                species=self.config["species"],
-                annotation_release=self.config["annotation_release"],
-                n_jobs=self.config["n_jobs"],
-                dir_output=self.dir_output,
-                min_oligos_per_gene=self.config["min_oligos_per_gene"],
-                )
-        elif self.config["source"] == "custom":
-            # use already dowloaded files
-            oligo_database = CustomOligoDB(
-                oligo_length_min=self.config["oligo_length_min"],
-                oligo_length_max=self.config["oligo_length_max"],
-                species=self.config["species"],
-                genome_assembly=self.config["genome_assembly"],
-                annotation_release=self.config["annotation_release"],
-                files_source=self.config["files_source"],
-                annotation_file=self.config["annotation_file"],
-                sequence_file=self.config["sequence_file"],
-                n_jobs=self.config["n_jobs"],
-                dir_output=self.dir_output,
-                min_oligos_per_gene=self.config["min_oligos_per_gene"],
-                )
-        else:
-            raise ValueError("Annotation source not supported!") 
+        oligo_database = OligoDatabase(
+            file_fasta = self.file_transcriptome,
+            oligo_length_min = self.config["oligo_length_min"],
+            oligo_length_max = self.config["oligo_length_max"],
+            min_oligos_per_region = self.config["min_oligos_per_gene"],
+            files_source = self.region_generator.files_source,
+            species = self.region_generator.species,
+            annotation_release = self.region_generator.annotation_release,
+            genome_assembly = self.region_generator.genome_assembly,
+            n_jobs = self.config["n_jobs"],
+            dir_output=self.dir_output
+        )
 
         # read the genes file
-        with open(self.config["file_genes"]) as handle:
-            lines = handle.readlines()
-            genes = [line.rstrip() for line in lines]
-            
-        #generate the oligo sequences from gene transcripts
-        oligo_database.create_oligos_DB(genes=genes, region='transcripts')
+        if self.config["file_genes"] is None:
+            warnings.warn(
+                "No file containing the genes was provided, all the genes are ussed to generate the probes. This chioce can use a lot of resources."
+            )
+            genes = None
+        else:
+            with open(self.config["file_genes"]) as handle:
+                lines = handle.readlines()
+                genes = [line.rstrip() for line in lines]
+                
+        # generate the oligo sequences from gene transcripts
+        oligo_database.create_database(region_ids=genes) 
+
+
+
 
         #Property filters
         
@@ -93,11 +83,11 @@ class TargetProbes:
 
         Tm_correction_param = self.config["Tm_correction_parameters"]["shared"].copy()
         Tm_correction_param.update(self.config["Tm_correction_parameters"]["property_filter"])
-        melting_temperature = MeltingTemperature(
+        melting_temperature = MeltingTemperatureNN(
             Tm_min=self.config["targets_setup"]["Tm_min"], 
             Tm_max=self.config["targets_setup"]["Tm_max"], 
             Tm_parameters=Tm_params, 
-            Tm_correction_parameters=Tm_correction_param
+            Tm_chem_correction_parameters=Tm_correction_param
         )
         consecutive_repeats = ConsecutiveRepeats(self.config["targets_setup"]["max_repeats_AA"])
         gc_content = GCContent(
@@ -112,36 +102,37 @@ class TargetProbes:
         filters = [gc_content, melting_temperature, consecutive_repeats,secondary_structure]
 
         # initialize the property filter class
-        property_filter = PropertyFilter(filters=filters, write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
+        property_filter = PropertyFilter(filters=filters, write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # filter the database
         oligo_database = property_filter.apply(oligo_database=oligo_database, n_jobs=self.config["n_jobs"])
         # write the intermediate result in a file
+        # write the intermediate result in a file
         if self.config["write_intermediate_steps"]:
-            oligo_database.write_oligos_DB(format=self.config["file_format"], dir_oligos_DB="property_filter")
+            file_database = oligo_database.write_database(filename="oligo_database_property_filter.txt")
+ 
         
         #Specificity filters to remove probes with more than 1 RNA species target (no cross-hybridization targets with Tm>72)
         dir_specificity = os.path.join(self.dir_output, "specificity_temporary") # folder where the temporary files will be written
 
-        # generate the reference
-        reference_database = CustomReferenceDB(
-            species=oligo_database.species,
-            genome_assembly=oligo_database.genome_assembly,
-            annotation_release=oligo_database.annotation_release,
-            files_source=oligo_database.files_source,
-            annotation_file=oligo_database.annotation_file,
-            sequence_file=oligo_database.sequence_file,
+        reference_database = ReferenceDatabase(
+            file_fasta = self.file_transcriptome,
+            files_source = self.region_generator.files_source,
+            species = self.region_generator.species,
+            annotation_release = self.region_generator.annotation_release,
+            genome_assembly = self.region_generator.genome_assembly,
             dir_output=self.dir_output
         )
-        reference_database.create_reference_DB(block_size=self.config["block_size"]) # leave the standard parameters
+
         # filter reference database by melting temperature
-        melting_temperature2 = MeltingTemperature(
+        melting_temperature2 = MeltingTemperatureNN(
             Tm_min=self.config["targets_setup"]["cross_hybridization_targets_Tm_min"], 
             Tm_max=self.config["targets_setup"]["cross_hybridization_targets_Tm_max"], 
             Tm_parameters=Tm_params, 
-            Tm_correction_parameters=Tm_correction_param
+            Tm_chem_correction_parameters=Tm_correction_param
         )
-        property_filter2 = PropertyFilter(filters=[melting_temperature2], write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
-        reference_database = property_filter2.apply(oligo_database=reference_database, n_jobs=self.config["n_jobs"])
+        property_filter2 = PropertyFilter(filters=[melting_temperature2], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
+        #reference_database = property_filter2.apply(oligo_database=reference_database, n_jobs=self.config["n_jobs"])
+        #NOTE: property filters don' work for reference database
 
         # intialize the filter classes
         exact_matches = ExactMatches(dir_specificity=dir_specificity)
@@ -149,27 +140,22 @@ class TargetProbes:
             dir_specificity=dir_specificity, 
             word_size=self.config["targeting_sequences_setup"]["word_size"],
             percent_identity=self.config["targeting_sequences_setup"]["percent_identity"],
-            coverage=self.config["coverage"]
+            coverage=self.config["coverage"],
+            strand=self.config["strand"],
         )
-        filters = [exact_mathces, blastn]
+        filters = [exact_matches, blastn]
         # initialize the specificity filter class
-        specificity_filter = SpecificityFilter(filters=filters, write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
+        specificity_filter = SpecificityFilter(filters=filters, write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # filte r the database
         oligo_database = specificity_filter.apply(oligo_database=oligo_database, reference_database=reference_database, n_jobs=self.config["n_jobs"])
-        # write the intermediate result
-        if self.config["write_intermediate_steps"]:
-            oligo_database.write_oligos_DB(format=self.config["file_format"], dir_oligos_DB="specificity_filter")
-
-        
-
         
         
-
         #write the final results
-        oligo_database.write_oligos_DB(format=self.config["file_format"], dir_oligos_DB="target_sequences")
+        targetProbes_file_database = oligo_database.write_database(filename="merfish_target_probes.txt")
+    
 
         # return  target probes 
-        return oligo_database
+        return oligo_database, targetProbes_file_database
 
 
 
