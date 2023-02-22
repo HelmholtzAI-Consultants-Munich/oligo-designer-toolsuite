@@ -122,6 +122,7 @@ class TargetProbes:
             genome_assembly = self.region_generator.genome_assembly,
             dir_output=self.dir_output
         )
+        reference_database.load_fasta_into_database()
 
         # filter reference database by melting temperature
         melting_temperature2 = MeltingTemperatureNN(
