@@ -72,6 +72,7 @@ class PrimerProbes:
             word_size=self.config["primers_blast_setup"]['blast1_word_size'],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
+            strand=self.config["strand"],
         )
         self.reference_database1= ReferenceDatabase(
             file_fasta = self.file_transcriptome,
@@ -91,6 +92,7 @@ class PrimerProbes:
             word_size=self.config["primers_blast_setup"]['blast2_word_size'],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
+            strand=self.config["strand"],
         )
         
         
@@ -102,12 +104,13 @@ class PrimerProbes:
             word_size=self.config["primers_blast_setup"]['blast3_word_size'],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
+            strand=self.config["strand"],
         )
         
         T7_dict=dict()
         T7_dict['T7promoter'] = {"sequence": Seq(self.T7promoter[-self.config["primers_blast_setup"]['blast3_word_size']:])}
         #create reference DB with fasta file
-        fasta_reference_database3 = self.blast_filter2._create_fasta_file(T7_dict, self.dir_specificity3, 'T7')
+        fasta_reference_database3 = self.blast_filter3._create_fasta_file(T7_dict, self.dir_specificity3, 'T7')
         self.reference_database3= ReferenceDatabase(
             file_fasta = fasta_reference_database3)
         self.reference_database3.load_fasta_into_database()
@@ -123,7 +126,7 @@ class PrimerProbes:
 
         
         #specifity filter 1
-        specificity_filter1 = SpecificityFilter(filters=[self.blast_filter1], write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
+        specificity_filter1 = SpecificityFilter(filters=[self.blast_filter1], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         oligo_database = specificity_filter1.apply(oligo_database=oligo_database, reference_database=self.reference_database1, n_jobs=self.config["n_jobs"])
         if self.config["write_intermediate_steps"]:
             file_database = oligo_database.write_database(filename="primer_database_specificity_filter_1.txt")
@@ -136,13 +139,13 @@ class PrimerProbes:
         reference_database2= ReferenceDatabase(
             file_fasta = fasta_reference_database2)
         reference_database2.load_fasta_into_database()
-        specificity_filter2 = SpecificityFilter(filters=[self.blast_filter2], write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
+        specificity_filter2 = SpecificityFilter(filters=[self.blast_filter2], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         oligo_database = specificity_filter2.apply(oligo_database=oligo_database, reference_database=reference_database2, n_jobs=self.config["n_jobs"])
         if self.config["write_intermediate_steps"]:
             file_database = oligo_database.write_database(filename="primer_database_specificity_filter2.txt")
 
         #specificity filter 3
-        specificity_filter3 = SpecificityFilter(filters=[self.blast_filter3], write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
+        specificity_filter3 = SpecificityFilter(filters=[self.blast_filter3], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         oligo_database = specificity_filter3.apply(oligo_database=oligo_database, reference_database=self.reference_database3, n_jobs=self.config["n_jobs"])
         
         
