@@ -19,7 +19,7 @@ files_source: NCBI  # optional: source of provided annotation, leave empty if un
 primers_length: 20
 readout_length: 30
 use_default_readouts: True # use the default readout sequences from the merfish paper
-
+percentage_blank: 10 #percentage of blank barcodes
 
 ### Parameters for oligo sequences generation
 
@@ -100,7 +100,7 @@ strand: plus # strand of the query sequence to search
 
 
 primers_blast_setup:
-  #blast1 against human genome
+  #blast1 against human transcriptome
   blast1_word_size: 14 #word size for the blastn seed (exact match to target)
   #blast 2 against 3′ end of any other primer
   blast2_word_size: 11 
@@ -119,18 +119,33 @@ readout_blast_setup:
 
   second_blast:
     word_size: 14
-    back_ground_DB: #potential off-target binding sites in the human genome
+    back_ground_DB: #potential off-target binding sites 
 
 
 targeting_sequences_setup:
   word_size: 17  #Not provided: "remove > 1 cellular RNA sepices Target"
-  percent_identity: 66
-  #back_ground_DB: GRCh38? #remove > 1 cellular RNA species Target
+  percent_identity: 66 #cross hybridization
+
 
 probe_setup:
   blast1_word_size: 14 #back_ground_DB: #rRNAs or tRNAs
   blast2_word_size: 17 #back_ground_DB: #highly expressed genes
-  file_highly_expressed_genes: #highly expressed genes 
+  file_ncRNA: # fasta file with ncRNA
+  file_highly_expressed_genes: #text file containing highly expressed genes 
+
+
+### Parameters for the oligo efficiency
+# Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before
+Tm_opt: 75 # optimal melting temperature of oligos
+GC_content_opt: 50 # optimal GC content of oligos
+Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score
+GC_weight: 1 # weight of the GC content of the oligo in the efficiency score
+
+
+### Parameters for the oligosets generation
+oligoset_size: 50 # ideal number of oligos per oligoset
+min_oligoset_size: 50 # minimum number of oligos per oligoset
+n_sets: 100 # maximum number of sets per gene
 
 ### Parameters for Melting Temperature
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.

@@ -14,12 +14,18 @@ from oligo_designer_toolsuite.database import CustomGenomicRegionGenerator, Ncbi
 from Bio.Seq import Seq
 import os
 import yaml
+from pathlib import Path
 
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
     ExactMatches,
     Blastn,
 )
+from oligo_designer_toolsuite.oligo_efficiency import(
+    PadlockOligoScoring,
+    PadlockSetScoring,
+)
+from oligo_designer_toolsuite.oligo_selection import OligosetGenerator, padlock_heuristic_selection
 
 class TargetProbes:
 
@@ -147,16 +153,47 @@ class TargetProbes:
         filters = [exact_matches, blastn]
         # initialize the specificity filter class
         specificity_filter = SpecificityFilter(filters=filters, write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
-        # filte r the database
+        # filter the database
         oligo_database = specificity_filter.apply(oligo_database=oligo_database, reference_database=reference_database, n_jobs=self.config["n_jobs"])
         
-        
-        #write the final results
-        targetProbes_file_database = oligo_database.write_database(filename="merfish_target_probes.txt")
+
+        # # write the intermediate result
+        # if self.config["write_intermediate_steps"]:
+        #     oligo_database.write_database(filename="merfish_target_probes.txt")
+
+        # # initialize the scoring classes
+        # oligos_scoring = PadlockOligoScoring(
+        #     Tm_min=self.config["targets_setup"]["Tm_min"],
+        #     Tm_opt=self.config["Tm_opt"],
+        #     Tm_max=self.config["targets_setup"]["Tm_max"],
+        #     GC_content_min=self.config["targets_setup"]["GC_content_min"],
+        #     GC_content_opt=self.config["GC_content_opt"],
+        #     GC_content_max=self.config["targets_setup"]["GC_content_max"],
+        #     Tm_weight=self.config["Tm_weight"],
+        #     GC_weight=self.config["GC_weight"],
+        # )
+        # set_scoring = PadlockSetScoring()
+
+        # # initialize the oligoset generator class
+        # oligoset_generator = OligosetGenerator(
+        #     oligoset_size=self.config["oligoset_size"], 
+        #     min_oligoset_size=self.config["min_oligoset_size"],
+        #     oligos_scoring=oligos_scoring,
+        #     set_scoring=set_scoring,
+        #     heurustic_selection=padlock_heuristic_selection,
+        #     write_regions_with_insufficient_oligos=self.config["write_removed_genes"]
+        # )
+
+        # # generate the oligoset
+        # oligo_database = oligoset_generator.apply(oligo_database=oligo_database, n_sets=self.config["n_sets"], n_jobs=self.config["n_jobs"])
+
+        # write the result
+
+        file_database = oligo_database.write_database(filename="merfish_target_probes.txt")
     
 
         # return  target probes 
-        return oligo_database, targetProbes_file_database
+        return oligo_database, file_database
 
 
 

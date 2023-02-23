@@ -14,6 +14,7 @@ import numpy as np
 from Bio.Seq import Seq
 import yaml
 import os
+from pathlib import Path
 
 class MerfishProbeDesigner:
     """
@@ -31,7 +32,10 @@ class MerfishProbeDesigner:
         self.config_file= config_file
         with open(self.config_file, 'r') as yaml_file:
             self.config = yaml.safe_load(yaml_file)
-        self.dir_output = os.path.join(os.path.dirname(os.getcwd()), self.config["dir_output"]) 
+
+        dir_output = os.path.join(os.path.dirname(os.getcwd()), self.config["dir_output"]) 
+        self.dir_output = os.path.join(dir_output, "merfish_sequences")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
        
 
         #Create the transcriptome file
@@ -92,10 +96,16 @@ class MerfishProbeDesigner:
         #primer1 = primer_probes.create_primer1()
         #primer2 = primer_probes.create_primer2()
 
-        # generate codebook for the genes
+        # generate codebook for the genes, leave a percentage of blank barcodes
         database = target_probes.database
         genes = list(database.keys())
-        code=get_binary_sequences(n_seq=len(genes))
+        n_genes = len(genes)
+        n_blanks = round(n_genes*self.config["percentage_blank"]/100)
+        n_codes= n_genes+ n_blanks
+        code=get_binary_sequences(n_seq=n_codes)
+
+
+
 
         #assemble the probes
         for gene_idx, gene in enumerate(genes):
@@ -123,9 +133,31 @@ class MerfishProbeDesigner:
         #save assembled probes in a file        
         assembled_probes_file_database = target_probes.write_database(filename="merfish_assembled_probes.txt")
 
+        # blast against ncRNA
+        # reference_database1 = ReferenceDatabase(
+        #     file_fasta = self.config["probe_setup"]["file_ncRNA"],
+        #     files_source = 'Ensembl',
+        #     species = self.region_generator.species,
+        #     annotation_release = self.region_generator.annotation_release,
+        #     genome_assembly = self.region_generator.genome_assembly,
+        #     dir_output=self.dir_output
+        # )
+        # reference_database1.load_fasta_into_database()
+        # dir_specificity1 = os.path.join(self.dir_output, "specificity_temporary1") 
+        # blastn1 = Blastn(
+        #     dir_specificity=dir_specificity1, 
+        #     word_size=self.config["probe_setup"]["blast1_word_size"],
+        #     percent_identity=self.config["percent_identity"],
+        #     coverage=self.config["coverage"],
+        #     strand=self.config["strand"],
+        # )
+        # specificity_filter1 = SpecificityFilter(filters=[blastn1], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
+        # # filter the database
+        # target_probes = specificity_filter1.apply(oligo_database=target_probes, reference_database=reference_database1, n_jobs=self.config["n_jobs"])
+
 
         #blast against highly expressed genes
-        reference_database = ReferenceDatabase(
+        reference_database2 = ReferenceDatabase(
             file_fasta = self.file_transcriptome,
             files_source = self.region_generator.files_source,
             species = self.region_generator.species,
@@ -133,7 +165,7 @@ class MerfishProbeDesigner:
             genome_assembly = self.region_generator.genome_assembly,
             dir_output=self.dir_output
         )
-        reference_database.load_fasta_into_database()
+        reference_database2.load_fasta_into_database()
         if self.config["probe_setup"]["file_highly_expressed_genes"] is None:
             warnings.warn(
                 "No file containing the highly expressed genes was provided, all the genes be used."
@@ -143,22 +175,100 @@ class MerfishProbeDesigner:
             with open(self.config["probe_setup"]["file_highly_expressed_genes"]) as handle:
                 lines = handle.readlines()
                 genes = [line.rstrip() for line in lines]
-            reference_database.filter_database(genes)
+            reference_database2.filter_database(genes)
             
-        dir_specificity = os.path.join(self.dir_output, "specificity_temporary") 
-        blastn = Blastn(
-            dir_specificity=dir_specificity, 
+        dir_specificity2 = os.path.join(self.dir_output, "specificity_temporary2") 
+        blastn2 = Blastn(
+            dir_specificity=dir_specificity2, 
             word_size=self.config["probe_setup"]["blast2_word_size"],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
             strand=self.config["strand"],
         )
-        specificity_filter = SpecificityFilter(filters=[blastn], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
+        specificity_filter2 = SpecificityFilter(filters=[blastn2], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # filter the database
-        assembled_probes = specificity_filter.apply(oligo_database=target_probes, reference_database=reference_database, n_jobs=self.config["n_jobs"])
+        assembled_probes = specificity_filter2.apply(oligo_database=target_probes, reference_database=reference_database2, n_jobs=self.config["n_jobs"])
 
         #save final probes in a file        
-        final_probes_file_database = target_probes.write_database(filename="merfish_final_probes.txt")
+        final_probes_file_database = assembled_probes.write_database(filename="merfish_final_probes.txt")
+
+        # # create formatted output file
+        # database = assembled_probes.database
+        # genes = list(database.keys())
+        # n_genes=len(genes)
+        # yaml_dict = {}
+        # readout_length=30
+        # primer1_length=20
+        # primer2_length=primer1_length+18 #T7 promoter has 18nt
+        # for gene_idx, gene in enumerate(genes):
+        #     yaml_dict[gene] = {}
+        #     oligo_ids = list(database[gene].keys())
+        #     for oligo_idx, oligo_id in enumerate(oligo_ids):
+
+        #         full_sequence = database[gene][oligo_id]["sequence"]
+        #         primer1= full_sequence[:primer1_length]
+        #         primer2= full_sequence[-primer2_length:]
+        #         readout_seq_1= full_sequence[primer1_length:primer1_length+readout_length]
+        #         target_sequence= full_sequence[primer1_length+readout_length:-(primer2_length+readout_length)]
+        #         readout_seq_2= full_sequence[-(primer2_length+readout_length):-primer2_length]
+
+        #         yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"] = {}
+        #         yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["id"] = oligo_id
+        #         yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["gene"] = gene
+        #         database_region = database[gene]
+        #         for key in [
+        #             "additional_information_fasta",
+        #             "chromosome",
+        #             "start",
+        #             "end",
+        #             "strand",
+        #         ]:
+        #             if len(database_region[oligo_id][key]) == 1:
+        #                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = str(
+        #                     database_region[oligo_id][key][0]
+        #                 )
+        #             else:
+        #                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][
+        #                     key
+        #                 ] = ",".join(str(database_region[oligo_id][key]))
+
+        #         yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"].update(
+        #             {
+        #                 "merfish_probe_full_sequence": str(encoding_probe),
+        #                 "readout_probe_1": str(readout_seq_1.reverse_complement()),
+        #                 "readout_probe_2": str(readout_seq_2.reverse_complement()),
+        #                 "primer_sequence_1": str(primer1),
+        #                 "primer_sequence_2": str(primer2),
+        #                 "merfish_barcode_sequence": str(code[gene_idx]),
+        #                 "target_sequence": str(target_sequence),
+        #                 "recognised_mRNA_sequence": str(
+        #                     target_sequence.reverse_complement()
+        #                 ),  
+        #             }
+        #         )
+        #         for key in [
+        #             "GC_content",
+        #             "melting_temperature"
+        #         ]:
+        #             yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = float(
+        #                 database_region[oligo_id][key]
+        #             )
+        #         for key in ["length"]:  
+        #             yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = int(
+        #                 database_region[oligo_id][key]
+        #             )
+        # #save 
+        # with open(os.path.join(self.dir_output, "merfish_probes.yml"), "w") as outfile:
+        #     yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
+
+        yaml_codebook = {}
+        for gene_idx, gene in enumerate(genes):
+            yaml_codebook[gene]= code[gene_idx]
+
+        for i in range (n_blanks):
+            yaml_codebook[f"blank_barcode_{i+1}"] = code[n_genes+i]
+        with open(os.path.join(self.dir_output, "merfish_codebook.yml"), "w") as outfile:
+             yaml.dump(yaml_codebook, outfile, default_flow_style=False, sort_keys=False)
 
 
 
