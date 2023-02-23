@@ -72,15 +72,13 @@ class ReadoutProbes:
         # remove probs with significant homology to members of the transcriptome
 
         # step3
-        # blast each potential readout probe against the previous build library
+        # blast each potential readout probe against the previous build readout probs library
         # remove probs contains s contiguous stretch of homology > 14nt
 
         # step4
         # select subset of possible readout probs and built Blast library
         # remove probs contain a region of homology to another longer than 10 nt
 
-        # step5
-        # buy probes with tagged on the 3' end with a Cy5
 
         # Return the modified dictionary
         return selected_pairs
