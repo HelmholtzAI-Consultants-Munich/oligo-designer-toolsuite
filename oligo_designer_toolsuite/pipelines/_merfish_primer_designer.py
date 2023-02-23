@@ -7,7 +7,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     PropertyFilter,
     MaskedSequences,
     GCContent,
-    MeltingTemperature,
+    MeltingTemperatureNN,
     PadlockArms,
     ConsecutiveRepeats,
     GCClamp
@@ -24,15 +24,12 @@ class PrimerProbes:
 
     def __init__(
             self,
-            length: int,
-            number_probes: int,
             config_path,
             file_transcriptome,
             region_generator
           
     ):
         self.length = 25  # need to trim the sequece
-        self.num_probes = number_probes
         #self.config_file = os.path.join(os.getcwd(), "tutorials", "configs", "merfish_probe_designer_test.yaml")
         with open(config_path, 'r') as yaml_file:
             self.config = yaml.safe_load(yaml_file)
@@ -59,7 +56,7 @@ class PrimerProbes:
 
         self.Tm_params = self.config["Tm_parameters"]["shared"].copy()
         self.Tm_correction_param = self.config["Tm_correction_parameters"]["shared"].copy()
-        self.melting_temperature = MeltingTemperature(
+        self.melting_temperature = MeltingTemperatureNN(
             #min_arm_length=self.config["primers_setup"]["min_arm_length"],
             #max_arm_Tm_dif=self.config["primers_setup"]["max_arm_Tm_dif"],
             Tm_max=self.config_param["Tm_max"],
@@ -83,7 +80,7 @@ class PrimerProbes:
         #first blast against human transcriptome
         self.dir_specificity1 = os.path.join(self.config["dir_output"], "specificity_temporary1")
         self.blast_filter1 = Blastn(
-            dir_specificity=dir_specificity1, 
+            dir_specificity= self.dir_specificity1,
             word_size=self.config["primers_blast_setup"]['blast1_word_size'],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
@@ -96,13 +93,13 @@ class PrimerProbes:
             genome_assembly = self.region_generator.genome_assembly,
             dir_output=self.dir_output
         )
-        reference_database1.load_fasta_into_database()
+        self.reference_database1.load_fasta_into_database()
 
 
         #second blast against 3' end of other primers
         self.dir_specificity2 = os.path.join(self.config["dir_output"], "specificity_temporary2")
         self.blast_filter2 = Blastn(
-            dir_specificity=dir_specificity2, 
+            dir_specificity= self.dir_specificity2,
             word_size=self.config["primers_blast_setup"]['blast2_word_size'],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
@@ -113,7 +110,7 @@ class PrimerProbes:
         #third blast against 3' end of T7 promoter - Trim T7 to blast word size
         self.dir_specificity3 = os.path.join(self.config["dir_output"], "specificity_temporary3")
         self.blast_filter3 = Blastn(
-            dir_specificity=dir_specificity3, 
+            dir_specificity= self.dir_specificity3,
             word_size=self.config["primers_blast_setup"]['blast3_word_size'],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
@@ -125,7 +122,7 @@ class PrimerProbes:
         fasta_reference_database3 = self.blast_filter2._create_fasta_file(T7_dict, self.dir_specificity3, 'T7')
         self.reference_database3= ReferenceDatabase(
             file_fasta = fasta_reference_database3)
-        self-reference_database3.load_fasta_into_database()
+        self.reference_database3.load_fasta_into_database()
         
 
     def create_primer1(self):
