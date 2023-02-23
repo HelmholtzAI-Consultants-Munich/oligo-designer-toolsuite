@@ -29,6 +29,7 @@ class PrimerProbes:
             region_generator
           
     ):
+
         self.length = 25  # need to trim the sequece
         #self.config_file = os.path.join(os.getcwd(), "tutorials", "configs", "merfish_probe_designer_test.yaml")
         with open(config_path, 'r') as yaml_file:
@@ -46,24 +47,10 @@ class PrimerProbes:
         #self.ref = os.path.basename(reference_DB.file_reference_DB)
         self.oligo_25nt_path = os.path.join(os.getcwd(),"oligo_designer_toolsuite","experiment_specific","data", "bc25mer.240k.fasta")
         self.oligo_25nt_dict = SeqIO.to_dict(SeqIO.parse(self.oligo_25nt_path, "fasta"))
-        self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}  # step 1
+        self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}
 
 
         self.oligo_20nt_DB = None
-
-
-
-
-        self.Tm_params = self.config["Tm_parameters"]["shared"].copy()
-        self.Tm_correction_param = self.config["Tm_correction_parameters"]["shared"].copy()
-        self.melting_temperature = MeltingTemperatureNN(
-            #min_arm_length=self.config["primers_setup"]["min_arm_length"],
-            #max_arm_Tm_dif=self.config["primers_setup"]["max_arm_Tm_dif"],
-            Tm_max=self.config_param["Tm_max"],
-            Tm_min=self.config_param["Tm_min"],
-            Tm_parameters=self.Tm_params,
-            Tm_correction_parameters=self.Tm_correction_param,
-        )
 
         self.consecutive_repeats = ConsecutiveRepeats(self.config_param["Repeat_AA_max"])
         self.GC_clamp = GCClamp(self.config_param["GC_clamp_n"])
@@ -73,6 +60,7 @@ class PrimerProbes:
 
 
         self.oligo_primer_DB = None
+
         # specificty filters
 
         

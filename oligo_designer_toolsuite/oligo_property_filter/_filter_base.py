@@ -151,7 +151,7 @@ class MeltingTemperatureNN(PropertyFilterBase):
         sequence_features = {"melting_temperature": Tm}
         if self.Tm_min < Tm < self.Tm_max:
             return True, sequence_features
-        return False, {}
+        return False, {Tm}
 
 
 class ProhibitedSequences(PropertyFilterBase):

@@ -407,7 +407,6 @@ class OligoDatabase:
                 list_of_coordinates.reverse()
 
             if region_id.split("_")[0] in ["bc25mer"]:
-                print("bc25mer")
             # read bc25mer sequence
                 if (self.oligo_length_max + 1) > len(seq) > self.oligo_length_min:
                     oligo = seq
@@ -423,7 +422,7 @@ class OligoDatabase:
                         "end": oligo_end,
                         "strand": oligo_strand,
                         "length": oligo_length,
-                        "additional_information_fasta": [additional_information],
+                        "additional_information_fasta": ["None"],
                     }
                     if oligo in oligo_sequence_ids:
                         if oligo_id in oligo_sequence_ids[oligo].keys():
