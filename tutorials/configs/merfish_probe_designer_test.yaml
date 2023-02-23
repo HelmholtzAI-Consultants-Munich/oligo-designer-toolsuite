@@ -1,6 +1,6 @@
 ### General parameters
 n_jobs: 1 # number of cores used to run the pipeline
-dir_output: output # name of the directory where the output files will be written
+dir_output: output_merfish # name of the directory where the output files will be written
 file_format: tsv # fromat of the written files, can be "tsv" or "gtf"
 min_oligos_per_gene: 0 # minimum number of oligos that a gene must have before it gets deleted
 write_removed_genes: True # write in a file the removed genes
@@ -22,21 +22,44 @@ use_default_readouts: True # use the default readout sequences from the merfish 
 
 
 ### Parameters for oligo sequences generation
-file_genes: ./data/genes/custom_10.txt # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
-oligo_length_min: 30 #min length of oligos
-oligo_length_max: 30 #max length of oligos
-block_size: 50
+
+primer_oligo:
+  file_bc25mer: ./data/bc25mer/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  oligo_output : ./data/bc25mer/
+  oligo_DB_output : ./data/oligo_creation/
+  oligo_length_min: 19 #min length of oligos
+  oligo_length_max: 20 #max length of oligos
+
+
+readout_oligo:
+  file_genes: ./data/bc25mer/example.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  oligo_length_min: 29 #min length of oligos
+  oligo_length_max: 30 #max length of oligos
+
+#### Parameters for encoding ####
+
+MHD4:
+  num_seq: 100 #upper limit 140
+  num_bits: 16
+  num_ones: 4
+  hamming_distance: 4
+
+MHD2:
+  num_seq: 100 #upper limit 1001
+  num_bits: 14
+  num_ones: 4
+  min_hamming_distance: 2
 
 
 ### Parameters for the property filers
 
 primers_setup:
-  GC_content_min: 40 #minimum GC content of oligos #need to be checked in other paper
-  GC_content_max: 60 #maximum GC content of oligos #need to be checked in other paper
+  GC_content_min: 50 #minimum GC content of oligos #need to be checked in other paper
+  GC_content_max: 65 #maximum GC content of oligos #need to be checked in other paper
   GC_clamp_n: 2 #number of terminal bases to check for a G or a C
   Tm_min: 70  #minimum melting temperature of oligos
   Tm_max: 80 #maximum melting temperature of oligos
-  Repeat_AA_max: 2
+  max_repeats_nt: 2
 
 
 readout_setup:
@@ -46,7 +69,7 @@ readout_setup:
 
   Tm_min: 70  #minimum melting temperature of oligos
   Tm_max: 80 #maximum melting temperature of oligos
-  Repeat_AA_max: 3
+  max_repeats_nt: 3
 
 targets_setup:
 
@@ -61,7 +84,7 @@ targets_setup:
   cross_hybridization_targets_Tm_max : 100 #not specified
   internal_secondary_structures_T: 76 # temperature at which secondary structures are evaluated
   internal_secondary_structures_threshold_deltaG: 0 # delta G threshold of the secondary structures
-  max_repeats_AA: 6 # maximum number of consecutive repeats
+  max_repeats_nt: 6 # maximum number of consecutive repeats
 
 
 
@@ -146,4 +169,14 @@ Tm_correction_parameters:
     detection_oligo:
         fmd: 30
 
-
+Tm_chem_correction_param:
+    shared:
+        DMSO: 0
+        DMSOfactor: 0.75
+        fmdfactor: 0.65
+        fmdmethod: 1
+        GC: null
+    property_filter:
+        fmd: 20
+    detection_oligo:
+        fmd: 30
