@@ -1,8 +1,10 @@
 import random
 
 import numpy as np
+import yaml
 from Bio import SeqIO
 
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import GCContent, ConsecutiveRepeats
 
 from Bio.Seq import Seq
@@ -19,9 +21,14 @@ class ReadoutProbes:
             GC_max: int,
             blast_filter,
             reference_DB,
+            config_path,
             use_default_readouts=False
     ):
 
+        with open(config_path, 'r') as yaml_file:
+            self.config = yaml.safe_load(yaml_file)
+
+        self.readout_oligo_config = self.config["readout_oligo"]
         self.length = length
         self.num_probes = number_probes
         self.GC_content_filter = GCContent(GC_content_min=GC_min, GC_content_max=GC_max)
@@ -32,7 +39,26 @@ class ReadoutProbes:
         self.use_default_readouts = use_default_readouts
         self.oligo_25nt_path = os.path.join("data", "bc25mer.240k.fasta")
         self.oligo_25nt_dict = SeqIO.to_dict(SeqIO.parse(self.oligo_25nt_path, "fasta"))
-        self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}  # step 1
+        self.oligo_30nt_dict = {}
+        self.oligo_30nt_DB = None
+
+        oligo_30nt_dict = {}
+        for key, value in self.oligo_25nt_dict.items():
+            sequence = "".join(random.choices("ATCG", k=length - len(value)))
+            if random.choice([True, False]):
+                # Add the sequence to the end of the value
+                self.oligo_30nt_dict[key] = value + sequence
+            else:
+                # Add the sequence to the start of the value
+                self.oligo_30nt_dict[key] = sequence + value
+        self.oligo_30nt_path = os.path.join(self.readout_oligo_config["oligo_output"], "bc30mer_oligo.fasta")
+
+        with open(self.oligo_30nt_path, "w") as handle:
+            for name, seq in self.oligo_30nt_dict.items():
+                handle.write(">" + name + "\n")
+                handle.write(str(seq) + "\n")
+            print("write bc30mer_oligo done!")
+
 
         self.default_readouts = [
             "CGCAACGCTTGGGACGGTTCCAATCGGATC",
@@ -53,20 +79,22 @@ class ReadoutProbes:
             "GCCCGTATTCCCGCTTGCGAGTAGGGCAAT",
         ]
 
+        def create_readout_DB(self):
+            oligo_database = OligoDatabase(
+                file_fasta=self.oligo_30nt_path,
+                oligo_length_min=self.readout_oligo_config["oligo_length_min"],
+                oligo_length_max=self.readout_oligo_config["oligo_length_max"],
+                n_jobs=1,
+                dir_output=self.readout_oligo_config["oligo_DB_output"],
+            )
+
+            return oligo_database.create_database()
+
     def create_readouts(self, num_seq, seq_length=5):
-        # Randomly select num_seq key-value pairs from the dictionary
-        selected_pairs = dict(random.sample(self.oligo_25nt_dict.items(), num_seq))
 
         # step 1
         # Generate 5 random sequences of length seq_length and assign them randomly to the selected key-value pairs
-        for key, value in selected_pairs.items():
-            sequence = "".join(random.choices("ATCG", k=seq_length))
-            if random.choice([True, False]):
-                # Add the sequence to the end of the value
-                selected_pairs[key] = value + sequence
-            else:
-                # Add the sequence to the start of the value
-                selected_pairs[key] = sequence + value
+        oligo_readout_DB = self.create_readout_DB()
 
         # step2
         # remove probs with significant homology to members of the transcriptome
@@ -81,7 +109,7 @@ class ReadoutProbes:
 
 
         # Return the modified dictionary
-        return selected_pairs
+        return oligo_readout_DB
 
     def get_default_readouts(self):
         '''

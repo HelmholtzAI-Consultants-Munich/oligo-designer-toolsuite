@@ -128,17 +128,17 @@ class PrimerProbes:
             n_jobs=1,
             dir_output=self.primer_oligo_config["oligo_DB_output"],
         )
+        return oligo_database.create_database()
 
-        self.oligo_20nt_DB = oligo_database.create_database()
 
     def create_primer(self):
 
-        self.create_primer_DB()
+        oligo_20nt_DB = self.create_primer_DB()
 
         property_filter = PropertyFilter(filters=self.filters,
                                          write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
         # property filter
-        oligo_database = property_filter.apply(oligo_database=self.oligo_20nt_DB, n_jobs=self.config["n_jobs"])
+        oligo_database = property_filter.apply(oligo_database=oligo_20nt_DB, n_jobs=self.config["n_jobs"])
 
         # specifity filter 1
         specificity_filter1 = SpecificityFilter(filters=[self.blast_filter1],
@@ -194,8 +194,3 @@ class PrimerProbes:
 
         return primer1_oligos_dict,primer2_oligos_dict, primer_file_database # maybe take half of them for primer1 half for primer2?
 
-    def create_primer2(self):
-        pass
-
-    def creat_primer_probs(self):
-        pass

@@ -25,14 +25,16 @@ percentage_blank: 10 #percentage of blank barcodes
 
 primer_oligo:
   file_bc25mer: ./data/bc25mer/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
-  oligo_output : ./data/bc25mer/
-  oligo_DB_output : ./data/oligo_creation/
+  oligo_output : ./data/bc25mer/primer/
+  oligo_DB_output : ./data/oligo_creation/primer/
   oligo_length_min: 19 #min length of oligos
   oligo_length_max: 20 #max length of oligos
 
 
 readout_oligo:
-  file_genes: ./data/bc25mer/example.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  file_bc25mer: ./data/bc25mer/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  oligo_output: ./data/bc25mer/readout/
+  oligo_DB_output: ./data/oligo_creation/readout/
   oligo_length_min: 29 #min length of oligos
   oligo_length_max: 30 #max length of oligos
 
