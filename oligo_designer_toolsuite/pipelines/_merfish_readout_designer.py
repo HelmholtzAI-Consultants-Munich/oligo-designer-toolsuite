@@ -78,7 +78,7 @@ class ReadoutProbes:
             "GCCTCGATTACGACGGATGTAATTCGGCCG",
             "GCCCGTATTCCCGCTTGCGAGTAGGGCAAT",
         ]
-        self.oligo_30nt_DB = ReadoutProbes.create_readout_DB()
+        self.oligo_readout_DB = ReadoutProbes.create_readout_DB()
     def create_readout_DB(self):
         oligo_database = OligoDatabase(
             file_fasta=self.oligo_30nt_path,
@@ -93,7 +93,7 @@ class ReadoutProbes:
 
         # step 1
         # Generate 5 random sequences of length seq_length and assign them randomly to the selected key-value pairs
-        # sequences in self.oligo_30nt_DB
+        # sequences in self.oligo_readout_DB
 
         # step2
         # remove probs with significant homology to members of the transcriptome
