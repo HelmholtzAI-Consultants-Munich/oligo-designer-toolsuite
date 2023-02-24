@@ -182,7 +182,7 @@ class PrimerProbes:
         primer1_genes = list(oligo_database.database.keys())[0:self.num_seq]
         primer1_oligo_ids = [list(oligo_database.database[gene].keys())[0] for gene in primer1_genes]
         for gene, oligo_id in zip(primer1_genes, primer1_oligo_ids):
-            primer1_oligos_dict[gene] = {str(oligo_database.database[gene][oligo_id]["sequence"])}
+            primer1_oligos_dict[gene] = str(oligo_database.database[gene][oligo_id]["sequence"])
 
         primer2_oligos_dict = {}
         primer2_genes = list(oligo_database.database.keys())[self.num_seq+1: self.num_seq*2]
@@ -190,7 +190,7 @@ class PrimerProbes:
         for gene, oligo_id in zip(primer2_genes, primer2_oligo_ids):
             primer2_seq = str(oligo_database.database[gene][oligo_id]["sequence"])
             primer2_seq = self.T7promoter + primer2_seq[::-1]
-            primer2_oligos_dict[gene] = {primer2_seq}
+            primer2_oligos_dict[gene] = primer2_seq
 
         return primer1_oligos_dict,primer2_oligos_dict, primer_file_database # maybe take half of them for primer1 half for primer2?
 
