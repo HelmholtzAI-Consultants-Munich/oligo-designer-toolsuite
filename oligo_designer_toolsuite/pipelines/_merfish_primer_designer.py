@@ -193,5 +193,5 @@ class PrimerProbes:
             primer2_seq = self.T7promoter + primer2_seq[::-1]
             primer2_oligos_dict[gene] = primer2_seq
 
-        return primer1_oligos_dict,primer2_oligos_dict, primer_file_database # maybe take half of them for primer1 half for primer2?
+        return list(primer1_oligos_dict.values()),list(primer2_oligos_dict.values()), primer_file_database # maybe take half of them for primer1 half for primer2?
 
