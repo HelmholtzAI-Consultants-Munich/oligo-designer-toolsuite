@@ -118,6 +118,7 @@ class PrimerProbes:
         self.reference_database3 = ReferenceDatabase(
             file_fasta=fasta_reference_database3)
         self.reference_database3.load_fasta_into_database()
+        self.oligo_20nt_DB = PrimerProbes.create_primer_DB()
 
     def create_primer_DB(self):
 
@@ -131,14 +132,14 @@ class PrimerProbes:
         return oligo_database.create_database()
 
 
-    def create_primer(self):
 
-        oligo_20nt_DB = self.create_primer_DB()
+
+    def create_primer(self):
 
         property_filter = PropertyFilter(filters=self.filters,
                                          write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
         # property filter
-        oligo_database = property_filter.apply(oligo_database=oligo_20nt_DB, n_jobs=self.config["n_jobs"])
+        oligo_database = property_filter.apply(oligo_database=self.oligo_20nt_DB, n_jobs=self.config["n_jobs"])
 
         # specifity filter 1
         specificity_filter1 = SpecificityFilter(filters=[self.blast_filter1],

@@ -78,23 +78,22 @@ class ReadoutProbes:
             "GCCTCGATTACGACGGATGTAATTCGGCCG",
             "GCCCGTATTCCCGCTTGCGAGTAGGGCAAT",
         ]
+        self.oligo_30nt_DB = ReadoutProbes.create_readout_DB()
+    def create_readout_DB(self):
+        oligo_database = OligoDatabase(
+            file_fasta=self.oligo_30nt_path,
+            oligo_length_min=self.readout_oligo_config["oligo_length_min"],
+            oligo_length_max=self.readout_oligo_config["oligo_length_max"],
+            n_jobs=1,
+            dir_output=self.readout_oligo_config["oligo_DB_output"],
+        )
+        return oligo_database.create_database()
 
-        def create_readout_DB(self):
-            oligo_database = OligoDatabase(
-                file_fasta=self.oligo_30nt_path,
-                oligo_length_min=self.readout_oligo_config["oligo_length_min"],
-                oligo_length_max=self.readout_oligo_config["oligo_length_max"],
-                n_jobs=1,
-                dir_output=self.readout_oligo_config["oligo_DB_output"],
-            )
-
-            return oligo_database.create_database()
-
-    def create_readouts(self, num_seq, seq_length=5):
+    def create_readouts(self):
 
         # step 1
         # Generate 5 random sequences of length seq_length and assign them randomly to the selected key-value pairs
-        oligo_readout_DB = self.create_readout_DB()
+        # sequences in self.oligo_30nt_DB
 
         # step2
         # remove probs with significant homology to members of the transcriptome
@@ -109,7 +108,7 @@ class ReadoutProbes:
 
 
         # Return the modified dictionary
-        return oligo_readout_DB
+        pass
 
     def get_default_readouts(self):
         '''
