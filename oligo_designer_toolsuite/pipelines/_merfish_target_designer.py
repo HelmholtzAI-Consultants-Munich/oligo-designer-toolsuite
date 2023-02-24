@@ -51,8 +51,8 @@ class TargetProbes:
         # define the database class
         oligo_database = OligoDatabase(
             file_fasta = self.file_transcriptome,
-            oligo_length_min = self.config["oligo_length_min"],
-            oligo_length_max = self.config["oligo_length_max"],
+            oligo_length_min = self.config["target_oligo"]["oligo_length_min"],
+            oligo_length_max = self.config["target_oligo"]["oligo_length_max"],
             min_oligos_per_region = self.config["min_oligos_per_gene"],
             files_source = self.region_generator.files_source,
             species = self.region_generator.species,
