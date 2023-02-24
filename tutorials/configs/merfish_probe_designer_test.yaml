@@ -38,6 +38,10 @@ readout_oligo:
   oligo_length_min: 29 #min length of oligos
   oligo_length_max: 30 #max length of oligos
 
+target_oligo:
+  oligo_length_min: 30
+  oligo_length_max: 30
+
 #### Parameters for encoding ####
 
 MHD4:
@@ -115,13 +119,11 @@ primers_blast_setup:
 
 readout_blast_setup:
 
-  first_blast:
-    word_size: 11 #word size for the blastn seed (exact match to target)
-    back_ground_DB: #index primer sequences and other readout sequences
+  blast1_word_size: 11 #word size for the blastn seed (exact match to target)
+    #back_ground_DB: index primer sequences and other readout sequences
 
-  second_blast:
-    word_size: 14
-    back_ground_DB: #potential off-target binding sites 
+  blast2_word_size: 14
+    #back_ground_DB: transcriptome
 
 
 targeting_sequences_setup:
