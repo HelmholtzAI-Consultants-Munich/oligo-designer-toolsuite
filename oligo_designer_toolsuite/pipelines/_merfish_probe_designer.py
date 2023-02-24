@@ -1,10 +1,20 @@
 import warnings
 
-from oligo_designer_toolsuite.pipelines import (
-    TargetProbes,
-    ReadoutProbes,
+from oligo_designer_toolsuite.pipelines._merfish_primer_designer import (
+
     PrimerProbes
 )
+from oligo_designer_toolsuite.pipelines._merfish_target_designer import (
+
+    TargetProbes
+)
+from oligo_designer_toolsuite.pipelines._merfish_readout_designer import (
+
+    ReadoutProbes
+)
+
+
+
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
     Blastn,
@@ -31,7 +41,6 @@ class MerfishProbeDesigner:
 
     ):
         """Constructor method"""
-
         # set parameters
         self.config_file = config_file
         with open(self.config_file, 'r') as yaml_file:
@@ -43,6 +52,7 @@ class MerfishProbeDesigner:
 
         # Create the transcriptome file
         # If the custom config file is selected
+        print("Creating transcriptome")
         if self.config["source"] == "custom":
             self.region_generator = CustomGenomicRegionGenerator(
                 annotation_file=self.config["annotation_file"],
@@ -69,8 +79,10 @@ class MerfishProbeDesigner:
                 dir_output=self.dir_output
             )
 
+        print("making file_transcriptome")
         self.file_transcriptome = self.region_generator.generate_transcript_reduced_representation(
             include_exon_junctions=True, exon_junction_size=2 * self.config["oligo_length_max"])
+        print("Done!")
 
     def design_merfish_probes(
             self):
@@ -93,10 +105,11 @@ class MerfishProbeDesigner:
         for i, seq in enumerate(readout_probes):
             readout_sequences[i] = str(Seq(seq).reverse_complement())
 
-        # create primer sequences 
+        # create primer sequences
+        print("Creating Probs")
         primer_probes = PrimerProbes(self.config_file)
         primer1, primer2, _ = primer_probes.create_primer()  # return dictionary for primer1 primer2
-
+        print("Creating Probs... Done")
         # generate codebook for the genes, leave a percentage of blank barcodes
         database = target_probes.database
         genes = list(database.keys())
@@ -262,6 +275,7 @@ class MerfishProbeDesigner:
         # with open(os.path.join(self.dir_output, "merfish_probes.yml"), "w") as outfile:
         #     yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
 
+        print("Creating Codebook")
         yaml_codebook = {}
         for gene_idx, gene in enumerate(genes):
             yaml_codebook[gene] = code[gene_idx]

@@ -35,7 +35,10 @@ class PrimerProbes:
         # self.config_file = os.path.join(os.getcwd(), "tutorials", "configs", "merfish_probe_designer_test.yaml")
         with open(config_path, 'r') as yaml_file:
             self.config = yaml.safe_load(yaml_file)
+
         self.primer_oligo_config = self.config["primer_oligo"]
+        self.dir_output = self.primer_oligo_config["oligo_output"]
+
         self.file_transcriptome = file_transcriptome
         self.region_generator = region_generator
         self.config_param = self.config["primers_setup"].copy()
@@ -47,21 +50,19 @@ class PrimerProbes:
         self.T7promoter = "TAATACGACTCACTATAG"
         # self.blast_filter = blast_filter
         # self.ref = os.path.basename(reference_DB.file_reference_DB)
-        self.oligo_25nt_path = os.path.join(os.getcwd(), "oligo_designer_toolsuite", "experiment_specific", "data",
-                                            "bc25mer.240k.fasta")
-        self.oligo_25nt_dict = SeqIO.to_dict(SeqIO.parse(self.oligo_25nt_path, "fasta"))
+        self.oligo_25nt_path = self.primer_oligo_config["file_bc25mer"]
+
+        self.oligo_25nt_dict = {rec.id: rec.seq for rec in SeqIO.parse(self.oligo_25nt_path, "fasta")}
         self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}
 
-        self.oligo_20nt_path = os.path.join(self.primer_oligo_config["oligo_output"], "bc20mer_oligo.fasta")
+        self.oligo_20nt_path = os.path.join(self.primer_oligo_config["oligo_output"], "primer_oligo.fasta")
         with open(self.oligo_20nt_path, "w") as handle:
             for name, seq in self.oligo_20nt_dict.items():
                 handle.write(">" + name + "\n")
                 handle.write(str(seq) + "\n")
             print("write bc20mer_oligo done!")
 
-        self.oligo_20nt_DB = None
-
-        self.consecutive_repeats = ConsecutiveRepeats(self.config_param["Repeat_AA_max"])
+        self.consecutive_repeats = ConsecutiveRepeats(self.config_param["max_repeats_nt"])
         self.GC_clamp = GCClamp(self.config_param["GC_clamp_n"])
 
         # create the list of filters
@@ -118,28 +119,22 @@ class PrimerProbes:
         self.reference_database3 = ReferenceDatabase(
             file_fasta=fasta_reference_database3)
         self.reference_database3.load_fasta_into_database()
-        self.oligo_20nt_DB = PrimerProbes.create_primer_DB()
 
-    def create_primer_DB(self):
-
-        oligo_database = OligoDatabase(
+        self.oligo_database = OligoDatabase(
             file_fasta=self.oligo_20nt_path,
             oligo_length_min=self.primer_oligo_config["oligo_length_min"],
             oligo_length_max=self.primer_oligo_config["oligo_length_max"],
             n_jobs=1,
             dir_output=self.primer_oligo_config["oligo_DB_output"],
         )
-        return oligo_database.create_database()
-
-
+        self.oligo_database.create_database()
 
 
     def create_primer(self):
-
         property_filter = PropertyFilter(filters=self.filters,
-                                         write_genes_with_insufficient_oligos=self.config["write_removed_genes"])
+                                         write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # property filter
-        oligo_database = property_filter.apply(oligo_database=self.oligo_20nt_DB, n_jobs=self.config["n_jobs"])
+        oligo_database = property_filter.apply(oligo_database=self.oligo_database, n_jobs=self.config["n_jobs"])
 
         # specifity filter 1
         specificity_filter1 = SpecificityFilter(filters=[self.blast_filter1],
@@ -186,12 +181,12 @@ class PrimerProbes:
             primer1_oligos_dict[gene] = str(oligo_database.database[gene][oligo_id]["sequence"])
 
         primer2_oligos_dict = {}
-        primer2_genes = list(oligo_database.database.keys())[self.num_seq+1: self.num_seq*2]
+        primer2_genes = list(oligo_database.database.keys())[self.num_seq + 1: self.num_seq * 2]
         primer2_oligo_ids = [list(oligo_database.database[gene].keys())[0] for gene in primer2_genes]
         for gene, oligo_id in zip(primer2_genes, primer2_oligo_ids):
             primer2_seq = str(oligo_database.database[gene][oligo_id]["sequence"])
             primer2_seq = self.T7promoter + primer2_seq[::-1]
             primer2_oligos_dict[gene] = primer2_seq
 
-        return list(primer1_oligos_dict.values()),list(primer2_oligos_dict.values()), primer_file_database # maybe take half of them for primer1 half for primer2?
-
+        return list(primer1_oligos_dict.values()), list(
+            primer2_oligos_dict.values()), primer_file_database  # maybe take half of them for primer1 half for primer2?
