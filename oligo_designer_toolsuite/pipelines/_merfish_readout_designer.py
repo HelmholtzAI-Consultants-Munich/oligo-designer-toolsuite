@@ -78,8 +78,7 @@ class ReadoutProbes:
             "GCCTCGATTACGACGGATGTAATTCGGCCG",
             "GCCCGTATTCCCGCTTGCGAGTAGGGCAAT",
         ]
-        self.oligo_readout_DB = ReadoutProbes.create_readout_DB()
-    def create_readout_DB(self):
+
         oligo_database = OligoDatabase(
             file_fasta=self.oligo_30nt_path,
             oligo_length_min=self.readout_oligo_config["oligo_length_min"],
@@ -87,7 +86,7 @@ class ReadoutProbes:
             n_jobs=1,
             dir_output=self.readout_oligo_config["oligo_DB_output"],
         )
-        return oligo_database.create_database()
+        self.oligo_readout_DB =  oligo_database.create_database()
 
     def create_readouts(self):
 

@@ -57,7 +57,7 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
     # Initialize the list of sequences
     sequences = []
 
-    if (encoding_scheme is "MHD4") & (num_seq <= 140):  # upper limit is 140
+    if (encoding_scheme == "MHD4") & (num_seq <= 140):  # upper limit is 140
         num_ones = 4
         num_bits = 16
         hamming_distance = 4
@@ -72,7 +72,7 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
                 # Add the new sequence to the list of sequences
                 sequences.append(sequence)
 
-    elif (encoding_scheme is "MHD2") & (num_seq <= 1001): # upper limit is 1001
+    elif (encoding_scheme == "MHD2") & (num_seq <= 1001): # upper limit is 1001
         num_ones = 4
         num_bits = 14
         min_hamming_distance = 2
