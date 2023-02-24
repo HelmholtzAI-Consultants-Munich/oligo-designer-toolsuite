@@ -93,8 +93,7 @@ class MerfishProbeDesigner:
 
         # create primer sequences 
         #primer_probes = PrimerProbes(self.config_file)
-        #primer1 = primer_probes.create_primer1()
-        #primer2 = primer_probes.create_primer2()
+        #primer1, primer2, _ = primer_probes.create_primer() #return dictionary for primer1 primer2
 
         # generate codebook for the genes, leave a percentage of blank barcodes
         database = target_probes.database

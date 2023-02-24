@@ -131,7 +131,7 @@ class PrimerProbes:
 
         self.oligo_20nt_DB = oligo_database.create_database()
 
-    def create_primer1(self):
+    def create_primer(self):
 
         self.create_primer_DB()
 
