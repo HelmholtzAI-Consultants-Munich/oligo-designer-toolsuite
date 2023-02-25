@@ -9,8 +9,8 @@ write_intermediate_steps: True # writes the oligo sequences after each step of t
 
 ### Parameters for genome and gene annotation
 source: custom # required: indicate that own annotation should be used
-annotation_file: ../data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf # required: GTF file with gene annotation
-sequence_file: ../data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna # required: FASTA file with genome sequence
+annotation_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf # required: GTF file with gene annotation
+sequence_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna # required: FASTA file with genome sequence
 species: human # optional: species of provided annotation, leave empty if unknown
 annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
 genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
