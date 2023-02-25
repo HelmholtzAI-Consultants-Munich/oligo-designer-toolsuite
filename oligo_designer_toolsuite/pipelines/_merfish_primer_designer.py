@@ -140,6 +140,7 @@ class PrimerProbes:
         specificity_filter1 = SpecificityFilter(filters=[self.blast_filter1],
                                                 write_regions_with_insufficient_oligos=self.config[
                                                     "write_removed_genes"])
+
         oligo_database = specificity_filter1.apply(oligo_database=oligo_database,
                                                    reference_database=self.reference_database1,
                                                    n_jobs=self.config["n_jobs"])
