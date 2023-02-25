@@ -93,8 +93,21 @@ class MerfishProbeDesigner:
                                           self.region_generator)
         target_probes, file_target_probes = target_probe_class.create_target()
 
+
+
+        # create primer sequences
+        print("Creating Probs")
+        primer_probes = PrimerProbes(self.config_file)
+        primer1, primer2, _ = primer_probes.create_primer()  # return dictionary for primer1 primer2
+        print("Creating Probs... Done")
+
         # create readout probes
-        readouts = ReadoutProbes(self.config_file)
+        readouts = ReadoutProbes(self.config,
+                                self.dir_output,
+                                self.file_transcriptome,
+                                self.region_generator,
+                                #primer_fasta_file
+                                )
         if (self.config["use_default_readouts"]):
             readout_probes = readouts.get_default_readouts()
 
@@ -105,11 +118,6 @@ class MerfishProbeDesigner:
         for i, seq in enumerate(readout_probes):
             readout_sequences[i] = str(Seq(seq).reverse_complement())
 
-        # create primer sequences
-        print("Creating Probs")
-        primer_probes = PrimerProbes(self.config_file)
-        primer1, primer2, _ = primer_probes.create_primer()  # return dictionary for primer1 primer2
-        print("Creating Probs... Done")
         # generate codebook for the genes, leave a percentage of blank barcodes
         database = target_probes.database
         genes = list(database.keys())
@@ -211,8 +219,8 @@ class MerfishProbeDesigner:
         # genes = list(database.keys())
         # n_genes=len(genes)
         # yaml_dict = {}
-        # readout_length=30
-        # primer1_length=20
+        # readout_length=self.config["readout_oligo"]["oligo_length_max"]
+        # primer1_length=self.config["primer_oligo"]["oligo_length_max"]
         # primer2_length=primer1_length+18 #T7 promoter has 18nt
         # for gene_idx, gene in enumerate(genes):
         #     yaml_dict[gene] = {}
