@@ -97,7 +97,7 @@ class TargetProbes:
             Tm_parameters=Tm_params, 
             Tm_chem_correction_parameters=Tm_correction_param
         )
-        consecutive_repeats = ConsecutiveRepeats(self.config["targets_setup"]["max_repeats_AA"])
+        consecutive_repeats = ConsecutiveRepeats(self.config["targets_setup"]["max_repeats_nt"])
         gc_content = GCContent(
             GC_content_min=self.config["targets_setup"]["GC_content_min"], 
             GC_content_max=self.config["targets_setup"]["GC_content_max"]    
