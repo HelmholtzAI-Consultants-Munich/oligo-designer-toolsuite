@@ -6,10 +6,16 @@ from Bio import SeqIO
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import GCContent, ConsecutiveRepeats
+from oligo_designer_toolsuite.oligo_specificity_filter import (
+    SpecificityFilter,
+    Blastn,
+)
+from oligo_designer_toolsuite.database import ReferenceDatabase
 
 from Bio.Seq import Seq
 import os
 from pathlib import Path
+
 
 
 class ReadoutProbes:
@@ -19,22 +25,22 @@ class ReadoutProbes:
             config,
             dir_output,
             file_transcriptome,
-            region_generator
+            region_generator,
+            primer_fasta_file=None
 
     ):
         self.config =config
         self.dir_output = os.path.join(dir_output, "readout_probes")
         self.file_transcriptome=file_transcriptome
         self.region_generator=region_generator
+        self.primer_fasta_file=primer_fasta_file
 
         length =self.config["readout_oligo"]["oligo_length_max"]
         self.readout_oligo_config = self.config["readout_oligo"]
-        self.oligo_25nt_path = self.config["readout_oligo"]["file_bc25mer"]#os.path.join("data", "bc25mer.240k.fasta")
+        self.oligo_25nt_path = self.config["readout_oligo"]["file_bc25mer"]
         self.oligo_25nt_dict = SeqIO.to_dict(SeqIO.parse(self.oligo_25nt_path, "fasta"))
         self.oligo_30nt_dict = {}
-        self.oligo_30nt_DB = None
 
-        oligo_30nt_dict = {}
         for key, value in self.oligo_25nt_dict.items():
             sequence = "".join(random.choices("ATCG", k=length - len(value)))
             if random.choice([True, False]):
@@ -72,25 +78,37 @@ class ReadoutProbes:
             "GCCCGTATTCCCGCTTGCGAGTAGGGCAAT",
         ]
 
-        oligo_database = OligoDatabase(
+        self.oligo_database = OligoDatabase(
             file_fasta=self.oligo_30nt_path,
             oligo_length_min=self.readout_oligo_config["oligo_length_min"],
             oligo_length_max=self.readout_oligo_config["oligo_length_max"],
             n_jobs=1,
             dir_output=self.readout_oligo_config["oligo_DB_output"],
         )
-        self.oligo_readout_DB =  oligo_database.create_database()
+        self.oligo_database.create_database()
 
-    def create_readouts(self):
-        self.oligo_readout_DB.write_database(filename="merfish_readout_probes_init.txt")
-        #select a subset of the database
+    def create_readouts(self, num_readouts):
 
-    
-
-
-
-
- 
+         # blast each potential readout probe against the previous build primer probs library
+        # dir_specificity = os.path.join(self.config["dir_output"], "specificity_temporary1")
+        # blast_filter1 = Blastn(
+        #     dir_specificity=dir_specificity,
+        #     word_size=self.config["readout_blast_setup"]['blast1_word_size'],
+        #     percent_identity=self.config["percent_identity"],
+        #     coverage=self.config["coverage"],
+        #     strand=self.config["strand"],
+        # )
+        # reference_database = ReferenceDatabase(
+        #     file_fasta=self.primer_fasta_file)
+        # reference_database.load_fasta_into_database()
+        # specificity_filter = SpecificityFilter(filters=[blast_filter],
+        #                                         write_regions_with_insufficient_oligos=self.config[
+        #                                             "write_removed_genes"])
+        # self.oligo_database = specificity_filter.apply(oligo_database=self.oligo_database,
+        #                                            reference_database=reference_database, n_jobs=self.config["n_jobs"])
+        # if self.config["write_intermediate_steps"]:
+        #     file_database = self.oligo_database.write_database(filename="readout_database_specificity_filter1.txt")
+        
         # blast each potential readout probe against the previous build readout probs library
         dir_specificity1 = os.path.join(self.config["dir_output"], "specificity_temporary1")
         blast_filter1 = Blastn(
@@ -107,10 +125,10 @@ class ReadoutProbes:
         specificity_filter1 = SpecificityFilter(filters=[blast_filter1],
                                                 write_regions_with_insufficient_oligos=self.config[
                                                     "write_removed_genes"])
-        oligo_database = specificity_filter1.apply(oligo_database=oligo_database,
+        self.oligo_database = specificity_filter1.apply(oligo_database=self.oligo_database,
                                                    reference_database=reference_database1, n_jobs=self.config["n_jobs"])
         if self.config["write_intermediate_steps"]:
-            file_database = oligo_database.write_database(filename="readout_database_specificity_filter1.txt")
+            file_database =self.oligo_database.write_database(filename="readout_database_specificity_filter1.txt")
 
         # remove probs with significant homology to members of the transcriptome
         dir_specificity2 = os.path.join(self.dir_output, "specificity_temporary2") # folder where the temporary files will be written
@@ -125,7 +143,7 @@ class ReadoutProbes:
         )
         reference_database2.load_fasta_into_database()
         blast_filter2 = Blastn(
-            dir_specificity=dir_specificity, 
+            dir_specificity=dir_specificity2, 
             word_size=self.config["readout_blast_setup"]["blast2_word_size"],
             percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
@@ -134,15 +152,18 @@ class ReadoutProbes:
         # initialize the specificity filter class
         specificity_filter2 = SpecificityFilter(filters=[blast_filter2], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # filter the database
-        oligo_database = specificity_filter2.apply(oligo_database=oligo_database, reference_database=reference_database2, n_jobs=self.config["n_jobs"])
-        if self.config["write_intermediate_steps"]:
-            file_database = oligo_database.write_database(filename="readout_database_specificity_filter2.txt")
+        self.oligo_database = specificity_filter2.apply(oligo_database=self.oligo_database, reference_database=reference_database2, n_jobs=self.config["n_jobs"])
 
+        file_database = self.oligo_database.write_database(filename="readout_database_full.txt")
 
-
-
-        # Return the readout probes
-        pass
+        
+        #return a specified number of readout probes (num_readouts)
+        readout_oligos_dict = {}
+        readout_genes = list(self.oligo_database.database.keys())[0:self.num_readouts]
+        readout_oligo_ids = [list(self.oligo_database.database[gene].keys())[0] for gene in readout_genes]
+        for gene, oligo_id in zip(readout_genes, readout_oligo_ids):
+            readout_oligos_dict[gene] = str(self.oligo_database.database[gene][oligo_id]["sequence"])
+        return list(readout_oligos_dict.values())
 
     def get_default_readouts(self):
         '''
