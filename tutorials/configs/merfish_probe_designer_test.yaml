@@ -15,6 +15,7 @@ species: human # optional: species of provided annotation, leave empty if unknow
 annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
 genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
 files_source: NCBI  # optional: source of provided annotation, leave empty if unknown
+file_genes: ./data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 
 
 primers_length: 20
