@@ -6,6 +6,7 @@ from ._filter_base import (
     PropertyFilterBase,
     GCContent,
     MaskedSequences,
+    ProhibitedSequences,
     MeltingTemperatureNN,
 )
 from ._filter_padlock_oligos import PadlockArms
@@ -18,4 +19,5 @@ __all__ = [
     "MeltingTemperatureNN",
     "GCContent",
     "PadlockArms",
+    "ProhibitedSequences",
 ]

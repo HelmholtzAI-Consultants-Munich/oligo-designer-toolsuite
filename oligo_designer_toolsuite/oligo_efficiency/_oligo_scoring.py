@@ -114,3 +114,47 @@ class PadlockOligoScoring(OligoScoringBase):
             self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max
         else:
             self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (GC_dif > 0) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
+
+class SeqFISHOligoScoring(OligoScoringBase):
+    """Oligos scoring class for the padlock experiment.
+
+    :param GC_min: minimal percentage of guanine and cytosine
+    :type GC_min: float
+    :param GC_opt: optimal percentage of guanine and cytosine
+    :type GC_opt: float
+    :param GC_max: maximal percentage of guanine and cytosine
+    :type GC_max: float
+
+    """
+
+    def __init__(
+        self,
+        GC_content_min: float,
+        GC_content_opt: float,
+        GC_content_max: float,
+        GC_weight: float = 1,
+    ):
+        """
+        Initialize the class
+        """
+
+       
+        self.GC_min = GC_content_min
+        self.GC_opt = GC_content_opt
+        self.GC_max = GC_content_max
+        self.GC_weight = GC_weight
+        
+
+    def scoring_function(self, oligo):
+        """Computes the score of the given oligo
+
+        :param oligo: dictionary containing all the features of the given oligo
+        :type oligo: dict
+        :return: score of the oligo
+        :rtype: float
+        """
+        # distance from the optimal melting temperature weightend by the how far is the optimum from the min/ max
+        # the scoring is the lower the better
+        
+        GC_dif = oligo["GC_content"] - self.GC_opt
+        return GC_dif**2
