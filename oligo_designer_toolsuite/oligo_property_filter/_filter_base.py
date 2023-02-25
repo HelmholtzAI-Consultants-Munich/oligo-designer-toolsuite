@@ -155,14 +155,17 @@ class MeltingTemperatureNN(PropertyFilterBase):
 
 
 class ProhibitedSequences(PropertyFilterBase):
-    """Filters the sequences containing a prohibited sequence."""
-
+    """Filters the sequences containing a prohibited sequence.
+    """
     def __init__(
         self,
+        num_consecutive:int,
     ) -> None:
         """Initializes the class."""
 
         super().__init__()
+        self.max_consecutive = num_consecutive
+
 
     def apply(self, sequence: Seq):
         """Applies the filter and returns True if the oligo does not contain prohibited sequences.
@@ -172,3 +175,15 @@ class ProhibitedSequences(PropertyFilterBase):
         :return: True if the constrined is fulfilled and the melting temperature
         :rtype: bool and dict
         """
+        nucl = ['A', 'C', 'T', 'G']
+        consecutive_sequences = list()
+        for i in nucl:
+            consecutive_sequences.append(i * self.max_consecutive)
+        
+        for i in consecutive_sequences:
+            if i in sequence:
+                return False, {}
+        
+        Tm = mt.Tm_NN(sequence)
+        return True, {"melting_temperature" : Tm}
+
