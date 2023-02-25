@@ -123,8 +123,11 @@ class Blastn(SpecificityFilterBase):
         matching_oligos = self._find_matching_oligos(blast_results)
         filtered_database_region = self._filter_matching_oligos(database_region, matching_oligos)
         # remove temporary files
-        os.remove(os.path.join(self.dir_blast, file_blast_gene))
-        os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
+        #os.remove(os.path.join(self.dir_blast, file_blast_gene))
+        os.remove(os.path.join(file_blast_gene))
+
+        # os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
+        os.remove(os.path.join(file_oligo_fasta_gene))
         return filtered_database_region
 
     def _read_blast_output(self, file_blast_gene):

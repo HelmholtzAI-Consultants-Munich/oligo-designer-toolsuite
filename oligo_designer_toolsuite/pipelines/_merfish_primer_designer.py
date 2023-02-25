@@ -89,7 +89,7 @@ class PrimerProbes:
             genome_assembly=self.region_generator.genome_assembly,
             dir_output=self.dir_output
         )
-        self.reference_database1.load_fasta_into_database()
+        # self.reference_database1.load_fasta_into_database()
 
         # second blast against 3' end of other primers
         self.dir_specificity2 = os.path.join(self.config["dir_output"], "specificity_temporary2")
@@ -134,20 +134,25 @@ class PrimerProbes:
         property_filter = PropertyFilter(filters=self.filters,
                                          write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # property filter
+        print("Property filter...Start")
         oligo_database = property_filter.apply(oligo_database=self.oligo_database, n_jobs=self.config["n_jobs"])
+        print("Property filter...Done")
 
+        print("Specifity filter 1...Start")
         # specifity filter 1
         specificity_filter1 = SpecificityFilter(filters=[self.blast_filter1],
                                                 write_regions_with_insufficient_oligos=self.config[
                                                     "write_removed_genes"])
-
+        print("Specifity filter 1...Apply")
         oligo_database = specificity_filter1.apply(oligo_database=oligo_database,
                                                    reference_database=self.reference_database1,
                                                    n_jobs=self.config["n_jobs"])
+        print("Specifity filter 1...Done")
         if self.config["write_intermediate_steps"]:
             file_database = oligo_database.write_database(filename="primer_database_specificity_filter_1.txt")
 
         # specificity filter 2
+        print("Specifity filter 2...Start")
         # create reference db with trimmed primers
         trimmed_primers = {k: v[-self.config["primers_blast_setup"]['blast2_word_size']:] for k, v in
                            oligo_database.items()}
@@ -164,23 +169,29 @@ class PrimerProbes:
                                                    reference_database=reference_database2, n_jobs=self.config["n_jobs"])
         if self.config["write_intermediate_steps"]:
             file_database = oligo_database.write_database(filename="primer_database_specificity_filter2.txt")
-
+        print("Specifity filter 2...Done")
         # specificity filter 3
+        print("Specifity filter 3...Start")
         specificity_filter3 = SpecificityFilter(filters=[self.blast_filter3],
                                                 write_regions_with_insufficient_oligos=self.config[
                                                     "write_removed_genes"])
         oligo_database = specificity_filter3.apply(oligo_database=oligo_database,
                                                    reference_database=self.reference_database3,
                                                    n_jobs=self.config["n_jobs"])
+        print("Specifity filter 3...Done")
+
 
         primer_file_database = oligo_database.write_database(filename="primer_database.txt")
 
+        print("Writing Primer1...Start")
         primer1_oligos_dict = {}
         primer1_genes = list(oligo_database.database.keys())[0:self.num_seq]
         primer1_oligo_ids = [list(oligo_database.database[gene].keys())[0] for gene in primer1_genes]
         for gene, oligo_id in zip(primer1_genes, primer1_oligo_ids):
             primer1_oligos_dict[gene] = str(oligo_database.database[gene][oligo_id]["sequence"])
+        print("Writing Primer1...Done")
 
+        print("Writing Primer2...Start")
         primer2_oligos_dict = {}
         primer2_genes = list(oligo_database.database.keys())[self.num_seq + 1: self.num_seq * 2]
         primer2_oligo_ids = [list(oligo_database.database[gene].keys())[0] for gene in primer2_genes]
@@ -188,6 +199,6 @@ class PrimerProbes:
             primer2_seq = str(oligo_database.database[gene][oligo_id]["sequence"])
             primer2_seq = self.T7promoter + primer2_seq[::-1]
             primer2_oligos_dict[gene] = primer2_seq
-
+        print("Writing Primer2...Done")
         return list(primer1_oligos_dict.values()), list(
             primer2_oligos_dict.values()), primer_file_database  # maybe take half of them for primer1 half for primer2?
