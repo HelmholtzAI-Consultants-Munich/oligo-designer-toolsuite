@@ -283,6 +283,27 @@ class MerfishProbeDesigner:
         # with open(os.path.join(self.dir_output, "merfish_probes.yml"), "w") as outfile:
         #     yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
 
+        # #Create order file
+        # yaml_order = {}
+        # for region in yaml_dict:
+        #     yaml_order[region] = {}
+        #     for oligo_id in yaml_dict[region]:
+        #         yaml_order[region][oligo_id] = {}
+        #         yaml_order[region][oligo_id]["merfish_probe_full_sequence"] = yaml_dict[
+        #             region
+        #         ][oligo_id]"merfish_probe_full_sequence"]
+        #         yaml_order[region][oligo_id]["readout_probe_1"] = yaml_dict[
+        #             region
+        #         ][oligo_id]["readout_probe_1"]
+        #         yaml_order[region][oligo_id]["readout_probe_2"] = yaml_dict[
+        #             region
+        #         ][oligo_id]["readout_probe_2"]
+        # with open(
+        #     os.path.join(self.dir_output, "merfish_probes_order.yml"), "w"
+        # ) as outfile:
+        #     yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
+
+
         print("Creating Codebook")
         yaml_codebook = {}
         for gene_idx, gene in enumerate(genes):
