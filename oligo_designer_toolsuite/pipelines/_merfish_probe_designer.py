@@ -124,7 +124,7 @@ class MerfishProbeDesigner:
 
                 # target sequence is the reverse complement of the target probe
                 target_mRNA = database[gene][oligo_id]["sequence"]
-                target_sequence = str(target_mRNA.reverse_complement())
+                target_sequence = str(target_mRNA.reverse_complement()).upper()
 
                 # place readout sequences on either side of the targeting sequence
                 encoding_probe = readout_seq_1 + target_sequence + readout_seq_2
@@ -136,7 +136,7 @@ class MerfishProbeDesigner:
                 target_probes.database[gene][oligo_id]["sequence"] = Seq(encoding_probe)
 
         # save assembled probes in a file
-        assembled_probes_file_database = target_probes.write_database(filename="merfish_assembled_probes.txt")
+        #assembled_probes_file_database = target_probes.write_database(filename="merfish_assembled_probes.txt")
 
         # blast against ncRNA
         loader= BaseFtpLoader(dir_output=self.dir_output)
