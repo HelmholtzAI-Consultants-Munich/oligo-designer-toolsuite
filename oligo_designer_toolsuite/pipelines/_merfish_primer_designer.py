@@ -27,19 +27,34 @@ class PrimerProbes:
     def __init__(
             self,
             num_seq,
-            config_path,
+            config,
+            dir_output,
             file_transcriptome,
             region_generator
 
     ):
+         """
+    This class is used to design the primer probes.
+
+    :param num_seq: number of primer probes which should be created
+    :type num_seq: int
+    :param config: config file
+    :type config: file pointer
+    :param dir_output: output directory
+    :type dir_output: str
+    :param file_transcriptome: directory of the fasta file for the transcriptome
+    :type file_transcriptome: str
+    :param region_generator: region generator used to create the file_transcriptome
+    :type region_generator: CustomGenomicRegionGenerator
+    """
         self.num_seq = num_seq
         self.length = 25  # need to trim the sequece
-        # self.config_file = os.path.join(os.getcwd(), "tutorials", "configs", "merfish_probe_designer_test.yaml")
-        with open(config_path, 'r') as yaml_file:
-            self.config = yaml.safe_load(yaml_file)
-
+       
+        self.config = config
         self.primer_oligo_config = self.config["primer_oligo"]
-        self.dir_output = self.primer_oligo_config["oligo_output"]
+
+        self.dir_output = os.path.join(self.dir_output, "primer_probes")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self.file_transcriptome = file_transcriptome
         self.region_generator = region_generator
@@ -50,14 +65,13 @@ class PrimerProbes:
         self.repeat_num_max = ConsecutiveRepeats(3)
         self.lib = ['A', 'C', 'G', 'T']
         self.T7promoter = "TAATACGACTCACTATAG"
-        # self.blast_filter = blast_filter
-        # self.ref = os.path.basename(reference_DB.file_reference_DB)
+    
         self.oligo_25nt_path = self.primer_oligo_config["file_bc25mer"]
 
         self.oligo_25nt_dict = {rec.id: rec.seq for rec in SeqIO.parse(self.oligo_25nt_path, "fasta")}
         #self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}
         #select n random sequences 
-        n=num_seq*10 #start with 10 times the number of required primers
+        n=num_seq*20 #start with 100 times the number of required primers
         if (n>240000):
             n=240000
         sequences = list(self.oligo_25nt_dict.keys())
@@ -85,7 +99,7 @@ class PrimerProbes:
         # specificty filters
 
         # first blast against human transcriptome
-        self.dir_specificity1 = os.path.join(self.config["dir_output"], "specificity_temporary1")
+        self.dir_specificity1 = os.path.join(self.dir_output, "specificity_temporary1")
         self.blast_filter1 = Blastn(
             dir_specificity=self.dir_specificity1,
             word_size=self.config["primers_blast_setup"]['blast1_word_size'],
@@ -104,7 +118,7 @@ class PrimerProbes:
         # self.reference_database1.load_fasta_into_database()
 
         # second blast against 3' end of other primers
-        self.dir_specificity2 = os.path.join(self.config["dir_output"], "specificity_temporary2")
+        self.dir_specificity2 = os.path.join(self.dir_output, "specificity_temporary2")
         self.blast_filter2 = Blastn(
             dir_specificity=self.dir_specificity2,
             word_size=self.config["primers_blast_setup"]['blast2_word_size'],
@@ -114,7 +128,7 @@ class PrimerProbes:
         )
 
         # third blast against 3' end of T7 promoter - Trim T7 to blast word size
-        self.dir_specificity3 = os.path.join(self.config["dir_output"], "specificity_temporary3")
+        self.dir_specificity3 = os.path.join(self.dir_output, "specificity_temporary3")
         self.blast_filter3 = Blastn(
             dir_specificity=self.dir_specificity3,
             word_size=self.config["primers_blast_setup"]['blast3_word_size'],
@@ -137,7 +151,7 @@ class PrimerProbes:
             oligo_length_min=self.primer_oligo_config["oligo_length_min"],
             oligo_length_max=self.primer_oligo_config["oligo_length_max"],
             n_jobs=1,
-            dir_output=self.primer_oligo_config["oligo_DB_output"],
+            dir_output=self.dir_output,
         )
         self.oligo_database.create_database()
 
@@ -230,11 +244,11 @@ class PrimerProbes:
 
         print("Writing Primer2...Start")
         primer2_oligos_dict = {}
-        primer2_genes = list(oligo_database.database.keys())[self.num_seq + 1: self.num_seq * 2]
+        primer2_genes = list(oligo_database.database.keys())[self.num_seq + 1: (self.num_seq * 2)+1]
         primer2_oligo_ids = [list(oligo_database.database[gene].keys())[0] for gene in primer2_genes]
         for gene, oligo_id in zip(primer2_genes, primer2_oligo_ids):
-            primer2_seq = str(oligo_database.database[gene][oligo_id]["sequence"])
-            primer2_seq = self.T7promoter + primer2_seq[::-1]
+            primer2_seq = str(oligo_database.database[gene][oligo_id]["sequence"].reverse_complement())
+            primer2_seq = self.T7promoter + primer2_seq
             primer2_oligos_dict[gene] = primer2_seq
         print("Writing Primer2...Done")
         return list(primer1_oligos_dict.values()), list(
