@@ -154,11 +154,25 @@ class PrimerProbes:
         # specificity filter 2
         print("Specifity filter 2...Start")
         # create reference db with trimmed primers
-        trimmed_primers = {k: v[-self.config["primers_blast_setup"]['blast2_word_size']:] for k, v in
-                           oligo_database.items()}
+
+        trimmed_primers = {}
+
+        primer_genes = list(oligo_database.database.keys())
+        primer_oligo_ids = [list(oligo_database.database[gene].keys())[0] for gene in primer_genes]
+        for gene, oligo_id in zip(primer_genes, primer_oligo_ids):
+            # Get 3' end sequences
+            trimmed_primers[gene] = str(oligo_database.database[gene][oligo_id]["sequence"][-self.config["primers_blast_setup"]['blast2_word_size']:])
+
         # create reference DB with fasta file
-        fasta_reference_database2 = self.blast_filter2._create_fasta_file(trimmed_primers, self.dir_specificity2,
-                                                                          'primers')
+
+        fasta_reference_database2 = os.path.join(self.dir_specificity2,"oligos_primers.fna")
+
+        with open(fasta_reference_database2, "w") as handle:
+            for name, seq in trimmed_primers.items():
+                handle.write(">" + name + "\n")
+                handle.write(str(seq) + "\n")
+            print("write trimmed primer done!")
+
         reference_database2 = ReferenceDatabase(
             file_fasta=fasta_reference_database2)
         reference_database2.load_fasta_into_database()

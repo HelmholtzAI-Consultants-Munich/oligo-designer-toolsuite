@@ -1,5 +1,5 @@
 import unittest
-import random
+from numpy import random
 from scipy.spatial.distance import hamming
 
 
@@ -68,7 +68,7 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
             random.shuffle(sequence)
 
             # Check if the new sequence meets the minimum distance requirement
-            if all(hamming_distance == hamming(sequence, seq) * num_bits for seq in sequences):
+            if all(hamming_distance >= hamming(sequence, seq) * num_bits for seq in sequences):
                 # Add the new sequence to the list of sequences
                 sequences.append(sequence)
 
