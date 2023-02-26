@@ -3,7 +3,7 @@ import random
 import numpy as np
 import yaml
 from Bio import SeqIO
-
+from Bio.SeqRecord import SeqRecord
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import GCContent, ConsecutiveRepeats
 from oligo_designer_toolsuite.oligo_specificity_filter import (
