@@ -7,7 +7,7 @@ from oligo_designer_toolsuite.database import CustomGenomicRegionGenerator, Ncbi
     EnsemblGenomicRegionGenerator
 from oligo_designer_toolsuite.database import ReferenceDatabase
 from oligo_designer_toolsuite.utils import BaseFtpLoader
-from oligo_designer_toolsuite.pipelines import (PrimerProbes,ReadoutProbes,TargetProbes,get_binary_sequences)
+from oligo_designer_toolsuite.pipelines import (PrimerProbes,ReadoutProbes,TargetProbes,generate_codebook)
 import numpy as np
 from Bio.Seq import Seq
 import yaml
@@ -77,21 +77,29 @@ class MerfishProbeDesigner:
                                           self.file_transcriptome,
                                           self.region_generator)
         target_probes, file_target_probes = target_probe_class.create_target()
-
+        #calculate number of target probes
+        n_probes=0
+        genes = list(target_probes.database.keys())
+        for gene in genes:
+            oligos = list(target_probes.database[gene].keys())
+            n_probes+=len(oligos)
 
 
         # create primer sequences
-        print("Creating Probs")
-        primer_probes = PrimerProbes(self.config_file)
-        primer1, primer2, _ = primer_probes.create_primer()  # return dictionary for primer1 primer2
-        print("Creating Probs... Done")
+        print("Creating Primer Probes")
+        primer_probes = PrimerProbes( n_probes,
+            self.config_file,
+            self.file_transcriptome,
+            self.region_generator)
+        primer1, primer2, primer_fasta_file = primer_probes.create_primer()  # return dictionary for primer1 primer2
+        print("Creating Primer Probes... Done")
 
         # create readout probes
         readouts = ReadoutProbes(self.config,
                                 self.dir_output,
                                 self.file_transcriptome,
                                 self.region_generator,
-                                #primer_fasta_file
+                                primer_fasta_file
                                 )
         if (self.config["use_default_readouts"]):
             readout_probes = readouts.get_default_readouts()
@@ -112,6 +120,7 @@ class MerfishProbeDesigner:
         code = generate_codebook(num_seq=n_codes, encoding_scheme=self.config["encoding"])
 
         # assemble the probes
+        primer_idx=0
         for gene_idx, gene in enumerate(genes):
             gene_code = np.asarray(list(code[gene_idx]))
             ones = np.where(gene_code == '1')[0]  # find 1s in the code
@@ -130,7 +139,8 @@ class MerfishProbeDesigner:
                 encoding_probe = readout_seq_1 + target_sequence + readout_seq_2
 
                 # add primers
-                encoding_probe = primer1 + encoding_probe + primer2
+                encoding_probe = primer1[primer_idx] + encoding_probe + primer2[primer_idx]
+                primer_idx+=1
 
                 # put assembled probe in the database
                 target_probes.database[gene][oligo_id]["sequence"] = Seq(encoding_probe)
