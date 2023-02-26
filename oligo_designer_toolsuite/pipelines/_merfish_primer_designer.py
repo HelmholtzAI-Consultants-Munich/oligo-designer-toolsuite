@@ -20,6 +20,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
 )
 import random
+from pathlib import Path
 
 
 class PrimerProbes:
@@ -33,27 +34,27 @@ class PrimerProbes:
             region_generator
 
     ):
-         """
-    This class is used to design the primer probes.
+        """
+        This class is used to design the primer probes.
 
-    :param num_seq: number of primer probes which should be created
-    :type num_seq: int
-    :param config: config file
-    :type config: file pointer
-    :param dir_output: output directory
-    :type dir_output: str
-    :param file_transcriptome: directory of the fasta file for the transcriptome
-    :type file_transcriptome: str
-    :param region_generator: region generator used to create the file_transcriptome
-    :type region_generator: CustomGenomicRegionGenerator
-    """
+        :param num_seq: number of primer probes which should be created
+        :type num_seq: int
+        :param config: config file
+        :type config: file pointer
+        :param dir_output: output directory
+        :type dir_output: str
+        :param file_transcriptome: directory of the fasta file for the transcriptome
+        :type file_transcriptome: str
+        :param region_generator: region generator used to create the file_transcriptome
+        :type region_generator: CustomGenomicRegionGenerator
+        """
         self.num_seq = num_seq
         self.length = 25  # need to trim the sequece
        
         self.config = config
         self.primer_oligo_config = self.config["primer_oligo"]
 
-        self.dir_output = os.path.join(self.dir_output, "primer_probes")
+        self.dir_output = os.path.join(dir_output, "primer_probes")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self.file_transcriptome = file_transcriptome

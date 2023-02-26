@@ -280,7 +280,7 @@ class MerfishProbeDesigner:
                         database_region[oligo_id][key]
                     )
         #save 
-        final_dir_output = os.path.join(dir_output, "final_merfish_probes")
+        final_dir_output = os.path.join(self.dir_output, "final_merfish_probes")
         Path(final_dir_output).mkdir(parents=True, exist_ok=True)
         with open(os.path.join(final_dir_output, "merfish_probes.yml"), "w") as outfile:
             yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)

@@ -29,20 +29,20 @@ class ReadoutProbes:
             primer_fasta_file=None
 
     ):
-         """
-    This class is used to design the readout probes.
+        """
+        This class is used to design the readout probes.
 
-    :param config: config file
-    :type config: file pointer
-    :param dir_output: output directory
-    :type dir_output: str
-    :param file_transcriptome: directory of the fasta file for the transcriptome
-    :type file_transcriptome: str
-    :param region_generator: region generator used to create the file_transcriptome
-    :type region_generator: CustomGenomicRegionGenerator
-    :param primer_fasta_file: directory of the fasta file where previously generated primers are stored
-    :type primer_fasta_file: str
-    """
+        :param config: config file
+        :type config: file pointer
+        :param dir_output: output directory
+        :type dir_output: str
+        :param file_transcriptome: directory of the fasta file for the transcriptome
+        :type file_transcriptome: str
+        :param region_generator: region generator used to create the file_transcriptome
+        :type region_generator: CustomGenomicRegionGenerator
+        :param primer_fasta_file: directory of the fasta file where previously generated primers are stored
+        :type primer_fasta_file: str
+        """
         self.config =config
         self.dir_output = os.path.join(dir_output, "readout_probes")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
