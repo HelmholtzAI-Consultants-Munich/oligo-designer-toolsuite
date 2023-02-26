@@ -22,22 +22,19 @@ primers_length: 20
 readout_length: 30
 use_default_readouts: True # use the default readout sequences from the merfish paper
 percentage_blank: 10 #percentage of blank barcodes
-oligo_length_max : 30
-oligo_length_min: 29
+
 ### Parameters for oligo sequences generation
 
 primer_oligo:
-  file_bc25mer: ../data/bc25mer.1k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
-  oligo_output : ../data
-  oligo_DB_output : ../data
+  file_bc25mer: ./data/bc25mer/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  oligo_output : ./data/bc25mer # output directory of the modified bc25mer fasta file
   oligo_length_min: 19 #min length of oligos
   oligo_length_max: 20 #max length of oligos
 
 
 readout_oligo:
-  file_bc25mer: ../data/bc25mer.1k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
-  oligo_output: ../data
-  oligo_DB_output: ../data
+  file_bc25mer: ./data/bc25mer/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  oligo_output: ./data/bc25mer # output directory of the modified bc25mer fasta file
   oligo_length_min: 29 #min length of oligos
   oligo_length_max: 30 #max length of oligos
 
@@ -138,25 +135,11 @@ targeting_sequences_setup:
 probe_setup:
   blast1_word_size: 14 #back_ground_DB: #rRNAs or tRNAs
   blast2_word_size: 17 #back_ground_DB: #highly expressed genes
-  file_ncRNA: # fasta file with ncRNA
   file_highly_expressed_genes: #text file containing highly expressed genes 
 
 
-### Parameters for the oligo efficiency
-# Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before
-Tm_opt: 75 # optimal melting temperature of oligos
-GC_content_opt: 50 # optimal GC content of oligos
-Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score
-GC_weight: 1 # weight of the GC content of the oligo in the efficiency score
-
-
-### Parameters for the oligosets generation
-oligoset_size: 50 # ideal number of oligos per oligoset
-min_oligoset_size: 50 # minimum number of oligos per oligoset
-n_sets: 100 # maximum number of sets per gene
 
 ### Parameters for Melting Temperature
-# The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:
     shared:
