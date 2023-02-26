@@ -30,6 +30,18 @@ from oligo_designer_toolsuite.oligo_efficiency import(
 from oligo_designer_toolsuite.oligo_selection import OligosetGenerator, padlock_heuristic_selection
 
 class TargetProbes:
+     """
+    This class is used to design the target probes.
+
+    :param config: config file
+    :type config: file pointer
+    :param dir_output: output directory
+    :type dir_output: str
+    :param file_transcriptome: directory of the fasta file for the transcriptome
+    :type file_transcriptome: str
+    :param region_generator: region generator used to create the file_transcriptome
+    :type region_generator: CustomGenomicRegionGenerator
+    """
 
     def __init__(
             self,
@@ -157,37 +169,7 @@ class TargetProbes:
         specificity_filter = SpecificityFilter(filters=filters, write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # filter the database
         oligo_database = specificity_filter.apply(oligo_database=oligo_database, reference_database=reference_database, n_jobs=self.config["n_jobs"])
-        
 
-        # # write the intermediate result
-        # if self.config["write_intermediate_steps"]:
-        #     oligo_database.write_database(filename="merfish_target_probes.txt")
-
-        # # initialize the scoring classes
-        # oligos_scoring = PadlockOligoScoring(
-        #     Tm_min=self.config["targets_setup"]["Tm_min"],
-        #     Tm_opt=self.config["Tm_opt"],
-        #     Tm_max=self.config["targets_setup"]["Tm_max"],
-        #     GC_content_min=self.config["targets_setup"]["GC_content_min"],
-        #     GC_content_opt=self.config["GC_content_opt"],
-        #     GC_content_max=self.config["targets_setup"]["GC_content_max"],
-        #     Tm_weight=self.config["Tm_weight"],
-        #     GC_weight=self.config["GC_weight"],
-        # )
-        # set_scoring = PadlockSetScoring()
-
-        # # initialize the oligoset generator class
-        # oligoset_generator = OligosetGenerator(
-        #     oligoset_size=self.config["oligoset_size"], 
-        #     min_oligoset_size=self.config["min_oligoset_size"],
-        #     oligos_scoring=oligos_scoring,
-        #     set_scoring=set_scoring,
-        #     heurustic_selection=padlock_heuristic_selection,
-        #     write_regions_with_insufficient_oligos=self.config["write_removed_genes"]
-        # )
-
-        # # generate the oligoset
-        # oligo_database = oligoset_generator.apply(oligo_database=oligo_database, n_sets=self.config["n_sets"], n_jobs=self.config["n_jobs"])
 
         # write the result
 
