@@ -23,7 +23,9 @@ class ReadoutProbes:
         self.proh_seq_filter = ProhibitedSequences(num_consecutive=number_consecutive)
         self.lib = ['A', 'C', 'G', 'T']
         self.blast_filter = blast_filter
-        #self.ref = os.path.basename(reference_DB.file_reference_DB)
+        os.getcwd()
+        os.chdir('..')
+        self.ref = os.path.basename(reference_DB.file_fasta)
         self.seed = random_seed
     
     
@@ -40,7 +42,8 @@ class ReadoutProbes:
                 if res_proh and res_GC:
                     sub_dict ['prob' + str(ind) ]= {"sequence" : Seq(seq)}
                     ind += 1
-            #res = self.blast_filter._run_blast(sub_dict, 'gene', self.ref)
+            res = self.blast_filter._run_blast(sub_dict, 'gene', self.ref)
+
             for i in res.keys():
                 probes.append(res[i]['sequence'])
 
