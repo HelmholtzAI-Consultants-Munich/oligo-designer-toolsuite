@@ -29,6 +29,20 @@ class ReadoutProbes:
             primer_fasta_file=None
 
     ):
+         """
+    This class is used to design the readout probes.
+
+    :param config: config file
+    :type config: file pointer
+    :param dir_output: output directory
+    :type dir_output: str
+    :param file_transcriptome: directory of the fasta file for the transcriptome
+    :type file_transcriptome: str
+    :param region_generator: region generator used to create the file_transcriptome
+    :type region_generator: CustomGenomicRegionGenerator
+    :param primer_fasta_file: directory of the fasta file where previously generated primers are stored
+    :type primer_fasta_file: str
+    """
         self.config =config
         self.dir_output = os.path.join(dir_output, "readout_probes")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
@@ -94,6 +108,11 @@ class ReadoutProbes:
         self.oligo_database.create_database()
 
     def create_readouts(self, num_readouts):
+        '''
+        Function to create the readout probes
+        param num_readouts: number of readout probes that should be created
+        type num_readouts: int
+        '''
 
          # blast each potential readout probe against the previous build primer probs library
         dir_specificity = os.path.join(self.dir_output, "specificity_temporary1")
