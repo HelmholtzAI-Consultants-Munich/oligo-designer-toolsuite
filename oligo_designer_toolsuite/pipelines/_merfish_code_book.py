@@ -44,51 +44,99 @@ def get_binary_sequences(n_bit=16, n_one=4, n_seq=None):
 
 def generate_codebook(num_seq: int, encoding_scheme: str):
     '''
-    encoding_scheme: MHD2 or MHD4
-    This function is using generator generate_binary_sequences() to return a list of encoding codes
+    This function generates bit-codes
+
+    return:
+    A list of num_seq numbers of MHD2/MHD4 encoding codes
 
     Params:
-    n_bit: Number of bits in a code
-    n_one: Number of ones in a code
-    n_seq: Number of codes in a list
+    num_seq: Numer of Codes
+    encoding_scheme: MHD2 or MHD4
     '''
 
 
-    # Initialize the list of sequences
-    sequences = []
+    # initialize an empty list to store the codes
+    codes = []
+    pass_sequences = []
+    if encoding_scheme == "MHD4":
+        # loop through all possible combinations of 16 bits
+        for i in range(2**16):
+            # convert the integer i to a binary string of length 16
+            bin_str = format(i, '016b')
+            # count the number of ones in the binary string
+            num_ones = bin_str.count('1')
+            # if the number of ones is exactly 4
+            if num_ones == 4:
+                # append the binary string to the codes list
+                codes.append(bin_str)
+        # loop through all pairs of codes in the list
 
-    if (encoding_scheme == "MHD4") & (num_seq <= 140):  # upper limit is 140
-        num_ones = 4
-        num_bits = 16
-        hamming_distance = 4
-        # Generate sequences until the desired number of sequences is reached
-        while len(sequences) < num_seq:
-            # Generate a new sequence with the desired number of 1s
-            sequence = [1] * num_ones + [0] * (num_bits - num_ones)
-            random.shuffle(sequence)
+        for i in range(len(codes)):
+            for j in range(i+1, len(codes)):
 
-            # Check if the new sequence meets the minimum distance requirement
-            if all(hamming_distance <= hamming(sequence, seq) * num_bits for seq in sequences):
-                # Add the new sequence to the list of sequences
-                sequences.append(sequence)
+                if len(pass_sequences) == 140 or len(pass_sequences) == num_seq:
+                    break
 
-    elif (encoding_scheme == "MHD2") & (num_seq <= 1001): # upper limit is 1001
-        num_ones = 4
-        num_bits = 14
-        min_hamming_distance = 2
-        # Generate sequences until the desired number of sequences is reached
-        while len(sequences) < num_seq:
-            # Generate a new sequence with the desired number of 1s
-            sequence = [1] * num_ones + [0] * (num_bits - num_ones)
-            random.shuffle(sequence)
+                # compute the Hamming distance between two codes
+                ham_dist = sum(a != b for a, b in zip(codes[i], codes[j]))
+                # if the Hamming distance is less than 4
+                if ham_dist >= 4:
+                    if len(pass_sequences) == 0:
+                        pass_sequences.append(codes[i])
+                    # remove one of the codes from the list
+                    else:
+                        ham_list = []
+                        for pass_seq in pass_sequences:
+                            ham_dist = sum(a != b for a, b in zip(pass_seq, codes[j]))
+                            ham_list.append(ham_dist)
 
-            # Check if the new sequence meets the minimum distance requirement
-            if all(min_hamming_distance <= hamming(sequence, seq) * num_bits for seq in sequences):
-                # Add the new sequence to the list of sequences
-                sequences.append(sequence)
-    # Convert the list of sequences to a list of strings and return it
-    return ["".join(str(bit) for bit in sequence) for sequence in sequences]
+                        if all(4 <= ham for ham in ham_list):
+                            pass_sequences.append(codes[j])
+                            print(len(pass_sequences))
+                            break
+            if len(pass_sequences) == 140 or len(pass_sequences) == num_seq:
+                break
+                    # break out of the inner loop
 
+    if encoding_scheme == "MHD2":
+                # loop through all possible combinations of 14 bits
+        for i in range(2**14):
+            # convert the integer i to a binary string of length 16
+            bin_str = format(i, '016b')
+            # count the number of ones in the binary string
+            num_ones = bin_str.count('1')
+            # if the number of ones is exactly 4
+            if num_ones == 4:
+                # append the binary string to the codes list
+                codes.append(bin_str)
+        # loop through all pairs of codes in the list
+
+        for i in range(len(codes)):
+            for j in range(i+1, len(codes)):
+
+                if len(pass_sequences) == 1001 or len(pass_sequences) == num_seq:
+                    break
+                # compute the Hamming distance between two codes
+                ham_dist = sum(a != b for a, b in zip(codes[i], codes[j]))
+                # if the Hamming distance is less than 2
+                if ham_dist >= 2:
+                    if len(pass_sequences) == 0:
+                        pass_sequences.append(codes[i])
+                    # remove one of the codes from the list
+                    else:
+                        ham_list = []
+                        for pass_seq in pass_sequences:
+                            ham_dist = sum(a != b for a, b in zip(pass_seq, codes[j]))
+                            ham_list.append(ham_dist)
+                        # check passed sequences
+                        if all(2 <= ham for ham in ham_list):
+                            pass_sequences.append(codes[j])
+                            print(len(pass_sequences))
+                            break
+                    # break out of the inner loop
+            if len(pass_sequences) == 1001 or len(pass_sequences) == num_seq:
+                break
+    return pass_sequences
 
 if __name__ == "__main__":
     unittest.main()
