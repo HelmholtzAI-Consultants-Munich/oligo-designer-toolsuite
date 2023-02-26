@@ -162,6 +162,8 @@ class Blastn(SpecificityFilterBase):
                 blast_results["query_gene_id"] = blast_results["query"].str.split("_").str[0]+"_"+blast_results["query"].str.split("_").str[1]
             else:    
                 blast_results["query_gene_id"] = blast_results["query"].str.split("_").str[0]
+        else:
+            blast_results["query_gene_id"] = blast_results["query"]
         blast_results["target_gene_id"] = blast_results["target"].str.split("::").str[0]
         return blast_results
 
