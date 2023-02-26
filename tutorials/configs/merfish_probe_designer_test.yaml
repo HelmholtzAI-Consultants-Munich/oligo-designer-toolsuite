@@ -27,7 +27,7 @@ oligo_length_min: 29
 ### Parameters for oligo sequences generation
 
 primer_oligo:
-  file_bc25mer: ../data/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  file_bc25mer: ../data/bc25mer.1k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
   oligo_output : ../data
   oligo_DB_output : ../data
   oligo_length_min: 19 #min length of oligos
@@ -35,7 +35,7 @@ primer_oligo:
 
 
 readout_oligo:
-  file_bc25mer: ../data/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  file_bc25mer: ../data/bc25mer.1k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
   oligo_output: ../data
   oligo_DB_output: ../data
   oligo_length_min: 29 #min length of oligos
