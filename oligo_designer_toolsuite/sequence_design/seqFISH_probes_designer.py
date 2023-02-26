@@ -24,5 +24,5 @@ class SeqfishProbesCreator:
                 seq = str(oligos_DB[i][j]['sequence'])
                 seq = left + seq
                 seq = seq + right
-                oligos_DB[i][j]['sequence_with_barcodes'] = Seq(seq)
+                oligos_DB[i][j]['sequence'] = Seq(seq)
         return oligos_DB
