@@ -30,7 +30,7 @@ from oligo_designer_toolsuite.oligo_efficiency import(
 from oligo_designer_toolsuite.oligo_selection import OligosetGenerator, padlock_heuristic_selection
 
 class TargetProbes:
-     """
+    """
     This class is used to design the target probes.
 
     :param config: config file

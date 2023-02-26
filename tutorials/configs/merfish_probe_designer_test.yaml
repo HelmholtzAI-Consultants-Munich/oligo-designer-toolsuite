@@ -17,7 +17,7 @@ genome_assembly: GRCh38  # optional: genome assembly of provided annotation, lea
 files_source: NCBI  # optional: source of provided annotation, leave empty if unknown
 file_genes: ./data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 
-
+oligo_length_max: 30
 primers_length: 20
 readout_length: 30
 use_default_readouts: True # use the default readout sequences from the merfish paper
