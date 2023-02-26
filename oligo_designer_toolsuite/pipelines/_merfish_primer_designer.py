@@ -1,5 +1,6 @@
 import numpy as np
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 import os
 import yaml
@@ -18,6 +19,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
     Blastn,
 )
+import random
 
 
 class PrimerProbes:
@@ -53,7 +55,17 @@ class PrimerProbes:
         self.oligo_25nt_path = self.primer_oligo_config["file_bc25mer"]
 
         self.oligo_25nt_dict = {rec.id: rec.seq for rec in SeqIO.parse(self.oligo_25nt_path, "fasta")}
-        self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}
+        #self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}
+        #select n random sequences 
+        n=num_seq*10 #start with 10 times the number of required primers
+        if (n>240000):
+            n=240000
+        sequences = list(self.oligo_25nt_dict.keys())
+        selected_sequences =random.sample(sequences, n)
+        self.oligo_20nt_dict={}
+        for key in selected_sequences:
+            value=self.oligo_25nt_dict[key]
+            self.oligo_20nt_dict [key]= value[:-5] 
 
         self.oligo_20nt_path = os.path.join(self.primer_oligo_config["oligo_output"], "primer_oligo.fasta")
         with open(self.oligo_20nt_path, "w") as handle:
@@ -195,7 +207,18 @@ class PrimerProbes:
         print("Specifity filter 3...Done")
 
 
-        primer_file_database = oligo_database.write_database(filename="primer_database.txt")
+        #save fasta file of primers
+        primer_file_database = os.path.join(self.dir_output, "primers.fna")
+        output = []
+        
+        keys = list(oligo_database.database.keys())[0:2*self.num_seq]
+        for key in keys:
+            oligo=list(oligo_database.database[key])[0]
+            seq=oligo_database.database[key][oligo]["sequence"]
+            output.append(SeqRecord(seq, key, "", ""))
+         
+        with open(primer_file_database, "w") as handle:
+            SeqIO.write(output, handle, "fasta")
 
         print("Writing Primer1...Start")
         primer1_oligos_dict = {}
