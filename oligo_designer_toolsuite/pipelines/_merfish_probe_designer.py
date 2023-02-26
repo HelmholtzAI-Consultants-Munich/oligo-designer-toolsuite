@@ -18,6 +18,8 @@ from pathlib import Path
 class MerfishProbeDesigner:
     """
     This class is used to design the final merfish probes.
+    param config_file: file that contains the configuration used to make the Merfish probes
+    type config_file: str
     """
 
     def __init__(
@@ -71,7 +73,7 @@ class MerfishProbeDesigner:
 
     def design_merfish_probes(
             self):
-        # create target sequences
+        # create target probes
         target_probe_class = TargetProbes(self.config,
                                           self.dir_output,
                                           self.file_transcriptome,
@@ -88,7 +90,8 @@ class MerfishProbeDesigner:
         # create primer sequences
         print("Creating Primer Probes")
         primer_probes = PrimerProbes( n_probes,
-            self.config_file,
+            self.config,
+            self.dir_output,
             self.file_transcriptome,
             self.region_generator)
         primer1, primer2, primer_fasta_file = primer_probes.create_primer()  # return dictionary for primer1 primer2
@@ -171,7 +174,6 @@ class MerfishProbeDesigner:
             strand=self.config["strand"],
         )
         specificity_filter1 = SpecificityFilter(filters=[blastn1], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
-        # filter the database
         target_probes = specificity_filter1.apply(oligo_database=target_probes, reference_database=reference_database1, n_jobs=self.config["n_jobs"])
 
         # blast against highly expressed genes
@@ -205,13 +207,12 @@ class MerfishProbeDesigner:
         )
         specificity_filter2 = SpecificityFilter(filters=[blastn2], write_regions_with_insufficient_oligos=self.config[
             "write_removed_genes"])
-        # filter the database
         assembled_probes = specificity_filter2.apply(oligo_database=target_probes,
                                                      reference_database=reference_database2,
                                                      n_jobs=self.config["n_jobs"])
 
         # save final probes in a file
-        final_probes_file_database = assembled_probes.write_database(filename="merfish_final_probes.txt")
+        #final_probes_file_database = assembled_probes.write_database(filename="merfish_final_probes.txt")
 
         # create formatted output file
         database = assembled_probes.database
@@ -279,7 +280,9 @@ class MerfishProbeDesigner:
                         database_region[oligo_id][key]
                     )
         #save 
-        with open(os.path.join(self.dir_output, "merfish_probes.yml"), "w") as outfile:
+        final_dir_output = os.path.join(dir_output, "final_merfish_probes")
+        Path(final_dir_output).mkdir(parents=True, exist_ok=True)
+        with open(os.path.join(final_dir_output, "merfish_probes.yml"), "w") as outfile:
             yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
 
         #Create order file
@@ -298,11 +301,11 @@ class MerfishProbeDesigner:
                     region
                 ][oligo_id]["readout_probe_2"]
         with open(
-            os.path.join(self.dir_output, "merfish_probes_order.yml"), "w"
+            os.path.join(final_dir_output, "merfish_probes_order.yml"), "w"
         ) as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
-
+        #Create codebook file
         print("Creating Codebook")
         yaml_codebook = {}
         for gene_idx, gene in enumerate(genes):
@@ -310,5 +313,5 @@ class MerfishProbeDesigner:
 
         for i in range(n_blanks):
             yaml_codebook[f"blank_barcode_{i + 1}"] = code[n_genes + i]
-        with open(os.path.join(self.dir_output, "merfish_codebook.yml"), "w") as outfile:
+        with open(os.path.join(final_dir_output, "merfish_codebook.yml"), "w") as outfile:
             yaml.dump(yaml_codebook, outfile, default_flow_style=False, sort_keys=False)
