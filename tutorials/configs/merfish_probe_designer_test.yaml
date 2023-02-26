@@ -46,6 +46,7 @@ target_oligo:
   oligo_length_max: 30
 
 #### Parameters for encoding ####
+encoding: "MHD4"
 
 MHD4:
   num_seq: 100 #upper limit 140
