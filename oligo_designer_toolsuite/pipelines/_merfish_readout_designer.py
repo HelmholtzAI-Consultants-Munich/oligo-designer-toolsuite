@@ -31,17 +31,25 @@ class ReadoutProbes:
     ):
         self.config =config
         self.dir_output = os.path.join(dir_output, "readout_probes")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
         self.file_transcriptome=file_transcriptome
         self.region_generator=region_generator
         self.primer_fasta_file=primer_fasta_file
 
         length =self.config["readout_oligo"]["oligo_length_max"]
         self.readout_oligo_config = self.config["readout_oligo"]
+
+       
         self.oligo_25nt_path = self.config["readout_oligo"]["file_bc25mer"]
-        self.oligo_25nt_dict = SeqIO.to_dict(SeqIO.parse(self.oligo_25nt_path, "fasta"))
+        self.oligo_25nt_dict = {rec.id: rec.seq for rec in SeqIO.parse(self.oligo_25nt_path, "fasta")}
         self.oligo_30nt_dict = {}
 
-        for key, value in self.oligo_25nt_dict.items():
+        #select num_seq random sequences 
+        num_seq=1000
+        sequences = list(self.oligo_25nt_dict.keys())
+        selected_sequences =random.sample(sequences, num_seq)
+        for key in selected_sequences:
+            value=self.oligo_25nt_dict[key]
             sequence = "".join(random.choices("ATCG", k=length - len(value)))
             if random.choice([True, False]):
                 # Add the sequence to the end of the value
@@ -49,14 +57,12 @@ class ReadoutProbes:
             else:
                 # Add the sequence to the start of the value
                 self.oligo_30nt_dict[key] = sequence + value
-        self.oligo_30nt_path = os.path.join(self.readout_oligo_config["oligo_output"], "bc30mer_oligo.fasta")
-        
-
+        self.oligo_30nt_path = os.path.join(self.readout_oligo_config["oligo_output"], "bc30mer_oligo.fna")
+        output = []
+        for name, seq in self.oligo_30nt_dict.items():
+            output.append(SeqRecord(seq, name, "", ""))
         with open(self.oligo_30nt_path, "w") as handle:
-            for name, seq in self.oligo_30nt_dict.items():
-                handle.write(">" + name + "\n")
-                handle.write(str(seq) + "\n")
-            print("write bc30mer_oligo done!")
+            SeqIO.write(output, handle, "fasta")
 
 
         self.default_readouts = [
@@ -83,14 +89,14 @@ class ReadoutProbes:
             oligo_length_min=self.readout_oligo_config["oligo_length_min"],
             oligo_length_max=self.readout_oligo_config["oligo_length_max"],
             n_jobs=1,
-            dir_output=self.readout_oligo_config["oligo_DB_output"],
+            dir_output=self.dir_output,
         )
         self.oligo_database.create_database()
 
     def create_readouts(self, num_readouts):
 
          # blast each potential readout probe against the previous build primer probs library
-        # dir_specificity = os.path.join(self.config["dir_output"], "specificity_temporary1")
+        # dir_specificity = os.path.join(self.dir_output, "specificity_temporary1")
         # blast_filter1 = Blastn(
         #     dir_specificity=dir_specificity,
         #     word_size=self.config["readout_blast_setup"]['blast1_word_size'],
@@ -109,8 +115,8 @@ class ReadoutProbes:
         # if self.config["write_intermediate_steps"]:
         #     file_database = self.oligo_database.write_database(filename="readout_database_specificity_filter1.txt")
         
-        # blast each potential readout probe against the previous build readout probs library
-        dir_specificity1 = os.path.join(self.config["dir_output"], "specificity_temporary1")
+        # blast each potential readout probe against the previous built readout probes library
+        dir_specificity1 = os.path.join(self.dir_output, "specificity_temporary1")
         blast_filter1 = Blastn(
             dir_specificity=dir_specificity1,
             word_size=self.config["readout_blast_setup"]['blast1_word_size'],
@@ -159,7 +165,7 @@ class ReadoutProbes:
         
         #return a specified number of readout probes (num_readouts)
         readout_oligos_dict = {}
-        readout_genes = list(self.oligo_database.database.keys())[0:self.num_readouts]
+        readout_genes = list(self.oligo_database.database.keys())[0:num_readouts]
         readout_oligo_ids = [list(self.oligo_database.database[gene].keys())[0] for gene in readout_genes]
         for gene, oligo_id in zip(readout_genes, readout_oligo_ids):
             readout_oligos_dict[gene] = str(self.oligo_database.database[gene][oligo_id]["sequence"])
