@@ -87,8 +87,6 @@ targets_setup:
   Tm_min: 70  #minimum melting temperature of oligos
   Tm_max: 80 #maximum melting temperature of oligos #not provided
 
-  cross_hybridization_targets_Tm_min : 72  #  lower bound on the Tm of hybridization to potential off-target sequences 
-  cross_hybridization_targets_Tm_max : 100 #not specified
   internal_secondary_structures_T: 76 # temperature at which secondary structures are evaluated
   internal_secondary_structures_threshold_deltaG: 0 # delta G threshold of the secondary structures
   max_repeats_nt: 6 # maximum number of consecutive repeats
@@ -129,7 +127,7 @@ readout_blast_setup:
 
 targeting_sequences_setup:
   word_size: 17  #Not provided: "remove > 1 cellular RNA sepices Target"
-  percent_identity: 66 #cross hybridization
+  percent_identity_ch: 66 #percent_identity for cross hybridization
 
 
 probe_setup:
