@@ -114,28 +114,28 @@ class ReadoutProbes:
         param num_readouts: number of readout probes that should be created
         type num_readouts: int
         '''
-
-         # blast each potential readout probe against the previous build primer probs library
-        dir_specificity = os.path.join(self.dir_output, "specificity_temporary1")
-        exact_matches = ExactMatches(dir_specificity=dir_specificity)
-        blast_filter = Blastn(
-            dir_specificity=dir_specificity,
-            word_size=self.config["readout_blast_setup"]['blast1_word_size'],
-            percent_identity=self.config["percent_identity"],
-            coverage=self.config["coverage"],
-            strand=self.config["strand"],
-        )
-        filters = [exact_matches, blastn]
-        reference_database = ReferenceDatabase(
-            file_fasta=self.primer_fasta_file)
-        reference_database.load_fasta_into_database()
-        specificity_filter = SpecificityFilter(filters=filters,
-                                                write_regions_with_insufficient_oligos=self.config[
-                                                    "write_removed_genes"])
-        self.oligo_database = specificity_filter.apply(oligo_database=self.oligo_database,
-                                                   reference_database=reference_database, n_jobs=self.config["n_jobs"])
-        if self.config["write_intermediate_steps"]:
-            file_database = self.oligo_database.write_database(filename="readout_database_specificity_filter1.txt")
+        if (self.primer_fasta_file is not None):
+            # blast each potential readout probe against the previous build primer probs library
+            dir_specificity = os.path.join(self.dir_output, "specificity_temporary1")
+            exact_matches = ExactMatches(dir_specificity=dir_specificity)
+            blast_filter = Blastn(
+                dir_specificity=dir_specificity,
+                word_size=self.config["readout_blast_setup"]['blast1_word_size'],
+                percent_identity=self.config["percent_identity"],
+                coverage=self.config["coverage"],
+                strand=self.config["strand"],
+            )
+            filters = [exact_matches, blast_filter]
+            reference_database = ReferenceDatabase(
+                file_fasta=self.primer_fasta_file)
+            reference_database.load_fasta_into_database()
+            specificity_filter = SpecificityFilter(filters=filters,
+                                                    write_regions_with_insufficient_oligos=self.config[
+                                                        "write_removed_genes"])
+            self.oligo_database = specificity_filter.apply(oligo_database=self.oligo_database,
+                                                       reference_database=reference_database, n_jobs=self.config["n_jobs"])
+            if self.config["write_intermediate_steps"]:
+                file_database = self.oligo_database.write_database(filename="readout_database_specificity_filter1.txt")
         
         # blast each potential readout probe against the previous built readout probes library
         dir_specificity1 = os.path.join(self.dir_output, "specificity_temporary1")
