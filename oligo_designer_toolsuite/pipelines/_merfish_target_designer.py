@@ -131,7 +131,7 @@ class TargetProbes:
             file_database = oligo_database.write_database(filename="oligo_database_property_filter.txt")
  
         
-        #Specificity filters to remove probes with more than 1 RNA species target (no cross-hybridization targets with Tm>72)
+        #Specificity filters to remove probes with more than 1 RNA species target 
         dir_specificity = os.path.join(self.dir_output, "specificity_temporary") # folder where the temporary files will be written
 
         reference_database = ReferenceDatabase(
@@ -144,23 +144,12 @@ class TargetProbes:
         )
         reference_database.load_fasta_into_database()
 
-        # filter reference database by melting temperature
-        melting_temperature2 = MeltingTemperatureNN(
-            Tm_min=self.config["targets_setup"]["cross_hybridization_targets_Tm_min"], 
-            Tm_max=self.config["targets_setup"]["cross_hybridization_targets_Tm_max"], 
-            Tm_parameters=Tm_params, 
-            Tm_chem_correction_parameters=Tm_correction_param
-        )
-        property_filter2 = PropertyFilter(filters=[melting_temperature2], write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
-        #reference_database = property_filter2.apply(oligo_database=reference_database, n_jobs=self.config["n_jobs"])
-        #NOTE: property filters don' work for reference database
-
         # intialize the filter classes
         exact_matches = ExactMatches(dir_specificity=dir_specificity)
         blastn = Blastn(
             dir_specificity=dir_specificity, 
             word_size=self.config["targeting_sequences_setup"]["word_size"],
-            percent_identity=self.config["targeting_sequences_setup"]["percent_identity"],
+            percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
             strand=self.config["strand"],
         )
@@ -169,6 +158,29 @@ class TargetProbes:
         specificity_filter = SpecificityFilter(filters=filters, write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         # filter the database
         oligo_database = specificity_filter.apply(oligo_database=oligo_database, reference_database=reference_database, n_jobs=self.config["n_jobs"])
+
+
+
+
+        #Specificity filter to remove cross hybridization targets
+        targets_fasta= oligo_database.write_fasta_from_database(filename = 'target_probes_init')
+        reference_database2 = ReferenceDatabase(file_fasta =targets_fasta)
+        reference_database2.load_fasta_into_database()
+        dir_specificity2 = os.path.join(self.dir_output, "specificity_temporary2") # folder where the temporary files will be written
+        # intialize the filter classes
+        blastn2 = Blastn(
+            dir_specificity=dir_specificity2, 
+            word_size=self.config["targeting_sequences_setup"]["word_size"],
+            percent_identity=self.config["targeting_sequences_setup"]["percent_identity_ch"],
+            coverage=self.config["coverage"],
+            strand='minus', 
+        )
+        filters2 = [blastn2]
+        # initialize the specificity filter class
+        specificity_filter = SpecificityFilter(filters=filters2, write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
+        # filter the database
+        oligo_database = specificity_filter.apply(oligo_database=oligo_database, reference_database=reference_database2, n_jobs=self.config["n_jobs"])
+
 
 
         # write the result
