@@ -72,7 +72,7 @@ class PrimerProbes:
         self.oligo_25nt_dict = {rec.id: rec.seq for rec in SeqIO.parse(self.oligo_25nt_path, "fasta")}
         #self.oligo_20nt_dict = {k: v[:-5] for k, v in self.oligo_25nt_dict.items()}
         #select n random sequences 
-        n=num_seq*20 #start with 100 times the number of required primers
+        n=num_seq*50 #start with 50 times the number of required primers
         if (n>240000):
             n=240000
         sequences = list(self.oligo_25nt_dict.keys())
