@@ -249,7 +249,7 @@ class PrimerProbes:
         primer2_oligo_ids = [list(oligo_database.database[gene].keys())[0] for gene in primer2_genes]
         for gene, oligo_id in zip(primer2_genes, primer2_oligo_ids):
             primer2_seq = str(oligo_database.database[gene][oligo_id]["sequence"].reverse_complement())
-            primer2_seq = primer2_seq + self.T7promoter
+            primer2_seq = self.T7promoter + primer2_seq
             primer2_oligos_dict[gene] = primer2_seq
         print("Writing Primer2...Done")
         return list(primer1_oligos_dict.values()), list(
