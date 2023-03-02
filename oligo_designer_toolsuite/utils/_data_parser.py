@@ -160,6 +160,6 @@ def parse_fasta_header(header):
     if len(header) > 2:
         additional_information = header[1]
     else:
-        additional_information = []
+        additional_information = [None]
 
     return region, additional_information, coordinates

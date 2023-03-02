@@ -153,7 +153,6 @@ class OligoDatabase:
         """
         with open(self.file_fasta, "r") as handle:
             sequences = list(SeqIO.parse(handle, "fasta"))
-
         region_sequences = {}
         for entry in sequences:
             region, _, _ = parse_fasta_header(entry.id)
@@ -169,7 +168,6 @@ class OligoDatabase:
                     region_sequences.pop(key)
 
         region_ids = region_sequences.keys()
-
         database = {}
         results = Parallel(n_jobs=self.n_jobs)(
             delayed(self._get_oligos_info)(region_id, region_sequences[region_id])
@@ -389,8 +387,10 @@ class OligoDatabase:
             # once we have the correct start and end corrdinates we turn them again into 0-based coordinates
             # by subtracting 1. This needs to be done afterwards because on the minus strand the start has a
             # higher number than the end, which needs to be sorted and turned into 0-based index
+            null_coordinates = False
             if coordinates["start"][0] is None: # teh header doesn't contain position information
                 list_of_coordinates = [None for i in range(len(seq))]
+                null_coordinates = True
             else:
                 for i in range(len(coordinates["start"])):
                     list_of_coordinates.extend(
@@ -413,14 +413,19 @@ class OligoDatabase:
 
                     for i in range(number_oligos):
                         oligo = oligos[i]
-                        oligo_start_end = [
-                            list_of_coordinates[i],
-                            list_of_coordinates[(i + oligo_length - 1)],
-                        ]
-                        oligo_start_end.sort()
-                        oligo_start = oligo_start_end[0] - 1  # turn into 0-based index
-                        oligo_end = oligo_start_end[1]
-                        oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
+                        if null_coordinates: # the header fo the fasta file is just the region name
+                            oligo_start = None
+                            oligo_end = None
+                            oligo_id = f"{region_id}_{i}"
+                        else:
+                            oligo_start_end = [
+                                list_of_coordinates[i],
+                                list_of_coordinates[(i + oligo_length - 1)],
+                            ]
+                            oligo_start_end.sort()
+                            oligo_start = oligo_start_end[0] - 1  # turn into 0-based index
+                            oligo_end = oligo_start_end[1]
+                            oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
                         oligo_attributes = {
                             "sequence": oligo,
                             "chromosome": oligo_chrom,
@@ -451,10 +456,13 @@ class OligoDatabase:
                                 oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
                         else:
                             oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
-
+                            
         database_entries = {}
         for oligo_ids in oligo_sequence_ids.values():
-            oligo_id = ";".join([oligo_id for oligo_id in oligo_ids.keys()])
+            if null_coordinates:
+                oligo_id = list(oligo_ids.keys())[0]
+            else:
+                oligo_id = ";".join([oligo_id for oligo_id in oligo_ids.keys()])
             attributes_collapsed = {}
             for key in [
                 "sequence",
@@ -470,13 +478,16 @@ class OligoDatabase:
                 if len(attributes_collapsed[key]) == 1 and key not in ["start", "end"]:
                     attributes_collapsed[key] = attributes_collapsed[key][0]
             # can't be collapsed caus sometimes contains lists of lists
-            attributes_collapsed["additional_information_fasta"] = sum(
-                [
-                    attributes["additional_information_fasta"]
-                    for attributes in oligo_ids.values()
-                ],
-                [],
-            )
+            if null_coordinates:
+                attributes_collapsed["additional_information_fasta"] = []
+            else:
+                attributes_collapsed["additional_information_fasta"] = sum(
+                    [
+                        attributes["additional_information_fasta"]
+                        for attributes in oligo_ids.values()
+                    ],
+                    [],
+                )
             database_entries[oligo_id] = attributes_collapsed
 
         database = {region_id: database_entries}
