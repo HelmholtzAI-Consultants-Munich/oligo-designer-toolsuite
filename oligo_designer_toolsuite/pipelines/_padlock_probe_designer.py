@@ -496,10 +496,8 @@ def padlock_probe_designer():
             genome_assembly=config["genome_assembly"],
             dir_output=dir_output,
         )
-    file_transcriptome = region_generator.generate_transcript_reduced_representation(
-        include_exon_junctions=True, exon_junction_size=2 * config["oligo_length_max"]
-    )
-
+    file_transcriptome = region_generator.generate_transcript_reduced_representation(include_exon_junctions=True, exon_junction_size=2*config["oligo_length_max"], n_jobs=config["n_jobs"])
+    
     # oligo database
     oligo_database = OligoDatabase(
         file_fasta=file_transcriptome,
