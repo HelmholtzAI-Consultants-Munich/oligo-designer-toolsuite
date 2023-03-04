@@ -156,12 +156,15 @@ class MeltingTemperatureNN(PropertyFilterBase):
 
 class ProhibitedSequences(PropertyFilterBase):
     """Filters the sequences containing a prohibited sequence.
+    :param num_consecutive: minimum number of consecutive nucleotides, that are already not allowed in sequences
+    :type num_consecutive: int
     """
     def __init__(
         self,
         num_consecutive:int,
     ) -> None:
-        """Initializes the class."""
+        """Initializes the class.
+        """
 
         super().__init__()
         self.max_consecutive = num_consecutive

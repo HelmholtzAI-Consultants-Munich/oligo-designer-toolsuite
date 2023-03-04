@@ -33,10 +33,9 @@ block_size: 50
 
 ### Parameters for the property filers
 # oligo sequence
-# ADD OUR INFO
-GC_content_min: 45 #minimum GC content of oligos
-GC_content_max: 65 #maximum GC content of oligos
-number_consecutive: 5 #min number of not allowed consecutive nucleotides
+GC_content_min: 45 # minimum GC content of oligos
+GC_content_max: 65 # maximum GC content of oligos
+number_consecutive: 5 # min number of not allowed consecutive nucleotides
 
 
 ### Parameters for the specificity filters
@@ -58,9 +57,9 @@ GC_weight: 1 # weight of the GC content of the oligo in the efficiency score
 
 
 ### Parameters for the oligosets generation
-oligoset_size: 24 #ideal number of oligos per oligoset
-min_oligoset_size: 20 #minimum number of oligos per oligoset
-n_sets: 2 # maximum number of sets per gene
+oligoset_size: 5 #ideal number of oligos per oligoset
+min_oligoset_size: 2 #minimum number of oligos per oligoset
+n_sets: 100 # maximum number of sets per gene
 
 
 ### Parameters for the padlock detection oligo design
@@ -68,6 +67,13 @@ detect_oligo_length_min: 18 # min length of detection oligo
 detect_oligo_length_max: 25 # max length of detection oligo
 detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo
 
+
+### Parameters for readout probes design
+num_pseudocolors: 60 # number of pseudocolors
+length_readout: 15 # length of readout probe
+GC_min_readout: 45 # min GC content
+GC_max_readout: 55 # max GC content 
+number_consecutive_readout: 5 # min number of not allowed consecutive nucleotides
 
 ### Parameters for Melting Temperature 
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
