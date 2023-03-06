@@ -79,15 +79,10 @@ class MerfishProbeDesigner:
                                           self.file_transcriptome,
                                           self.region_generator)
         target_probes, file_target_probes = target_probe_class.create_target()
-        #calculate number of target probes
-        n_probes=0
-        genes = list(target_probes.database.keys())
-        for gene in genes:
-            oligos = list(target_probes.database[gene].keys())
-            n_probes+=len(oligos)
 
 
         # create primer sequences
+        n_probes=1 #create 1 primer1, and 1 primer2
         print("Creating Primer Probes")
         primer_probes = PrimerProbes( n_probes,
             self.config,
@@ -108,7 +103,8 @@ class MerfishProbeDesigner:
             readout_probes = readouts.get_default_readouts()
 
         else:
-            readout_probes = readouts.create_readouts(self.config["MHD4"]["num_bits"])  # return readout dictionary
+            encoding=self.config["encoding"]
+            readout_probes = readouts.create_readouts(self.config[encoding]["num_bits"])  # return readout dictionary
         # Create readout_sequences: reverse complement of the readout probes
         readout_sequences = np.zeros_like(readout_probes)
         for i, seq in enumerate(readout_probes):
@@ -123,7 +119,6 @@ class MerfishProbeDesigner:
         code = generate_codebook(num_seq=n_codes, encoding_scheme=self.config["encoding"])
 
         # assemble the probes
-        primer_idx=0
         for gene_idx, gene in enumerate(genes):
             gene_code = np.asarray(list(code[gene_idx]))
             ones = np.where(gene_code == '1')[0]  # find 1s in the code
@@ -142,8 +137,7 @@ class MerfishProbeDesigner:
                 encoding_probe = readout_seq_1 + target_sequence + readout_seq_2
 
                 # add primers
-                encoding_probe = primer1[primer_idx] + encoding_probe + primer2[primer_idx]
-                primer_idx+=1
+                encoding_probe = primer1[0] + encoding_probe + primer2[0]
 
                 # put assembled probe in the database
                 target_probes.database[gene][oligo_id]["sequence"] = Seq(encoding_probe)
@@ -257,8 +251,8 @@ class MerfishProbeDesigner:
                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"].update(
                     {
                         "merfish_probe_full_sequence": str(encoding_probe),
-                        "readout_probe_1": str(readout_seq_1.reverse_complement()),
-                        "readout_probe_2": str(readout_seq_2.reverse_complement()),
+                        "readout_probe_1": str(readout_seq_1.reverse_complement()+'/3Cy5Sp'),
+                        "readout_probe_2": str(readout_seq_2.reverse_complement()+'/3Cy5Sp'),
                         "primer_sequence_1": str(primer1),
                         "primer_sequence_2": str(primer2),
                         "merfish_barcode_sequence": str(code[gene_idx]),
@@ -304,7 +298,18 @@ class MerfishProbeDesigner:
             os.path.join(final_dir_output, "merfish_probes_order.yml"), "w"
         ) as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
+        
 
+        #Create readout probe file
+        yaml_readout = {}
+        yaml_readout['Bit'] = 'Readout Probe'
+        for i in range (self.config[self.config["encoding"]]["num_bits"]):
+            yaml_readout[str(i+1)]= readout_probes[i]+'/3Cy5Sp'
+        with open(
+            os.path.join(final_dir_output, "merfish_readout_probes.yml"), "w"
+        ) as outfile:
+            yaml.dump(yaml_readout, outfile, default_flow_style=False, sort_keys=False)
+            
         #Create codebook file
         print("Creating Codebook")
         yaml_codebook = {}
