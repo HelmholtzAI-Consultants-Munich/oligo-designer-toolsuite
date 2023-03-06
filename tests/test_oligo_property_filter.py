@@ -227,13 +227,13 @@ def test_secondary_structure_filter():  # add tests for property filters
     secondary_structure = Secondary_struct(76.0, 0.0)
 
     seq_remove = Seq("GCUUUAGAGAUCGUUUCGAAUGAUAAUCGUUCGAAACGUUCUCCGAAGC")
-    res, _ = GC_Clamp.apply(seq_remove)
+    res, _ = GCClamp.apply(seq_remove)
     assert (
             res == False
     ), f"error: A sequence ({seq_remove}) not fulfilling the secondary_structure condition has been accepted!"
 
     seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
-    res, _ = GC_Clamp.apply(seq_keep)
+    res, _ = GCClamp.apply(seq_keep)
     assert (
             res == True
     ), f"error: A sequence ({seq_keep}) fulfilling the secondary_structure conditions has not been accepted!"
