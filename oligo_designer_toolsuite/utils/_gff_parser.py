@@ -6,6 +6,7 @@ import re
 import gzip
 import pickle
 import warnings
+import sys
 
 import pandas as pd
 from collections import defaultdict
@@ -63,6 +64,7 @@ class GffParser:
             for key in result.keys():
                 result[key].append(line.get(key, None))
 
+
         result = pd.DataFrame(result)
         cols = [
             col
@@ -88,7 +90,6 @@ class GffParser:
         :rtype: dict
         """
         fn_open = gzip.open if file.endswith(".gz") else open
-
         with fn_open(file) as fh:
             for line_number, line in enumerate(fh):
                 if target_lines is None or line_number <= target_lines:

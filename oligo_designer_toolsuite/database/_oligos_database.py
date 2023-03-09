@@ -46,7 +46,7 @@ class OligoDatabase:
 
     files_Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
 
-    :param file_fasta: Path to the fasta file.
+    :param file_fasta: Path to the fasta file, if None it is only possible to read a database.
     :type file_fasta: str
     :param oligo_length_min: Minimal length of oligo nucleotide.
     :type oligo_length_min: int
@@ -71,8 +71,6 @@ class OligoDatabase:
     def __init__(
         self,
         file_fasta: str,
-        oligo_length_min: int,
-        oligo_length_max: int,
         min_oligos_per_region: int = 0,
         files_source: str = None,
         species: str = None,
@@ -83,14 +81,13 @@ class OligoDatabase:
     ):
         """Constructor"""
         self.file_fasta = file_fasta
-        if os.path.exists(self.file_fasta):
-            if not check_fasta_format(self.file_fasta):
-                raise ValueError("Fasta file has incorrect format!")
-        else:
-            raise ValueError("Fasta file does not exist!")
+        if file_fasta is not None:
+            if os.path.exists(self.file_fasta):
+                if not check_fasta_format(self.file_fasta):
+                    raise ValueError("Fasta file has incorrect format!")
+            else:
+                raise ValueError("Fasta file does not exist!")
 
-        self.oligo_length_min = oligo_length_min
-        self.oligo_length_max = oligo_length_max
         self.min_oligos_per_region = min_oligos_per_region
 
         if files_source is None:
@@ -140,6 +137,8 @@ class OligoDatabase:
 
     def create_database(
         self,
+        oligo_length_min: int,
+        oligo_length_max: int,
         region_ids: list[str] = None,
     ):
         """
@@ -148,9 +147,17 @@ class OligoDatabase:
         in the fasta file will be used. The database created is not written automatically to the disk,
         the ``save_oligo_database`` method has to be called separately.
 
+        :param oligo_length_min: Minimal length of oligo nucleotide.
+        :type oligo_length_min: int
+        :param oligo_length_max: Maximal length of oligo nucleotide.
+        :type oligo_length_max: int
         :param region_ids: List of regions for which the oligos should be generated, defaults to None
         :type region_ids: list of str, optional
         """
+        if self.file_fasta is None:
+            raise RuntimeError("The Database class does not have any fasta file, if you want to create a database a fasta file needs to be given in input when initalizing the class.")
+        self.oligo_length_min = oligo_length_min
+        self.oligo_length_max = oligo_length_max
         with open(self.file_fasta, "r") as handle:
             sequences = list(SeqIO.parse(handle, "fasta"))
         region_sequences = {}
@@ -184,7 +191,7 @@ class OligoDatabase:
         The order of columns is :
 
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | oligo_sequence | chromosome | start | end | strand | length | additional feat. |
+        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
 
         Additional feat. includes additional info from fasta file and additional info computed by the filtering class.
@@ -205,11 +212,11 @@ class OligoDatabase:
             lambda row: Seq(str(row.sequence)), axis=1
         )
         file_tsv_content.chromosome = file_tsv_content.chromosome.astype("str")
-        file_tsv_content.start = file_tsv_content.start.str.split(";")
+        file_tsv_content.start = file_tsv_content.start.astype("str").str.split(";")
         file_tsv_content.start = file_tsv_content.apply(
             lambda row: list(map(int, row.start)), axis=1
         )
-        file_tsv_content.end = file_tsv_content.end.str.split(";")
+        file_tsv_content.end = file_tsv_content.end.astype("str").str.split(";")
         file_tsv_content.end = file_tsv_content.apply(
             lambda row: list(map(int, row.end)), axis=1
         )
@@ -225,6 +232,7 @@ class OligoDatabase:
                 for row in list(
                     zip(*[file_tsv_content[col] for col in file_tsv_content])
                 )
+                if row[0] == region
             }
 
         self.database = database
@@ -238,7 +246,7 @@ class OligoDatabase:
         The order of the columns is:
 
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | oligo_sequence | chromosome | start | end | strand | length | additional feat. |
+        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
 
         Additional feat. includes additional info from fasta file and additional info computed by the filtering class.
@@ -268,7 +276,6 @@ class OligoDatabase:
 
         file_tsv_content = pd.DataFrame(data=file_tsv_content)
         file_tsv_content.to_csv(file_database, sep="\t", index=False)
-
 
         return file_database
 

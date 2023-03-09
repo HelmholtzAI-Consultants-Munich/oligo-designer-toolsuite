@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 import pytest
 
-from oligo_designer_toolsuite.database import NcbiOligoDB
+from oligo_designer_toolsuite.database import OligoDatabase, CustomGenomicRegionGenerator
 from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -13,37 +13,20 @@ from oligo_designer_toolsuite.oligo_selection import (
     padlock_heuristic_selection,
 )
 
+annotation_file_ncbi = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+sequence_file_ncbi = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 
-@pytest.fixture()
-def oligos_database():
-    database = NcbiOligoDB(
-        oligo_length_min=30,
-        oligo_length_max=40,
+@pytest.fixture(scope="session")
+def oligos_database(tmpdir_factory):
+    database = OligoDatabase(
+        file_fasta=None,
         dir_output="tests/output",
         species="human",
         annotation_release="110",
         n_jobs=2,
     )
 
-    # If the anotation and fasta files are already saved on the machine, it is possible to direclty use them
-    # instead of downloading them again.
-    # dir_annotation = "/home/francesco/Desktop/Work/NCBI"
-    # annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
-    # sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
-    # database = CustomOligoDB(
-    #     oligo_length_min=30,
-    #     oligo_length_max=40,
-    #     species="unknown",
-    #     genome_assembly="unknown",
-    #     annotation_release="unknown",
-    #     files_source="unknown",
-    #     annotation_file=annotation,
-    #     sequence_file=sequence,
-    #     dir_output="tests/output",
-    # )
-    database.read_oligos_DB(
-        format="tsv", file_oligos_DB_tsv="tests/data/oligos_info.tsv"
-    )
+    database.load_database("tests/data/oligos_info.tsv")
 
     yield database
 
@@ -103,7 +86,7 @@ def test_nonoverlapping_matrix_ovelapping_oligos(oligoset_generator):
         "A_0": {"start": [10, 50], "end": [15, 55]},
         "A_1": {"start": [20, 53], "end": [25, 58]},
     }
-    computed_matrix = oligoset_generator._get_overlapping_matrix(oligos=oligos)
+    computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
     true_matrix = pd.DataFrame(
         data=[[0, 0], [0, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"]
     )
@@ -118,7 +101,7 @@ def test_nonoverlapping_matrix_for_nonovelapping_oligos(oligoset_generator):
         "A_0": {"start": [10, 50], "end": [15, 55]},
         "A_1": {"start": [20, 35], "end": [25, 40]},
     }
-    computed_matrix = oligoset_generator._get_overlapping_matrix(oligos=oligos)
+    computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
     true_matrix = pd.DataFrame(
         data=[[0, 1], [1, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"]
     )

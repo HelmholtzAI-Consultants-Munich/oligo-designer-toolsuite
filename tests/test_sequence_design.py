@@ -16,4 +16,4 @@ from oligo_designer_toolsuite.sequence_design import (
 # Tests
 ############################################
 
-## TODO: add test
+## TODO: add test that files generated are the same as before
