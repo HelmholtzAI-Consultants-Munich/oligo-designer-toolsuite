@@ -501,8 +501,6 @@ def padlock_probe_designer():
     # oligo database
     oligo_database = OligoDatabase(
         file_fasta=file_transcriptome,
-        oligo_length_min=config["oligo_length_min"],
-        oligo_length_max=config["oligo_length_max"],
         min_oligos_per_region=config["min_oligos_per_gene"],
         files_source=region_generator.files_source,
         species=region_generator.species,
@@ -658,7 +656,7 @@ def padlock_probe_designer():
             genes = [line.rstrip() for line in lines]
 
     # generate the oligo sequences from gene transcripts
-    oligo_database.create_database(region_ids=genes)
+    oligo_database.create_database(oligo_length_min=config["oligo_length_min"], oligo_length_max=config["oligo_length_max"],region_ids=genes)
     if config["write_intermediate_steps"]:
         oligo_database.write_database(filename="oligo_database_initial.txt")
 

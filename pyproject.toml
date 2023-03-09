@@ -50,8 +50,8 @@ dev = [
   "pytest",
 ]
 
-#[project.scripts]
-#my-client = "my_package.my_module:main_cli"
+[project.scripts]
+padlock_probe_designer = "oligo_designer_toolsuite.pipelines:padlock_probe_designer"
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
