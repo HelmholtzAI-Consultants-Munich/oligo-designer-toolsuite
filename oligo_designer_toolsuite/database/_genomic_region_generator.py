@@ -11,7 +11,6 @@ import pandas as pd
 pd.options.mode.chained_assignment = None
 
 from pathlib import Path
-from joblib import Parallel, delayed
 
 from ..utils._data_parser import get_sequence_from_annotation
 from ..utils._ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI
@@ -136,7 +135,6 @@ class CustomGenomicRegionGenerator:
         self,
         include_exon_junctions: bool = True,
         exon_junction_size: int = 100,
-        n_jobs: int = 1,
     ):
         """Generate a reduced representation of the transcriptome. This representation merges overlapping exons from the same
         gene but different transcripts into one sequence entry, to reduce duplicated sequence records in the fasta file.
@@ -149,25 +147,22 @@ class CustomGenomicRegionGenerator:
         :type include_exon_junctions: bool, optional
         :param exon_junction_size: size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction , defaults to 100
         :type exon_junction_size: int, optional
-        :param n_jobs: maximum number of cores used, defaults to 1
-        :type n_jobs: int, optional
         :return: Name of the output fasta file, where the generated transcript sequences are stored.
         :rtype: str
         """
-
         file_transcriptome_fasta = self._get_fasta_file_name(
             "transcriptome", include_exon_junctions, exon_junction_size
         )
 
         # get annotation of exons
         exons = self._get_annotation_region_of_interest("exon")
+
         # get exon and (optionally) exon junction sequences
         self._get_exon_sequence(
             exons,
             file_transcriptome_fasta,
             include_exon_junctions,
             exon_junction_size,
-            n_jobs,
         )
 
         # self._add_header_to_fasta_file(file_transcriptome_fasta)
@@ -177,7 +172,6 @@ class CustomGenomicRegionGenerator:
         self,
         include_exon_junctions: bool = True,
         exon_junction_size: int = 100,
-        n_jobs: int = 1,
     ):
         """Generate a reduced representation of the coding region (CDS). This representation merges overlapping exons from the same
         gene but different transcripts into one sequence entry, to reduce duplicated sequence records in the fasta file.
@@ -190,8 +184,6 @@ class CustomGenomicRegionGenerator:
         :type include_exon_junctions: bool, optional
         :param exon_junction_size: size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction , defaults to 100
         :type exon_junction_size: int, optional
-        :param n_jobs: maximum number of cores used, defaults to 1
-        :type n_jobs: int, optional
         :return: Name of the output fasta file, where the generated coding region sequences are stored.
         :rtype: str
         """
@@ -207,7 +199,6 @@ class CustomGenomicRegionGenerator:
             file_CDS_fasta,
             include_exon_junctions,
             exon_junction_size,
-            n_jobs,
         )
         # self._add_header_to_fasta_file(file_CDS_fasta)
         return file_CDS_fasta
@@ -265,7 +256,6 @@ class CustomGenomicRegionGenerator:
         file_transcriptome_fasta,
         include_exon_junctions,
         exon_junction_size,
-        n_jobs,
     ):
         """Get sequence in fasta format for exons of transcriptome or CDS. Retrieve fasta file from
         generated bed12 and genome fasta file.
@@ -278,8 +268,6 @@ class CustomGenomicRegionGenerator:
         :type include_exon_junctions: bool, optional
         :param exon_junction_size: size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction , defaults to 100
         :type exon_junction_size: int, optional
-        :param n_jobs: maximum number of cores used, defaults to 1
-        :type n_jobs: int, optional
         """
         exons.start = exons.start - 1  # convert GFF 1-base offset to BED 0-base offset
         list_annotations = []
@@ -294,7 +282,7 @@ class CustomGenomicRegionGenerator:
         # get exon junction annotation and merge annotation for the same region
         if include_exon_junctions:
             exon_junctions = self._get_exon_junction_annotation(
-                exons, exon_junction_size, n_jobs
+                exons, exon_junction_size
             )
 
             unique_exon_junctions = self._get_unique_exon_junctions(exon_junctions)
@@ -382,7 +370,6 @@ class CustomGenomicRegionGenerator:
         self,
         exons,
         block_size,
-        n_jobs,
     ):
         """Get list of all possible exon junctions and save all required information for bed12 file.
 
@@ -391,15 +378,14 @@ class CustomGenomicRegionGenerator:
         :param block_size: Size of the exon junction regions, i.e. <block_size> bp upstream of first exon
             and <block_size> bp downstream of second exon.
         :type block_size: int
-        :param n_jobs: maximum number of cores used, defaults to 1
-        :type n_jobs: int
         :return: Dataframe with exon junctions.
         :rtype: pandas.DataFrame
         """
 
-        def _get_exon_junction_list(transcript, exons, transcript_info, block_size, ):
-            
-            exon_junction_list = []
+        transcript_exons, transcript_info = self._get_transcript_exons_and_info(exons)
+        exon_junction_list = []
+
+        for transcript, exons in transcript_exons.items():
             gene_id = transcript_info[transcript][0]
             seqid = transcript_info[transcript][1]
             strand = transcript_info[transcript][2]
@@ -508,16 +494,6 @@ class CustomGenomicRegionGenerator:
                     exons_small = []
                     regions_exons_small = ""
                     exon_upstream = attributes
-                return exon_junction_list
-        
-
-        transcript_exons, transcript_info = self._get_transcript_exons_and_info(exons)
-
-        exon_junction_lists = Parallel(n_jobs=n_jobs)(delayed(_get_exon_junction_list)(transcript, exons, transcript_info, block_size) for transcript, exons in transcript_exons.items())
-        # reassemble the exon junction list
-        exon_junction_list = []
-        for list in exon_junction_lists:
-            exon_junction_list.extend(list)
 
         exon_junctions = pd.DataFrame(
             exon_junction_list,
