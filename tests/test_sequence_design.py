@@ -3,7 +3,7 @@
 ############################################
 
 from oligo_designer_toolsuite.sequence_design import (
-    PadlockSequenceDesigner,
+    PadlockSequence,
 )
 
 

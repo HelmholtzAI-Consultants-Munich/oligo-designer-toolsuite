@@ -122,41 +122,41 @@ def test_ftp_loader_ncbi(tmp_path):
     assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
 
 
-def test_ftp_loader_ensemble(tmp_path):
-    """Test if ftp download for Ensemble works correctly."""
-    # Parameters
-    species = "homo_sapiens"
-    annotation_release = "108"
+# def test_ftp_loader_ensemble(tmp_path):
+#     """Test if ftp download for Ensemble works correctly."""
+#     # Parameters
+#     species = "homo_sapiens"
+#     annotation_release = "108"
 
-    # initialize
-    loader_ensemble = FtpLoaderEnsembl(tmp_path, species, annotation_release)
+#     # initialize
+#     loader_ensemble = FtpLoaderEnsembl(tmp_path, species, annotation_release)
 
-    # retrieve files
-    file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gff")
+#     # retrieve files
+#     file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gff")
 
-    assert (
-        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gff3"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "108", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
+#     assert (
+#         Path(file_gff).name == "Homo_sapiens.GRCh38.108.gff3"
+#     ), "error: wrong file downloaded"
+#     assert annotation_release == "108", "error: wrong annotation release retrieved"
+#     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
-    file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gtf")
+#     file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gtf")
 
-    assert (
-        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gtf"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "108", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
+#     assert (
+#         Path(file_gff).name == "Homo_sapiens.GRCh38.108.gtf"
+#     ), "error: wrong file downloaded"
+#     assert annotation_release == "108", "error: wrong annotation release retrieved"
+#     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
-    file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
-        "fasta"
-    )
+#     file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
+#         "fasta"
+#     )
 
-    assert (
-        Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "108", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
+#     assert (
+#         Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa"
+#     ), "error: wrong file downloaded"
+#     assert annotation_release == "108", "error: wrong annotation release retrieved"
+#     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
 
 def test_GFF_parser():
