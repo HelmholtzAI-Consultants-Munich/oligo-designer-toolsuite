@@ -154,20 +154,28 @@ class MeltingTemperatureNN(PropertyFilterBase):
         return False, {}
 
 
-class ProhibitedSequences(PropertyFilterBase):
+class ConsecutiveRepeats(PropertyFilterBase):
     """Filters the sequences containing a prohibited sequence.
-    :param num_consecutive: minimum number of consecutive nucleotides, that are already not allowed in sequences
+    :param num_consecutive: minimum number of consecutive subsequences, that are not allowed in sequences
     :type num_consecutive: int
+    :param repeated_sequences: subsequences which, if repeated num_consecutive times are not allowed in sequences 
+    :type num_consecutive: list(str)
     """
     def __init__(
         self,
         num_consecutive:int,
+        repeated_sequences: list(str) = ['A', 'C', 'T', 'G'],
     ) -> None:
         """Initializes the class.
         """
 
         super().__init__()
-        self.max_consecutive = num_consecutive
+        if num_consecutive > 1:
+            self.max_consecutive = num_consecutive
+        else:
+            self.max_consecutive = 2
+        self.repeated_sequences = repeated_sequences
+
 
 
     def apply(self, sequence: Seq):
@@ -178,15 +186,12 @@ class ProhibitedSequences(PropertyFilterBase):
         :return: True if the constrined is fulfilled and the melting temperature
         :rtype: bool and dict
         """
-        nucl = ['A', 'C', 'T', 'G']
-        consecutive_sequences = list()
-        for i in nucl:
-            consecutive_sequences.append(i * self.max_consecutive)
         
-        for i in consecutive_sequences:
-            if i in sequence:
+        for sub_seq in self.repeated_sequences:
+            repeated_sub_seq = sub_seq * self.max_consecutive
+            if repeated_sub_seq in sequence:
                 return False, {}
         
-        Tm = mt.Tm_NN(sequence)
-        return True, {"melting_temperature" : Tm}
+        # Tm = mt.Tm_NN(sequence)
+        return True, {} #?
 

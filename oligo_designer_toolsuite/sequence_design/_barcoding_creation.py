@@ -17,7 +17,7 @@ class BarcodingCreator:
         seed: int = 0
     ):
         self.pseudocolors = num_pseudocolors
-        self.genes = list_of_genes
+        self.genes = list_of_genes # Gene or region?
         self.num_genes = len(list_of_genes)
         self.seed = seed
 
