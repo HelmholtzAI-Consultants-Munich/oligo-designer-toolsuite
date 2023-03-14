@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 import pytest
 
-from oligo_designer_toolsuite.database import NcbiOligoDB
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -16,7 +16,7 @@ from oligo_designer_toolsuite.oligo_selection import (
 
 @pytest.fixture()
 def oligos_database():
-    database = NcbiOligoDB(
+    database = OligoDatabase(
         oligo_length_min=30,
         oligo_length_max=40,
         dir_output="tests/output",
