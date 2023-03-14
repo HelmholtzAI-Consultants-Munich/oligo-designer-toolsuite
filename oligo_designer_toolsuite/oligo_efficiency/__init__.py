@@ -3,7 +3,7 @@ This module assignes a score to the oligos and the oligosets for their (on-targe
 """
 
 
-from ._oligo_scoring import OligoScoringBase, PadlockOligoScoring
+from ._oligo_scoring import OligoScoringBase, PadlockOligoScoring, SeqFISHOligoScoring
 from ._set_scoring import (
     SetScoringBase,
     AverageSetScoring,
@@ -18,4 +18,5 @@ __all__ = [
     "PadlockSetScoring",
     "AverageSetScoring",
     "MaxSetScoring",
+    "SeqFISHOligoScoring"
 ]

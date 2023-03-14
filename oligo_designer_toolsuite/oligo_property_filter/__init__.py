@@ -6,6 +6,7 @@ from ._filter_base import (
     PropertyFilterBase,
     GCContent,
     MaskedSequences,
+    ConsecutiveRepeats,
     MeltingTemperatureNN,
     GCClamp,
     ConsecutiveRepeats
