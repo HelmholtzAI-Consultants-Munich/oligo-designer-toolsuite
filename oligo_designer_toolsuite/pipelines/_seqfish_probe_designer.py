@@ -12,7 +12,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     PropertyFilter,
     MaskedSequences,
     GCContent, 
-    ProhibitedSequences
+    ConsecutiveRepeats
 )
 
 from oligo_designer_toolsuite.database import ReferenceDatabase
@@ -23,7 +23,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 from oligo_designer_toolsuite.pipelines._seqfish_readout_probe_designer import SeqFISHReadoutProbeDesigner
 from oligo_designer_toolsuite.sequence_design._barcoding_creation import BarcodingCreator
-from oligo_designer_toolsuite.sequence_design._seqFISH_probes_designer import SeqfishProbesCreator
+from oligo_designer_toolsuite.sequence_design._seqFISH_sequence import SeqfishProbesCreator
 
 from oligo_designer_toolsuite.oligo_efficiency import(
     SeqFISHOligoScoring,
@@ -125,7 +125,7 @@ class SeqFISHProbeDesigner:
         # Filters: MaskedSequences, GCContent, Prohibited Sequences
         masked_sequences = MaskedSequences()
         gc_content = GCContent(GC_content_min=self.config["GC_content_min"], GC_content_max=self.config["GC_content_max"])
-        proh_seq = ProhibitedSequences(num_consecutive = self.config["number_consecutive"])
+        proh_seq = ConsecutiveRepeats(num_consecutive = self.config["number_consecutive"])
         filters = [masked_sequences, proh_seq ,gc_content]
         property_filter = PropertyFilter(filters=filters, write_regions_with_insufficient_oligos=self.config["write_removed_genes"])
         self.oligo_database = property_filter.apply(oligo_database=self.oligo_database, n_jobs=self.config["n_jobs"])

@@ -1,9 +1,36 @@
+from abc import ABC, abstractmethod
 import numpy as np 
-from oligo_designer_toolsuite.oligo_property_filter import GCContent, ProhibitedSequences
+from oligo_designer_toolsuite.oligo_property_filter import GCContent, ConsecutiveRepeats
 from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
 import os
 
-class ReadoutProbes:
+class ReadoutProbesBase(ABC):
+    """"
+    Abstract class to create readout probes 
+    
+    """
+
+    @abstractmethod
+    def create_readout_probes(self):
+        """
+        Function, that creates readout probes
+        :return: list of readout sequences, that fulfil experiment contraints
+        :rtype: list of Seq() 
+        """
+
+    def write_readout_probes(self, readout_probes, filename="readout_probes.fna"):
+        output_file = os.path.join(self.dir_output, filename)
+        output_into_file = list()
+        for i in range(0, len(readout_probes)):
+            record = SeqRecord(readout_probes[i], id="readout_"+str(i+1), name="",description="")
+            output_into_file.append(record)
+        with open(output_file, "w") as f:
+            SeqIO.write(output_into_file, f, "fasta")
+
+# TODO: Use database isntead of dict, documentation
+class SeqFishReadoutProbes(ReadoutProbesBase):
     """"
     Class to create readout probes in SeqFISH+ experiment
     :param length: length of readout probe
@@ -29,6 +56,7 @@ class ReadoutProbes:
         GC_max: int,
         number_consecutive: int,
         random_seed:int,
+        dir_output: str,
         blast_filter ,
         reference_DB
     ):
@@ -36,16 +64,15 @@ class ReadoutProbes:
         self.length = length
         self.num_probes = number_probes
         self.GC_content_filter = GCContent(GC_content_min = GC_min, GC_content_max = GC_max)
-        self.proh_seq_filter = ProhibitedSequences(num_consecutive=number_consecutive)
+        self.proh_seq_filter = ConsecutiveRepeats(num_consecutive=number_consecutive)
         self.lib = ['A', 'C', 'G', 'T']
         self.blast_filter = blast_filter
-        os.getcwd()
-        os.chdir('..')
-        self.ref = os.path.basename(reference_DB.file_fasta)
+        self.ref = os.path.basename(reference_DB.file_fasta) # good idea?
         self.seed = random_seed
+        self.dir_output = dir_output
     
     
-    def create_probes(self):
+    def create_readout_probes(self):
         """
         Function, that creates readout probes
         :return: list of readout sequences, that fulfil experiment contraints
