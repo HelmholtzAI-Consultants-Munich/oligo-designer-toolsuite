@@ -14,9 +14,9 @@ def generate_binary_sequences(n_bit, n_one, n_seq=None):
     '''
 
     if n_seq > 2 ** n_bit:
-        raise Exception("Sorry, the number of sequences were larger than possible")
+        raise Exception("Error: the number of sequences is tool large!")
     if n_one > n_bit:
-        raise Exception("Sorry, the number of ones were were larger than possible")
+        raise Exception("Error: the number of ones is tool large!")
 
     else:
         sequences = set()

@@ -9,12 +9,12 @@ from ._filter_base import (
     ConsecutiveRepeats,
     MeltingTemperatureNN,
     GCClamp,
-    ConsecutiveRepeats
+    ConsecutiveRepeats,
+    HairpinSecondaryStructure
 
 )
 from ._filter_padlock_oligos import PadlockArms
 from ._property_filter import PropertyFilter
-from ._filter_secondary_structure import Secondary_struct
 __all__ = [
     "PropertyFilter",
     "PropertyFilterBase",
@@ -24,5 +24,5 @@ __all__ = [
     "PadlockArms",
     "GCClamp",
     "ConsecutiveRepeats",
-    "Secondary_struct"
+    "HairpinSecondaryStructure"
 ]
