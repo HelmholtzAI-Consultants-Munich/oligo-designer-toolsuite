@@ -406,51 +406,92 @@ class OligoDatabase:
             if oligo_strand == "-":
                 list_of_coordinates.reverse()
 
-            for oligo_length in range(self.oligo_length_min, self.oligo_length_max + 1):
-                if len(seq) > oligo_length:
-                    number_oligos = len(seq) - (oligo_length - 1)
-                    oligos = [seq[i : i + oligo_length] for i in range(number_oligos)]
-
-                    for i in range(number_oligos):
-                        oligo = oligos[i]
-                        oligo_start_end = [
-                            list_of_coordinates[i],
-                            list_of_coordinates[(i + oligo_length - 1)],
-                        ]
-                        oligo_start_end.sort()
-                        oligo_start = oligo_start_end[0] - 1  # turn into 0-based index
-                        oligo_end = oligo_start_end[1]
-                        oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
-                        oligo_attributes = {
-                            "sequence": oligo,
-                            "chromosome": oligo_chrom,
-                            "start": oligo_start,
-                            "end": oligo_end,
-                            "strand": oligo_strand,
-                            "length": oligo_length,
-                            "additional_information_fasta": [additional_information],
-                        }
-
-                        if oligo in oligo_sequence_ids:
-                            if oligo_id in oligo_sequence_ids[oligo].keys():
-                                entry_additional_information = oligo_sequence_ids[
-                                    oligo
-                                ][oligo_id]["additional_information_fasta"]
-                                entry_additional_information.append(
-                                    additional_information
-                                )
-                                # remove exon junctions entry if exon entry exists
-                                oligo_sequence_ids[oligo][oligo_id][
-                                    "additional_information_fasta"
-                                ] = [
-                                    info
-                                    for info in entry_additional_information
-                                    if "__JUNC__" not in info
-                                ]
-                            else:
-                                oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
+            if region_id.split("_")[0] in ["bc25mer"]:
+            # read bc25mer sequence
+                if (self.oligo_length_max + 1) > len(seq) > self.oligo_length_min:
+                    oligo = seq
+                    oligo_start_end = []
+                    oligo_start = "Unknown"  # turn into 0-based index
+                    oligo_end = "Unknown"
+                    oligo_length = len(seq)
+                    oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
+                    oligo_attributes = {
+                        "sequence": oligo,
+                        "chromosome": oligo_chrom,
+                        "start": oligo_start,
+                        "end": oligo_end,
+                        "strand": oligo_strand,
+                        "length": oligo_length,
+                        "additional_information_fasta": ["None"],
+                    }
+                    if oligo in oligo_sequence_ids:
+                        if oligo_id in oligo_sequence_ids[oligo].keys():
+                            entry_additional_information = oligo_sequence_ids[
+                                oligo
+                            ][oligo_id]["additional_information_fasta"]
+                            entry_additional_information.append(
+                                additional_information
+                            )
+                            # remove exon junctions entry if exon entry exists
+                            oligo_sequence_ids[oligo][oligo_id][
+                                "additional_information_fasta"
+                            ] = [
+                                info
+                                for info in entry_additional_information
+                                if "__JUNC__" not in info
+                            ]
                         else:
-                            oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
+                            oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
+                    else:
+                        oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
+            else:
+                for oligo_length in range(self.oligo_length_min, self.oligo_length_max + 1):
+                    if len(seq) > oligo_length:
+                        number_oligos = len(seq) - (oligo_length - 1)
+                        oligos = [seq[i : i + oligo_length] for i in range(number_oligos)]
+
+                        for i in range(number_oligos):
+                            oligo = oligos[i]
+                            oligo_start_end = [
+                                list_of_coordinates[i],
+                                list_of_coordinates[(i + oligo_length - 1)],
+                            ]
+
+                            oligo_start_end.sort()
+                            oligo_start = oligo_start_end[0] - 1  # turn into 0-based index
+                            oligo_end = oligo_start_end[1]
+                            oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
+                            oligo_attributes = {
+                                "sequence": oligo,
+                                "chromosome": oligo_chrom,
+                                "start": oligo_start,
+                                "end": oligo_end,
+                                "strand": oligo_strand,
+                                "length": oligo_length,
+                                "additional_information_fasta": [additional_information],
+                            }
+
+
+                            if oligo in oligo_sequence_ids:
+                                if oligo_id in oligo_sequence_ids[oligo].keys():
+                                    entry_additional_information = oligo_sequence_ids[
+                                        oligo
+                                    ][oligo_id]["additional_information_fasta"]
+                                    entry_additional_information.append(
+                                        additional_information
+                                    )
+                                    # remove exon junctions entry if exon entry exists
+                                    oligo_sequence_ids[oligo][oligo_id][
+                                        "additional_information_fasta"
+                                    ] = [
+                                        info
+                                        for info in entry_additional_information
+                                        if "__JUNC__" not in info
+                                    ]
+                                else:
+                                    oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
+                            else:
+                                oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
 
         database_entries = {}
         for oligo_ids in oligo_sequence_ids.values():

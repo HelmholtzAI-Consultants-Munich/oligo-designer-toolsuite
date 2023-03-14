@@ -1,0 +1,188 @@
+### General parameters
+n_jobs: 1 # number of cores used to run the pipeline
+dir_output: output_merfish # name of the directory where the output files will be written
+file_format: tsv # fromat of the written files, can be "tsv" or "gtf"
+min_oligos_per_gene: 0 # minimum number of oligos that a gene must have before it gets deleted
+write_removed_genes: True # write in a file the removed genes
+write_intermediate_steps: True # writes the oligo sequences after each step of the pipeline
+
+
+### Parameters for genome and gene annotation
+source: custom # required: indicate that own annotation should be used
+annotation_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf # required: GTF file with gene annotation
+sequence_file: ./data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna # required: FASTA file with genome sequence
+species: human # optional: species of provided annotation, leave empty if unknown
+annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
+genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
+files_source: NCBI  # optional: source of provided annotation, leave empty if unknown
+file_genes: ./data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+
+oligo_length_max: 30
+primers_length: 20
+readout_length: 30
+use_default_readouts: True # use the default readout sequences from the merfish paper
+percentage_blank: 10 #percentage of blank barcodes
+
+### Parameters for oligo sequences generation
+
+primer_oligo:
+  file_bc25mer: ./data/bc25mer/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  oligo_output : ./data/bc25mer # output directory of the modified bc25mer fasta file
+  oligo_length_min: 19 #min length of oligos
+  oligo_length_max: 20 #max length of oligos
+
+
+readout_oligo:
+  file_bc25mer: ./data/bc25mer/bc25mer.240k.fasta # file with a list the genes used to generate the oligos  sequences, set as None if all the genes are used
+  oligo_output: ./data/bc25mer # output directory of the modified bc25mer fasta file
+  oligo_length_min: 29 #min length of oligos
+  oligo_length_max: 30 #max length of oligos
+
+target_oligo:
+  oligo_length_min: 30
+  oligo_length_max: 30
+
+#### Parameters for encoding ####
+encoding: "MHD4"
+
+MHD4:
+  num_seq: 100 #upper limit 140
+  num_bits: 16
+  num_ones: 4
+  hamming_distance: 4
+
+MHD2:
+  num_seq: 100 #upper limit 1001
+  num_bits: 14
+  num_ones: 4
+  min_hamming_distance: 2
+
+
+### Parameters for the property filers
+
+primers_setup:
+  GC_content_min: 50 #minimum GC content of oligos #need to be checked in other paper
+  GC_content_max: 65 #maximum GC content of oligos #need to be checked in other paper
+  GC_clamp_n: 2 #number of terminal bases to check for a G or a C
+  Tm_min: 70  #minimum melting temperature of oligos
+  Tm_max: 80 #maximum melting temperature of oligos
+  max_repeats_nt: 2
+
+
+readout_setup:
+
+  GC_content_min: 40 #minimum GC content of oligos #need to be checked in other paper
+  GC_content_max: 60 #maximum GC content of oligos #need to be checked in other paper
+
+  Tm_min: 70  #minimum melting temperature of oligos
+  Tm_max: 80 #maximum melting temperature of oligos
+  max_repeats_nt: 3
+
+targets_setup:
+
+  GC_content_min: 40 #minimum GC content of oligos  #need to be checked in other paper
+
+  GC_content_max: 60 #maximum GC content of oligos #need to be checked in other paper
+
+  Tm_min: 70  #minimum melting temperature of oligos
+  Tm_max: 80 #maximum melting temperature of oligos #not provided
+
+  cross_hybridization_targets_Tm_min : 72  #  lower bound on the Tm of hybridization to potential off-target sequences 
+  cross_hybridization_targets_Tm_max : 100 #not specified
+  internal_secondary_structures_T: 76 # temperature at which secondary structures are evaluated
+  internal_secondary_structures_threshold_deltaG: 0 # delta G threshold of the secondary structures
+  max_repeats_nt: 6 # maximum number of consecutive repeats
+
+
+
+### Parameters for the specificity filters
+
+
+# Blastn Similarity Filter
+
+
+coverage: 50 #minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage) #not specified
+percent_identity: 80 #maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)  #not specified
+strand: plus # strand of the query sequence to search
+
+
+primers_blast_setup:
+  #blast1 against human transcriptome
+  blast1_word_size: 14 #word size for the blastn seed (exact match to target)
+  #blast 2 against 3′ end of any other primer
+  blast2_word_size: 11 
+  #blast3 against 3′ end of the T7 promoter
+  blast3_word_size: 5
+    
+
+
+
+
+readout_blast_setup:
+
+  blast1_word_size: 11 #word size for the blastn seed (exact match to target)
+    #back_ground_DB: index primer sequences and other readout sequences
+
+  blast2_word_size: 14
+    #back_ground_DB: transcriptome
+
+
+targeting_sequences_setup:
+  word_size: 17  #Not provided: "remove > 1 cellular RNA sepices Target"
+  percent_identity: 66 #cross hybridization
+
+
+probe_setup:
+  blast1_word_size: 14 #back_ground_DB: #rRNAs or tRNAs
+  blast2_word_size: 17 #back_ground_DB: #highly expressed genes
+  file_highly_expressed_genes: #text file containing highly expressed genes 
+
+
+
+### Parameters for Melting Temperature
+# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+Tm_parameters:
+    shared:
+        check: True
+        strict: True
+        c_seq: null
+        shift: 0
+        nn_table: DNA_NN3
+        tmm_table: DNA_TMM1
+        imm_table: DNA_IMM1
+        de_table: DNA_DE1
+        dnac1: 50 #[nM]   
+        dnac2: 0
+        selfcomp: False
+        dNTPs: 0
+        saltcorr: 7
+    property_filter:
+        Na: 1000 #[mM] #1M from oligoArray paper
+        K: 0 #[mM] 
+        Tris: 0 #[mM] 
+        Mg: 0 #[mM]
+
+
+Tm_correction_parameters:
+    shared:
+        DMSO: 0
+        DMSOfactor: 0.75
+        fmdfactor: 0.65
+        fmdmethod: 1
+        GC: null
+    property_filter:
+        fmd: 20
+    detection_oligo:
+        fmd: 30
+
+Tm_chem_correction_param:
+    shared:
+        DMSO: 0
+        DMSOfactor: 0.75
+        fmdfactor: 0.65
+        fmdmethod: 1
+        GC: null
+    property_filter:
+        fmd: 20
+    detection_oligo:
+        fmd: 30

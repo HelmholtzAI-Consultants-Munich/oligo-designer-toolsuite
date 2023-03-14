@@ -123,8 +123,11 @@ class Blastn(SpecificityFilterBase):
         matching_oligos = self._find_matching_oligos(blast_results)
         filtered_database_region = self._filter_matching_oligos(database_region, matching_oligos)
         # remove temporary files
-        os.remove(os.path.join(self.dir_blast, file_blast_gene))
-        os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
+        #os.remove(os.path.join(self.dir_blast, file_blast_gene))
+        os.remove(os.path.join(file_blast_gene))
+
+        # os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
+        os.remove(os.path.join(file_oligo_fasta_gene))
         return filtered_database_region
 
     def _read_blast_output(self, file_blast_gene):
@@ -154,7 +157,13 @@ class Blastn(SpecificityFilterBase):
             },
         )
         # return the real matches, that is the ones not belonging to the same region of the query oligo
-        blast_results["query_gene_id"] = blast_results["query"].str.split("_").str[0]
+        if(len(blast_results["query"])!=0):
+            if("bc25" in blast_results["query"][0]):
+                blast_results["query_gene_id"] = blast_results["query"].str.split("_").str[0]+"_"+blast_results["query"].str.split("_").str[1]
+            else:    
+                blast_results["query_gene_id"] = blast_results["query"].str.split("_").str[0]
+        else:
+            blast_results["query_gene_id"] = blast_results["query"]
         blast_results["target_gene_id"] = blast_results["target"].str.split("::").str[0]
         return blast_results
 

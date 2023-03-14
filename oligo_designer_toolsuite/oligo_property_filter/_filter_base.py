@@ -151,7 +151,7 @@ class MeltingTemperatureNN(PropertyFilterBase):
         sequence_features = {"melting_temperature": Tm}
         if self.Tm_min < Tm < self.Tm_max:
             return True, sequence_features
-        return False, {}
+        return False, {Tm}
 
 
 class ConsecutiveRepeats(PropertyFilterBase):
@@ -195,3 +195,27 @@ class ConsecutiveRepeats(PropertyFilterBase):
         # Tm = mt.Tm_NN(sequence)
         return True, {} #?
 
+
+class GCClamp(PropertyFilterBase):
+    """ Filters the sequences by the presence of a GC Clamp: one of the n 3' terminal bases must be G or C
+    :param n: number of terminal bases to check for a G or a C
+    :type  n: int
+
+
+    """
+    def __init__(self, n:int) -> None:
+        super().__init__()
+        self.n = n
+
+    def apply(self, sequence: Seq):
+        """Applies the filter and returns True if there is a GC clamp
+
+        :param sequence: sequence to be filtered
+        :type sequence: str
+        :return: True if the constrain is fulfilled
+        :rtype: bool
+        """
+        for i in range (self.n):
+            if (sequence[-i-1]=='G' or sequence[-i-1]=='C'):
+                return True, {}
+        return False, {}
