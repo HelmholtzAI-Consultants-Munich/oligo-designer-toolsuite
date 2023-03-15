@@ -3,7 +3,10 @@ import shutil
 import pandas as pd
 import pytest
 
-from oligo_designer_toolsuite.database import OligoDatabase, CustomGenomicRegionGenerator
+from oligo_designer_toolsuite.database import (
+    OligoDatabase,
+    CustomGenomicRegionGenerator,
+)
 from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -13,8 +16,13 @@ from oligo_designer_toolsuite.oligo_selection import (
     padlock_heuristic_selection,
 )
 
-annotation_file_ncbi = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-sequence_file_ncbi = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+annotation_file_ncbi = (
+    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+)
+sequence_file_ncbi = (
+    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+)
+
 
 @pytest.fixture(scope="session")
 def oligos_database(tmpdir_factory):
@@ -57,7 +65,9 @@ def oligoset_generator():
 
 # check we obtain the same result
 def test_oligosets_generation(oligoset_generator, oligos_database):
-    oligos_database = oligoset_generator.apply(oligo_database=oligos_database, n_sets=100)
+    oligos_database = oligoset_generator.apply(
+        oligo_database=oligos_database, n_sets=100
+    )
     for gene in oligos_database.oligosets.keys():
         computed_sets = oligos_database.oligosets[gene]
         computed_sets.drop(columns=["oligoset_id"], inplace=True)

@@ -32,34 +32,42 @@ from oligo_designer_toolsuite.utils import (
 def test_data_parser(tmp_path):
     """Test if data parser functionalities work correctly."""
     # test file format checkers
-    file_gff = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+    file_gff = (
+        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+    )
     res = check_gff_format(file_gff)
     assert (
         res == True
     ), f"error: gff file format checker did not recognize gff file {file_gff}"
 
-    file_gtf = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+    file_gtf = (
+        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+    )
     res = check_gff_format(file_gtf)
     assert (
         res == True
     ), f"error: gff file format checker did not recognize gtf file {file_gtf}"
 
-    file_fasta = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+    file_fasta = (
+        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+    )
     res = check_fasta_format(file_fasta)
     assert (
         res == True
     ), f"error: fasta file format checker did not recognize fasta file {file_fasta}"
 
-    file_tsv = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+    file_tsv = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
     res = check_tsv_format(file_tsv)
     assert (
         res == True
     ), f"error: tsv file format checker did not recognize tsv file {file_tsv}"
 
     # test sequence extraction from annotation and fasta file
-    file_bed = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
+    file_bed = (
+        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
+    )
     file_reference_fasta = (
-        "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
     )
     file_fasta = os.path.join(tmp_path, "test_ann2seq_function.fna")
     get_sequence_from_annotation(
@@ -122,41 +130,41 @@ def test_ftp_loader_ncbi(tmp_path):
     assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
 
 
-# def test_ftp_loader_ensemble(tmp_path):
-#     """Test if ftp download for Ensemble works correctly."""
-#     # Parameters
-#     species = "homo_sapiens"
-#     annotation_release = "108"
+def test_ftp_loader_ensemble(tmp_path):
+    """Test if ftp download for Ensemble works correctly."""
+    # Parameters
+    species = "homo_sapiens"
+    annotation_release = "108"
 
-#     # initialize
-#     loader_ensemble = FtpLoaderEnsembl(tmp_path, species, annotation_release)
+    # initialize
+    loader_ensemble = FtpLoaderEnsembl(tmp_path, species, annotation_release)
 
-#     # retrieve files
-#     file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gff")
+    # retrieve files
+    file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gff")
 
-#     assert (
-#         Path(file_gff).name == "Homo_sapiens.GRCh38.108.gff3"
-#     ), "error: wrong file downloaded"
-#     assert annotation_release == "108", "error: wrong annotation release retrieved"
-#     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
+    assert (
+        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gff3"
+    ), "error: wrong file downloaded"
+    assert annotation_release == "108", "error: wrong annotation release retrieved"
+    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
-#     file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gtf")
+    file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gtf")
 
-#     assert (
-#         Path(file_gff).name == "Homo_sapiens.GRCh38.108.gtf"
-#     ), "error: wrong file downloaded"
-#     assert annotation_release == "108", "error: wrong annotation release retrieved"
-#     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
+    assert (
+        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gtf"
+    ), "error: wrong file downloaded"
+    assert annotation_release == "108", "error: wrong annotation release retrieved"
+    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
-#     file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
-#         "fasta"
-#     )
+    file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
+        "fasta"
+    )
 
-#     assert (
-#         Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa"
-#     ), "error: wrong file downloaded"
-#     assert annotation_release == "108", "error: wrong annotation release retrieved"
-#     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
+    assert (
+        Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa"
+    ), "error: wrong file downloaded"
+    assert annotation_release == "108", "error: wrong annotation release retrieved"
+    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
 
 def test_GFF_parser():
@@ -165,13 +173,17 @@ def test_GFF_parser():
     parser = GffParser()
 
     ##### Test GFF3 parsing
-    file_gff = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+    file_gff = (
+        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+    )
 
     dataframe_gff = parser.read_gff(file_gff, target_lines=10)
     assert dataframe_gff.shape[1] == 23, "error: GFF3 dataframe not correctly loaded"
 
     ##### Test GTF parsing
-    file_gtf = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+    file_gtf = (
+        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+    )
 
     dataframe_gtf = parser.read_gff(file_gtf, target_lines=10)
     assert dataframe_gtf.shape[1] == 20, "error: GTF dataframe not correctly loaded"

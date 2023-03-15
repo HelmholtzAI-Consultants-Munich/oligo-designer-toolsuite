@@ -65,6 +65,7 @@ def oligo_database_info(oligo_database: dict):
 def generate_config_file(directory: str, source: str):
     directory = os.path.join(directory, "config")
     Path(directory).mkdir(parents=True, exist_ok=True)
+    config_file = None
     if source == "custom":
         config_file = generate_custom_config(
             directory
@@ -404,6 +405,9 @@ def initialize_parameters(parser: ArgumentParser):
     args = parser.parse_args()
     args = vars(args)
     if args["config"] is None:
+        if args["source"] is None:
+            warnings.warn(f"No source was defined. Using default source: NCBI")
+            args["source"] = "ncbi"
         args["config"] = generate_config_file(args["output"], args["source"])
 
     # read the config file
@@ -496,8 +500,11 @@ def padlock_probe_designer():
             genome_assembly=config["genome_assembly"],
             dir_output=dir_output,
         )
-    file_transcriptome = region_generator.generate_transcript_reduced_representation(include_exon_junctions=True, exon_junction_size=2*config["oligo_length_max"], n_jobs=config["n_jobs"])
-    
+    file_transcriptome = region_generator.generate_transcript_reduced_representation(
+        include_exon_junctions=True,
+        exon_junction_size=2 * config["oligo_length_max"],
+    )
+
     # oligo database
     oligo_database = OligoDatabase(
         file_fasta=file_transcriptome,
@@ -656,7 +663,11 @@ def padlock_probe_designer():
             genes = [line.rstrip() for line in lines]
 
     # generate the oligo sequences from gene transcripts
-    oligo_database.create_database(oligo_length_min=config["oligo_length_min"], oligo_length_max=config["oligo_length_max"],region_ids=genes)
+    oligo_database.create_database(
+        oligo_length_min=config["oligo_length_min"],
+        oligo_length_max=config["oligo_length_max"],
+        region_ids=genes,
+    )
     if config["write_intermediate_steps"]:
         oligo_database.write_database(filename="oligo_database_initial.txt")
 

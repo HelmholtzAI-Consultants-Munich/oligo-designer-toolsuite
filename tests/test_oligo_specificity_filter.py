@@ -20,7 +20,7 @@ cwd = os.getcwd()
 n_jobs = 1
 ligation_region = 0
 dir_output = cwd + "/tests/output"
-dir_annotations = cwd + "/tests/data"
+dir_annotations = cwd + "/tests/data/specificity_filters"
 min_oligos_per_gene = 2
 
 # Reference transcriptome files for tests
@@ -62,7 +62,7 @@ def test_filter_exact_matches():
     exact_matches = ExactMatches(dir_output)
     oligo_database.load_database(file_oligo_info_exact_matches)
     filtered_oligo_info_dict_match = exact_matches.apply(
-         oligo_database.database, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     assert (
@@ -199,8 +199,7 @@ def test_seed_filter_no_match():
     seed_region_filter = BowtieSeedRegion(dir_output, ligation_seed_region)
     oligo_database.load_database(file_oligo_info_ligation_nomatch)
     filtered_oligo_info_dict_ligation_no_match = seed_region_filter.apply(
-                oligo_database.database
-, file_transcriptome_fasta_ligation, n_jobs
+        oligo_database.database, file_transcriptome_fasta_ligation, n_jobs
     )
     # check tha the oligo has been removed form the dataset
     assert (
