@@ -5,7 +5,6 @@
 import os
 import warnings
 import pandas as pd
-import time
 
 from pathlib import Path
 from copy import copy, deepcopy
@@ -28,9 +27,9 @@ from ..utils._data_parser import (
 
 class OligoDatabase:
     """This class generates all possible oligos that can be designed for a given list of regions (e.g. genes),
-    based on the transcriptome or the gene CDS annotation or the whole genome provided as fasta file. 
-    
-    The header of each sequence must start with '>' and contain the following information: 
+    based on the transcriptome or the gene CDS annotation or the whole genome provided as fasta file.
+
+    The header of each sequence must start with '>' and contain the following information:
     region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
     where the region_id is compulsory and the other fileds are opional.
 
@@ -41,7 +40,7 @@ class OligoDatabase:
     Example:
     >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
     AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
-    
+
     Moreover, the database can be saved and loaded to/from a tsv file.
 
     files_Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
@@ -92,7 +91,9 @@ class OligoDatabase:
 
         if files_source is None:
             files_source = "custom"
-            warnings.warn(f"No files_source defined. Using default files_source {files_source}!")
+            warnings.warn(
+                f"No files_source defined. Using default files_source {files_source}!"
+            )
 
         if species is None:
             species = "unknown"
@@ -155,7 +156,9 @@ class OligoDatabase:
         :type region_ids: list of str, optional
         """
         if self.file_fasta is None:
-            raise RuntimeError("The Database class does not have any fasta file, if you want to create a database a fasta file needs to be given in input when initalizing the class.")
+            raise RuntimeError(
+                "The Database class does not have any fasta file, if you want to create a database a fasta file needs to be given in input when initalizing the class."
+            )
         self.oligo_length_min = oligo_length_min
         self.oligo_length_max = oligo_length_max
         with open(self.file_fasta, "r") as handle:
@@ -256,11 +259,10 @@ class OligoDatabase:
         :return: Path to database file (tsv file).
         :rtype: str
         """
-        
+
         file_database = os.path.join(self.dir_output, filename)
         file_tsv_content = []
-        #database = deepcopy(self.database)
-        
+        # database = deepcopy(self.database)
 
         for region_id, oligo_dict in self.database.items():
             for oligo_id, oligo_attributes in oligo_dict.items():
@@ -395,7 +397,8 @@ class OligoDatabase:
             # by subtracting 1. This needs to be done afterwards because on the minus strand the start has a
             # higher number than the end, which needs to be sorted and turned into 0-based index
             null_coordinates = False
-            if coordinates["start"][0] is None: # teh header doesn't contain position information
+            if coordinates["start"][0] is None:
+                # if the header doesn't contain position information
                 list_of_coordinates = [None for i in range(len(seq))]
                 null_coordinates = True
             else:
@@ -420,17 +423,17 @@ class OligoDatabase:
 
                     for i in range(number_oligos):
                         oligo = oligos[i]
-                        if null_coordinates: # the header fo the fasta file is just the region name
-                            oligo_start = None
-                            oligo_end = None
+                        oligo_start_end = [
+                            list_of_coordinates[i],
+                            list_of_coordinates[(i + oligo_length - 1)],
+                        ]
+                        # if the header fo the fasta file is just the region name
+                        if null_coordinates:
                             oligo_id = f"{region_id}_{i}"
                         else:
-                            oligo_start_end = [
-                                list_of_coordinates[i],
-                                list_of_coordinates[(i + oligo_length - 1)],
-                            ]
                             oligo_start_end.sort()
-                            oligo_start = oligo_start_end[0] - 1  # turn into 0-based index
+                            # turn into 0-based index
+                            oligo_start = oligo_start_end[0] - 1
                             oligo_end = oligo_start_end[1]
                             oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
                         oligo_attributes = {
@@ -463,7 +466,7 @@ class OligoDatabase:
                                 oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
                         else:
                             oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
-                            
+
         database_entries = {}
         for oligo_ids in oligo_sequence_ids.values():
             if null_coordinates:
