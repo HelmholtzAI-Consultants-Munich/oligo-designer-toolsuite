@@ -169,10 +169,8 @@ def test_ftp_loader_ensemble(tmp_path):
 
 def test_GFF_parser():
     """Test of GFF/GTF parser parses file correctly."""
-    # Initialize parser
-    parser = GffParser()
-
     ##### Test GFF3 parsing
+    parser = GffParser()
     file_gff = (
         "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
     )
@@ -181,6 +179,7 @@ def test_GFF_parser():
     assert dataframe_gff.shape[1] == 23, "error: GFF3 dataframe not correctly loaded"
 
     ##### Test GTF parsing
+    parser = GffParser()
     file_gtf = (
         "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
     )
