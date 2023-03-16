@@ -26,20 +26,17 @@ sequence_file_ncbi = (
 
 @pytest.fixture(scope="session")
 def oligos_database(tmpdir_factory):
+    base_temp = tmpdir_factory.getbasetemp()
     database = OligoDatabase(
         file_fasta=None,
-        dir_output="tests/output",
+        dir_output=base_temp,
         species="human",
         annotation_release="110",
         n_jobs=2,
     )
-
     database.load_database("tests/data/oligos_info.tsv")
 
     yield database
-
-    shutil.rmtree("tests/output")
-    del database
 
 
 @pytest.fixture()
