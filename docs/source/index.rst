@@ -41,7 +41,7 @@ and can be combined individually depending on the required processing steps.
    :maxdepth: 1
    :caption: TUTORIALS
 
-   _tutorials/padlock_probe_designer
+   _tutorials/introduction_to_ODT_setup_a_custom_pipeline
 
 .. toctree::
    :maxdepth: 2
