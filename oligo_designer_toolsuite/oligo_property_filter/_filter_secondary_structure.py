@@ -4,7 +4,7 @@ from seqfold import dg
 from . import PropertyFilterBase
 
 
-class Secondary_struct(PropertyFilterBase):
+class Secondary_struct(PropertyFilterBase): # we should rename the class to SecondaryStructure
     """ Filter sequences by the minimum free energy of the folded sequence, i.e. secondary structure containing stacks, bulges, hairpins or interior loops.
     :param T: The temperature to fold at, i.e. temperature at which the sequence folding is predicted (°C)
     :type T: float
