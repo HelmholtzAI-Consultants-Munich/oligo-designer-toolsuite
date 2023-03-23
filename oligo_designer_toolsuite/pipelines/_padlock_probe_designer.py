@@ -205,7 +205,6 @@ class PadlockProbeDesigner:
         self._log_parameters(parameters)
 
         ##### loading annotations from different sources #####
-        logging.info("Loading Annotation Files.")
         if source == "ncbi":
             # dowload the fasta files formthe NCBI server
             self.region_generator = NcbiGenomicRegionGenerator(
