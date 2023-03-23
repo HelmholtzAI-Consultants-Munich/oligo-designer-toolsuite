@@ -18,22 +18,16 @@ class PropertyFilter:
 
     :param filters: list of filters classes already initialized
     :type filters: list of classes
-    :param write_regions_with_insufficient_oligos: if True, region (e.g. gene) with insufficient oligos is written in a file, defaults to True
-    :type write_regions_with_insufficient_oligos: bool, optional
     """
 
     def __init__(
         self,
         filters: list[PropertyFilterBase],
-        write_regions_with_insufficient_oligos: bool = True,
     ) -> None:
         """
         Constructor.
         """
         self.filters = filters
-        self.write_regions_with_insufficient_oligos = (
-            write_regions_with_insufficient_oligos
-        )
 
     def apply(self, oligo_database: OligoDatabase, n_jobs: int = None):
         """Filters the database of oligos based on the given filters.
@@ -51,16 +45,14 @@ class PropertyFilter:
         database = oligo_database.database
         region_ids = list(database.keys())
         database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_region)(database[region])
-            for region in region_ids
+            delayed(self._filter_region)(database[region]) for region in region_ids
         )
         database = {}
         for database_region, region_id in zip(database_regions, region_ids):
             database[region_id] = database_region
         oligo_database.database = database
         oligo_database.remove_regions_with_insufficient_oligos(
-            pipeline_step="Property Filter",
-            write=self.write_regions_with_insufficient_oligos,
+            pipeline_step="Property Filter"
         )
         return oligo_database
 

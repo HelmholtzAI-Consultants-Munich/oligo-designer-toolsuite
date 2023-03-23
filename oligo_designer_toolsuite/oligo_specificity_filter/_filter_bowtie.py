@@ -1,7 +1,8 @@
 import os
 import re
+import subprocess
 from pathlib import Path
-from subprocess import Popen
+
 
 import pandas as pd
 from joblib import Parallel, delayed
@@ -25,9 +26,12 @@ class Bowtie(SpecificityFilterBase):
     """
 
     def __init__(
-        self, dir_specificity: str, num_mismatches: int = 3, mismatch_region: int = None
+        self,
+        dir_specificity: str,
+        num_mismatches: int = 3,
+        mismatch_region: int = None,
+        strand: str = None,
     ):
-
         super().__init__(dir_specificity)
 
         if num_mismatches > 3:
@@ -43,6 +47,8 @@ class Bowtie(SpecificityFilterBase):
             )
         else:
             self.mismatch_region = mismatch_region
+
+        self.strand = strand
 
         self.dir_bowtie = os.path.join(self.dir_specificity, "bowtie")
         Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
@@ -82,7 +88,7 @@ class Bowtie(SpecificityFilterBase):
                 + " "
                 + index_name
             )
-            process = Popen(command1, shell=True, cwd=self.dir_bowtie).wait()
+            process = subprocess.Popen(command1, shell=True, cwd=self.dir_bowtie).wait()
 
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
@@ -106,7 +112,9 @@ class Bowtie(SpecificityFilterBase):
         :type region: str
         """
 
-        file_oligo_fasta_gene = self._create_fasta_file(databse_region, self.dir_fasta, region)
+        file_oligo_fasta_gene = self._create_fasta_file(
+            databse_region, self.dir_fasta, region
+        )
         file_bowtie_gene = os.path.join(
             self.dir_bowtie,
             f"bowtie_{region}.txt",
@@ -136,13 +144,21 @@ class Bowtie(SpecificityFilterBase):
                 + file_bowtie_gene
             )
 
-        process = Popen(command, shell=True, cwd=self.dir_bowtie).wait()
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            cwd=self.dir_bowtie,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).wait()
 
         # read the results of the bowtie search
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
         # filter the DB based on the bowtie results
         matching_oligos = self._find_matching_oligos(bowtie_results)
-        filtered_database_region = self._filter_matching_oligos(databse_region, matching_oligos)
+        filtered_database_region = self._filter_matching_oligos(
+            databse_region, matching_oligos
+        )
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie, file_bowtie_gene))
         os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
@@ -195,6 +211,11 @@ class Bowtie(SpecificityFilterBase):
         bowtie_matches = bowtie_results[
             bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
         ]
+
+        if self.strand == "plus":
+            bowtie_matches = bowtie_matches[bowtie_matches["strand"] == "+"]
+        elif self.strand == "minus":
+            bowtie_matches = bowtie_matches[bowtie_matches["strand"] == "-"]
 
         oligos_with_match = bowtie_matches["query"].unique()
         return oligos_with_match

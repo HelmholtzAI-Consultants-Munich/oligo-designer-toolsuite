@@ -8,21 +8,17 @@ class SpecificityFilter:
 
     :param filters: List of all the filter classes that we want to apply to the database
     :type filters: list of ``SpecificityFilterBase`` class
-    :param write_regions_with_insufficient_oligos: if True genes with insufficient oligos are written in a file, defaults to True
-    :type write_regions_with_insufficient_oligos: bool, optional
     """
 
     def __init__(
         self,
         filters: list[SpecificityFilterBase],
-        write_regions_with_insufficient_oligos: bool = True,
     ):
         """
         Constructor.
         """
 
         self.filters = filters
-        self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
 
     def apply(
         self,
@@ -49,12 +45,8 @@ class SpecificityFilter:
 
         database = oligo_database.database
         for filter in self.filters:
-            database = filter.apply(
-                database, reference_database.file_fasta, n_jobs
-            )
+            database = filter.apply(database, reference_database.file_fasta, n_jobs)
 
         oligo_database.database = database
-        oligo_database.remove_regions_with_insufficient_oligos(
-            "Specificity filter", self.write_regions_with_insufficient_oligos
-        )
+        oligo_database.remove_regions_with_insufficient_oligos("Specificity filter")
         return oligo_database

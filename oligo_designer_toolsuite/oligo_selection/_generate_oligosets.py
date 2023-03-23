@@ -23,8 +23,7 @@ class OligosetGenerator:
     :type dir_oligo_sets: str
     :param heurustic_selection: functions that preselects the oligos making the seach of the best oligosets less demanding
     :type dir_oligo_sets: Callable
-    :param write_regions_with_insufficient_oligos: if True regions with insufficient oligos are written in a file, defaults to True
-    :type write_regions_with_insufficient_oligos: bool, optional"""
+    """
 
     def __init__(
         self,
@@ -33,7 +32,6 @@ class OligosetGenerator:
         oligos_scoring: OligoScoringBase,
         set_scoring: SetScoringBase,
         heurustic_selection: Callable = None,
-        write_regions_with_insufficient_oligos: bool = True,
     ) -> None:
         """Initialize the class."""
 
@@ -42,7 +40,6 @@ class OligosetGenerator:
         self.heurustic_selection = heurustic_selection
         self.oligos_scoring = oligos_scoring
         self.set_scoring = set_scoring
-        self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
 
     def apply(
         self, oligo_database: OligoDatabase, n_sets: int = 50, n_jobs: int = None
@@ -90,8 +87,7 @@ class OligosetGenerator:
                 del database_region["oligosets"]
                 oligo_database.database[region] = database_region
         oligo_database.remove_regions_with_insufficient_oligos(
-            pipeline_step="oligoset generation",
-            write=self.write_regions_with_insufficient_oligos,
+            pipeline_step="oligoset generation"
         )
 
         return oligo_database
@@ -153,7 +149,9 @@ class OligosetGenerator:
         for oligo_id in database_region.keys():
             oligos_indices.append(oligo_id)  # keep track of the indices
             interval = []
-            for start, end in zip(database_region[oligo_id]["start"], database_region[oligo_id]["end"]):
+            for start, end in zip(
+                database_region[oligo_id]["start"], database_region[oligo_id]["end"]
+            ):
                 interval.append(
                     [start, end]
                 )  # save a list of couples of [start,end] of the duplicates of that oligo
