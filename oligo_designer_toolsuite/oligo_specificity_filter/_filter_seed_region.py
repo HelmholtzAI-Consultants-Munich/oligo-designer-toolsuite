@@ -1,8 +1,8 @@
 import os
 import re
-from pathlib import Path
-from subprocess import Popen
+import subprocess
 
+from pathlib import Path
 from joblib import Parallel, delayed
 
 from . import Bowtie
@@ -23,7 +23,11 @@ class BowtieSeedRegion(Bowtie):
     """
 
     def __init__(
-        self, dir_specificity: str, seed_region_creation, num_mismatches: int = 0
+        self,
+        dir_specificity: str,
+        seed_region_creation,
+        num_mismatches: int = 0,
+        strand: str = None,
     ):
         """Constructor."""
         super().__init__(dir_specificity)
@@ -36,6 +40,7 @@ class BowtieSeedRegion(Bowtie):
             self.num_mismatches = num_mismatches
 
         self.seed_region_creation = seed_region_creation
+        self.strand = strand
 
         self.dir_seed_region = os.path.join(
             self.dir_specificity, "bowtie"
@@ -78,7 +83,9 @@ class BowtieSeedRegion(Bowtie):
                 + " "
                 + index_name
             )
-            process = Popen(command1, shell=True, cwd=self.dir_seed_region).wait()
+            process = subprocess.Popen(
+                command1, shell=True, cwd=self.dir_seed_region
+            ).wait()
 
         oligo_DB_seed = self._extract_seed_regions(database)
         regions = list(oligo_DB_seed.keys())
@@ -95,7 +102,9 @@ class BowtieSeedRegion(Bowtie):
 
         return database
 
-    def _run_bowtie_seed_region(self, database_region_seed, gene_DB, region, index_name):
+    def _run_bowtie_seed_region(
+        self, database_region_seed, gene_DB, region, index_name
+    ):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
         Bowtie identifies all allignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
@@ -121,13 +130,21 @@ class BowtieSeedRegion(Bowtie):
             + file_bowtie_gene
         )
 
-        process = Popen(command, shell=True, cwd=self.dir_seed_region).wait()
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            cwd=self.dir_seed_region,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).wait()
 
         # read the results of the bowtie search
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
         # filter the DB based on the bowtie results
         matching_oligos = self._find_matching_oligos(bowtie_results)
-        filtered_database_region = self._filter_matching_oligos(gene_DB, matching_oligos)
+        filtered_database_region = self._filter_matching_oligos(
+            gene_DB, matching_oligos
+        )
         # remove the temporary files
         os.remove(os.path.join(self.dir_seed_region, file_bowtie_gene))
         os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))

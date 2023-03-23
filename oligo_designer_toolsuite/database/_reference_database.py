@@ -93,7 +93,6 @@ class ReferenceDatabase:
         self.dir_output = os.path.abspath(
             os.path.join(dir_output, "reference_database")
         )
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def load_fasta_into_database(self):
         """Load sequences from fasta file and stored in databse."""
@@ -111,10 +110,12 @@ class ReferenceDatabase:
         :return: Path to fasta file.
         :rtype: str
         """
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
         file_database = os.path.join(self.dir_output, f"{filename}.fna")
         if self.database:
             with open(file_database, "w") as handle_fasta:
                 SeqIO.write(self.database, handle_fasta, "fasta")
+            self.file_fasta = file_database
         else:
             raise ValueError("Database is empty! Nothing written to fasta file.")
 

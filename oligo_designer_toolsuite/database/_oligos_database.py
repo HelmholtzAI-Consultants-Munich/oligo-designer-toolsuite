@@ -45,10 +45,10 @@ class OligoDatabase:
 
     files_Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
 
-    :param file_fasta: Path to the fasta file, if None it is only possible to read a database.
-    :type file_fasta: str
     :param oligo_length_min: Minimal length of oligo nucleotide.
     :type oligo_length_min: int
+    :param write_regions_with_insufficient_oligos: write removed regions to file ``regions_with_insufficient_oligos.txt``, defaults to True
+    :type write_regions_with_insufficient_oligos: bool, optional
     :param oligo_length_max: Maximal length of oligo nucleotide.
     :type oligo_length_max: int
     :param min_oligos_per_region: Minimum number of oligos per region, if lower, region is removed from database, defaults to 0.
@@ -69,8 +69,8 @@ class OligoDatabase:
 
     def __init__(
         self,
-        file_fasta: str,
         min_oligos_per_region: int = 0,
+        write_regions_with_insufficient_oligos: bool = True,
         files_source: str = None,
         species: str = None,
         annotation_release: str = None,
@@ -79,15 +79,10 @@ class OligoDatabase:
         dir_output: str = "output",
     ):
         """Constructor"""
-        self.file_fasta = file_fasta
-        if file_fasta is not None:
-            if os.path.exists(self.file_fasta):
-                if not check_fasta_format(self.file_fasta):
-                    raise ValueError("Fasta file has incorrect format!")
-            else:
-                raise ValueError("Fasta file does not exist!")
-
         self.min_oligos_per_region = min_oligos_per_region
+        self.write_regions_with_insufficient_oligos = (
+            write_regions_with_insufficient_oligos
+        )
 
         if files_source is None:
             files_source = "custom"
@@ -130,14 +125,16 @@ class OligoDatabase:
         )  # will be used later in the gereration of non overlpping sets
 
         # Initialize the file for regions with insufficient oligos
-        self.file_removed_regions = os.path.join(
-            dir_output, "regions_with_insufficient_oligos.txt"
-        )
-        with open(self.file_removed_regions, "a") as handle:
-            handle.write(f"Region\tPipeline step\n")
+        if self.write_regions_with_insufficient_oligos:
+            self.file_removed_regions = os.path.join(
+                dir_output, "regions_with_insufficient_oligos.txt"
+            )
+            with open(self.file_removed_regions, "a") as handle:
+                handle.write(f"Region\tPipeline step\n")
 
     def create_database(
         self,
+        file_fasta: str,
         oligo_length_min: int,
         oligo_length_max: int,
         region_ids: list[str] = None,
@@ -148,6 +145,8 @@ class OligoDatabase:
         in the fasta file will be used. The database created is not written automatically to the disk,
         the ``save_oligo_database`` method has to be called separately.
 
+        :param file_fasta: Path to the fasta file, if None it is only possible to read a database.
+        :type file_fasta: str
         :param oligo_length_min: Minimal length of oligo nucleotide.
         :type oligo_length_min: int
         :param oligo_length_max: Maximal length of oligo nucleotide.
@@ -155,13 +154,15 @@ class OligoDatabase:
         :param region_ids: List of regions for which the oligos should be generated, defaults to None
         :type region_ids: list of str, optional
         """
-        if self.file_fasta is None:
-            raise RuntimeError(
-                "The Database class does not have any fasta file, if you want to create a database a fasta file needs to be given in input when initalizing the class."
-            )
+        if os.path.exists(file_fasta):
+            if not check_fasta_format(file_fasta):
+                raise ValueError("Fasta file has incorrect format!")
+        else:
+            raise ValueError("Fasta file does not exist!")
+
         self.oligo_length_min = oligo_length_min
         self.oligo_length_max = oligo_length_max
-        with open(self.file_fasta, "r") as handle:
+        with open(file_fasta, "r") as handle:
             sequences = list(SeqIO.parse(handle, "fasta"))
         region_sequences = {}
         for entry in sequences:
@@ -176,6 +177,14 @@ class OligoDatabase:
             for key in keys:
                 if key not in region_ids:
                     region_sequences.pop(key)
+            for region_id in region_ids:
+                if region_id not in keys:
+                    warnings.warn(
+                        f"Region {region_id} not available in reference file."
+                    )
+                    if self.write_regions_with_insufficient_oligos:
+                        with open(self.file_removed_regions, "a") as hanlde:
+                            hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")
 
         region_ids = region_sequences.keys()
         database = {}
@@ -337,15 +346,12 @@ class OligoDatabase:
     def remove_regions_with_insufficient_oligos(
         self,
         pipeline_step: str,
-        write: bool = True,
     ):
         """Deletes from the ``oligo_DB`` the regions (e.g. genes) which have less than ``min_oligos_per_region`` oligos,
         and optionally writes them in a file with the name of the step of the pipeline at which they have been deleted.
 
         :param pipeline_step: Step in the pipeline that lead to the removal of the region.
         :type pipeline_step: str
-        :param write: write removed regions to file ``regions_with_insufficient_oligos.txt``, defaults to True
-        :type write: bool, optional
         """
         regions = copy(list(self.database.keys()))
         for region in regions:
@@ -353,7 +359,7 @@ class OligoDatabase:
                 del self.database[region]
                 if region in self.oligosets:
                     del self.oligosets[region]
-                if write:
+                if self.write_regions_with_insufficient_oligos:
                     with open(self.file_removed_regions, "a") as hanlde:
                         hanlde.write(f"{region}\t{pipeline_step}\n")
 
