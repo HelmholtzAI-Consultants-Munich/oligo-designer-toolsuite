@@ -41,6 +41,7 @@ ligation_region_size: 5 #coverage between oligos and target sequence should not 
 word_size: 10 #word size for the blastn seed (exact match to target)
 coverage: 50 #minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
 percent_identity: 80 #maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
+strand: plus # strand of the query sequence to search
 
 
 ### Parameters for the oligo efficiency

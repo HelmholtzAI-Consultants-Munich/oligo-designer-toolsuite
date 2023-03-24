@@ -320,21 +320,21 @@ class CustomGenomicRegionGenerator:
         :rtype: pandas.DataFrame
         """
         exons["region"] = (
-            exons["seqid"]
+            exons["seqid"].astype("str")
             + ":"
             + exons["start"].astype("str")
             + "-"
             + exons["end"].astype("str")
             + "("
-            + exons["strand"]
+            + exons["strand"].astype("str")
             + ")"
         )
 
         exons["transcript_exon_id"] = (
             "transcript_id="
-            + exons["transcript_id"]
+            + exons["transcript_id"].astype("str")
             + ",exon_number="
-            + exons["exon_number"]
+            + exons["exon_number"].astype("str")
         )
         aggregate_function = {
             "region": "first",
@@ -495,25 +495,25 @@ class CustomGenomicRegionGenerator:
                     regions_exons_small = ""
                     exon_upstream = attributes
 
-            exon_junctions = pd.DataFrame(
-                exon_junction_list,
-                columns=[
-                    "region",
-                    "gene_id",
-                    "transcript_exon_id",
-                    "seqid",
-                    "start",
-                    "end",
-                    "score",
-                    "strand",
-                    "thickStart",
-                    "thickEnd",
-                    "itemRgb",
-                    "block_count",
-                    "block_sizes",
-                    "blockStarts",
-                ],
-            )
+        exon_junctions = pd.DataFrame(
+            exon_junction_list,
+            columns=[
+                "region",
+                "gene_id",
+                "transcript_exon_id",
+                "seqid",
+                "start",
+                "end",
+                "score",
+                "strand",
+                "thickStart",
+                "thickEnd",
+                "itemRgb",
+                "block_count",
+                "block_sizes",
+                "blockStarts",
+            ],
+        )
 
         return exon_junctions
 

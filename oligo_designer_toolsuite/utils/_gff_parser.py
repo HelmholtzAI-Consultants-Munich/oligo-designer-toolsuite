@@ -2,13 +2,14 @@
 # imports
 ############################################
 
+import os
 import re
 import gzip
 import pickle
 import warnings
 
+import math
 import pandas as pd
-from collections import defaultdict
 
 ############################################
 # GFF Parser Class
@@ -16,11 +17,6 @@ from collections import defaultdict
 
 
 class GffParser:
-    """
-    Parse a GFF3 or GTF file into a pandas DataFrame, attributes to columns.
-    Adapted from https://gist.github.com/slowkow/8101481
-    """
-
     def __init__(self) -> None:
         """Constructor method"""
         self.GFF_HEADER = [
@@ -39,65 +35,87 @@ class GffParser:
 
         self.dataframe_gff = None
 
-    def read_gff(self, file: str, target_lines: int = None):
-        """Open an optionally gzipped GFF3/GTF file and return a pandas.DataFrame.
+    def read_gff(self, annotation_file, chunk_size=1000, target_lines=math.inf):
+        csv_file, extra_info_file = self._split_annotation(
+            annotation_file, chunk_size=chunk_size, target_lines=target_lines
+        )
 
-        :param file: Filename of GFF3/GTF file.
-        :type file: str
-        :param target_lines: Read the first n lines or leave 'None' to read all lines, default: None
-        :type target_lines: int
-        :return: DataFrame with GFF§/GTF file content.
-        :rtype: pandas.DataFrame
-        """
-        # Each column is a list stored as a value in this dict.
-        result = defaultdict(list)
+        info_df = self._info_to_df(extra_info_file, chunk_size=chunk_size)
+        csv_df = pd.read_csv(csv_file, sep="\t", names=self.GFF_HEADER, header=None)
 
-        for i, line in enumerate(self._read_lines(file, target_lines)):
-            for key in line.keys():
-                # This key has not been seen yet, so set it to None for all
-                # previous lines.
-                if key not in result:
-                    result[key] = [None] * i
+        csv_df.reset_index(inplace=True, drop=True)
+        info_df.reset_index(inplace=True, drop=True)
 
-            # Ensure this row has some value for each column.
-            for key in result.keys():
-                result[key].append(line.get(key, None))
-
-        result = pd.DataFrame(result)
-        cols = [
-            col
-            for col in result.columns
-            if col in self.GFF_HEADER or not result[col].isnull().all()
-        ]
-        dataframe = result[cols]
+        dataframe = pd.concat([csv_df, info_df], axis=1)
 
         if self.dataframe_gff is not None:
             warnings.warn(f"Overwriting existing gff dataframe!")
         self.dataframe_gff = dataframe
 
+        os.remove(csv_file)
+        os.remove(extra_info_file)
+
         return dataframe
 
-    def _read_lines(self, file: str, target_lines: int):
-        """Open an optionally gzipped GTF file and generate a dict for each line.
+    def write_to_pickel(self, file_pickel):
+        """Store loaded GFF dataframe as pickel file.
 
-        :param file: Filename of GFF3/GTF file.
-        :type file: str
-        :param target_lines: Read the first n lines or leave 'None' to read all lines, default: None
-        :type target_lines: int
-        :yield: Key - value pair of GFF3/GTF fileds or attributes
-        :rtype: dict
+        :param file_pickel: File name of pickel file.
+        :type file_pickel: str
         """
-        fn_open = gzip.open if file.endswith(".gz") else open
+        if self.dataframe_gff is None:
+            raise ValueError("No gff dataframe loaded!")
 
-        with fn_open(file) as fh:
-            for line_number, line in enumerate(fh):
-                if target_lines is None or line_number <= target_lines:
-                    if line.startswith("#"):
-                        continue
-                    else:
-                        yield self._parse_fields(line)
-                else:
-                    break
+        pickle.dump(self.dataframe_gff, file_pickel)
+
+    def read_from_pickel(self, file_pickel):
+        """Load GFF dataframe from pickel file
+
+        :param file_pickel:  File name of pickel file.
+        :type file_pickel: str
+        """
+        if self.dataframe_gff:
+            warnings.warn(f"Overwriting existing gff dataframe!")
+
+        self.dataframe_gff = pickle.load(open(file_pickel, "rb"))
+
+        return self.dataframe_gff
+
+    # Function to split GFF
+    def _split_annotation(self, annotation_file, chunk_size, target_lines):
+        csv_file = ".".join(annotation_file.split(".")[:-1]) + ".csv"
+        extra_info_file = ".".join(annotation_file.split(".")[:-1]) + ".txt"
+
+        finished = False
+        lines_read = 0
+
+        fn_open = gzip.open if annotation_file.endswith(".gz") else open
+        with fn_open(annotation_file, "r") as input_file:
+            with open(csv_file, "w") as out_csv:
+                with open(extra_info_file, "w") as out_extra_info:
+                    while not finished and lines_read < target_lines:
+                        csv_content_chunck = ""
+                        extra_info_content_chunck = ""
+                        for _ in range(chunk_size):
+                            lines_read += 1
+                            if lines_read > target_lines:
+                                break
+                            try:
+                                line = next(input_file)
+                                if not line.startswith("#"):
+                                    csv_content_chunck += (
+                                        "\t".join(line.split("\t")[:8]) + "\n"
+                                    )
+                                    extra_info_content_chunck += "\t".join(
+                                        line.split("\t")[8:]
+                                    )
+                            except:
+                                finished = True
+
+                        out_csv.write(csv_content_chunck)
+                        out_extra_info.write(extra_info_content_chunck)
+
+        return csv_file, extra_info_file
 
     def _parse_fields(self, line: str):
         """Parse a single GFF3/GTF line and return a dict.
@@ -109,13 +127,8 @@ class GffParser:
         """
         result = {}
 
-        fields = line.rstrip().split("\t")
-
-        for i, col in enumerate(self.GFF_HEADER):
-            result[col] = self._get_value(fields[i])
-
         # INFO field consists of "key1=value;key2=value;...".
-        infos = [x for x in re.split(self.R_SEMICOLON, fields[8]) if x.strip()]
+        infos = [x for x in re.split(self.R_SEMICOLON, line) if x.strip()]
 
         for i, info in enumerate(infos, 1):
             # It should be key="value".
@@ -155,26 +168,16 @@ class GffParser:
 
         return value
 
-    def write_to_pickel(self, file_pickel):
-        """Store loaded GFF dataframe as pickel file.
+    def _info_to_df_chunk(self, data_chunk):
+        data_chunk = list(map(self._parse_fields, data_chunk))
+        return pd.DataFrame(data_chunk)
 
-        :param file_pickel: File name of pickel file.
-        :type file_pickel: str
-        """
-        if self.dataframe_gff is None:
-            raise ValueError("No gff dataframe loaded!")
-
-        pickle.dump(self.dataframe_gff, file_pickel)
-
-    def read_from_pickel(self, file_pickel):
-        """Load GFF dataframe from pickel file
-
-        :param file_pickel:  File name of pickel file.
-        :type file_pickel: str
-        """
-        if self.dataframe_gff:
-            warnings.warn(f"Overwriting existing gff dataframe!")
-
-        self.dataframe_gff = pickle.load(open(file_pickel, "rb"))
-
-        return self.dataframe_gff
+    def _info_to_df(self, info_file, chunk_size):
+        info_dfs = []
+        with open(info_file, "r") as info_f:
+            data = info_f.readlines()
+            n_lines = len(data)
+            for i in range(0, n_lines, chunk_size):
+                data_chunk = data[i : i + chunk_size]
+                info_dfs.append(self._info_to_df_chunk(data_chunk))
+        return pd.concat(info_dfs)

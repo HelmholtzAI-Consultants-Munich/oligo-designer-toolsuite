@@ -166,7 +166,7 @@ class ConsecutiveRepeats(PropertyFilterBase):
     def __init__(
         self,
         num_consecutive:int,
-        repeated_sequences: list(str) = ['A', 'C', 'T', 'G'],
+        prohibited_repeated_sequences: list[str] = ['A', 'C', 'T', 'G'],
     ) -> None:
         """Initializes the class.
         """
@@ -176,7 +176,7 @@ class ConsecutiveRepeats(PropertyFilterBase):
             self.max_consecutive = num_consecutive
         else:
             self.max_consecutive = 2
-        self.repeated_sequences = repeated_sequences
+        self.repeated_sequences = prohibited_repeated_sequences
 
 
 

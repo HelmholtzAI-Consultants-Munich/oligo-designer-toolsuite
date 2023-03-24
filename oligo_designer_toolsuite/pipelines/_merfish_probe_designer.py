@@ -6,8 +6,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 from oligo_designer_toolsuite.database import CustomGenomicRegionGenerator, NcbiGenomicRegionGenerator, \
     EnsemblGenomicRegionGenerator
 from oligo_designer_toolsuite.database import ReferenceDatabase
-from oligo_designer_toolsuite.utils import BaseFtpLoader
-from oligo_designer_toolsuite.pipelines import (PrimerProbes,ReadoutProbes,TargetProbes,generate_codebook)
+from sequence_design.utils import generate_codebook
 import numpy as np
 from Bio.Seq import Seq
 import yaml
@@ -145,7 +144,7 @@ class MerfishProbeDesigner:
         # save assembled probes in a file
         #assembled_probes_file_database = target_probes.write_database(filename="merfish_assembled_probes.txt")
 
-        # blast against ncRNA
+        # blast against ncRNA Ensembl
         loader= BaseFtpLoader(dir_output=self.dir_output)
         file_ncRNA= loader. _download_and_decompress(
         ftp_link="ftp.ensembl.org", ftp_directory="/pub/release-109/fasta/homo_sapiens/ncrna/", file_name="Homo_sapiens.GRCh38.ncrna.fa.gz"

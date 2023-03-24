@@ -43,6 +43,7 @@ dependencies = ["datetime",
                 "pyyaml",
                 "networkx",
                 "joblib",
+                "seqfold",
 ]
 
 [project.optional-dependencies]

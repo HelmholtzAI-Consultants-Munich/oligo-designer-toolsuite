@@ -1,0 +1,6 @@
+2023-03-24 14:28:57,395 [DEBUG] diff parser start
+2023-03-24 14:28:57,399 [DEBUG] line_lengths old: 1; new: 1
+2023-03-24 14:28:57,401 [DEBUG] -> code[replace] old[1:1] new[1:1]
+2023-03-24 14:28:57,403 [DEBUG] parse_part from 1 to 1 (to 0 in part parser)
+2023-03-24 14:28:57,407 [DEBUG] diff parser end
+2023-03-24 14:28:57,416 [DEBUG] pickle loaded: /Users/isra.mekki/Projects/odt/oligo-designer-toolsuite/oligo_designer_toolsuite/__init__.py

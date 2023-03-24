@@ -5,7 +5,7 @@
 import os
 import warnings
 import pandas as pd
-import time
+import numpy as np
 
 from pathlib import Path
 from copy import copy, deepcopy
@@ -21,10 +21,11 @@ from ..utils._data_parser import (
     parse_fasta_header,
 )
 
+from ..utils._sequence_design import generate_random_sequence
+
 ############################################
 # Oligo Database Class
 ############################################
-
 
 class OligoDatabase:
     """This class generates all possible oligos that can be designed for a given list of regions (e.g. genes),
@@ -46,7 +47,7 @@ class OligoDatabase:
 
     files_Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
 
-    :param file_fasta: Path to the fasta file.
+    :param file_fasta: Path to the fasta file, if None it is only possible to read a database.
     :type file_fasta: str
     :param oligo_length_min: Minimal length of oligo nucleotide.
     :type oligo_length_min: int
@@ -71,8 +72,6 @@ class OligoDatabase:
     def __init__(
         self,
         file_fasta: str,
-        oligo_length_min: int,
-        oligo_length_max: int,
         min_oligos_per_region: int = 0,
         files_source: str = None,
         species: str = None,
@@ -83,14 +82,13 @@ class OligoDatabase:
     ):
         """Constructor"""
         self.file_fasta = file_fasta
-        if os.path.exists(self.file_fasta):
-            if not check_fasta_format(self.file_fasta):
-                raise ValueError("Fasta file has incorrect format!")
-        else:
-            raise ValueError("Fasta file does not exist!")
+        if file_fasta is not None:
+            if os.path.exists(self.file_fasta):
+                if not check_fasta_format(self.file_fasta):
+                    raise ValueError("Fasta file has incorrect format!")
+            else:
+                raise ValueError("Fasta file does not exist!")
 
-        self.oligo_length_min = oligo_length_min
-        self.oligo_length_max = oligo_length_max
         self.min_oligos_per_region = min_oligos_per_region
 
         if files_source is None:
@@ -138,8 +136,52 @@ class OligoDatabase:
         with open(self.file_removed_regions, "a") as handle:
             handle.write(f"Region\tPipeline step\n")
 
+    def create_random_database(
+        self,
+        oligo_length: int,
+        n_sequences_per_region: int,
+        sequence_alphabet: list[str] = ['A', 'G', 'T', 'C'],
+        region_ids: list[str] = ['Random']):
+
+        self.oligo_length_min = oligo_length
+        self.oligo_length_max = oligo_length
+
+        sequences = { 
+            region_id: [generate_random_sequence(oligo_length, sequence_alphabet) 
+                        for i in range(n_sequences_per_region)]
+            for region_id in region_ids
+        }
+
+        self.create_database_from_sequences(sequences)
+  
+    def create_database_from_sequences(self, sequences):
+        """ sequences: dict key = region_id
+                            value = list of str representing sequences"""
+        database = {}
+        for region_id in sequences:
+            database[region_id] = {}
+            for i, sequence in enumerate(sequences[region_id]):
+                oligo_id = region_id + '_' + str(i)
+                database[region_id][oligo_id] = {
+                            "sequence": sequence,
+                            "chromosome": None,
+                            "start": None,
+                            "end": None,
+                            "strand": None,
+                            "length": len(sequence),
+                            "additional_information_fasta": [[]],
+                        }
+                
+        self.database = database
+
+    def merge_database(self, oligo_database):
+        # TODO: this is an over simplification, merging needs to be taken care of
+        self.database.update(oligo_database.database)
+
     def create_database(
         self,
+        oligo_length_min: int,
+        oligo_length_max: int,
         region_ids: list[str] = None,
     ):
         """
@@ -148,12 +190,19 @@ class OligoDatabase:
         in the fasta file will be used. The database created is not written automatically to the disk,
         the ``save_oligo_database`` method has to be called separately.
 
+        :param oligo_length_min: Minimal length of oligo nucleotide.
+        :type oligo_length_min: int
+        :param oligo_length_max: Maximal length of oligo nucleotide.
+        :type oligo_length_max: int
         :param region_ids: List of regions for which the oligos should be generated, defaults to None
         :type region_ids: list of str, optional
         """
+        if self.file_fasta is None:
+            raise RuntimeError("The Database class does not have any fasta file, if you want to create a database a fasta file needs to be given in input when initalizing the class.")
+        self.oligo_length_min = oligo_length_min
+        self.oligo_length_max = oligo_length_max
         with open(self.file_fasta, "r") as handle:
             sequences = list(SeqIO.parse(handle, "fasta"))
-
         region_sequences = {}
         for entry in sequences:
             region, _, _ = parse_fasta_header(entry.id)
@@ -169,7 +218,6 @@ class OligoDatabase:
                     region_sequences.pop(key)
 
         region_ids = region_sequences.keys()
-
         database = {}
         results = Parallel(n_jobs=self.n_jobs)(
             delayed(self._get_oligos_info)(region_id, region_sequences[region_id])
@@ -186,7 +234,7 @@ class OligoDatabase:
         The order of columns is :
 
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | oligo_sequence | chromosome | start | end | strand | length | additional feat. |
+        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
 
         Additional feat. includes additional info from fasta file and additional info computed by the filtering class.
@@ -207,11 +255,11 @@ class OligoDatabase:
             lambda row: Seq(str(row.sequence)), axis=1
         )
         file_tsv_content.chromosome = file_tsv_content.chromosome.astype("str")
-        file_tsv_content.start = file_tsv_content.start.str.split(";")
+        file_tsv_content.start = file_tsv_content.start.astype("str").str.split(";")
         file_tsv_content.start = file_tsv_content.apply(
             lambda row: list(map(int, row.start)), axis=1
         )
-        file_tsv_content.end = file_tsv_content.end.str.split(";")
+        file_tsv_content.end = file_tsv_content.end.astype("str").str.split(";")
         file_tsv_content.end = file_tsv_content.apply(
             lambda row: list(map(int, row.end)), axis=1
         )
@@ -227,6 +275,7 @@ class OligoDatabase:
                 for row in list(
                     zip(*[file_tsv_content[col] for col in file_tsv_content])
                 )
+                if row[0] == region
             }
 
         self.database = database
@@ -240,7 +289,7 @@ class OligoDatabase:
         The order of the columns is:
 
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | oligo_sequence | chromosome | start | end | strand | length | additional feat. |
+        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
         +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
 
         Additional feat. includes additional info from fasta file and additional info computed by the filtering class.
@@ -270,7 +319,6 @@ class OligoDatabase:
 
         file_tsv_content = pd.DataFrame(data=file_tsv_content)
         file_tsv_content.to_csv(file_database, sep="\t", index=False)
-
 
         return file_database
 
@@ -389,8 +437,10 @@ class OligoDatabase:
             # once we have the correct start and end corrdinates we turn them again into 0-based coordinates
             # by subtracting 1. This needs to be done afterwards because on the minus strand the start has a
             # higher number than the end, which needs to be sorted and turned into 0-based index
+            null_coordinates = False
             if coordinates["start"][0] is None: # teh header doesn't contain position information
                 list_of_coordinates = [None for i in range(len(seq))]
+                null_coordinates = True
             else:
                 for i in range(len(coordinates["start"])):
                     list_of_coordinates.extend(
@@ -406,96 +456,63 @@ class OligoDatabase:
             if oligo_strand == "-":
                 list_of_coordinates.reverse()
 
-            if region_id.split("_")[0] in ["bc25mer"]:
-            # read bc25mer sequence
-                if (self.oligo_length_max + 1) > len(seq) > self.oligo_length_min:
-                    oligo = seq
-                    oligo_start_end = []
-                    oligo_start = "Unknown"  # turn into 0-based index
-                    oligo_end = "Unknown"
-                    oligo_length = len(seq)
-                    oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
-                    oligo_attributes = {
-                        "sequence": oligo,
-                        "chromosome": oligo_chrom,
-                        "start": oligo_start,
-                        "end": oligo_end,
-                        "strand": oligo_strand,
-                        "length": oligo_length,
-                        "additional_information_fasta": ["None"],
-                    }
-                    if oligo in oligo_sequence_ids:
-                        if oligo_id in oligo_sequence_ids[oligo].keys():
-                            entry_additional_information = oligo_sequence_ids[
-                                oligo
-                            ][oligo_id]["additional_information_fasta"]
-                            entry_additional_information.append(
-                                additional_information
-                            )
-                            # remove exon junctions entry if exon entry exists
-                            oligo_sequence_ids[oligo][oligo_id][
-                                "additional_information_fasta"
-                            ] = [
-                                info
-                                for info in entry_additional_information
-                                if "__JUNC__" not in info
-                            ]
-                        else:
-                            oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
-                    else:
-                        oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
-            else:
-                for oligo_length in range(self.oligo_length_min, self.oligo_length_max + 1):
-                    if len(seq) > oligo_length:
-                        number_oligos = len(seq) - (oligo_length - 1)
-                        oligos = [seq[i : i + oligo_length] for i in range(number_oligos)]
+            for oligo_length in range(self.oligo_length_min, self.oligo_length_max + 1):
+                if len(seq) > oligo_length:
+                    number_oligos = len(seq) - (oligo_length - 1)
+                    oligos = [seq[i : i + oligo_length] for i in range(number_oligos)]
 
-                        for i in range(number_oligos):
-                            oligo = oligos[i]
+                    for i in range(number_oligos):
+                        oligo = oligos[i]
+                        if null_coordinates: # the header fo the fasta file is just the region name
+                            oligo_start = None
+                            oligo_end = None
+                            oligo_id = f"{region_id}_{i}"
+                        else:
                             oligo_start_end = [
                                 list_of_coordinates[i],
                                 list_of_coordinates[(i + oligo_length - 1)],
                             ]
-
                             oligo_start_end.sort()
                             oligo_start = oligo_start_end[0] - 1  # turn into 0-based index
                             oligo_end = oligo_start_end[1]
                             oligo_id = f"{region_id}_{oligo_chrom}:{oligo_start}-{oligo_end}({oligo_strand})"
-                            oligo_attributes = {
-                                "sequence": oligo,
-                                "chromosome": oligo_chrom,
-                                "start": oligo_start,
-                                "end": oligo_end,
-                                "strand": oligo_strand,
-                                "length": oligo_length,
-                                "additional_information_fasta": [additional_information],
-                            }
+                        oligo_attributes = {
+                            "sequence": oligo,
+                            "chromosome": oligo_chrom,
+                            "start": oligo_start,
+                            "end": oligo_end,
+                            "strand": oligo_strand,
+                            "length": oligo_length,
+                            "additional_information_fasta": [additional_information],
+                        }
 
-
-                            if oligo in oligo_sequence_ids:
-                                if oligo_id in oligo_sequence_ids[oligo].keys():
-                                    entry_additional_information = oligo_sequence_ids[
-                                        oligo
-                                    ][oligo_id]["additional_information_fasta"]
-                                    entry_additional_information.append(
-                                        additional_information
-                                    )
-                                    # remove exon junctions entry if exon entry exists
-                                    oligo_sequence_ids[oligo][oligo_id][
-                                        "additional_information_fasta"
-                                    ] = [
-                                        info
-                                        for info in entry_additional_information
-                                        if "__JUNC__" not in info
-                                    ]
-                                else:
-                                    oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
+                        if oligo in oligo_sequence_ids:
+                            if oligo_id in oligo_sequence_ids[oligo].keys():
+                                entry_additional_information = oligo_sequence_ids[
+                                    oligo
+                                ][oligo_id]["additional_information_fasta"]
+                                entry_additional_information.append(
+                                    additional_information
+                                )
+                                # remove exon junctions entry if exon entry exists
+                                oligo_sequence_ids[oligo][oligo_id][
+                                    "additional_information_fasta"
+                                ] = [
+                                    info
+                                    for info in entry_additional_information
+                                    if "__JUNC__" not in info
+                                ]
                             else:
-                                oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
-
+                                oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
+                        else:
+                            oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
+                            
         database_entries = {}
         for oligo_ids in oligo_sequence_ids.values():
-            oligo_id = ";".join([oligo_id for oligo_id in oligo_ids.keys()])
+            if null_coordinates:
+                oligo_id = list(oligo_ids.keys())[0]
+            else:
+                oligo_id = ";".join([oligo_id for oligo_id in oligo_ids.keys()])
             attributes_collapsed = {}
             for key in [
                 "sequence",
@@ -511,13 +528,16 @@ class OligoDatabase:
                 if len(attributes_collapsed[key]) == 1 and key not in ["start", "end"]:
                     attributes_collapsed[key] = attributes_collapsed[key][0]
             # can't be collapsed caus sometimes contains lists of lists
-            attributes_collapsed["additional_information_fasta"] = sum(
-                [
-                    attributes["additional_information_fasta"]
-                    for attributes in oligo_ids.values()
-                ],
-                [],
-            )
+            if null_coordinates:
+                attributes_collapsed["additional_information_fasta"] = []
+            else:
+                attributes_collapsed["additional_information_fasta"] = sum(
+                    [
+                        attributes["additional_information_fasta"]
+                        for attributes in oligo_ids.values()
+                    ],
+                    [],
+                )
             database_entries[oligo_id] = attributes_collapsed
 
         database = {region_id: database_entries}
