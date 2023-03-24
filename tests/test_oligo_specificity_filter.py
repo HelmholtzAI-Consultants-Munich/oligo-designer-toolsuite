@@ -3,6 +3,8 @@ import shutil
 
 import pytest
 
+from oligo_designer_toolsuite.database import OligoDatabase
+
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
     Bowtie,
@@ -11,7 +13,6 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatches,
     LigationRegionCreation,
 )
-from oligo_designer_toolsuite.utils import read_oligos_DB_tsv
 
 cwd = os.getcwd()
 
@@ -19,7 +20,7 @@ cwd = os.getcwd()
 n_jobs = 1
 ligation_region = 0
 dir_output = cwd + "/tests/output"
-dir_annotations = cwd + "/tests/data"
+dir_annotations = cwd + "/tests/data/specificity_filters"
 min_oligos_per_gene = 2
 
 # Reference transcriptome files for tests
@@ -57,10 +58,11 @@ def run_around_tess():
 
 def test_filter_exact_matches():
     # check that exact matches filters out a doubled sequence from the db
+    oligo_database = OligoDatabase(file_fasta=None)
     exact_matches = ExactMatches(dir_output)
-    oligo_info_dict_exact_matches = read_oligos_DB_tsv(file_oligo_info_exact_matches)
+    oligo_database.load_database(file_oligo_info_exact_matches)
     filtered_oligo_info_dict_match = exact_matches.apply(
-        oligo_info_dict_exact_matches, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     assert (
@@ -74,14 +76,15 @@ def test_filter_exact_matches():
 def test_filter_bowtie_match():
     # Check that bowtie filter filters out a sequence that is identified as a match for user-defined threshholds
 
+    oligo_database = OligoDatabase(file_fasta=None)
     bowtie_filter = Bowtie(
         dir_output,
         num_mismatches,
         mismatch_region,
     )
-    oligo_info_dict_match = read_oligos_DB_tsv(file_oligo_info_match)
+    oligo_database.load_database(file_oligo_info_match)
     filtered_oligo_info_dict_match = bowtie_filter.apply(
-        oligo_info_dict_match, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     # check tha the oligo has been removed form the dataset
@@ -92,14 +95,15 @@ def test_filter_bowtie_match():
 
 def test_filter_bowtie_no_match():
     # Check that bowtie does not filter filters out a sequence which is not a match
+    oligo_database = OligoDatabase(file_fasta=None)
     bowtie_filter = Bowtie(
         dir_output,
         num_mismatches,
         mismatch_region,
     )
-    oligo_info_dict_no_match = read_oligos_DB_tsv(file_oligo_info_no_match)
+    oligo_database.load_database(file_oligo_info_no_match)
     filtered_oligo_info_dict_match = bowtie_filter.apply(
-        oligo_info_dict_no_match, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     # check tha the oligo has been removed form the dataset
@@ -110,13 +114,13 @@ def test_filter_bowtie_no_match():
 
 def test_filter_bowtie2_match():
     # Check that bowtie filter filters out a sequence that is identified as a match for user-defined threshholds
-
+    oligo_database = OligoDatabase(file_fasta=None)
     bowtie2_filter = Bowtie2(
         dir_output,
     )
-    oligo_info_dict_match = read_oligos_DB_tsv(file_oligo_info_match)
+    oligo_database.load_database(file_oligo_info_match)
     filtered_oligo_info_dict_match = bowtie2_filter.apply(
-        oligo_info_dict_match, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     # check tha the oligo has been removed form the dataset
@@ -127,12 +131,13 @@ def test_filter_bowtie2_match():
 
 def test_filter_bowtie2_no_match():
     # Check that bowtie does not filter filters out a sequence which is not a match
+    oligo_database = OligoDatabase(file_fasta=None)
     bowtie2_filter = Bowtie2(
         dir_output,
     )
-    oligo_info_dict_no_match = read_oligos_DB_tsv(file_oligo_info_no_match)
+    oligo_database.load_database(file_oligo_info_no_match)
     filtered_oligo_info_dict_match = bowtie2_filter.apply(
-        oligo_info_dict_no_match, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     # check tha the oligo has been removed form the dataset
@@ -145,10 +150,11 @@ def test_filter_blast_match():
     # Check that blast filter filters out a sequence that is identified as a match for user-defined threshholds
 
     # Run blast filter
+    oligo_database = OligoDatabase(file_fasta=None)
     blast_filter = Blastn(dir_output, word_size, percent_identity, coverage, strand)
-    oligo_info_dict_match = read_oligos_DB_tsv(file_oligo_info_match)
+    oligo_database.load_database(file_oligo_info_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
-        oligo_info_dict_match, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     # check tha the oligo has been removed form the dataset
@@ -159,10 +165,11 @@ def test_filter_blast_match():
 
 def test_filter_blast_no_match():
     # Check that blast does not filter filters out a sequence which is not a match
+    oligo_database = OligoDatabase(file_fasta=None)
     blast_filter = Blastn(dir_output, word_size, percent_identity, coverage, strand)
-    oligo_info_dict_no_match = read_oligos_DB_tsv(file_oligo_info_no_match)
+    oligo_database.load_database(file_oligo_info_no_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
-        oligo_info_dict_no_match, file_transcriptome_fasta, n_jobs
+        oligo_database.database, file_transcriptome_fasta, n_jobs
     )
 
     # check tha the oligo has been removed form the dataset
@@ -172,11 +179,12 @@ def test_filter_blast_no_match():
 
 
 def test_seed_filter_match():
+    oligo_database = OligoDatabase(file_fasta=None)
     ligation_seed_region = LigationRegionCreation(ligation_region_size=10)
     seed_region_filter = BowtieSeedRegion(dir_output, ligation_seed_region)
-    oligo_info_dict_ligation_match = read_oligos_DB_tsv(file_oligo_info_ligation_match)
+    oligo_database.load_database(file_oligo_info_ligation_match)
     filtered_oligo_info_dict_ligation_match = seed_region_filter.apply(
-        oligo_info_dict_ligation_match, file_transcriptome_fasta_ligation, n_jobs
+        oligo_database.database, file_transcriptome_fasta_ligation, n_jobs
     )
 
     # check tha the oligo has been removed form the dataset
@@ -186,13 +194,12 @@ def test_seed_filter_match():
 
 
 def test_seed_filter_no_match():
+    oligo_database = OligoDatabase(file_fasta=None)
     ligation_seed_region = LigationRegionCreation(ligation_region_size=10)
     seed_region_filter = BowtieSeedRegion(dir_output, ligation_seed_region)
-    oligo_info_dict_ligation_no_match = read_oligos_DB_tsv(
-        file_oligo_info_ligation_nomatch
-    )
+    oligo_database.load_database(file_oligo_info_ligation_nomatch)
     filtered_oligo_info_dict_ligation_no_match = seed_region_filter.apply(
-        oligo_info_dict_ligation_no_match, file_transcriptome_fasta_ligation, n_jobs
+        oligo_database.database, file_transcriptome_fasta_ligation, n_jobs
     )
     # check tha the oligo has been removed form the dataset
     assert (

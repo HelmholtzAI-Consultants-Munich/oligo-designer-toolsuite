@@ -103,7 +103,9 @@ class Blastn(SpecificityFilterBase):
         :type database_name: str
         """
         # run the blast search and write the results
-        file_oligo_fasta_gene = self._create_fasta_file(database_region, self.dir_fasta, region)
+        file_oligo_fasta_gene = self._create_fasta_file(
+            database_region, self.dir_fasta, region
+        )
         file_blast_gene = os.path.join(self.dir_blast, f"blast_{region}.txt")
         cmd = NcbiblastnCommandline(
             query=file_oligo_fasta_gene,
@@ -121,13 +123,12 @@ class Blastn(SpecificityFilterBase):
         blast_results = self._read_blast_output(file_blast_gene)
         # filter the DB based on the blast results
         matching_oligos = self._find_matching_oligos(blast_results)
-        filtered_database_region = self._filter_matching_oligos(database_region, matching_oligos)
+        filtered_database_region = self._filter_matching_oligos(
+            database_region, matching_oligos
+        )
         # remove temporary files
-        #os.remove(os.path.join(self.dir_blast, file_blast_gene))
-        os.remove(os.path.join(file_blast_gene))
-
-        # os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
-        os.remove(os.path.join(file_oligo_fasta_gene))
+        os.remove(file_blast_gene)
+        os.remove(file_oligo_fasta_gene)
         return filtered_database_region
 
     def _read_blast_output(self, file_blast_gene):

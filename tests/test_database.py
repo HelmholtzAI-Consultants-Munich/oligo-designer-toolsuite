@@ -29,12 +29,18 @@ from oligo_designer_toolsuite.oligo_property_filter import (
 ############################################
 
 genes = ["AARS1", "DECR2", "FAM234A", "RHBDF1", "WASIR2"]
-annotation_file_ensemble = "tests/data/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
-sequence_file_ensemble = (
-    "tests/data/custom_Homo_sapiens.GRCh38.dna_rm.primary_assembly_chr16.fa"
+annotation_file_ensemble = (
+    "tests/data/annotations/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
 )
-annotation_file_ncbi = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-sequence_file_ncbi = "tests/data/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+sequence_file_ensemble = (
+    "tests/data/annotations/custom_Homo_sapiens.GRCh38.dna_rm.primary_assembly_chr16.fa"
+)
+annotation_file_ncbi = (
+    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+)
+sequence_file_ncbi = (
+    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+)
 
 Tm_parameters = {
     "check": True,
@@ -169,8 +175,6 @@ def test_oligo_database(file_ncbi_transcriptome):
     """Test creation of oligo database as well as save, load and write to fasta functionalities."""
     oligos = OligoDatabase(
         file_fasta=file_ncbi_transcriptome,
-        oligo_length_min=90,
-        oligo_length_max=90,
         min_oligos_per_region=0,
         files_source="NCBI",
         species="Homo_sapiens",
@@ -178,7 +182,7 @@ def test_oligo_database(file_ncbi_transcriptome):
         genome_assembly="GRCh38",
         n_jobs=2,
     )
-    oligos.create_oligo_database(region_ids=genes)
+    oligos.create_database(oligo_length_min=90, oligo_length_max=90, region_ids=genes)
     database = oligos.database
 
     # check if database changes when saved and loaded
@@ -207,8 +211,6 @@ def test_oligo_database_filters(file_ncbi_transcriptome):
 
     oligos = OligoDatabase(
         file_fasta=file_ncbi_transcriptome,
-        oligo_length_min=90,
-        oligo_length_max=90,
         min_oligos_per_region=0,
         files_source="NCBI",
         species="Homo_sapiens",
@@ -217,7 +219,7 @@ def test_oligo_database_filters(file_ncbi_transcriptome):
         n_jobs=2,
     )
 
-    oligos.create_oligo_database(region_ids=genes)
+    oligos.create_database(oligo_length_min=90, oligo_length_max=90, region_ids=genes)
 
     masked_sequences = MaskedSequences(mask="N")
     GC_content = GCContent(GC_content_min=40, GC_content_max=60)

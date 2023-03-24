@@ -3,7 +3,10 @@ import shutil
 import pandas as pd
 import pytest
 
-from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.database import (
+    OligoDatabase,
+    CustomGenomicRegionGenerator,
+)
 from oligo_designer_toolsuite.oligo_efficiency import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -13,42 +16,27 @@ from oligo_designer_toolsuite.oligo_selection import (
     padlock_heuristic_selection,
 )
 
+annotation_file_ncbi = (
+    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+)
+sequence_file_ncbi = (
+    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+)
 
-@pytest.fixture()
-def oligos_database():
+
+@pytest.fixture(scope="session")
+def oligos_database(tmpdir_factory):
+    base_temp = tmpdir_factory.getbasetemp()
     database = OligoDatabase(
-        oligo_length_min=30,
-        oligo_length_max=40,
-        dir_output="tests/output",
+        file_fasta=None,
+        dir_output=base_temp,
         species="human",
         annotation_release="110",
         n_jobs=2,
     )
-
-    # If the anotation and fasta files are already saved on the machine, it is possible to direclty use them
-    # instead of downloading them again.
-    # dir_annotation = "/home/francesco/Desktop/Work/NCBI"
-    # annotation = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.gtf"
-    # sequence = dir_annotation + "/GCF_000001405.40_GRCh38.p14_genomic.fna"
-    # database = CustomOligoDB(
-    #     oligo_length_min=30,
-    #     oligo_length_max=40,
-    #     species="unknown",
-    #     genome_assembly="unknown",
-    #     annotation_release="unknown",
-    #     files_source="unknown",
-    #     annotation_file=annotation,
-    #     sequence_file=sequence,
-    #     dir_output="tests/output",
-    # )
-    database.read_oligos_DB(
-        format="tsv", file_oligos_DB_tsv="tests/data/oligos_info.tsv"
-    )
+    database.load_database("tests/data/oligos_info.tsv")
 
     yield database
-
-    shutil.rmtree("tests/output")
-    del database
 
 
 @pytest.fixture()
@@ -74,7 +62,9 @@ def oligoset_generator():
 
 # check we obtain the same result
 def test_oligosets_generation(oligoset_generator, oligos_database):
-    oligos_database = oligoset_generator.apply(oligo_database=oligos_database, n_sets=100)
+    oligos_database = oligoset_generator.apply(
+        oligo_database=oligos_database, n_sets=100
+    )
     for gene in oligos_database.oligosets.keys():
         computed_sets = oligos_database.oligosets[gene]
         computed_sets.drop(columns=["oligoset_id"], inplace=True)
@@ -103,7 +93,7 @@ def test_nonoverlapping_matrix_ovelapping_oligos(oligoset_generator):
         "A_0": {"start": [10, 50], "end": [15, 55]},
         "A_1": {"start": [20, 53], "end": [25, 58]},
     }
-    computed_matrix = oligoset_generator._get_overlapping_matrix(oligos=oligos)
+    computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
     true_matrix = pd.DataFrame(
         data=[[0, 0], [0, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"]
     )
@@ -118,7 +108,7 @@ def test_nonoverlapping_matrix_for_nonovelapping_oligos(oligoset_generator):
         "A_0": {"start": [10, 50], "end": [15, 55]},
         "A_1": {"start": [20, 35], "end": [25, 40]},
     }
-    computed_matrix = oligoset_generator._get_overlapping_matrix(oligos=oligos)
+    computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
     true_matrix = pd.DataFrame(
         data=[[0, 1], [1, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"]
     )

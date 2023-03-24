@@ -6,7 +6,7 @@ packages = ["oligo_designer_toolsuite"]
 
 [tool.setuptools.dynamic]
 #version = {attr = "my_package.VERSION"}
-readme = {file = "README.md"}
+readme = { file = "README.md" }
 
 [tool.setuptools_scm]
 write_to = "oligo_designer_toolsuite/_version.py"
@@ -16,43 +16,48 @@ name = "oligo-designer-toolsuite"
 dynamic = ["version"]
 #version = "1.0.2"
 authors = [
-  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
-  {name="Isra Mekki", email="isra.mekki@helmholtz-muenchen.de"},
-  {name="Francesco Campi"},
-  {name="Chelsea Bright"},
+  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
+  { name = "Isra Mekki", email = "isra.mekki@helmholtz-muenchen.de" },
+  { name = "Francesco Campi" },
+  { name = "Chelsea Bright" },
 ]
 maintainers = [
-  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
-  {name="Isra Mekki", email="isra.mekki@helmholtz-muenchen.de"},
+  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
+  { name = "Isra Mekki", email = "isra.mekki@helmholtz-muenchen.de" },
 ]
 description = "Develop custom oligo design pipelines."
-keywords = ["bioinformatics", "probes", "oligo nucleotides", "probe design", "oligo design"]
+keywords = [
+  "bioinformatics",
+  "probes",
+  "oligo nucleotides",
+  "probe design",
+  "oligo design",
+]
 readme = "README.md"
 requires-python = "<3.11"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
-dependencies = ["datetime",
-                "argparse",
-                "numpy",
-                "pandas",
-                "iteration_utilities",
-                "Bio",
-                "pyyaml",
-                "networkx",
-                "joblib",
-                "seqfold",
+dependencies = [
+  "datetime",
+  "argparse",
+  "numpy",
+  "pandas",
+  "iteration_utilities",
+  "Bio",
+  "pyyaml",
+  "networkx",
+  "joblib",
+  "seqfold",
 ]
 
 [project.optional-dependencies]
-dev = [
-  "pytest",
-]
+dev = ["pytest"]
 
-#[project.scripts]
-#my-client = "my_package.my_module:main_cli"
+[project.scripts]
+padlock_probe_designer = "oligo_designer_toolsuite.pipelines._padlock_probe_designer:main"
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"

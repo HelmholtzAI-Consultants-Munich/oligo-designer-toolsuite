@@ -1,0 +1,2 @@
+region_id	oligo_id	sequence	chromosome	start	end	strand	length	additional_information_fasta	GC_content	melting_temperature	melt_temp_arm1	melt_temp_arm2	dif_melt_temp_arms	ligation_site
+WASH7P	WASH7P_1	TGGCAGGTCAGACCTATGCCGTGCCCTTCAT	1	24770	24801	-	31	None	58.06	65.15	47.66	47.21	0.45	17.0
