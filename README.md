@@ -19,7 +19,7 @@
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers can customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
-*Oligo Designer Toolsuite* is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps. In addition, we already provide oligo design pipelines for specific experimental setups, e.g. Padlock Probes for Spatial Transcriptomics. 
+*Oligo Designer Toolsuite* is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. Furthermore, we introduce a common underlying data structure, which allows the user to easily combine different modules, depending on the required processing steps. We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. Padlock Probes for Spatial Transcriptomics. 
 
 <div align="center">
 
@@ -92,6 +92,26 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 ## Contributing
 
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
+
+## How to cite
+
+If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
+
+```
+@software{lisa_sousa_2023_7823048,
+    author       = {Lisa Barros de Andrade e Sousa,
+                     Isra Mekki, 
+		     Francesco Campi, 
+		     Louis Kümmerle},
+    title        = {{Oligo Designer Toolsuite}},
+    month        = april,
+    year         = 2023,
+    publisher    = {Zenodo},
+    version      = {v0.1.3},
+    doi          = {10.5281/zenodo.7823048},
+    url          = {https://doi.org/10.5281/zenodo.7823048}
+}
+```
 
 ## License
 
