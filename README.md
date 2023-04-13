@@ -99,10 +99,10 @@ If the Ologo Designer Toolsuite is useful for your research, consider citing the
 
 ```
 @software{lisa_sousa_2023_7823048,
-    author       = {Lisa Barros de Andrade e Sousa,
-                     Isra Mekki, 
+    author       = {Isra Mekki, 
 		     Francesco Campi, 
-		     Louis Kümmerle},
+		     Louis Kümmerle,
+		     Lisa Barros de Andrade e Sousa},
     title        = {{Oligo Designer Toolsuite}},
     month        = april,
     year         = 2023,
