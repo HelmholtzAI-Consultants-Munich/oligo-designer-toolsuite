@@ -1,6 +1,6 @@
 <div align="center">
 
-# Oligo Designer Toolsuite
+# *Oligo Designer Toolsuite* - lightweight development of custom oligo design pipelines
 
 [![test](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/oligo-designer-toolsuite.svg)](https://pypi.org/project/oligo-designer-toolsuite)
