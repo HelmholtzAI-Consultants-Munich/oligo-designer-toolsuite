@@ -1,40 +1,70 @@
-![stability-stable](https://img.shields.io/badge/stability-stable-green.svg)
+<div align="center">
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite)
+# *Oligo Designer Toolsuite* - lightweight development of custom oligo design pipelines
 
+[![PyPI](https://img.shields.io/pypi/v/oligo-designer-toolsuite.svg)](https://pypi.org/project/oligo-designer-toolsuite)
+[![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
 
-# Oligo Designer Toolsuite
+[Docs] | [Tutorials]
+
+[Docs]: https://oligo-designer-toolsuite.readthedocs.io/
+[Tutorials]: https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/tree/dev/tutorials
+
+</div>
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers can customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
-Various tools exist that provide custom design of oligo sequences depending on the area of application. Interestingly, all those pipelines have many common basic processing steps, ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos. Despite the fact that most tools apply the same basic processing steps, each newly developed tool usually uses its own implementation and different versions of package dependencies for those basic processing steps. As a consequence, the comparability of tools that differ only in certain steps is hampered, but also the development of new tools and the update of existing tools is slowed down, because developers do not have a common resource for basic functionalities to fall back on. We tackle this issue by providing such a common resource in our *Oligo Designer Toolsuite*. This Toolsuite is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework. All modules have a standardized I/O format and can be combined individually depending on the required processing steps. 
+*Oligo Designer Toolsuite* provides ready-to-use oligo design pipelines for specific experimental setups, e.g. Padlock Probes for Spatial Transcriptomics. 
 
-![](docs/figures/oligo_design.png)
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/dev/docs/source/_figures/oligo_design.png" width="800">
+	
+</div>
+
+
+## News
+
+- **[2023.05.03]** 🔥🔥 We will soon release a new version of the Oligo Designer Toolsuite with major updates! The new version 1) provides custom pipelines for MERFISH and SeqFISH+ probe design , 2) allows the user to design probes for all species available at NCBi or Ensemble and 3) allows the user to easily implement customized oligo design piplines using our new basic functionality modules! If you want to try out those functionalities already today, then check out the *dev* branch!
 
 ## Installation
 
 **Requirements:**
 
-This package was build with Python 3.8 
+This package was build with ```Python 3.8``` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
 
-| Package  | Version |
-| ------------- | ------------- |
-| argparse  | 1.4.0  |
-| Bio  | 1.3.8  |
-| datetime | 4.4 |
-| gtfparse  | 1.2.1 |
-| iteration_utilities  | 0.11.0 |
-| networkx  | 2.8.1 |
-| pandas  | 1.4.2 |
-| pybedtools  | 0.9.0 |
-| pyfaidx  | 0.6.4 |
-| pyyaml  | 6.0 |
+```
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda update conda
+conda update --all
+```
 
+Follow this instruction to install the required additional tools:
 
-All required packages are automatically installed if installation is done via ```pip```.
+- **Blast** (2.12 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
 
+		conda install "blast>=2.12"
+
+- **BedTools** (2.30 or higher) can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via [Bioconda](http://bioconda.github.io/recipes/bedtools/README.html) installation of BedTools with:
+
+		conda install "bedtools>=2.30"
+		
+- **Bowtie** (1.3 or higher) can be installed via [Bowtie webpage](https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie) or via [Bioconda](http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
+
+		conda install "bowtie>=1.3.1"
+
+- **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) or via [Bioconda](http://bioconda.github.io/recipes/bowtie2/README.html) installation of Bowtie2 with:
+
+		conda install "bowtie2>=2.5"
+
+All other required packages are automatically installed if installation is done via :code:`pip`.
 
 **Install Options:**
+
+The installation of the package is done via pip. Note: if you are using conda, first install pip with: ```conda install pip```.
 
 PyPI install:
 
@@ -42,30 +72,33 @@ PyPI install:
 pip install oligo-designer-toolsuite
 ```
 
-Installation of the package via pip from source:
+
+Installation from source:
 
 ```
-git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git         
-
-pip install .        (Installation as python package: run inside directory)
-
-pip install -e .        (Development Installation as python package: run inside directory)
+git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
 ```
 
-Note: if you are using conda, first install pip with: ```conda install pip```
+- Installation as python package (run inside directory):
 
-In addition to the packages listed above, you need to install *Blast* and *BedTools* Software. *Blast* can installed via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via ```Bioconda``` installation of Blast with ```conda install -c bioconda blast``` and *BedTools* can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via Bioconda installation of BedTools with ```conda install -c bioconda bedtools```.
+		pip install .   
 
-# Implemented Oligo Design Pipelines
 
-## Padlock Probe Design
+- Development Installation as python package (run inside directory):
+
+		pip install -e .[dev]
+
+
+## Implemented Oligo Design Pipelines
+
+### Padlock Probe Design
 
 A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is 40nt.
 
 
-### Usage
+#### Usage
 
-**Command-Line Call:**
+*Command-Line Call:*
 
 To create padlock probes you can run the pipeline with 
 
@@ -85,7 +118,7 @@ where:
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
-**Python Import:**
+*Python Import:*
 
 Import padlock probe design pipeline as python package:
 
@@ -102,3 +135,32 @@ del annotations # free memory
 packlock_probe_designer.generate_probe_sets(config, dir_output)
 packlock_probe_designer.design_padlock_probes(config, dir_output)
 ```
+
+## Contributing
+
+Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
+
+## How to cite
+
+If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
+
+```
+@software{lisa_sousa_2023_7823048,
+    author       = { Lisa Barros de Andrade e Sousa,
+                     Isra Mekki,  
+                     Louis Kümmerle,
+                     Marie Piraud
+                     },
+    title        = {{Oligo Designer Toolsuite}},
+    month        = april,
+    year         = 2023,
+    publisher    = {Zenodo},
+    version      = {v0.1.3},
+    doi          = {10.5281/zenodo.7823048},
+    url          = {https://doi.org/10.5281/zenodo.7823048}
+}
+```
+
+## License
+
+```oligo-designer-toolsuite``` is released under the MIT license. See [LICENSE](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/dev/LICENSE) for additional details about it.
