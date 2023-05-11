@@ -1,6 +1,6 @@
 <div align="center">
 
-# *Oligo Designer Toolsuite* - lightweight development of custom oligo design pipelines
+# *Oligo Designer Toolsuite* - Lightweight Development of Custom Oligo Design Pipelines
 
 [![PyPI](https://img.shields.io/pypi/v/oligo-designer-toolsuite.svg)](https://pypi.org/project/oligo-designer-toolsuite)
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/stargazers)
