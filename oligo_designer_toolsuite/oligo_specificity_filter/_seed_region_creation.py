@@ -1,5 +1,12 @@
+############################################
+# imports
+############################################
+
 from abc import ABC, abstractmethod
 
+############################################
+# Oligo Seed Gregion Creation Classes
+############################################
 
 class SeedRegionCreationBase(ABC):
     """

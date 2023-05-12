@@ -1,8 +1,15 @@
-from abc import ABC, abstractmethod
+############################################
+# imports
+############################################
 
 import numpy as np
 import pandas as pd
 
+from abc import ABC, abstractmethod
+
+############################################
+# Oligo Scoring Classes
+############################################
 
 class OligoScoringBase(ABC):
     """Template class for scoring the oligos."""

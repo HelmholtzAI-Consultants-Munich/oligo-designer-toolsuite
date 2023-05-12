@@ -1,6 +1,7 @@
 """
-This module contains the databases of the oligo sequences and the reference file. In particular, it contains the classes to
-generate the oligos database and the reference database and allow to read ad write them to disk.
+This module contains the OligoDatabase and ReferenceDatabase classes, which are used to store the oligo sequences and sequence from a reference. 
+The classes implement read, create and write functionalities. This module also contains a class that can be used to generate sequences from specific genomic regions. 
+The genomic regions can be automatically downloaded from NCBI or Ensemble or can be provided by the user.
 """
 
 from ._oligos_database import OligoDatabase

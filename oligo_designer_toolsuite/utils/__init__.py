@@ -1,5 +1,5 @@
 """
-Additional functionalities to dowload form the NCBI and Ensembl servers and to deal with sequence and annotation files
+This module provides all additional functionalities that are needed for oligo design, e.g. a class to download annotations from NCBI and Ensembl servers.
 """
 
 from ._data_parser import (

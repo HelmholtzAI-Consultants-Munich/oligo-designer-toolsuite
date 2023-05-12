@@ -1,13 +1,20 @@
+############################################
+# imports
+############################################
+
 import os
 import re
-from pathlib import Path
-
 import pandas as pd
-from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
+
+from pathlib import Path
 from joblib import Parallel, delayed
+from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
 from . import SpecificityFilterBase
 
+############################################
+# Oligo Blast Filter Classes
+############################################
 
 class Blastn(SpecificityFilterBase):
     """This class filters oligos based on the blast alignment tool. All the oligos which have a match with a percentage identity higher

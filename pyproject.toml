@@ -56,7 +56,7 @@ dependencies = [
 dev = ["pytest"]
 
 [project.scripts]
-padlock_probe_designer = "oligo_designer_toolsuite.pipelines._padlock_probe_designer:main"
+scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_designer:main"
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"

@@ -1,9 +1,16 @@
-from abc import ABC, abstractmethod
+############################################
+# imports
+############################################
 
+from Bio.SeqUtils import Seq
 from Bio.SeqUtils import gc_fraction
 from Bio.SeqUtils import MeltingTemp as mt
-from Bio.SeqUtils import Seq
 
+from abc import ABC, abstractmethod
+
+############################################
+# Oligo Property Filter Classes
+############################################
 
 class PropertyFilterBase(ABC):
     """Base class that gives the structure for Oligo Property Filters."""
@@ -72,7 +79,7 @@ class GCContent(PropertyFilterBase):
 
         :param sequence: sequence to be filtered
         :type sequence: str
-        :return:True if the constraint is fulfilled, GC content
+        :return: True if the constraint is fulfilled, GC content
         :rtype: bool, dict
         """
         GC_content = round(gc_fraction(sequence)*100, 4)
@@ -85,11 +92,11 @@ class GCContent(PropertyFilterBase):
 class MeltingTemperatureNN(PropertyFilterBase):
     """Checks if the melting temperature of a sequence lies within a user defined interval [Tm_min, Tm_max].
     The melting tenperature is computed using nearest neighbor thermodynamics.
-    The parameters for melting temperature computation can be changed from default by providing ```Tm_parameters``` 
+    The parameters for melting temperature computation can be changed from default by providing ``Tm_parameters`` 
     dict with parameters specifications.
-    The melting temperature can be corrected for salt ions by providing a ```Tm_salt_correction_parameters```dict 
+    The melting temperature can be corrected for salt ions by providing a ``Tm_salt_correction_parameters`` dict 
     with parameters specifications.
-    The melting temperature can be corrected for DMSO and formamide by providing a ```Tm_chem_correction_parameters```dict 
+    The melting temperature can be corrected for DMSO and formamide by providing a ``Tm_chem_correction_parameters`` dict 
     with parameters specifications.
 
     :param Tm_min: minimum melting temperature

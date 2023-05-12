@@ -2,7 +2,6 @@
 # imports
 ############################################
 
-
 import os
 import sys
 import yaml
@@ -10,8 +9,10 @@ import shutil
 import logging
 import inspect
 import warnings
+
 from pathlib import Path
 from datetime import datetime
+from subprocess import Popen
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 
@@ -25,7 +26,7 @@ from oligo_designer_toolsuite.database import (
     ReferenceDatabase,
 )
 from oligo_designer_toolsuite.sequence_design import PadlockSequence
-from oligo_designer_toolsuite.oligo_efficiency import (
+from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
     PadlockSetScoring,
 )
@@ -47,7 +48,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     LigationRegionCreation,
     SpecificityFilter,
 )
-from oligo_designer_toolsuite.pipelines._padlock_probe_designer_config import (
+from oligo_designer_toolsuite.pipelines._scrinshot_probe_designer_config import (
     generate_custom_config,
     generate_ncbi_config,
     generate_ensembl_config,
@@ -55,12 +56,12 @@ from oligo_designer_toolsuite.pipelines._padlock_probe_designer_config import (
 
 
 ############################################
-# padlock probe design class
+# Scrinshot probe design class
 ############################################
 
 
-class PadlockProbeDesigner:
-    """This class generates all padlock probes from a transcriptome or custom file for a user-defined set of genes.
+class ScrinshotProbeDesigner:
+    """This class generates all padlock probes for a SCRINSHOT experiment from a transcriptome or custom file for a user-defined set of genes.
     The probe design is done in five steps:
     1. Creating all possible probes for a provided annotation and set of genes and store them in a oligo database
     2. Filter probes by a list of property filters, e.g. CG content filter
@@ -69,7 +70,7 @@ class PadlockProbeDesigner:
     5. Create the final ready-to-order padlock sequence
 
     The user can save the oligo database after each processing step and resume the pipeline later by loading an existing database into this class.
-    A logger is automatically created at <output_dir>/log_padlock_probe_designer_<timestamp>.txt and logs parameters as well as number of genes/oligos after each step.
+    A logger is automatically created at <output_dir>/log_scrinshot_probe_designer_<timestamp>.txt and logs parameters as well as number of genes/oligos after each step.
 
     :param dir_output: Output directory, defaults to 'output'.
     :type dir_output: str, optional
@@ -97,9 +98,9 @@ class PadlockProbeDesigner:
         timestamp = datetime.now()
         file_logger = os.path.join(
             self.dir_output,
-            f"log_padlock_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
+            f"log_scrinshot_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
         )
-        logging.getLogger("padlock_probe_designer")
+        logging.getLogger("scrinshot_probe_designer")
         logging.basicConfig(
             format="%(asctime)s [%(levelname)s] %(message)s",
             level=logging.NOTSET,
@@ -161,10 +162,10 @@ class PadlockProbeDesigner:
         for region in probe_database.keys():
             for probe in probe_database[region].keys():
                 length = probe_database[region][probe]["length"]
-            if length < probe_length_min:
-                probe_length_min = length
-            if length > probe_length_max:
-                probe_length_max = length
+                if length < probe_length_min:
+                    probe_length_min = length
+                if length > probe_length_max:
+                    probe_length_max = length
 
         return probe_length_min, probe_length_max
 
@@ -521,7 +522,7 @@ class PadlockProbeDesigner:
         ##### save database #####
         if self.write_intermediate_steps:
             file_database = probe_database.write_database(
-                filename="oligo_database_specificity_filters.txt"
+                filename="probe_database_specificity_filters.txt"
             )
         else:
             file_database = ""
@@ -593,7 +594,7 @@ class PadlockProbeDesigner:
         if self.write_intermediate_steps:
             dir_oligosets = probe_database.write_oligosets(folder="oligosets")
             file_database = probe_database.write_database(
-                filename="oligo_database_oligosets.txt"
+                filename="probe_database_oligosets.txt"
             )
         else:
             dir_oligosets = ""
@@ -643,7 +644,7 @@ class PadlockProbeDesigner:
             "fmd": 30,
         },
     ):
-        """Generates the padlock sequences for a OligoDataset class  for which oligosets have been already computed."""
+        """Generates the padlock sequences for a OligoDataset class for which oligosets have been already computed."""
 
         ##### log parameters #####
         logging.info("Parameters Final Sequence Design:")
@@ -686,24 +687,28 @@ class PadlockProbeDesigner:
 # commanline API
 ############################################
 
-
+# To Do
 def generate_config_file(directory: str, source: str):
     directory = os.path.join(directory, "config")
     Path(directory).mkdir(parents=True, exist_ok=True)
-    config_file = None
+
     if source == "custom":
-        config_file = generate_custom_config(
-            directory
-        )  # function generating the config file
+        # function generating the config file
+        # config_file = generate_custom_config(directory) 
+        config_file = "./data/configs/scrinshot_probe_designer_custom.yaml"
     elif source == "ncbi":
-        config_file = generate_ncbi_config(
-            directory
-        )  # function generating the config file
+        # function generating the config file
+        # config_file = generate_ncbi_config(directory) 
+        config_file = "./data/configs/scrinshot_probe_designer_ncbi.yaml"
     elif source == "ensembl":
-        config_file = generate_ensembl_config(
-            directory
-        )  # function generating the config file
-    warnings.warn(f"Default config generated automatically in '{config_file}'.")
+        # function generating the config file
+        # config_file = generate_ensembl_config(directory)
+        config_file = "./data/configs/scrinshot_probe_designer_ensembl.yaml"
+    else:
+        config_file = ""
+        raise ValueError(f"No config file found for source {source}'.")
+        
+    warnings.warn(f"Using default config: '{config_file}'.")
     return config_file
 
 
@@ -734,8 +739,8 @@ def initialize_parameters(parser: ArgumentParser):
     )
     parser.add_argument(
         "-mog",
-        "--min_oligos_per_gene",
-        help="genes with less that this number of oligos are removed, int",
+        "--min_probes_per_gene",
+        help="genes with less that this number of probes are removed, int",
         type=int,
         default=None,
         metavar="",
@@ -751,7 +756,7 @@ def initialize_parameters(parser: ArgumentParser):
     parser.add_argument(
         "-ws",
         "--write_intermediate_steps",
-        help="write the oligo sequences after each step of the pipeline, bool",
+        help="write the probe sequences after each step of the pipeline, bool",
         type=bool,
         default=None,
         metavar="",
@@ -834,51 +839,51 @@ def initialize_parameters(parser: ArgumentParser):
     parser.add_argument(
         "-fg",
         "--file_genes",
-        help="path to file with a list of the genes that are used to generate the oligos sequences, if empty all the genes are used, str",
+        help="path to file with a list of the genes that are used to generate the probes sequences, if empty all the genes are used, str",
         type=str,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "-olm",
-        "--oligo_length_min",
-        help="minimum length of oligos, int",
+        "--probe_length_min",
+        help="minimum length of probes, int",
         type=int,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "-olM",
-        "--oligo_length_max",
-        help="max length of oligos, int",
+        "--probe_length_max",
+        help="max length of probes, int",
         type=int,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--GC_content_min",
-        help="minimum GC content of oligos, [0, 100]",
+        help="minimum GC content of probes, [0, 100]",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--GC_content_max",
-        help="maximum GC content of oligos, [0, 100]",
+        help="maximum GC content of probes, [0, 100]",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--Tm_min",
-        help="minimum melting temperature of oligos, float",
+        help="minimum melting temperature of probes, float",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--Tm_max",
-        help="maximum melting temperature of oligos, float",
+        help="maximum melting temperature of probes, float",
         type=float,
         default=None,
         metavar="",
@@ -912,22 +917,22 @@ def initialize_parameters(parser: ArgumentParser):
         metavar="",
     )
     parser.add_argument(
-        "--word_size",
+        "--blast_word_size",
         help="word size for the blastn seed, int",
         type=int,
         default=None,
         metavar="",
     )
     parser.add_argument(
-        "--coverage",
-        help="minimum coverage between oligos and target sequence for blastn, [0,100]",
+        "--blast_coverage",
+        help="minimum coverage between probes and target sequence for blastn, [0,100]",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
-        "--percent_identity",
-        help="maximum similarity between oligos and target sequences for blastn, [0,100]",
+        "--blast_percent_identity",
+        help="maximum similarity between probes and target sequences for blastn, [0,100]",
         type=float,
         default=None,
         metavar="",
@@ -948,42 +953,42 @@ def initialize_parameters(parser: ArgumentParser):
     )
     parser.add_argument(
         "--Tm_opt",
-        help="optimal melting temperature of oligos, float",
+        help="optimal melting temperature of probes, float",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--GC_content_opt",
-        help="optimal GC content of oligos, [0, 100]",
+        help="optimal GC content of probes, [0, 100]",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--Tm_weight",
-        help="weight of the Tm of the oligo in the efficiency score, float",
+        help="weight of the Tm of the probe in the efficiency score, float",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--GC_weight",
-        help="weight of the GC content of the oligo in the efficiency score, float",
+        help="weight of the GC content of the probe in the efficiency score, float",
         type=float,
         default=None,
         metavar="",
     )
     parser.add_argument(
-        "--oligoset_size",
-        help="ideal number of oligos per oligoset, int",
+        "--probeset_size_opt",
+        help="ideal number of probes per probeset, int",
         type=int,
         default=None,
         metavar="",
     )
     parser.add_argument(
-        "--min_oligoset_size",
-        help="minimum number of oligos per oligoset, int",
+        "--probeset_size_min",
+        help="minimum number of probes per probeset, int",
         type=int,
         default=None,
         metavar="",
@@ -997,21 +1002,21 @@ def initialize_parameters(parser: ArgumentParser):
     )
     parser.add_argument(
         "--detect_oligo_length_min",
-        help="minimum number of oligos per oligoset, int",
+        help="minimum number of probes per probeset, int",
         type=int,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--detect_oligo_length_max",
-        help="maximum length of detection oligo, int",
+        help="maximum length of detection probe, int",
         type=int,
         default=None,
         metavar="",
     )
     parser.add_argument(
         "--detect_oligo_Tm_opt",
-        help="optimal melting temperature of detection oligo, float",
+        help="optimal melting temperature of detection probe, float",
         type=float,
         default=None,
         metavar="",
@@ -1020,10 +1025,10 @@ def initialize_parameters(parser: ArgumentParser):
     args = parser.parse_args()
     args = vars(args)
     if args["config"] is None:
-        warnings.warn(f"No config file defined. Creating default config")
+        warnings.warn(f"No config file defined. Creating default config.")
         if args["source"] is None:
-            warnings.warn(f"No source was defined. Using default source: NCBI")
-            args["source"] = "ncbi"
+            warnings.warn(f"No source was defined. Using default source: custom")
+            args["source"] = "custom"
         args["config"] = generate_config_file(args["output"], args["source"])
 
     # read the config file
@@ -1052,14 +1057,14 @@ def initialize_parameters(parser: ArgumentParser):
 
 
 if __name__ == "__main__":
-    """Command line tool to run a pipeline to design Padlock Probes, to run the tool use the command: ``padlock_probe_designer [options]``.
+    """Command line tool to run a pipeline to design Padlock Probes for SCRINSHOT experiments. To run the tool use the command: ``scrinshot_probe_designer [options]``.
 
     The program supports two ways to recieve the input parameters:
 
     - command line input
     - configuration file (recommended)
 
-    A standard configuration file can be generated using the following command ``padlock_probe_designer_config [options]``
+    A standard configuration file can be generated using the following command ``scrinshot_probe_designer_config [options]``
 
     Since the number of input parameters requested is too high to be handled only through the command line,
     the progam will use as baseline the configuration file (it will be automatically generated if it wasn't provided)
@@ -1070,8 +1075,8 @@ if __name__ == "__main__":
 
     # get comman line arguments
     parser = ArgumentParser(
-        prog="Padlock Probe Designer",
-        usage="padlock_probe_designer [options]",
+        prog="SCRINSHOT Probe Designer",
+        usage="scrinshot_probe_designer [options]",
         description=__doc__,
         formatter_class=RawDescriptionHelpFormatter,
     )
@@ -1082,7 +1087,7 @@ if __name__ == "__main__":
     Path(dir_output).mkdir(parents=True, exist_ok=True)
 
     ##### Initialize ProbeDesigner Class #####
-    probe_designer = PadlockProbeDesigner(dir_output=dir_output)
+    probe_designer = ScrinshotProbeDesigner(dir_output=dir_output)
 
     ##### load annotations #####
     probe_designer.load_annotations(

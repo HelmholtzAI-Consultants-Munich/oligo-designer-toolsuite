@@ -1,5 +1,5 @@
 """
-Filter of the olgos sequences based on theire features, such as melting temperature and GC content.
+This module provides different sequence-property based filters for oligos like GC content or melting temperature filters.
 """
 
 from ._filter_base import (

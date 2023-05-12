@@ -1,3 +1,7 @@
+############################################
+# imports
+############################################
+
 import os
 import re
 import subprocess
@@ -7,6 +11,9 @@ from joblib import Parallel, delayed
 
 from . import Bowtie
 
+############################################
+# Oligo Seed Region Filter Classes
+############################################
 
 class BowtieSeedRegion(Bowtie):
     """This class filters oligos based on the Bowtie short read alignment tool on a specific sub-region of the oligo. The region taken in consideration is created according to the ``seed_region_creation`` class.

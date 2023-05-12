@@ -1,5 +1,5 @@
 """
-This package contains all the specificifity filters, which detect and filter out sequences that have potential off-target regions.
+This module provides different specificifity filters for oligo sequences, which detect and filter out sequences that have potential off-target regions.
 """
 
 from ._filter_base import SpecificityFilterBase
@@ -14,7 +14,7 @@ from ._seed_region_creation import (
     SeedRegionCreationPercentage,
     SeedRegionCreationStandard,
 )
-from ._specificity_filters import SpecificityFilter
+from ._specificity_filter import SpecificityFilter
 
 __all__ = [
     "SpecificityFilter",

@@ -1,8 +1,15 @@
+############################################
+# imports
+############################################
+
 import iteration_utilities
 from joblib import Parallel, delayed
 
 from . import SpecificityFilterBase
 
+############################################
+# Oligo Exact Match Filter Classes
+############################################
 
 class ExactMatches(SpecificityFilterBase):
     """This class filters oligos based duplicates found in the ``oligos_DB``. That is, oligos with the same sequences but belonging to different regions are filtered out.

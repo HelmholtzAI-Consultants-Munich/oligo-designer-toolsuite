@@ -1,14 +1,20 @@
+############################################
+# imports
+############################################
+
 import os
 import re
 import subprocess
-from pathlib import Path
-
-
 import pandas as pd
+
+from pathlib import Path
 from joblib import Parallel, delayed
 
 from . import SpecificityFilterBase
 
+############################################
+# Oligo Bowtie Filter Classes
+############################################
 
 class Bowtie(SpecificityFilterBase):
     """This class filters oligos based on the Bowtie short read alignment tool.

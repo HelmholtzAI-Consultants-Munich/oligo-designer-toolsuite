@@ -1,5 +1,5 @@
 """
-This module assignes a score to the oligos and the oligosets for their (on-target) efficiency.
+This module provides different scoring approaches to calculate the efficiency of oligos.
 """
 
 

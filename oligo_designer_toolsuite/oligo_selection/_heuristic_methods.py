@@ -1,5 +1,13 @@
-import numpy as np
+############################################
+# imports
+############################################
 
+import numpy as np
+import networkx as nx
+
+############################################
+# Heuristic Selection Methods
+############################################
 
 def padlock_heuristic_selection(
     database_region, oligos_scores, overlapping_matrix, n_oligo, n_trials=10000
@@ -29,9 +37,23 @@ def padlock_heuristic_selection(
     # overlapping matrix must have a consistent oreder
     mat_sorted = overlapping_matrix.loc[oligo_ids_sorted, oligo_ids_sorted].values
 
-    max_score = (
-        oligos_sorted.iloc[-1] * 1.1
-    )  # already sorted df, the max is the last entry
+    # already sorted df, the max is the last entry
+    # max_score = (oligos_sorted.iloc[-1] * 1.1)  
+
+    # Represent overlap matrix as graph
+    G = nx.convert_matrix.from_numpy_array(mat_sorted)
+    # First check if there are no cliques with n oligos
+    cliques = nx.algorithms.clique.find_cliques(G)
+
+    # initialize best_idx_set with arbitrary set of non-overlapping oligos with minimum n_oligo oligos 
+    for clique in cliques:
+        if len(clique) >= n_oligo:
+            best_idx_set = clique[:n_oligo]
+            break
+
+    # initialize max_score with score from set chosen above
+    max_score = np.max(oligos_sorted.values[best_idx_set])
+
     best_idx_set = []
     for first_idx in range(
         min(len(oligo_ids_sorted), n_trials)

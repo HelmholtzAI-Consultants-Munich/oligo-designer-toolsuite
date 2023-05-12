@@ -4,8 +4,8 @@
 
 from joblib import Parallel, delayed
 
-from ..database import OligoDatabase
 from . import PropertyFilterBase
+from ..database import OligoDatabase
 
 ############################################
 # Property Filter Class

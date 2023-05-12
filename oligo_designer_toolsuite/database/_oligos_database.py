@@ -202,9 +202,9 @@ class OligoDatabase:
         Loads a previously generated oligos database and saves it in the ``database`` attribute as a dictionary.
         The order of columns is :
 
-        +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
         | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
-        +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
 
         Additional feat. includes additional info from fasta file and additional info computed by the filtering class.
 
@@ -233,9 +233,8 @@ class OligoDatabase:
             lambda row: list(map(int, row.end)), axis=1
         )
         file_tsv_content.length = file_tsv_content.length.astype("int")
-        file_tsv_content.additional_information_fasta = (
-            file_tsv_content.additional_information_fasta.str.split("__MATCHSEQ__")
-        )
+        file_tsv_content.additional_information_fasta[file_tsv_content['additional_information_fasta'].isna()] = ""
+        file_tsv_content.additional_information_fasta = file_tsv_content.additional_information_fasta.str.split("__MATCHSEQ__")
 
         database = {}
         for region in file_tsv_content.region_id.unique():
@@ -257,9 +256,9 @@ class OligoDatabase:
         Saves the oligo database as a tsv file.
         The order of the columns is:
 
-        +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
         | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
-        +-----------+----------+----------------+------------+-------+-----+--------+--------+------------------+
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
 
         Additional feat. includes additional info from fasta file and additional info computed by the filtering class.
 

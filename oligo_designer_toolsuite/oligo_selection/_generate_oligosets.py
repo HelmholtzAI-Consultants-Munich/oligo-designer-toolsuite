@@ -1,13 +1,20 @@
-from typing import Callable
+############################################
+# imports
+############################################
 
-import networkx as nx
 import numpy as np
 import pandas as pd
+import networkx as nx
+
+from typing import Callable
 from joblib import Parallel, delayed
 
 from ..database import OligoDatabase
-from ..oligo_efficiency import OligoScoringBase, SetScoringBase
+from ..oligo_efficiency_filter import OligoScoringBase, SetScoringBase
 
+############################################
+# Oligo set Generation Classes
+############################################
 
 class OligosetGenerator:
     """This class is used to generate ranked, non-overlapping oligo sets. Each oligo is scored according to the given ``oligos_scoring`` class

@@ -1,13 +1,20 @@
+############################################
+# imports
+############################################
+
 import os
 import re
+import pandas as pd
+
 from pathlib import Path
 from subprocess import Popen
-
-import pandas as pd
 from joblib import Parallel, delayed
 
 from . import Bowtie
 
+############################################
+# Oligo Bowtie2 Filter Classes
+############################################
 
 class Bowtie2(Bowtie):
     """This class filters oligos based on the Bowtie 2 read alignment tool. It is recommended to use Bowtie 2 instead of Bowtie for reads longer than about 50 bp, as it gives better performance.

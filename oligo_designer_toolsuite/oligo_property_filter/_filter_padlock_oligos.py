@@ -2,8 +2,8 @@
 # imports
 ############################################
 
-from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq
+from Bio.SeqUtils import MeltingTemp as mt
 
 from . import PropertyFilterBase
 
@@ -14,9 +14,9 @@ from . import PropertyFilterBase
 class PadlockArms(PropertyFilterBase):
     """Checks if the melting temperature of a padlock arms lies within a user defined interval [arm_Tm_min, arm_Tm_max] and fulfills sequence length requirements.
     The melting tenperature is computed using nearest neighbor thermodynamics.
-    The parameters for melting temperature computation can be changed from default by providing ```Tm_parameters``` 
+    The parameters for melting temperature computation can be changed from default by providing ``Tm_parameters`` 
     dict with parameters specifications.
-    The melting temperature can be corrected for DMSO and formamide by providing a ```Tm_chem_correction_parameters```dict 
+    The melting temperature can be corrected for DMSO and formamide by providing a ``Tm_chem_correction_parameters`` dict 
     with parameters specifications.
 
     :param min_arm_length: minimum arm length
@@ -28,11 +28,11 @@ class PadlockArms(PropertyFilterBase):
     :param arm_Tm_max: maximum melting temperature
     :type arm_Tm_max: float
     :param Tm_parameters: parameters to compute the melting temperature, 
-        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
+        set to ``{}`` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
         for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
     :type Tm_parameters: dict
     :param Tm_chem_correction_parameters: parameters to correct the melting temperature for DMSO and formamide, defaults to None, i.e. no correction
-        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
+        set to ``{}`` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
         for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
     :type Tm_chem_correction_parameters: dict
     """

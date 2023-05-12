@@ -1,11 +1,13 @@
-from ._padlock_probe_designer import PadlockProbeDesigner
-from ._padlock_probe_designer import MerfishProbeDesigner
-from ._padlock_probe_designer import SeqfishPlusProbeDesigner
-from ._padlock_probe_designer_config import padlock_probe_designer_config
+"""
+This module provides different ready-to-use oligo design pipelines. 
+"""
+
+from ._scrinshot_probe_designer import ScrinshotProbeDesigner
+from ._merfish_probe_designer import MerfishProbeDesigner
+from ._seqfish_plus_probe_designer import SeqfishPlusProbeDesigner
 
 __all__ = [
-    "PadlockProbeDesigner",
+    "ScrinshotProbeDesigner",
     "MerfishProbeDesigner",
     "SeqfishPlusProbeDesigner",
-    "padlock_probe_designer_config",
 ]

@@ -6,7 +6,6 @@ import os
 import yaml
 import random
 import itertools
-
 import pandas as pd
 
 from pathlib import Path
@@ -17,7 +16,6 @@ from ..database import OligoDatabase
 ############################################
 # oligo set generator class
 ############################################
-
 
 class PadlockSequence:
     """

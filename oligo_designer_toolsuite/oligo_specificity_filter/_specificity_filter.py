@@ -1,6 +1,13 @@
+############################################
+# imports
+############################################
+
 from ..database import OligoDatabase, ReferenceDatabase
 from . import SpecificityFilterBase
 
+############################################
+# Specificity Filter Classe
+############################################
 
 class SpecificityFilter:
     """
