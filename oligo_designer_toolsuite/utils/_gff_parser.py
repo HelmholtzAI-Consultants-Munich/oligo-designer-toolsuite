@@ -35,7 +35,7 @@ class GffParser:
 
         self.dataframe_gff = None
 
-    def read_gff(self, annotation_file, chunk_size=10000, target_lines=math.inf):
+    def read_gff(self, annotation_file, chunk_size=1000, target_lines=math.inf):
         csv_file, extra_info_file = self._split_annotation(
             annotation_file, chunk_size=chunk_size, target_lines=target_lines
         )

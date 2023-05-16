@@ -146,16 +146,18 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             "fasta": "dna_rm.primary_assembly.fa.gz",
         }
 
-    def download_files(self, file_type: str):
+    def download_files(self, file_type: str, sequence_nature: str = "dna"):
         """
         Download 'file_type' file (e.g. GFF, GTF or fasta) from Ensembl and unzip file.
 
         :param file_type: Type of target file.
         :type file_type: str {'gff', 'gtf', 'fasta'}
+        :param sequence_nature: Nature of the fasta sequence.
+        :type sequence_nature: str {'dna', 'ncrna'}
         :return: Path to downloaded file, annotation release and genome assembly name.
         :rtype: tuple of str
         """
-        ftp_directory, ftp_file = self._get_params(file_type)
+        ftp_directory, ftp_file = self._get_params(file_type, sequence_nature)
         dowloaded_file = self._download_and_decompress(
             self.ftp_link, ftp_directory, ftp_file
         )
@@ -168,12 +170,14 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
         return dowloaded_file, self.annotation_release, self.assembly_name
 
-    def _get_params(self, file_type: str):
+    def _get_params(self, file_type: str, sequence_nature: str):
         """
         Get directory and file name for specified file type from Ensembl server.
 
         :param file_type: Type of target file.
         :type file_type: str {'gff', 'gtf', 'fasta'}
+        :param sequence_nature: Nature of the fasta sequence.
+        :type sequence_nature: str {'dna', 'ncrna'}
         :return: ftp directory and name of target file on Ensembl server.
         :rtype: tuple of str
         """
@@ -190,8 +194,11 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             os.remove(file_readme)
 
         if file_type.casefold() == "fasta".casefold():
-            ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder[file_type]}/{self.species}/dna/"
-            ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.file_type_ending[file_type]}"
+            ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder[file_type]}/{self.species}/{sequence_nature}/"
+            if sequence_nature == "dna":
+                ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.file_type_ending[file_type]}"
+            else:
+                ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{sequence_nature}.fa.gz"
         else:
             ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder[file_type]}/{self.species}/"
             ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.annotation_release}.{self.file_type_ending[file_type]}"

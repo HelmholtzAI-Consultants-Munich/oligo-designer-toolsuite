@@ -167,6 +167,17 @@ def test_ftp_loader_ensemble(tmp_path):
     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
 
+    file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
+        "fasta", sequence_nature="ncrna"
+    )
+
+    assert (
+        Path(file_fasta).name == "Homo_sapiens.GRCh38.ncrna.fa"
+    ), "error: wrong file downloaded"
+    assert annotation_release == "108", "error: wrong annotation release retrieved"
+    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
+
+
 def test_GFF_parser():
     """Test of GFF/GTF parser parses file correctly."""
     ##### Test GFF3 parsing

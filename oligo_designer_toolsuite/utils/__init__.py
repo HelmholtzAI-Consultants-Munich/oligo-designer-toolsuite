@@ -12,6 +12,15 @@ from ._data_parser import (
 )
 from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
 from ._gff_parser import GffParser
+from ._sequence_design import (
+    generate_random_sequence,
+    generate_binary_sequences,
+    generate_codebook,
+    get_barcode,
+    SCRINSHOT_or_ISS_backbone_sequence,
+    convert_complementary_seq_to_arms,
+    create_seqfish_plus_barcodes,
+)
 
 __all__ = [
     "BaseFtpLoader",
@@ -24,4 +33,11 @@ __all__ = [
     "get_sequence_from_annotation",
     "merge_fasta",
     "parse_fasta_header",
+    "generate_random_sequence",
+    "generate_binary_sequences",
+    "generate_codebook",
+    "get_barcode",
+    "SCRINSHOT_or_ISS_backbone_sequence",
+    "convert_complementary_seq_to_arms",
+    "create_seqfish_plus_barcodes",
 ]

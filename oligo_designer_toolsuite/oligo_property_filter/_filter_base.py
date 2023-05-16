@@ -6,6 +6,8 @@ from Bio.SeqUtils import Seq
 from Bio.SeqUtils import gc_fraction
 from Bio.SeqUtils import MeltingTemp as mt
 
+from seqfold import dg
+
 from abc import ABC, abstractmethod
 
 ############################################
@@ -161,15 +163,29 @@ class MeltingTemperatureNN(PropertyFilterBase):
         return False, {}
 
 
-class ProhibitedSequences(PropertyFilterBase):
-    """Filters the sequences containing a prohibited sequence."""
-
+class ConsecutiveRepeats(PropertyFilterBase):
+    """Filters the sequences containing a prohibited sequence.
+    :param num_consecutive: minimum number of consecutive subsequences, that are not allowed in sequences
+    :type num_consecutive: int
+    :param repeated_sequences: subsequences which, if repeated num_consecutive times are not allowed in sequences 
+    :type num_consecutive: list(str)
+    """
     def __init__(
         self,
+        num_consecutive:int,
+        prohibited_repeated_sequences: list[str] = ['A', 'C', 'T', 'G'],
     ) -> None:
-        """Initializes the class."""
+        """Initializes the class.
+        """
 
         super().__init__()
+        if num_consecutive > 1:
+            self.max_consecutive = num_consecutive
+        else:
+            self.max_consecutive = 2
+        self.repeated_sequences = prohibited_repeated_sequences
+
+
 
     def apply(self, sequence: Seq):
         """Applies the filter and returns True if the oligo does not contain prohibited sequences.
@@ -179,3 +195,63 @@ class ProhibitedSequences(PropertyFilterBase):
         :return: True if the constrined is fulfilled and the melting temperature
         :rtype: bool and dict
         """
+        
+        for sub_seq in self.repeated_sequences:
+            repeated_sub_seq = sub_seq * self.max_consecutive
+            if repeated_sub_seq in sequence:
+                return False, {}
+        
+        # Tm = mt.Tm_NN(sequence)
+        return True, {} #?
+
+
+class GCClamp(PropertyFilterBase):
+    """ Filters the sequences by the presence of a GC Clamp: one of the n 3' terminal bases must be G or C
+    :param n: number of terminal bases to check for a G or a C
+    :type  n: int
+
+
+    """
+    def __init__(self, n_terminal_bases:int) -> None:
+        super().__init__()
+        self.n = n_terminal_bases
+
+    def apply(self, sequence: Seq):
+        """Applies the filter and returns True if there is a GC clamp
+
+        :param sequence: sequence to be filtered
+        :type sequence: str
+        :return: True if the constrain is fulfilled
+        :rtype: bool
+        """
+        for i in range (self.n):
+            if (sequence[-i-1]=='G' or sequence[-i-1]=='C'):
+                return True, {}
+        return False, {}
+
+
+class SecondaryStructure(PropertyFilterBase):
+    """ Filter sequences by the minimum free energy of the folded sequence, i.e. secondary structure containing stacks, bulges, hairpins or interior loops.
+    :param T: The temperature to fold at, i.e. temperature at which the sequence folding is predicted (°C)
+    :type T: float
+    :param DG: Delta G (minimum free energy) threshold for the folded sequence in kcal/mol (DG of folded sequence should be weaker (more positive) than this threshold)
+    :type DG: float
+    
+    """
+    
+    def __init__(self, T: float, DG: float) -> None:
+        """Constructor"""
+        super().__init__()
+        self.T = T
+        self.DG = DG
+
+    def apply(self, sequence: Seq):
+        """Applies the filter and returns True if the minimum free energy of the folded sequence is below the given threshold.
+        :param sequence: sequence to be filtered
+        :type sequence: str
+        :return: True if the constrain is fulfilled
+        :rtype: bool
+        """
+        if (dg(sequence, temp = self.T)< self.DG):
+                return False,{}
+        return True,{}
