@@ -59,7 +59,7 @@ from oligo_designer_toolsuite.pipelines._scrinshot_probe_designer_config import 
 # Scrinshot probe design class
 ############################################
 
-
+# TODO: Use base class here
 class ScrinshotProbeDesigner:
     """This class generates all padlock probes for a SCRINSHOT experiment from a transcriptome or custom file for a user-defined set of genes.
     The probe design is done in five steps:

@@ -140,3 +140,5 @@ output*
 tests/merfish_pipeline.ipynb
 tests/seqfish_pipeline.ipynb
 tests/*.pickle
+
+oligo_designer_toolsuite/_version.py
