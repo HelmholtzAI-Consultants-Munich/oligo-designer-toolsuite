@@ -10,16 +10,23 @@ write_intermediate_steps: True # writes the oligo sequences after each step of t
 
 
 ### Parameters for genome and gene annotation
-source: ncbi # define annotation source
-taxon: vertebrate_mammalian # required: taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
-species: Homo_sapiens # required: species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name
-annotation_release: current # required: release number of annotation e.g. '109' or '109.20211119'  or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/
-
+source: ncbi  # define annotation source
+source_params:
+    taxon: vertebrate_mammalian # required: taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
+    species: Homo_sapiens # required: species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name
+    annotation_release: 110 # required: release number of annotation e.g. '109' or '109.20211119'  or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/
+# source_params:
+#     file_annotation: output_seqfish/annotation/GCF_000001405.40_GRCh38.p14_genomic.gtf # required: GTF file with gene annotation
+#     file_sequence: output_seqfish/annotation /GCF_000001405.40_GRCh38.p14_genomic.fna # required: FASTA file with genome sequence
+#     files_source: NCBI # optional: original source of the genomic files
+#     species: Homo_sapiens # optional: species of provided annotation, leave empty if unknown
+#     annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
+#     genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
 
 
 ### Parameters for oligo sequences generation
 # ADD OUR INFO
-file_genes: ./data/genes_ncbi_SPOT_2.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
+file_genes: ./data/genes/ncbi_10.txt # file with a list the genes used to generate the oligos sequences, set as None if al the genes are used
 oligo_length_min: 26 #min length of oligos
 oligo_length_max: 30 #max length of oligos
 block_size: 50

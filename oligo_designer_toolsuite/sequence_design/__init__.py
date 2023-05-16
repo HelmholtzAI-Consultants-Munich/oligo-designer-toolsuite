@@ -2,6 +2,6 @@
 """
 
 from ._padlock_sequence import PadlockSequence
-from ._readout_probes import SeqFishReadoutProbes
+from ._merfish_sequence import MerfishSequence
 
-__all__ = ["PadlockSequence", "SeqFishReadoutProbes"]
+__all__ = ["PadlockSequence", "MerfishSequence"]

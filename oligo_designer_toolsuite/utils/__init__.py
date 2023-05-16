@@ -19,6 +19,7 @@ from ._sequence_design import (
     get_barcode,
     SCRINSHOT_or_ISS_backbone_sequence,
     convert_complementary_seq_to_arms,
+    create_seqfish_plus_barcodes,
 )
 
 __all__ = [
@@ -38,4 +39,5 @@ __all__ = [
     "get_barcode",
     "SCRINSHOT_or_ISS_backbone_sequence",
     "convert_complementary_seq_to_arms",
+    "create_seqfish_plus_barcodes",
 ]

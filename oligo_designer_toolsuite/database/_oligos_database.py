@@ -27,6 +27,7 @@ from ..utils._sequence_design import generate_random_sequence
 # Oligo Database Class
 ############################################
 
+
 class OligoDatabase:
     """This class generates all possible oligos that can be designed for a given list of regions (e.g. genes),
     based on the transcriptome or the gene CDS annotation or the whole genome provided as fasta file.
@@ -138,43 +139,59 @@ class OligoDatabase:
         self,
         oligo_length: int,
         n_sequences_per_region: int,
-        sequence_alphabet: list[str] = ['A', 'G', 'T', 'C'],
-        region_ids: list[str] = ['Random']):
-
+        sequence_alphabet: list[str] = ["A", "G", "T", "C"],
+        region_ids: list[str] = ["Random"],
+    ):
         self.oligo_length_min = oligo_length
         self.oligo_length_max = oligo_length
 
-        sequences = { 
-            region_id: [generate_random_sequence(oligo_length, sequence_alphabet) 
-                        for i in range(n_sequences_per_region)]
+        sequences = {
+            region_id: [
+                generate_random_sequence(oligo_length, sequence_alphabet)
+                for i in range(n_sequences_per_region)
+            ]
             for region_id in region_ids
         }
 
         self.create_database_from_sequences(sequences)
-  
+
     def create_database_from_sequences(self, sequences):
-        """ sequences: dict key = region_id
-                            value = list of str representing sequences"""
+        """sequences: dict key = region_id
+        value = list of str representing sequences"""
         database = {}
         for region_id in sequences:
             database[region_id] = {}
-            for i, sequence in enumerate(sequences[region_id]):
-                oligo_id = region_id + '_' + str(i)
-                database[region_id][oligo_id] = {
-                            "sequence": sequence,
-                            "chromosome": None,
-                            "start": None,
-                            "end": None,
-                            "strand": None,
-                            "length": len(sequence),
-                            "additional_information_fasta": [[]],
-                        }
-                
+            oligo_id = f"{region_id}_0"
+            database[region_id][oligo_id] = {
+                "sequence": sequences[region_id],
+                "chromosome": None,
+                "start": [None],
+                "end": [None],
+                "strand": None,
+                "length": len(sequences[region_id]),
+                "additional_information_fasta": [""],
+            }
+
         self.database = database
 
     def merge_database(self, oligo_database):
         # TODO: this is an over simplification, merging needs to be taken care of
         self.database.update(oligo_database.database)
+
+    def to_sequence_list(self) -> list:
+        """Converts the database into a list of sequences
+
+        Returns:
+            list of str: list of all sequences contained in the database
+        """
+        sequences = []
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                entry = {"region_id": region_id, "oligo_id": oligo_id}
+                entry.update(oligo_attributes)
+                sequences.append(str(entry["sequence"]))
+
+        return sequences
 
     def create_database(
         self,
@@ -480,6 +497,8 @@ class OligoDatabase:
                         # if the header fo the fasta file is just the region name
                         if null_coordinates:
                             oligo_id = f"{region_id}_{i}"
+                            oligo_start = None
+                            oligo_end = None
                         else:
                             oligo_start_end.sort()
                             # turn into 0-based index
@@ -516,7 +535,7 @@ class OligoDatabase:
                                 oligo_sequence_ids[oligo][oligo_id] = oligo_attributes
                         else:
                             oligo_sequence_ids[oligo] = {oligo_id: oligo_attributes}
-                            
+
         database_entries = {}
         for oligo_ids in oligo_sequence_ids.values():
             if null_coordinates:

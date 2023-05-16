@@ -1,27 +1,28 @@
-import numpy as np 
+import numpy as np
 import random
 import itertools
 
 from Bio.Seq import Seq
 
 
-def generate_random_sequence(oligo_length, sequence_alphabet=['A', 'T', 'G', 'C']):
-    seq_letters = np.random.choice(sequence_alphabet, oligo_length, replace = True)
-    seq = ''.join(seq_letters)
+# TODO: make it more specific (consider GC- fraction for example)
+def generate_random_sequence(oligo_length, sequence_alphabet=["A", "T", "G", "C"]):
+    seq_letters = np.random.choice(sequence_alphabet, oligo_length, replace=True)
+    seq = "".join(seq_letters)
     return Seq(seq)
 
 
 def generate_binary_sequences(n_seq, n_bit=16, n_one=1):
-    ''' 
+    """
     This generator randomly generates the codebook from user input, and returns a list of encoding sequences used for merfish.
-    
+
     Params:
     n_bit: Number of bits in an encoding code
     n_one: Number of ones in an encoding code
-    n_seq: Number of encoding codes in a list 
-    '''
+    n_seq: Number of encoding codes in a list
+    """
 
-    if n_seq > 2 ** n_bit:
+    if n_seq > 2**n_bit:
         raise Exception("Error: the number of sequences is tool large!")
     if n_one > n_bit:
         raise Exception("Error: the number of ones is tool large!")
@@ -30,16 +31,17 @@ def generate_binary_sequences(n_seq, n_bit=16, n_one=1):
         sequences = set()
         while len(sequences) < n_seq:
             candidate = format(random.getrandbits(n_bit), f"0{n_bit}b")
-            if bin(int(candidate, 2)).count("1") == n_one and candidate not in sequences:
+            if (
+                bin(int(candidate, 2)).count("1") == n_one
+                and candidate not in sequences
+            ):
                 sequences.add(candidate)
-        
+
         return list(sequences)
 
 
-
-
 def generate_codebook(num_seq: int, encoding_scheme: str):
-    '''
+    """
     This function generates bit-codes
 
     return:
@@ -48,8 +50,7 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
     Params:
     num_seq: Numer of Codes
     encoding_scheme: MHD2 or MHD4
-    '''
-
+    """
 
     # initialize an empty list to store the codes
     codes = []
@@ -58,9 +59,9 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
         # loop through all possible combinations of 16 bits
         for i in range(2**16):
             # convert the integer i to a binary string of length 16
-            bin_str = format(i, '016b')
+            bin_str = format(i, "016b")
             # count the number of ones in the binary string
-            num_ones = bin_str.count('1')
+            num_ones = bin_str.count("1")
             # if the number of ones is exactly 4
             if num_ones == 4:
                 # append the binary string to the codes list
@@ -68,8 +69,7 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
         # loop through all pairs of codes in the list
 
         for i in range(len(codes)):
-            for j in range(i+1, len(codes)):
-
+            for j in range(i + 1, len(codes)):
                 if len(pass_sequences) == 140 or len(pass_sequences) == num_seq:
                     break
 
@@ -92,15 +92,15 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
                             break
             if len(pass_sequences) == 140 or len(pass_sequences) == num_seq:
                 break
-                    # break out of the inner loop
+                # break out of the inner loop
 
     if encoding_scheme == "MHD2":
-                # loop through all possible combinations of 14 bits
+        # loop through all possible combinations of 14 bits
         for i in range(2**14):
             # convert the integer i to a binary string of length 16
-            bin_str = format(i, '016b')
+            bin_str = format(i, "016b")
             # count the number of ones in the binary string
-            num_ones = bin_str.count('1')
+            num_ones = bin_str.count("1")
             # if the number of ones is exactly 4
             if num_ones == 4:
                 # append the binary string to the codes list
@@ -108,8 +108,7 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
         # loop through all pairs of codes in the list
 
         for i in range(len(codes)):
-            for j in range(i+1, len(codes)):
-
+            for j in range(i + 1, len(codes)):
                 if len(pass_sequences) == 1001 or len(pass_sequences) == num_seq:
                     break
                 # compute the Hamming distance between two codes
@@ -134,99 +133,120 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
                 break
     return pass_sequences
 
-def SCRINSHOT_or_ISS_backbone_sequence(
-            region_idx, barcode_length=4, barcode_seed=0
-        ):
-            """Get backbone sequence of padlock oligos for SCRINSHOT or ISS
 
-            Arguments
-            ---------
-            region_idx: int
-                Identifier for a given region. The identifier makes sure to return the same bar code
-                for the different padlock oligos of a given region.
-            barcode_length: int
-                Length of barcode sequence
-            barcode_seed: int
-                Defines the random assignment of barcodes to each region_idx.
+def SCRINSHOT_or_ISS_backbone_sequence(region_idx, barcode_length=4, barcode_seed=0):
+    """Get backbone sequence of padlock oligos for SCRINSHOT or ISS
 
-            Returns
-            -------
-            str:
-                backbone sequence (5' to 3')
-            dict of strs:
-                Individual parts of the backbone sequence
+    Arguments
+    ---------
+    region_idx: int
+        Identifier for a given region. The identifier makes sure to return the same bar code
+        for the different padlock oligos of a given region.
+    barcode_length: int
+        Length of barcode sequence
+    barcode_seed: int
+        Defines the random assignment of barcodes to each region_idx.
 
-            """
-            accessory1 = "TCCTCTATGATTACTGAC"
-            ISS_anchor = "TGCGTCTATTTAGTGGAGCC"
-            barcode = get_barcode(region_idx, length=barcode_length, seed=barcode_seed)
-            accessory2 = "CTATCTTCTTT"
+    Returns
+    -------
+    str:
+        backbone sequence (5' to 3')
+    dict of strs:
+        Individual parts of the backbone sequence
 
-            sub_seqs = {
-                "accessory1": accessory1,
-                "ISS_anchor": ISS_anchor,
-                "barcode": barcode,
-                "accessory2": accessory2,
-            }
-            full_seq = accessory1 + ISS_anchor + barcode + accessory2
+    """
+    accessory1 = "TCCTCTATGATTACTGAC"
+    ISS_anchor = "TGCGTCTATTTAGTGGAGCC"
+    barcode = get_barcode(region_idx, length=barcode_length, seed=barcode_seed)
+    accessory2 = "CTATCTTCTTT"
 
-            return full_seq, sub_seqs
+    sub_seqs = {
+        "accessory1": accessory1,
+        "ISS_anchor": ISS_anchor,
+        "barcode": barcode,
+        "accessory2": accessory2,
+    }
+    full_seq = accessory1 + ISS_anchor + barcode + accessory2
+
+    return full_seq, sub_seqs
+
 
 def get_barcode(region_idx, length=4, seed=0, choices=["A", "C", "T", "G"]):
-            """Get barcode sub sequence of padlock oligo for in situ sequencing
+    """Get barcode sub sequence of padlock oligo for in situ sequencing
 
-            For SCRINSHOT padlock oligos this could be constant, however it makes sense to have
-            different barcodes so that the oligo set could also be used for ISS experiments.
+    For SCRINSHOT padlock oligos this could be constant, however it makes sense to have
+    different barcodes so that the oligo set could also be used for ISS experiments.
 
-            Arguments
-            ---------
-            region_idx: int
-                Identifier for a given region. The identifier makes sure to return the same bar code
-                for the different padlock oligos of a given region.
-            length: int
-                Length of barcode sequence
-            seed: int
-                Defines the random assignment of barcodes to each region_idx.
+    Arguments
+    ---------
+    region_idx: int
+        Identifier for a given region. The identifier makes sure to return the same bar code
+        for the different padlock oligos of a given region.
+    length: int
+        Length of barcode sequence
+    seed: int
+        Defines the random assignment of barcodes to each region_idx.
 
-            Returns
-            -------
-            str: barcode sequence (5' to 3')
+    Returns
+    -------
+    str: barcode sequence (5' to 3')
 
-            """
+    """
 
-            barcodes = ["".join(nts) for nts in itertools.product(choices, repeat=length)]
-            random.seed(seed)
-            random.shuffle(barcodes)
+    barcodes = ["".join(nts) for nts in itertools.product(choices, repeat=length)]
+    random.seed(seed)
+    random.shuffle(barcodes)
 
-            if region_idx >= len(barcodes):
-                raise ValueError(
-                    "Barcode index exceeds number of possible combinations of barcodes. Increase barcode length?"
-                )
+    if region_idx >= len(barcodes):
+        raise ValueError(
+            "Barcode index exceeds number of possible combinations of barcodes. Increase barcode length?"
+        )
 
-            return barcodes[region_idx]
+    return barcodes[region_idx]
+
 
 def convert_complementary_seq_to_arms(complementary_seq, ligation_idx):
-            """Convert the complementary sequence of padlock oligos to two arms with 5' to 3' convention
+    """Convert the complementary sequence of padlock oligos to two arms with 5' to 3' convention
 
-            E.g.
-            complementary_seq = "AAAATGCTTAAGC" ligation_idx = 7
-            --> cut after 7th base: "AAAATGC|TTAAGC"
-            --> final result: ["CGTAAAA","CGAATT"]
+    E.g.
+    complementary_seq = "AAAATGCTTAAGC" ligation_idx = 7
+    --> cut after 7th base: "AAAATGC|TTAAGC"
+    --> final result: ["CGTAAAA","CGAATT"]
 
-            Arguments
-            ---------
-            complementary_seq: str
-                Sequence that hybridises with the target RNA
-            ligation_idx: int
-                Site where complementary_seq is cut in two arms according padlock oligo design
+    Arguments
+    ---------
+    complementary_seq: str
+        Sequence that hybridises with the target RNA
+    ligation_idx: int
+        Site where complementary_seq is cut in two arms according padlock oligo design
 
-            Returns
-            -------
-            list of strs: first and second arm sequences (both 5' to 3')
+    Returns
+    -------
+    list of strs: first and second arm sequences (both 5' to 3')
 
-            """
-            arm1 = complementary_seq[ligation_idx:]
-            arm2 = complementary_seq[:ligation_idx]
+    """
+    arm1 = complementary_seq[ligation_idx:]
+    arm2 = complementary_seq[:ligation_idx]
 
-            return [arm1, arm2]
+    return [arm1, arm2]
 
+
+def create_seqfish_plus_barcodes(n_pseudocolors: int, seed: int, num_genes: int):
+    """
+    Function to create barcodes for each gene
+    :return: dictionary of barcodes for each gene; { gene : barcode }
+    :rtype: dict (str : list of 4 int)
+    """
+    output = dict()
+    all_possible_barcodes = [
+        [i, (i + j + k) % n_pseudocolors, j, k]
+        for i in range(n_pseudocolors)
+        for j in range(n_pseudocolors)
+        for k in range(n_pseudocolors)
+    ]
+    l = len(all_possible_barcodes)
+    arr = np.arange(0, l, 1)
+    np.random.seed(seed)
+    barcodes = np.random.choice(arr, size=num_genes, replace=False)
+    output = [all_possible_barcodes[barcodes[i]] for i in range(num_genes)]
+    return output

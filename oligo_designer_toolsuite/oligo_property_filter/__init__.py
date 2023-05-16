@@ -10,7 +10,7 @@ from ._filter_base import (
     MeltingTemperatureNN,
     GCClamp,
     ConsecutiveRepeats,
-    HairpinSecondaryStructure
+    SecondaryStructure
 
 )
 from ._filter_padlock_oligos import PadlockArms
@@ -24,5 +24,5 @@ __all__ = [
     "PadlockArms",
     "GCClamp",
     "ConsecutiveRepeats",
-    "HairpinSecondaryStructure"
+    "SecondaryStructure"
 ]
