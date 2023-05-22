@@ -7,7 +7,7 @@ from oligo_designer_toolsuite.database import (
     OligoDatabase,
     CustomGenomicRegionGenerator,
 )
-from oligo_designer_toolsuite.oligo_efficiency import (
+from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
     PadlockSetScoring,
 )

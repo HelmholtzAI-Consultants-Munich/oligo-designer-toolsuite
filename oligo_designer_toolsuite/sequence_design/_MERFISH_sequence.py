@@ -122,7 +122,7 @@ class MerfishSequence:
 
                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"].update(
                     {
-                        "merfish_probe_full_sequence": str(encoding_probe),
+                        "merfish_probe_full_sequence": str(full_sequence),
                         "readout_probe_1": str(
                             readout_seq_1.reverse_complement() + "/3Cy5Sp"
                         ),
@@ -183,7 +183,6 @@ class MerfishSequence:
             yaml.dump(yaml_readout, outfile, default_flow_style=False, sort_keys=False)
 
         # Create codebook file
-        print("Creating Codebook")
         yaml_codebook = {}
         for gene_idx, gene in enumerate(genes):
             yaml_codebook[gene] = self.code[gene_idx]

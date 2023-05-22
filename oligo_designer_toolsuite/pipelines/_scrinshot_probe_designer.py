@@ -59,7 +59,8 @@ from oligo_designer_toolsuite.pipelines._scrinshot_probe_designer_config import 
 # Scrinshot probe design class
 ############################################
 
-# TODO: Use base class here
+
+# TODO: Use base class
 class ScrinshotProbeDesigner:
     """This class generates all padlock probes for a SCRINSHOT experiment from a transcriptome or custom file for a user-defined set of genes.
     The probe design is done in five steps:
@@ -687,6 +688,7 @@ class ScrinshotProbeDesigner:
 # commanline API
 ############################################
 
+
 # To Do
 def generate_config_file(directory: str, source: str):
     directory = os.path.join(directory, "config")
@@ -694,11 +696,11 @@ def generate_config_file(directory: str, source: str):
 
     if source == "custom":
         # function generating the config file
-        # config_file = generate_custom_config(directory) 
+        # config_file = generate_custom_config(directory)
         config_file = "./data/configs/scrinshot_probe_designer_custom.yaml"
     elif source == "ncbi":
         # function generating the config file
-        # config_file = generate_ncbi_config(directory) 
+        # config_file = generate_ncbi_config(directory)
         config_file = "./data/configs/scrinshot_probe_designer_ncbi.yaml"
     elif source == "ensembl":
         # function generating the config file
@@ -707,8 +709,8 @@ def generate_config_file(directory: str, source: str):
     else:
         config_file = ""
         raise ValueError(f"No config file found for source {source}'.")
-        
-    warnings.warn(f"Using default config: '{config_file}'.")
+
+    warnings.warn(f"Using default config: {config_file}.")
     return config_file
 
 

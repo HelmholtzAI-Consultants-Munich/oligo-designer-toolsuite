@@ -1,24 +1,24 @@
-from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
-from oligo_designer_toolsuite.oligo_property_filter import (
+from ..database import OligoDatabase, ReferenceDatabase
+from ..oligo_property_filter import (
     PropertyFilter,
     GCContent,
     ConsecutiveRepeats,
     MaskedSequences,
 )
-from oligo_designer_toolsuite.oligo_specificity_filter import (
+from ..oligo_specificity_filter import (
     SpecificityFilter,
     ExactMatches,
     Blastn,
 )
-from oligo_designer_toolsuite.oligo_efficiency import (
+from ..oligo_efficiency_filter import (
     SeqFISHOligoScoring,
     AverageSetScoring,
 )
-from oligo_designer_toolsuite.oligo_selection import (
+from ..oligo_selection import (
     padlock_heuristic_selection,
     OligosetGenerator,
 )
-from oligo_designer_toolsuite.utils import create_seqfish_plus_barcodes
+from ..utils import create_seqfish_plus_barcodes
 
 from ._base_probe_designer import BaseProbeDesigner
 
@@ -31,7 +31,7 @@ from typing import List, Tuple
 from Bio.Seq import Seq
 
 
-class SeqFishPlusProbeDesigner(BaseProbeDesigner):
+class SeqfishPlusProbeDesigner(BaseProbeDesigner):
     """_summary_
 
     Args:

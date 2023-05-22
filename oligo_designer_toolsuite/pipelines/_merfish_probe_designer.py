@@ -1,4 +1,6 @@
 import os
+import yaml
+
 import random
 import warnings
 from pathlib import Path
@@ -24,12 +26,14 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatches,
     SpecificityFilter,
 )
-from oligo_designer_toolsuite.pipelines import BaseProbeDesigner
+from ._base_probe_designer import BaseProbeDesigner
 from oligo_designer_toolsuite.utils import FtpLoaderEnsembl
 from oligo_designer_toolsuite.utils._sequence_design import generate_random_sequence
 
+from oligo_designer_toolsuite.sequence_design import MerfishSequence
 
-class MERFishProbeDesigner(BaseProbeDesigner):
+
+class MerfishProbeDesigner(BaseProbeDesigner):
     """_summary_
 
     Args:
@@ -272,7 +276,7 @@ class MERFishProbeDesigner(BaseProbeDesigner):
         coverage: float = 50,
         strand: str = "plus",
         T7promoter: str = "TAATACGACTCACTATAG",
-        n_probes: int = 15,
+        n_probes: int = 1,
         n_jobs: int = 1,
     ):
         oligo_25nt_path = Path(oligo_25nt_path)
@@ -327,7 +331,6 @@ class MERFishProbeDesigner(BaseProbeDesigner):
         with open(primer_file_database, "w") as handle:
             SeqIO.write(output, handle, "fasta")
 
-        print("Writing Primer1...Start")
         primer1_oligos_dict = {}
         primer1_genes = list(primer_database.database.keys())[0:n_probes]
         primer1_oligo_ids = [
@@ -337,9 +340,7 @@ class MERFishProbeDesigner(BaseProbeDesigner):
             primer1_oligos_dict[gene] = str(
                 primer_database.database[gene][oligo_id]["sequence"]
             )
-        print("Writing Primer1...Done")
 
-        print("Writing Primer2...Start")
         primer2_oligos_dict = {}
         primer2_genes = list(primer_database.database.keys())[
             n_probes + 1 : (n_probes * 2) + 1
@@ -355,7 +356,6 @@ class MERFishProbeDesigner(BaseProbeDesigner):
             )
             primer2_seq = T7promoter + primer2_seq
             primer2_oligos_dict[gene] = primer2_seq
-        print("Writing Primer2...Done")
         return (
             list(primer1_oligos_dict.values()),
             list(primer2_oligos_dict.values()),
@@ -378,7 +378,7 @@ class MERFishProbeDesigner(BaseProbeDesigner):
         }
 
         # select n random sequences
-        n = num_seq * 50  # start with 50 times the number of required primers
+        n = num_seq * 500  # start with 1000 times the number of required primers
         if n > 240000:
             n = 240000
         sequences = list(oligo_25nt_dict.keys())
@@ -428,7 +428,6 @@ class MERFishProbeDesigner(BaseProbeDesigner):
 
         property_filter = PropertyFilter(filters=filters)
         # property filter
-        print("Property filter...Start")
         primer_database = property_filter.apply(
             oligo_database=primer_database, n_jobs=n_jobs
         )
@@ -515,14 +514,12 @@ class MERFishProbeDesigner(BaseProbeDesigner):
             reference_database=reference_database1,
             n_jobs=n_jobs,
         )
-        print("Specifity filter 1...Done")
         if self.write_intermediate_steps:
             file_database = primer_database.write_database(
                 filename="primer_database_specificity_filter_1.txt"
             )
 
         # specificity filter 2
-        print("Specifity filter 2...Start")
         # create reference db with trimmed primers
 
         trimmed_primers = {}
@@ -545,7 +542,6 @@ class MERFishProbeDesigner(BaseProbeDesigner):
             for name, seq in trimmed_primers.items():
                 handle.write(">" + name + "\n")
                 handle.write(str(seq) + "\n")
-            print("write trimmed primer done!")
 
         reference_database2 = ReferenceDatabase(file_fasta=fasta_reference_database2)
         reference_database2.load_fasta_into_database()
@@ -559,16 +555,14 @@ class MERFishProbeDesigner(BaseProbeDesigner):
             file_database = primer_database.write_database(
                 filename="primer_database_specificity_filter2.txt"
             )
-        print("Specifity filter 2...Done")
+
         # specificity filter 3
-        print("Specifity filter 3...Start")
         specificity_filter3 = SpecificityFilter(filters=[blast_filter3])
         primer_database = specificity_filter3.apply(
             oligo_database=primer_database,
             reference_database=reference_database3,
             n_jobs=n_jobs,
         )
-        print("Specifity filter 3...Done")
 
         ##### save database #####
         if self.write_intermediate_steps:
@@ -871,3 +865,153 @@ class MERFishProbeDesigner(BaseProbeDesigner):
             file_database = ""
 
         return probe_database, file_database
+
+
+if __name__ == "__main__":
+    """
+    TODO
+    """
+
+    # TODO get comman line arguments
+    # parser = ArgumentParser(
+    #     prog="SCRINSHOT Probe Designer",
+    #     usage="scrinshot_probe_designer [options]",
+    #     description=__doc__,
+    #     formatter_class=RawDescriptionHelpFormatter,
+    # )
+
+    # config = initialize_parameters(parser)
+
+    merfish_config_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "data",
+        "configs",
+        "merfish_probe_designer_custom.yaml",
+    )
+
+    with open(merfish_config_path, "r") as handle:
+        config = yaml.safe_load(handle)
+
+    dir_output = os.path.abspath(config["output"])
+    Path(dir_output).mkdir(parents=True, exist_ok=True)
+
+    ##### Initialize ProbeDesigner Class #####
+    probe_designer = MerfishProbeDesigner(dir_output=dir_output)
+
+    ##### load annotations #####
+    probe_designer.load_annotations(
+        source=config["source"], source_params=config["source_params"]
+    )
+
+    ##### read the genes file #####
+    if config["file_genes"] is None:
+        warnings.warn(
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
+        )
+        genes = None
+    else:
+        with open(config["file_genes"]) as handle:
+            lines = handle.readlines()
+            genes = [line.rstrip() for line in lines]
+
+    ##### create target probe database #####
+    target_probe_database, file_database = probe_designer.create_probe_database(
+        genes=genes,
+        probe_length_min=config["probe_length_min"],
+        probe_length_max=config["probe_length_max"],
+        min_probes_per_gene=config["min_probes_per_gene"],
+        n_jobs=config["n_jobs"],
+    )
+
+    ##### filter target probes by property #####
+    target_probe_database, file_database = probe_designer.filter_probes_by_property(
+        probe_database=target_probe_database,
+        GC_content_min=config["targets_setup"]["GC_content_min"],
+        GC_content_max=config["targets_setup"]["GC_content_max"],
+        Tm_min=config["targets_setup"]["Tm_min"],
+        Tm_max=config["targets_setup"]["Tm_max"],
+        internal_secondary_structures_T=config["targets_setup"][
+            "internal_secondary_structures_T"
+        ],
+        internal_secondary_structures_threshold_deltaG=config["targets_setup"][
+            "internal_secondary_structures_threshold_deltaG"
+        ],
+        max_repeats_nt=config["targets_setup"]["max_repeats_nt"],
+        Tm_parameters_probe=config["Tm_parameters"]["shared"]
+        | config["Tm_parameters"]["property_filter"],
+        Tm_correction_param=config["Tm_correction_parameters"]["shared"]
+        | config["Tm_correction_parameters"]["property_filter"]
+        | config["Tm_correction_parameters"]["detection_oligo"],
+        n_jobs=config["n_jobs"],
+    )
+
+    ##### filter target probes by specificity #####
+    target_probe_database, file_database = probe_designer.filter_probes_by_specificity(
+        probe_database=target_probe_database,
+        word_size=config["targeting_sequences_setup"],
+        percent_identity=config["percent_identity"],
+        coverage=config["coverage"],
+        strand=config["strand"],
+        n_jobs=config["n_jobs"],
+    )
+
+    ##### filter cross hybridization targets #####
+    (
+        target_probe_database,
+        file_database,
+    ) = probe_designer.filter_cross_hybridization_targets(
+        probe_database=target_probe_database,
+        word_size=config["targeting_sequences_setup"]["word_size"],
+        percent_identity_ch=config["targeting_sequences_setup"]["percent_identity_ch"],
+        coverage=50,
+        n_jobs=config["n_jobs"],
+    )
+
+    ##### design primer probes #####
+    primer1, primer2, primer_file_database = probe_designer.design_primer_probes(
+        oligo_25nt_path=config["primer_oligo"]["file_bc25mer"],
+        primer_length_min=config["primer_oligo"]["oligo_length_min"],
+        primer_length_max=config["primer_oligo"]["oligo_length_min"],
+        GC_content_min=config["primers_setup"]["GC_content_min"],
+        GC_content_max=config["primers_setup"]["GC_content_max"],
+        n_repeats=config["primers_setup"]["max_repeats_nt"],
+        gc_clamp_n=config["primers_setup"]["GC_clamp_n"],
+        blast1_word_size=config["primers_blast_setup"]["blast1_word_size"],
+        blast2_word_size=config["primers_blast_setup"]["blast2_word_size"],
+        blast3_word_size=config["primers_blast_setup"]["blast3_word_size"],
+        percent_identity=config["percent_identity"],
+        coverage=config["coverage"],
+        strand=config["strand"],
+        n_jobs=config["n_jobs"],
+    )
+
+    ##### design primer probes #####
+    encoding = config["encoding"]
+    readout_probes = probe_designer.design_readout_probes(
+        primer_file_database,
+        config["readout_oligo"]["file_bc25mer"],
+        percent_identity=config["percent_identity"],
+        coverage=config["coverage"],
+        strand=config["strand"],
+        primer_blast_word_size=config["readout_blast_setup"]["blast1_word_size"],
+        blast2_word_size=config["readout_blast_setup"]["blast2_word_size"],
+        readout_oligo_length=config["readout_length"],
+        num_readouts=config[encoding]["num_bits"],
+        n_jobs=config["n_jobs"],
+    )
+
+    merfish_sequence_designer = MerfishSequence(n_genes=len(genes))
+
+    assembled_probes = merfish_sequence_designer.assemble_probes(
+        target_probe_database, readout_probes, primer1, primer2
+    )
+
+    merfish_sequence_designer.write_final_probes(
+        assembled_probes,
+        readout_probes,
+        readout_probe_length=config["readout_oligo"]["oligo_length_max"],
+        primer_probe_length=config["primer_oligo"]["oligo_length_max"],
+        num_bits=config[encoding]["num_bits"],
+    )
