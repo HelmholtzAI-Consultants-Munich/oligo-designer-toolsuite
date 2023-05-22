@@ -184,16 +184,6 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         readout_database = specificity_filter.apply(readout_database, reference_DB)
         return readout_database
 
-    # def write_barcodes(self):
-    #     output_file_barcodes = os.path.join(self.dir_output, "region_to_barcode.txt")
-    #     with open(output_file_barcodes, "w") as f:
-    #         for i, region_id in enumerate(oligo_database.keys()):
-    #             f.write(region_id + " : " + get_barcode(i))
-
-    # logging.info(
-    #     f"Barcodes are assigned"
-    # )
-
     def design_final_SeqFishPlus_probes(
         self,
         oligo_database,

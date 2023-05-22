@@ -694,18 +694,32 @@ def generate_config_file(directory: str, source: str):
     directory = os.path.join(directory, "config")
     Path(directory).mkdir(parents=True, exist_ok=True)
 
+    config_parent_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "data",
+        "configs",
+    )
+
     if source == "custom":
         # function generating the config file
         # config_file = generate_custom_config(directory)
-        config_file = "./data/configs/scrinshot_probe_designer_custom.yaml"
+        config_file = os.path.join(
+            config_parent_dir, "scrinshot_probe_designer_custom.yaml"
+        )
     elif source == "ncbi":
         # function generating the config file
         # config_file = generate_ncbi_config(directory)
-        config_file = "./data/configs/scrinshot_probe_designer_ncbi.yaml"
+        config_file = os.path.join(
+            config_parent_dir, "scrinshot_probe_designer_ncbi.yaml"
+        )
     elif source == "ensembl":
         # function generating the config file
         # config_file = generate_ensembl_config(directory)
-        config_file = "./data/configs/scrinshot_probe_designer_ensembl.yaml"
+        config_file = os.path.join(
+            config_parent_dir, "scrinshot_probe_designer_ensembl.yaml"
+        )
     else:
         config_file = ""
         raise ValueError(f"No config file found for source {source}'.")
@@ -1058,7 +1072,7 @@ def initialize_parameters(parser: ArgumentParser):
     return config
 
 
-if __name__ == "__main__":
+def main():
     """Command line tool to run a pipeline to design Padlock Probes for SCRINSHOT experiments. To run the tool use the command: ``scrinshot_probe_designer [options]``.
 
     The program supports two ways to recieve the input parameters:
@@ -1170,3 +1184,7 @@ if __name__ == "__main__":
             "Tm_chem_correction_param_detection_oligo"
         ],
     )
+
+
+if __name__ == "__main__":
+    main()

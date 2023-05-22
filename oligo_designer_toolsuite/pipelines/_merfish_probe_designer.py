@@ -85,7 +85,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
 
     def _get_default_readouts(self):
         """
-        This function returns 16 validated readout probs from the merfish paper
+        This function returns 16 validated readout probs from the merfish paper TODO: Which species?
         """
 
         default_readout_probes = [
