@@ -65,7 +65,7 @@ How to cite
 
 If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
 
-..  code-block::
+::
 
    @software{lisa_sousa_2023_7823048,
       author       = {  Isra Mekki, 
