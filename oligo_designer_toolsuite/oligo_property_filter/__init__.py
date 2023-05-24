@@ -6,11 +6,15 @@ from ._filter_base import (
     PropertyFilterBase,
     GCContent,
     MaskedSequences,
+    ConsecutiveRepeats,
     MeltingTemperatureNN,
+    GCClamp,
+    ConsecutiveRepeats,
+    SecondaryStructure
+
 )
 from ._filter_padlock_oligos import PadlockArms
 from ._property_filter import PropertyFilter
-
 __all__ = [
     "PropertyFilter",
     "PropertyFilterBase",
@@ -18,4 +22,7 @@ __all__ = [
     "MeltingTemperatureNN",
     "GCContent",
     "PadlockArms",
+    "GCClamp",
+    "ConsecutiveRepeats",
+    "SecondaryStructure"
 ]

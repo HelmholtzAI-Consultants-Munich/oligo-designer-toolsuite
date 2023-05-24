@@ -131,3 +131,14 @@ dmypy.json
 # mac OS
 
 .DS_Store
+
+# VSCode
+.vscode
+
+# Experiments
+output*
+tests/merfish_pipeline.ipynb
+tests/seqfish_pipeline.ipynb
+tests/*.pickle
+
+oligo_designer_toolsuite/_version.py

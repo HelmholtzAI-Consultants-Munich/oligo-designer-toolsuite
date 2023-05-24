@@ -10,7 +10,11 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     GCContent,
     MaskedSequences,
     MeltingTemperatureNN,
+    GCClamp,
+    ConsecutiveRepeats,
+    SecondaryStructure
 )
+
 from oligo_designer_toolsuite.oligo_property_filter import (
     PadlockArms,
 )
@@ -185,4 +189,80 @@ def test_property_filter():
     res, _ = property_filter._filter_sequence(seq_keep)
     assert (
         res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"
+
+
+def test_ConsecutiveRepeats_filter():  # add tests for property filters
+    repeat_num_max = ConsecutiveRepeats(3)
+
+    seq_remove = Seq("CTTGGGCCTTTCCAAGCCCCCATTTGAGCT")
+    res, _ = repeat_num_max.apply(seq_remove)
+    assert (
+            res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the ConsecutiveRepeat condition has been accepted!"
+
+    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
+    res, _ = repeat_num_max.apply(seq_keep)
+    assert (
+            res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the ConsecutiveRepeat conditions has not been accepted!"
+
+def test_GC_Clamp_filter():  # add tests for property filters
+    GC_Clamp = GCClamp(2)
+
+    seq_remove = Seq("TGGGCCTTTCCAAGCCCCCATTTGAGCTA")
+    res, _ = GC_Clamp.apply(seq_remove)
+    assert (
+            res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the GC_Clamp condition has been accepted!"
+
+    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGC")
+    res, _ = GC_Clamp.apply(seq_keep)
+    assert (
+            res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the GC_Clamp conditions has not been accepted!"
+
+def test_secondary_structure_filter():  # add tests for property filters
+    secondary_structure = SecondaryStructure(76.0, 0.0)
+
+    seq_remove = Seq("GCUUUAGAGAUCGUUUCGAAUGAUAAUCGUUCGAAACGUUCUCCGAAGC")
+    res, _ = GCClamp.apply(seq_remove)
+    assert (
+            res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the secondary_structure condition has been accepted!"
+
+    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
+    res, _ = GCClamp.apply(seq_keep)
+    assert (
+            res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the secondary_structure conditions has not been accepted!"
+
+
+
+def test_merfish_property_filter():  # add tests for property filters
+    repeat_num_max = ConsecutiveRepeats(3)
+    GC_Clamp = GCClamp(2)
+    secondary_structure = SecondaryStructure(76.0, 0.0)
+    GC_content_filter = GCContent(GC_content_min=40, GC_content_max=60)
+    Tm_filter = MeltingTemperatureNN(
+        Tm_min=52,
+        Tm_max=67,
+        Tm_parameters=Tm_parameters,
+        Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+    )
+
+    filters = [
+        repeat_num_max,
+        GC_Clamp,
+        secondary_structure,
+        Tm_filter,
+        GC_content_filter
+    ]
+
+    property_filter = PropertyFilter(filters=filters)
+
+    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
+    res, _ = property_filter._filter_sequence(seq_keep)
+    assert (
+            res == True
     ), f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"

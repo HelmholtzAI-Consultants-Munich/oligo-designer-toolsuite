@@ -12,6 +12,7 @@ from pathlib import Path
 from Bio.SeqUtils import MeltingTemp as mt
 
 from ..database import OligoDatabase
+from ..utils._sequence_design import SCRINSHOT_or_ISS_backbone_sequence, get_barcode, convert_complementary_seq_to_arms
 
 ############################################
 # oligo set generator class
@@ -271,107 +272,11 @@ class PadlockSequence:
 
         """
 
-        def _convert_complementary_seq_to_arms(complementary_seq, ligation_idx):
-            """Convert the complementary sequence of padlock oligos to two arms with 5' to 3' convention
-
-            E.g.
-            complementary_seq = "AAAATGCTTAAGC" ligation_idx = 7
-            --> cut after 7th base: "AAAATGC|TTAAGC"
-            --> final result: ["CGTAAAA","CGAATT"]
-
-            Arguments
-            ---------
-            complementary_seq: str
-                Sequence that hybridises with the target RNA
-            ligation_idx: int
-                Site where complementary_seq is cut in two arms according padlock oligo design
-
-            Returns
-            -------
-            list of strs: first and second arm sequences (both 5' to 3')
-
-            """
-            arm1 = complementary_seq[ligation_idx:]
-            arm2 = complementary_seq[:ligation_idx]
-
-            return [arm1, arm2]
-
-        def _get_barcode(region_idx, length=4, seed=0):
-            """Get barcode sub sequence of padlock oligo for in situ sequencing
-
-            For SCRINSHOT padlock oligos this could be constant, however it makes sense to have
-            different barcodes so that the oligo set could also be used for ISS experiments.
-
-            Arguments
-            ---------
-            region_idx: int
-                Identifier for a given region. The identifier makes sure to return the same bar code
-                for the different padlock oligos of a given region.
-            length: int
-                Length of barcode sequence
-            seed: int
-                Defines the random assignment of barcodes to each region_idx.
-
-            Returns
-            -------
-            str: barcode sequence (5' to 3')
-
-            """
-            bases = ["A", "C", "T", "G"]
-
-            barcodes = ["".join(nts) for nts in itertools.product(bases, repeat=length)]
-            random.seed(seed)
-            random.shuffle(barcodes)
-
-            if region_idx >= len(barcodes):
-                raise ValueError(
-                    "Barcode index exceeds number of possible combinations of barcodes. Increase barcode length?"
-                )
-
-            return barcodes[region_idx]
-
-        def _SCRINSHOT_or_ISS_backbone_sequence(
-            region_idx, barcode_length=4, barcode_seed=0
-        ):
-            """Get backbone sequence of padlock oligos for SCRINSHOT or ISS
-
-            Arguments
-            ---------
-            region_idx: int
-                Identifier for a given region. The identifier makes sure to return the same bar code
-                for the different padlock oligos of a given region.
-            barcode_length: int
-                Length of barcode sequence
-            barcode_seed: int
-                Defines the random assignment of barcodes to each region_idx.
-
-            Returns
-            -------
-            str:
-                backbone sequence (5' to 3')
-            dict of strs:
-                Individual parts of the backbone sequence
-
-            """
-            accessory1 = "TCCTCTATGATTACTGAC"
-            ISS_anchor = "TGCGTCTATTTAGTGGAGCC"
-            barcode = _get_barcode(region_idx, length=barcode_length, seed=barcode_seed)
-            accessory2 = "CTATCTTCTTT"
-
-            sub_seqs = {
-                "accessory1": accessory1,
-                "ISS_anchor": ISS_anchor,
-                "barcode": barcode,
-                "accessory2": accessory2,
-            }
-            full_seq = accessory1 + ISS_anchor + barcode + accessory2
-
-            return full_seq, sub_seqs
-
-        arms = _convert_complementary_seq_to_arms(complementary_seq, ligation_idx)
+        
+        arms = convert_complementary_seq_to_arms(complementary_seq, ligation_idx)
         sub_seqs = {"arm1": arms[0]}
 
-        backbone_seq, backbone_sub_seqs = _SCRINSHOT_or_ISS_backbone_sequence(
+        backbone_seq, backbone_sub_seqs = SCRINSHOT_or_ISS_backbone_sequence(
             region_idx, barcode_seed=barcode_seed, barcode_length=barcode_length
         )
 
