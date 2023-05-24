@@ -12,9 +12,5 @@ iteration_utilities
 Bio
 pyyaml
 networkx
-<<<<<<< HEAD
-joblib
-=======
 joblib
 seqfold
->>>>>>> student_merfish_dev_2
