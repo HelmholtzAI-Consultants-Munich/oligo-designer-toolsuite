@@ -10,13 +10,12 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
 )
 
-
 ############################################
 # Global Parameters
 ############################################
+
 set = Series(data=[0, 1, 8, 5, 2, 6, 7, 3])
 n = 5
-
 
 ############################################
 # Tests
@@ -46,6 +45,3 @@ def test_padlock_oligo():
     oligo = {"melting_temperature": 0.5, "GC_content": 0.55}
     oligo_score = score.scoring_function(oligo)
     assert abs(oligo_score - 0.7) < 1e-5, "Oligo padlock score failed!"
-
-
-## TODO: add test for each scoring function and set scoring

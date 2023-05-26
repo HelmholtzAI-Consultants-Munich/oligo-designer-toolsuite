@@ -11,7 +11,7 @@ import itertools
 import pandas as pd
 
 from Bio import SeqIO
-from ftplib import FTP
+from ftplib import FTP, error_perm
 from pathlib import Path
 
 
@@ -298,7 +298,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
 
         ftp_directory = ftp_directory + f"{self.annotation_release}/"
 
-        file_readme = self._download(self.ftp_link, ftp_directory, "README")
+        file_readme = self._download(self.ftp_link, ftp_directory, "README_")
         with open(file_readme, "r") as handle:
             for line in handle:
                 if line.startswith("ASSEMBLY NAME:"):
@@ -308,7 +308,18 @@ class FtpLoaderNCBI(BaseFtpLoader):
                     break
         os.remove(file_readme)
 
-        ftp_directory = ftp_directory + f"{assembly_accession}_{self.assembly_name}"
+        # we need this check here because NCBI changed the folder structure for releases > 110
+        ftp = FTP(self.ftp_link)
+        ftp.login()
+        try:
+            ftp.cwd(
+                ftp_directory + f"{assembly_accession}_{self.assembly_name}"
+            )  # move to directory
+            ftp_directory = ftp_directory + f"{assembly_accession}_{self.assembly_name}"
+        except error_perm as msg:
+            ftp_directory = ftp_directory
+        ftp.quit()
+
         ftp_file = f"{assembly_accession}_{self.assembly_name}_{self.file_type_ending[file_type]}"
         ftp_file_chr_mapping = (
             f"{assembly_accession}_{self.assembly_name}_assembly_report.txt"

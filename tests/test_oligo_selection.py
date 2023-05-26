@@ -1,11 +1,12 @@
-import shutil
+############################################
+# imports
+############################################
 
-import pandas as pd
 import pytest
+import pandas as pd
 
 from oligo_designer_toolsuite.database import (
     OligoDatabase,
-    CustomGenomicRegionGenerator,
 )
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
@@ -16,25 +17,32 @@ from oligo_designer_toolsuite.oligo_selection import (
     padlock_heuristic_selection,
 )
 
+############################################
+# Global Parameters
+############################################
+
 annotation_file_ncbi = (
-    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
 )
 sequence_file_ncbi = (
-    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 )
+
+############################################
+# Tests
+############################################
 
 
 @pytest.fixture(scope="session")
 def oligos_database(tmpdir_factory):
     base_temp = tmpdir_factory.getbasetemp()
+    metadata = {"species": "human", "annotation_release": "110"}
     database = OligoDatabase(
-        file_fasta=None,
-        dir_output=base_temp,
-        species="human",
-        annotation_release="110",
+        metadata=metadata,
         n_jobs=2,
+        dir_output=base_temp,
     )
-    database.load_database("tests/data/oligos_info.tsv")
+    database.load_database("tests/data/oligo_selection/oligos_info.tsv")
 
     yield database
 
@@ -69,7 +77,7 @@ def test_oligosets_generation(oligoset_generator, oligos_database):
         computed_sets = oligos_database.oligosets[gene]
         computed_sets.drop(columns=["oligoset_id"], inplace=True)
         true_sets = pd.read_csv(
-            f"tests/data/oligosets/ranked_oligosets_{gene}.txt",
+            f"tests/data/oligo_selection/ranked_oligosets_{gene}.txt",
             sep="\t",
             index_col=0,
             float_precision="round_trip",

@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import yaml
 import warnings
 import pandas as pd
 
@@ -45,24 +46,12 @@ class OligoDatabase:
 
     Moreover, the database can be saved and loaded to/from a tsv file.
 
-    files_Source, species, annotation_release and genome_assembly are set to 'unknown' if thay are not given as input.
-
-    :param oligo_length_min: Minimal length of oligo nucleotide.
-    :type oligo_length_min: int
-    :param write_regions_with_insufficient_oligos: write removed regions to file ``regions_with_insufficient_oligos.txt``, defaults to True
-    :type write_regions_with_insufficient_oligos: bool, optional
-    :param oligo_length_max: Maximal length of oligo nucleotide.
-    :type oligo_length_max: int
+    :param metadata: database metadata like species, annotation release, genome assembly, ect.
+    :type metadata: dict, optional
     :param min_oligos_per_region: Minimum number of oligos per region, if lower, region is removed from database, defaults to 0.
     :type min_oligos_per_region: int, optional
-    :param files_source: files_Source of annotations, e.g. NCBI, defaults to None.
-    :type files_source: str, optional
-    :param species: Species of annotation, e.g. Homo_sapiens, defaults to None.
-    :type species: str, optional
-    :param annotation_release: Release number of annotation, e.g. 110, defaults to None.
-    :type annotation_release: str, optional
-    :param genome_assembly: Genome assembly of annotation, e.g. GRCh38, defaults to None.
-    :type genome_assembly: str, optional
+    :param write_regions_with_insufficient_oligos: write removed regions to file ``regions_with_insufficient_oligos.txt``, defaults to True
+    :type write_regions_with_insufficient_oligos: bool, optional
     :param n_jobs: Number of parallel processes, if set to None all available CPUs are use, defaults to None.
     :type n_jobs: int, optional
     :param dir_output: Output directory, defaults to 'output'.
@@ -71,12 +60,9 @@ class OligoDatabase:
 
     def __init__(
         self,
+        metadata: dict = {},
         min_oligos_per_region: int = 0,
         write_regions_with_insufficient_oligos: bool = True,
-        files_source: str = None,
-        species: str = None,
-        annotation_release: str = None,
-        genome_assembly: str = None,
         n_jobs: int = None,
         dir_output: str = "output",
     ):
@@ -86,32 +72,7 @@ class OligoDatabase:
             write_regions_with_insufficient_oligos
         )
 
-        if files_source is None:
-            files_source = "custom"
-            warnings.warn(
-                f"No files_source defined. Using default files_source {files_source}!"
-            )
-
-        if species is None:
-            species = "unknown"
-            warnings.warn(f"No species defined. Using default species {species}!")
-
-        if annotation_release is None:
-            annotation_release = "unknown"
-            warnings.warn(
-                f"No annotation release defined. Using default release {annotation_release}!"
-            )
-
-        if genome_assembly is None:
-            genome_assembly = "unknown"
-            warnings.warn(
-                f"No genome assembly defined. Using default genome assembly {genome_assembly}!"
-            )
-
-        self.files_source = files_source
-        self.species = species
-        self.annotation_release = annotation_release
-        self.genome_assembly = genome_assembly
+        self.metadata = metadata
 
         if n_jobs is None:
             n_jobs = cpu_count()
@@ -257,7 +218,7 @@ class OligoDatabase:
 
         self.database = database
 
-    def load_database(self, file_database: str):
+    def load_database(self, file_database: str, file_metadata: str = ""):
         """
         Loads a previously generated oligos database and saves it in the ``database`` attribute as a dictionary.
         The order of columns is :
@@ -271,6 +232,12 @@ class OligoDatabase:
         :param file_tsv: Path of tsv file that contains the oligo database.
         :type file_tsv: str
         """
+        if os.path.exists(file_metadata):
+            with open(file_metadata) as handle:
+                self.metadata = yaml.safe_load(handle)
+        else:
+            self.metadata = {}
+
         if os.path.exists(file_database):
             if not check_tsv_format(file_database):
                 raise ValueError("Database has incorrect format!")
@@ -293,8 +260,12 @@ class OligoDatabase:
             lambda row: list(map(int, row.end)), axis=1
         )
         file_tsv_content.length = file_tsv_content.length.astype("int")
-        file_tsv_content.additional_information_fasta[file_tsv_content['additional_information_fasta'].isna()] = ""
-        file_tsv_content.additional_information_fasta = file_tsv_content.additional_information_fasta.str.split("__MATCHSEQ__")
+        file_tsv_content.additional_information_fasta[
+            file_tsv_content["additional_information_fasta"].isna()
+        ] = ""
+        file_tsv_content.additional_information_fasta = (
+            file_tsv_content.additional_information_fasta.str.split("__MATCHSEQ__")
+        )
 
         database = {}
         for region in file_tsv_content.region_id.unique():
@@ -327,8 +298,14 @@ class OligoDatabase:
         :return: Path to database file (tsv file).
         :rtype: str
         """
+        file_metadata = os.path.join(self.dir_output, filename + ".yaml")
 
-        file_database = os.path.join(self.dir_output, filename)
+        with open(file_metadata, "w") as handle:
+            yaml.safe_dump(
+                self.metadata, handle, sort_keys=True, default_flow_style=False
+            )
+
+        file_database = os.path.join(self.dir_output, filename + ".tsv")
         file_tsv_content = []
         # database = deepcopy(self.database)
 
@@ -347,7 +324,7 @@ class OligoDatabase:
         file_tsv_content = pd.DataFrame(data=file_tsv_content)
         file_tsv_content.to_csv(file_database, sep="\t", index=False)
 
-        return file_database
+        return file_database, file_metadata
 
     def write_fasta_from_database(
         self,

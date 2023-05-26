@@ -32,42 +32,36 @@ from oligo_designer_toolsuite.utils import (
 def test_data_parser(tmp_path):
     """Test if data parser functionalities work correctly."""
     # test file format checkers
-    file_gff = (
-        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
-    )
+    file_gff = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
     res = check_gff_format(file_gff)
     assert (
         res == True
     ), f"error: gff file format checker did not recognize gff file {file_gff}"
 
-    file_gtf = (
-        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-    )
+    file_gtf = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
     res = check_gff_format(file_gtf)
     assert (
         res == True
     ), f"error: gff file format checker did not recognize gtf file {file_gtf}"
 
-    file_fasta = (
-        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-    )
+    file_fasta = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
     res = check_fasta_format(file_fasta)
     assert (
         res == True
     ), f"error: fasta file format checker did not recognize fasta file {file_fasta}"
 
-    file_tsv = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+    file_tsv = (
+        "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+    )
     res = check_tsv_format(file_tsv)
     assert (
         res == True
     ), f"error: tsv file format checker did not recognize tsv file {file_tsv}"
 
     # test sequence extraction from annotation and fasta file
-    file_bed = (
-        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
-    )
+    file_bed = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
     file_reference_fasta = (
-        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+        "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
     )
     file_fasta = os.path.join(tmp_path, "test_ann2seq_function.fna")
     get_sequence_from_annotation(
@@ -129,6 +123,16 @@ def test_ftp_loader_ncbi(tmp_path):
     assert annotation_release == "110", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
 
+    ## Test if download for releases > 110 works -> they changed the folder structure there
+    # Parameters
+    taxon = "vertebrate_mammalian"  # taxon the species belongs to
+    species = "Homo_sapiens"
+    annotation_release = "current"
+
+    # initialize and retrieve files
+    loader_ncbi = FtpLoaderNCBI(tmp_path, taxon, species, annotation_release)
+    file_gff, annotation_release, assembly_name = loader_ncbi.download_files("gff")
+
 
 def test_ftp_loader_ensemble(tmp_path):
     """Test if ftp download for Ensemble works correctly."""
@@ -166,7 +170,6 @@ def test_ftp_loader_ensemble(tmp_path):
     assert annotation_release == "108", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
-
     file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
         "fasta", sequence_nature="ncrna"
     )
@@ -182,18 +185,14 @@ def test_GFF_parser():
     """Test of GFF/GTF parser parses file correctly."""
     ##### Test GFF3 parsing
     parser = GffParser()
-    file_gff = (
-        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
-    )
+    file_gff = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
 
     dataframe_gff = parser.read_gff(file_gff, target_lines=10)
     assert dataframe_gff.shape[1] == 23, "error: GFF3 dataframe not correctly loaded"
 
     ##### Test GTF parsing
     parser = GffParser()
-    file_gtf = (
-        "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-    )
+    file_gtf = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
 
     dataframe_gtf = parser.read_gff(file_gtf, target_lines=10)
     assert dataframe_gtf.shape[1] == 20, "error: GTF dataframe not correctly loaded"

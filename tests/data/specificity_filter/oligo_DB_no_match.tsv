@@ -1,0 +1,2 @@
+region_id	oligo_id	sequence	chromosome	start	end	strand	length	additional_information_fasta	GC_content	melting_temperature	melt_temp_arm1	melt_temp_arm2	dif_melt_temp_arms	ligation_site
+AGRN	AGRN_1	TCCTCAACAACTATAAACCCGGGACCCACTTCAC	1	1034691	1034725	+	34	None	50.0	61.24	44.98	43.14	1.84	20

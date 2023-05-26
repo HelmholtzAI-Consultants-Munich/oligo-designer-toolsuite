@@ -12,7 +12,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     MeltingTemperatureNN,
     GCClamp,
     ConsecutiveRepeats,
-    SecondaryStructure
+    SecondaryStructure,
 )
 
 from oligo_designer_toolsuite.oligo_property_filter import (
@@ -158,6 +158,54 @@ def test_Tm_arms_filter():
     ), f"error: A sequence ({seq_keep}) fulfilling the Tm conditions has not been accepted!"
 
 
+def test_consecutive_repeats_filter():  # add tests for property filters
+    consecutive_repeats_filter = ConsecutiveRepeats(3)
+
+    seq_remove = Seq("CTTGGGCCTTTCCAAGCCCCCATTTGAGCT")
+    res, _ = consecutive_repeats_filter.apply(seq_remove)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the ConsecutiveRepeat condition has been accepted!"
+
+    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
+    res, _ = consecutive_repeats_filter.apply(seq_keep)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the ConsecutiveRepeat conditions has not been accepted!"
+
+
+def test_GC_clamp_filter():  # add tests for property filters
+    GC_clamp_filter = GCClamp(2)
+
+    seq_remove = Seq("TGGGCCTTTCCAAGCCCCCATTTGAGCTA")
+    res, _ = GC_clamp_filter.apply(seq_remove)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the GC_Clamp condition has been accepted!"
+
+    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGC")
+    res, _ = GC_clamp_filter.apply(seq_keep)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the GC_Clamp conditions has not been accepted!"
+
+
+def test_secondary_structure_filter():  # add tests for property filters
+    secondary_structure_filter = SecondaryStructure(37, -5)
+
+    seq_remove = Seq("GGGAGGTCGTTACATCTGGGTAACACCGGTACTGATCCGGTGACCTCCC")
+    res, _ = secondary_structure_filter.apply(seq_remove)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the secondary_structure condition has been accepted!"
+
+    seq_keep = Seq("ATGACAGTATGACGATGACGATGACGATGAC")
+    res, delta_g = secondary_structure_filter.apply(seq_keep)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep} with {delta_g}) fulfilling the secondary_structure conditions has not been accepted!"
+
+
 def test_property_filter():
     """Test if property filter correctly applies all given filters."""
     masked_sequences_filter = MaskedSequences(mask="N")
@@ -176,12 +224,18 @@ def test_property_filter():
         Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=Tm_chem_correction_parameters,
     )
+    consecutive_repeats_filter = ConsecutiveRepeats(3)
+    GC_clamp_filter = GCClamp(2)
+    secondary_structure_filter = SecondaryStructure(37, -5)
 
     filters = [
         masked_sequences_filter,
         GC_content_filter,
         Tm_filter,
         Tm_arms_filter,
+        consecutive_repeats_filter,
+        GC_clamp_filter,
+        secondary_structure_filter,
     ]
     property_filter = PropertyFilter(filters=filters)
 
@@ -189,80 +243,4 @@ def test_property_filter():
     res, _ = property_filter._filter_sequence(seq_keep)
     assert (
         res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"
-
-
-def test_ConsecutiveRepeats_filter():  # add tests for property filters
-    repeat_num_max = ConsecutiveRepeats(3)
-
-    seq_remove = Seq("CTTGGGCCTTTCCAAGCCCCCATTTGAGCT")
-    res, _ = repeat_num_max.apply(seq_remove)
-    assert (
-            res == False
-    ), f"error: A sequence ({seq_remove}) not fulfilling the ConsecutiveRepeat condition has been accepted!"
-
-    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
-    res, _ = repeat_num_max.apply(seq_keep)
-    assert (
-            res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the ConsecutiveRepeat conditions has not been accepted!"
-
-def test_GC_Clamp_filter():  # add tests for property filters
-    GC_Clamp = GCClamp(2)
-
-    seq_remove = Seq("TGGGCCTTTCCAAGCCCCCATTTGAGCTA")
-    res, _ = GC_Clamp.apply(seq_remove)
-    assert (
-            res == False
-    ), f"error: A sequence ({seq_remove}) not fulfilling the GC_Clamp condition has been accepted!"
-
-    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGC")
-    res, _ = GC_Clamp.apply(seq_keep)
-    assert (
-            res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the GC_Clamp conditions has not been accepted!"
-
-def test_secondary_structure_filter():  # add tests for property filters
-    secondary_structure = SecondaryStructure(76.0, 0.0)
-
-    seq_remove = Seq("GCUUUAGAGAUCGUUUCGAAUGAUAAUCGUUCGAAACGUUCUCCGAAGC")
-    res, _ = GCClamp.apply(seq_remove)
-    assert (
-            res == False
-    ), f"error: A sequence ({seq_remove}) not fulfilling the secondary_structure condition has been accepted!"
-
-    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
-    res, _ = GCClamp.apply(seq_keep)
-    assert (
-            res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the secondary_structure conditions has not been accepted!"
-
-
-
-def test_merfish_property_filter():  # add tests for property filters
-    repeat_num_max = ConsecutiveRepeats(3)
-    GC_Clamp = GCClamp(2)
-    secondary_structure = SecondaryStructure(76.0, 0.0)
-    GC_content_filter = GCContent(GC_content_min=40, GC_content_max=60)
-    Tm_filter = MeltingTemperatureNN(
-        Tm_min=52,
-        Tm_max=67,
-        Tm_parameters=Tm_parameters,
-        Tm_chem_correction_parameters=Tm_chem_correction_parameters,
-    )
-
-    filters = [
-        repeat_num_max,
-        GC_Clamp,
-        secondary_structure,
-        Tm_filter,
-        GC_content_filter
-    ]
-
-    property_filter = PropertyFilter(filters=filters)
-
-    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
-    res, _ = property_filter._filter_sequence(seq_keep)
-    assert (
-            res == True
     ), f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"
