@@ -245,7 +245,7 @@ class ScrinshotProbeDesigner:
             f"The following annotation files are used for GTF annotation of regions: {self.annotation_file} and for fasta sequence file: {self.sequence_file} ."
         )
         logging.info(
-            f"The annotations are from {self.files_source} source, for the species: {self.species}, release number: {self.annotation_release} and genome assembly: {self.genome_assembly}"
+            f"The annotations are from {self.region_generator.files_source} source, for the species: {self.region_generator.species}, release number: {self.region_generator.annotation_release} and genome assembly: {self.region_generator.genome_assembly}"
         )
 
     def create_probe_database(
