@@ -115,10 +115,7 @@ class ScrinshotProbeDesigner:
         ##### initialize annotation parameters #####
         self.annotation_file = None
         self.sequence_file = None
-        self.files_source = None
-        self.species = None
-        self.annotation_release = None
-        self.genome_assembly = None
+        self.metadata = {}
 
     def _log_parameters(self, parameters):
         """Log function parameters.
@@ -236,16 +233,16 @@ class ScrinshotProbeDesigner:
         ##### save annotation information #####
         self.annotation_file = self.region_generator.annotation_file
         self.sequence_file = self.region_generator.sequence_file
-        self.files_source = self.region_generator.files_source
-        self.species = self.region_generator.species
-        self.annotation_release = self.region_generator.annotation_release
-        self.genome_assembly = self.region_generator.genome_assembly
+        self.metadata["files_source"] = self.region_generator.files_source
+        self.metadata["species"] = self.region_generator.species
+        self.metadata["annotation_release"] = self.region_generator.annotation_release
+        self.metadata["genome_assembly"] = self.region_generator.genome_assembly
 
         logging.info(
             f"The following annotation files are used for GTF annotation of regions: {self.annotation_file} and for fasta sequence file: {self.sequence_file} ."
         )
         logging.info(
-            f"The annotations are from {self.files_source} source, for the species: {self.species}, release number: {self.annotation_release} and genome assembly: {self.genome_assembly}"
+            f"The annotations are from {self.region_generator.files_source} source, for the species: {self.region_generator.species}, release number: {self.region_generator.annotation_release} and genome assembly: {self.region_generator.genome_assembly}"
         )
 
     def create_probe_database(
@@ -278,10 +275,7 @@ class ScrinshotProbeDesigner:
         # oligo database
         probe_database = OligoDatabase(
             min_oligos_per_region=min_probes_per_gene,
-            files_source=self.files_source,
-            species=self.species,
-            annotation_release=self.annotation_release,
-            genome_assembly=self.genome_assembly,
+            metadata=self.metadata,
             n_jobs=n_jobs,
             dir_output=self.dir_output,
         )
@@ -315,7 +309,11 @@ class ScrinshotProbeDesigner:
         return probe_database, file_database
 
     def load_probe_database(
-        self, file_database: str, min_probes_per_gene: int = 0, n_jobs: int = 1
+        self,
+        file_database: str,
+        file_metadata="",
+        min_probes_per_gene: int = 0,
+        n_jobs: int = 1,
     ):
         ##### log parameters #####
         logging.info("Parameters Load Database:")
@@ -326,14 +324,10 @@ class ScrinshotProbeDesigner:
         ##### loading the probe database #####
         probe_database = OligoDatabase(
             min_oligos_per_region=min_probes_per_gene,
-            files_source=self.files_source,
-            species=self.species,
-            annotation_release=self.annotation_release,
-            genome_assembly=self.genome_assembly,
             n_jobs=n_jobs,
             dir_output=self.dir_output,
         )
-        probe_database.load_database(file_database)
+        probe_database.load_database(file_database, file_metadata)
 
         ##### loggig database information #####
         if self.write_removed_genes:
@@ -483,10 +477,7 @@ class ScrinshotProbeDesigner:
         )
         reference_database = ReferenceDatabase(
             file_fasta=file_transcriptome,
-            files_source=self.region_generator.files_source,
-            species=self.region_generator.species,
-            annotation_release=self.region_generator.annotation_release,
-            genome_assembly=self.region_generator.genome_assembly,
+            metadata=self.metadata,
             dir_output=self.dir_output,
         )
 

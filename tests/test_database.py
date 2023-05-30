@@ -29,18 +29,30 @@ from oligo_designer_toolsuite.oligo_property_filter import (
 ############################################
 
 genes = ["AARS1", "DECR2", "FAM234A", "RHBDF1", "WASIR2"]
-annotation_file_ensemble = (
-    "tests/data/annotations/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
-)
+annotation_file_ensemble = "data/annotations/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
 sequence_file_ensemble = (
-    "tests/data/annotations/custom_Homo_sapiens.GRCh38.dna_rm.primary_assembly_chr16.fa"
+    "data/annotations/custom_Homo_sapiens.GRCh38.dna_rm.primary_assembly_chr16.fa"
 )
 annotation_file_ncbi = (
-    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
 )
 sequence_file_ncbi = (
-    "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 )
+
+metadata_ncbi = {
+    "files_source": "NCBI",
+    "species": "Homo_sapiens",
+    "annotation_release": "110",
+    "genome_assembly": "GRCh38",
+}
+
+metadata_ensemble = {
+    "files_source": "Ensembl",
+    "species": "Homo_sapiens",
+    "annotation_release": "108",
+    "genome_assembly": "GRCh38",
+}
 
 Tm_parameters = {
     "check": True,
@@ -84,10 +96,10 @@ def file_ncbi_transcriptome(tmpdir_factory):
     region_generator_ncbi = CustomGenomicRegionGenerator(
         annotation_file_ncbi,
         sequence_file_ncbi,
-        files_source="NCBI",
-        species="Homo_sapiens",
-        annotation_release="110",
-        genome_assembly="GRCh38",
+        files_source=metadata_ncbi["files_source"],
+        species=metadata_ncbi["species"],
+        annotation_release=metadata_ncbi["annotation_release"],
+        genome_assembly=metadata_ncbi["genome_assembly"],
         dir_output=base_temp,
     )
     ncbi_transcriptome = (
@@ -102,10 +114,10 @@ def test_region_generator_ncbi(tmpdir_factory):
     region_generator_ncbi = CustomGenomicRegionGenerator(
         annotation_file_ncbi,
         sequence_file_ncbi,
-        files_source="NCBI",
-        species="Homo_sapiens",
-        annotation_release="110",
-        genome_assembly="GRCh38",
+        files_source=metadata_ncbi["files_source"],
+        species=metadata_ncbi["species"],
+        annotation_release=metadata_ncbi["annotation_release"],
+        genome_assembly=metadata_ncbi["genome_assembly"],
         dir_output=base_temp,
     )
 
@@ -127,10 +139,10 @@ def test_region_generator_ensemble(tmpdir_factory):
     region_generator_ensembl = CustomGenomicRegionGenerator(
         annotation_file_ensemble,
         sequence_file_ensemble,
-        files_source="Ensembl",
-        species="Homo_sapiens",
-        annotation_release="108",
-        genome_assembly="GRCh38",
+        files_source=metadata_ensemble["files_source"],
+        species=metadata_ensemble["species"],
+        annotation_release=metadata_ensemble["annotation_release"],
+        genome_assembly=metadata_ensemble["genome_assembly"],
         dir_output=base_temp,
     )
 
@@ -150,10 +162,7 @@ def test_reference_database(file_ncbi_transcriptome):
     """Test creation of reference database as well as load, write and filter functionalities."""
     reference = ReferenceDatabase(
         file_ncbi_transcriptome,
-        files_source="NCBI",
-        species="Homo_sapiens",
-        annotation_release="110",
-        genome_assembly="GRCh38",
+        metadata_ncbi,
     )
 
     reference.load_fasta_into_database()
@@ -174,20 +183,22 @@ def test_reference_database(file_ncbi_transcriptome):
 def test_oligo_database(file_ncbi_transcriptome):
     """Test creation of oligo database as well as save, load and write to fasta functionalities."""
     oligos = OligoDatabase(
-        file_fasta=file_ncbi_transcriptome,
         min_oligos_per_region=0,
-        files_source="NCBI",
-        species="Homo_sapiens",
-        annotation_release="110",
-        genome_assembly="GRCh38",
+        metadata=metadata_ncbi,
         n_jobs=2,
     )
-    oligos.create_database(oligo_length_min=90, oligo_length_max=90, region_ids=genes)
+    oligos.create_database(
+        file_fasta=file_ncbi_transcriptome,
+        oligo_length_min=90,
+        oligo_length_max=90,
+        region_ids=genes,
+    )
     database = oligos.database
 
     # check if database changes when saved and loaded
-    file_database = oligos.write_database()
+    file_database, file_metadata = oligos.write_database()
     oligos.load_database(file_database)
+    assert oligos.metadata == {}, "error: metadata not cleared"
     for oligo_id in database[genes[0]].keys():
         assert (
             database[genes[0]][oligo_id] == oligos.database[genes[0]][oligo_id]
@@ -210,16 +221,17 @@ def test_oligo_database_filters(file_ncbi_transcriptome):
         return sequences
 
     oligos = OligoDatabase(
-        file_fasta=file_ncbi_transcriptome,
         min_oligos_per_region=0,
-        files_source="NCBI",
-        species="Homo_sapiens",
-        annotation_release="110",
-        genome_assembly="GRCh38",
+        metadata=metadata_ncbi,
         n_jobs=2,
     )
 
-    oligos.create_database(oligo_length_min=90, oligo_length_max=90, region_ids=genes)
+    oligos.create_database(
+        file_fasta=file_ncbi_transcriptome,
+        oligo_length_min=90,
+        oligo_length_max=90,
+        region_ids=genes,
+    )
 
     masked_sequences = MaskedSequences(mask="N")
     GC_content = GCContent(GC_content_min=40, GC_content_max=60)

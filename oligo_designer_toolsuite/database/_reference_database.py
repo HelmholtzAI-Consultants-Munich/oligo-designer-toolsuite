@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import yaml
 import warnings
 from Bio import SeqIO
 from pathlib import Path
@@ -32,14 +33,8 @@ class ReferenceDatabase:
 
     :param file_fasta: Path to the fasta file.
     :type file_fasta: str
-    :param files_source: files_Source of annotations, e.g. NCBI, defaults to None.
-    :type files_source: str, optional
-    :param species: Species of annotation, e.g. Homo_sapiens, defaults to None.
-    :type species: str, optional
-    :param annotation_release: Release number of annotation, e.g. 110, defaults to None.
-    :type annotation_release: str, optional
-    :param genome_assembly: Genome assembly of annotation, e.g. GRCh38, defaults to None.
-    :type genome_assembly: str, optional
+    :param metadata: database metadata like species, annotation release, genome assembly, ect.
+    :type metadata: dict, optional
     :param dir_output: Output directory, defaults to 'output'.
     :type dir_output: str, optional
     """
@@ -47,39 +42,11 @@ class ReferenceDatabase:
     def __init__(
         self,
         file_fasta: str,
-        files_source: str = None,
-        species: str = None,
-        annotation_release: str = None,
-        genome_assembly: str = None,
+        metadata: dict = {},
         dir_output: str = "output",
     ):
         """Constructor"""
-        if files_source is None:
-            files_source = "custom"
-            warnings.warn(
-                f"No files_source defined. Using default files_source {files_source}!"
-            )
-
-        if species is None:
-            species = "unknown"
-            warnings.warn(f"No species defined. Using default species {species}!")
-
-        if annotation_release is None:
-            annotation_release = "unknown"
-            warnings.warn(
-                f"No annotation release defined. Using default release {annotation_release}!"
-            )
-
-        if genome_assembly is None:
-            genome_assembly = "unknown"
-            warnings.warn(
-                f"No genome assembly defined. Using default genome assembly {genome_assembly}!"
-            )
-
-        self.files_source = files_source
-        self.species = species
-        self.annotation_release = annotation_release
-        self.genome_assembly = genome_assembly
+        self.metadata = metadata
 
         self.file_fasta = file_fasta
         if os.path.exists(self.file_fasta):
@@ -120,6 +87,20 @@ class ReferenceDatabase:
             raise ValueError("Database is empty! Nothing written to fasta file.")
 
         return file_database
+
+    def write_metadata_from_database(
+        self,
+        filename: str,
+    ):
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+        file_metadata = os.path.join(self.dir_output, f"{filename}.yaml")
+
+        with open(file_metadata, "w") as handle:
+            yaml.safe_dump(
+                self.metadata, handle, sort_keys=True, default_flow_style=False
+            )
+
+        return file_metadata
 
     def filter_database(
         self,
