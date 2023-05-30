@@ -462,10 +462,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         )
         reference_database1 = ReferenceDatabase(
             file_fasta=self.file_transcriptome_reference,
-            files_source=self.region_generator.files_source,
-            species=self.region_generator.species,
-            annotation_release=self.region_generator.annotation_release,
-            genome_assembly=self.region_generator.genome_assembly,
+            metadata=self.metadata,
             dir_output=self.primer_dir_output,
         )
         # self.reference_database1.load_fasta_into_database()
@@ -534,7 +531,6 @@ class MerfishProbeDesigner(BaseProbeDesigner):
 
         fasta_reference_database2 = os.path.join(dir_specificity2, "oligos_primers.fna")
 
-        print(trimmed_primers.items())
         with open(fasta_reference_database2, "w") as handle:
             for name, seq in trimmed_primers.items():
                 handle.write(">" + name + "\n")
@@ -594,10 +590,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
 
         reference_ncrna = ReferenceDatabase(
             file_fasta=file_ncrna,
-            files_source="Ensembl",
-            species=self.region_generator.species,
-            annotation_release=self.region_generator.annotation_release,
-            genome_assembly=self.region_generator.genome_assembly,
+            metadata=self.metadata,
             dir_output=self.dir_output,
         )
         reference_ncrna.load_fasta_into_database()
@@ -621,10 +614,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         # blast against highly expressed genes
         reference_highly_expressed_genes = ReferenceDatabase(
             file_fasta=self.file_transcriptome_reference,
-            files_source=self.region_generator.files_source,
-            species=self.region_generator.species,
-            annotation_release=self.region_generator.annotation_release,
-            genome_assembly=self.region_generator.genome_assembly,
+            metadata=self.metadata,
             dir_output=self.dir_output,
         )
         reference_highly_expressed_genes.load_fasta_into_database()
@@ -725,7 +715,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         )
         secondary_structure = SecondaryStructure(
             T=internal_secondary_structures_T,
-            DG=internal_secondary_structures_threshold_deltaG,
+            DG_thr=internal_secondary_structures_threshold_deltaG,
         )
         # create the list of filters
         filters = [
@@ -780,10 +770,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
 
         reference_database = ReferenceDatabase(
             file_fasta=self.file_transcriptome_reference,
-            files_source=self.region_generator.files_source,
-            species=self.region_generator.species,
-            annotation_release=self.region_generator.annotation_release,
-            genome_assembly=self.region_generator.genome_assembly,
+            metadata=self.metadata,
             dir_output=self.dir_output,
         )
 

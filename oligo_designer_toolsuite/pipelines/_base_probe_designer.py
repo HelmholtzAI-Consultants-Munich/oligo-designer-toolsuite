@@ -17,24 +17,7 @@ from oligo_designer_toolsuite.database import (
 
 
 class BaseProbeDesigner:
-    """This class generates all padlock probes from a transcriptome or custom file for a user-defined set of genes.
-    The probe design is done in five steps:
-    1. Creating all possible probes for a provided annotation and set of genes and store them in a oligo database
-    2. Filter probes by a list of property filters, e.g. CG content filter
-    3. Filter probes by specificity against a reference database (e.g. transcriptome)
-    4. Select sets of best scoring, non-overlappign oligos for each gene
-    5. Create the final ready-to-order padlock sequence
-
-    The user can save the oligo database after each processing step and resume the pipeline later by loading an existing database into this class.
-    A logger is automatically created at <output_dir>/log_padlock_probe_designer_<timestamp>.txt and logs parameters as well as number of genes/oligos after each step.
-
-    :param dir_output: Output directory, defaults to 'output'.
-    :type dir_output: str, optional
-    :param write_removed_genes: write removed regions to file ``regions_with_insufficient_oligos.txt``, defaults to True
-    :type write_removed_genes: bool, optional
-    :param write_intermediate_steps: save oligo database after each processing step, defaults to True
-    :type write_intermediate_steps: bool, optional
-    """
+    """ """
 
     def __init__(
         self,
@@ -54,9 +37,9 @@ class BaseProbeDesigner:
         timestamp = datetime.now()
         file_logger = os.path.join(
             self.dir_output,
-            f"log_padlock_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
+            f"log_scrinshot_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
         )
-        logging.getLogger("padlock_probe_designer")
+        logging.getLogger("scrinshot_probe_designer")
         logging.basicConfig(
             format="%(asctime)s [%(levelname)s] %(message)s",
             level=logging.NOTSET,
@@ -73,10 +56,7 @@ class BaseProbeDesigner:
         ##### initialize annotation parameters #####
         self.annotation_file = None
         self.sequence_file = None
-        self.files_source = None
-        self.species = None
-        self.annotation_release = None
-        self.genome_assembly = None
+        self.metadata = {}
 
     def _log_parameters(self, parameters):
         """Log function parameters.
@@ -118,10 +98,10 @@ class BaseProbeDesigner:
         for region in probe_database.keys():
             for probe in probe_database[region].keys():
                 length = probe_database[region][probe]["length"]
-            if length < probe_length_min:
-                probe_length_min = length
-            if length > probe_length_max:
-                probe_length_max = length
+                if length < probe_length_min:
+                    probe_length_min = length
+                if length > probe_length_max:
+                    probe_length_max = length
 
         return probe_length_min, probe_length_max
 
@@ -194,16 +174,16 @@ class BaseProbeDesigner:
         ##### save annotation information #####
         self.annotation_file = self.region_generator.annotation_file
         self.sequence_file = self.region_generator.sequence_file
-        self.files_source = self.region_generator.files_source
-        self.species = self.region_generator.species
-        self.annotation_release = self.region_generator.annotation_release
-        self.genome_assembly = self.region_generator.genome_assembly
+        self.metadata["files_source"] = self.region_generator.files_source
+        self.metadata["species"] = self.region_generator.species
+        self.metadata["annotation_release"] = self.region_generator.annotation_release
+        self.metadata["genome_assembly"] = self.region_generator.genome_assembly
 
         logging.info(
             f"The following annotation files are used for GTF annotation of regions: {self.annotation_file} and for fasta sequence file: {self.sequence_file} ."
         )
         logging.info(
-            f"The annotations are from {self.files_source} source, for the species: {self.species}, release number: {self.annotation_release} and genome assembly: {self.genome_assembly}"
+            f"The annotations are from {self.region_generator.files_source} source, for the species: {self.region_generator.species}, release number: {self.region_generator.annotation_release} and genome assembly: {self.region_generator.genome_assembly}"
         )
 
     def create_probe_database(
@@ -236,10 +216,7 @@ class BaseProbeDesigner:
         # oligo database
         probe_database = OligoDatabase(
             min_oligos_per_region=min_probes_per_gene,
-            files_source=self.files_source,
-            species=self.species,
-            annotation_release=self.annotation_release,
-            genome_assembly=self.genome_assembly,
+            metadata=self.metadata,
             n_jobs=n_jobs,
             dir_output=self.dir_output,
         )
@@ -273,7 +250,11 @@ class BaseProbeDesigner:
         return probe_database, file_database
 
     def load_probe_database(
-        self, file_database: str, min_probes_per_gene: int = 0, n_jobs: int = 1
+        self,
+        file_database: str,
+        file_metadata="",
+        min_probes_per_gene: int = 0,
+        n_jobs: int = 1,
     ):
         ##### log parameters #####
         logging.info("Parameters Load Database:")
@@ -284,14 +265,10 @@ class BaseProbeDesigner:
         ##### loading the probe database #####
         probe_database = OligoDatabase(
             min_oligos_per_region=min_probes_per_gene,
-            files_source=self.files_source,
-            species=self.species,
-            annotation_release=self.annotation_release,
-            genome_assembly=self.genome_assembly,
             n_jobs=n_jobs,
             dir_output=self.dir_output,
         )
-        probe_database.load_database(file_database)
+        probe_database.load_database(file_database, file_metadata)
 
         ##### loggig database information #####
         if self.write_removed_genes:
