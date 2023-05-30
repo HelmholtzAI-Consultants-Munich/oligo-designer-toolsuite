@@ -9,6 +9,7 @@ from . import SpecificityFilterBase
 # Specificity Filter Classe
 ############################################
 
+
 class SpecificityFilter:
     """
     This class applies the specificity filters given in input sequentially to a ``CustomDB`` class.

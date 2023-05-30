@@ -16,6 +16,7 @@ from . import SpecificityFilterBase
 # Oligo Blast Filter Classes
 ############################################
 
+
 class Blastn(SpecificityFilterBase):
     """This class filters oligos based on the blast alignment tool. All the oligos which have a match with a percentage identity higher
     than the one given in input are filtered out.

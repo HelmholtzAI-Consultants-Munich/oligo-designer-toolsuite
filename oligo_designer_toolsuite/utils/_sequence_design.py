@@ -88,7 +88,6 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
 
                         if all(4 <= ham for ham in ham_list):
                             pass_sequences.append(codes[j])
-                            print(len(pass_sequences))
                             break
             if len(pass_sequences) == 140 or len(pass_sequences) == num_seq:
                 break
@@ -126,7 +125,6 @@ def generate_codebook(num_seq: int, encoding_scheme: str):
                         # check passed sequences
                         if all(2 <= ham for ham in ham_list):
                             pass_sequences.append(codes[j])
-                            print(len(pass_sequences))
                             break
                     # break out of the inner loop
             if len(pass_sequences) == 1001 or len(pass_sequences) == num_seq:

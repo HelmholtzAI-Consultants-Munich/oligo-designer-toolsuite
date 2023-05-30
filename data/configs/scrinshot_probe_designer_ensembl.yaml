@@ -20,10 +20,10 @@ oligo_length_max: 45 # maximum length of oligos
 
 ### Parameters for the property filers
 # oligo sequence
-GC_content_min: 40 # minimum GC content of oligos
-GC_content_max: 60 # maximum GC content of oligos
-Tm_min: 52 # minimum melting temperature of oligos
-Tm_max: 67 # maximum melting temperature of oligos
+target_GC_content_min: 40 # minimum GC content of oligos
+target_GC_content_max: 60 # maximum GC content of oligos
+target_Tm_min: 52 # minimum melting temperature of oligos
+target_Tm_max: 67 # maximum melting temperature of oligos
 # padlock arms
 min_arm_length: 10 # minimum length of each arm
 max_arm_Tm_dif: 2 # maximum melting temperature difference of both arms

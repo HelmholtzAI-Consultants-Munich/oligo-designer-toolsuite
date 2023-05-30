@@ -23,10 +23,10 @@ probe_length_max: 45 # maximum length of probes
 
 ### Parameters for the property filters
 # probe sequence
-GC_content_min: 40 # minimum GC content of probes
-GC_content_max: 60 # maximum GC content of probes
-Tm_min: 52 # minimum melting temperature of probes
-Tm_max: 67 # maximum melting temperature of probes
+target_GC_content_min: 40 # minimum GC content of probes
+target_GC_content_max: 60 # maximum GC content of probes
+target_Tm_min: 52 # minimum melting temperature of probes
+target_Tm_max: 67 # maximum melting temperature of probes
 # padlock arms
 min_arm_length: 10 # minimum length of each arm
 max_arm_Tm_dif: 2 # maximum melting temperature difference of both arms

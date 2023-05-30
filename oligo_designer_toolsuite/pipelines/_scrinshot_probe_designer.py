@@ -18,6 +18,8 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from Bio.SeqUtils import MeltingTemp as mt
 
+from ._utils import initialize_parameters, generate_config_file
+
 from oligo_designer_toolsuite.database import (
     CustomGenomicRegionGenerator,
     NcbiGenomicRegionGenerator,
@@ -47,11 +49,6 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatches,
     LigationRegionCreation,
     SpecificityFilter,
-)
-from oligo_designer_toolsuite.pipelines._scrinshot_probe_designer_config import (
-    generate_custom_config,
-    generate_ncbi_config,
-    generate_ensembl_config,
 )
 
 
@@ -684,394 +681,6 @@ class ScrinshotProbeDesigner:
         )
 
 
-############################################
-# commanline API
-############################################
-
-
-# To Do
-def generate_config_file(directory: str, source: str):
-    directory = os.path.join(directory, "config")
-    Path(directory).mkdir(parents=True, exist_ok=True)
-
-    config_parent_dir = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "data",
-        "configs",
-    )
-
-    if source == "custom":
-        # function generating the config file
-        # config_file = generate_custom_config(directory)
-        config_file = os.path.join(
-            config_parent_dir, "scrinshot_probe_designer_custom.yaml"
-        )
-    elif source == "ncbi":
-        # function generating the config file
-        # config_file = generate_ncbi_config(directory)
-        config_file = os.path.join(
-            config_parent_dir, "scrinshot_probe_designer_ncbi.yaml"
-        )
-    elif source == "ensembl":
-        # function generating the config file
-        # config_file = generate_ensembl_config(directory)
-        config_file = os.path.join(
-            config_parent_dir, "scrinshot_probe_designer_ensembl.yaml"
-        )
-    else:
-        config_file = ""
-        raise ValueError(f"No config file found for source {source}'.")
-
-    warnings.warn(f"Using default config: {config_file}.")
-    return config_file
-
-
-def initialize_parameters(parser: ArgumentParser):
-    parser.add_argument(
-        "-o",
-        "--output",
-        help="path to the output folder, str",
-        required=True,
-        type=str,
-        metavar="",
-    )
-    parser.add_argument(
-        "-c",
-        "--config",
-        help="path to the config yaml file, str",
-        default=None,
-        type=str,
-        metavar="",
-    )
-    parser.add_argument(
-        "-n",
-        "--n_jobs",
-        help="number of cores used, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-mog",
-        "--min_probes_per_gene",
-        help="genes with less that this number of probes are removed, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-wg",
-        "--write_removed_genes",
-        help="write in a file the removed genes, bool",
-        type=bool,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-ws",
-        "--write_intermediate_steps",
-        help="write the probe sequences after each step of the pipeline, bool",
-        type=bool,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-s",
-        "--source",
-        help="how to obtain the genomic files: download them from a server [ncbi, ensembl] or provide the files directly [custom]",
-        choices=["ncbi", "ensembl", "custom"],
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-tx",
-        "--taxon",
-        help="[source: ncbi] taxon of the species, [archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral]",
-        choices=[
-            "archaea",
-            "bacteria",
-            "fungi",
-            "invertebrate",
-            "mitochondrion",
-            "plant",
-            "plasmid",
-            "plastid",
-            "protozoa",
-            "vertebrate_mammalian",
-            "vertebrate_other",
-            "viral",
-        ],
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-sp",
-        "--species",
-        help="species name, for valid NCBI species name see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/, for valid Ensembl species name see http://ftp.ensembl.org/pub/release-108/gtf/, str",
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--annotation_release",
-        help="release number of annotation, e.g. 'release-108' (Ensembl) or '109' (NCBI) or 'current' to use most recent annotation release, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--genome_assembly",
-        help="[source: custom] genome assembly of provided annotation, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-fa",
-        "--file_annotation",
-        help="[source: custom] path to GTF file with gene annotation, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-fs",
-        "--file_sequence",
-        help="[source: custom] path to FASTA file with genome sequence, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-
-    parser.add_argument(
-        "-fsrc",
-        "--files_source",
-        help="[source: custom] original source of the genomic files, e.g. NCBI, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-fg",
-        "--file_genes",
-        help="path to file with a list of the genes that are used to generate the probes sequences, if empty all the genes are used, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-olm",
-        "--probe_length_min",
-        help="minimum length of probes, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "-olM",
-        "--probe_length_max",
-        help="max length of probes, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--GC_content_min",
-        help="minimum GC content of probes, [0, 100]",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--GC_content_max",
-        help="maximum GC content of probes, [0, 100]",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--Tm_min",
-        help="minimum melting temperature of probes, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--Tm_max",
-        help="maximum melting temperature of probes, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--min_arm_length",
-        help="minimum length of each arm, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--max_arm_Tm_dif",
-        help="max melting temperature difference of both arms, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--arm_Tm_min",
-        help="minimum melting temperature of each arm, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--arm_Tm_max",
-        help="max melting temperature of each arm, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--blast_word_size",
-        help="word size for the blastn seed, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--blast_coverage",
-        help="minimum coverage between probes and target sequence for blastn, [0,100]",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--blast_percent_identity",
-        help="maximum similarity between probes and target sequences for blastn, [0,100]",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--strand",
-        help="strand of the query sequence to search, str",
-        type=str,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--ligation_region_size",
-        help="size of the seed region around the ligation site for bowtie seed region filter, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--Tm_opt",
-        help="optimal melting temperature of probes, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--GC_content_opt",
-        help="optimal GC content of probes, [0, 100]",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--Tm_weight",
-        help="weight of the Tm of the probe in the efficiency score, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--GC_weight",
-        help="weight of the GC content of the probe in the efficiency score, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--probeset_size_opt",
-        help="ideal number of probes per probeset, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--probeset_size_min",
-        help="minimum number of probes per probeset, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--n_sets",
-        help="maximum number of sets per gene, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--detect_oligo_length_min",
-        help="minimum number of probes per probeset, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--detect_oligo_length_max",
-        help="maximum length of detection probe, int",
-        type=int,
-        default=None,
-        metavar="",
-    )
-    parser.add_argument(
-        "--detect_oligo_Tm_opt",
-        help="optimal melting temperature of detection probe, float",
-        type=float,
-        default=None,
-        metavar="",
-    )
-
-    args = parser.parse_args()
-    args = vars(args)
-    if args["config"] is None:
-        warnings.warn(f"No config file defined. Creating default config.")
-        if args["source"] is None:
-            warnings.warn(f"No source was defined. Using default source: custom")
-            args["source"] = "custom"
-        args["config"] = generate_config_file(args["output"], args["source"])
-
-    # read the config file
-    with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
-
-    # update the config file values with the given one in the command line
-    for param, value in args.items():
-        if value is not None and param != "config":
-            # overwrite the config file
-            if param in [
-                "file_annotation",
-                "file_sequence",
-                "files_source",
-                "taxon",
-                "species",
-                "annotation_release",
-                "genome_assembly",
-            ]:
-                # source specific parameters
-                config["source_params"][param] = value
-            else:
-                config[param] = value
-
-    return config
-
-
 def main():
     """Command line tool to run a pipeline to design Padlock Probes for SCRINSHOT experiments. To run the tool use the command: ``scrinshot_probe_designer [options]``.
 
@@ -1097,7 +706,7 @@ def main():
         formatter_class=RawDescriptionHelpFormatter,
     )
 
-    config = initialize_parameters(parser)
+    config = initialize_parameters(parser, exp_name="scrinshot")
 
     dir_output = os.path.abspath(config["output"])
     Path(dir_output).mkdir(parents=True, exist_ok=True)
@@ -1133,10 +742,10 @@ def main():
     ##### filter probes by property #####
     probe_database, file_database = probe_designer.filter_probes_by_property(
         probe_database,
-        GC_content_min=config["GC_content_min"],
-        GC_content_max=config["GC_content_max"],
-        Tm_min=config["Tm_min"],
-        Tm_max=config["Tm_max"],
+        GC_content_min=config["target_GC_content_min"],
+        GC_content_max=config["target_GC_content_max"],
+        Tm_min=config["target_Tm_min"],
+        Tm_max=config["target_Tm_max"],
         min_arm_length=config["min_arm_length"],
         max_arm_Tm_dif=config["max_arm_Tm_dif"],
         arm_Tm_min=config["arm_Tm_min"],
@@ -1162,12 +771,12 @@ def main():
         probeset_size_opt=config["probeset_size_opt"],
         probeset_size_min=config["probeset_size_min"],
         n_sets=config["n_sets"],
-        Tm_min=config["Tm_min"],
-        Tm_max=config["Tm_max"],
+        Tm_min=config["target_Tm_min"],
+        Tm_max=config["target_Tm_max"],
         Tm_opt=config["Tm_opt"],
         Tm_weight=config["Tm_weight"],
-        GC_content_min=config["GC_content_min"],
-        GC_content_max=config["GC_content_max"],
+        GC_content_min=config["target_GC_content_min"],
+        GC_content_max=config["target_GC_content_max"],
         GC_content_opt=config["GC_content_opt"],
         GC_weight=config["GC_weight"],
         n_jobs=config["n_jobs"],
