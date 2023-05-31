@@ -157,6 +157,7 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         :return: Path to downloaded file, annotation release and genome assembly name.
         :rtype: tuple of str
         """
+        # TODO: find a better solution for sequence_nature
         ftp_directory, ftp_file = self._get_params(file_type, sequence_nature)
         dowloaded_file = self._download_and_decompress(
             self.ftp_link, ftp_directory, ftp_file

@@ -18,6 +18,7 @@ dynamic = ["version"]
 authors = [
   { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
   { name = "Isra Mekki", email = "isra.mekki@helmholtz-muenchen.de" },
+  { name = "Louis Kümmerle" },
   { name = "Francesco Campi" },
   { name = "Chelsea Bright" },
 ]

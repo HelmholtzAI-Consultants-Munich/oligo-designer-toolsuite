@@ -18,7 +18,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from Bio.SeqUtils import MeltingTemp as mt
 
-from ._utils import initialize_parameters, generate_config_file
+from ._utils import initialize_parameters
 
 from oligo_designer_toolsuite.database import (
     CustomGenomicRegionGenerator,

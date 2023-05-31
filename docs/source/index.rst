@@ -36,7 +36,8 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
 
    _getting_started/installation.rst
    _getting_started/introduction_framework.rst
-   _getting_started/run_ready_to_use_pipelines.rst
+   _getting_started/ready_to_use_pipelines_commandline_call.rst
+   _getting_started/ready_to_use_pipelines_python_api.rst
 
 
 .. toctree::

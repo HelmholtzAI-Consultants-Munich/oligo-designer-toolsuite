@@ -1,5 +1,5 @@
-How to Run Ready-To-Use Pipelines?
-=============================================
+How to Run Ready-To-Use Pipelines? Commandline Calls
+=====================================================
 
 In this section we will show you how to run ready-to-use pipelines to design oligonucleotides for specific experiments.
 
@@ -24,9 +24,14 @@ Main Arguments:
 Optional Arguments:
 """""""""""""""""""
 
+**Parameters for Configuration**
+
+--config    path to config file. All parameters listed below can be given as a simple config.yaml file. You can find examples for different config files in the repository under data/configs. 
+            When no config file is specified, the pipeline automatically generates a default config file in the background and overwrites the default parameters with the user defined parameters listed below.
+
 **Parameters for annotation loader**  
 
---source  define annotation source -> currently supported: ncbi, ensembl and custom  
+--source    define annotation source (currently supported: ncbi, ensembl and custom)
 
 
 *NCBI annnotation parameters:*  
