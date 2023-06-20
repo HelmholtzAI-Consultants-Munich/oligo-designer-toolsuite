@@ -27,10 +27,12 @@ class Blastn(SpecificityFilterBase):
     :type word_size: int
     :param percent_identity: maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
     :type percent_identity: int
-    :param coverage: minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
-    :type coverage: int
     :param strand: strand of the query sequence to search
     :type strand: str
+    :param coverage: minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
+    :type coverage: float
+    :param min_alignment_length: minimum alignment length between oligos and target sequence
+    :type min_alignment_length: int
     """
 
     def __init__(
@@ -38,16 +40,26 @@ class Blastn(SpecificityFilterBase):
         dir_specificity: str,
         word_size: int,
         percent_identity: float,
-        coverage: float,
         strand: str,
+        coverage: float = None,
+        min_alignment_length: int = None,
     ):
         """Constructor."""
         super().__init__(dir_specificity)
 
         self.word_size = word_size
         self.percent_identity = percent_identity
-        self.coverage = coverage
         self.strand = strand
+
+        if coverage is None and min_alignment_length is not None:
+            self.min_alignment_length = min_alignment_length
+        elif min_alignment_length is None and coverage is not None:
+            self.coverage = coverage
+
+        else:
+            raise Exception(
+                "Please provide either coverage or a minimum alignment length"
+            )
 
         self.dir_blast = os.path.join(self.dir_specificity, "blast")
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
@@ -181,8 +193,13 @@ class Blastn(SpecificityFilterBase):
         blast_matches = blast_results[
             blast_results["query_gene_id"] != blast_results["target_gene_id"]
         ]
-        values = blast_matches["query_length"] * self.coverage / 100
-        blast_matches.insert(len(blast_matches.columns), "min_alignment_length", values)
+        if self.coverage is not None:
+            values = blast_matches["query_length"] * self.coverage / 100
+            blast_matches.insert(
+                len(blast_matches.columns), "min_alignment_length", values
+            )
+        else:
+            blast_matches["min_alignment_length"] = self.min_alignment_length
 
         blast_matches_filtered = blast_matches.loc[
             blast_matches.alignment_length > blast_matches.min_alignment_length
