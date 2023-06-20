@@ -137,8 +137,8 @@ dmypy.json
 
 # Experiments
 output*
-tests/merfish_pipeline.ipynb
-tests/seqfish_pipeline.ipynb
+merfish_pipeline.ipynb
+seqfish_pipeline.ipynb
 tests/*.pickle
 
 oligo_designer_toolsuite/_version.py

@@ -16,6 +16,7 @@ source_params:
   species: Homo_sapiens
   annotation_release: 110
   genome_assembly: GRCh38.p14
+region: reduced_representation
 # source_params:
 #     taxon: vertebrate_mammalian # required: taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
 #     species: Homo_sapiens # required: species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name

@@ -11,7 +11,7 @@ source: ensembl # required: indicate that ensembl annotation should be used
 source_params:
     species: homo_sapiens # required: species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
     annotation_release: current # required: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
-
+region: reduced_representation
 
 ### Parameters for oligo sequences generation
 file_genes: ./data/genes/ensemble_10.txt # file with a list the genes used to generate the oligos sequences, leave empty  if all the genes are used

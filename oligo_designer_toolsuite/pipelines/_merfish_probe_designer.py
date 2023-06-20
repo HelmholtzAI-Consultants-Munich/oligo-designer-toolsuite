@@ -88,7 +88,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
 
     def _get_default_readouts(self):
         """
-        This function returns 16 validated readout probs from the merfish paper TODO: Which species?
+        This function returns 16 validated readout probs from the merfish paper on Homo Sapiens
         """
 
         default_readout_probes = [
@@ -132,7 +132,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         type num_readouts: int
         """
         if primer_fasta is not None:
-            # blast each potential readout probe against the previous build primer probs library
+            # blast each potential readout probe against the previous build primer probes library
             dir_specificity_primers = os.path.join(
                 self.readout_dir_output, "specificity_temporary_primers"
             )
@@ -191,10 +191,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
 
         reference_database2 = ReferenceDatabase(
             file_fasta=self.file_transcriptome_reference,
-            files_source=self.region_generator.files_source,
-            species=self.region_generator.species,
-            annotation_release=self.region_generator.annotation_release,
-            genome_assembly=self.region_generator.genome_assembly,
+            metadata=self.metadata,
             dir_output=self.readout_dir_output,
         )
         reference_database2.load_fasta_into_database()
@@ -657,7 +654,6 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         return assembled_probes, file_database
 
     # Target probes
-    # Done
     def filter_probes_by_property(
         self,
         probe_database: OligoDatabase,
@@ -854,8 +850,6 @@ def main():
     """
     TODO
     """
-
-    # TODO get comman line arguments
     parser = ArgumentParser(
         prog="MERFISH Probe Designer",
         usage="merfish_probe_designer [options]",
@@ -893,6 +887,7 @@ def main():
     ##### create target probe database #####
     target_probe_database, file_database = probe_designer.create_probe_database(
         genes=genes,
+        region=config["region"],
         probe_length_min=config["target_probe"]["probe_length_min"],
         probe_length_max=config["target_probe"]["probe_length_max"],
         min_probes_per_gene=config["min_probes_per_gene"],

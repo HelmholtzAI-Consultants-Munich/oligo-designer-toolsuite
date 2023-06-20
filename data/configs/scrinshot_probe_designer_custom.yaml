@@ -15,6 +15,7 @@ source_params:
     species: Homo_sapiens # optional: species of provided annotation, leave empty if unknown
     annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
     genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
+region: reduced_representation
 
 ### Parameters for probe sequences generation
 file_genes: data/genes/custom_10.txt # file with a list the genes used to generate the probes sequences, leave empty if all the genes are used

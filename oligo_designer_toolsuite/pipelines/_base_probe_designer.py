@@ -8,6 +8,9 @@ import warnings
 from pathlib import Path
 from datetime import datetime
 
+# from typing_extensions import Literal # Python 3.7 or below
+from typing import Literal
+
 from oligo_designer_toolsuite.database import (
     EnsemblGenomicRegionGenerator,
     CustomGenomicRegionGenerator,
@@ -191,6 +194,7 @@ class BaseProbeDesigner:
         genes: list,
         probe_length_min: int,
         probe_length_max: int,
+        region: Literal["cds", "reduced_representation", "genome"],
         min_probes_per_gene: int = 0,
         n_jobs: int = 1,
     ):
@@ -206,11 +210,20 @@ class BaseProbeDesigner:
                 "Annotation and Sequenec file needed to create a Transcriptome. Please use 'load_annotations()' function to provide missing files."
             )
         # length of exon_junction_size is probe_length - 1 to continue where exons annotation ends
-        file_transcriptome = (
-            self.region_generator.generate_transcript_reduced_representation(
-                include_exon_junctions=True, exon_junction_size=probe_length_max
+        if region == "reduced_representation":
+            file_transcriptome = (
+                self.region_generator.generate_transcript_reduced_representation(
+                    include_exon_junctions=True, exon_junction_size=probe_length_max
+                )
             )
-        )
+        elif region == "genome":
+            file_transcriptome = self.region_generator.generate_genome()
+        elif region == "cds":
+            file_transcriptome = (
+                self.region_generator.generate_CDS_reduced_representation(
+                    include_exon_junctions=True, exon_junction_size=probe_length_max
+                )
+            )
 
         ##### creating the probe database #####
         # oligo database

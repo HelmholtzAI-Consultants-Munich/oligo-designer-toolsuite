@@ -18,7 +18,6 @@ from ..oligo_selection import (
     padlock_heuristic_selection,
     OligosetGenerator,
 )
-from ..utils import create_seqfish_plus_barcodes
 
 from ._base_probe_designer import BaseProbeDesigner
 
@@ -26,7 +25,9 @@ import os
 import logging
 import shutil
 
-from typing import List, Tuple
+
+# from typing_extensions import Literal # Python 3.7 or below
+from typing import List, Tuple, Literal
 
 from Bio.Seq import Seq
 
@@ -38,6 +39,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         BaseProbeDesigner (_type_): _description_
     """
 
+    # 1
     def filter_probes_by_property(
         self, oligo_database, GC_content_min, GC_content_max, number_consecutive, n_jobs
     ):
@@ -57,10 +59,12 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             )
         return oligo_database, file_database
 
+    # 2
     def filter_probes_by_specificity(
         self,
         oligo_database: OligoDatabase,
         probe_length_max: int,
+        region_reference: Literal["cds", "reduced_representation", "genome"],
         word_size: int,
         percent_identity: float,
         coverage: float,
@@ -89,34 +93,39 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             self.dir_output, "specificity_temporary"
         )  # folder where the temporary files will be written
 
-        file_transcriptome = (
-            self.region_generator.generate_transcript_reduced_representation(
-                include_exon_junctions=True, exon_junction_size=2 * probe_length_max
+        if region_reference == "reduced_representation":
+            file_transcriptome_ref = (
+                self.region_generator.generate_transcript_reduced_representation(
+                    include_exon_junctions=True, exon_junction_size=probe_length_max
+                )
             )
-        )
+        elif region_reference == "genome":
+            file_transcriptome_ref = self.region_generator.generate_genome()
+        elif region_reference == "cds":
+            file_transcriptome_ref = (
+                self.region_generator.generate_CDS_reduced_representation(
+                    include_exon_junctions=True, exon_junction_size=probe_length_max
+                )
+            )
         self.reference = ReferenceDatabase(
-            file_fasta=file_transcriptome,
-            files_source=self.region_generator.files_source,
-            species=self.region_generator.species,
-            annotation_release=self.region_generator.annotation_release,
-            genome_assembly=self.region_generator.genome_assembly,
+            file_fasta=file_transcriptome_ref,
+            metadata=self.metadata,
             dir_output=self.dir_output,
         )
         self.reference.load_fasta_into_database()
         logging.info(f"Reference DB created")
-        exact_mathces = ExactMatches(dir_specificity=dir_specificity)
+        exact_matches = ExactMatches(dir_specificity=dir_specificity)
         blastn = Blastn(
             dir_specificity=dir_specificity,
-            word_size=word_size,
-            percent_identity=percent_identity,
-            coverage=coverage,
+            word_size=word_size,  # 15 (config)
+            percent_identity=percent_identity,  # 100 (config)
+            coverage=coverage,  # alignment length instead (config)
             strand=strand,
-            # strand='plus',
         )
-        filters = [exact_mathces, blastn]
+        filters = [exact_matches, blastn]
         specificity_filter = SpecificityFilter(filters=filters)
 
-        self.ref_db_cross_hybroligo_database = specificity_filter.apply(
+        oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
             reference_database=self.reference,
             n_jobs=n_jobs,
@@ -137,6 +146,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         shutil.rmtree(dir_specificity)
         return oligo_database, file_database
 
+    # 5
     def design_readout_probes(
         self,
         GC_content_min: float,
@@ -165,14 +175,16 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         """
 
         property_filters = [
-            GCContent(GC_content_min=GC_content_min, GC_content_max=GC_content_max),
-            ConsecutiveRepeats(num_consecutive=number_consecutive),
+            GCContent(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
         ]
+
+        # Reuse specificity filter and cross hybridization check (different parameters)
         specificity_filters = [blast_filter]
 
         readout_database = OligoDatabase(dir_output=self.dir_output)
 
         # TODO make sure to generate enough random probes
+        # We multiply by 20 to make sure we have enough probes
         readout_database.create_random_database(
             length, num_probes * 20, sequence_alphabet=sequence_alphabet
         )
@@ -184,31 +196,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         readout_database = specificity_filter.apply(readout_database, reference_DB)
         return readout_database
 
-    def design_final_SeqFishPlus_probes(
-        self,
-        oligo_database,
-        readout_database,
-        n_pseudocolors,
-        seed,
-    ):
-        barcodes = create_seqfish_plus_barcodes(
-            n_pseudocolors=n_pseudocolors,
-            seed=seed,
-            num_genes=len(oligo_database.database.keys()),
-        )
-        readout_sequences = readout_database.to_sequence_list()
-        for i in oligo_database.keys():
-            barcode = barcodes[i]
-            left = readout_sequences[barcode[0]] + readout_sequences[barcode[1]]
-            right = readout_sequences[barcode[2]] + readout_sequences[barcode[3]]
-
-            for j in oligo_database[i].keys():
-                seq = str(oligo_database[i][j]["sequence"])
-                seq = left + seq
-                seq = seq + right
-                oligo_database[i][j]["sequence"] = Seq(seq)
-        return oligo_database
-
+    # 3 (target)
     def check_cross_hybridization(
         self,
         oligo_database,
@@ -225,16 +213,14 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         ref_db_cross_hybr = ReferenceDatabase(
             file_fasta=self.dir_output + "/oligo_database/fasta_from_our_db.fna"
         )
-        exact_mathces = ExactMatches(dir_specificity=dir_specificity)
         blastn_cross_hybr = Blastn(
-            dir_specificity=dir_specificity,
+            dir_specificity=dir_specificity,  # 15 (config) see specificity filter
             word_size=word_size,
             percent_identity=percent_identity,
             coverage=coverage,
-            # THE MOST IMPORTANT PART HERE IS STRAND = "MINUS"
-            strand="minus",
+            strand="minus",  # To be verified
         )
-        filters = [exact_mathces, blastn_cross_hybr]
+        filters = [blastn_cross_hybr]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
@@ -249,26 +235,21 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         logging.info(f"Cross-hybridization check is performed")
         return oligo_database, file_database
 
+    # 4
     def get_oligosets(
         self,
         oligo_database,
-        GC_content_min,
         GC_content_opt,
-        GC_content_max,
-        GC_weight,
         oligoset_size,
         min_oligoset_size,
         oligos_scoring,
         n_sets,
         n_jobs,
     ):
-        oligos_scoring = SeqFISHOligoScoring(
-            GC_content_min=GC_content_min,
-            GC_content_opt=GC_content_opt,
-            GC_content_max=GC_content_max,
-            GC_weight=GC_weight,
-        )
+        oligos_scoring = SeqFISHOligoScoring(GC_content_opt=GC_content_opt)
         set_scoring = AverageSetScoring()
+
+        # distance between oligos = 2 (config)
         oligoset_generator = OligosetGenerator(
             oligoset_size=oligoset_size,
             min_oligoset_size=min_oligoset_size,
