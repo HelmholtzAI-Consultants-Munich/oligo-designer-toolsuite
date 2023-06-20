@@ -11,13 +11,11 @@ from abc import ABC, abstractmethod
 # Oligo Scoring Classes
 ############################################
 
+
 class OligoScoringBase(ABC):
     """Template class for scoring the oligos."""
 
-    def apply(self, 
-            oligos: dict, 
-            oligos_indices: np.array
-        ):
+    def apply(self, oligos: dict, oligos_indices: np.array):
         """Scores all the oligos using the defiend scoring function. The scores are both saved in the dictionary
         and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
 
@@ -67,16 +65,17 @@ class PadlockOligoScoring(OligoScoringBase):
     :type GC_weight: int, optional
     """
 
-    def __init__(self,
-            Tm_min: float,
-            Tm_opt: float,
-            Tm_max: float,
-            GC_content_min: float,
-            GC_content_opt: float,
-            GC_content_max: float,
-            Tm_weight: float = 1,
-            GC_weight: float = 1,
-        ):
+    def __init__(
+        self,
+        Tm_min: float,
+        Tm_opt: float,
+        Tm_max: float,
+        GC_content_min: float,
+        GC_content_opt: float,
+        GC_content_max: float,
+        Tm_weight: float = 1,
+        GC_weight: float = 1,
+    ):
         """Constructor method"""
         self.Tm_min = Tm_min
         self.Tm_opt = Tm_opt
@@ -97,12 +96,14 @@ class PadlockOligoScoring(OligoScoringBase):
         :rtype: float
         """
         # distance from the optimal melting temperature weightend by the how far is the optimum from the min/ max
-        # teh scoring is the lower teh better
+        # the scoring is the lower the better
         Tm_dif = (
             oligo["melting_temperature"] - self.Tm_opt
         )  # check the names of the columns
         GC_dif = oligo["GC_content"] - self.GC_opt
-        score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(GC_dif)
+        score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(
+            GC_dif
+        )
         return score
 
     def __generate_scoring_functions(self):
@@ -113,18 +114,23 @@ class PadlockOligoScoring(OligoScoringBase):
         if Tm_dif_max == Tm_dif_min:
             self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max
         else:
-            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max * (Tm_dif > 0) + abs(Tm_dif) / Tm_dif_min * (Tm_dif < 0)
+            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max * (
+                Tm_dif > 0
+            ) + abs(Tm_dif) / Tm_dif_min * (Tm_dif < 0)
         # define the error function for the GC content
         GC_dif_max = self.GC_max - self.GC_opt
         GC_dif_min = self.GC_opt - self.GC_min
         if GC_dif_max == GC_dif_min:
             self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max
         else:
-            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (GC_dif > 0) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
+            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (
+                GC_dif > 0
+            ) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
+
 
 class SeqFISHOligoScoring(OligoScoringBase):
-    
-    """Oligos scoring class for the SeqFISH+ experiment. 
+
+    """Oligos scoring class for the SeqFISH+ experiment.
     Scoring function has the following form: ((GC_content_of_sequence - GC_opt)/(GC_max-GC_min))^2
 
     :param GC_min: minimal percentage of guanine and cytosine
@@ -138,19 +144,12 @@ class SeqFISHOligoScoring(OligoScoringBase):
 
     def __init__(
         self,
-        GC_content_min: float,
         GC_content_opt: float,
-        GC_content_max: float,
-        GC_weight: float = 1,
     ):
         """
         Initialize the class
         """
-        self.GC_min = GC_content_min
         self.GC_opt = GC_content_opt
-        self.GC_max = GC_content_max
-        self.GC_weight = GC_weight
-        
 
     def scoring_function(self, oligo):
         """Computes the score of the given oligo
@@ -160,7 +159,5 @@ class SeqFISHOligoScoring(OligoScoringBase):
         :return: score of the oligo
         :rtype: float
         """
-        
-        weighting_factor = self.GC_max - self.GC_min
-        GC_dif = (oligo["GC_content"] - self.GC_opt) / weighting_factor
-        return GC_dif**2
+        # distance from optimal GC (the lower the better)
+        return abs(oligo["GC_content"] - self.GC_opt)
