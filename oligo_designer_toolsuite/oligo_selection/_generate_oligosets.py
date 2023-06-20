@@ -16,6 +16,7 @@ from ..oligo_efficiency_filter import OligoScoringBase, SetScoringBase
 # Oligo set Generation Classes
 ############################################
 
+
 class OligosetGenerator:
     """This class is used to generate ranked, non-overlapping oligo sets. Each oligo is scored according to the given ``oligos_scoring`` class
     and the sets according to the given ``set_scoring`` calss.
@@ -144,10 +145,13 @@ class OligosetGenerator:
         :rtype: pandas.DataFrame
         """
 
-        def _get_overlap(seq1_intervals, seq2_intervals):
+        def _get_overlap(seq1_intervals, seq2_intervals, distance_between_oligos=0):
             for a in seq1_intervals:
                 for b in seq2_intervals:
-                    if min(a[1], b[1]) - max(a[0], b[0]) > -1:
+                    if (
+                        min(a[1], b[1]) - max(a[0], b[0])
+                        >= -1 * distance_between_oligos
+                    ):
                         return True
             return False
 
