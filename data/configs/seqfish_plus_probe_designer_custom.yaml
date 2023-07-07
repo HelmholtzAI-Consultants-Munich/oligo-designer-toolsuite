@@ -17,15 +17,16 @@ write_intermediate_steps: True # writes the oligo sequences after each step of t
 
 source: custom # required: indicate that own annotation should be used
 source_params:
-    file_annotation: output_seqfish/annotation/GCF_000001405.40_GRCh38.p14_genomic.gtf # required: GTF file with gene annotation
-    file_sequence: output_seqfish/annotation/GCF_000001405.40_GRCh38.p14_genomic.fna # required: FASTA file with genome sequence
+    file_annotation: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf #output_seqfish/annotation/GCF_000001405.40_GRCh38.p14_genomic.gtf # required: GTF file with gene annotation
+    file_sequence: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna #output_seqfish/annotation/GCF_000001405.40_GRCh38.p14_genomic.fna # required: FASTA file with genome sequence
     files_source: NCBI # optional: original source of the genomic files
     species: Homo_sapiens # optional: species of provided annotation, leave empty if unknown
     annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
     genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
+region: cds
 
 ### Parameters for oligo sequences generation
-file_genes: data/genes/ncbi_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+file_genes: data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 oligo_length_min: 26 #min length of oligos
 oligo_length_max: 30 #max length of oligos
 # WHAT IS THIS?

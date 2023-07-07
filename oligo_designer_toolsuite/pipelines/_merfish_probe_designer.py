@@ -23,6 +23,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     MeltingTemperatureNN,
     PropertyFilter,
     SecondaryStructure,
+    MaskedSequences,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
@@ -654,7 +655,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         return assembled_probes, file_database
 
     # Target probes
-    def filter_probes_by_property(
+    def filter_target_probes_by_property(
         self,
         probe_database: OligoDatabase,
         GC_content_min: int = 40,
@@ -713,11 +714,14 @@ class MerfishProbeDesigner(BaseProbeDesigner):
             T=internal_secondary_structures_T,
             DG_thr=internal_secondary_structures_threshold_deltaG,
         )
+        masked_sequences = MaskedSequences()
+
         # create the list of filters
         filters = [
+            masked_sequences,
+            consecutive_repeats,
             gc_content,
             melting_temperature,
-            consecutive_repeats,
             secondary_structure,
         ]
 
@@ -739,10 +743,10 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         return probe_database, file_database
 
     # Done
-    def filter_probes_by_specificity(
+    def filter_target_probes_by_specificity(
         self,
         probe_database: OligoDatabase,
-        word_size: int = 17,
+        word_size: int = 15,
         percent_identity: float = 80,
         coverage: float = 50,
         strand: str = "plus",
@@ -803,11 +807,12 @@ class MerfishProbeDesigner(BaseProbeDesigner):
     def filter_cross_hybridization_targets(
         self,
         probe_database: OligoDatabase,
-        word_size: int = 17,
+        word_size: int = 15,
         percent_identity_ch: int = 66,
         coverage: float = 50,
         n_jobs: int = 1,
     ):
+        # TODO: check cross hybridization MT
         # Specificity filter to remove cross hybridization targets
         targets_fasta = probe_database.write_fasta_from_database(
             filename="target_probes_init"
@@ -895,7 +900,10 @@ def main():
     )
 
     ##### filter target probes by property #####
-    target_probe_database, file_database = probe_designer.filter_probes_by_property(
+    (
+        target_probe_database,
+        file_database,
+    ) = probe_designer.filter_target_probes_by_property(
         probe_database=target_probe_database,
         GC_content_min=config["targets_setup"]["GC_content_min"],
         GC_content_max=config["targets_setup"]["GC_content_max"],
@@ -914,7 +922,10 @@ def main():
     )
 
     ##### filter target probes by specificity #####
-    target_probe_database, file_database = probe_designer.filter_probes_by_specificity(
+    (
+        target_probe_database,
+        file_database,
+    ) = probe_designer.filter_target_probes_by_specificity(
         probe_database=target_probe_database,
         word_size=config["targeting_sequences_setup"]["word_size"],
         percent_identity=config["blast_percent_identity"],

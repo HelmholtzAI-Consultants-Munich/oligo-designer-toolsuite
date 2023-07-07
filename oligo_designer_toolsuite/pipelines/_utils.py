@@ -4,11 +4,12 @@ import warnings
 import yaml
 from argparse import ArgumentParser
 
+import shutil
+
 
 def generate_config_file(
     exp_name: str, directory: str = "output", source: str = "custom"
 ):
-    directory = os.path.join(directory, "config")
     Path(directory).mkdir(parents=True, exist_ok=True)
 
     config_parent_dir = os.path.join(
@@ -41,6 +42,9 @@ def generate_config_file(
         config_file = ""
         raise ValueError(f"No config file found for source {source}'.")
 
+    shutil.copyfile(
+        config_file, os.path.join(directory, f"config_{exp_name}_{source}.yaml")
+    )
     warnings.warn(f"Using default config: {config_file}.")
     return config_file
 

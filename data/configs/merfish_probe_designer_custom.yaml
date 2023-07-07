@@ -16,7 +16,7 @@ source_params:
   species: Homo_sapiens
   annotation_release: 110
   genome_assembly: GRCh38.p14
-region: reduced_representation
+region: transcript
 # source_params:
 #     taxon: vertebrate_mammalian # required: taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
 #     species: Homo_sapiens # required: species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name
@@ -43,7 +43,7 @@ readout_probe:
   probe_length_min: 29 #min length of probes
   probe_length_max: 30 #max length of probes
 
-target_probe:
+target_probe: #TODO: call it target region
   probe_length_min: 30
   probe_length_max: 30
 
@@ -117,7 +117,7 @@ readout_blast_setup:
     #back_ground_DB: transcriptome
 
 targeting_sequences_setup:
-  word_size: 17  #Not provided: "remove > 1 cellular RNA sepices Target"
+  word_size: 15  #Not provided: "remove > 1 cellular RNA sepices Target"
   percent_identity_ch: 66 #percent_identity for cross hybridization
 
 probe_setup:

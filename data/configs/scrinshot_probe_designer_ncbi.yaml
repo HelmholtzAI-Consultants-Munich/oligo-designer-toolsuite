@@ -12,7 +12,7 @@ source_params:
     taxon: vertebrate_mammalian # required: taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
     species: Homo_sapiens # required: species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name
     annotation_release: 110 # required: release number of annotation e.g. '109' or '109.20211119'  or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/
-region: reduced_representation
+region: transcript
 
 ### Parameters for oligo sequences generation
 file_genes: ./data/genes/ncbi_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used

@@ -59,7 +59,6 @@ from ._base_probe_designer import BaseProbeDesigner
 ############################################
 
 
-# TODO: Use base class
 class ScrinshotProbeDesigner(BaseProbeDesigner):
     """This class generates all padlock probes for a SCRINSHOT experiment from a transcriptome or custom file for a user-defined set of genes.
     The probe design is done in five steps:
@@ -463,6 +462,7 @@ def main():
     probe_database, file_database = probe_designer.create_probe_database(
         genes=genes,
         probe_length_min=config["probe_length_min"],
+        region=config["region"],
         probe_length_max=config["probe_length_max"],
         min_probes_per_gene=config["min_probes_per_gene"],
         n_jobs=config["n_jobs"],

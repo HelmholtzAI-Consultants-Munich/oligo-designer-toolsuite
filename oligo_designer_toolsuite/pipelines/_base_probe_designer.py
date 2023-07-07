@@ -194,7 +194,10 @@ class BaseProbeDesigner:
         genes: list,
         probe_length_min: int,
         probe_length_max: int,
-        region: Literal["cds", "reduced_representation", "genome"],
+        region: Literal[
+            "genome", "gene", "transcript", "cds", "three_primer_utr", "five_primer_utr"
+        ],
+        isoform_consensus: Literal["intersection", "union"] = "union",
         min_probes_per_gene: int = 0,
         n_jobs: int = 1,
     ):
@@ -210,7 +213,7 @@ class BaseProbeDesigner:
                 "Annotation and Sequenec file needed to create a Transcriptome. Please use 'load_annotations()' function to provide missing files."
             )
         # length of exon_junction_size is probe_length - 1 to continue where exons annotation ends
-        if region == "reduced_representation":
+        if region == "transcript":
             file_transcriptome = (
                 self.region_generator.generate_transcript_reduced_representation(
                     include_exon_junctions=True, exon_junction_size=probe_length_max
@@ -223,6 +226,13 @@ class BaseProbeDesigner:
                 self.region_generator.generate_CDS_reduced_representation(
                     include_exon_junctions=True, exon_junction_size=probe_length_max
                 )
+            )
+        else:
+            raise Exception(f"Region generator: {region} is not implemented yet.")
+
+        if isoform_consensus == "intersection":
+            raise Exception(
+                f"Isoform consensus: {isoform_consensus} not implemented yet."
             )
 
         ##### creating the probe database #####

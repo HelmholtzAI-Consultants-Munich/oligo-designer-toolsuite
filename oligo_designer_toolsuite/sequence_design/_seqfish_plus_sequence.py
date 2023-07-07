@@ -1,111 +1,137 @@
 import numpy as np
 from Bio.Seq import Seq
 
+from ..utils import create_seqfish_plus_barcodes
+import os
+from pathlib import Path
+import yaml
+
 
 class SeqfishProbesCreator:
     """
     This class is used to assemble probes using primary probes, readout probes and barcodes, that were designed for each gene.
     """
 
-    def __init__(
-        self,
-    ):
-        pass
-
-    def create_probes(self, oligos_DB, readout_probes, barcodes):
-        """ "
-        Function for assembling probes.
-        :param oligos_DB: database of oligos; dictionary, were each key corresponds to one gene
-        :type oligos_DB: OligoDatabase
-        :param readout_probes: list of readout probes
-        :type readout_probes: list of Seq
-        :param barcodes: barcodes for each gene from the database (each barcode consists of 4 digits)
-        :type barcodes: dict (str : list of 4 int)
-        :return: oligo_database, where "sequence" are assembled sequences
-        :rtype: OligoDatabase
-        """
-        for i in oligos_DB.keys():
-            barcode = barcodes[i]
-            s1 = readout_probes[barcode[0]]
-            s2 = readout_probes[barcode[1]]
-            s3 = readout_probes[barcode[2]]
-            s4 = readout_probes[barcode[3]]
-            left = str(s1) + str(s2)
-            right = str(s3) + str(s4)
-            for j in oligos_DB[i].keys():
-                seq = str(oligos_DB[i][j]["sequence"])
-                seq = left + seq
-                seq = seq + right
-                oligos_DB[i][j]["sequence"] = Seq(seq)
-        return oligos_DB
-
-
-# TODO: Use database isntead of dict, documentation
-class SeqFishReadoutProbes(ReadoutProbesBase):
-    """ "
-    Class to create readout probes in SeqFISH+ experiment
-    :param length: length of readout probe
-    :type length: int
-    :param number_probes: number of probes, that should be created (correspond to the num of pseudocolors in the experiment)
-    :type number_probes: int
-    :param GC_min: minimum GC-content of the probe
-    :type GC_min: int
-    :param GC_max: maximum GC-content of the probe
-    :type GC_max: int
-    :param number_consecutive: min num of consecutive nucleotides, that are not allowed in the probe
-    :type number_consecutive: int
-    :param blast_filter: Blast filter (typically this filter was already created during specificity filtering)
-    :type blast_filter: BlastnFilter
-    :param reference_DB: reference database, that was created for Blast specificity filtering
-    :type reference_DB: ReferenceDatabase
-    """
-
-    def __init__(
-        self,
-        length: int,
-        number_probes: int,
-        GC_min: int,
-        GC_max: int,
-        number_consecutive: int,
-        random_seed: int,
-        dir_output: str,
-        blast_filter,
-        reference_DB,
-        sequence_alphabet: list[str] = ["A", "C", "G", "T"],
-    ):
-        self.length = length
-        self.num_probes = number_probes
-        self.property_filters = [
-            GCContent(GC_content_min=GC_min, GC_content_max=GC_max),
-            ConsecutiveRepeats(num_consecutive=number_consecutive),
-        ]
-        self.specificity_filters = [blast_filter]
-
-        self.sequence_alphabet = sequence_alphabet
-        self.ref = os.path.basename(reference_DB.file_fasta)
-        self.seed = random_seed
+    def __init__(self, dir_output: str):
         self.dir_output = dir_output
-        self.readout_database = None
 
-    def create_readout_probes(self, property_filter, specificity_filter):
-        """
-        Function, that creates readout probes
-        :return: list of readout sequences, that fulfil experiment contraints
-        :rtype: list of Seq()
-        """
-
-        self.readout_database = OligoDatabase(
-            file_fasta=None, dir_output=self.dir_output
+    def assemble_probes(
+        self,
+        oligo_database,
+        readout_database,
+        n_pseudocolors,
+        seed,
+    ):
+        barcodes = create_seqfish_plus_barcodes(
+            n_pseudocolors=n_pseudocolors,
+            seed=seed,
+            num_genes=len(oligo_database.database.keys()),
         )
+        readout_sequences = readout_database.to_sequence_list()
+        for i in oligo_database.keys():
+            barcode = barcodes[i]
+            left = readout_sequences[barcode[0]] + readout_sequences[barcode[1]]
+            right = readout_sequences[barcode[2]] + readout_sequences[barcode[3]]
 
-        self.readout_database.create_random_database(
-            self.length * 100, self.num_probes, sequence_alphabet=self.sequence_alphabet
+            for j in oligo_database[i].keys():
+                seq = str(oligo_database[i][j]["sequence"])
+                seq = left + " T " + seq  # T is a spacer, to be outputted separately
+                seq = seq + " T " + right
+                oligo_database[i][j]["sequence"] = Seq(seq)
+        return oligo_database
+
+    def write_final_probes(
+        self,
+        oligo_database,
+        readout_database,
+        n_pseudocolors,
+        seed,
+    ):
+        barcodes = create_seqfish_plus_barcodes(
+            n_pseudocolors=n_pseudocolors,
+            seed=seed,
+            num_genes=len(oligo_database.database.keys()),
         )
+        readout_sequences = readout_database.to_sequence_list()
 
-        # property_filter = PropertyFilter(self.property_filters)
-        self.readout_database = property_filter.apply(self.readout_database)
+        regions = oligo_database.database.keys()
+        yaml_dict = {}
 
-        # specificity_filter = SpecificityFilter(self.specificity_filters)
-        self.readout_database = specificity_filter.apply(
-            self.readout_database, self.ref
-        )
+        for region in regions:
+            barcode = barcodes[region]
+            left = readout_sequences[barcode[0]] + readout_sequences[barcode[1]]
+            right = readout_sequences[barcode[2]] + readout_sequences[barcode[3]]
+
+            yaml_dict[region] = {}
+            for i, oligo in enumerate(oligo_database[region].keys()):
+                yaml_dict[region][f"{region}_oligo_{i+1}"] = {}
+                seq = str(oligo_database[region][oligo]["sequence"])
+                yaml_dict[region][f"{region}_oligo_{i+1}"]["id"] = oligo
+                yaml_dict[region][f"{region}_oligo_{i+1}"]["region"] = region
+                yaml_dict[region][f"{region}_oligo_{i+1}"][
+                    "seqfish_plus_full_probe"
+                ] = (left + "T" + seq + "T" + right)
+                yaml_dict[region][f"{region}_oligo_{i+1}"].update(
+                    oligo_database[region][oligo]
+                )
+                yaml_dict[region][f"{region}_oligo_{i+1}"]["start"] = ",".join(
+                    f"{start}"
+                    for start in yaml_dict[region][f"{region}_oligo_{i+1}"].pop("start")
+                )
+                yaml_dict[region][f"{region}_oligo_{i+1}"]["end"] = ",".join(
+                    f"{end}"
+                    for end in yaml_dict[region][f"{region}_oligo_{i+1}"].pop("end")
+                )
+                yaml_dict[region][f"{region}_oligo_{i+1}"][
+                    "target_sequence"
+                ] = yaml_dict[region][f"{region}_oligo_{i+1}"].pop("sequence")
+
+                yaml_dict[region][f"{region}_oligo_{i+1}"].update(
+                    {
+                        f"readout_sequece_{i+1}": readout_sequences[barcode[i]]
+                        for i in range(4)
+                    }
+                )
+        # save
+        probes_dir = os.path.join(self.dir_output, "final_seqfish_plus_sequences")
+        Path(probes_dir).mkdir(parents=True, exist_ok=True)
+        with open(os.path.join(probes_dir, "seqfish_plus_probes.yml"), "w") as outfile:
+            yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
+
+        # Create order file
+        yaml_order = {}
+        for region in yaml_dict:
+            yaml_order[region] = {}
+            for oligo_id in yaml_dict[region]:
+                yaml_order[region][oligo_id] = {}
+                yaml_order[region][oligo_id]["merfish_probe_full_sequence"] = yaml_dict[
+                    region
+                ][oligo_id]["merfish_probe_full_sequence"]
+                yaml_order[region][oligo_id]["readout_probe_1"] = yaml_dict[region][
+                    oligo_id
+                ]["readout_probe_1"]
+                yaml_order[region][oligo_id]["readout_probe_2"] = yaml_dict[region][
+                    oligo_id
+                ]["readout_probe_2"]
+        with open(os.path.join(probes_dir, "merfish_probes_order.yml"), "w") as outfile:
+            yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
+
+        # Create readout probe file
+        yaml_readout = {}
+        yaml_readout["Bit"] = "Readout Probe"
+        for i in range(num_bits):
+            yaml_readout[str(i + 1)] = readout_probes[i] + "/3Cy5Sp"
+        with open(
+            os.path.join(probes_dir, "merfish_readout_probes.yml"), "w"
+        ) as outfile:
+            yaml.dump(yaml_readout, outfile, default_flow_style=False, sort_keys=False)
+
+        # Create codebook file
+        yaml_codebook = {}
+        for gene_idx, gene in enumerate(genes):
+            yaml_codebook[gene] = self.code[gene_idx]
+
+        for i in range(self.n_blanks):
+            yaml_codebook[f"blank_barcode_{i + 1}"] = self.code[n_genes + i]
+        with open(os.path.join(probes_dir, "merfish_codebook.yml"), "w") as outfile:
+            yaml.dump(yaml_codebook, outfile, default_flow_style=False, sort_keys=False)
