@@ -105,7 +105,7 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 
 ## How to cite
 
-If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
+If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
 
 ```
 @software{lisa_sousa_2023_7823048,
