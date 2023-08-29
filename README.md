@@ -145,11 +145,13 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
 
 ```
-@software{lisa_sousa_2023_7823048,
-    author       = { Lisa Barros de Andrade e Sousa,
+@software{campi_2023_7823048,
+    author       = { Francesco Campi,
                      Isra Mekki,  
                      Louis Kümmerle,
-                     Marie Piraud
+                     Fabian Theis,
+                     Marie Piraud,
+                     Lisa Barros de Andrade e Sousa
                      },
     title        = {{Oligo Designer Toolsuite}},
     month        = april,
