@@ -81,6 +81,21 @@ class Blastn(SpecificityFilterBase):
         :rtype: dict
         """
 
+        # run the balst search
+        database_name = self.create_index(file_reference, n_jobs=n_jobs)
+        regions = list(database.keys())
+        filtered_database_regions = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_blast_filter)(database[region], region, database_name)
+            for region in regions
+        )
+
+        # reconstruct the oligos db and return it
+        for region, filtered_database_region in zip(regions, filtered_database_regions):
+            database[region] = filtered_database_region
+
+        return database
+
+    def create_index(self, file_reference: str, n_jobs: int):
         # create blast database
         database_exists = False
         database_name = os.path.basename(file_reference)
@@ -97,21 +112,9 @@ class Blastn(SpecificityFilterBase):
                 out=os.path.join(self.dir_blast, database_name),
             )
             out, err = cmd()
+        return database_name
 
-        # run the balst search
-        regions = list(database.keys())
-        filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_blast)(database[region], region, database_name)
-            for region in regions
-        )
-
-        # reconstruct the oligos db and return it
-        for region, filtered_database_region in zip(regions, filtered_database_regions):
-            database[region] = filtered_database_region
-
-        return database
-
-    def _run_blast(self, database_region, region, database_name):
+    def _run_blast_filter(self, database_region, region, database_name):
         """Run BlastN alignment tool to find regions of local similarity between sequences, where sequences are oligos and background sequences (e.g. transcript, genome, etc.).
         BlastN identifies the transcript regions where oligos match with a certain coverage and similarity.
 
@@ -122,7 +125,15 @@ class Blastn(SpecificityFilterBase):
         :param database_name: path to the blatn database
         :type database_name: str
         """
-        # run the blast search and write the results
+        matching_oligos, _ = self._run_blast_search(
+            database_region, region, database_name
+        )
+        filtered_database_region = self._filter_matching_oligos(
+            database_region, matching_oligos
+        )
+        return filtered_database_region
+
+    def _run_blast_search(self, database_region, region, database_name):
         file_oligo_fasta_gene = self._create_fasta_file(
             database_region, self.dir_fasta, region
         )
@@ -141,15 +152,37 @@ class Blastn(SpecificityFilterBase):
 
         # read the reuslts of the blast seatch
         blast_results = self._read_blast_output(file_blast_gene)
-        # filter the DB based on the blast results
-        matching_oligos = self._find_matching_oligos(blast_results)
-        filtered_database_region = self._filter_matching_oligos(
-            database_region, matching_oligos
-        )
+
         # remove temporary files
         os.remove(file_blast_gene)
         os.remove(file_oligo_fasta_gene)
-        return filtered_database_region
+        # filter the DB based on the blast results
+        return self._find_matching_oligos(blast_results)
+
+    def get_all_matching_oligo_pairs(
+        self, database: dict, database_name: str, n_jobs: int
+    ):
+        """_summary_
+
+        Args:
+            database (dict): _description_
+            database_name (str): _description_
+            n_jobs (int): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        regions = list(database)
+
+        all_matches = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_blast_search)(database[region], region, database_name)[1]
+            for region in regions
+        )
+        return [
+            (match[0], match[1])
+            for region_matches in all_matches
+            for match in region_matches.values
+        ]
 
     def _read_blast_output(self, file_blast_gene):
         """Load the output of the BlastN alignment search into a DataFrame and process the results."""
@@ -207,4 +240,4 @@ class Blastn(SpecificityFilterBase):
 
         oligos_with_match = blast_matches_filtered["query"].unique()
 
-        return oligos_with_match
+        return oligos_with_match, blast_matches_filtered

@@ -16,6 +16,7 @@ from . import SpecificityFilterBase
 # Oligo Bowtie Filter Classes
 ############################################
 
+
 class Bowtie(SpecificityFilterBase):
     """This class filters oligos based on the Bowtie short read alignment tool.
     The user can customize the filtering by specifying the num_mismatches per oligo and mismatch_region, the region that should be considered for counting mismatches.
@@ -75,6 +76,21 @@ class Bowtie(SpecificityFilterBase):
         :return: oligo info of user-specified regions
         :rtype: dict
         """
+        index_name = self.create_index(file_reference, n_jobs=n_jobs)
+
+        regions = list(database.keys())
+        filtered_database_regions = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_bowtie)(database[region], region, index_name)
+            for region in regions
+        )
+
+        # reconstruct the oligos_DB
+        for region, filtered_database_region in zip(regions, filtered_database_regions):
+            database[region] = filtered_database_region
+
+        return database
+
+    def create_index(self, file_reference: str, n_jobs: int):
         # Some bowtie initializations, change the names
         index_exists = False
         index_name = os.path.basename(file_reference)
@@ -96,17 +112,7 @@ class Bowtie(SpecificityFilterBase):
             )
             process = subprocess.Popen(command1, shell=True, cwd=self.dir_bowtie).wait()
 
-        regions = list(database.keys())
-        filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_bowtie)(database[region], region, index_name)
-            for region in regions
-        )
-
-        # reconstruct the oligos_DB
-        for region, filtered_database_region in zip(regions, filtered_database_regions):
-            database[region] = filtered_database_region
-
-        return database
+        return index_name
 
     def _run_bowtie(self, databse_region, region, index_name):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
@@ -225,3 +231,17 @@ class Bowtie(SpecificityFilterBase):
 
         oligos_with_match = bowtie_matches["query"].unique()
         return oligos_with_match
+
+
+def get_all_matching_oligo_pairs(self, database: dict, database_name: str, n_jobs: int):
+    regions = list(database)
+
+    all_matches = Parallel(n_jobs=n_jobs)(
+        delayed(self._run_blast_search)(database[region], region, database_name)[1]
+        for region in regions
+    )
+    return [
+        (match[0], match[1])
+        for region_matches in all_matches
+        for match in region_matches.values
+    ]

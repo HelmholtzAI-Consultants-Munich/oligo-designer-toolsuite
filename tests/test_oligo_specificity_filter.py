@@ -149,7 +149,7 @@ def test_filter_blast_match(tmp_path):
 
     # Run blast filter
     oligo_database = OligoDatabase()
-    blast_filter = Blastn(tmp_path, word_size, percent_identity, coverage, strand)
+    blast_filter = Blastn(tmp_path, word_size, percent_identity, strand, coverage)
     oligo_database.load_database(file_oligo_info_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
         oligo_database.database, file_transcriptome_fasta, n_jobs
@@ -164,7 +164,7 @@ def test_filter_blast_match(tmp_path):
 def test_filter_blast_no_match(tmp_path):
     # Check that blast does not filter filters out a sequence which is not a match
     oligo_database = OligoDatabase()
-    blast_filter = Blastn(tmp_path, word_size, percent_identity, coverage, strand)
+    blast_filter = Blastn(tmp_path, word_size, percent_identity, strand, coverage)
     oligo_database.load_database(file_oligo_info_no_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
         oligo_database.database, file_transcriptome_fasta, n_jobs

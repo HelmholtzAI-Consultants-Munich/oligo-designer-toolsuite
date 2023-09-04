@@ -23,6 +23,9 @@ class ExactMatches(SpecificityFilterBase):
 
         super().__init__(dir_specificity)
 
+    def create_index(self, file_reference: str, n_jobs: int):
+        pass
+
     def apply(self, database: dict, file_reference: str, n_jobs: int):
         """Apply the filter in parallel on the given ``database``. Each jobs filters a single region, and at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.

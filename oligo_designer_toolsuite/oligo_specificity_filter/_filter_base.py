@@ -13,6 +13,7 @@ from Bio.SeqRecord import SeqRecord
 # Oligo Specificity Filter Classes
 ############################################
 
+
 class SpecificityFilterBase(ABC):
     """This is the base class for all specificity filter classes
 
@@ -27,18 +28,34 @@ class SpecificityFilterBase(ABC):
         Path(self.dir_specificity).mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
-    def apply(self, oligo_database: dict, file_reference: str, n_jobs: int):
+    def apply(self, database: dict, file_reference: str, n_jobs: int):
         """Apply filter to list of all possible oligos in oligo_info dictionary and filter out the oligos which don't fulfill the requirements.
         Temporary files can be written in the ``self.dir_specificiy`` folder, but they must be removed.
 
-        :param oligo_database: database containing the oligos and their features
-        :type oligo_database: dict
-        :param file_reference: path to the file that will be used as reference for the alignement tools
-        :type file_reference: str
+        :param database: database containing the oligos and their features
+        :type database: dict
+        :param index_name: path to the file that is used as an index for the alignment
+        :type index_name: str
         :param n_jobs: number of simultaneous parallel computations
         :type n_jobs: int
         :return: oligo info of user-specified genes
         :rtype: dict
+        """
+
+    @abstractmethod
+    def create_index(self, file_reference: str, n_jobs: int):
+        """_summary_"""
+
+    @abstractmethod
+    def get_all_matching_oligo_pairs(
+        self, database: dict, database_name: str, n_jobs: int
+    ):
+        """_summary_
+
+        Args:
+            database (dict): _description_
+            database_name (str): _description_
+            n_jobs (int): _description_
         """
 
     def _create_fasta_file(self, database_region, dir, gene):
