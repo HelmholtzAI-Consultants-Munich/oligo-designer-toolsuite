@@ -63,16 +63,16 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_book_theme"
+html_theme = "renku"
 html_logo = "_figures/ODT_logo.png"
 
 html_title = "Oligo Designer Toolsuite"
 html_theme_options = {
     "logo_only": True,
-    "repository_url": "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite",
-    "use_repository_button": True,
-    "use_fullscreen_button": True,
-    "use_issues_button": True,
+    #    "repository_url": "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite",
+    #    "use_repository_button": True,
+    #    "use_fullscreen_button": True,
+    #    "use_issues_button": True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

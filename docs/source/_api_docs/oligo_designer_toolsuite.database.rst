@@ -1,4 +1,4 @@
-database
+Database
 ===========================================
 
 Module contents
@@ -11,6 +11,9 @@ Module contents
 
    OligoDatabase
    ReferenceDatabase
+   CustomGenomicRegionGenerator
+   NcbiGenomicRegionGenerator
+   EnsemblGenomicRegionGenerator
    
    {% for name in oligo_designer_toolsuite.database.classes %}
      {{ name }}
