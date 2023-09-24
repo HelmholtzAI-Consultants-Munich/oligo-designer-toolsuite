@@ -101,6 +101,26 @@ def get_sequence_from_annotation(
     process = Popen(cmd, shell=True).wait()
 
 
+def get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out):
+    """Get all regions in a genome that are not covered by at least one interval in the input file.
+    Chromosomes that are in the chromosome length file but not in the input file will be suppressed.
+
+    :param file_bed_in: Input bed file.
+    :type file_bed_in: str
+    :param file_chromosome_length: Length of each chromosome.
+    :type file_chromosome_length: str
+    :param file_bed_out: Output bed file with complementary regions to input bed file.
+    :type file_bed_out: str
+    """
+    cmd = "bedtools complement"
+    cmd += " -i " + file_bed_in
+    cmd += " -g " + file_chromosome_length
+    cmd += " -L "
+    cmd += " > " + file_bed_out
+
+    process = Popen(cmd, shell=True).wait()
+
+
 def merge_fasta(files_fasta, file_merged_fasta):
     """Merge two fast files by concatenating file content.
 
@@ -141,25 +161,39 @@ def parse_fasta_header(header):
             "end": [None],
             "strand": [None],
         }
-    
+
     else:
         header_coordinates = header[-1].split(";")
         coordinates = {}
         for header_coordinate in header_coordinates:
             coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
-            coordinates.setdefault("start", []).append(
-                int(header_coordinate.split(":")[1].split("-")[0])
-            )
+            coordinates.setdefault("start", []).append(int(header_coordinate.split(":")[1].split("-")[0]))
             coordinates.setdefault("end", []).append(
                 int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
             )
-            coordinates.setdefault("strand", []).append(
-                header_coordinate.split("(")[1].split(")")[0]
-            )
+            coordinates.setdefault("strand", []).append(header_coordinate.split("(")[1].split(")")[0])
+
+    additional_information = {}
 
     if len(header) > 2:
-        additional_information = header[1]
-    else:
-        additional_information = []
+        info_list = header[1]
+
+        if ";" in info_list:
+            info_list = info_list.split(";")
+
+            for infos in info_list:
+                key_values = infos.split(",")
+
+                for key_value in key_values:
+                    key, value = key_value.split("=")
+
+                    if key in additional_information:
+                        additional_information[key].append(value)
+                    else:
+                        additional_information[key] = [value]
+
+        else:
+            key, value = info_list.split("=")
+            additional_information[key] = [value]
 
     return region, additional_information, coordinates

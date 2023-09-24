@@ -7,6 +7,7 @@ from ._data_parser import (
     check_fasta_format,
     check_tsv_format,
     get_sequence_from_annotation,
+    get_complement_regions,
     merge_fasta,
     parse_fasta_header,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "check_fasta_format",
     "check_tsv_format",
     "get_sequence_from_annotation",
+    "get_complement_regions",
     "merge_fasta",
     "parse_fasta_header",
     "generate_random_sequence",

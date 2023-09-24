@@ -156,8 +156,8 @@ class GffParser:
         if not value:
             return None
 
-        # Strip double and single quotes.
-        value = value.strip("\"'")
+        # Strip double and single quotes and new lines.
+        value = value.strip("\"'").strip("\n")
 
         # Return a list if the value has a comma.
         if "," in value:
