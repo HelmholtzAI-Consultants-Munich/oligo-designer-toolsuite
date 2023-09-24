@@ -8,8 +8,8 @@ from ._seqfish_plus_probe_designer import SeqfishPlusProbeDesigner
 from ._base_probe_designer import BaseProbeDesigner
 
 __all__ = [
+    "BaseProbeDesigner",
     "ScrinshotProbeDesigner",
     "MerfishProbeDesigner",
     "SeqfishPlusProbeDesigner",
-    "BaseProbeDesigner",
 ]
