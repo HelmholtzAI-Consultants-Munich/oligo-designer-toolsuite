@@ -6,13 +6,15 @@ import os
 import copy
 import shutil
 import warnings
+import numpy as np
 import pandas as pd
 
 pd.options.mode.chained_assignment = None
 
 from pathlib import Path
+from Bio import SeqIO
 
-from ..utils._data_parser import get_sequence_from_annotation
+from ..utils._data_parser import get_sequence_from_annotation, get_complement_regions
 from ..utils._ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI
 from ..utils._gff_parser import GffParser
 
@@ -23,16 +25,16 @@ from ..utils._gff_parser import GffParser
 
 
 class CustomGenomicRegionGenerator:
-    """Class to generate sequences from annotated regions in GTF format and genomic fasta file.
+    """Class to generate sequences for different types of regions from annotation in GTF format
+    and genomic fasta file.
 
     Sequences are saved as fasta file with region id, additional information and coordinates in header.
-    he header of each sequence must start with '>' and contain the following information:
+    The header of each sequence must start with '>' and contain the following information:
     region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
-    where the region_id is compulsory and the other fileds are opional.
-
+    where the region_id is compulsory and the other fileds are opional. Coordinated are saved in 1-base format.
 
     Output Format (per sequence):
-    >'region_id'::'additional information'::'chromosome':'start'-'end'('strand')
+    >{region_id}::{additional information}::{chromosome}:{start}-{end}({strand})
     sequence
 
     Example:
@@ -76,15 +78,11 @@ class CustomGenomicRegionGenerator:
 
         if annotation_release is None:
             annotation_release = "unknown"
-            warnings.warn(
-                f"No annotation release defined. Using default release {annotation_release}!"
-            )
+            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
 
         if genome_assembly is None:
             genome_assembly = "unknown"
-            warnings.warn(
-                f"No genome assembly defined. Using default genome assembly {genome_assembly}!"
-            )
+            warnings.warn(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
 
         self.files_source = files_source
         self.species = species
@@ -99,10 +97,18 @@ class CustomGenomicRegionGenerator:
         # read annotation file and store in dataframe
         parser = GffParser()
         self.annotation = parser.read_gff(annotation_file)
+
+        # required to ensure that sorting is done correctly
         self.annotation.start = self.annotation.start.astype("int")
         self.annotation.end = self.annotation.end.astype("int")
 
+        # add both annotations to dataframe: GFF 1-base offset and BED 0-base offset
+        # since we read in a GFF file, the start coordinates are 1-base offset
+        self.annotation.rename(columns={"start": "start_1base"}, inplace=True)
+        self.annotation["start_0base"] = self.annotation.start_1base - 1
+
         # columns required for bed12 split sequence format
+        self.BED_HEADER = ["seqid", "start", "end", "fasta_header", "score", "strand"]
         self.BED12_HEADER = [
             "seqid",
             "start",
@@ -117,494 +123,820 @@ class CustomGenomicRegionGenerator:
             "block_sizes",
             "blockStarts",
         ]
-        self.FASTA_HEDAER = f"source={self.files_source};species={self.species};annotation_release={self.annotation_release};genome_assemly={self.genome_assembly}"
+        self.FILE_INFO = f"source-{self.files_source}_species-{self.species}_annotation_release-{self.annotation_release}_genome_assemly-{self.genome_assembly}"
 
-    def generate_genome(self):
-        """Generate a fasta file with the genome sequences.
+    def get_sequence_gene(self):
+        """Generate a fasta file with all gene sequences, using the attribute "gene" in the GTF annotation type field.
+        The header of each sequence in the fasta file contains the following information:
 
-        :return: Name of the output fasta file, where the generated transcript sequences are stored.
+        Output Format (per sequence):
+        >{gene_id}::gene_id={gene_id}::{chromosome}:{start}-{end}({strand})
+        sequence
+
+        :return: Fasta file with gene sequences.
         :rtype: str
         """
-        file_genome_fasta = self._get_fasta_file_name("genome")
+        # get gene annotation entries
+        annotation = copy.deepcopy(self.annotation)
+        annotation = self._get_annotation_region_of_interest(annotation, "gene")
 
-        shutil.copyfile(self.sequence_file, file_genome_fasta)
-        # self._add_header_to_fasta_file(file_genome_fasta)
-        return file_genome_fasta
+        # generate region_id
+        annotation["region_id"] = annotation["gene_id"].astype("str")
+        annotation["add_inf"] = "type=gene;gene_id=" + annotation["gene_id"].astype("str")
+        annotation["region"] = self._get_annotation_region(annotation)
 
-    def generate_transcript_reduced_representation(
-        self,
-        include_exon_junctions: bool = True,
-        exon_junction_size: int = 100,
-    ):
-        """Generate a reduced representation of the transcriptome. This representation merges overlapping exons from the same
-        gene but different transcripts into one sequence entry, to reduce duplicated sequence records in the fasta file.
-        In addition to exon, it is also possible to include exon junction information. The "exon_junction_size" parameter
-        defines the size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction.
-        The annotation is taken from the classes GTF file, which must include the value "exon" in the 3rd column and the following
-        fileds in the attributes column: "gene_id", "transcript_id" and "exon_number".
-
-        :param include_exon_junctions: Include exon junctions in the transcriptome sequences, defaults to True
-        :type include_exon_junctions: bool, optional
-        :param exon_junction_size: size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction , defaults to 100
-        :type exon_junction_size: int, optional
-        :return: Name of the output fasta file, where the generated transcript sequences are stored.
-        :rtype: str
-        """
-        file_transcriptome_fasta = self._get_fasta_file_name(
-            "transcriptome", include_exon_junctions, exon_junction_size
+        # add BED12 fields
+        annotation["start"] = annotation["start_0base"]
+        annotation["score"] = 0
+        annotation["fasta_header"] = (
+            annotation["region_id"] + "::" + annotation["add_inf"] + "::" + annotation["region"]
         )
+        annotation = annotation[self.BED_HEADER]
 
-        # get annotation of exons
-        exons = self._get_annotation_region_of_interest("exon")
+        # get sequence from bed file
+        file_fasta = os.path.join(self.dir_output, f"gene_annotation_{self.FILE_INFO}.fna")
+        self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
-        # get exon and (optionally) exon junction sequences
-        self._get_exon_sequence(
-            exons,
-            file_transcriptome_fasta,
-            include_exon_junctions,
-            exon_junction_size,
-        )
+        del annotation
 
-        # self._add_header_to_fasta_file(file_transcriptome_fasta)
-        return file_transcriptome_fasta
-
-    def generate_CDS_reduced_representation(
-        self,
-        include_exon_junctions: bool = True,
-        exon_junction_size: int = 100,
-    ):
-        """Generate a reduced representation of the coding region (CDS). This representation merges overlapping exons from the same
-        gene but different transcripts into one sequence entry, to reduce duplicated sequence records in the fasta file.
-        In addition to exon, it is also possible to include exon junction information. The "exon_junction_size" parameter
-        defines the size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction.
-        The annotation is taken from the classes GTF file, which must include the value "CDS" in the 3rd column and the following
-        fileds in the attributes column: "gene_id", "transcript_id" and "exon_number".
-
-        :param include_exon_junctions: Include exon junctions in the coding region (CDS) sequences, defaults to True
-        :type include_exon_junctions: bool, optional
-        :param exon_junction_size: size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction , defaults to 100
-        :type exon_junction_size: int, optional
-        :return: Name of the output fasta file, where the generated coding region sequences are stored.
-        :rtype: str
-        """
-        file_CDS_fasta = self._get_fasta_file_name(
-            "CDS", include_exon_junctions, exon_junction_size
-        )
-
-        # get annotation of exons
-        exons = self._get_annotation_region_of_interest("CDS")
-
-        self._get_exon_sequence(
-            exons,
-            file_CDS_fasta,
-            include_exon_junctions,
-            exon_junction_size,
-        )
-        # self._add_header_to_fasta_file(file_CDS_fasta)
-        return file_CDS_fasta
-
-    def _get_fasta_file_name(
-        self, region, include_exon_junctions=False, exon_junction_size=None
-    ):
-        """Get name of output fasta file.
-
-        :param region: Region to extract, which is the 3rd "type" column in the GFT file.
-        :type region: str {'exon', 'CDS', 'genome'}
-        :param include_exon_junctions: Include exon junctions in the coding region (CDS) sequences, defaults to True
-        :type include_exon_junctions: bool, optional
-        :param exon_junction_size: size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction , defaults to None
-        :type exon_junction_size: int, optional
-        :return: Fasta file name.
-        :rtype: str
-        """
-        FASTA_HEDAER = self.FASTA_HEDAER
-        FASTA_HEDAER = FASTA_HEDAER.replace("=", "_").replace(";", "_")
-        file_fasta = f"{region}_{FASTA_HEDAER}"
-        if include_exon_junctions:
-            file_fasta += f"_incl_exonjunctions_of_size_{exon_junction_size}"
-        file_fasta += ".fna"
-        file_fasta = os.path.join(self.dir_output, file_fasta)
         return file_fasta
 
-    def _add_header_to_fasta_file(self, file_fasta):
-        """Add additional information to fasta header comment line.
+    def get_sequence_intergenic(self):
+        """Generate a fasta file with all intergenic sequences. Using the attribute "gene" in the GTF annotation type field,
+        we substract those regions from the region of the whole chromosome and retrieve the sequence for those regions
+        on the plus and minus strand seperately, according to the gene regions strandness.
+        The header of each sequence in the fasta file contains the following information:
 
-        :param file_fasta: Fasta file name.
-        :type file_fasta: str
+        Output Format (per sequence):
+        >{intergenic_region_id}::{chromosome}:{start}-{end}({strand})
+        sequence
+
+        :return: Fasta file with gene sequences.
+        :rtype: str
         """
-        with open(file_fasta, "r") as original:
-            data = original.read()
-        with open(file_fasta, "w") as modified:
-            modified.write(f"# {self.FASTA_HEDAER}\n" + data)
 
-    def _get_annotation_region_of_interest(self, region):
-        """Retrieve exon annotation from loaded annotation dataframe.
+        def _compute_intergenic_annotation(annotation):
+            """Retrieve the annotation of intergenic regions by retrieving the complement to the
+            gene regions, taking the strandness of genes into account.
 
-        :param region: Region to extract, which is the 3rd "type" column in the GFT file.
-        :type region: str {'exon', 'CDS'}
-        :return: Exon annotation.
-        :rtype: pandas.DataFrame
-        """
+            :param annotation: Gene annotation in GTF format.
+            :type annotation: pandas.DataFrame
+            :return: Intergenic regions annotation.
+            :rtype: pandas.DataFrame
+            """
+            intergenic_annotation = []
+
+            annotation.rename(
+                columns={"start_0base": "start", "gene_id": "fasta_header"},
+                inplace=True,
+            )
+            annotation = annotation[self.BED_HEADER]
+
+            for seqid, gene_annotation in annotation.groupby("seqid"):
+                gene_annotation_plusstrand = gene_annotation[gene_annotation.strand == "+"]
+                gene_annotation_minusstrand = gene_annotation[gene_annotation.strand == "-"]
+
+                intergenic_annotation.append(
+                    _compute_intergenic_annotation_strand(gene_annotation_plusstrand, "+")
+                )
+                intergenic_annotation.append(
+                    _compute_intergenic_annotation_strand(gene_annotation_minusstrand, "-")
+                )
+
+            intergenic_annotation = pd.concat(intergenic_annotation, ignore_index=True)
+            return intergenic_annotation
+
+        def _compute_intergenic_annotation_strand(gene_annotatio, strand):
+            """Retrieve strandspecific annotation of intergenic regions.
+
+            :param gene_annotatio: Gene annotation in GTF format.
+            :type gene_annotatio: pandas.DataFrame
+            :param strand: Genomic strand of genes in annotation.
+            :type strand: str
+            :return: Intergenic Region annotation for one strand.
+            :rtype: list
+            """
+            # define files
+            file_bed_in = os.path.join(self.dir_output, "annotation_in.bed")
+            file_chromosome_length = os.path.join(self.dir_output, "annotation.genome")
+            file_bed_out = os.path.join(self.dir_output, "annotation_out.bed")
+
+            # save the annotation as bed file
+            gene_annotatio = gene_annotatio.sort_values(by="start")
+            gene_annotatio.to_csv(file_bed_in, sep="\t", header=False, index=False)
+
+            # save chromosome sizes as genome file
+            _get_chromosome_length(file_chromosome_length)
+
+            # get complementary regions
+            get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out)
+
+            # load intergenic regions
+            intergenic_annotation = pd.read_csv(file_bed_out, sep="\t", comment="t", header=None)
+            intergenic_annotation.columns = ["seqid", "start_0base", "end"]
+            intergenic_annotation["start_1base"] = intergenic_annotation["start_0base"] + 1
+            if strand == "+":
+                intergenic_annotation["region_id"] = "InterRegPlus" + intergenic_annotation.index.astype(
+                    "str"
+                )
+            if strand == "-":
+                intergenic_annotation["region_id"] = "InterRegMinus" + intergenic_annotation.index[
+                    ::-1
+                ].astype("str")
+            intergenic_annotation["score"] = "."
+            intergenic_annotation["strand"] = strand
+
+            os.remove(file_bed_in)
+            os.remove(file_chromosome_length)
+            os.remove(file_bed_out)
+
+            return intergenic_annotation
+
+        def _get_chromosome_length(file_chromosome_length):
+            """Get the length, i.e. last coordinate, of each chromosome in the input fasta file.
+
+            :return: Chromosome length.
+            :rtype: dict
+            """
+            dict_chromosome_length = {}
+            for rec in SeqIO.parse(self.sequence_file, "fasta"):
+                dict_chromosome_length[rec.id] = len(rec.seq)
+
+            with open(file_chromosome_length, "w") as handle:
+                for key, value in sorted(dict_chromosome_length.items()):
+                    handle.write(f"{key}\t{value}\n")
+
+            return dict_chromosome_length
+
+        # get gene annotation entries
         annotation = copy.deepcopy(self.annotation)
-        exons = annotation.loc[annotation["type"] == region]
-        exons.reset_index(inplace=True, drop=True)
-        return exons
+        annotation = self._get_annotation_region_of_interest(annotation, "gene")
+        annotation = _compute_intergenic_annotation(annotation)
 
-    def _get_exon_sequence(
-        self,
-        exons,
-        file_transcriptome_fasta,
-        include_exon_junctions,
-        exon_junction_size,
-    ):
-        """Get sequence in fasta format for exons of transcriptome or CDS. Retrieve fasta file from
-        generated bed12 and genome fasta file.
+        # generate region_id
+        annotation["add_inf"] = "type=intergenic"
+        annotation["region"] = self._get_annotation_region(annotation)
 
-        :param exons: Exon annotation.
-        :type exons: pandas.DataFrame
-        :param file_transcriptome_fasta: Name of the output fasta file, where the generated coding region sequences are stored.
-        :type file_transcriptome_fasta: str
-        :param include_exon_junctions: Include exon junctions, defaults to True
-        :type include_exon_junctions: bool, optional
-        :param exon_junction_size: size of the exon junction region, i.e. +/- "exon_junction_size" bp around the junction , defaults to 100
-        :type exon_junction_size: int, optional
+        # add BED12 fields
+        annotation["start"] = annotation["start_0base"]
+        annotation["score"] = 0
+        annotation["fasta_header"] = (
+            annotation["region_id"] + "::" + annotation["add_inf"] + "::" + annotation["region"]
+        )
+        annotation = annotation[self.BED_HEADER]
+
+        # get sequence from bed file
+        file_fasta = os.path.join(self.dir_output, f"intergenic_annotation_{self.FILE_INFO}.fna")
+        self._get_sequence_from_annotation(annotation, file_fasta, split=False)
+
+        del annotation
+
+        return file_fasta
+
+    def get_sequence_exon(self, collapse_duplicated_regions=True):
+        """Generate a fasta file with all exon sequences, using the attribute "exon" in the GTF annotation type field.
+        If `collapse_duplicated_regions` is set to True (default), then exons from different transcripts who share
+        the exact same start and end coordinates, are merged into one sequence entry.
+        The header of each sequence in the fasta file contains the following information:
+
+        Output Format (per sequence):
+        >{gene_id}::gene_id={gene_id},transcript_id={transcript_id},exon_number={exon_number}::{chromosome}:{start}-{end}({strand})
+        sequence
+
+        :param collapse_duplicated_regions: merge region entries with the exact same start and end coordinates (strandspecific), defaults to True
+        :type collapse_duplicated_regions: bool, optional
+        :return: Fasta file with exon sequences.
+        :rtype: str
         """
-        exons.start = exons.start - 1  # convert GFF 1-base offset to BED 0-base offset
-        list_annotations = []
-        # merge exon annotations for the same region
-        unique_exons = self._get_unique_exons(exons)
+        # get exon annotation entries
+        annotation = copy.deepcopy(self.annotation)
+        annotation = self._get_annotation_region_of_interest(annotation, "exon")
 
-        list_annotations.append(unique_exons)
-        # merges exons with with same start but different end or different start but same end coordinates
-        # since oligos are also created from this transcriptome, disable this function
-        # unique_exons = self._merge_containing_exons(unique_exons)
+        # generate region_id
+        annotation["region_id"] = annotation["gene_id"].astype("str")
+        annotation["add_inf"] = (
+            "gene_id="
+            + annotation["gene_id"].astype("str")
+            + ",transcript_id="
+            + annotation["transcript_id"].astype("str")
+            + ",exon_number="
+            + annotation["exon_number"].astype("str")
+        )
+        annotation["region"] = self._get_annotation_region(annotation)
 
-        # get exon junction annotation and merge annotation for the same region
-        if include_exon_junctions:
-            exon_junctions = self._get_exon_junction_annotation(
-                exons, exon_junction_size
+        # remove duplicated entries
+        if collapse_duplicated_regions:
+            annotation = self._collapse_duplicated_regions(annotation)
+
+        # add BED12 fields
+        annotation["start"] = annotation["start_0base"]
+        annotation["score"] = 0
+        annotation["fasta_header"] = (
+            annotation["region_id"] + "::type=exon;" + annotation["add_inf"] + "::" + annotation["region"]
+        )
+        annotation = annotation[self.BED_HEADER]
+
+        file_fasta = os.path.join(self.dir_output, f"exon_annotation_{self.FILE_INFO}.fna")
+        self._get_sequence_from_annotation(annotation, file_fasta, split=False)
+
+        del annotation
+
+        return file_fasta
+
+    def get_sequence_intron(self, collapse_duplicated_regions=True):
+        """Generate a fasta file with all intron sequences, using the attribute "exon" in the GTF annotation type field.
+        Intron are specified per transcript and calculated from the regions between exons. If `collapse_duplicated_regions`
+        is set to True (default), then introns from different transcripts who share the exact same start and end coordinates,
+        are merged into one sequence entry. The header of each sequence in the fasta file contains the following information:
+
+        Output Format (per sequence):
+        >{gene_id}::gene_id={gene_id},transcript_id={transcript_id},intron_number={intron_number}::{chromosome}:{start}-{end}({strand})
+        sequence
+
+        :return: Fasta file with exon sequences.
+        :rtype: str
+
+        :param collapse_duplicated_regions: merge region entries with the exact same start and end coordinates (strandspecific), defaults to True
+        :type collapse_duplicated_regions: bool, optional
+        :return: Fasta file with intron sequences.
+        :rtype: str
+        """
+
+        def _compute_intron_annotation(annotation):
+            """Compute the start and end coordinates of introns from the exon annotation.
+
+            :param annotation: Exon annotation in GTF format.
+            :type annotation: pandas.DataFrame
+            :return: Intron annotation in GTF format.
+            :rtype: pandas.DataFrame
+            """
+            intron_list = []
+
+            for transcript, transcript_annotation in annotation.groupby("transcript_id"):
+                gene_id = transcript_annotation.iloc[0].gene_id
+                seqid = transcript_annotation.iloc[0].seqid
+                strand = transcript_annotation.iloc[0].strand
+
+                num_exons = transcript_annotation.shape[0]
+                transcript_annotation = transcript_annotation.sort_values(by="start_1base")
+
+                for i, (start_0base, start_1base, end) in enumerate(
+                    zip(
+                        transcript_annotation["start_0base"],
+                        transcript_annotation["start_1base"],
+                        transcript_annotation["end"],
+                    )
+                ):
+                    attributes = self._get_attributes(start_0base, start_1base, end)
+
+                    if i == 0:
+                        exon_upstream = attributes
+
+                    else:
+                        exon_downstream = attributes
+
+                        intron_number = i if strand == "+" else num_exons - i
+                        intron_list.append(
+                            [
+                                gene_id,
+                                transcript,
+                                f"intron_{intron_number}",
+                                seqid,
+                                strand,
+                                int(exon_upstream.end),  # start 0-bse
+                                int(exon_upstream.end + 1),  # start 1-base
+                                int(exon_downstream.start_0base),  # end
+                            ]
+                        )
+                        exon_upstream = attributes
+
+            intron_annotation = pd.DataFrame(
+                np.asarray(intron_list),
+                columns=[
+                    "gene_id",
+                    "transcript_id",
+                    "intron_number",
+                    "seqid",
+                    "strand",
+                    "start_0base",
+                    "start_1base",
+                    "end",
+                ],
             )
 
-            unique_exon_junctions = self._get_unique_exon_junctions(exon_junctions)
-            list_annotations.append(unique_exon_junctions)
+            return intron_annotation
 
-        # concatenate the two annotations
-        annotation = pd.concat(list_annotations)
-        annotation = annotation.sort_values(by=["fasta_header"])
-        annotation.reset_index(inplace=True, drop=True)
+        annotation = copy.deepcopy(self.annotation)
+        annotation = self._get_annotation_region_of_interest(annotation, "exon")
+        annotation = _compute_intron_annotation(annotation)
 
-        # save the gene transcript annotation
-        file_transcriptome_bed = os.path.join(self.dir_output, "transcriptome.bed")
-        annotation[self.BED12_HEADER].to_csv(
-            file_transcriptome_bed, sep="\t", header=False, index=False
+        # generate region_id
+        annotation["region_id"] = annotation["gene_id"].astype("str")
+        annotation["add_inf"] = (
+            "gene_id="
+            + annotation["gene_id"].astype("str")
+            + ",transcript_id="
+            + annotation["transcript_id"].astype("str")
+            + ",intron_number="
+            + annotation["intron_number"].astype("str")
         )
+        annotation["region"] = self._get_annotation_region(annotation)
 
-        # create the fasta file
-        get_sequence_from_annotation(
-            file_transcriptome_bed,
-            self.sequence_file,
-            file_transcriptome_fasta,
-            split=True,
-            strand=True,
-            nameOnly=True,
+        # remove duplicated entries
+        if collapse_duplicated_regions:
+            annotation = self._collapse_duplicated_regions(annotation)
+
+        # add BED12 fields
+        annotation["start"] = annotation["start_0base"]
+        annotation["score"] = 0
+        annotation["fasta_header"] = (
+            annotation["region_id"] + "::type=intron;" + annotation["add_inf"] + "::" + annotation["region"]
         )
-        os.remove(file_transcriptome_bed)
+        annotation = annotation[self.BED_HEADER]
 
-    def _get_unique_exons(self, exons):
-        """Merge overlapping exons, which have the same start and end coordinates.
-        Save transcript information for those exons.
+        # get sequence from bed file
+        file_fasta = os.path.join(self.dir_output, f"intron_annotation_{self.FILE_INFO}.fna")
+        self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
-        :param exons: Exon annotation
-        :type exons: pandas.DataFrame
-        :return: Merged exon annotation
+        del annotation
+
+        return file_fasta
+
+    def get_sequence_CDS(self, collapse_duplicated_regions=True):
+        """Generate a fasta file with all CDS sequences, using the attribute "CDS" in the GTF annotation type field.
+        If `collapse_duplicated_regions` is set to True (default), then CDS from different transcripts who share
+        the exact same start and end coordinates, are merged into one sequence entry.
+        The header of each sequence in the fasta file contains the following information:
+
+        Output Format (per sequence):
+        >{gene_id}::gene_id={gene_id},transcript_id={transcript_id},exon_number={exon_number}::{chromosome}:{start}-{end}({strand})
+        sequence
+
+        :param collapse_duplicated_regions: merge region entries with the exact same start and end coordinates (strandspecific), defaults to True
+        :type collapse_duplicated_regions: bool, optional
+        :return: Fasta file with CDS sequences.
+        :rtype: str
+        """
+        # get exon annotation entries
+        annotation = copy.deepcopy(self.annotation)
+        annotation = self._get_annotation_region_of_interest(annotation, "CDS")
+
+        # generate region_id
+        annotation["region_id"] = annotation["gene_id"].astype("str")
+        annotation["add_inf"] = (
+            "gene_id="
+            + annotation["gene_id"].astype("str")
+            + ",transcript_id="
+            + annotation["transcript_id"].astype("str")
+            + ",exon_number="
+            + annotation["exon_number"].astype("str")
+        )
+        annotation["region"] = self._get_annotation_region(annotation)
+
+        # remove duplicated entries
+        if collapse_duplicated_regions:
+            annotation = self._collapse_duplicated_regions(annotation)
+
+        # add BED12 fields
+        annotation["start"] = annotation["start_0base"]
+        annotation["score"] = 0
+        annotation["fasta_header"] = (
+            annotation["region_id"] + "::type=CDS;" + annotation["add_inf"] + "::" + annotation["region"]
+        )
+        annotation = annotation[self.BED_HEADER]
+
+        file_fasta = os.path.join(self.dir_output, f"CDS_annotation_{self.FILE_INFO}.fna")
+        self._get_sequence_from_annotation(annotation, file_fasta, split=False)
+
+        del annotation
+
+        return file_fasta
+
+    def get_sequence_UTR(self, five_prime=True, three_prime=True, collapse_duplicated_regions=True):
+        """Generate a fasta file with all UTR sequences, using the attribute "CDS" and "exon" in the GTF
+        annotation type field. The UTR represents regions from the transcription start/end site or beginning
+        of the known UTR to the base before the start codon of the transcript. If this region is interrupted
+        by introns then each exon or partial exon is annotated as a separate UTR feature. 3 prime and 5 prime UTRS
+        are defined dependent on the strand of the gene. If `collapse_duplicated_regions` is set to True (default),
+        then UTRs from different transcripts who share the exact same start and end coordinates,are merged into one
+        sequence entry. The header of each sequence in the fasta file contains the following information:
+
+        Output Format (per sequence):
+        >{gene_id}::gene_id={gene_id},transcript_id={transcript_id},exon_number={exon_number}::{chromosome}:{start}-{end}({strand})
+        sequence
+
+        :param five_prime: include 5 prime UTR regions, defaults to True
+        :type five_prime: bool, optional
+        :param three_prime: include 3 prime UTR regions, defaults to True
+        :type three_prime: bool, optional
+        :param collapse_duplicated_regions: merge region entries with the exact same start and end coordinates (strandspecific), defaults to True
+        :type collapse_duplicated_regions: bool, optional
+        :return: Fasta file with UTR sequences.
+        :rtype: str
+        """
+
+        def _compute_UTR(annotation):
+            """Compute the UTR boundaries, and define 3 prime and 5 prime UTR dependent on the strandness of the gene.
+
+            :param annotation: Region annotation.
+            :type annotation: pandas.DataFrame
+            """
+            utrs = []
+
+            # get leftmost and rightmost CDS boundaries
+            for transcript, transcript_annotation in annotation.groupby("transcript_id"):
+                cds_start = transcript_annotation[transcript_annotation.type == "CDS"].start_1base.min()
+                cds_end = transcript_annotation[transcript_annotation.type == "CDS"].end.max()
+
+                # based on strand, set GFF record type
+                if transcript_annotation.iloc[0].strand == "+":
+                    UTR_left_type = "five_prime_UTR"
+                    UTR_right_type = "three_prime_UTR"
+
+                elif transcript_annotation.iloc[0].strand == "-":
+                    UTR_left_type = "three_prime_UTR"
+                    UTR_right_type = "five_prime_UTR"
+
+                exons = transcript_annotation[transcript_annotation.type == "exon"]
+
+                UTR_left = copy.deepcopy(exons[exons.start_1base < cds_start])
+                UTR_left.type = UTR_left_type
+                UTR_left.end[UTR_left.end >= cds_start] = cds_start - 1
+                utrs.append(UTR_left)
+
+                UTR_right = copy.deepcopy(exons[exons.end > cds_end])
+                UTR_right.type = UTR_right_type
+                UTR_right.start_1base[UTR_right.start_1base <= cds_end] = cds_end + 1
+                UTR_right.start_0base[UTR_right.start_1base <= cds_end] = cds_end
+                utrs.append(UTR_right)
+
+            utr_annotation = pd.concat(utrs, ignore_index=True)
+
+            return utr_annotation
+
+        annotation_exon = self._get_annotation_region_of_interest(copy.deepcopy(self.annotation), "exon")
+        annotation_CDS = self._get_annotation_region_of_interest(copy.deepcopy(self.annotation), "CDS")
+
+        transcripts_with_CDS = list(set(annotation_CDS.transcript_id))
+        annotation_exon = annotation_exon[annotation_exon.transcript_id.isin(transcripts_with_CDS)]
+
+        annotation = pd.concat([annotation_exon, annotation_CDS], ignore_index=True)
+        annotation = _compute_UTR(annotation)
+
+        if five_prime == False:
+            annotation = annotation[annotation.type == "three_prime_UTR"]
+        if three_prime == False:
+            annotation = annotation[annotation.type == "five_prime_UTR"]
+
+        # generate region_id
+        annotation["region_id"] = annotation["gene_id"].astype("str")
+        annotation["add_inf"] = (
+            "gene_id="
+            + annotation["gene_id"].astype("str")
+            + ",transcript_id="
+            + annotation["transcript_id"].astype("str")
+            + ",exon_number="
+            + annotation["exon_number"].astype("str")
+        )
+        annotation["region"] = self._get_annotation_region(annotation)
+
+        # remove duplicated entries
+        if collapse_duplicated_regions:
+            annotation = self._collapse_duplicated_regions(annotation)
+
+        # add BED12 fields
+        annotation["start"] = annotation["start_0base"]
+        annotation["score"] = 0
+        annotation["fasta_header"] = (
+            annotation["region_id"]
+            + "::type="
+            + annotation["type"]
+            + ";"
+            + annotation["add_inf"]
+            + "::"
+            + annotation["region"]
+        )
+        annotation = annotation[self.BED_HEADER]
+
+        file_fasta = os.path.join(self.dir_output, f"UTR_annotation_{self.FILE_INFO}.fna")
+        self._get_sequence_from_annotation(annotation, file_fasta, split=False)
+
+        del annotation
+
+        return file_fasta
+
+    def get_sequence_exon_exon_junction(self, block_size, collapse_duplicated_regions=True):
+        """Generate a fasta file with all exon/exon junction sequences, using the attribute "exon" in the GTF
+        annotation type field. To compute the exon junctions, the "block_size" parameter defines the size
+        of the exon junction region, i.e. +/- "block_size" bp around the junction. If `collapse_duplicated_regions`
+        is set to True (default), then junctions from different transcripts who share the exact same start and end coordinates,
+        are merged into one sequence entry. The header of each sequence in the fasta file contains the following information:
+
+        Output Format (per sequence):
+        >{gene_id}::gene_id={gene_id},transcript_id={transcript_id},exon_number={exon_number}__JUNC__{exon_number}::{chromosome}:{start}-{end}({strand})
+        sequence
+
+        :param block_size: Size of region, i.e. +/- "block_size" bp around the junction
+        :type block_size: int
+        :param collapse_duplicated_regions: merge region entries with the exact same start and end coordinates (strandspecific), defaults to True
+        :type collapse_duplicated_regions: bool, optional
+        :return: Fasta file with exon/exon junction sequences.
+        :rtype: str
+        """
+
+        def _compute_exon_exon_junction_annotation(annotation, block_size):
+            """Compute the exon/exon junction region from the exon start and end coordinates, depending
+            on the strandness of the gene.
+
+            :param annotation: Exon annotation.
+            :type annotation: pandas.DataFrame
+            :param block_size: Size of region, i.e. +/- "block_size" bp around the junction
+            :type block_size: int
+            :return: Exon/exon junction annotation.
+            :rtype: pandas.DataFrame
+            """
+            junction_list = []
+
+            for transcript, transcript_annotation in annotation.groupby("transcript_id"):
+                gene_id = transcript_annotation.iloc[0].gene_id
+                seqid = transcript_annotation.iloc[0].seqid
+                strand = transcript_annotation.iloc[0].strand
+
+                transcript_annotation = transcript_annotation.sort_values(by="start_1base")
+
+                for i, (exon_number, start_0base, start_1base, end) in enumerate(
+                    zip(
+                        transcript_annotation["exon_number"],
+                        transcript_annotation["start_0base"],
+                        transcript_annotation["start_1base"],
+                        transcript_annotation["end"],
+                    )
+                ):
+                    attributes = self._get_attributes(
+                        start_0base,
+                        start_1base,
+                        end,
+                        exon_number=exon_number,
+                        exon_size=(end - start_0base),
+                    )
+
+                    if i == 0:
+                        exon_upstream = attributes
+                        exons_small = []
+                        regions_exons_small = ""
+
+                    # if exon is not the last exon of transcript and shorter than oligo block_size but not the last exon -> create sequence with neighboring exons
+                    elif ((i + 1) < transcript_annotation.shape[0]) & ((end - start_0base) < block_size):
+                        exons_small.append(attributes)
+
+                    else:
+                        exon_downstream = attributes
+                        # catch case that first or last exon < block_size
+                        block_size_up = min(block_size, exon_upstream.exon_size)
+                        block_size_down = min(block_size, exon_downstream.exon_size)
+                        start_up = exon_upstream.end - block_size_up
+                        end_down = exon_downstream.start_0base + block_size_down
+
+                        if exons_small == []:
+                            block_count = 2
+                            block_size_length_entry = f"{block_size_up},{block_size_down}"
+                            block_size_start_entry = f"{0},{exon_downstream.start_0base - start_up}"
+
+                        # if we have exons that are smaller than the block size add block counts
+                        else:
+                            block_count = len(exons_small) + 2
+                            block_size_length_entry = (
+                                str(block_size_up)
+                                + ","
+                                + ",".join([str(attributes.exon_size) for attributes in exons_small])
+                                + ","
+                                + str(block_size_down)
+                            )
+                            block_size_start_entry = (
+                                "0,"
+                                + ",".join(
+                                    [str(attributes.start_0base - start_up) for attributes in exons_small]
+                                )
+                                + ","
+                                + str(exon_downstream.start_0base - start_up)
+                            )
+                            # return region in 1-base offset
+                            regions_exons_small = ";".join(
+                                [
+                                    f"{seqid}:{attributes.start_1base}-{attributes.end}({strand})"
+                                    for attributes in exons_small
+                                ]
+                            )
+                        # return region in 1-base offset
+                        region_up = f"{seqid}:{start_up + 1}-{start_up+block_size_up}({strand})"
+                        region_down = f"{seqid}:{(end_down-block_size_down) + 1}-{end_down}({strand})"
+                        junction_list.append(
+                            [
+                                gene_id,
+                                transcript,
+                                f"{exon_upstream.exon_number}__JUNC__{exon_downstream.exon_number}",
+                                seqid,
+                                strand,
+                                start_up,
+                                end_down,
+                                ";".join(
+                                    filter(
+                                        None,
+                                        [region_up, regions_exons_small, region_down],
+                                    )
+                                ),
+                                block_count,
+                                block_size_length_entry,
+                                block_size_start_entry,
+                            ]
+                        )
+                        exons_small = []
+                        regions_exons_small = ""
+                        exon_upstream = attributes
+
+            junction_annotation = pd.DataFrame(
+                junction_list,
+                columns=[
+                    "gene_id",
+                    "transcript_id",
+                    "exon_number",
+                    "seqid",
+                    "strand",
+                    "start",
+                    "end",
+                    "region_junction",
+                    "block_count",
+                    "block_sizes",
+                    "blockStarts",
+                ],
+            )
+
+            return junction_annotation
+
+        # get exon annotation entries
+        annotation = copy.deepcopy(self.annotation)
+        annotation = self._get_annotation_region_of_interest(annotation, "exon")
+
+        # compute exon junctions
+        annotation = _compute_exon_exon_junction_annotation(annotation, block_size)
+
+        # generate region_id
+        annotation["region_id"] = annotation["gene_id"].astype("str")
+        annotation["add_inf"] = (
+            "gene_id="
+            + annotation["gene_id"].astype("str")
+            + ",transcript_id="
+            + annotation["transcript_id"].astype("str")
+            + ",exon_number="
+            + annotation["exon_number"].astype("str")
+        )
+        # generate regions -> taken from exon junction regions
+        annotation["region"] = annotation["region_junction"]
+
+        # remove duplicated entries
+        if collapse_duplicated_regions:
+            annotation = self._collapse_duplicated_regions(annotation)
+
+        # add BED12 fields
+        annotation["score"] = 0
+        annotation["thickStart"] = annotation["start"]
+        annotation["thickEnd"] = annotation["end"]
+        annotation["itemRgb"] = 0
+        annotation["fasta_header"] = (
+            annotation["region_id"]
+            + "::type=exonexonjunction;"
+            + annotation["add_inf"]
+            + "::"
+            + annotation["region"]
+        )
+        annotation = annotation[self.BED12_HEADER]
+
+        file_fasta = os.path.join(self.dir_output, f"exon_exon_junction_annotation_{self.FILE_INFO}.fna")
+        self._get_sequence_from_annotation(annotation, file_fasta)
+
+        del annotation
+
+        return file_fasta
+
+    def _get_annotation_region_of_interest(self, annotation, region):
+        """Retrieve annotation ofr region of interest from loaded annotation dataframe.
+        Annotation is filtered based on the 3rd "type" column in the GFT file.
+
+        :param region: Region to extract.
+        :type region: str {'gene', 'transcript', 'exon', 'CDS'}
+        :return: Region annotation.
         :rtype: pandas.DataFrame
         """
-        exons["region"] = (
-            exons["seqid"].astype("str")
+        region_annotation = annotation.loc[annotation["type"] == region]
+        region_annotation.reset_index(inplace=True, drop=True)
+        return region_annotation
+
+    def _get_attributes(
+        self,
+        start_0base=None,
+        start_1base=None,
+        end=None,
+        gene_id=None,
+        exon_number=None,
+        exon_size=None,
+    ):
+        """Helper function to define attributes for a specific region.
+
+        :param start_0base: Value for start_0base, defaults to None
+        :type start_0base: int, optional
+        :param start_1base: Value for start_1base, defaults to None
+        :type start_1base: int, optional
+        :param end: Value for end, defaults to None
+        :type end: int, optional
+        :param gene_id: Value for gene_id, defaults to None
+        :type gene_id: str, optional
+        :param exon_number: Value for exon_number, defaults to None
+        :type exon_number: int, optional
+        :param exon_size: Value for exon_size, defaults to None
+        :type exon_size: int, optional
+        :return: _description_
+        :rtype: _type_
+        """
+        attributes = pd.Series(
+            data={
+                "start_0base": start_0base,
+                "start_1base": start_1base,
+                "end": end,
+                "gene_id": gene_id,
+                "exon_number": exon_number,
+                "exon_size": exon_size,
+            }
+        )
+
+        return attributes
+
+    def _collapse_duplicated_regions(self, annotation):
+        """Merge overlapping regions, which have the exact same start and end coordinates.
+        Save all additional information for merged regions.
+
+        :param annotation: Region annotation.
+        :type annotation: pandas.DataFrame
+        :return: Merged region annotation.
+        :rtype: pandas.DataFrame
+        """
+        aggregate_function = {col: "first" for col in annotation.columns}
+        aggregate_function["add_inf"] = ";".join
+
+        merged_annotation = annotation.groupby(annotation["region"]).aggregate(aggregate_function)
+        merged_annotation.reset_index(inplace=True, drop=True)
+
+        return merged_annotation
+
+    def _get_annotation_region(self, annotation):
+        """Get coordinates of region in string format as: 'chromosome':'start'-'end'('strand')
+
+        :param annotation: Region annotation.
+        :type annotation: pandas.DataFrame
+        :return: Region coordinates in string format.
+        :rtype: str
+        """
+        region = (
+            annotation["seqid"].astype("str")
             + ":"
-            + exons["start"].astype("str")
+            + annotation["start_1base"].astype("str")
             + "-"
-            + exons["end"].astype("str")
+            + annotation["end"].astype("str")
             + "("
-            + exons["strand"].astype("str")
+            + annotation["strand"].astype("str")
             + ")"
         )
 
-        exons["transcript_exon_id"] = (
-            "transcript_id="
-            + exons["transcript_id"].astype("str")
-            + ",exon_number="
-            + exons["exon_number"].astype("str")
-        )
-        aggregate_function = {
-            "region": "first",
-            "gene_id": "first",
-            "transcript_exon_id": ";".join,
-            "seqid": "first",
-            "start": "first",
-            "end": "first",
-            "score": "first",
-            "strand": "first",
-        }
-        merged_exons = exons.groupby(exons["region"]).aggregate(aggregate_function)
+        return region
 
-        merged_exons["score"] = 0
-        merged_exons["thickStart"] = merged_exons["start"]
-        merged_exons["thickEnd"] = merged_exons["end"]
-        merged_exons["itemRgb"] = 0
-        merged_exons["block_count"] = 1
-        merged_exons["block_sizes"] = merged_exons["end"] - merged_exons["start"]
-        merged_exons["blockStarts"] = 0
-        merged_exons["fasta_header"] = (
-            merged_exons["gene_id"]
-            + "::"
-            + merged_exons["transcript_exon_id"]
-            + "::"
-            + merged_exons["region"]
-        )
-        merged_exons = merged_exons[self.BED12_HEADER]
+    def _get_sequence_from_annotation(self, annotation, file_fasta, split=True, strand=True):
+        """Retrieve fasta sequence from bed file annotation.
 
-        return merged_exons
-
-    def _get_exon_junction_annotation(
-        self,
-        exons,
-        block_size,
-    ):
-        """Get list of all possible exon junctions and save all required information for bed12 file.
-
-        :param exons: Exon annotation
-        :type exons: pandas.DataFrame
-        :param block_size: Size of the exon junction regions, i.e. <block_size> bp upstream of first exon
-            and <block_size> bp downstream of second exon.
-        :type block_size: int
-        :return: Dataframe with exon junctions.
-        :rtype: pandas.DataFrame
+        :param annotation: Region annotation in bed or bed12 format.
+        :type annotation: pandas.DataFrame
+        :param file_fasta: Name of output fasta file.
+        :type file_fasta: str
+        :param split: Enable split read as defined in bed12 format, defaults to True
+        :type split: bool, optional
+        :param strand: Get sequence strand specific, defaults to True
+        :type strand: bool, optional
         """
+        annotation = annotation.sort_values(by=["fasta_header"])
+        annotation.reset_index(inplace=True, drop=True)
 
-        transcript_exons, transcript_info = self._get_transcript_exons_and_info(exons)
-        exon_junction_list = []
+        # save the annotation as bed file
+        file_bed = os.path.join(self.dir_output, "annotation.bed")
+        annotation.to_csv(file_bed, sep="\t", header=False, index=False)
 
-        for transcript, exons in transcript_exons.items():
-            gene_id = transcript_info[transcript][0]
-            seqid = transcript_info[transcript][1]
-            strand = transcript_info[transcript][2]
-
-            if strand == "+":
-                exons = [
-                    entry[1] for entry in sorted(exons.items())
-                ]  # return only exon attributes sorted by exon number
-            elif strand == "-":
-                exons = [
-                    entry[1] for entry in sorted(exons.items(), reverse=True)
-                ]  # return only exon attributes sorted by exon number -> reverse sort on minus strand
-
-            for idx, attributes in enumerate(exons):
-                # first exon of transcript
-                if idx == 0:
-                    exon_upstream = attributes
-                    exons_small = []
-                    regions_exons_small = ""
-
-                # if exon is not the last exon of transcript and shorter than oligo block_size but not the last exon -> create sequence with neighboring exons
-                elif ((idx + 1) < len(exons)) & (
-                    (attributes[2] - attributes[1]) < block_size
-                ):
-                    exons_small.append(attributes)
-
-                else:
-                    exon_downstream = attributes
-                    # catch case that first or last exon < block_size
-                    block_size_up = min(
-                        block_size, (exon_upstream[2] - exon_upstream[1])
-                    )
-                    block_size_down = min(
-                        block_size, (exon_downstream[2] - exon_downstream[1])
-                    )
-                    start_up = exon_upstream[2] - block_size_up
-                    end_down = exon_downstream[1] + block_size_down
-
-                    if exons_small == []:
-                        block_count = 2
-                        block_size_length_entry = "{},{}".format(
-                            block_size_up, block_size_down
-                        )
-                        block_size_start_entry = "{},{}".format(
-                            0, exon_downstream[1] - start_up
-                        )
-
-                    else:
-                        block_count = len(exons_small) + 2
-                        block_size_length_entry = (
-                            str(block_size_up)
-                            + ","
-                            + ",".join(
-                                [
-                                    str(attributes[2] - attributes[1])
-                                    for attributes in exons_small
-                                ]
-                            )
-                            + ","
-                            + str(block_size_down)
-                        )
-                        block_size_start_entry = (
-                            "0,"
-                            + ",".join(
-                                [
-                                    str(attributes[1] - start_up)
-                                    for attributes in exons_small
-                                ]
-                            )
-                            + ","
-                            + str(exon_downstream[1] - start_up)
-                        )
-                        regions_exons_small = ";".join(
-                            [
-                                f"{seqid}:{attributes[1]}-{attributes[2]}({strand})"
-                                for attributes in exons_small
-                            ]
-                        )
-
-                    region_up = f"{seqid}:{start_up}-{start_up+block_size_up}({strand})"
-                    region_down = (
-                        f"{seqid}:{end_down-block_size_down}-{end_down}({strand})"
-                    )
-                    exon_junction_list.append(
-                        [
-                            ";".join(
-                                filter(
-                                    None, [region_up, regions_exons_small, region_down]
-                                )
-                            ),
-                            gene_id,
-                            f"transcript_id={transcript},exon_number={exon_upstream[0]}__JUNC__{exon_downstream[0]}",
-                            seqid,
-                            start_up,
-                            end_down,
-                            0,
-                            strand,
-                            start_up,
-                            end_down,
-                            0,
-                            block_count,
-                            block_size_length_entry,
-                            block_size_start_entry,
-                        ]
-                    )
-                    exons_small = []
-                    regions_exons_small = ""
-                    exon_upstream = attributes
-
-        exon_junctions = pd.DataFrame(
-            exon_junction_list,
-            columns=[
-                "region",
-                "gene_id",
-                "transcript_exon_id",
-                "seqid",
-                "start",
-                "end",
-                "score",
-                "strand",
-                "thickStart",
-                "thickEnd",
-                "itemRgb",
-                "block_count",
-                "block_sizes",
-                "blockStarts",
-            ],
+        # create the fasta file
+        get_sequence_from_annotation(
+            file_bed,
+            self.sequence_file,
+            file_fasta,
+            split=split,
+            strand=strand,
+            nameOnly=True,
         )
-
-        return exon_junctions
-
-    def _get_transcript_exons_and_info(self, exons):
-        """Get list of exons that belong to a transcript.
-        Save information about each transcript, i.e. gene ID, chromosome and strand.
-
-        :param exons: Exon annotation.
-        :type exons: pandas.DataFrame
-        :return: dict with transcript - exon mapping, dict with transcript information.
-        :rtype: dict, dict
-        """
-        transcript_ids = exons.loc[exons["transcript_id"].notna()]
-        transcript_ids = sorted(list(transcript_ids["transcript_id"].unique()))
-        transcript_exons = {key: {} for key in transcript_ids}
-        transcript_info = dict()
-
-        for (
-            transcript_id,
-            exon_number,
-            start,
-            end,
-            gene_id,
-            seqid,
-            strand,
-        ) in zip(
-            exons["transcript_id"],
-            exons["exon_number"],
-            exons["start"],
-            exons["end"],
-            exons["gene_id"],
-            exons["seqid"],
-            exons["strand"],
-        ):
-            transcript_exons[transcript_id][int(exon_number)] = [
-                exon_number,
-                start,
-                end,
-            ]
-            transcript_info[transcript_id] = [gene_id, seqid, strand]
-
-        if not ("transcript" in self.annotation["type"].values):
-            delete_ids = []
-            for transcript_id in transcript_exons:
-                if transcript_id not in transcript_info:
-                    delete_ids.append(transcript_id)
-            for transcript_id in delete_ids:
-                del transcript_exons[transcript_id]
-
-        return transcript_exons, transcript_info
-
-    def _get_unique_exon_junctions(self, exon_junctions):
-        """Get all possible exon junctions from the transcript annotation.
-        Merge overlapping exons jucntions, which have the same satrt and end coordinates.
-        Save transcript information for those exons.
-
-        :param exon_junctions: Dataframe with exon junctions.
-        :type exon_junctions: pandas.DataFrame
-        :return: Dataframe with annotation of exons junctions, where overlapping exons junctions are merged.
-        :rtype: pandas.DataFrame
-        """
-        aggregate_function = {
-            "region": "first",
-            "gene_id": "first",
-            "transcript_exon_id": ";".join,
-            "seqid": "first",
-            "start": "first",
-            "end": "first",
-            "score": "first",
-            "strand": "first",
-            "thickStart": "first",
-            "thickEnd": "first",
-            "itemRgb": "first",
-            "block_count": "first",
-            "block_sizes": "first",
-            "blockStarts": "first",
-        }
-        merged_exon_junctions = exon_junctions.groupby(
-            exon_junctions["region"]
-        ).aggregate(aggregate_function)
-
-        merged_exon_junctions["fasta_header"] = (
-            merged_exon_junctions["gene_id"]
-            + "::"
-            + merged_exon_junctions["transcript_exon_id"]
-            + "::"
-            + merged_exon_junctions["region"]
-        )
-        merged_exon_junctions = merged_exon_junctions[self.BED12_HEADER]
-
-        return merged_exon_junctions
+        os.remove(file_bed)
 
 
 class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
@@ -642,9 +974,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         if annotation_release is None:
             annotation_release = "current"
-            warnings.warn(
-                f"No annotation release defined. Using default release {annotation_release}!"
-            )
+            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
@@ -692,9 +1022,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         if annotation_release is None:
             annotation_release = "current"
-            warnings.warn(
-                f"No annotation release defined. Using default release {annotation_release}!"
-            )
+            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
