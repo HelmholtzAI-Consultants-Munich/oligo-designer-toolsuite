@@ -1,0 +1,8 @@
+dir_output: output # name of the directory where the output files will be written
+min_probes_per_gene: 0 # minimum number of probes that a gene must have before it gets deleted
+
+### Parameters for genomic region generator that creates fasta file
+source: custom # required: indicate that ensembl annotation should be used
+source_params:
+    file_annotation: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf
+    file_sequence: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna
