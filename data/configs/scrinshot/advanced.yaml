@@ -1,22 +1,15 @@
-### General parameters
-n_jobs: 1 # number of cores used to run the pipeline
-dir_output: output # name of the directory where the output files will be written
-min_probes_per_gene: 0 # minimum number of probes that a gene must have before it gets deleted
+
 write_removed_genes: True # write in a file the removed genes
 write_intermediate_steps: True # writes the probe sequences after each step of the pipeline
-
+min_probes_per_gene: 0 # minimum number of probes that a gene must have before it gets deleted
 
 ### Parameters for genomic region generator that creates fasta file
-source: ensembl # required: indicate that ensembl annotation should be used
 source_params:
-    species: homo_sapiens # required: species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
-    annotation_release: current # required: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
+    files_source: NCBI # optional: original source of the genomic files
+    species: Homo_sapiens # optional: species of provided annotation, leave empty if unknown
+    annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
+    genome_assembly: GRCh38  # optional: genome assembly of provided annotation, leave empty if unknown
 region: transcript
-
-### Parameters for oligo sequences generation
-file_genes: ./data/genes/ensemble_10.txt # file with a list the genes used to generate the oligos sequences, leave empty  if all the genes are used
-probe_length_min: 38 # minimum length of probes
-probe_length_max: 45 # maximum length of probes
 
 ### Parameters for the property filters
 # probe sequence
@@ -29,7 +22,6 @@ min_arm_length: 10 # minimum length of each arm
 max_arm_Tm_dif: 2 # maximum melting temperature difference of both arms
 arm_Tm_min: 38 # minimum melting temperature of each arm (difference shouldn't be higher than 5! But range is not super important, the lower the better)
 arm_Tm_max: 49 # maximum melting temperature of each arm
-
 
 ### Parameters for the specificity filters
 # Blastn Similarity Filter
@@ -53,12 +45,10 @@ probeset_size_opt: 5 # ideal number of probes per probeset
 probeset_size_min: 2 # minimum number of probes per probeset
 n_sets: 100 # maximum number of sets per gene
 
-
 ### Parameters for the padlock detection probe design
 detect_oligo_length_min: 18 # minimum length of detection probe
 detect_oligo_length_max: 25 # maximum length of detection probe
 detect_oligo_Tm_opt: 32 # optimal melting temperature of detection probe
-
 
 ### Parameters for Melting Temperature
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.

@@ -1,0 +1,122 @@
+### General parameters
+min_probes_per_gene: 0 # minimum number of probes that a gene must have before it gets deleted
+write_removed_genes: True # write in a file the removed genes
+write_intermediate_steps: True # writes the probe sequences after each step of the pipeline
+use_default_readouts: True # use the default readout sequences from the merfish paper
+percentage_blank_barcodes: 10 #percentage of blank barcodes
+
+### Parameters for genomic region generator that creates fasta file
+source_params:
+  files_source: NCBI
+  species: Homo_sapiens
+  annotation_release: 110
+  genome_assembly: GRCh38.p14
+region: transcript
+
+### Parameters for probe sequences generation
+primer_probe:
+  file_bc25mer: ./{output}/bc25mer/bc25mer.240k.fasta
+  probe_output : ./{output}/bc25mer
+
+readout_probe:
+  file_bc25mer: ./{output}/bc25mer/bc25mer.240k.fasta
+  probe_output: ./{output}/bc25mer
+
+
+### Parameters for encoding
+encoding: "MHD4"
+MHD4:
+  num_seq: 100
+  num_bits: 16
+  num_ones: 4
+  hamming_distance: 4
+
+MHD2:
+  num_seq: 100
+  num_bits: 14
+  num_ones: 4
+  min_hamming_distance: 2
+
+### Parameters for the property filters
+primers_setup:
+  GC_content_min: 50
+  GC_content_max: 65
+  GC_clamp_n: 2
+  Tm_min: 70
+  Tm_max: 80
+  max_repeats_nt: 2
+
+readout_setup:
+  GC_content_min: 40
+  GC_content_max: 60
+  Tm_min: 70
+  Tm_max: 80
+  max_repeats_nt: 3
+
+targets_setup:
+  GC_content_min: 40
+  GC_content_max: 60
+  Tm_min: 70
+  Tm_max: 80
+  internal_secondary_structures_T: 76
+  internal_secondary_structures_threshold_deltaG: 0
+  max_repeats_nt: 6
+
+### Parameters for the specificity filters
+blast_coverage: 50
+blast_percent_identity: 80
+strand: plus
+
+primers_blast_setup:
+  blast1_word_size: 14
+  blast2_word_size: 11
+  blast3_word_size: 5
+
+readout_blast_setup:
+  blast1_word_size: 11
+  blast2_word_size: 14
+
+targeting_sequences_setup:
+  word_size: 15
+  percent_identity_ch: 66
+
+probe_setup:
+  blast1_word_size: 14
+  blast2_word_size: 17
+  file_highly_expressed_genes: #text file containing highly expressed genes
+
+### Parameters for Melting Temperature
+Tm_parameters_probe:
+  check: True
+  strict: True
+  c_seq: null
+  shift: 0
+  nn_table: DNA_NN3
+  tmm_table: DNA_TMM1
+  imm_table: DNA_IMM1
+  de_table: DNA_DE1
+  dnac1: 50
+  dnac2: 0
+  selfcomp: False
+  dNTPs: 0
+  saltcorr: 7
+  Na: 1000
+  K: 0
+  Tris: 0
+  Mg: 0
+
+Tm_correction_parameters:
+  DMSO: 0
+  DMSOfactor: 0.75
+  fmdfactor: 0.65
+  fmdmethod: 1
+  GC: null
+  fmd: 20
+
+Tm_chem_correction_param:
+  DMSO: 0
+  DMSOfactor: 0.75
+  fmdfactor: 0.65
+  fmdmethod: 1
+  GC: null
+  fmd: 20

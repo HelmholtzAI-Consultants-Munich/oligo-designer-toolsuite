@@ -1,0 +1,18 @@
+### General parameters
+n_jobs: 1 # number of cores used to run the pipeline
+output: output # name of the directory where the output files will be written
+file_format: tsv # format of the written files, can be "tsv" or "gtf"
+
+### Parameters for genomic region generator that creates fasta file
+source: custom # required: indicate that NCBI annotation should be used
+source_params:
+  file_annotation: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf
+  file_sequence: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna
+
+file_genes: data/genes/custom_10.txt # file with a list the genes used to generate the probes sequences, leave empty if all the genes are used
+
+
+### Parameters for probe sequences generation
+target_probe:
+  probe_length_min: 38
+  probe_length_max: 45
