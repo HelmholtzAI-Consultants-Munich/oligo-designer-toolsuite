@@ -245,6 +245,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         oligos_scoring,
         n_sets,
         n_jobs,
+        max_oligos,
     ):
         oligos_scoring = SeqFISHOligoScoring(GC_content_opt=GC_content_opt)
         set_scoring = AverageSetScoring()
@@ -256,6 +257,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
             heurustic_selection=padlock_heuristic_selection,
+            max_oligos=max_oligos,
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database, n_sets=n_sets, n_jobs=n_jobs
