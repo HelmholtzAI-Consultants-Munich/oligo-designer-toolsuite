@@ -49,6 +49,7 @@ dependencies = [
   "iteration_utilities",
   "Bio",
   "pyyaml",
+  "ruamel.yaml",
   "networkx",
   "joblib",
   "seqfold",
