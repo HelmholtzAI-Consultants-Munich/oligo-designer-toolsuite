@@ -3,14 +3,10 @@
 ############################################
 
 import os
-import re
-import pandas as pd
 
 from pathlib import Path
-from joblib import Parallel, delayed
-from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
-from . import SpecificityFilterBase, Blastn
+from . import SpecificityFilterBase
 
 import networkx as nx
 
@@ -18,10 +14,8 @@ import networkx as nx
 # Oligo Blast Filter Classes
 ############################################
 
-# TODO: remove inheritance
 
-
-class CrossHybridizationFilter(SpecificityFilterBase):
+class CrossHybridizationFilter:
     def __init__(
         self,
         dir_specificity: str,
@@ -30,8 +24,9 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         n_jobs: int,
     ):
         """Constructor."""
-        super().__init__(dir_specificity)
+        self.dir_specificity = dir_specificity
 
+        # TODO: not particularly Blast
         self.dir_blast = os.path.join(self.dir_specificity, "blast")
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
 
@@ -70,12 +65,10 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         return nx.from_edgelist(matching_oligo_pairs)
 
     def count_oligos_per_region(self, oligo_database):
-        return sorted(
-            {
-                region: len(oligo_database.database[region])
-                for region in oligo_database.database.keys()
-            }
-        )
+        return {
+            region: len(oligo_database.database[region])
+            for region in oligo_database.database.keys()
+        }
 
 
 # Policies

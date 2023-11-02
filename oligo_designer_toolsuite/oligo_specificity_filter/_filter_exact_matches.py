@@ -11,6 +11,7 @@ from . import SpecificityFilterBase
 # Oligo Exact Match Filter Classes
 ############################################
 
+
 class ExactMatches(SpecificityFilterBase):
     """This class filters oligos based duplicates found in the ``oligos_DB``. That is, oligos with the same sequences but belonging to different regions are filtered out.
 
@@ -22,9 +23,6 @@ class ExactMatches(SpecificityFilterBase):
         """Counstructor."""
 
         super().__init__(dir_specificity)
-
-    def create_index(self, file_reference: str, n_jobs: int):
-        pass
 
     def apply(self, database: dict, file_reference: str, n_jobs: int):
         """Apply the filter in parallel on the given ``database``. Each jobs filters a single region, and at the same time are generated at most ``n_job`` jobs.
@@ -45,7 +43,9 @@ class ExactMatches(SpecificityFilterBase):
         # run filter with joblib
         regions = list(database.keys())
         filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_exactmatch_gene)(database[region], duplicated_sequences)
+            delayed(self._filter_exactmatch_gene)(
+                database[region], duplicated_sequences
+            )
             for region in regions
         )
         # reconstruct the database

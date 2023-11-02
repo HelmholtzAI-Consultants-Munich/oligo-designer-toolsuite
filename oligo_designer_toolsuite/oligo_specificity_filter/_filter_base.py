@@ -42,21 +42,21 @@ class SpecificityFilterBase(ABC):
         :rtype: dict
         """
 
-    @abstractmethod
-    def create_index(self, file_reference: str, n_jobs: int):
-        """_summary_"""
+    # @abstractmethod
+    # def create_index(self, file_reference: str, n_jobs: int):
+    #     """_summary_"""
 
-    @abstractmethod
-    def get_all_matching_oligo_pairs(
-        self, database: dict, database_name: str, n_jobs: int
-    ):
-        """_summary_
+    # @abstractmethod
+    # def get_all_matching_oligo_pairs(
+    #     self, database: dict, database_name: str, n_jobs: int
+    # ):
+    #     """_summary_
 
-        Args:
-            database (dict): _description_
-            database_name (str): _description_
-            n_jobs (int): _description_
-        """
+    #     Args:
+    #         database (dict): _description_
+    #         database_name (str): _description_
+    #         n_jobs (int): _description_
+    #     """
 
     def _create_fasta_file(self, database_region, dir, gene):
         """Creates a fasta file with all the oligos of a specific gene. The fasta files are then used by the alignement tools.
