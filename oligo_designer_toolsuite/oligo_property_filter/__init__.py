@@ -6,15 +6,16 @@ from ._filter_base import (
     PropertyFilterBase,
     GCContent,
     MaskedSequences,
-    ConsecutiveRepeats,
     MeltingTemperatureNN,
     GCClamp,
     ConsecutiveRepeats,
-    SecondaryStructure
-
+    SecondaryStructure,
+    ThreePrimeSequence,
+    RepeatMaskingFilter,
 )
 from ._filter_padlock_oligos import PadlockArms
 from ._property_filter import PropertyFilter
+
 __all__ = [
     "PropertyFilter",
     "PropertyFilterBase",
@@ -24,5 +25,7 @@ __all__ = [
     "PadlockArms",
     "GCClamp",
     "ConsecutiveRepeats",
-    "SecondaryStructure"
+    "SecondaryStructure",
+    "ThreePrimeSequence",
+    "RepeatMaskingFilter",
 ]

@@ -256,3 +256,50 @@ class SecondaryStructure(PropertyFilterBase):
         if delta_g > self.DG_thr:
             return True, sequence_features
         return False, {}
+
+
+class ThreePrimeSequence(PropertyFilterBase):
+    """Class to check if the 3' end of a DNA sequence has a specific sequence."""
+
+    def __init__(self, three_prime_sequence: str) -> None:
+        """
+        Initializes the filter with a sequence to match at the 3’ end of oligos.
+
+        :param three_prime_sequence: sequence to match at the 3' end
+        :type three_prime_sequence: str
+        """
+        super().__init__()
+        self.three_prime_sequence = three_prime_sequence
+
+    def apply(self, sequence: str):
+        """
+        Checks if the 3' end of the given sequence matches the specified pattern, and filters it.
+
+        :param sequence: sequence to be checked
+        :type sequence: str
+        :return: True if the 3' end doesn't contain the sequence, False otherwise, and an empty dict
+        :rtype: bool, dict
+        """
+
+        if sequence.endswith(self.three_prime_sequence):
+            return False, {}
+        return True, {}
+
+
+class RepeatMaskingFilter(PropertyFilterBase):
+    """
+    Filters out oligos containing soft-masked regions, indicated by lower-case letters.
+    """
+
+    def apply(self, sequence: str) -> (bool, dict):
+        """
+        Applies the filter and returns True if the sequence does not contain lower-case letters.
+
+        :param sequence: sequence to be filtered
+        :type sequence: str
+        :return: True if the sequence contains no lower-case letters, otherwise False
+        :rtype: bool, dict
+        """
+        if any(c.islower() for c in sequence):
+            return False, {}
+        return True, {}

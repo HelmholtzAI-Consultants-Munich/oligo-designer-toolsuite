@@ -13,6 +13,8 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     GCClamp,
     ConsecutiveRepeats,
     SecondaryStructure,
+    ThreePrimeSequence,
+    RepeatMaskingFilter,
 )
 
 from oligo_designer_toolsuite.oligo_property_filter import (
@@ -204,6 +206,42 @@ def test_secondary_structure_filter():  # add tests for property filters
     assert (
         res == True
     ), f"error: A sequence ({seq_keep} with {delta_g}) fulfilling the secondary_structure conditions has not been accepted!"
+
+
+def test_three_prime_sequence_filter():
+    """Test if the 3' sequence filter works, i.e., sequences with a certain 3' end should be removed."""
+    three_prime_sequence_filter = ThreePrimeSequence(three_prime_sequence="GA")
+
+    seq_remove = "TGTCGGATCTCTTCAACAAGCTGGTCATGA"
+    res, _ = three_prime_sequence_filter.apply(seq_remove)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_remove}) with the correct 3' end has not been accepted!"
+
+    seq_keep = "TGTCGGATCTCNTCAACAAGCTGGTCNTGG"
+    res, _ = three_prime_sequence_filter.apply(seq_keep)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_keep}) with an incorrect 3' end has been accepted!"
+
+
+def test_repeat_masking_filter():
+    """Test if the RepeatMaskingFilter correctly identifies and filters sequences with soft-masked regions."""
+    repeat_masking_filter = RepeatMaskingFilter()
+
+    # Sequence with lower-case letters indicating soft-masked regions
+    seq_with_mask = "TGTCGGatctntCAACaagctggtcATGA"
+    res, _ = repeat_masking_filter.apply(seq_with_mask)
+    assert (
+        not res
+    ), f"Error: A sequence with soft-masked regions ({seq_with_mask}) has been accepted!"
+
+    # Sequence without lower-case letters, should be kept
+    seq_without_mask = "TGTCGGATCTNTCAACAAGCTGGTCATGA"
+    res, _ = repeat_masking_filter.apply(seq_without_mask)
+    assert (
+        res
+    ), f"Error: A sequence without soft-masked regions ({seq_without_mask}) has not been accepted!"
 
 
 def test_property_filter():
