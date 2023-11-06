@@ -269,7 +269,7 @@ class ThreePrimeSequence(PropertyFilterBase):
         :type three_prime_sequence: str
         """
         super().__init__()
-        self.three_prime_sequence = three_prime_sequence
+        self.three_prime_sequence = three_prime_sequence.upper()
 
     def apply(self, sequence: str):
         """
@@ -281,7 +281,35 @@ class ThreePrimeSequence(PropertyFilterBase):
         :rtype: bool, dict
         """
 
-        if sequence.endswith(self.three_prime_sequence):
+        if sequence.upper().endswith(self.three_prime_sequence):
+            return False, {}
+        return True, {}
+
+
+class FivePrimeSequence(PropertyFilterBase):
+    """Class to check if the 5' end of a DNA sequence has a specific sequence."""
+
+    def __init__(self, five_prime_sequence: str) -> None:
+        """
+        Initializes the filter with a sequence to match at the 5’ end of oligos.
+
+        :param three_prime_sequence: sequence to match at the 5' end
+        :type three_prime_sequence: str
+        """
+        super().__init__()
+        self.five_prime_sequence = five_prime_sequence.upper()
+
+    def apply(self, sequence: str):
+        """
+        Checks if the 5' end of the given sequence matches the specified pattern, and filters it.
+
+        :param sequence: sequence to be checked
+        :type sequence: str
+        :return: True if the 5' end doesn't contain the sequence, False otherwise, and an empty dict
+        :rtype: bool, dict
+        """
+
+        if sequence.upper().startswith(self.five_prime_sequence):
             return False, {}
         return True, {}
 

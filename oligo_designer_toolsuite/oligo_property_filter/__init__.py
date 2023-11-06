@@ -11,6 +11,7 @@ from ._filter_base import (
     ConsecutiveRepeats,
     SecondaryStructure,
     ThreePrimeSequence,
+    FivePrimeSequence,
     RepeatMaskingFilter,
 )
 from ._filter_padlock_oligos import PadlockArms
@@ -27,5 +28,6 @@ __all__ = [
     "ConsecutiveRepeats",
     "SecondaryStructure",
     "ThreePrimeSequence",
+    "FivePrimeSequence",
     "RepeatMaskingFilter",
 ]

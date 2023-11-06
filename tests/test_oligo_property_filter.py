@@ -14,6 +14,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     ConsecutiveRepeats,
     SecondaryStructure,
     ThreePrimeSequence,
+    FivePrimeSequence,
     RepeatMaskingFilter,
 )
 
@@ -215,14 +216,31 @@ def test_three_prime_sequence_filter():
     seq_remove = "TGTCGGATCTCTTCAACAAGCTGGTCATGA"
     res, _ = three_prime_sequence_filter.apply(seq_remove)
     assert (
-        res == True
-    ), f"error: A sequence ({seq_remove}) with the correct 3' end has not been accepted!"
+        res == False
+    ), f"error: A sequence ({seq_remove}) with a matching 3' end has been accepted!"
 
     seq_keep = "TGTCGGATCTCNTCAACAAGCTGGTCNTGG"
     res, _ = three_prime_sequence_filter.apply(seq_keep)
     assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) with a non-matching 3' end has not been accepted!"
+
+
+def test_five_prime_sequence_filter():
+    """Test if the 5' sequence filter works, i.e., sequences with a certain 5' end should be removed."""
+    five_prime_sequence_filter = FivePrimeSequence(five_prime_sequence="TT")
+
+    seq_remove = "TTTCGGATCCGAATNCAAGCTGGTCATGA"
+    res, _ = five_prime_sequence_filter.apply(seq_remove)
+    assert (
         res == False
-    ), f"error: A sequence ({seq_keep}) with an incorrect 3' end has been accepted!"
+    ), f"error: A sequence ({seq_remove}) with a matching 5' end has been accepted!"
+
+    seq_keep = "TCGGATCCGAATNCAAGCTGGTCATGA"
+    res, _ = five_prime_sequence_filter.apply(seq_keep)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) with a non-matching 5' end has not been accepted!"
 
 
 def test_repeat_masking_filter():
