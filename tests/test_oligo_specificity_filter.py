@@ -12,6 +12,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatches,
     LigationRegionCreation,
 )
+import os
 
 ############################################
 # Global Parameters
@@ -20,7 +21,9 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 # Specify parameters
 n_jobs = 1
 ligation_region = 0
-dir_annotations = "tests/data/specificity_filter"
+dir_annotations = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "data/specificity_filter"
+)
 min_oligos_per_gene = 2
 
 # Reference transcriptome files for tests
@@ -55,6 +58,7 @@ file_oligo_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_no_matc
 
 
 def test_filter_exact_matches(tmp_path):
+    print(dir_annotations)
     # check that exact matches filters out a doubled sequence from the db
     oligo_database = OligoDatabase()
     exact_matches = ExactMatches(tmp_path)
@@ -149,7 +153,7 @@ def test_filter_blast_match(tmp_path):
 
     # Run blast filter
     oligo_database = OligoDatabase()
-    blast_filter = Blastn(tmp_path, word_size, percent_identity, coverage, strand)
+    blast_filter = Blastn(tmp_path, word_size, percent_identity, strand, coverage)
     oligo_database.load_database(file_oligo_info_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
         oligo_database.database, file_transcriptome_fasta, n_jobs
@@ -164,7 +168,7 @@ def test_filter_blast_match(tmp_path):
 def test_filter_blast_no_match(tmp_path):
     # Check that blast does not filter filters out a sequence which is not a match
     oligo_database = OligoDatabase()
-    blast_filter = Blastn(tmp_path, word_size, percent_identity, coverage, strand)
+    blast_filter = Blastn(tmp_path, word_size, percent_identity, strand, coverage)
     oligo_database.load_database(file_oligo_info_no_match)
     filtered_oligo_info_dict_match = blast_filter.apply(
         oligo_database.database, file_transcriptome_fasta, n_jobs
