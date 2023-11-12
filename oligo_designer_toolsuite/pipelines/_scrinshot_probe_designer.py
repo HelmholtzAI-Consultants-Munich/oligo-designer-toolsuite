@@ -9,11 +9,15 @@ import shutil
 import logging
 import inspect
 import warnings
+import gc
+import psutil
 
 from pathlib import Path
 from datetime import datetime
 from subprocess import Popen
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from pympler import summary, muppy, tracker
+
 
 
 from Bio.SeqUtils import MeltingTemp as mt
@@ -280,6 +284,7 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         GC_content_opt: int = 60,
         GC_weight: int = 1,
         n_jobs: int = 1,
+        max_oligos: int = 5000,
     ):
         ##### log parameters #####
         logging.info("Parameters Probesets:")
@@ -309,6 +314,7 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
             heurustic_selection=padlock_heuristic_selection,
+            max_oligos=max_oligos,
         )
 
         ##### generate the oligoset #####
@@ -425,7 +431,7 @@ def main():
 
     REMARK: melting temperature parameters can be given only through the configuration file.
     """
-
+    # memory_tracker = tracker.SummaryTracker()
     # get comman line arguments
     parser = ArgumentParser(
         prog="SCRINSHOT Probe Designer",
@@ -446,6 +452,10 @@ def main():
     probe_designer.load_annotations(
         source=config["source"], source_params=config["source_params"]
     )
+    # print('\n\n')
+    # memory_tracker.print_diff()
+    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
+    # print('\n\n')
 
     ##### read the genes file #####
     if config["file_genes"] is None:
@@ -467,6 +477,12 @@ def main():
         min_probes_per_gene=config["min_probes_per_gene"],
         n_jobs=config["n_jobs"],
     )
+    # print('\n\n')
+    # memory_tracker.print_diff()
+    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
+    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
+    # print('\n\n')
+
 
     ##### filter probes by property #####
     probe_database, file_database = probe_designer.filter_probes_by_property(
@@ -484,6 +500,12 @@ def main():
         n_jobs=config["n_jobs"],
     )
 
+    # print('\n\n')
+    # memory_tracker.print_diff()      
+    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
+    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
+    # print('\n\n')
+
     ##### filter probes by specificity #####
     probe_database, file_database = probe_designer.filter_probes_by_specificity(
         probe_database,
@@ -493,6 +515,13 @@ def main():
         blast_coverage=config["blast_coverage"],
         n_jobs=config["n_jobs"],
     )
+    # print('\n\n')
+    # memory_tracker.print_diff()
+    # print('\n\nRAM Used (GB) (specificity):', psutil.virtual_memory()[3]/1000000000,  '\n\n')
+    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
+    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
+    # print('\n\n')
+
 
     ##### create probe sets #####
     probe_database, file_database, dir_oligosets = probe_designer.create_probe_sets(
@@ -509,7 +538,14 @@ def main():
         GC_content_opt=config["GC_content_opt"],
         GC_weight=config["GC_weight"],
         n_jobs=config["n_jobs"],
+        max_oligos = config["max_graph_size"],
     )
+    # print('\n\n')
+    # memory_tracker.print_diff()
+    # print('\n\nRAM Used (GB) (probesets):', psutil.virtual_memory()[3]/1000000000,  '\n\n')
+    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
+    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
+    # print('\n\n')
 
     ##### create final padlock sequence #####
     probe_designer.create_final_sequences(
