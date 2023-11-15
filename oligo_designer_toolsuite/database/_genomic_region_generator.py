@@ -142,7 +142,7 @@ class CustomGenomicRegionGenerator:
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
-        annotation["add_inf"] = "type=gene;gene_id=" + annotation["gene_id"].astype("str")
+        annotation["add_inf"] = "regiontype=gene;gene_id=" + annotation["gene_id"].astype("str")
         annotation["region"] = self._get_annotation_region(annotation)
 
         # add BED12 fields
@@ -274,7 +274,7 @@ class CustomGenomicRegionGenerator:
         annotation = _compute_intergenic_annotation(annotation)
 
         # generate region_id
-        annotation["add_inf"] = "type=intergenic"
+        annotation["add_inf"] = "regiontype=intergenic"
         annotation["region"] = self._get_annotation_region(annotation)
 
         # add BED12 fields
@@ -332,7 +332,11 @@ class CustomGenomicRegionGenerator:
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
-            annotation["region_id"] + "::type=exon;" + annotation["add_inf"] + "::" + annotation["region"]
+            annotation["region_id"]
+            + "::regiontype=exon;"
+            + annotation["add_inf"]
+            + "::"
+            + annotation["region"]
         )
         annotation = annotation[self.BED_HEADER]
 
@@ -450,7 +454,11 @@ class CustomGenomicRegionGenerator:
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
-            annotation["region_id"] + "::type=intron;" + annotation["add_inf"] + "::" + annotation["region"]
+            annotation["region_id"]
+            + "::regiontype=intron;"
+            + annotation["add_inf"]
+            + "::"
+            + annotation["region"]
         )
         annotation = annotation[self.BED_HEADER]
 
@@ -501,7 +509,11 @@ class CustomGenomicRegionGenerator:
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
-            annotation["region_id"] + "::type=CDS;" + annotation["add_inf"] + "::" + annotation["region"]
+            annotation["region_id"]
+            + "::regiontype=CDS;"
+            + annotation["add_inf"]
+            + "::"
+            + annotation["region"]
         )
         annotation = annotation[self.BED_HEADER]
 
@@ -609,7 +621,7 @@ class CustomGenomicRegionGenerator:
         annotation["score"] = 0
         annotation["fasta_header"] = (
             annotation["region_id"]
-            + "::type="
+            + "::regiontype="
             + annotation["type"]
             + ";"
             + annotation["add_inf"]
@@ -804,7 +816,7 @@ class CustomGenomicRegionGenerator:
         annotation["itemRgb"] = 0
         annotation["fasta_header"] = (
             annotation["region_id"]
-            + "::type=exonexonjunction;"
+            + "::regiontype=exonexonjunction;"
             + annotation["add_inf"]
             + "::"
             + annotation["region"]

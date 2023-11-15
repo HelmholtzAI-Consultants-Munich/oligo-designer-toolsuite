@@ -5,11 +5,14 @@
 import os
 import yaml
 import warnings
+import random
 import pandas as pd
 
 from pathlib import Path
 from copy import copy, deepcopy
 from joblib import cpu_count, Parallel, delayed
+from itertools import chain
+from collections import defaultdict
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -82,7 +85,7 @@ class OligoDatabase:
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
-            self.file_removed_regions = os.path.join(dir_output, "regions_with_insufficient_oligos.txt")
+            self.file_removed_regions = os.path.join(self.dir_output, "regions_with_insufficient_oligos.txt")
             with open(self.file_removed_regions, "a") as handle:
                 handle.write(f"Region\tPipeline step\n")
 
@@ -103,7 +106,46 @@ class OligoDatabase:
         else:
             raise ValueError("Metadat has icorrect format!")
 
-    def load_database_from_file(self, file_database: str):
+    def merge_databases(self, database1, database2):
+        def _get_sequence_as_key(database):
+            database_modified = {region: {} for region in database.keys()}
+            for region, values in database.items():
+                for oligo_id, oligo_info in values.items():
+                    oligo_sequence = oligo_info["sequence"]
+                    oligo_info.pop("sequence")
+                    database_modified[region][oligo_sequence] = oligo_info
+            return database_modified
+
+        def _add_database_content(database_tmp, database_in):
+            for region, values in database_in.items():
+                for oligo_sequence, oligo_info in values.items():
+                    if oligo_sequence in database_tmp[region]:
+                        oligo_info_merged = self._collapse_info_for_duplicated_sequences(
+                            database_tmp[region][oligo_sequence], oligo_info
+                        )
+                        database_tmp[region][oligo_sequence] = oligo_info_merged
+                    else:
+                        database_tmp[region][oligo_sequence] = oligo_info
+            return database_tmp
+
+        database_tmp = {region: {} for region in chain(database1.keys(), database2.keys())}
+        database_tmp = _add_database_content(database_tmp, _get_sequence_as_key(database1))
+        database_tmp = _add_database_content(database_tmp, _get_sequence_as_key(database2))
+
+        database_merged = {region: {} for region in database_tmp.keys()}
+        for region, value in database_tmp.items():
+            i = 1
+            for oligo_sequence, oligo_info in value.items():
+                oligo_id = f"{region}::{i}"
+                i += 1
+                oligo_seq_info = {"sequence": oligo_sequence} | oligo_info
+                database_merged[region][oligo_id] = oligo_seq_info
+
+        return database_merged
+
+    def load_sequences_from_database(
+        self, file_database: str, region_ids: list[str] = None, database_overwrite: bool = False
+    ):
         """Loading a previously generated oligos database and saves it in the ``database`` attribute as a dictionary.
         The order of columns in the database file is:
 
@@ -113,11 +155,26 @@ class OligoDatabase:
 
         Additional feat. includes additional info from fasta file and additional info computed by the filtering class.
 
+        add sequences from anotehr existing database.
+        merge duplicated sequences from the same region, considering star/end coordinates.
+        extend the database, not overwrite it.
+
         :param file_database: File containing oligo database.
         :type file_database: str
         """
-        if self.database:
-            warnings.warn("Database not empty! Overwriting database with new database from file!")
+
+        def replace_none_with_null(obj):
+            if isinstance(obj, dict):
+                return {key: replace_none_with_null(value) for key, value in obj.items()}
+            elif isinstance(obj, list):
+                return [replace_none_with_null(item) for item in obj]
+            elif obj == "None":
+                return None
+            else:
+                return obj
+
+        if database_overwrite:
+            warnings.warn("Overwriting database!")
 
         if os.path.exists(file_database):
             if not check_tsv_format(file_database):
@@ -126,45 +183,82 @@ class OligoDatabase:
             raise ValueError("Database file does not exist!")
 
         file_tsv_content = pd.read_table(file_database, sep="\t")
-        cols = file_tsv_content.columns
 
-        file_tsv_content.sequence = file_tsv_content.apply(lambda row: Seq(str(row.sequence)), axis=1)
-        file_tsv_content.chromosome = file_tsv_content.chromosome.astype("str")
-        file_tsv_content.start = file_tsv_content.start.astype("str").str.split("__MATCHSEQ__")
-        file_tsv_content.start = file_tsv_content.apply(lambda row: list(map(int, row.start)), axis=1)
-        file_tsv_content.end = file_tsv_content.end.astype("str").str.split("__MATCHSEQ__")
-        file_tsv_content.end = file_tsv_content.apply(lambda row: list(map(int, row.end)), axis=1)
-        file_tsv_content.length = file_tsv_content.length.astype("int")
-        file_tsv_content.additional_information_fasta[
-            file_tsv_content["additional_information_fasta"].isna()
-        ] = ""
-        file_tsv_content.additional_information_fasta = (
-            file_tsv_content.additional_information_fasta.str.split("__MATCHSEQ__")
+        file_tsv_content = file_tsv_content.apply(
+            lambda col: col.apply(lambda x: str(x).split("__MATCHSEQ__") if pd.notna(x) else [None])
         )
 
-        database = {}
-        for region in file_tsv_content.region_id.unique():
-            database[region] = {
-                row[1]: {cols[i]: row[i] for i in range(2, len(cols))}
-                for row in list(zip(*[file_tsv_content[col] for col in file_tsv_content]))
-                if row[0] == region
-            }
+        database_tmp1 = file_tsv_content.to_dict(orient="records")
+        database_tmp2 = defaultdict(dict)
+        for entry in database_tmp1:
+            entry = replace_none_with_null(entry)
+            region_id, oligo_id = entry.pop("region_id")[0], entry.pop("oligo_id")[0]
+            entry["sequence"] = entry["sequence"][0]
+            database_tmp2[region_id][oligo_id] = entry
 
-        self.database = database
+        database_tmp2 = dict(database_tmp2)
 
-    def add_sequences_from_fasta(self):
+        if not database_overwrite and self.database:
+            database_tmp2 = self.merge_databases(deepcopy(self.database), database_tmp2)
+
+        if region_ids:
+            database_tmp2 = self._filter_dabase_for_region(self, database_tmp2, region_ids)
+
+        self.database = database_tmp2
+
+    def load_sequences_from_fasta(
+        self, file_fasta: str, region_ids: list[str] = None, database_overwrite: bool = False
+    ):
         """add sequences to the database that are stored in a fasta file.
         load those sequences as they are (no processing into smaller windows) but process header.
         merge duplicated sequences from the same region, considering if start/end are the same.
         extend the database, not overwrite it.
         check if sequnce should be target or oligo, i.e. sequence type."""
-        pass
 
-    def add_sequences_from_database(self):
-        """add sequences from anotehr existing database.
-        merge duplicated sequences from the same region, considering star/end coordinates.
-        extend the database, not overwrite it."""
-        pass
+        if database_overwrite:
+            warnings.warn("Overwriting database!")
+
+        if os.path.exists(file_fasta):
+            if not check_fasta_format(file_fasta):
+                raise ValueError("Fasta file has incorrect format!")
+        else:
+            raise ValueError("Fasta file does not exist!")
+
+        # read sequences of fasta file
+        with open(file_fasta, "r") as handle:
+            fasta_sequences = list(SeqIO.parse(handle, "fasta"))
+
+        region_sequences = {}
+        for entry in fasta_sequences:
+            region, additional_info, coordinates = parse_fasta_header(entry.id)
+            oligo_info = coordinates | additional_info
+            if region in region_sequences:
+                if entry.seq in region_sequences[region]:
+                    oligo_info_merged = self._collapse_info_for_duplicated_sequences(
+                        region_sequences[region][entry.seq], oligo_info
+                    )
+                    region_sequences[region][str(entry.seq)] = oligo_info_merged
+                else:
+                    region_sequences[region][str(entry.seq)] = oligo_info
+            else:
+                region_sequences[region] = {str(entry.seq): oligo_info}
+
+        database_tmp = {region: {} for region in region_sequences.keys()}
+        for region, value in region_sequences.items():
+            i = 1
+            for oligo_sequence, oligo_info in value.items():
+                oligo_id = f"{region}::{i}"
+                i += 1
+                oligo_seq_info = {"sequence": oligo_sequence} | oligo_info
+                database_tmp[region][oligo_id] = oligo_seq_info
+
+        if not database_overwrite and self.databse:
+            database_tmp = self.merge_databases(deepcopy(self.database), database_tmp)
+
+        if region_ids:
+            database_tmp = self._filter_dabase_for_region(self, database_tmp, region_ids)
+
+        self.database = database_tmp
 
     def create_sequences_sliding_window(self):
         """create new fasta files with tiled sequences from input sequences via sliding window.
@@ -174,10 +268,46 @@ class OligoDatabase:
         file but adjust coordinates."""
         pass
 
-    def create_sequences_random(self):
+    def create_sequences_random(
+        self,
+        filename: str,
+        sequence_length: int,
+        num_sequences: int,
+        base_alphabet_with_probability: list[float] = {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
+    ):
         """create sequences from random sequences with desired length and sequence composition.
         save as fasta file, with appropriate header, e.g. region id and type=random_sequence."""
-        pass
+
+        def get_sequence_random(sequence_length, base_alphabet_with_probability):
+            bases = list(base_alphabet_with_probability.keys())
+            sequence = "".join(
+                random.choices(
+                    bases, weights=[base_alphabet_with_probability[n] for n in bases], k=sequence_length
+                )
+            )
+            return sequence
+
+        file_fasta = os.path.join(self.dir_output, f"{filename}.fna")
+
+        sequences_list = []
+        while len(sequences_list) < num_sequences:
+            num_missing_sequences = num_sequences - len(sequences_list)
+            missing_sequences = list(
+                set(
+                    [
+                        get_sequence_random(sequence_length, base_alphabet_with_probability)
+                        for i in range(num_missing_sequences)
+                    ]
+                )
+            )
+            sequences_list = list(set(sequences_list + missing_sequences))
+
+        with open(file_fasta, "w") as handle_fasta:
+            for i in range(num_sequences):
+                header = f"randomsequence{i+1}::regiontype=random_sequence"
+                seq = get_sequence_random(sequence_length, base_alphabet_with_probability)
+                handle_fasta.write(f">{header}\n{seq}\n")
+        return file_fasta
 
     def write_database(
         self,
@@ -205,24 +335,51 @@ class OligoDatabase:
 
         file_database = os.path.join(self.dir_output, filename + ".tsv")
         file_tsv_content = []
-        # database = deepcopy(self.database)
 
         for region_id, oligo_dict in self.database.items():
             for oligo_id, oligo_attributes in oligo_dict.items():
                 entry = {"region_id": region_id, "oligo_id": oligo_id}
                 entry.update(oligo_attributes)
-                entry["sequence"] = str(entry["sequence"])
-                entry["start"] = "__MATCHSEQ__".join(list(map(str, entry["start"])))
-                entry["end"] = "__MATCHSEQ__".join(list(map(str, entry["end"])))
-                entry["additional_information_fasta"] = "__MATCHSEQ__".join(
-                    entry["additional_information_fasta"]
-                )
+                # merge all entries where the sequences match into one entry
+                entry = {
+                    key: "__MATCHSEQ__".join(map(str, values)) if isinstance(values, list) else values
+                    for key, values in entry.items()
+                }
                 file_tsv_content.append(entry)
 
         file_tsv_content = pd.DataFrame(data=file_tsv_content)
         file_tsv_content.to_csv(file_database, sep="\t", index=False)
 
         return file_database, file_metadata
+
+    def _collapse_info_for_duplicated_sequences(self, oligo_info1, oligo_info2):
+        # Combine the dictionaries
+        oligo_info = defaultdict(list)
+
+        for d in (oligo_info1, oligo_info2):
+            for key, values in d.items():
+                oligo_info[key].extend(values)
+
+        # Convert defaultdict back to a regular dictionary
+        oligo_info = dict(oligo_info)
+
+        return oligo_info
+
+    def _filter_dabase_for_region(self, database, region_ids):
+        # if a list of region ids is provided filter dict by this list
+        # in addition check if all regions provided in region list exist
+        # in the regions retreived from the fasta file
+        keys = list(database.keys())
+        for key in keys:
+            if key not in region_ids:
+                database.pop(key)
+        for region_id in region_ids:
+            if region_id not in keys:
+                warnings.warn(f"Region {region_id} not available in reference file.")
+                if self.write_regions_with_insufficient_oligos:
+                    with open(self.file_removed_regions, "a") as hanlde:
+                        hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")
+        return database
 
     ############################################
     # OLD
@@ -415,49 +572,6 @@ class OligoDatabase:
         database = {region_id: database_entries}
 
         return database
-
-    def create_random_database(
-        self,
-        oligo_length: int,
-        n_sequences_per_region: int,
-        sequence_alphabet: list[str] = ["A", "G", "T", "C"],
-        region_ids: list[str] = ["Random"],
-    ):
-        self.oligo_length_min = oligo_length
-        self.oligo_length_max = oligo_length
-
-        sequences = {
-            region_id: [
-                generate_random_sequence(oligo_length, sequence_alphabet)
-                for i in range(n_sequences_per_region)
-            ]
-            for region_id in region_ids
-        }
-
-        self.create_database_from_sequences_1(sequences)
-
-    def create_database_from_sequences_1(self, sequences):
-        """sequences: dict key = region_id
-        value = list of str representing sequences"""
-        database = {}
-        for region_id in sequences:
-            database[region_id] = {}
-            oligo_id = f"{region_id}_0"
-            database[region_id][oligo_id] = {
-                "sequence": sequences[region_id],
-                "chromosome": None,
-                "start": [None],
-                "end": [None],
-                "strand": None,
-                "length": len(sequences[region_id]),
-                "additional_information_fasta": [""],
-            }
-
-        self.database = database
-
-    def merge_database(self, oligo_database):
-        # TODO: this is an over simplification, merging needs to be taken care of
-        self.database.update(oligo_database.database)
 
     def to_sequence_list(self) -> list:
         """Converts the database into a list of sequences

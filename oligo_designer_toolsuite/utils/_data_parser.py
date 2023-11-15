@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import re
 import csv
 import shutil
 
@@ -151,49 +152,58 @@ def parse_fasta_header(header):
     :return: Parsed header information, i.e. region, coordinates (chromosome, start, end, strand), and (optional) additional information
     :rtype: str, dict, str
     """
-    header = header.split("::")
-    region = header[0]
 
-    if len(header) == 1:
-        coordinates = {
-            "chromosome": [None],
-            "start": [None],
-            "end": [None],
-            "strand": [None],
-        }
-
-    else:
-        header_coordinates = header[-1].split(";")
-        coordinates = {}
-        for header_coordinate in header_coordinates:
-            coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
-            coordinates.setdefault("start", []).append(int(header_coordinate.split(":")[1].split("-")[0]))
-            coordinates.setdefault("end", []).append(
-                int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
-            )
-            coordinates.setdefault("strand", []).append(header_coordinate.split("(")[1].split(")")[0])
-
-    additional_information = {}
-
-    if len(header) > 2:
-        info_list = header[1]
-
-        if ";" in info_list:
-            info_list = info_list.split(";")
-
-            for infos in info_list:
-                key_values = infos.split(",")
-
-                for key_value in key_values:
-                    key, value = key_value.split("=")
-
-                    if key in additional_information:
-                        additional_information[key].append(value)
-                    else:
-                        additional_information[key] = [value]
-
+    def check_cordinates(coordinates):
+        # Define the regular expression pattern, e.g. '16:23596123-23596290(-)'
+        pattern = r"\S+:\S+-\S+\(.*\)"
+        match = re.match(pattern, coordinates)
+        if match:
+            return True
         else:
-            key, value = info_list.split("=")
-            additional_information[key] = [value]
+            return False
+
+    coordinates = {
+        "chromosome": [None],
+        "start": [None],
+        "end": [None],
+        "strand": [None],
+    }
+    additional_information = {}
+    header = header.split("::")
+
+    for i, header_entry in enumerate(header):
+        header_entry = header_entry.strip()
+        if i == 0:
+            region = header_entry
+        elif check_cordinates(header_entry):
+            header_coordinates = header_entry.split(";")
+            coordinates = {}
+            for header_coordinate in header_coordinates:
+                coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
+                coordinates.setdefault("start", []).append(int(header_coordinate.split(":")[1].split("-")[0]))
+                coordinates.setdefault("end", []).append(
+                    int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
+                )
+                coordinates.setdefault("strand", []).append(header_coordinate.split("(")[1].split(")")[0])
+        else:
+            info_list = header_entry
+
+            if ";" in info_list:
+                info_list = info_list.split(";")
+
+                for infos in info_list:
+                    key_values = infos.split(",")
+
+                    for key_value in key_values:
+                        key, value = key_value.split("=")
+
+                        if key in additional_information:
+                            additional_information[key].append(value)
+                        else:
+                            additional_information[key] = [value]
+
+            else:
+                key, value = info_list.split("=")
+                additional_information[key] = [value]
 
     return region, additional_information, coordinates
