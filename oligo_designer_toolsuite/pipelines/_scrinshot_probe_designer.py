@@ -2,32 +2,27 @@
 # imports
 ############################################
 
-import os
-import sys
-import yaml
-import shutil
-import logging
 import inspect
+import logging
+import os
+import shutil
+import sys
 import warnings
-
-from pathlib import Path
-from datetime import datetime
-from subprocess import Popen
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from datetime import datetime
+from pathlib import Path
+from subprocess import Popen
 
-
+import yaml
 from Bio.SeqUtils import MeltingTemp as mt
-
-from ._utils import initialize_parameters
 
 from oligo_designer_toolsuite.database import (
     CustomGenomicRegionGenerator,
-    NcbiGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,
+    NcbiGenomicRegionGenerator,
     OligoDatabase,
     ReferenceDatabase,
 )
-from oligo_designer_toolsuite.sequence_design import PadlockSequence
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -50,9 +45,10 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     LigationRegionCreation,
     SpecificityFilter,
 )
+from oligo_designer_toolsuite.sequence_design import PadlockSequence
 
 from ._base_probe_designer import BaseProbeDesigner
-
+from ._utils import initialize_parameters
 
 ############################################
 # Scrinshot probe design class

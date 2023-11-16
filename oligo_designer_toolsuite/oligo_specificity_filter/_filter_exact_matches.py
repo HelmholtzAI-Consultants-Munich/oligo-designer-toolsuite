@@ -12,18 +12,14 @@ from . import SpecificityFilterBase
 ############################################
 
 
-class ExactMatches(SpecificityFilterBase):
+class ExactMatches:
     """This class filters oligos based duplicates found in the ``oligos_DB``. That is, oligos with the same sequences but belonging to different regions are filtered out.
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
     """
 
-    def __init__(self, dir_specificity: str):
-        """Counstructor."""
-
-        super().__init__(dir_specificity)
-
+    # TODO: still need to get rid of unused file_reference
     def apply(self, database: dict, file_reference: str, n_jobs: int):
         """Apply the filter in parallel on the given ``database``. Each jobs filters a single region, and at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.

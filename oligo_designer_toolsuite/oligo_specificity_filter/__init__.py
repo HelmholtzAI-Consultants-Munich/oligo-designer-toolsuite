@@ -2,7 +2,7 @@
 This module provides different specificifity filters for oligo sequences, which detect and filter out sequences that have potential off-target regions.
 """
 
-from ._filter_base import SpecificityFilterBase
+from ._filter_base import AlignmentSpecificityFilter, SpecificityFilterBase
 from ._filter_blastn import Blastn
 from ._filter_bowtie import Bowtie
 from ._filter_bowtie2 import Bowtie2
@@ -18,6 +18,7 @@ from ._specificity_filter import SpecificityFilter
 
 __all__ = [
     "SpecificityFilter",
+    "AlignmentSpecificityFilter",
     "SpecificityFilterBase",
     "ExactMatches",
     "Blastn",

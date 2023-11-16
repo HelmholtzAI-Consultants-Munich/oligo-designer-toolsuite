@@ -2,8 +2,9 @@
 # imports
 ############################################
 
-from oligo_designer_toolsuite.database import OligoDatabase
+import os
 
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
     Bowtie,
@@ -20,7 +21,9 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 # Specify parameters
 n_jobs = 1
 ligation_region = 0
-dir_annotations = "tests/data/specificity_filter"
+dir_annotations = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "data/specificity_filter"
+)
 min_oligos_per_gene = 2
 
 # Reference transcriptome files for tests
@@ -54,13 +57,13 @@ file_oligo_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_no_matc
 ############################################
 
 
-def test_filter_exact_matches(tmp_path):
+def test_filter_exact_matches():
     # check that exact matches filters out a doubled sequence from the db
     oligo_database = OligoDatabase()
-    exact_matches = ExactMatches(tmp_path)
+    exact_matches = ExactMatches()
     oligo_database.load_database(file_oligo_info_exact_matches)
     filtered_oligo_info_dict_match = exact_matches.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
+        oligo_database.database, None, n_jobs
     )
 
     assert (

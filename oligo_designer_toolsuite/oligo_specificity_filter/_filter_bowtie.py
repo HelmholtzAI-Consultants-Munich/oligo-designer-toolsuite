@@ -5,19 +5,19 @@
 import os
 import re
 import subprocess
-import pandas as pd
-
 from pathlib import Path
+
+import pandas as pd
 from joblib import Parallel, delayed
 
-from . import SpecificityFilterBase
+from . import AlignmentSpecificityFilter
 
 ############################################
 # Oligo Bowtie Filter Classes
 ############################################
 
 
-class Bowtie(SpecificityFilterBase):
+class Bowtie(AlignmentSpecificityFilter):
     """This class filters oligos based on the Bowtie short read alignment tool.
     The user can customize the filtering by specifying the num_mismatches per oligo and mismatch_region, the region that should be considered for counting mismatches.
     That is, all oligos with number mismatches higher than num_mismatches inside the mismatch_region are filtered out.
@@ -232,16 +232,17 @@ class Bowtie(SpecificityFilterBase):
         oligos_with_match = bowtie_matches["query"].unique()
         return oligos_with_match
 
+    def get_all_matching_oligo_pairs(
+        self, database: dict, database_name: str, n_jobs: int
+    ):
+        regions = list(database)
 
-def get_all_matching_oligo_pairs(self, database: dict, database_name: str, n_jobs: int):
-    regions = list(database)
-
-    all_matches = Parallel(n_jobs=n_jobs)(
-        delayed(self._run_blast_search)(database[region], region, database_name)[1]
-        for region in regions
-    )
-    return [
-        (match[0], match[1])
-        for region_matches in all_matches
-        for match in region_matches.values
-    ]
+        all_matches = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_blast_search)(database[region], region, database_name)[1]
+            for region in regions
+        )
+        return [
+            (match[0], match[1])
+            for region_matches in all_matches
+            for match in region_matches.values
+        ]

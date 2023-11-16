@@ -3,18 +3,17 @@ This module provides different sequence-property based filters for oligos like G
 """
 
 from ._filter_base import (
-    PropertyFilterBase,
+    ConsecutiveRepeats,
+    GCClamp,
     GCContent,
     MaskedSequences,
-    ConsecutiveRepeats,
     MeltingTemperatureNN,
-    GCClamp,
-    ConsecutiveRepeats,
-    SecondaryStructure
-
+    PropertyFilterBase,
+    SecondaryStructure,
 )
 from ._filter_padlock_oligos import PadlockArms
 from ._property_filter import PropertyFilter
+
 __all__ = [
     "PropertyFilter",
     "PropertyFilterBase",
@@ -24,5 +23,5 @@ __all__ = [
     "PadlockArms",
     "GCClamp",
     "ConsecutiveRepeats",
-    "SecondaryStructure"
+    "SecondaryStructure",
 ]

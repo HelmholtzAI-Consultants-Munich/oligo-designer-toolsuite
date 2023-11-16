@@ -3,23 +3,22 @@
 ############################################
 
 import os
-
 from pathlib import Path
 
-from . import SpecificityFilterBase
-
 import networkx as nx
+
+from . import AlignmentSpecificityFilter, SpecificityFilterBase
 
 ############################################
 # Oligo Blast Filter Classes
 ############################################
 
 
-class CrossHybridizationFilter:
+class CrossHybridizationFilter(SpecificityFilterBase):
     def __init__(
         self,
         dir_specificity: str,
-        specificity_filter: SpecificityFilterBase,
+        specificity_filter: AlignmentSpecificityFilter,
         policy,
         n_jobs: int,
     ):
