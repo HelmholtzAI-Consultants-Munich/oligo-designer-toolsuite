@@ -235,14 +235,4 @@ class Bowtie(AlignmentSpecificityFilter):
     def get_all_matching_oligo_pairs(
         self, database: dict, database_name: str, n_jobs: int
     ):
-        regions = list(database)
-
-        all_matches = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_blast_search)(database[region], region, database_name)[1]
-            for region in regions
-        )
-        return [
-            (match[0], match[1])
-            for region_matches in all_matches
-            for match in region_matches.values
-        ]
+        ...

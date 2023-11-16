@@ -15,42 +15,44 @@ from . import AlignmentSpecificityFilter, SpecificityFilterBase
 
 
 class CrossHybridizationFilter(SpecificityFilterBase):
+    """
+    This class implements a cross-hybridization filter for oligos. It constructs a graph representation of oligo interactions using an alignment method, then applies a policy to remove oligos which cross-hybridize.
+    The class provides methods to create a cross-hybridization graph, and apply the chosen policy to filter out oligos.
+    The policy is a function that determines which oligos to remove in case of cross-hybridization.
+
+    :param specificity_filter: An instance of AlignmentSpecificityFilter class that provides matching oligo pairs based on an alignment criteria.
+    :type specificity_filter: AlignmentSpecificityFilter
+    :param policy: A function that defines the strategy for oligo removal. It takes the graph and a dictionary where keys are the databse regions as inputs and returns a dictionary of removed oligos.
+    :type policy: function
+    :param n_jobs: Number of simultaneous parallel computations.
+    :type n_jobs: int
+    """
+
     def __init__(
         self,
-        dir_specificity: str,
         specificity_filter: AlignmentSpecificityFilter,
         policy,
         n_jobs: int,
     ):
-        """Constructor."""
-        self.dir_specificity = dir_specificity
-
-        # TODO: not particularly Blast
-        self.dir_blast = os.path.join(self.dir_specificity, "blast")
-        Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
-
-        self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
-        Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
-
         self.specificity_filter = specificity_filter
         self.n_jobs = n_jobs
         self.policy = policy
 
-    def apply(self, oligo_database: dict, file_reference: str, n_jobs: int):
-        oligos_per_region = self.count_oligos_per_region(oligo_database)
+    def apply(self, database: dict, file_reference: str, n_jobs: int):
+        oligos_per_region = self.count_oligos_per_region(database)
         cross_hybridization_graph = self.create_cross_hybridization_graph(
-            oligo_database, file_reference, n_jobs=n_jobs
+            database, file_reference, n_jobs=n_jobs
         )
         matching_oligos = self.policy(cross_hybridization_graph, oligos_per_region)
 
         # Can be parallelized if needed
-        regions = list(oligo_database.keys())
+        regions = list(database.keys())
         for region in regions:
             filtered_database_region = self._filter_matching_oligos(
-                oligo_database[region], matching_oligos[region]
+                database[region], matching_oligos[region]
             )
-            oligo_database[region] = filtered_database_region
-        return oligo_database
+            database[region] = filtered_database_region
+        return database
 
     def create_cross_hybridization_graph(
         self, oligo_database: dict, reference_fasta: str, n_jobs: int
@@ -80,12 +82,14 @@ def _oligo_to_region(oligo_name: str):
 def remove_nodes_by_priority_policy(
     graph: nx.Graph, oligos_per_region: dict
 ) -> list(str):
-    """removes oligos (graph nodes) based on a priorities dictionnary: nodes associated with regions with higher number oligos_per_region will be removed first. The process is repeated until there are no edges in the graph anymore.
-    Args:
-        graph (nx.Graph): graph representing oligos, an edge means that there is a match between two oligos
-        oligos_per_region (dict): dictionnary that maps each region with the number of oligos
-    Returns:
-        list(str): list of oligos that are removed
+    """
+    Removes oligos (graph nodes) based on a priorities dictionnary. The process is repeated until there are no edges in the graph anymore.
+    :param graph: Graph where nodes represent oligos and edges indicate cross-hybridization between pairs of oligos.
+    :type graph: nx.Graph
+    :param oligos_per_region: Dictionary mapping each region to a priority. Nodes associated with regions with higher priority will be removed first
+    :type oligos_per_region: dict
+    :returns: Dictionary where each key is a region and the value is a list of oligos removed from that region.
+    :rtype: dict[str, list[str]]
     """
 
     removed_oligos = {region: [] for region in oligos_per_region.keys()}
@@ -106,6 +110,16 @@ def remove_nodes_by_priority_policy(
 def remove_nodes_by_degree_policy(
     graph: nx.Graph, oligos_per_region: dict
 ) -> list(str):
+    """
+    Iteratively removes nodes with the highest degree from a graph until there are no edges in the graph anymore.
+
+    :param graph: Graph where nodes represent oligos and edges indicate cross-hybridization between pairs of oligos.
+    :type graph: nx.Graph
+    :param oligos_per_region: Dictionary mapping each region with an arbitrary value (we use this structure to romain consistant with other functions).
+    :type oligos_per_region: dict
+    :returns: Dictionary where each key is a region and the value is a list of oligos removed from that region.
+    :rtype: dict[str, list[str]]
+    """
     removed_oligos = {region: [] for region in oligos_per_region.keys()}
 
     while graph.number_of_edges() > 0:
