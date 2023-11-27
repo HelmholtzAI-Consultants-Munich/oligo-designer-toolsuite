@@ -66,9 +66,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         """_summary_"""
 
     @abstractmethod
-    def get_all_matching_oligo_pairs(
-        self, database: dict, database_name: str, n_jobs: int
-    ):
+    def get_matching_oligo_pairs(self, database: dict, database_name: str, n_jobs: int):
         """_summary_
 
         Args:
