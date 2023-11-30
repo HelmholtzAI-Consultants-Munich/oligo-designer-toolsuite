@@ -137,7 +137,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
             dir_specificity_primers = os.path.join(
                 self.readout_dir_output, "specificity_temporary_primers"
             )
-            exact_matches = ExactMatches(dir_specificity=dir_specificity_primers)
+            exact_matches = ExactMatches()
             blast_filter = Blastn(
                 dir_specificity=dir_specificity_primers,
                 word_size=primer_blast_word_size,
