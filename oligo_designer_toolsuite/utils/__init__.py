@@ -11,6 +11,7 @@ from ._data_parser import (
     merge_fasta,
     parse_fasta_header,
 )
+from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
 from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
 from ._gff_parser import GffParser
 from ._sequence_design import (
@@ -42,4 +43,6 @@ __all__ = [
     "SCRINSHOT_or_ISS_backbone_sequence",
     "convert_complementary_seq_to_arms",
     "create_seqfish_plus_barcodes",
+    "collapse_info_for_duplicated_sequences",
+    "merge_databases",
 ]

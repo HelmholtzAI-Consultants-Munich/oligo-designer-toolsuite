@@ -144,7 +144,7 @@ def merge_fasta(files_fasta, file_merged_fasta):
                 raise ValueError(f"Fasta file {file} does not exist!")
 
 
-def parse_fasta_header(header):
+def parse_fasta_header(header, parse_additional_info=True):
     """Helper function to parse the header of a sequence entry in a fasta file.
 
     :param header: Header of sequence entry, starting with '>'.
@@ -153,29 +153,24 @@ def parse_fasta_header(header):
     :rtype: str, dict, str
     """
 
-    def check_cordinates(coordinates):
-        # Define the regular expression pattern, e.g. '16:23596123-23596290(-)'
+    def is_coordinate(entry):
         pattern = r"\S+:\S+-\S+\(.*\)"
-        match = re.match(pattern, coordinates)
-        if match:
-            return True
-        else:
-            return False
+        return bool(re.match(pattern, entry))
 
+    region = None
+    additional_info = {}
     coordinates = {
         "chromosome": [None],
         "start": [None],
         "end": [None],
         "strand": [None],
     }
-    additional_information = {}
-    header = header.split("::")
 
-    for i, header_entry in enumerate(header):
+    for header_entry in header.split("::"):
         header_entry = header_entry.strip()
-        if i == 0:
+        if not region:
             region = header_entry
-        elif check_cordinates(header_entry):
+        elif is_coordinate(header_entry):
             header_coordinates = header_entry.split(";")
             coordinates = {}
             for header_coordinate in header_coordinates:
@@ -187,23 +182,26 @@ def parse_fasta_header(header):
                 coordinates.setdefault("strand", []).append(header_coordinate.split("(")[1].split(")")[0])
         else:
             info_list = header_entry
+            # the additional info field should be parsed, save information in dict
+            if parse_additional_info:
+                if ";" in info_list:
+                    info_list = info_list.split(";")
 
-            if ";" in info_list:
-                info_list = info_list.split(";")
+                    for infos in info_list:
+                        key_values = infos.split(",")
 
-                for infos in info_list:
-                    key_values = infos.split(",")
+                        for key_value in key_values:
+                            key, value = key_value.split("=")
 
-                    for key_value in key_values:
-                        key, value = key_value.split("=")
+                            if key in additional_info:
+                                additional_info[key].append(value)
+                            else:
+                                additional_info[key] = [value]
 
-                        if key in additional_information:
-                            additional_information[key].append(value)
-                        else:
-                            additional_information[key] = [value]
-
+                else:
+                    key, value = info_list.split("=")
+                    additional_info[key] = [value]
             else:
-                key, value = info_list.split("=")
-                additional_information[key] = [value]
+                additional_info = info_list
 
-    return region, additional_information, coordinates
+    return region, additional_info, coordinates
