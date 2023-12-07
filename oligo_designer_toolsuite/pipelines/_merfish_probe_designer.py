@@ -1,40 +1,38 @@
 import os
-import yaml
-
 import random
 import warnings
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 from typing import List
 
 import numpy as np
+import yaml
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils import MeltingTemp as mt
-
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from ._utils import initialize_parameters
 
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
     ConsecutiveRepeats,
     GCClamp,
     GCContent,
+    MaskedSequences,
     MeltingTemperatureNN,
     PropertyFilter,
     SecondaryStructure,
-    MaskedSequences,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
     ExactMatches,
     SpecificityFilter,
 )
-from ._base_probe_designer import BaseProbeDesigner
+from oligo_designer_toolsuite.sequence_design import MerfishSequence
 from oligo_designer_toolsuite.utils import FtpLoaderEnsembl
 from oligo_designer_toolsuite.utils._sequence_design import generate_random_sequence
 
-from oligo_designer_toolsuite.sequence_design import MerfishSequence
+from ._base_probe_designer import BaseProbeDesigner
+from ._utils import initialize_parameters
 
 
 class MerfishProbeDesigner(BaseProbeDesigner):
@@ -1002,3 +1000,17 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+n_genes = 3
+n_oligos_per_gene = 1
+regions = list(oligo_database.database.keys())
+reduced_oligo_db = {
+    key: {
+        inner_key: oligo_database.database[key][inner_key]
+        for inner_key in list(oligo_database.database[key].keys())
+    }
+    for key in regions[:n_genes]
+}
+
+reduced_oligo_db
