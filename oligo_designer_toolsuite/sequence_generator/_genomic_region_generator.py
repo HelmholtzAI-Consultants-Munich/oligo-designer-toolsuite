@@ -4,7 +4,6 @@
 
 import os
 import copy
-import shutil
 import warnings
 import numpy as np
 import pandas as pd
@@ -14,9 +13,9 @@ pd.options.mode.chained_assignment = None
 from pathlib import Path
 from Bio import SeqIO
 
-from ..utils._data_parser import get_sequence_from_annotation, get_complement_regions
-from ..utils._ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI
-from ..utils._gff_parser import GffParser
+from ._ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI
+from ..utils._sequence_parser import GffParser
+from ..utils._sequence_processor import get_sequence_from_annotation, get_complement_regions
 
 
 ############################################
@@ -84,28 +83,31 @@ class CustomGenomicRegionGenerator:
             genome_assembly = "unknown"
             warnings.warn(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
 
+        self.dir_output = os.path.join(dir_output, "annotation")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+
         self.files_source = files_source
         self.species = species
         self.annotation_release = annotation_release
         self.genome_assembly = genome_assembly
         self.annotation_file = annotation_file
+        self.parsed_annotation_file = os.path.join(
+            self.dir_output, os.path.basename(f"{'.'.join(annotation_file.split('.')[:-1])}.pckl")
+        )
         self.sequence_file = sequence_file
 
-        self.dir_output = os.path.join(dir_output, "annotation")
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+        # load annotation file and store in pickel file
+        self.gff_parser = GffParser()
 
-        # read annotation file and store in dataframe
-        parser = GffParser()
-        self.annotation = parser.read_gff(annotation_file)
+        if os.path.exists(self.annotation_file):
+            if not self.gff_parser.check_gff_format(self.annotation_file):
+                raise ValueError("GFF file has incorrect format!")
+        else:
+            raise ValueError("GFF file does not exist!")
 
-        # required to ensure that sorting is done correctly
-        self.annotation.start = self.annotation.start.astype("int")
-        self.annotation.end = self.annotation.end.astype("int")
-
-        # add both annotations to dataframe: GFF 1-base offset and BED 0-base offset
-        # since we read in a GFF file, the start coordinates are 1-base offset
-        self.annotation.rename(columns={"start": "start_1base"}, inplace=True)
-        self.annotation["start_0base"] = self.annotation.start_1base - 1
+        self.gff_parser.parse_annotation_from_gff(
+            annotation_file=self.annotation_file, file_pickel=self.parsed_annotation_file
+        )
 
         # columns required for bed12 split sequence format
         self.BED_HEADER = ["seqid", "start", "end", "fasta_header", "score", "strand"]
@@ -137,7 +139,7 @@ class CustomGenomicRegionGenerator:
         :rtype: str
         """
         # get gene annotation entries
-        annotation = copy.deepcopy(self.annotation)
+        annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "gene")
 
         # generate region_id
@@ -269,7 +271,7 @@ class CustomGenomicRegionGenerator:
             return dict_chromosome_length
 
         # get gene annotation entries
-        annotation = copy.deepcopy(self.annotation)
+        annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "gene")
         annotation = _compute_intergenic_annotation(annotation)
 
@@ -309,7 +311,7 @@ class CustomGenomicRegionGenerator:
         :rtype: str
         """
         # get exon annotation entries
-        annotation = copy.deepcopy(self.annotation)
+        annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "exon")
 
         # generate region_id
@@ -430,7 +432,7 @@ class CustomGenomicRegionGenerator:
 
             return intron_annotation
 
-        annotation = copy.deepcopy(self.annotation)
+        annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "exon")
         annotation = _compute_intron_annotation(annotation)
 
@@ -486,7 +488,7 @@ class CustomGenomicRegionGenerator:
         :rtype: str
         """
         # get exon annotation entries
-        annotation = copy.deepcopy(self.annotation)
+        annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "CDS")
 
         # generate region_id
@@ -571,12 +573,14 @@ class CustomGenomicRegionGenerator:
 
                 exons = transcript_annotation[transcript_annotation.type == "exon"]
 
-                UTR_left = copy.deepcopy(exons[exons.start_1base < cds_start])
+                UTR_left = copy.deepcopy(exons)
+                UTR_left = UTR_left[UTR_left.start_1base < cds_start]
                 UTR_left.type = UTR_left_type
                 UTR_left.end[UTR_left.end >= cds_start] = cds_start - 1
                 utrs.append(UTR_left)
 
-                UTR_right = copy.deepcopy(exons[exons.end > cds_end])
+                UTR_right = copy.deepcopy(exons)
+                UTR_right = UTR_right[UTR_right.end > cds_end]
                 UTR_right.type = UTR_right_type
                 UTR_right.start_1base[UTR_right.start_1base <= cds_end] = cds_end + 1
                 UTR_right.start_0base[UTR_right.start_1base <= cds_end] = cds_end
@@ -586,8 +590,8 @@ class CustomGenomicRegionGenerator:
 
             return utr_annotation
 
-        annotation_exon = self._get_annotation_region_of_interest(copy.deepcopy(self.annotation), "exon")
-        annotation_CDS = self._get_annotation_region_of_interest(copy.deepcopy(self.annotation), "CDS")
+        annotation_exon = self._get_annotation_region_of_interest(self._load_annotation(), "exon")
+        annotation_CDS = self._get_annotation_region_of_interest(self._load_annotation(), "CDS")
 
         transcripts_with_CDS = list(set(annotation_CDS.transcript_id))
         annotation_exon = annotation_exon[annotation_exon.transcript_id.isin(transcripts_with_CDS)]
@@ -786,7 +790,7 @@ class CustomGenomicRegionGenerator:
             return junction_annotation
 
         # get exon annotation entries
-        annotation = copy.deepcopy(self.annotation)
+        annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "exon")
 
         # compute exon junctions
@@ -829,6 +833,21 @@ class CustomGenomicRegionGenerator:
         del annotation
 
         return file_fasta
+
+    def _load_annotation(self):
+        # read annotation file and store in dataframe
+        annotation = self.gff_parser.load_annotation_from_pickel(self.parsed_annotation_file)
+
+        # required to ensure that sorting is done correctly
+        annotation.start = annotation.start.astype("int")
+        annotation.end = annotation.end.astype("int")
+
+        # add both annotations to dataframe: GFF 1-base offset and BED 0-base offset
+        # since we read in a GFF file, the start coordinates are 1-base offset
+        annotation.rename(columns={"start": "start_1base"}, inplace=True)
+        annotation["start_0base"] = annotation.start_1base - 1
+
+        return annotation
 
     def _get_annotation_region_of_interest(self, annotation, region):
         """Retrieve annotation ofr region of interest from loaded annotation dataframe.
@@ -894,7 +913,7 @@ class CustomGenomicRegionGenerator:
         aggregate_function = {col: "first" for col in annotation.columns}
         aggregate_function["add_inf"] = ";".join
 
-        merged_annotation = annotation.groupby(annotation["region"]).aggregate(aggregate_function)
+        merged_annotation = annotation.groupby(annotation["region"]).agg(aggregate_function)
         merged_annotation.reset_index(inplace=True, drop=True)
 
         return merged_annotation

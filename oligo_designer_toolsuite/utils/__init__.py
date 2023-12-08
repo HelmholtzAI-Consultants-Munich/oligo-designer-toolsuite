@@ -1,19 +1,9 @@
 """
-This module provides all additional functionalities that are needed for oligo design, e.g. a class to download annotations from NCBI and Ensembl servers.
+This module provides all additional functionalities that are needed for oligo design.
 """
 
-from ._data_parser import (
-    check_gff_format,
-    check_fasta_format,
-    check_tsv_format,
-    get_sequence_from_annotation,
-    get_complement_regions,
-    merge_fasta,
-    parse_fasta_header,
-)
-from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
-from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
-from ._gff_parser import GffParser
+from ._database_processor import merge_databases, collapse_info_for_duplicated_sequences
+
 from ._sequence_design import (
     generate_random_sequence,
     generate_binary_sequences,
@@ -24,18 +14,16 @@ from ._sequence_design import (
     create_seqfish_plus_barcodes,
 )
 
+from ._sequence_parser import FastaParser, GffParser
+
+from ._sequence_processor import get_sequence_from_annotation, get_complement_regions
+
+from ._utils import check_if_list, check_tsv_format
+
+
 __all__ = [
-    "BaseFtpLoader",
-    "FtpLoaderNCBI",
-    "FtpLoaderEnsembl",
-    "GffParser",
-    "check_gff_format",
-    "check_fasta_format",
-    "check_tsv_format",
-    "get_sequence_from_annotation",
-    "get_complement_regions",
-    "merge_fasta",
-    "parse_fasta_header",
+    "merge_databases",
+    "collapse_info_for_duplicated_sequences",
     "generate_random_sequence",
     "generate_binary_sequences",
     "generate_codebook",
@@ -43,6 +31,10 @@ __all__ = [
     "SCRINSHOT_or_ISS_backbone_sequence",
     "convert_complementary_seq_to_arms",
     "create_seqfish_plus_barcodes",
-    "collapse_info_for_duplicated_sequences",
-    "merge_databases",
+    "FastaParser",
+    "GffParser",
+    "get_sequence_from_annotation",
+    "get_complement_regions",
+    "check_if_list",
+    "check_tsv_format",
 ]

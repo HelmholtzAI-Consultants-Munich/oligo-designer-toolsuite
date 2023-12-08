@@ -10,27 +10,6 @@ from collections import defaultdict
 ############################################
 
 
-def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
-    def _is_list_of_lists(item):
-        return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
-
-    oligo_info = defaultdict(list)
-
-    for d in (oligo_info1, oligo_info2):
-        for key, values in d.items():
-            if key not in oligo_info:
-                if _is_list_of_lists(values):
-                    oligo_info[key] = values
-                else:
-                    oligo_info[key] = [values]
-            else:
-                oligo_info[key].extend([values])
-
-    oligo_info = dict(oligo_info)
-
-    return oligo_info
-
-
 def merge_databases(database1, database2):
     def _get_sequence_as_key(database):
         database_modified = {region: {} for region in database.keys()}
@@ -67,3 +46,24 @@ def merge_databases(database1, database2):
             i += 1
 
     return database_merged
+
+
+def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
+    def _is_list_of_lists(item):
+        return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
+
+    oligo_info = defaultdict(list)
+
+    for d in (oligo_info1, oligo_info2):
+        for key, values in d.items():
+            if key not in oligo_info:
+                if _is_list_of_lists(values):
+                    oligo_info[key] = values
+                else:
+                    oligo_info[key] = [values]
+            else:
+                oligo_info[key].extend([values])
+
+    oligo_info = dict(oligo_info)
+
+    return oligo_info

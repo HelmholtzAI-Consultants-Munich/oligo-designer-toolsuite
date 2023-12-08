@@ -8,7 +8,7 @@ import warnings
 from Bio import SeqIO
 from pathlib import Path
 
-from ..utils._data_parser import check_fasta_format, parse_fasta_header
+from ..utils._sequence_parser import FastaParser
 
 ############################################
 # Reference Database Class
@@ -46,20 +46,19 @@ class ReferenceDatabase:
         dir_output: str = "output",
     ):
         """Constructor"""
-        self.metadata = metadata
+        self.fasta_parser = FastaParser()
 
         self.file_fasta = file_fasta
         if os.path.exists(self.file_fasta):
-            if not check_fasta_format(self.file_fasta):
+            if not self.fasta_parser.check_fasta_format(self.file_fasta):
                 raise ValueError("Fasta file has incorrect format!")
         else:
             raise ValueError("Fasta file does not exist!")
 
+        self.metadata = metadata
         self.database = []
 
-        self.dir_output = os.path.abspath(
-            os.path.join(dir_output, "reference_database")
-        )
+        self.dir_output = os.path.abspath(os.path.join(dir_output, "reference_database"))
 
     def load_fasta_into_database(self):
         """Load sequences from fasta file and stored in databse."""
@@ -96,9 +95,7 @@ class ReferenceDatabase:
         file_metadata = os.path.join(self.dir_output, f"{filename}.yaml")
 
         with open(file_metadata, "w") as handle:
-            yaml.safe_dump(
-                self.metadata, handle, sort_keys=True, default_flow_style=False
-            )
+            yaml.safe_dump(self.metadata, handle, sort_keys=True, default_flow_style=False)
 
         return file_metadata
 
@@ -114,7 +111,7 @@ class ReferenceDatabase:
         if self.database:
             database_filtered = []
             for entry in self.database:
-                region, _, _ = parse_fasta_header(entry.id)
+                region, _, _ = self.fasta_parser.parse_fasta_header(entry.id)
                 if region in region_ids:
                     database_filtered.append(entry)
             self.database = database_filtered
