@@ -10,6 +10,11 @@ from pathlib import Path
 import pandas as pd
 from joblib import Parallel, delayed
 
+from oligo_designer_toolsuite.constants import (
+    GENE_SEPARATOR_ANNOTATION,
+    GENE_SEPARATOR_OLIGO,
+)
+
 from . import AlignmentSpecificityFilter
 
 ############################################
@@ -76,11 +81,11 @@ class Bowtie(AlignmentSpecificityFilter):
         :return: oligo info of user-specified regions
         :rtype: dict
         """
-        index_name = self.create_index(file_reference, n_jobs=n_jobs)
+        index_name = self._create_index(file_reference, n_jobs=n_jobs)
 
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_bowtie)(database[region], region, index_name)
+            delayed(self._run_filter)(database, region, index_name)
             for region in regions
         )
 
@@ -90,7 +95,7 @@ class Bowtie(AlignmentSpecificityFilter):
 
         return database
 
-    def create_index(self, file_reference: str, n_jobs: int):
+    def _create_index(self, file_reference: str, n_jobs: int):
         # Some bowtie initializations, change the names
         index_exists = False
         index_name = os.path.basename(file_reference)
@@ -114,19 +119,26 @@ class Bowtie(AlignmentSpecificityFilter):
 
         return index_name
 
-    def _run_bowtie(self, databse_region, region, index_name):
+    def _run_search(self, database, region, index_name, filter_same_gene_matches):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
         Bowtie identifies all alignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
-        :param databse_region: database containing the oligos form one region
-        :type databse_region: dict
+        :param databse: database containing the oligos
+        :type databse: dict
         :param region: id of the region processed
         :type region: str
         """
+        # TODO: This part has to change
+        if region is not None:
+            file_oligo_fasta_gene = self._create_fasta_file(
+                database, self.dir_fasta, region
+            )
+        else:
+            file_oligo_fasta_gene = self._create_fasta_multiple_regions(
+                database, self.dir_fasta, regions=database.keys()
+            )
+            region = "multiple_regions"
 
-        file_oligo_fasta_gene = self._create_fasta_file(
-            databse_region, self.dir_fasta, region
-        )
         file_bowtie_gene = os.path.join(
             self.dir_bowtie,
             f"bowtie_{region}.txt",
@@ -166,15 +178,15 @@ class Bowtie(AlignmentSpecificityFilter):
 
         # read the results of the bowtie search
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
-        # filter the DB based on the bowtie results
-        matching_oligos = self._find_matching_oligos(bowtie_results)
-        filtered_database_region = self._filter_matching_oligos(
-            databse_region, matching_oligos
-        )
+
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie, file_bowtie_gene))
         os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
-        return filtered_database_region
+
+        # filter the DB based on the bowtie results
+        return self._find_matching_oligos(
+            bowtie_results, filter_same_gene_matches=filter_same_gene_matches
+        )
 
     def _read_bowtie_output(self, file_bowtie_gene):
         """Load the output of the bowtie alignment search into a DataFrame and process the results."""
@@ -206,23 +218,28 @@ class Bowtie(AlignmentSpecificityFilter):
             },
         )
         # return the real matches, that is the ones not belonging to the same region of the query oligo
-        bowtie_results["query_gene_id"] = bowtie_results["query"].str.split("_").str[0]
+        bowtie_results["query_gene_id"] = (
+            bowtie_results["query"].str.split(GENE_SEPARATOR_OLIGO).str[0]
+        )
         bowtie_results["reference_gene_id"] = (
-            bowtie_results["reference"].str.split("::").str[0]
+            bowtie_results["reference"].str.split(GENE_SEPARATOR_ANNOTATION).str[0]
         )
 
         return bowtie_results
 
-    def _find_matching_oligos(self, bowtie_results):
+    def _find_matching_oligos(self, bowtie_results, filter_same_gene_matches=True):
         """Use the results of the Bowtie alignment search to identify oligos with high similarity (i.e. low number of mismatches) based on user defined thresholds.
 
         :param bowtie_results: DataFrame with processed bowtie alignment search results.
         :type bowtie_results: pandas.DataFrame
         """
 
-        bowtie_matches = bowtie_results[
-            bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
-        ]
+        if filter_same_gene_matches:
+            bowtie_matches = bowtie_results[
+                bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
+            ]
+        else:
+            bowtie_matches = bowtie_results
 
         if self.strand == "plus":
             bowtie_matches = bowtie_matches[bowtie_matches["strand"] == "+"]
@@ -230,9 +247,5 @@ class Bowtie(AlignmentSpecificityFilter):
             bowtie_matches = bowtie_matches[bowtie_matches["strand"] == "-"]
 
         oligos_with_match = bowtie_matches["query"].unique()
-        return oligos_with_match
 
-    def get_all_matching_oligo_pairs(
-        self, database: dict, database_name: str, n_jobs: int
-    ):
-        ...
+        return oligos_with_match, bowtie_matches

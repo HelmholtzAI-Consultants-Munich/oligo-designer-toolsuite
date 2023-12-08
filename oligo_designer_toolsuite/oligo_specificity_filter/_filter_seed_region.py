@@ -5,8 +5,8 @@
 import os
 import re
 import subprocess
-
 from pathlib import Path
+
 from joblib import Parallel, delayed
 
 from . import Bowtie
@@ -14,6 +14,7 @@ from . import Bowtie
 ############################################
 # Oligo Seed Region Filter Classes
 ############################################
+
 
 class BowtieSeedRegion(Bowtie):
     """This class filters oligos based on the Bowtie short read alignment tool on a specific sub-region of the oligo. The region taken in consideration is created according to the ``seed_region_creation`` class.
@@ -94,24 +95,22 @@ class BowtieSeedRegion(Bowtie):
                 command1, shell=True, cwd=self.dir_seed_region
             ).wait()
 
-        oligo_DB_seed = self._extract_seed_regions(database)
-        regions = list(oligo_DB_seed.keys())
-        filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
+        oligo_database_seed = self._extract_seed_regions(database)
+        regions = list(oligo_database_seed.keys())
+        filtered_oligo_databases = Parallel(n_jobs=n_jobs)(
             delayed(self._run_bowtie_seed_region)(
-                oligo_DB_seed[region], database[region], region, index_name
+                oligo_database_seed, database, region, index_name
             )
             for region in regions
         )
 
         # reconstruct the oligos_DB
-        for region, filtered_oligo_DB in zip(regions, filtered_oligo_DBs):
-            database[region] = filtered_oligo_DB
+        for region, filtered_oligo_database in zip(regions, filtered_oligo_databases):
+            database[region] = filtered_oligo_database
 
         return database
 
-    def _run_bowtie_seed_region(
-        self, database_region_seed, gene_DB, region, index_name
-    ):
+    def _run_bowtie_seed_region(self, database_seed, database, region, index_name):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
         Bowtie identifies all allignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
@@ -120,7 +119,7 @@ class BowtieSeedRegion(Bowtie):
         """
 
         file_oligo_fasta_gene = self._create_fasta_file(
-            database_region_seed, self.dir_fasta, region
+            database_seed, self.dir_fasta, region
         )
         file_bowtie_gene = os.path.join(
             self.dir_seed_region,
@@ -148,9 +147,9 @@ class BowtieSeedRegion(Bowtie):
         # read the results of the bowtie search
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
         # filter the DB based on the bowtie results
-        matching_oligos = self._find_matching_oligos(bowtie_results)
+        matching_oligos, _ = self._find_matching_oligos(bowtie_results)
         filtered_database_region = self._filter_matching_oligos(
-            gene_DB, matching_oligos
+            database[region], matching_oligos
         )
         # remove the temporary files
         os.remove(os.path.join(self.dir_seed_region, file_bowtie_gene))
@@ -159,11 +158,11 @@ class BowtieSeedRegion(Bowtie):
 
     def _extract_seed_regions(self, database):
         """geneate a new oligos DB containing only the seed regions of the oligos."""
-        oligo_DB_seed = {}
+        oligo_database_seed = {}
         for region in database.keys():
-            oligo_DB_seed[region] = {}
+            oligo_database_seed[region] = {}
             for oligo_id in database[region].keys():
-                oligo_DB_seed[region][oligo_id] = {}
+                oligo_database_seed[region][oligo_id] = {}
                 start, end = (
                     database[region][oligo_id]["seed_region_start"],
                     database[region][oligo_id]["seed_region_end"],
@@ -171,5 +170,5 @@ class BowtieSeedRegion(Bowtie):
                 seed_region_seq = database[region][oligo_id]["sequence"][
                     start : end + 1
                 ]  # end must be included
-                oligo_DB_seed[region][oligo_id]["sequence"] = seed_region_seq
-        return oligo_DB_seed
+                oligo_database_seed[region][oligo_id]["sequence"] = seed_region_seq
+        return oligo_database_seed

@@ -62,37 +62,89 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         Path(self.dir_specificity).mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
-    def create_index(self, file_reference: str, n_jobs: int):
+    def _create_index(self, file_reference: str, n_jobs: int):
         """_summary_"""
 
     @abstractmethod
-    def get_matching_oligo_pairs(self, database: dict, database_name: str, n_jobs: int):
-        """_summary_
-
-        Args:
-            database (dict): _description_
-            database_name (str): _description_
-            n_jobs (int): _description_
+    def _run_search(self, database, region, index_name, filter_same_gene_matches):
+        """
+        :param databse_region: _description_
+        :type databse_region: _type_
+        :param region: _description_
+        :type region: _type_
+        :param index_name: _description_
+        :type index_name: _type_
+        :param filter_same_gene_matches: _description_
+        :type filter_same_gene_matches: _type_
+        :return: _description_
+        :rtype: _type_
         """
 
-    def _create_fasta_file(self, database_region, dir, gene):
-        """Creates a fasta file with all the oligos of a specific gene. The fasta files are then used by the alignement tools.
+    def _run_filter(
+        self, database, region, database_name, filter_same_gene_matches=True
+    ):
+        matching_oligos, _ = self._run_search(
+            database, region, database_name, filter_same_gene_matches
+        )
+        filtered_database_region = self._filter_matching_oligos(
+            database[region], matching_oligos
+        )
+        return filtered_database_region
 
-        :param database_region: database with all the oligos contained in one gene
-        :type database_region: dict
+    def get_matching_oligo_pairs(self, database: dict, reference_fasta: str):
+        """_summary_
+
+        :param database: _description_
+        :type database: dict
+        :param reference_fasta: _description_
+        :type reference_fasta: str
+        :return: _description_
+        :rtype: _type_
+        """
+        database_name = self._create_index(reference_fasta, n_jobs=1)
+        matches = self._run_search(
+            database,
+            region=None,
+            index_name=database_name,
+            filter_same_gene_matches=False,
+        )
+        matches = matches[1]
+        return list(zip(matches["query"].values, matches["target"].values))
+
+    # TODO: Both these functions are temporary, should be solved with database.write_to_fasta
+    def _create_fasta_file(self, database, directory, region):
+        """
+        Temporary function
+        Creates a fasta file with all the oligos of a specific gene. The fasta files are then used by the alignement tools.
+
+        :param database: database with all the oligos contained
+        :type database: dict
         :param dir: path to the directory where the files will be stored
         :type dir: str
-        :param gene: id of the gene we are processing
-        :type gene: str
+        :param region: id of the region we are processing
+        :type region: str
         :return: path of the fasta file generated
         :rtype: str
         """
-        file_fasta_gene = os.path.join(dir, f"oligos_{gene}.fna")
+        file_fasta_region = os.path.join(directory, f"oligos_{region}.fna")
         output = []
-        for oligo_id in database_region.keys():
+        for oligo_id in database[region].keys():
             output.append(
-                SeqRecord(database_region[oligo_id]["sequence"], oligo_id, "", "")
+                SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", "")
             )
-        with open(file_fasta_gene, "w") as handle:
+        with open(file_fasta_region, "w") as handle:
             SeqIO.write(output, handle, "fasta")
-        return file_fasta_gene
+        return file_fasta_region
+
+    def _create_fasta_multiple_regions(self, database, directory, regions):
+        """Temporary function"""
+        file_fasta = os.path.join(directory, "oligos_database.fna")
+        output = []
+        for region in regions:
+            for oligo_id in database[region].keys():
+                output.append(
+                    SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", "")
+                )
+        with open(file_fasta, "w") as handle:
+            SeqIO.write(output, handle, "fasta")
+        return file_fasta

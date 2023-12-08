@@ -10,6 +10,11 @@ import pandas as pd
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 from joblib import Parallel, delayed
 
+from oligo_designer_toolsuite.constants import (
+    GENE_SEPARATOR_ANNOTATION,
+    GENE_SEPARATOR_OLIGO,
+)
+
 from . import AlignmentSpecificityFilter
 
 ############################################
@@ -82,10 +87,10 @@ class Blastn(AlignmentSpecificityFilter):
         """
 
         # run the balst search
-        database_name = self.create_index(file_reference, n_jobs=n_jobs)
+        database_name = self._create_index(file_reference, n_jobs=n_jobs)
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_blast_filter)(database[region], region, database_name)
+            delayed(self._run_filter)(database, region, database_name)
             for region in regions
         )
 
@@ -95,7 +100,7 @@ class Blastn(AlignmentSpecificityFilter):
 
         return database
 
-    def create_index(self, file_reference: str, n_jobs: int):
+    def _create_index(self, file_reference: str, n_jobs: int):
         # create blast database
         database_exists = False
         database_name = os.path.basename(file_reference)
@@ -114,35 +119,32 @@ class Blastn(AlignmentSpecificityFilter):
             out, err = cmd()
         return database_name
 
-    def _run_blast_filter(self, database_region, region, database_name):
+    def _run_search(self, database, region, index_name, filter_same_gene_matches=True):
         """Run BlastN alignment tool to find regions of local similarity between sequences, where sequences are oligos and background sequences (e.g. transcript, genome, etc.).
         BlastN identifies the transcript regions where oligos match with a certain coverage and similarity.
 
-        :param database_region: database containing the oligos form one region
-        :type database_region: dict
+        :param database: database containing the oligos
+        :type database: dict
         :param region: id of the region processed
         :type region: str
         :param database_name: path to the blatn database
         :type database_name: str
         """
-        matching_oligos, _ = self._run_blast_search(
-            database_region, region, database_name
-        )
-        filtered_database_region = self._filter_matching_oligos(
-            database_region, matching_oligos
-        )
-        return filtered_database_region
+        # TODO: This part has to change
+        if region is not None:
+            file_oligo_fasta_gene = self._create_fasta_file(
+                database, self.dir_fasta, region
+            )
+        else:
+            file_oligo_fasta_gene = self._create_fasta_multiple_regions(
+                database, self.dir_fasta, regions=database.keys()
+            )
+            region = "multiple_regions"
 
-    def _run_blast_search(
-        self, database_region, region, database_name, filter_same_gene_matches=True
-    ):
-        file_oligo_fasta_gene = self._create_fasta_file(
-            database_region, self.dir_fasta, region
-        )
         file_blast_gene = os.path.join(self.dir_blast, f"blast_{region}.txt")
         cmd = NcbiblastnCommandline(
             query=file_oligo_fasta_gene,
-            db=os.path.join(self.dir_blast, database_name),
+            db=os.path.join(self.dir_blast, index_name),
             outfmt="6 qseqid sseqid length qstart qend qlen",
             out=file_blast_gene,
             strand=self.strand,
@@ -162,21 +164,6 @@ class Blastn(AlignmentSpecificityFilter):
         return self._find_matching_oligos(
             blast_results, filter_same_gene_matches=filter_same_gene_matches
         )
-
-    def get_matching_oligo_pairs(self, database: dict, database_name: str, region: str):
-        """_summary_
-
-        Args:
-            database (dict): _description_
-            database_name (str): _description_
-            n_jobs (int): _description_
-
-        Returns:
-            _type_: _description_
-        """
-        matches = self._run_blast_search(database[region], region, database_name, False)
-        matches = matches[1]
-        return list(zip(matches["query"].values, matches["target"].values))
 
     def _read_blast_output(self, file_blast_gene):
         """Load the output of the BlastN alignment search into a DataFrame and process the results."""
@@ -205,8 +192,12 @@ class Blastn(AlignmentSpecificityFilter):
             },
         )
         # return the real matches, that is the ones not belonging to the same region of the query oligo
-        blast_results["query_gene_id"] = blast_results["query"].str.split("::").str[0]
-        blast_results["target_gene_id"] = blast_results["target"].str.split("::").str[0]
+        blast_results["query_gene_id"] = (
+            blast_results["query"].str.split(GENE_SEPARATOR_OLIGO).str[0]
+        )
+        blast_results["target_gene_id"] = (
+            blast_results["target"].str.split(GENE_SEPARATOR_ANNOTATION).str[0]
+        )
         return blast_results
 
     def _find_matching_oligos(self, blast_results, filter_same_gene_matches=True):
@@ -223,6 +214,8 @@ class Blastn(AlignmentSpecificityFilter):
             blast_matches = blast_results[
                 blast_results["query_gene_id"] != blast_results["target_gene_id"]
             ]
+        else:
+            blast_matches = blast_results
         if self.coverage is not None:
             values = blast_matches["query_length"] * self.coverage / 100
             blast_matches.insert(

@@ -10,6 +10,11 @@ from subprocess import Popen
 import pandas as pd
 from joblib import Parallel, delayed
 
+from oligo_designer_toolsuite.constants import (
+    GENE_SEPARATOR_ANNOTATION,
+    GENE_SEPARATOR_OLIGO,
+)
+
 from . import Bowtie
 
 ############################################
@@ -82,7 +87,7 @@ class Bowtie2(Bowtie):
 
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_bowtie2)(database[region], region, index_name)
+            delayed(self._run_bowtie2)(database, region, index_name)
             for region in regions
         )
 
@@ -92,17 +97,17 @@ class Bowtie2(Bowtie):
 
         return database
 
-    def _run_bowtie2(self, database_region, region, index_name):
+    def _run_bowtie2(self, database, region, index_name):
         """Run Bowtie 2 alignment tool to find regions of local similarity between sequences and reference.
 
-        :param database_region: database containing the oligos form one region
-        :type database_region: dict
+        :param database: database containing the oligos
+        :type database: dict
         :param region: id of the region processed
         :type region: str
         """
 
         file_oligo_fasta_gene = self._create_fasta_file(
-            database_region, self.dir_fasta, region
+            database, self.dir_fasta, region
         )
         file_bowtie2_gene = os.path.join(
             self.dir_bowtie2,
@@ -135,9 +140,9 @@ class Bowtie2(Bowtie):
         # read the results of the bowtie search
         bowtie2_results = self._read_bowtie2_output(file_bowtie2_gene)
         # filter the DB based on the bowtie results
-        matching_oligos = self._find_matching_oligos(bowtie2_results)
+        matching_oligos, _ = self._find_matching_oligos(bowtie2_results)
         filtered_database_region = self._filter_matching_oligos(
-            database_region, matching_oligos
+            database[region], matching_oligos
         )
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie2, file_bowtie2_gene))
@@ -184,9 +189,9 @@ class Bowtie2(Bowtie):
         )
 
         bowtie2_results["query_gene_id"] = (
-            bowtie2_results["query"].str.split("_").str[0]
+            bowtie2_results["query"].str.split(GENE_SEPARATOR_OLIGO).str[0]
         )
         bowtie2_results["reference_gene_id"] = (
-            bowtie2_results["reference"].str.split("::").str[0]
+            bowtie2_results["reference"].str.split(GENE_SEPARATOR_ANNOTATION).str[0]
         )
         return bowtie2_results
