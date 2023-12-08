@@ -21,5 +21,22 @@ Thank you for your interest in contributing to Oligo Designer Toolsuite! Here's 
 1. **Use Pre-defined Modules**: Use our existing modules when building pipelines. If additional steps are needed, add them to the library, ensuring they align with our design.
 2. **Raising Issues**: If in doubt about any aspect, raise an issue on the repository, we would be very happy to help!
 
+### Documentation
+Please make sure all contributions are documented using reStructuredText (reST). This standard is chosen for its compatibility with Sphinx, enabling us to generate well-structured and consistent project documentation. Here's an example of reST documentation format:
+```
+def function(arg1, arg2):
+    """
+    A brief description of the function.
+
+    :param arg1: Description of arg1.
+    :type arg1: int
+    :param arg2: Description of arg2.
+    :type arg2: str
+    :returns: Description of return value.
+    :rtype: bool
+    """
+    pass
+```
+
 ## Thank you!
 By adhering to these guidelines, you help maintain the quality of Oligo Designer Toolsuite. We appreciate your collaboration and contributions!
