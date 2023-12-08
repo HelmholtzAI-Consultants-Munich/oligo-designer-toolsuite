@@ -8,6 +8,7 @@ import warnings
 from Bio import SeqIO
 from pathlib import Path
 
+from ..utils._utils import check_if_list
 from ..utils._sequence_parser import FastaParser
 
 ############################################
@@ -41,31 +42,43 @@ class ReferenceDatabase:
 
     def __init__(
         self,
-        file_fasta: str,
-        metadata: dict = {},
         dir_output: str = "output",
     ):
         """Constructor"""
         self.fasta_parser = FastaParser()
 
-        self.file_fasta = file_fasta
-        if os.path.exists(self.file_fasta):
-            if not self.fasta_parser.check_fasta_format(self.file_fasta):
-                raise ValueError("Fasta file has incorrect format!")
-        else:
-            raise ValueError("Fasta file does not exist!")
-
-        self.metadata = metadata
+        self.metadata = {}
         self.database = []
 
         self.dir_output = os.path.abspath(os.path.join(dir_output, "reference_database"))
 
-    def load_fasta_into_database(self):
-        """Load sequences from fasta file and stored in databse."""
-        with open(self.file_fasta, "r") as handle:
-            self.database = list(SeqIO.parse(handle, "fasta"))
+    def load_metadata(self, metadata):
+        """Loading metadata information for the oligo database.
 
-    def write_fasta_from_database(
+        :param metadata: Dictionary or path to yaml file containing metadata of oligo database
+        :type dict_metadata: dict or str
+        """
+        if self.metadata:
+            warnings.warn("Metadata not empty! Overwriting metadata with new metadata from file!")
+
+        if type(metadata) is str and os.path.exists(metadata):
+            with open(metadata) as handle:
+                self.metadata = yaml.safe_load(handle)
+        elif type(metadata) is dict:
+            self.metadata = metadata
+        else:
+            raise ValueError("Metadat has icorrect format!")
+
+    def load_sequences_fom_fasta(self, file_fasta, database_overwrite: bool = False):
+        """Load sequences from fasta file and stored in databse."""
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta)
+        if database_overwrite:
+            warnings.warn("Overwriting database!")
+            self.database = fasta_sequences
+        else:
+            self.database.extend(fasta_sequences)
+
+    def write_database_to_fasta(
         self,
         filename: str,
     ):
@@ -83,11 +96,11 @@ class ReferenceDatabase:
                 SeqIO.write(self.database, handle_fasta, "fasta")
             self.file_fasta = file_database
         else:
-            raise ValueError("Database is empty! Nothing written to fasta file.")
+            raise ValueError("Database is empty! Nothing to be written to fasta file.")
 
         return file_database
 
-    def write_metadata_from_database(
+    def write_metadata_to_yaml(
         self,
         filename: str,
     ):
@@ -108,6 +121,8 @@ class ReferenceDatabase:
         :param region_ids: List of region ids.
         :type region_ids: list
         """
+        region_ids = check_if_list(region_ids)
+
         if self.database:
             database_filtered = []
             for entry in self.database:

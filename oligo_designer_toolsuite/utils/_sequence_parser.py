@@ -208,7 +208,7 @@ class FastaParser:
         pattern = r"\S+:\S+-\S+\(.*\)"
         return bool(re.match(pattern, entry))
 
-    def read_fasta_sequences(self, file_fasta_in, region_ids):
+    def read_fasta_sequences(self, file_fasta_in, region_ids=None):
         # check if files exist and are in correct format
         if os.path.exists(file_fasta_in):
             if not self.check_fasta_format(file_fasta_in):

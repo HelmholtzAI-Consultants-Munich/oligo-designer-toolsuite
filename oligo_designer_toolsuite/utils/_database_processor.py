@@ -15,8 +15,8 @@ def merge_databases(database1, database2):
         database_modified = {region: {} for region in database.keys()}
         for region, values in database.items():
             for oligo_id, oligo_info in values.items():
-                oligo_sequence = oligo_info["sequence"]
-                oligo_info.pop("sequence")
+                oligo_sequence = oligo_info["oligo"]
+                oligo_info.pop("oligo")
                 database_modified[region][oligo_sequence] = oligo_info
         return database_modified
 
@@ -41,7 +41,7 @@ def merge_databases(database1, database2):
         i = 1
         for oligo_sequence, oligo_info in value.items():
             oligo_id = f"{region}::{i}"
-            oligo_seq_info = {"sequence": oligo_sequence} | oligo_info
+            oligo_seq_info = {"oligo": oligo_sequence} | oligo_info
             database_merged[region][oligo_id] = oligo_seq_info
             i += 1
 

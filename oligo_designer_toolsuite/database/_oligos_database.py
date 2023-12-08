@@ -9,6 +9,7 @@ import pandas as pd
 
 from pathlib import Path
 
+from typing import Literal, get_args
 from collections import defaultdict
 
 from Bio import SeqIO
@@ -18,6 +19,8 @@ from Bio.SeqRecord import SeqRecord
 from ..utils._utils import check_if_list, check_tsv_format
 from ..utils._sequence_parser import FastaParser
 from ..utils._database_processor import merge_databases, collapse_info_for_duplicated_sequences
+
+_TYPES_SEQ = Literal["target", "oligo"]
 
 
 ############################################
@@ -143,7 +146,7 @@ class OligoDatabase:
         database_tmp2 = defaultdict(dict)
         for entry in database_tmp1:
             region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
-            entry["sequence"] = entry["sequence"]
+            # entry["sequence"] = entry["sequence"]
             database_tmp2[region_id][oligo_id] = entry
 
         database_tmp2 = dict(database_tmp2)
@@ -158,13 +161,23 @@ class OligoDatabase:
         self.database = database_tmp2
 
     def load_sequences_from_fasta(
-        self, file_fasta_in: str, region_ids: list[str] = None, database_overwrite: bool = False
+        self,
+        file_fasta_in: str,
+        sequence_type: _TYPES_SEQ,
+        region_ids: list[str] = None,
+        database_overwrite: bool = False,
     ):
         """add sequences to the database that are stored in a fasta file.
         load those sequences as they are (no processing into smaller windows) but process header.
         merge duplicated sequences from the same region, considering if start/end are the same.
         extend the database, not overwrite it.
         check if sequnce should be target or oligo, i.e. sequence type."""
+
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+        sequence_reverse_complement_type = options[0] if options[0] != sequence_type else options[1]
 
         region_ids = check_if_list(region_ids)
 
@@ -193,9 +206,13 @@ class OligoDatabase:
             i = 1
             for oligo_sequence, oligo_info in value.items():
                 oligo_id = f"{region}::{i}"
-                i += 1
-                oligo_seq_info = {"sequence": oligo_sequence} | oligo_info
+                oligo_sequence_reverse_complement = str(Seq(oligo_sequence).reverse_complement())
+                oligo_seq_info = {
+                    sequence_type: oligo_sequence,
+                    sequence_reverse_complement_type: oligo_sequence_reverse_complement,
+                } | oligo_info
                 database_tmp[region][oligo_id] = oligo_seq_info
+                i += 1
 
         if not database_overwrite and self.database:
             database_tmp = merge_databases(self.database, database_tmp)
@@ -226,14 +243,18 @@ class OligoDatabase:
             with open(self.file_removed_regions, "a") as handle:
                 handle.write("\n".join(f"{region}\t{pipeline_step}" for region in regions_to_remove) + "\n")
 
-    def get_sequence_list(self):
+    def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
         """Converts the database into a list of sequences
 
         Returns:
             list of str: list of all sequences contained in the database
         """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
         sequences = [
-            str(oligo_attributes["sequence"])
+            str(oligo_attributes[sequence_type])
             for region_id, oligo_dict in self.database.items()
             for oligo_id, oligo_attributes in oligo_dict.items()
         ]
@@ -302,7 +323,7 @@ class OligoDatabase:
 
         return file_database, file_metadata
 
-    def write_fasta_from_database(self, filename: str = "oligo_database"):
+    def write_database_to_fasta(self, filename: str = "oligo_database", sequence_type: _TYPES_SEQ = "oligo"):
         """Write sequences stored in database to fasta file.
 
         :param filename: Database filename prefix, defaults to "oligo_database"
@@ -310,6 +331,11 @@ class OligoDatabase:
         :return: Path to fasta file.
         :rtype: str
         """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+
         file_fasta = os.path.join(self.dir_output, f"{filename}.fna")
         output_fasta = []
 
@@ -317,10 +343,10 @@ class OligoDatabase:
             for region_id, oligo in self.database.items():
                 for oligo_id, oligo_attributes in oligo.items():
                     seq_record = SeqRecord(
-                        Seq(oligo_attributes["sequence"]),
+                        Seq(oligo_attributes[sequence_type]),
                         id=oligo_id,
                         name=oligo_id.split("::")[0],
-                        description="oligonucleotide",
+                        description=sequence_type,
                     )
                     output_fasta.append(seq_record)
 
