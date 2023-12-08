@@ -11,8 +11,8 @@ import pandas as pd
 from joblib import Parallel, delayed
 
 from oligo_designer_toolsuite.constants import (
-    GENE_SEPARATOR_ANNOTATION,
-    GENE_SEPARATOR_OLIGO,
+    REGION_SEPARATOR_ANNOTATION,
+    REGION_SEPARATOR_OLIGO,
 )
 
 from . import AlignmentSpecificityFilter
@@ -219,10 +219,10 @@ class Bowtie(AlignmentSpecificityFilter):
         )
         # return the real matches, that is the ones not belonging to the same region of the query oligo
         bowtie_results["query_gene_id"] = (
-            bowtie_results["query"].str.split(GENE_SEPARATOR_OLIGO).str[0]
+            bowtie_results["query"].str.split(REGION_SEPARATOR_OLIGO).str[0]
         )
         bowtie_results["reference_gene_id"] = (
-            bowtie_results["reference"].str.split(GENE_SEPARATOR_ANNOTATION).str[0]
+            bowtie_results["reference"].str.split(REGION_SEPARATOR_ANNOTATION).str[0]
         )
 
         return bowtie_results

@@ -63,28 +63,40 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
     @abstractmethod
     def _create_index(self, file_reference: str, n_jobs: int):
-        """_summary_"""
+        """
+        Abstract method for creating an index based on the provided file reference.
+
+        :param file_reference: path to the file that will be used as reference for the alignement.
+        :type file_reference: str
+        :param n_jobs: number of jobs for parallel processing during index creation.
+        :type n_jobs: int
+        :returns: name of the created or initialized database.
+        :rtype: str
+        :raises NotImplementedError: If not overridden in a subclass.
+        """
 
     @abstractmethod
-    def _run_search(self, database, region, index_name, filter_same_gene_matches):
+    def _run_search(self, database, region, index_name, filter_same_region_matches):
         """
-        :param databse_region: _description_
-        :type databse_region: _type_
-        :param region: _description_
-        :type region: _type_
-        :param index_name: _description_
-        :type index_name: _type_
-        :param filter_same_gene_matches: _description_
-        :type filter_same_gene_matches: _type_
-        :return: _description_
-        :rtype: _type_
+        Abstract method for running a search of database region and the agains the provided index, and optionally filters matches from the same region.
+
+        :param database: database containing the oligos
+        :type database: dict
+        :param region: id of the region processed
+        :type region: str
+        :param index_name: path of the database or index to search against
+        :type index_name: str
+        :param filter_same_region_matches: flag to indicate whether to filter matches from the same gene
+        :type filter_same_region_matches: bool
+        :returns: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data
+        :rtype: (numpy.ndarray, pandas.DataFrame)
         """
 
     def _run_filter(
-        self, database, region, database_name, filter_same_gene_matches=True
+        self, database, region, database_name, filter_same_region_matches=True
     ):
         matching_oligos, _ = self._run_search(
-            database, region, database_name, filter_same_gene_matches
+            database, region, database_name, filter_same_region_matches
         )
         filtered_database_region = self._filter_matching_oligos(
             database[region], matching_oligos
@@ -106,7 +118,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             database,
             region=None,
             index_name=database_name,
-            filter_same_gene_matches=False,
+            filter_same_region_matches=False,
         )
         matches = matches[1]
         return list(zip(matches["query"].values, matches["target"].values))

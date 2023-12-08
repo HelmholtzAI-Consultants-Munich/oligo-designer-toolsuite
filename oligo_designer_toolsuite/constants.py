@@ -1,5 +1,5 @@
 """
     Constants used in the toolsuite
 """
-GENE_SEPARATOR_OLIGO = "::"
-GENE_SEPARATOR_ANNOTATION = "::"
+REGION_SEPARATOR_OLIGO = "::"
+REGION_SEPARATOR_ANNOTATION = "::"
