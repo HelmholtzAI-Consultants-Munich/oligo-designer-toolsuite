@@ -177,7 +177,7 @@ class Blastn(AlignmentSpecificityFilter):
             low_memory=False,
             names=[
                 "query",
-                "target",
+                "reference",
                 "alignment_length",
                 "query_start",
                 "query_end",
@@ -186,7 +186,7 @@ class Blastn(AlignmentSpecificityFilter):
             engine="c",
             dtype={
                 "query": str,
-                "target": str,
+                "reference": str,
                 "alignment_length": int,
                 "query_start": int,
                 "query_end": int,
@@ -197,8 +197,8 @@ class Blastn(AlignmentSpecificityFilter):
         blast_results["query_region_id"] = (
             blast_results["query"].str.split(REGION_SEPARATOR_OLIGO).str[0]
         )
-        blast_results["target_region_id"] = (
-            blast_results["target"].str.split(REGION_SEPARATOR_ANNOTATION).str[0]
+        blast_results["reference_region_id"] = (
+            blast_results["reference"].str.split(REGION_SEPARATOR_ANNOTATION).str[0]
         )
         return blast_results
 

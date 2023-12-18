@@ -119,7 +119,7 @@ class Bowtie(AlignmentSpecificityFilter):
 
         return index_name
 
-    def _run_search(self, database, region, index_name, filter_same_gene_matches):
+    def _run_search(self, database, region, index_name, filter_same_region_matches):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
         Bowtie identifies all alignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
@@ -185,7 +185,7 @@ class Bowtie(AlignmentSpecificityFilter):
 
         # filter the DB based on the bowtie results
         return self._find_matching_oligos(
-            bowtie_results, filter_same_gene_matches=filter_same_gene_matches
+            bowtie_results, filter_same_gene_matches=filter_same_region_matches
         )
 
     def _read_bowtie_output(self, file_bowtie_gene):

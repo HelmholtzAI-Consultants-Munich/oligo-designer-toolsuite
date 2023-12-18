@@ -121,7 +121,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             filter_same_region_matches=False,
         )
         matches = matches[1]
-        return list(zip(matches["query"].values, matches["target"].values))
+        return list(zip(matches["query"].values, matches["reference"].values))
 
     # TODO: Both these functions are temporary, should be solved with database.write_to_fasta
     def _create_fasta_file(self, database, directory, region):
