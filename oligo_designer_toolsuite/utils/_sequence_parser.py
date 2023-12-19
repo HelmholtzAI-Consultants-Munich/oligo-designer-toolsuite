@@ -20,8 +20,15 @@ from Bio import SeqIO
 
 
 class GffParser:
+    """A class for parsing GFF (General Feature Format) files.
+
+    GFF is a standard format for describing features of DNA, RNA, and protein sequences.
+    This parser is designed to handle GFF files and provides methods for extracting information
+    from the parsed data.
+    """
+
     def __init__(self) -> None:
-        """Constructor method"""
+        """Constructor for the GffParser class."""
         self.GFF_HEADER = [
             "seqid",
             "source",
@@ -36,20 +43,52 @@ class GffParser:
         self.R_COMMA = re.compile(r"\s*,\s*")
         self.R_KEYVALUE = re.compile(r"(\s+|\s*=\s*)")
 
-    def check_gff_format(self, file):
-        """File check. Is the file a GFF3/ or GTF file?
-
-        :param file: Path to file.
-        :type file: str
-        :return: Returns True if file has GFF3 or GTF format.
-        :rtype: bool
+    def check_gff_format(self, file: str):
         """
-        gtf = self.parse_annotation_from_gff(file, target_lines=100)
-        return any(gtf)
+        Checks the format of a GFF (General Feature Format) file.
+
+        This method parses the GFF file up to the specified number of lines (target_lines) to determine if it
+        contains any valid GFF entries.
+
+        :param file: The path to the GFF file to be checked.
+        :type file: str
+
+        :raises ValueError: If the file is not a valid GFF file or does not exist.
+        """
+
+        def _check_gff_content(file):
+            gtf = self.parse_annotation_from_gff(file, target_lines=100)
+            return any(gtf)
+
+        if os.path.exists(file):
+            if not _check_gff_content(file):
+                raise ValueError("GFF file has incorrect format!")
+        else:
+            raise ValueError("GFF file does not exist!")
 
     def parse_annotation_from_gff(
-        self, annotation_file, file_pickel=None, chunk_size=10000, target_lines=math.inf
+        self,
+        annotation_file: str,
+        file_pickel: str = None,
+        chunk_size: int = 10000,
+        target_lines: int = math.inf,
     ):
+        """Parses annotation data from a GFF (General Feature Format) file.
+
+        This method reads the GFF file, splits it into chunks for processing, and returns a DataFrame
+        containing the parsed annotation data or the path to a pickle file with the parsed annotation data.
+
+        :param annotation_file: The path to the GFF file to be parsed.
+        :type annotation_file: str
+        :param file_pickel: Optional. The path to save the pickled DataFrame. If None, the DataFrame is returned.
+        :type file_pickel: Optional[str]
+        :param chunk_size: The number of lines to process in each chunk.
+        :type chunk_size: int
+        :param target_lines: The maximum number of lines to read from the GFF file.
+        :type target_lines: int
+        :return: The parsed annotation data as a DataFrame or the path to the pickled DataFrame if 'file_pickel' is provided.
+        :rtype: Union[pd.DataFrame, str]
+        """
         csv_file, extra_info_file = self._split_annotation(
             annotation_file, chunk_size=chunk_size, target_lines=target_lines
         )
@@ -72,18 +111,31 @@ class GffParser:
         else:
             return dataframe
 
-    def load_annotation_from_pickel(self, file_pickel):
-        """Load GFF dataframe from pickel file
+    def load_annotation_from_pickel(self, file_pickel: str):
+        """
+        Load annotation data from a pickled DataFrame.
 
-        :param file_pickel:  File name of pickel file.
+        :param file_pickel: The path to the pickled DataFrame file.
         :type file_pickel: str
+        :return: The loaded annotation data as a DataFrame.
+        :rtype: pd.DataFrame
         """
         dataframe_gff = pickle.load(open(file_pickel, "rb"))
 
         return dataframe_gff
 
-    # Function to split GFF
-    def _split_annotation(self, annotation_file, chunk_size, target_lines):
+    def _split_annotation(self, annotation_file: str, chunk_size: int, target_lines: int):
+        """Split the GFF/GTF annotation file into a CSV file and an extra info file.
+
+        :param annotation_file: The path to the GFF/GTF annotation file.
+        :type annotation_file: str
+        :param chunk_size: The number of lines to process in each chunk.
+        :type chunk_size: int
+        :param target_lines: The maximum number of lines to process.
+        :type target_lines: int
+        :return: The paths to the CSV file and the extra info file.
+        :rtype: Tuple[str, str]
+        """
         csv_file = ".".join(annotation_file.split(".")[:-1]) + ".csv"
         extra_info_file = ".".join(annotation_file.split(".")[:-1]) + ".txt"
 
@@ -115,12 +167,12 @@ class GffParser:
         return csv_file, extra_info_file
 
     def _parse_fields(self, line: str):
-        """Parse a single GFF3/GTF line and return a dict.
+        """Parse the fields from a GFF/GTF annotation line.
 
-        :param line: Line of a GFF3/GTF file.
+        :param line: A line from the GFF/GTF annotation file.
         :type line: str
-        :return: Key - value pair of GFF3/GTF fileds or attributes.
-        :rtype: dict
+        :return: A dictionary containing parsed fields.
+        :rtype: Dict[str, Any]
         """
         result = {}
 
@@ -145,12 +197,12 @@ class GffParser:
         return result
 
     def _get_value(self, value: str):
-        """Return value for a field or attribute.
+        """Get the parsed value from the GFF/GTF annotation field.
 
-        :param value: Field of a GFF3/GTF file.
+        :param value: The value of the GFF/GTF annotation field.
         :type value: str
-        :return: Value extracted from input field.
-        :rtype: str
+        :return: Parsed value.
+        :rtype: Union[None, str, List[str]]
         """
         if not value:
             return None
@@ -167,11 +219,27 @@ class GffParser:
 
         return value
 
-    def _info_to_df_chunk(self, data_chunk):
+    def _info_to_df_chunk(self, data_chunk: pd.DataFrame):
+        """Convert a chunk of GFF/GTF annotation information to a DataFrame.
+
+        :param data_chunk: Chunk of GFF/GTF annotation information.
+        :type data_chunk: pd.DataFrame
+        :return: DataFrame containing parsed information.
+        :rtype: pd.DataFrame
+        """
         data_chunk = list(map(self._parse_fields, data_chunk))
         return pd.DataFrame(data_chunk)
 
     def _info_to_df(self, info_file, chunk_size):
+        """Convert GFF/GTF annotation information from a file to a DataFrame.
+
+        :param info_file: Path to the file containing additional GFF/GTF annotation information.
+        :type info_file: str
+        :param chunk_size: Size of each chunk to read from the file.
+        :type chunk_size: int
+        :return: DataFrame containing parsed information.
+        :rtype: pd.DataFrame
+        """
         info_dfs = []
         with open(info_file, "r") as info_f:
             data = info_f.readlines()
@@ -188,33 +256,98 @@ class GffParser:
 
 
 class FastaParser:
+    """A class for parsing FASTA files.
+
+    This class provides methods for parsing FASTA files, extracting information
+    from the headers, and handling sequence data.
+    """
+
     def __init__(self) -> None:
-        """Constructor method"""
+        """Constructor for the FastaParser class."""
 
-    def check_fasta_format(self, file):
-        """File check. Is the file a fasta file?
+    def check_fasta_format(self, file: str):
+        """Check the format of a FASTA file.
 
-        :param file: Path to file.
+        This method verifies whether the given file is a valid FASTA file by attempting
+        to parse its content using Biopython's SeqIO module.
+
+        :param file: The path to the FASTA file to be checked.
         :type file: str
-        :return: Returns True if file has fasta format.
-        :rtype: bool
+
+        :raises ValueError: If the file is not a valid FASTA file or does not exist.
         """
-        # taken from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
-        with open(file, "r") as handle:
-            fasta = SeqIO.parse(handle, "fasta")
-            return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
 
-    def is_coordinate(self, entry):
-        pattern = r"\S+:\S+-\S+\(.*\)"
-        return bool(re.match(pattern, entry))
+        def _check_fasta_content(file):
+            """Check the content of a file to determine if it follows the FASTA format.
 
-    def read_fasta_sequences(self, file_fasta_in, region_ids=None):
-        # check if files exist and are in correct format
-        if os.path.exists(file_fasta_in):
-            if not self.check_fasta_format(file_fasta_in):
+            This function reads the content of the provided file and uses Biopython's SeqIO
+            module to attempt parsing it as a FASTA file. It returns True if the file contains
+            at least one FASTA record, indicating a valid FASTA format. Otherwise, it returns False.
+
+            :param file: The path to the file to be checked.
+            :type file: str
+            :return: True if the file is in FASTA format, False otherwise.
+            :rtype: bool
+            """
+            # taken from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
+            with open(file, "r") as handle:
+                fasta = SeqIO.parse(handle, "fasta")
+                return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
+
+        if os.path.exists(file):
+            if not _check_fasta_content(file):
                 raise ValueError("Fasta file has incorrect format!")
         else:
             raise ValueError("Fasta file does not exist!")
+
+    def is_coordinate(self, entry: str):
+        """Check if the provided entry matches a specific coordinate pattern.
+
+        This function uses a regular expression pattern to check if the entry follows
+        the format of genomic coordinates, such as "chr:start-end(strand)". It returns
+        True if the entry matches the pattern, indicating it represents genomic coordinates.
+
+        :param entry: The entry to be checked for the coordinate pattern.
+        :type entry: str
+        :return: True if the entry is a genomic coordinate, False otherwise.
+        :rtype: bool
+        """
+        pattern = r"\S+:\S+-\S+\(.*\)"
+        return bool(re.match(pattern, entry))
+
+    def get_fasta_regions(self, file_fasta_in: str):
+        """Extract unique region identifiers from the headers of a FASTA file.
+
+        This function parses the headers of a FASTA file to extract region identifiers.
+        The region identifiers are then returned as a list, with duplicates removed.
+
+        :param file_fasta_in: The input FASTA file.
+        :type file_fasta_in: str
+        :return: A list of unique region identifiers extracted from the FASTA file.
+        :rtype: list[str]
+        """
+        region_ids = []
+        with open(file_fasta_in, "r") as handle:
+            for entry in SeqIO.parse(handle, "fasta"):
+                region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
+                region_ids.append(region)
+
+        return list(set(region_ids))
+
+    def read_fasta_sequences(self, file_fasta_in: str, region_ids: list[str] = None):
+        """Read FASTA sequences from a file, optionally filtering by specified region identifiers.
+
+        This function reads sequences from a FASTA file. If region_ids are provided, only the sequences
+        corresponding to those regions will be included in the output. If no region_ids are provided,
+        all sequences in the file will be returned.
+
+        :param file_fasta_in: The input FASTA file.
+        :type file_fasta_in: str
+        :param region_ids: Optional list of region identifiers to filter the sequences.
+        :type region_ids: list[str] or None
+        :return: List of FASTA sequences from the file, filtered by region_ids if specified.
+        :rtype: list[SeqRecord]
+        """
         # remove undesired regions already at the beginning
         if region_ids:
             fasta_sequences = []
@@ -229,13 +362,23 @@ class FastaParser:
 
         return fasta_sequences
 
-    def parse_fasta_header(self, header, parse_additional_info=True):
-        """Helper function to parse the header of a sequence entry in a fasta file.
+    def parse_fasta_header(self, header: str, parse_additional_info: bool = True):
+        """Parse information from a FASTA header.
 
-        :param header: Header of sequence entry, starting with '>'.
-        :type header: string
-        :return: Parsed header information, i.e. region, coordinates (chromosome, start, end, strand), and (optional) additional information
-        :rtype: str, dict, str
+        This function extracts region, additional information, and coordinates from a FASTA header.
+        The header can contain region information, coordinate information, and additional
+        information fields.
+
+        :param header: The header string from a FASTA entry.
+        :type header: str
+        :param parse_additional_info: Flag to indicate whether to parse additional information.
+                                    Default is True.
+        :type parse_additional_info: bool
+        :return: A tuple containing region, additional_info, and coordinates.
+                - region: The region information extracted from the header.
+                - additional_info: Additional information extracted from the header.
+                - coordinates: Dictionary containing chromosome, start, end, and strand information.
+        :rtype: tuple[str, dict, dict]
         """
         region = None
         additional_info = {}

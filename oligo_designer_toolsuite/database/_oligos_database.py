@@ -72,7 +72,7 @@ class OligoDatabase:
         self.dir_output = os.path.abspath(os.path.join(dir_output, "oligo_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        self.fatsa_parser = FastaParser()
+        self.fasta_parser = FastaParser()
 
         # Initialize databse object
         self.database = {}
@@ -203,15 +203,17 @@ class OligoDatabase:
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
         sequence_reverse_complement_type = options[0] if options[0] != sequence_type else options[1]
 
+        self.fasta_parser.check_fasta_format(file_fasta_in)
+
         if database_overwrite:
             warnings.warn("Overwriting database!")
 
         region_ids = check_if_list(region_ids)
 
-        fasta_sequences = self.fatsa_parser.read_fasta_sequences(file_fasta_in, region_ids)
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta_in, region_ids)
         region_sequences = {}
         for entry in fasta_sequences:
-            region, additional_info, coordinates = self.fatsa_parser.parse_fasta_header(entry.id)
+            region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
             oligo_info = coordinates | additional_info
             if region in region_sequences:
                 if entry.seq in region_sequences[region]:
@@ -334,8 +336,9 @@ class OligoDatabase:
         for region_id, oligo_dict in self.database.items():
             for oligo_id, oligo_attributes in oligo_dict.items():
                 if ("number_transcripts" in oligo_attributes) and ("transcript_id" in oligo_attributes):
+                    number_transcripts_gene = oligo_attributes["number_transcripts"]
                     number_transcripts_gene = int(
-                        [item for sublist in oligo_attributes["number_transcripts"] for item in sublist][0]
+                        [item for sublist in number_transcripts_gene for item in sublist][0]
                     )  # all values have to be the same
                     transcript_ids = [
                         item

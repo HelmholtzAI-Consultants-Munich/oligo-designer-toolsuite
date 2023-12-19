@@ -100,13 +100,7 @@ class CustomGenomicRegionGenerator:
 
         # load annotation file and store in pickel file
         self.gff_parser = GffParser()
-
-        if os.path.exists(self.annotation_file):
-            if not self.gff_parser.check_gff_format(self.annotation_file):
-                raise ValueError("GFF file has incorrect format!")
-        else:
-            raise ValueError("GFF file does not exist!")
-
+        self.gff_parser.check_gff_format(self.annotation_file)
         self.gff_parser.parse_annotation_from_gff(
             annotation_file=self.annotation_file, file_pickel=self.parsed_annotation_file
         )

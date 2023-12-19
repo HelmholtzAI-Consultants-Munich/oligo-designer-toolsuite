@@ -11,7 +11,24 @@ from collections import defaultdict
 
 
 def merge_databases(database1, database2):
+    """Merge two databases, combining their content while handling potential overlapping oligo sequences.
+
+    :param database1: The first database.
+    :type database1: dict
+    :param database2: The second database.
+    :type database2: dict
+    :return: The merged database.
+    :rtype: dict
+    """
+
     def _get_sequence_as_key(database):
+        """Modify the structure of the input database by using oligo sequences as keys.
+
+        :param database: The input database with regions and associated oligo information.
+        :type database: dict
+        :return: A modified database with oligo sequences as keys.
+        :rtype: dict
+        """
         database_modified = {region: {} for region in database.keys()}
         for region, values in database.items():
             for oligo_id, oligo_info in values.items():
@@ -21,6 +38,15 @@ def merge_databases(database1, database2):
         return database_modified
 
     def _add_database_content(database_tmp, database_in):
+        """Add the content of a second database to an existing database, merging information for overlapping oligo sequences.
+
+        :param database_tmp: The existing database to which the content will be added.
+        :type database_tmp: dict
+        :param database_in: The database containing additional content.
+        :type database_in: dict
+        :return: The modified database with the added content.
+        :rtype: dict
+        """
         for region, values in database_in.items():
             for oligo_sequence, oligo_info in values.items():
                 if oligo_sequence in database_tmp[region]:
@@ -49,7 +75,24 @@ def merge_databases(database1, database2):
 
 
 def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
+    """Collapse information for duplicated sequences by combining information from two dictionaries.
+
+    :param oligo_info1: The first dictionary of information.
+    :type oligo_info1: dict
+    :param oligo_info2: The second dictionary of information.
+    :type oligo_info2: dict
+    :return: A dictionary containing combined information from the input dictionaries.
+    :rtype: dict
+    """
+
     def _is_list_of_lists(item):
+        """Check if the given item is a list of lists.
+
+        :param item: The item to check.
+        :type item: Any
+        :return: True if the item is a list containing only lists, False otherwise.
+        :rtype: bool
+        """
         return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
 
     oligo_info = defaultdict(list)

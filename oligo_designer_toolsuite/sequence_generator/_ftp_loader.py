@@ -13,7 +13,10 @@ import pandas as pd
 from Bio import SeqIO
 from ftplib import FTP, error_perm
 from pathlib import Path
+from typing import Literal, get_args
 
+_TYPES_FILE = Literal["gff", "gtf", "fasta"]
+_TYPES_SEQ = Literal["dna", "ncrna"]
 
 ############################################
 # FTP Classes
@@ -21,28 +24,32 @@ from pathlib import Path
 
 
 class BaseFtpLoader:
-    """
-    Base class for downloading annotations from different FTP servers.
+    """Base class for FTP loaders.
 
-    :param dir_output: Path to directory where downloaded target file is saved
+    This class serves as a base for implementing FTP loaders, providing common functionality for
+    downloading files and managing the output directory.
+
+    :param dir_output: The directory path where files will be downloaded.
     :type dir_output: str
     """
 
-    def __init__(self, dir_output: str) -> None:
-        """Constructor method"""
+    def __init__(self, dir_output: str):
+        """Constructor for the BaseFtpLoader class."""
         self.dir_output = dir_output
 
     def _download(self, ftp_link: str, ftp_directory: str, file_name: str):
-        """
-        Download file from ftp server.
+        """Download a file from an FTP server.
 
-        :param ftp_link: Link to ftp server.
+        This method connects to an FTP server, navigates to the specified directory, and downloads a file
+        that matches the given filename pattern.
+
+        :param ftp_link: The FTP link for the server.
         :type ftp_link: str
-        :param ftp_directory: Directory path of target files on FTP server.
+        :param ftp_directory: The directory on the FTP server where the file is located.
         :type ftp_directory: str
-        :param file_name: Name of target file.
+        :param file_name: The pattern or exact name of the file to be downloaded.
         :type file_name: str
-        :return: Path to downloaded file.
+        :return: The local path of the downloaded file, or None if the file was not found.
         :rtype: str
         """
         ftp = FTP(ftp_link)
@@ -62,12 +69,13 @@ class BaseFtpLoader:
         return file_output
 
     def _decompress_gzip(self, file_gzip: str):
-        """
-        Decompress zip files.
+        """Decompress a gzip-compressed file.
 
-        :param file_gzip: Path to zipped file.
+        This method decompresses a gzip-compressed file, producing an uncompressed file in the same directory.
+
+        :param file_gzip: The path to the gzip-compressed file.
         :type file_gzip: str
-        :return: Path to unzipped file.
+        :return: The path to the decompressed file.
         :rtype: str
         """
         file_output = file_gzip.split(".gz")[0]
@@ -79,15 +87,18 @@ class BaseFtpLoader:
         return file_output
 
     def _download_and_decompress(self, ftp_link: str, ftp_directory: str, file_name: str):
-        """Download genome sequence from ftp server and unzip file.
+        """Download and decompress a file from an FTP server.
 
-        :param ftp_link: Link to ftp server.
+        This method downloads a file from the specified FTP server, decompresses it if it is gzip-compressed,
+        and returns the path to the resulting file.
+
+        :param ftp_link: The FTP server link.
         :type ftp_link: str
-        :param ftp_directory: Directory path of target files on FTP server.
+        :param ftp_directory: The directory on the FTP server where the file is located.
         :type ftp_directory: str
-        :param file_name: Name of target file.
+        :param file_name: The name or pattern of the file to download.
         :type file_name: str
-        :return: Path to downloaded file.
+        :return: The path to the downloaded and decompressed file.
         :rtype: str
         """
         file_download = self._download(ftp_link, ftp_directory, file_name)
@@ -95,39 +106,51 @@ class BaseFtpLoader:
 
         return file_unzipped
 
-    def _check_file_type(self, file_type: str):
-        """Check if file type is supported by FTP download.
+    def _check_file_type(self, file_type: _TYPES_FILE):
+        """Check if the specified file type is supported.
 
-        :param file_type: Type of target file.
-        :type file_type: str {'gff', 'gtf', 'fasta'}
+        This method checks whether the provided file type is supported by comparing it against a predefined list
+        of options.
+
+        :param file_type: The file type to check.
+        :type file_type: Literal['gff', 'gtf', 'fasta']
+        :raises AssertionError: If the provided file type is not in the list of supported options.
         """
-        valid_file_types = ["gff", "gtf", "fasta"]
+        options = get_args(_TYPES_FILE)
+        assert file_type in options, f"File type not supported! '{file_type}' is not in {options}."
 
-        if file_type not in valid_file_types:
-            if isinstance(file_type, str):
-                raise Exception(
-                    f"An invalid file type name is used as input. Accepted file types: {valid_file_types}"
-                )
-            else:
-                raise TypeError(
-                    f"file_type should be a string. Accepted choices for file_type: {valid_file_types}"
-                )
+    def _check_sequence_nature_type(self, sequence_nature: _TYPES_SEQ):
+        """Check if the provided sequence nature type is supported.
+
+        This method checks if the provided sequence nature type is supported by comparing it to the available options.
+
+        :param sequence_nature: The sequence nature type to be checked.
+        :type sequence_nature: Literal['dna', 'ncrna']
+        :raises AssertionError: If the sequence nature type is not supported.
+        """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_nature in options
+        ), f"Sequence nature type not supported! '{sequence_nature}' is not in {options}."
 
 
 class FtpLoaderEnsembl(BaseFtpLoader):
-    """
-    Class for downloading annotations from Ensembl, inheriting from BaseFtpLoader.
+    """FTP loader for Ensembl data.
 
-    :param dir_output: Path to directory where downloaded target file is saved
+    This class is designed to download and manage genome annotation data from Ensembl using FTP.
+    It extends the functionality of the BaseFtpLoader class and provides methods for downloading
+    and processing specific types of genomic files such as GFF, GTF, and FASTA.
+
+    :param dir_output: The directory where the downloaded data will be stored.
     :type dir_output: str
-    :param species: species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
+    :param species: The species for which data is being downloaded (e.g., 'human', 'mouse').
     :type species: str
-    :param annotation_release: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
+    :param annotation_release: The Ensembl annotation release version (e.g., '104').
     :type annotation_release: str
     """
 
-    def __init__(self, dir_output: str, species: str, annotation_release: str) -> None:
-        """Constructor method"""
+    def __init__(self, dir_output: str, species: str, annotation_release: str):
+        """Constructor for the FtpLoaderEnsembl class."""
         super().__init__(dir_output)
         self.species = species
         self.annotation_release = annotation_release
@@ -144,18 +167,21 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             "fasta": "dna_sm.primary_assembly.fa.gz",  # soft-masked version of the genome
         }
 
-    def download_files(self, file_type: str, sequence_nature: str = "dna"):
-        """
-        Download 'file_type' file (e.g. GFF, GTF or fasta) from Ensembl and unzip file.
+    def download_files(self, file_type: _TYPES_FILE, sequence_nature: _TYPES_SEQ = "dna"):
+        """Download and decompress Ensembl files.
 
-        :param file_type: Type of target file.
-        :type file_type: str {'gff', 'gtf', 'fasta'}
-        :param sequence_nature: Nature of the fasta sequence.
-        :type sequence_nature: str {'dna', 'ncrna'}
-        :return: Path to downloaded file, annotation release and genome assembly name.
-        :rtype: tuple of str
+        This method downloads and decompresses Ensembl files of a specified type and sequence nature.
+
+        :param file_type: The type of file to download.
+        :type file_type: Literal['gff', 'gtf', 'fasta']
+        :param sequence_nature: The sequence nature type.
+        :type sequence_nature: Literal['dna', 'ncrna'], optional
+        :return: Tuple containing the path to the downloaded file, annotation release, and assembly name.
+        :rtype: Tuple[str, str, str]
         """
-        # TODO: find a better solution for sequence_nature
+        self._check_file_type(file_type)
+        self._check_sequence_nature_type(sequence_nature)
+
         ftp_directory, ftp_file = self._get_params(file_type, sequence_nature)
         dowloaded_file = self._download_and_decompress(self.ftp_link, ftp_directory, ftp_file)
 
@@ -163,19 +189,19 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
         return dowloaded_file, self.annotation_release, self.assembly_name
 
-    def _get_params(self, file_type: str, sequence_nature: str):
-        """
-        Get directory and file name for specified file type from Ensembl server.
+    def _get_params(self, file_type: _TYPES_FILE, sequence_nature: _TYPES_SEQ):
+        """Get FTP parameters for downloading files.
 
-        :param file_type: Type of target file.
-        :type file_type: str {'gff', 'gtf', 'fasta'}
-        :param sequence_nature: Nature of the fasta sequence.
-        :type sequence_nature: str {'dna', 'ncrna'}
-        :return: ftp directory and name of target file on Ensembl server.
-        :rtype: tuple of str
-        """
-        self._check_file_type(file_type)
+        This method constructs the FTP directory and file name based on the provided file type and sequence nature.
+        If the annotation release is set to "current," it retrieves the current Ensembl release from the README file.
 
+        :param file_type: The type of file to be downloaded.
+        :type file_type: Literal['gff', 'gtf', 'fasta']
+        :param sequence_nature: The nature of the sequence.
+        :type sequence_nature: Literal['dna', 'ncrna']
+        :return: A tuple containing the FTP directory and file name.
+        :rtype: Tuple[str, str]
+        """
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         if self.annotation_release == "current":
@@ -204,21 +230,24 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
 
 class FtpLoaderNCBI(BaseFtpLoader):
-    """
-    Class for downloading annotations from NCBI, inheriting from BaseFtpLoader.
+    """A class for downloading genomic data files from the NCBI FTP server.
 
-    :param dir_output: Path to directory where downloaded target file is saved
+    The FtpLoaderNCBI class is designed to facilitate the download of genomic data files from the National Center for
+    Biotechnology Information (NCBI) FTP server. It extends the functionality of the BaseFtpLoader class and provides
+    methods for downloading and processing specific types of genomic files such as GFF, GTF, and FASTA.
+
+    :param dir_output: The directory where downloaded files will be stored.
     :type dir_output: str
-    :param taxon: taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
-    :type taxon: str {'archaea', 'bacteria', 'fungi', 'invertebrate', 'mitochondrion', 'plant', 'plasmid', 'plastid', 'protozoa', 'vertebrate_mammalian', 'vertebrate_other', 'viral'}
-    :param species: species name in NCBI download format, e.g. 'Homo_sapiens' for human; see https://ftp.ncbi.nlm.nih.gov/genomes/refseq/ for available species name
+    :param taxon: The taxonomic identifier for the species.
+    :type taxon: str
+    :param species: The name of the species.
     :type species: str
-    :param annotation_release: release number of annotation e.g. '109' or '109.20211119'  or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/.
+    :param annotation_release: The annotation release version.
     :type annotation_release: str
     """
 
-    def __init__(self, dir_output: str, taxon: str, species: str, annotation_release: str) -> None:
-        """Constructor method"""
+    def __init__(self, dir_output: str, taxon: str, species: str, annotation_release: str):
+        """Constructor for the FtpLoaderNCBI class."""
         super().__init__(dir_output)
         self.taxon = taxon
         self.species = species
@@ -240,16 +269,20 @@ class FtpLoaderNCBI(BaseFtpLoader):
             "fasta": self._map_chr_names_genome_sequence,
         }
 
-    def download_files(self, file_type: str):
-        """
-        Download 'file_type' file (e.g. GFF, GTF or fasta) from NCBI and unzip file.
-        Map chromosome annotation to Ref-Seq accession number.
+    def download_files(self, file_type: _TYPES_FILE):
+        """Download genomic data files from the NCBI FTP server.
 
-        :param file_type: Type of target file.
-        :type file_type: str {'gff', 'gtf', 'fasta'}
-        :return: Path to downloaded file, annotation release and genome assembly name.
-        :rtype: tuple of str
+        This method facilitates the download of specific types of genomic data files from the NCBI FTP server. It retrieves
+        the necessary parameters for the specified file type, downloads the corresponding files, and performs any required
+        post-processing, such as mapping chromosome names.
+
+        :param file_type: The type of file to be downloaded.
+        :type file_type: Literal['gff', 'gtf', 'fasta']
+        :return: Tuple containing the path to the downloaded file, annotation release, and assembly name.
+        :rtype: Tuple[str, str, str]
         """
+        self._check_file_type(file_type)
+
         ftp_directory, ftp_file, ftp_file_chr_mapping = self._get_params(file_type)
 
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
@@ -259,17 +292,18 @@ class FtpLoaderNCBI(BaseFtpLoader):
 
         return dowloaded_file, self.annotation_release, self.assembly_name
 
-    def _get_params(self, file_type: str):
-        """
-        Get directory and file name for specified file type from NCBI server.
+    def _get_params(self, file_type: _TYPES_FILE):
+        """Get FTP parameters for downloading genomic data files.
 
-        :param file_type: Type of target file.
-        :type file_type: str {'gff', 'gtf', 'fasta'}
-        :return: ftp directory, name of target file and chromosome mapping on NCBI server.
-        :rtype: tuple of str
-        """
-        self._check_file_type(file_type)
+        This method retrieves the FTP parameters necessary for downloading specific types of genomic data files from the
+        NCBI FTP server. It checks the file type, creates the necessary directories, and determines the appropriate FTP
+        directory, file names, and file paths.
 
+        :param file_type: The type of file to be downloaded.
+        :type file_type: Literal['gff', 'gtf', 'fasta']
+        :return: A tuple containing the FTP directory, file name for the genomic data file, and file name for the chromosome name mapping file.
+        :rtype: Tuple[str, str, str]
+        """
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         ftp_directory = "genomes/refseq/" + self.taxon + "/" + self.species + "/annotation_releases/"
@@ -312,16 +346,17 @@ class FtpLoaderNCBI(BaseFtpLoader):
         return ftp_directory, ftp_file, ftp_file_chr_mapping
 
     def _download_mapping_chr_names(self, ftp_directory: str, ftp_file_chr_mapping: str):
-        """
-        Download file with mapping of chromosome names between GenBank and Ref-Seq accession number
-        from ftp server and create a mapping dictionary.
+        """Download and parse the chromosome name mapping file.
 
-        :param ftp_directory: Directory path of target files on FTP server.
+        This method downloads the chromosome name mapping file from the specified FTP directory, parses the file to extract
+        the relevant information, and returns a dictionary mapping RefSeq accessions to chromosome names.
+
+        :param ftp_directory: The FTP directory containing the chromosome name mapping file.
         :type ftp_directory: str
-        :param ftp_file_chr_mapping: Name of file on ftp server that contains chromosome mapping information
+        :param ftp_file_chr_mapping: The name of the chromosome name mapping file.
         :type ftp_file_chr_mapping: str
-        :return: Dictionary with mapping of chromsome names from GenBank to Ref-Seq.
-        :rtype: dict
+        :return: A dictionary mapping RefSeq accessions to chromosome names.
+        :rtype: Dict
         """
         file_mapping = self._download(self.ftp_link, ftp_directory, ftp_file_chr_mapping)
 
@@ -350,13 +385,15 @@ class FtpLoaderNCBI(BaseFtpLoader):
         return mapping
 
     def _map_chr_names_gene_annotation(self, ftp_file: str, mapping: dict):
-        """
-        Process gene annotation file downloaded from NCBI: map chromosome annotation to Ref-Seq.
+        """Map chromosome names in a gene annotation file.
 
-        :param ftp_file: Path to gene annotation file (gtf/gff).
+        This method reads a gene annotation file in GTF format, maps chromosome names using the provided mapping, and
+        writes the modified annotation to the same file.
+
+        :param ftp_file: The path to the gene annotation file.
         :type ftp_file: str
-        :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
-        :type mapping: dict
+        :param mapping: A dictionary mapping RefSeq accessions to chromosome names.
+        :type mapping: Dict
         """
         file_tmp = os.path.join(self.dir_output, "temp.gtf")
 
@@ -392,13 +429,15 @@ class FtpLoaderNCBI(BaseFtpLoader):
         os.replace(file_tmp, ftp_file)
 
     def _map_chr_names_genome_sequence(self, ftp_file: str, mapping: dict):
-        """
-        Process genome sequence file downloaded from NCBI: map chromosome annotation to Ref-Seq.
+        """Map chromosome names in a genome sequence file.
 
-        :param ftp_file: Path to genome sequence file (e.g. fasta).
+        This method reads a genome sequence file in FASTA format, maps chromosome names using the provided mapping, and
+        writes the modified sequence to the same file.
+
+        :param ftp_file: The path to the genome sequence file.
         :type ftp_file: str
-        :param mapping: Chromosome mapping dictionary (GenBank to Ref-Seq).
-        :type mapping: dict
+        :param mapping: A dictionary mapping RefSeq accessions to chromosome names.
+        :type mapping: Dict
         """
         file_tmp = os.path.join(self.dir_output, "temp.fna")
 
