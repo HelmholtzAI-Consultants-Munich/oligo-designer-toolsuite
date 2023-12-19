@@ -3,10 +3,7 @@ import random
 import warnings
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
-from typing import List
 
-import numpy as np
-import yaml
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -139,7 +136,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
             blast_filter = Blastn(
                 dir_specificity=dir_specificity_primers,
                 word_size=primer_blast_word_size,
-                percent_identity=percent_identity,
+                perc_identity=percent_identity,
                 coverage=coverage,
                 strand=strand,
             )
@@ -164,7 +161,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blast_filter1 = Blastn(
             dir_specificity=dir_specificity1,
             word_size=primer_blast_word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -197,7 +194,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blast_filter2 = Blastn(
             dir_specificity=dir_specificity2,
             word_size=blast2_word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -452,7 +449,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blast_filter1 = Blastn(
             dir_specificity=dir_specificity1,
             word_size=blast1_word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -470,7 +467,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blast_filter2 = Blastn(
             dir_specificity=dir_specificity2,
             word_size=blast2_word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -482,7 +479,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blast_filter3 = Blastn(
             dir_specificity=dir_specificity3,
             word_size=blast3_word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -596,7 +593,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blastn1 = Blastn(
             dir_specificity=dir_specificity_ncrna,
             word_size=blast_ncrna_word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -631,7 +628,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blastn2 = Blastn(
             dir_specificity=dir_specificity_highly_expressed_genes,
             word_size=blast_highly_expressed_genes_word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -777,7 +774,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blastn = Blastn(
             dir_specificity=dir_specificity,
             word_size=word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand=strand,
         )
@@ -824,7 +821,7 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         blastn = Blastn(
             dir_specificity=dir_specificity,
             word_size=word_size,
-            percent_identity=percent_identity_ch,
+            perc_identity=percent_identity_ch,
             coverage=coverage,
             strand="minus",
         )

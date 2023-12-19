@@ -12,8 +12,8 @@ from . import SpecificityFilterBase
 ############################################
 
 
-class ExactMatches:
-    """This class filters oligos based duplicates found in the ``oligos_DB``. That is, oligos with the same sequences but belonging to different regions are filtered out.
+class ExactMatches(SpecificityFilterBase):
+    """This class filters oligos based duplicates found in the ``database``. That is, oligos with the same sequences but belonging to different regions are filtered out.
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str

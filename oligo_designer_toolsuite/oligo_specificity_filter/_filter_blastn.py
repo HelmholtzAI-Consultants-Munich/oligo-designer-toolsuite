@@ -43,24 +43,19 @@ class Blastn(AlignmentSpecificityFilter):
     def __init__(
         self,
         dir_specificity: str,
-        word_size: int,
-        percent_identity: float,
-        strand: str,
         coverage: float = None,
         min_alignment_length: int = None,
+        **kwargs,
     ):
         """Constructor."""
         super().__init__(dir_specificity)
-
-        self.word_size = word_size
-        self.percent_identity = percent_identity
-        self.strand = strand
+        self.kwargs = kwargs
+        self._verify_kwargs()
 
         if coverage is None and min_alignment_length is not None:
             self.min_alignment_length = min_alignment_length
         elif min_alignment_length is None and coverage is not None:
             self.coverage = coverage
-
         else:
             raise Exception(
                 "Please provide either coverage or a minimum alignment length"
@@ -149,10 +144,8 @@ class Blastn(AlignmentSpecificityFilter):
             db=os.path.join(self.dir_blast, index_name),
             outfmt="6 qseqid sseqid length qstart qend qlen",
             out=file_blast_region,
-            strand=self.strand,
-            word_size=self.word_size,
-            perc_identity=self.percent_identity,
             num_threads=1,  # ????
+            **self.kwargs,
         )
         out, err = cmd()
 
@@ -233,3 +226,38 @@ class Blastn(AlignmentSpecificityFilter):
         oligos_with_match = blast_matches_filtered["query"].unique()
 
         return oligos_with_match, blast_matches_filtered
+
+    def _verify_kwargs(self):
+        # Note: These kwargs are taken from https://www.ncbi.nlm.nih.gov/books/NBK279684/ table C2
+        allowed_kwargs = {
+            "word_size": int,
+            "gapopen": int,
+            "gapextend": int,
+            "reward": int,
+            "penalty": int,
+            "strand": str,
+            "dust": str,
+            "filtering_db": str,
+            "window_masker_taxid": int,
+            "window_masker_db": str,
+            "soft_masking": bool,
+            "lcase_masking": bool,
+            "db_soft_mask": int,
+            "db_hard_mask": int,
+            "perc_identity": int,
+            "xdrop_ungap": float,
+            "xdrop_gap": float,
+            "xdrop_gap_final": float,
+            "min_raw_gapped_score": int,
+            "ungapped": bool,
+        }
+        # Check and validate kwargs
+        for key, value in self.kwargs.items():
+            if key not in allowed_kwargs:
+                raise ValueError(f"Invalid argument: {key}")
+
+            expected_type = allowed_kwargs[key]
+            if not isinstance(value, expected_type):
+                raise TypeError(
+                    f"Expected {expected_type} for argument '{key}', got {type(value)}"
+                )
