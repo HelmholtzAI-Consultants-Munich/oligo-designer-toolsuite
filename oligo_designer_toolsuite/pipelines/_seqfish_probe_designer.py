@@ -2,37 +2,31 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.getcwd()))
-import yaml
 import logging
 import warnings
+
+import yaml
+
 from ..database import (
     CustomGenomicRegionGenerator,
-    NcbiGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,
+    NcbiGenomicRegionGenerator,
+    OligoDatabase,
+    ReferenceDatabase,
 )
-from ..database import OligoDatabase
-
-from ..database import OligoDatabase
+from ..oligo_efficiency_filter import AverageSetScoring, SeqFISHOligoScoring
 from ..oligo_property_filter import (
-    PropertyFilter,
-    MaskedSequences,
-    GCContent,
     ConsecutiveRepeats,
+    GCContent,
+    MaskedSequences,
+    PropertyFilter,
 )
-
-from ..database import ReferenceDatabase
-from ..oligo_specificity_filter import (
-    SpecificityFilter,
-    ExactMatches,
-    Blastn,
-)
+from ..oligo_selection import OligosetGenerator, padlock_heuristic_selection
+from ..oligo_specificity_filter import Blastn, ExactMatches, SpecificityFilter
 
 # from ._seqfish_readout_probe_designer import SeqFISHReadoutProbeDesigner
 # from ..sequence_design._barcoding_creation import BarcodingCreator
 # from ..sequence_design._seqFISH_sequence import SeqfishProbesCreator
-
-from ..oligo_efficiency_filter import SeqFISHOligoScoring, AverageSetScoring
-from ..oligo_selection import OligosetGenerator, padlock_heuristic_selection
 
 
 class SeqFISHProbeDesigner:
@@ -170,7 +164,7 @@ class SeqFISHProbeDesigner:
         blastn = Blastn(
             dir_specificity=self.dir_specificity,
             word_size=self.config["word_size"],
-            percent_identity=self.config["percent_identity"],
+            perc_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
             strand=self.config["strand"],
             # strand='plus',
@@ -238,7 +232,7 @@ class SeqFISHProbeDesigner:
         blastn_cross_hybr = Blastn(
             dir_specificity=self.dir_specificity,
             word_size=self.config["word_size"],
-            percent_identity=self.config["percent_identity"],
+            perc_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
             # THE MOST IMPORTANT PART HERE IS STRAND = "MINUS"
             strand="minus",

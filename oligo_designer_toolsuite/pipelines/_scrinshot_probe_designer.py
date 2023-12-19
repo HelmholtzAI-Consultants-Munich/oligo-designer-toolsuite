@@ -6,23 +6,13 @@ import inspect
 import logging
 import os
 import shutil
-import sys
 import warnings
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from datetime import datetime
 from pathlib import Path
-from subprocess import Popen
 
-import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.database import (
-    CustomGenomicRegionGenerator,
-    EnsemblGenomicRegionGenerator,
-    NcbiGenomicRegionGenerator,
-    OligoDatabase,
-    ReferenceDatabase,
-)
+from oligo_designer_toolsuite.database import ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -227,7 +217,7 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         blastn = Blastn(
             dir_specificity=dir_specificity,
             word_size=blast_word_size,
-            percent_identity=blast_percent_identity,
+            perc_identity=blast_percent_identity,
             coverage=blast_coverage,
             strand="plus",
         )

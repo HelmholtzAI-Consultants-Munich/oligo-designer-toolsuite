@@ -1,35 +1,21 @@
-from ..database import OligoDatabase, ReferenceDatabase
-from ..oligo_property_filter import (
-    PropertyFilter,
-    GCContent,
-    ConsecutiveRepeats,
-    MaskedSequences,
-)
-from ..oligo_specificity_filter import (
-    SpecificityFilter,
-    ExactMatches,
-    Blastn,
-)
-from ..oligo_efficiency_filter import (
-    SeqFISHOligoScoring,
-    AverageSetScoring,
-)
-from ..oligo_selection import (
-    padlock_heuristic_selection,
-    OligosetGenerator,
-)
-
-from ._base_probe_designer import BaseProbeDesigner
-
-import os
 import logging
+import os
 import shutil
 
-
 # from typing_extensions import Literal # Python 3.7 or below
-from typing import List, Tuple, Literal
+from typing import List, Literal, Tuple
 
-from Bio.Seq import Seq
+from ..database import OligoDatabase, ReferenceDatabase
+from ..oligo_efficiency_filter import AverageSetScoring, SeqFISHOligoScoring
+from ..oligo_property_filter import (
+    ConsecutiveRepeats,
+    GCContent,
+    MaskedSequences,
+    PropertyFilter,
+)
+from ..oligo_selection import OligosetGenerator, padlock_heuristic_selection
+from ..oligo_specificity_filter import Blastn, ExactMatches, SpecificityFilter
+from ._base_probe_designer import BaseProbeDesigner
 
 
 class SeqfishPlusProbeDesigner(BaseProbeDesigner):
@@ -118,7 +104,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         blastn = Blastn(
             dir_specificity=dir_specificity,
             word_size=word_size,  # 15 (config)
-            percent_identity=percent_identity,  # 100 (config)
+            perc_identity=percent_identity,  # 100 (config)
             coverage=coverage,  # alignment length instead (config)
             strand=strand,
         )
@@ -216,7 +202,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         blastn_cross_hybr = Blastn(
             dir_specificity=dir_specificity,  # 15 (config) see specificity filter
             word_size=word_size,
-            percent_identity=percent_identity,
+            perc_identity=percent_identity,
             coverage=coverage,
             strand="minus",  # To be verified
         )
