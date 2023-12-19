@@ -214,7 +214,7 @@ class Blastn(AlignmentSpecificityFilter):
 
         if filter_same_region_matches:
             blast_matches = blast_results[
-                blast_results["query_region_id"] != blast_results["target_region_id"]
+                blast_results["query_region_id"] != blast_results["reference_region_id"]
             ]
         else:
             blast_matches = blast_results

@@ -1,0 +1,21 @@
+region_id	oligo_id	sequence	chromosome	start	end	strand	length	additional_information_fasta
+region_1	region_1::oligo_1	CTCACTCGACTCTTACACAGTCATA		0	0		25
+region_1	region_1::oligo_2	TATAACCCTGAGGAGGTATACCTAG		0	0		25
+region_1	region_1::oligo_3	CGATTCGGAGATGTTTGATTGTCCG		0	0		25
+region_1	region_1::oligo_4	AAGAAGAGAGCTGAGTATCTCCTGG		0	0		25
+region_1	region_1::oligo_5	AGCAAAGTCTTTGAGGTATCTATGG		0	0		25
+region_1	region_1::oligo_6	ACTTGATGAACTACGTAGTCGTATT		0	0		25
+region_1	region_1::oligo_7	CACTACTAGTTCCTGTGGTAGAGCG		0	0		25
+region_1	region_1::oligo_8	ACTGAGGATATATAGAATGGCGTTC		0	0		25
+region_2	region_2::oligo_1	GAACGCCATTCTATATATCCTCAGT		0	0		25
+region_2	region_2::oligo_2	CAAGATTGGATAGGACTCGACCCCG		0	0		25
+region_2	region_2::oligo_3	AAATTTAGAAGACTAGTCACGCACA		0	0		25
+region_2	region_2::oligo_4	TAGTTCAGTAGCAATGAGAGGCCCG		0	0		25
+region_2	region_2::oligo_5	GATGATATTATCATGGACTATCGTC		0	0		25
+region_2	region_2::oligo_6	CGTGTTCTTCTCTGTTGTCCGCACC		0	0		25
+region_2	region_2::oligo_7	CTCACTCGACTCTTACACAGTCATA		0	0		25
+region_3	region_3::oligo_1	TATGACTGTGTAAGAGTCGAGTGAG		0	0		25
+region_3	region_3::oligo_2	CTAGGTATACCTCCTCAGGGTTATA		0	0		25
+region_3	region_3::oligo_3	CGGACAATCAAACATCTCCGAATCG		0	0		25
+region_3	region_3::oligo_4	TCAGTATTTAGAGACGTGTTGCGAC		0	0		25
+region_3	region_3::oligo_5	TGTCAGCACGACCGAAACGCGCTAT		0	0		25
