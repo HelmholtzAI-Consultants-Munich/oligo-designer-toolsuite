@@ -89,9 +89,6 @@ class Blastn(AlignmentSpecificityFilter):
         kwargs = {
             "outfmt": "6 qseqid sseqid length qstart qend qlen",
             "num_threads": 1,  # ????
-            "word_size": self.word_size,
-            "perc_identity": self.perc_identity,
-            "strand": self.strand,
         }
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
@@ -153,6 +150,9 @@ class Blastn(AlignmentSpecificityFilter):
             query=file_oligo_fasta_region,
             out=file_blast_region,
             db=os.path.join(self.dir_blast, index_name),
+            word_size=self.word_size,
+            perc_identity=self.perc_identity,
+            strand=self.strand,
             **kwargs,
         )
         out, err = cmd()
