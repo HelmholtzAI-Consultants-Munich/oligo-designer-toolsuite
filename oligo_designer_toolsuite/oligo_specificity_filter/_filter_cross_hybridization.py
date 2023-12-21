@@ -72,6 +72,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         matching_oligo_pairs = self.specificity_filter.get_matching_oligo_pairs(
             oligo_database, database_name
         )
+        print(matching_oligo_pairs)
         return nx.from_edgelist(matching_oligo_pairs)
 
     def _count_oligos_per_region(self, oligo_database):

@@ -234,3 +234,11 @@ class Blastn(AlignmentSpecificityFilter):
         oligos_with_match = blast_matches_filtered["query"].unique()
 
         return oligos_with_match, blast_matches_filtered
+
+    def get_matching_oligo_pairs(self, database: dict, reference_fasta: str, **kwargs):
+        return super().get_matching_oligo_pairs(
+            database,
+            reference_fasta,
+            outfmt="6 qseqid sseqid length qstart qend qlen",
+            num_threads=1,
+        )

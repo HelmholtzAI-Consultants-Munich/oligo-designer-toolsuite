@@ -285,7 +285,7 @@ def test_cross_hybridization_filter_blast_bigger_region_policy(tmp_path):
     blastn = Blastn(
         tmp_path,
         word_size=word_size,
-        perc_identity=percent_identity,
+        percent_identity=percent_identity,
         strand="minus",
         coverage=coverage,
     )
@@ -349,7 +349,7 @@ def test_cross_hybridization_filter_blast_degree_policy(tmp_path):
     blastn = Blastn(
         tmp_path,
         word_size=word_size,
-        perc_identity=percent_identity,
+        percent_identity=percent_identity,
         strand="minus",
         coverage=coverage,
     )
