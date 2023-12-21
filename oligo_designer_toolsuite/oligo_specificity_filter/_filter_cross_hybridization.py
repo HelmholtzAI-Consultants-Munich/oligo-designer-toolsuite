@@ -68,6 +68,16 @@ class CrossHybridizationFilter(SpecificityFilterBase):
     def _create_cross_hybridization_graph(
         self, oligo_database: dict, reference_fasta: str
     ):
+        """
+        Create a cross-hybridization graph based on matching oligo pairs. Where nodes are oligos and edges indicate that the oligos match
+
+        :param oligo_database: The oligo database
+        :type oligo_database: dict
+        :param reference_fasta: The path to the reference FASTA file.
+        :type reference_fasta: str
+        :return: A graph representing cross-hybridization relationships between oligos.
+        :rtype: networkx.Graph
+        """
         matching_oligo_pairs = self.specificity_filter.get_matching_oligo_pairs(
             oligo_database, reference_fasta
         )
@@ -75,4 +85,12 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         return nx.from_edgelist(matching_oligo_pairs)
 
     def _count_oligos_per_region(self, oligo_database):
+        """
+        Count the number of oligos per region in the provided oligo database.
+
+        :param oligo_database: A dictionary containing oligos grouped by regions.
+        :type oligo_database: dict
+        :return: A dictionary mapping region names to the number of oligos in each region.
+        :rtype: dict
+        """
         return {region: len(oligo_database[region]) for region in oligo_database.keys()}
