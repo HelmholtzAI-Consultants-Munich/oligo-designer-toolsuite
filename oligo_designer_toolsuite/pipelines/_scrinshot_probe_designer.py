@@ -217,7 +217,7 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         blastn = Blastn(
             dir_specificity=dir_specificity,
             word_size=blast_word_size,
-            perc_identity=blast_percent_identity,
+            percent_identity=blast_percent_identity,
             coverage=blast_coverage,
             strand="plus",
         )

@@ -78,7 +78,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
     @abstractmethod
     def _run_search(self, database, region, index_name, filter_same_region_matches):
         """
-        Abstract method for running a search of database region and the agains the provided index, and optionally filters matches from the same region.
+        Abstract method for running a search of database region and the against the provided index, and optionally filters matches from the same region.
 
         :param database: database containing the oligos
         :type database: dict
@@ -93,17 +93,17 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         """
 
     def _run_filter(
-        self, database, region, database_name, filter_same_region_matches=True
+        self, database, region, database_name, filter_same_region_matches=True, **kwargs
     ):
         matching_oligos, _ = self._run_search(
-            database, region, database_name, filter_same_region_matches
+            database, region, database_name, filter_same_region_matches, **kwargs
         )
         filtered_database_region = self._filter_matching_oligos(
             database[region], matching_oligos
         )
         return filtered_database_region
 
-    def get_matching_oligo_pairs(self, database: dict, reference_fasta: str):
+    def get_matching_oligo_pairs(self, database: dict, reference_fasta: str, **kwargs):
         """_summary_
 
         :param database: _description_
@@ -119,6 +119,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             region=None,
             index_name=database_name,
             filter_same_region_matches=False,
+            **kwargs,
         )
         matches = matches[1]
         return list(zip(matches["query"].values, matches["reference"].values))
