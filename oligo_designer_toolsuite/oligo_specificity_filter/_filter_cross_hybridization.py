@@ -68,9 +68,8 @@ class CrossHybridizationFilter(SpecificityFilterBase):
     def _create_cross_hybridization_graph(
         self, oligo_database: dict, reference_fasta: str
     ):
-        database_name = self.specificity_filter._create_index(reference_fasta, n_jobs=1)
         matching_oligo_pairs = self.specificity_filter.get_matching_oligo_pairs(
-            oligo_database, database_name
+            oligo_database, reference_fasta
         )
         print(matching_oligo_pairs)
         return nx.from_edgelist(matching_oligo_pairs)
