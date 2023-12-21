@@ -43,14 +43,17 @@ class Blastn(AlignmentSpecificityFilter):
     def __init__(
         self,
         dir_specificity: str,
+        word_size: int,
+        percent_identity: float,
+        strand: str,
         coverage: float = None,
         min_alignment_length: int = None,
-        **kwargs,
     ):
         """Constructor."""
         super().__init__(dir_specificity)
-        self.kwargs = kwargs
-        self._verify_kwargs()
+        self.word_size = word_size
+        self.perc_identity = percent_identity
+        self.strand = strand
 
         if coverage is None and min_alignment_length is not None:
             self.min_alignment_length = min_alignment_length
@@ -83,9 +86,16 @@ class Blastn(AlignmentSpecificityFilter):
 
         # run the balst search
         database_name = self._create_index(file_reference, n_jobs=n_jobs)
+        kwargs = {
+            "outfmt": "6 qseqid sseqid length qstart qend qlen",
+            "num_threads": 1,  # ????
+            "word_size": self.word_size,
+            "perc_identity": self.perc_identity,
+            "strand": self.strand,
+        }
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_filter)(database, region, database_name)
+            delayed(self._run_filter)(database, region, database_name, **kwargs)
             for region in regions
         )
 
@@ -115,7 +125,7 @@ class Blastn(AlignmentSpecificityFilter):
         return database_name
 
     def _run_search(
-        self, database, region, index_name, filter_same_region_matches=True
+        self, database, region, index_name, filter_same_region_matches=True, **kwargs
     ):
         """Run BlastN alignment tool to find regions of local similarity between sequences, where sequences are oligos and background sequences (e.g. transcript, genome, etc.).
         BlastN identifies the transcript regions where oligos match with a certain coverage and similarity.
@@ -141,11 +151,9 @@ class Blastn(AlignmentSpecificityFilter):
         file_blast_region = os.path.join(self.dir_blast, f"blast_{region}.txt")
         cmd = NcbiblastnCommandline(
             query=file_oligo_fasta_region,
-            db=os.path.join(self.dir_blast, index_name),
-            outfmt="6 qseqid sseqid length qstart qend qlen",
             out=file_blast_region,
-            num_threads=1,  # ????
-            **self.kwargs,
+            db=os.path.join(self.dir_blast, index_name),
+            **kwargs,
         )
         out, err = cmd()
 
@@ -226,38 +234,3 @@ class Blastn(AlignmentSpecificityFilter):
         oligos_with_match = blast_matches_filtered["query"].unique()
 
         return oligos_with_match, blast_matches_filtered
-
-    def _verify_kwargs(self):
-        # Note: These kwargs are taken from https://www.ncbi.nlm.nih.gov/books/NBK279684/ table C2
-        allowed_kwargs = {
-            "word_size": int,
-            "gapopen": int,
-            "gapextend": int,
-            "reward": int,
-            "penalty": int,
-            "strand": str,
-            "dust": str,
-            "filtering_db": str,
-            "window_masker_taxid": int,
-            "window_masker_db": str,
-            "soft_masking": bool,
-            "lcase_masking": bool,
-            "db_soft_mask": int,
-            "db_hard_mask": int,
-            "perc_identity": int,
-            "xdrop_ungap": float,
-            "xdrop_gap": float,
-            "xdrop_gap_final": float,
-            "min_raw_gapped_score": int,
-            "ungapped": bool,
-        }
-        # Check and validate kwargs
-        for key, value in self.kwargs.items():
-            if key not in allowed_kwargs:
-                raise ValueError(f"Invalid argument: {key}")
-
-            expected_type = allowed_kwargs[key]
-            if not isinstance(value, expected_type):
-                raise TypeError(
-                    f"Expected {expected_type} for argument '{key}', got {type(value)}"
-                )

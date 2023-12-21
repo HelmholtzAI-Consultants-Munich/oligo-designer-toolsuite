@@ -164,7 +164,7 @@ class SeqFISHProbeDesigner:
         blastn = Blastn(
             dir_specificity=self.dir_specificity,
             word_size=self.config["word_size"],
-            perc_identity=self.config["percent_identity"],
+            percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
             strand=self.config["strand"],
             # strand='plus',
@@ -232,7 +232,7 @@ class SeqFISHProbeDesigner:
         blastn_cross_hybr = Blastn(
             dir_specificity=self.dir_specificity,
             word_size=self.config["word_size"],
-            perc_identity=self.config["percent_identity"],
+            percent_identity=self.config["percent_identity"],
             coverage=self.config["coverage"],
             # THE MOST IMPORTANT PART HERE IS STRAND = "MINUS"
             strand="minus",

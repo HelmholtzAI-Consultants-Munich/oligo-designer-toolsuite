@@ -104,7 +104,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         blastn = Blastn(
             dir_specificity=dir_specificity,
             word_size=word_size,  # 15 (config)
-            perc_identity=percent_identity,  # 100 (config)
+            percent_identity=percent_identity,  # 100 (config)
             coverage=coverage,  # alignment length instead (config)
             strand=strand,
         )
@@ -202,7 +202,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         blastn_cross_hybr = Blastn(
             dir_specificity=dir_specificity,  # 15 (config) see specificity filter
             word_size=word_size,
-            perc_identity=percent_identity,
+            percent_identity=percent_identity,
             coverage=coverage,
             strand="minus",  # To be verified
         )

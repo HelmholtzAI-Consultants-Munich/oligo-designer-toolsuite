@@ -154,9 +154,9 @@ def test_filter_blast_match(tmp_path):
     oligo_database = OligoDatabase()
     blast_filter = Blastn(
         tmp_path,
-        coverage,
+        coverage=coverage,
         word_size=word_size,
-        perc_identity=percent_identity,
+        percent_identity=percent_identity,
         strand=strand,
     )
     oligo_database.load_database(file_oligo_info_match)
@@ -175,9 +175,9 @@ def test_filter_blast_no_match(tmp_path):
     oligo_database = OligoDatabase()
     blast_filter = Blastn(
         tmp_path,
-        coverage,
+        coverage=coverage,
         word_size=word_size,
-        perc_identity=percent_identity,
+        percent_identity=percent_identity,
         strand=strand,
     )
     oligo_database.load_database(file_oligo_info_no_match)
