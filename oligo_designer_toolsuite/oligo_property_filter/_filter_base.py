@@ -8,111 +8,212 @@ from Bio.SeqUtils import MeltingTemp as mt
 
 from seqfold import dg
 
-from abc import ABC, abstractmethod
+from . import PropertyFilterBase
+
+
+###TODO move this function to utils once database refactor is merged
+def check_sequence(seq: str, valid_characters={"A", "C", "T", "G"}) -> bool:
+    return all(char in valid_characters for char in seq)
+
 
 ############################################
 # Oligo Property Filter Classes
 ############################################
 
 
-class PropertyFilterBase(ABC):
-    """Base class that gives the structure for Oligo Property Filters."""
+class SoftMaskedSequenceFilter(PropertyFilterBase):
+    """A filter to check if a DNA sequence is soft-masked (contains lowercase letters)."""
 
     def __init__(self) -> None:
-        pass
+        """Constructor for the SoftMaskedSequenceFilter class."""
+        super().__init__()
 
-    @abstractmethod
-    def apply(self, sequence: str):
+    def apply(self, sequence: Seq) -> (bool, dict):
         """
-        Applies the filters to a given sequence and if the sequence fulfillts the constraints returns ``True`` and dictionary that stores additional computed features.
-        If this method is not reimplemented in the filters classes it will give a warning.
-        The aditional computed features must be float type.
+        Applies the soft mask filter to a DNA sequence and returns True if the sequence does not contain lower-case letters.
 
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: constraints outcome, dictionary with the additional features
-        :rtype: bool, dict
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
         """
+        if any(c.islower() for c in sequence):
+            return False, {}
+        return True, {}
 
 
-class MaskedSequences(PropertyFilterBase):
-    """Checks if the sequences contains a masked nucleotide."""
+class HardMaskedSequenceFilter(PropertyFilterBase):
+    """A filter to check if a DNA sequence contains a specific mask character (default is "N").
+
+    :param mask: The mask character to check for in the sequence. Default is "N".
+    :type mask: str
+    """
 
     def __init__(self, mask: str = "N") -> None:
-        """Constructor"""
+        """Constructor for the HardMaskedSequenceFilter class."""
         super().__init__()
         self.mask = mask
 
     def apply(self, sequence: Seq):
-        """Applies the filter and returns True if there isn't any masked nucleotide.
+        """
+        Applies the hard mask filter to a DNA sequence and returns True if the sequence does not contain the mask letter.
 
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: True if the constraint is fulfilled
-        :rtype: bool
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
         """
         if self.mask in sequence:
             return False, {}
         return True, {}
 
 
-class GCContent(PropertyFilterBase):
-    """Checks if the GC content of a sequence lies within a user defined interval [GC_content_min, GC_content_max].
+class ProhibitedSequenceFilter(PropertyFilterBase):
+    """A filter that checks for the absence of a specified prohibited sequence in a DNA sequence.
+    The filter will reject any sequence that contains the prohibited sequence.
 
-    :param GC_content_min: minumum GC content value that the oligos need to have
+    :param prohibited_sequence: The DNA sequence that is to be prohibited. This sequence should
+                                be a valid DNA sequence consisting of characters A, T, C, and G only.
+    :type prohibited_sequence: str
+    """
+
+    def __init__(
+        self,
+        prohibited_sequence: str,
+    ) -> None:
+        """Constructor for the ProhibitedSequenceFilter class."""
+        super().__init__()
+        if not check_sequence(prohibited_sequence):
+            raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
+        self.prohibited_sequence = prohibited_sequence.upper()
+
+    def apply(self, sequence: Seq):
+        """
+        Applies the filter to a given DNA sequence to check if it contains the prohibited sequence.
+
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
+        """
+        if self.prohibited_sequence not in sequence.upper():
+            return True, {}
+        return False, {}
+
+
+class HomopolymericRunsFilter(PropertyFilterBase):
+    """A filter hat checks for the absence of a specified homopolymeric run in a DNA sequence.
+    A homopolymeric run is defined as a sequence where the same nucleotide base repeats consecutively.
+
+    :param base: The nucleotide base (A, T, C, or G) that is checked for consecutive repeats.
+    :param n: The minimum number of consecutive repeats of the base that defines a homopolymeric run.
+    :type base: str
+    :type n: int
+    """
+
+    def __init__(
+        self,
+        base: str,
+        n: int,
+    ) -> None:
+        """Constructor for the HomopolymericRunsFilter class."""
+        super().__init__()
+        if not check_sequence(base):
+            raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
+        self.base = base.upper()
+        self.n = n
+        self.homopolymeric_run = base * n
+
+    def apply(self, sequence: Seq):
+        """Applies the filter to a given DNA sequence to check if it contains a homopolymeric run.
+
+        :param sequence: The DNA sequence to be checked for homopolymeric runs.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
+        """
+        if self.homopolymeric_run not in sequence.upper():
+            return True, {}
+        return False, {}
+
+
+class GCContentFilter(PropertyFilterBase):
+    """A filter to check if the GC content of a DNA sequence falls within a specified range [GC_content_min, GC_content_max].
+
+    :param GC_content_min: The minimum acceptable GC content as a percentage.
     :type GC_content_min: float
-    :param GC_content_max: maximum GC content value that the oligos need to have
+    :param GC_content_max: The maximum acceptable GC content as a percentage.
     :type GC_content_max: float
     """
 
     def __init__(self, GC_content_min: float, GC_content_max: float) -> None:
-        """Constructor"""
+        """Constructor for the GCContentFilter class."""
         super().__init__()
+        if GC_content_max <= GC_content_min:
+            raise ValueError("GC_content_max is lower that GC_content_min!")
         self.GC_content_min = GC_content_min
         self.GC_content_max = GC_content_max
-        assert GC_content_max >= GC_content_min, "Max value is lower that min value!"
 
     def apply(self, sequence: Seq):
-        """Applies the filter and returns True if the GC content fulfills requirements.
+        """Applies the GC content filter to a DNA sequence.
 
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: True if the constraint is fulfilled, GC content
-        :rtype: bool, dict
+        :param sequence: The DNA sequence to be checked for GC content.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
+                 the actual GC content if the condition is met.
+        :rtype: (bool, dict)
         """
         GC_content = round(gc_fraction(sequence) * 100, 4)
-        sequence_features = {"GC_content": GC_content}
         if self.GC_content_min < GC_content < self.GC_content_max:
-            return True, sequence_features
-        return False, {}  # if false the additional features are not been saved anyway
+            return True, {"GC_content": GC_content}
+        return False, {}
 
 
-class MeltingTemperatureNN(PropertyFilterBase):
-    """Checks if the melting temperature of a sequence lies within a user defined interval [Tm_min, Tm_max].
-    The melting tenperature is computed using nearest neighbor thermodynamics.
-    The parameters for melting temperature computation can be changed from default by providing ``Tm_parameters``
-    dict with parameters specifications.
-    The melting temperature can be corrected for salt ions by providing a ``Tm_salt_correction_parameters`` dict
-    with parameters specifications.
-    The melting temperature can be corrected for DMSO and formamide by providing a ``Tm_chem_correction_parameters`` dict
-    with parameters specifications.
+class GCClampFilter(PropertyFilterBase):
+    """A filter to check if the n 3' terminal bases end of a DNA sequence contain at least one G or C bases.
 
-    :param Tm_min: minimum melting temperature
+    :param n: The number of bases from the 3' end of the sequence to check for the presence of G or C.
+    :type n: int
+    """
+
+    def __init__(self, n: int) -> None:
+        """Constructor for the GCClampFilter class."""
+        super().__init__()
+        self.n = n
+
+    def apply(self, sequence: Seq):
+        """Applies the GC clamp filter to the 3' end of a DNA sequence and returns True if there is a GC clamp.
+        A GC clamp is the presence of a guanine (G) or cytosine (C) base in the last n bases (the 3' end) of an oligo.
+
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
+        """
+        for i in range(1, self.n + 1):
+            if sequence.upper()[-i] == "G" or sequence.upper()[-i] == "C":
+                return True, {}
+        return False, {}
+
+
+class MeltingTemperatureNNFilter(PropertyFilterBase):
+    """A filter to determine if the melting temperature (Tm) of a DNA sequence falls within a specified range [Tm_min, Tm_max].
+    It uses nearest-neighbor thermodynamic models to calculate the Tm, with optional salt and chemical corrections.
+
+    The parameters for Tm calculation can be adjusted from default by providing the ``Tm_parameters`` dict with parameters specifications.
+    The Tm can be corrected for salt ions by providing the ``Tm_salt_correction_parameters`` dict with parameters specifications.
+    The Tm can be corrected for DMSO and formamide by providing a ``Tm_chem_correction_parameters`` dict with parameters specifications.
+
+    :param Tm_min: The minimum acceptable melting temperature.
     :type Tm_min: float
-    :param Tm_max: maximum melting temperature
+    :param Tm_max: The maximum acceptable melting temperature.
     :type Tm_max: float
-    :param Tm_parameters: parameters to compute the melting temperature,
-        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
-        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+    :param Tm_parameters: Parameters for the nearest-neighbor thermodynamic model.
     :type Tm_parameters: dict
-    :param Tm_salt_correction_parameters: parameters to correct the melting temperature for salt ions, defaults to None, i.e. no correction
-        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
-        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-    :type Tm_salt_correction_parameters: dict
-    :param Tm_chem_correction_parameters: parameters to correct the melting temperature for DMSO and formamide, defaults to None, i.e. no correction
-        set to ```{}``` (empty dict) if you wish to use Bio.SeqUtils.MeltingTemp default parameters
-        for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-    :type Tm_chem_correction_parameters: dict
+    :param Tm_salt_correction_parameters: Optional parameters for salt correction.
+    :type Tm_salt_correction_parameters: dict, optional
+    :param Tm_chem_correction_parameters: Optional parameters for chemical correction.
+    :type Tm_chem_correction_parameters: dict, optional
     """
 
     def __init__(
@@ -123,20 +224,22 @@ class MeltingTemperatureNN(PropertyFilterBase):
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
     ) -> None:
-        """Constructor"""
+        """Constructor for the MeltingTemperatureNNFilter class."""
         super().__init__()
+        if Tm_max <= Tm_min:
+            raise ValueError("Tm_max is lower that Tm_min!")
         self.Tm_min = Tm_min
         self.Tm_max = Tm_max
         self.Tm_parameters = Tm_parameters
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
-    def __get_Tm(self, sequence: Seq):
-        """Computes the melting temperature of the sequence and applies salt or chemical corrections if parameters provided.
+    def _get_Tm(self, sequence: Seq):
+        """Internal method to calculate the melting temperature of a sequence.
 
-        :param sequence: sequence for which the melting temperature is computed
-        :type sequence: str
-        :return: melting temperature
+        :param sequence: The DNA sequence for which Tm is calculated.
+        :type sequence: Seq
+        :return: The calculated melting temperature.
         :rtype: float
         """
         Tm = mt.Tm_NN(sequence, **self.Tm_parameters)
@@ -147,187 +250,111 @@ class MeltingTemperatureNN(PropertyFilterBase):
         return round(Tm, 4)
 
     def apply(self, sequence: Seq):
-        """Applies the filter and returns True if the melting temperature fulfills requirements.
+        """Applies the melting temperature filter to a DNA sequence.
 
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: True if the constraint is fulfilled, melting temperature
-        :rtype: bool, dict
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
+                 the actual melting temperature if the condition is met.
+        :rtype: (bool, dict)
         """
-        Tm = self.__get_Tm(sequence)
-        sequence_features = {"melting_temperature": Tm}
+        Tm = self._get_Tm(sequence)
         if self.Tm_min < Tm < self.Tm_max:
-            return True, sequence_features
+            return True, {"melting_temperature": Tm}
         return False, {}
 
 
-class ConsecutiveRepeats(PropertyFilterBase):
-    """Filters the sequences containing a prohibited sequence.
+class SecondaryStructureFilter(PropertyFilterBase):
+    """A filter to evaluate the stability of secondary structures formed by a DNA sequence, based on free energy (∆G) at a given temperature.
+    Secondary structures can contain for instance hairpins, stacks, bulges or interior loops.
+    The minimum free energy of the folded sequence should be weaker (more positive) than the given threshold.
 
-    :param num_consecutive: minimum number of consecutive subsequences, that are not allowed in sequences
-    :type num_consecutive: int
-    :param repeated_sequences: subsequences which, if repeated num_consecutive times are not allowed in sequences
-    :type num_consecutive: list(str)
-    """
-
-    def __init__(
-        self,
-        num_consecutive: int,
-        prohibited_repeated_sequences: list[str] = ["A", "C", "T", "G"],
-    ) -> None:
-        """Initializes the class."""
-
-        super().__init__()
-        if num_consecutive > 1:
-            self.max_consecutive = num_consecutive
-        else:
-            self.max_consecutive = 2
-        self.repeated_sequences = prohibited_repeated_sequences
-
-    def apply(self, sequence: Seq):
-        """Applies the filter and returns True if the oligo does not contain prohibited sequences.
-
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: True if the constraint is fulfilled, empty dict
-        :rtype: bool and dict
-        """
-
-        for sub_seq in self.repeated_sequences:
-            repeated_sub_seq = sub_seq * self.max_consecutive
-            if repeated_sub_seq in sequence:
-                return False, {}
-        return True, {}  # ?
-
-
-class GCClamp(PropertyFilterBase):
-    """Filters the sequences by the presence of a GC Clamp: one of the n 3' terminal bases must be G or C
-
-    :param n: number of terminal bases to check for a G or a C
-    :type  n: int
-    """
-
-    def __init__(self, n_terminal_bases: int) -> None:
-        super().__init__()
-        self.n = n_terminal_bases
-
-    def apply(self, sequence: Seq):
-        """Applies the filter and returns True if there is a GC clamp
-
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: True if the constraint is fulfilled, empty dict
-        :rtype: bool
-        """
-        for i in range(self.n):
-            if sequence[-i - 1] == "G" or sequence[-i - 1] == "C":
-                return True, {}
-        return False, {}
-
-
-class SecondaryStructure(PropertyFilterBase):
-    """Filter sequences by the minimum free energy of the folded sequence, i.e. secondary structure containing stacks, bulges, hairpins or interior loops.
-    The more negative this values the more stable the secondary structure is.
-    Hence, the minimum free energy of the folded sequence should be weaker (more positive) than the given threshold.
-
-    :param T: The temperature to fold at, i.e. temperature at which the sequence folding is predicted (°C)
+    :param T: The temperature at which the free energy is calculated.
     :type T: float
-    :param DG: Delta G (minimum free energy) threshold for the folded sequence in kcal/mol
-    :type DG: float
-
+    :param thr_DG: The threshold free energy value for determining structure stability.
+    :type thr_DG: float
     """
 
-    def __init__(self, T: float, DG_thr: float) -> None:
-        """Constructor"""
+    def __init__(self, T: float, thr_DG: float) -> None:
+        """Constructor for the SecondaryStructureFilter class."""
         super().__init__()
         self.T = T
-        self.DG_thr = DG_thr
+        self.thr_DG = thr_DG
 
     def apply(self, sequence: Seq):
-        """Applies the filter and returns True if the minimum free energy of the folded sequence is higher than the given threshold.
+        """Applies the secondary structure stability filter to a DNA sequence.
 
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: True if the constrain is fulfilled
-        :rtype: bool
+        :param sequence: The DNA sequence to be checked for secondary structure stability.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
+                 the actual ∆G value if the condition is met.
+        :rtype: (bool, dict)
         """
-        delta_g = dg(sequence, temp=self.T)
-        sequence_features = {"secondary_structure_DG": delta_g}
-        if delta_g > self.DG_thr:
-            return True, sequence_features
+        DG = dg(sequence, temp=self.T)
+        if DG > self.thr_DG:
+            return True, {"secondary_structure_DG": DG}
         return False, {}
 
 
-class ThreePrimeSequence(PropertyFilterBase):
-    """Class to check if the 3' end of a DNA sequence has a specific sequence."""
+class ThreePrimeSequenceFilter(PropertyFilterBase):
+    """A filter to check the presence or absence of a specified sequence at the 3'-end of a DNA sequence.
+
+    :param three_prime_sequence: The sequence to check at the 3'-end of the DNA sequence.
+    :type three_prime_sequence: str
+    """
 
     def __init__(self, three_prime_sequence: str) -> None:
-        """
-        Initializes the filter with a sequence to match at the 3’ end of oligos.
-
-        :param three_prime_sequence: sequence to match at the 3' end
-        :type three_prime_sequence: str
-        """
+        """Constructor for the ThreePrimeSequenceFilter class."""
         super().__init__()
         self.three_prime_sequence = three_prime_sequence.upper()
 
-    def apply(self, sequence: str):
-        """
-        Checks if the 3' end of the given sequence matches the specified pattern, and filters it.
+    def apply(self, sequence: str, remove: bool = True):
+        """Applies the 3'-end sequence filter to a DNA sequence and eitehr keeps or removes the matching sequence, dependend on the parameter "remove".
 
-        :param sequence: sequence to be checked
+        :param sequence: The DNA sequence to be checked.
         :type sequence: str
-        :return: True if the 3' end doesn't contain the sequence, False otherwise, and an empty dict
-        :rtype: bool, dict
+        :param remove: If True, sequences ending with the specified sequence are filtered out. If False, only sequences ending with the specified sequence are retained.
+        :type remove: bool
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
         """
-
-        if sequence.upper().endswith(self.three_prime_sequence):
+        if remove:
+            if sequence.upper().endswith(self.three_prime_sequence):
+                return False, {}
+            return True, {}
+        else:
+            if sequence.upper().endswith(self.three_prime_sequence):
+                return True, {}
             return False, {}
-        return True, {}
 
 
-class FivePrimeSequence(PropertyFilterBase):
-    """Class to check if the 5' end of a DNA sequence has a specific sequence."""
+class FivePrimeSequenceFilter(PropertyFilterBase):
+    """A filter to check the presence or absence of a specified sequence at the 5'-end of a DNA sequence.
+
+    :param five_prime_sequence: The sequence to check at the 5'-end of the DNA sequence.
+    :type five_prime_sequence: str
+    """
 
     def __init__(self, five_prime_sequence: str) -> None:
-        """
-        Initializes the filter with a sequence to match at the 5’ end of oligos.
-
-        :param three_prime_sequence: sequence to match at the 5' end
-        :type three_prime_sequence: str
-        """
+        """Constructor for the FivePrimeSequenceFilter class."""
         super().__init__()
         self.five_prime_sequence = five_prime_sequence.upper()
 
-    def apply(self, sequence: str):
-        """
-        Checks if the 5' end of the given sequence matches the specified pattern, and filters it.
+    def apply(self, sequence: str, remove: bool = True):
+        """Applies the 5'-end sequence filter to a DNA sequence and eitehr keeps or removes the matching sequence, dependend on the parameter "remove".
 
-        :param sequence: sequence to be checked
+        :param sequence: The DNA sequence to be checked.
+        :param remove: If True, sequences starting with the specified sequence are filtered out. If False, only sequences starting with the specified sequence are retained.
         :type sequence: str
-        :return: True if the 5' end doesn't contain the sequence, False otherwise, and an empty dict
-        :rtype: bool, dict
+        :type remove: bool
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
         """
-
-        if sequence.upper().startswith(self.five_prime_sequence):
+        if remove:
+            if sequence.upper().startswith(self.five_prime_sequence):
+                return False, {}
+            return True, {}
+        else:
+            if sequence.upper().startswith(self.five_prime_sequence):
+                return True, {}
             return False, {}
-        return True, {}
-
-
-class RepeatMaskingFilter(PropertyFilterBase):
-    """
-    Filters out oligos containing soft-masked regions, indicated by lower-case letters.
-    """
-
-    def apply(self, sequence: str) -> (bool, dict):
-        """
-        Applies the filter and returns True if the sequence does not contain lower-case letters.
-
-        :param sequence: sequence to be filtered
-        :type sequence: str
-        :return: True if the sequence contains no lower-case letters, otherwise False
-        :rtype: bool, dict
-        """
-        if any(c.islower() for c in sequence):
-            return False, {}
-        return True, {}

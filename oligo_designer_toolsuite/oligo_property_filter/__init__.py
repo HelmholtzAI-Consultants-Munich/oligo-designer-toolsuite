@@ -2,32 +2,33 @@
 This module provides different sequence-property based filters for oligos like GC content or melting temperature filters.
 """
 
+from ._property_filter import PropertyFilter, PropertyFilterBase
 from ._filter_base import (
-    PropertyFilterBase,
-    GCContent,
-    MaskedSequences,
-    MeltingTemperatureNN,
-    GCClamp,
-    ConsecutiveRepeats,
-    SecondaryStructure,
-    ThreePrimeSequence,
-    FivePrimeSequence,
-    RepeatMaskingFilter,
+    SoftMaskedSequenceFilter,
+    HardMaskedSequenceFilter,
+    ProhibitedSequenceFilter,
+    HomopolymericRunsFilter,
+    GCContentFilter,
+    GCClampFilter,
+    MeltingTemperatureNNFilter,
+    SecondaryStructureFilter,
+    ThreePrimeSequenceFilter,
+    FivePrimeSequenceFilter,
 )
-from ._filter_padlock_oligos import PadlockArms
-from ._property_filter import PropertyFilter
+from ._filter_experiment_specific import PadlockArms
 
 __all__ = [
     "PropertyFilter",
     "PropertyFilterBase",
-    "MaskedSequences",
-    "MeltingTemperatureNN",
-    "GCContent",
+    "SoftMaskedSequenceFilter",
+    "HardMaskedSequenceFilter",
+    "ProhibitedSequenceFilter",
+    "HomopolymericRunsFilter",
+    "GCContentFilter",
+    "GCClampFilter",
+    "MeltingTemperatureNNFilter",
+    "SecondaryStructureFilter",
+    "ThreePrimeSequenceFilter",
+    "FivePrimeSequenceFilter",
     "PadlockArms",
-    "GCClamp",
-    "ConsecutiveRepeats",
-    "SecondaryStructure",
-    "ThreePrimeSequence",
-    "FivePrimeSequence",
-    "RepeatMaskingFilter",
 ]
