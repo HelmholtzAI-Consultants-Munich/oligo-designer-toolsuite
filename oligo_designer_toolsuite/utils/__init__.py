@@ -3,8 +3,8 @@ This module provides all additional functionalities that are needed for oligo de
 """
 
 from ._data_parser import (
-    check_gff_format,
     check_fasta_format,
+    check_gff_format,
     check_tsv_format,
     get_sequence_from_annotation,
     merge_fasta,
@@ -13,13 +13,13 @@ from ._data_parser import (
 from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
 from ._gff_parser import GffParser
 from ._sequence_design import (
-    generate_random_sequence,
-    generate_binary_sequences,
-    generate_codebook,
-    get_barcode,
     SCRINSHOT_or_ISS_backbone_sequence,
     convert_complementary_seq_to_arms,
     create_seqfish_plus_barcodes,
+    generate_binary_sequences,
+    generate_codebook,
+    generate_random_sequence,
+    get_barcode,
 )
 
 __all__ = [

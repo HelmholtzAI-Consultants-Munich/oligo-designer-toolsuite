@@ -29,9 +29,9 @@ class Bowtie(AlignmentSpecificityFilter):
 
     Use ``conda install -c bioconda bowtie`` to install Bowtie package
 
-    :param dir_specificity: directory where alignement temporary files can be written
+    :param dir_specificity: directory where alignment temporary files can be written
     :type dir_specificity: str
-    :param num_mismatches: Threshold value on the number of mismatches required for each oligo. ligos where the number of mismatches greater than this threshhold are considered valid. Possible values range from 0 to 3.
+    :param num_mismatches: Threshold value on the number of mismatches required for each oligo. oligos where the number of mismatches greater than this threshold are considered valid. Possible values range from 0 to 3.
     :type num_mismatches: int
     :param mismatch_region: The region of the oligo where the mismatches are considered. Oligos that have less than or equal to num_mismatches in the first L bases (where L is 5 or greater) are filtered out. If ``None`` then the whole sequence is considered, defaults to None
     :type mismatch_region: int
@@ -69,16 +69,17 @@ class Bowtie(AlignmentSpecificityFilter):
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
     def apply(self, database: dict, file_reference: str, n_jobs: int):
-        """Apply the bowtie filter in parallel on the given ``database``. Each jobs filters a single region, and  at the same time are generated at most ``n_job`` jobs.
+        """
+        Apply the Bowtie filter in parallel on the given ``database``. Each job filters a single region, and up to ``n_jobs`` are run simultaneously.
         The filtered database is returned.
 
-        :param database: database containing the oligos and their features
+        :param database: Database containing the oligos and their features.
         :type database: dict
-        :param file_reference: path to the file that will be used as reference for the alignement
+        :param file_reference: Path to the file that will be used as a reference for the alignment.
         :type file_reference: str
-        :param n_jobs: number of simultaneous parallel computations
+        :param n_jobs: Number of simultaneous parallel computations.
         :type n_jobs: int
-        :return: oligo info of user-specified regions
+        :return: Oligo info of user-specified regions.
         :rtype: dict
         """
         index_name = self._create_index(file_reference, n_jobs=n_jobs)
@@ -96,6 +97,16 @@ class Bowtie(AlignmentSpecificityFilter):
         return database
 
     def _create_index(self, file_reference: str, n_jobs: int):
+        """
+        Create a Bowtie database index.
+
+        :param file_reference: Path to the reference file used for creating the index.
+        :type file_reference: str
+        :param n_jobs: Number of simultaneous parallel computations (currently unused)
+        :type n_jobs: int
+        :return: The name of the created database index.
+        :rtype: str
+        """
         # Some bowtie initializations, change the names
         index_exists = False
         index_name = os.path.basename(file_reference)
@@ -119,15 +130,23 @@ class Bowtie(AlignmentSpecificityFilter):
 
         return index_name
 
-    def _run_search(self, database, region, index_name, filter_same_gene_matches):
+    def _run_search(self, database, region, index_name, filter_same_region_matches):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
         Bowtie identifies all alignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
-        :param databse: database containing the oligos
-        :type databse: dict
-        :param region: id of the region processed
+
+        :param database: Database containing the oligos.
+        :type database: dict
+        :param region: ID of the region processed.
         :type region: str
+        :param index_name: Name of the Blastn database index.
+        :type index_name: str
+        :param filter_same_region_matches: Whether to filter out results within the same.
+        :type filter_same_region_matches: bool
+        :return: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data
+        :rtype: (numpy.ndarray, pandas.DataFrame)
         """
+
         # TODO: This part has to change
         if region is not None:
             file_oligo_fasta_gene = self._create_fasta_file(
@@ -185,7 +204,7 @@ class Bowtie(AlignmentSpecificityFilter):
 
         # filter the DB based on the bowtie results
         return self._find_matching_oligos(
-            bowtie_results, filter_same_gene_matches=filter_same_gene_matches
+            bowtie_results, filter_same_gene_matches=filter_same_region_matches
         )
 
     def _read_bowtie_output(self, file_bowtie_gene):
@@ -230,8 +249,12 @@ class Bowtie(AlignmentSpecificityFilter):
     def _find_matching_oligos(self, bowtie_results, filter_same_gene_matches=True):
         """Use the results of the Bowtie alignment search to identify oligos with high similarity (i.e. low number of mismatches) based on user defined thresholds.
 
-        :param bowtie_results: DataFrame with processed bowtie alignment search results.
-        :type bowtie_results: pandas.DataFrame
+        :param bowtie_results: DataFrame with processed blast alignment search results.
+        :type bowtie_results: pandas.DataFrame:
+        param filter_same_region_matches: Whether to filter out results within the same region (default is True)
+        :type filter_same_region_matches: bool
+        :return: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data
+        :rtype: (numpy.ndarray, pandas.DataFrame)
         """
 
         if filter_same_gene_matches:
@@ -249,3 +272,28 @@ class Bowtie(AlignmentSpecificityFilter):
         oligos_with_match = bowtie_matches["query"].unique()
 
         return oligos_with_match, bowtie_matches
+
+    def get_matching_oligo_pairs(
+        self, database: dict, reference_fasta: str, n_jobs: int
+    ):
+        """
+        Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
+        contains the name of the oligo from the database and its corresponding match from the reference.
+
+        :param database: database containing the oligos.
+        :type database: dict
+        :param reference_fasta: path to the file that is used as an reference for the alignment
+        :type reference_fasta: str
+
+        :return: A list of matching oligo pairs.
+        :rtype: list of tuple
+        """
+        database_name = self._create_index(reference_fasta, n_jobs=n_jobs)
+        matches = self._run_search(
+            database,
+            region=None,
+            index_name=database_name,
+            filter_same_region_matches=False,
+        )
+        matches = matches[1]
+        return list(zip(matches["query"].values, matches["reference"].values))
