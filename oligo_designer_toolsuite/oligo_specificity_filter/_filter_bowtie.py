@@ -272,3 +272,28 @@ class Bowtie(AlignmentSpecificityFilter):
         oligos_with_match = bowtie_matches["query"].unique()
 
         return oligos_with_match, bowtie_matches
+
+    def get_matching_oligo_pairs(
+        self, database: dict, reference_fasta: str, n_jobs: int
+    ):
+        """
+        Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
+        contains the name of the oligo from the database and its corresponding match from the reference.
+
+        :param database: database containing the oligos.
+        :type database: dict
+        :param reference_fasta: path to the file that is used as an reference for the alignment
+        :type reference_fasta: str
+
+        :return: A list of matching oligo pairs.
+        :rtype: list of tuple
+        """
+        database_name = self._create_index(reference_fasta, n_jobs=n_jobs)
+        matches = self._run_search(
+            database,
+            region=None,
+            index_name=database_name,
+            filter_same_region_matches=False,
+        )
+        matches = matches[1]
+        return list(zip(matches["query"].values, matches["reference"].values))

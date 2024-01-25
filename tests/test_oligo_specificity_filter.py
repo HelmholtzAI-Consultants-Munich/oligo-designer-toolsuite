@@ -15,8 +15,8 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     LigationRegionCreation,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter.cross_hybridization_policies import (
-    remove_by_bigger_region_policy,
-    remove_by_degree_policy,
+    RemoveByBiggerRegionPolicy,
+    RemoveByDegreePolicy,
 )
 
 ############################################
@@ -291,7 +291,7 @@ def test_cross_hybridization_filter_blast_bigger_region_policy(tmp_path):
     )
     ch_filter = CrossHybridizationFilter(
         specificity_filter=blastn,
-        policy=remove_by_bigger_region_policy,
+        policy=RemoveByBiggerRegionPolicy(),
         dir_cross_hybridization=None,
     )
 
@@ -303,7 +303,7 @@ def test_cross_hybridization_filter_blast_bigger_region_policy(tmp_path):
     filtered_database = ch_filter.apply(
         database=oligo_database.database,
         file_reference=oligo_database_fasta,
-        n_jobs=None,
+        n_jobs=1,
     )
 
     filtered_oligos = {
@@ -320,7 +320,7 @@ def test_cross_hybridization_filter_bowtie_bigger_region_policy(tmp_path):
     bowtie_filter = Bowtie(tmp_path, num_mismatches, mismatch_region, strand="minus")
     ch_filter = CrossHybridizationFilter(
         specificity_filter=bowtie_filter,
-        policy=remove_by_bigger_region_policy,
+        policy=RemoveByBiggerRegionPolicy(),
         dir_cross_hybridization=None,
     )
 
@@ -332,7 +332,7 @@ def test_cross_hybridization_filter_bowtie_bigger_region_policy(tmp_path):
     filtered_database = ch_filter.apply(
         database=oligo_database.database,
         file_reference=oligo_database_fasta,
-        n_jobs=None,
+        n_jobs=1,
     )
 
     filtered_oligos = {
@@ -355,7 +355,7 @@ def test_cross_hybridization_filter_blast_degree_policy(tmp_path):
     )
     ch_filter = CrossHybridizationFilter(
         specificity_filter=blastn,
-        policy=remove_by_degree_policy,
+        policy=RemoveByDegreePolicy(),
         dir_cross_hybridization=None,
     )
 
@@ -367,7 +367,7 @@ def test_cross_hybridization_filter_blast_degree_policy(tmp_path):
     filtered_database = ch_filter.apply(
         database=oligo_database.database,
         file_reference=oligo_database_fasta,
-        n_jobs=None,
+        n_jobs=1,
     )
 
     filtered_oligos = {
@@ -384,7 +384,7 @@ def test_cross_hybridization_filter_bowtie_degree_policy(tmp_path):
     bowtie_filter = Bowtie(tmp_path, num_mismatches, mismatch_region, strand="minus")
     ch_filter = CrossHybridizationFilter(
         specificity_filter=bowtie_filter,
-        policy=remove_by_degree_policy,
+        policy=RemoveByDegreePolicy(),
         dir_cross_hybridization=None,
     )
 
@@ -396,7 +396,7 @@ def test_cross_hybridization_filter_bowtie_degree_policy(tmp_path):
     filtered_database = ch_filter.apply(
         database=oligo_database.database,
         file_reference=oligo_database_fasta,
-        n_jobs=None,
+        n_jobs=1,
     )
 
     filtered_oligos = {

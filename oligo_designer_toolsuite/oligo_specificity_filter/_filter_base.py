@@ -67,6 +67,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
     def _create_index(self, file_reference: str, n_jobs: int):
         """
         Abstract method for creating an index based on the provided file reference.
+        The index serves as a database specific to the alignment tool, used for facilitating the alignment processes.
 
         :param file_reference: path to the file that will be used as reference for the alignment.
         :type file_reference: str
@@ -121,7 +122,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         )
         return filtered_database_region
 
-    def get_matching_oligo_pairs(self, database: dict, reference_fasta: str, **kwargs):
+    @abstractmethod
+    def get_matching_oligo_pairs(
+        self, database: dict, reference_fasta: str, n_jobs: int
+    ):
         """
         Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
         contains the name of the oligo from the database and its corresponding match from the reference.
@@ -130,21 +134,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type database: dict
         :param reference_fasta: path to the file that is used as an reference for the alignment
         :type reference_fasta: str
-        :param kwargs: Additional keyword arguments to customize the search.
 
         :return: A list of matching oligo pairs.
         :rtype: list of tuple
         """
-        database_name = self._create_index(reference_fasta, n_jobs=1)
-        matches = self._run_search(
-            database,
-            region=None,
-            index_name=database_name,
-            filter_same_region_matches=False,
-            **kwargs,
-        )
-        matches = matches[1]
-        return list(zip(matches["query"].values, matches["reference"].values))
 
     # TODO: Both these functions are temporary, should be solved with database.write_to_fasta
     def _create_fasta_file(self, database, directory, region):

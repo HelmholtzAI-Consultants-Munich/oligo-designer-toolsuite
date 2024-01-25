@@ -137,23 +137,24 @@ class Blastn(AlignmentSpecificityFilter):
         self, database, region, index_name, filter_same_region_matches, **kwargs
     ):
         """
-        Run BlastN alignment tool to find regions of local similarity between sequences,
-        where sequences are oligos and background sequences (e.g., transcript, genome, etc.).
-        BlastN identifies the transcript regions where oligos match.
+        Run the BlastN alignment tool to identify regions of local similarity between sequences.
+        These sequences include oligos from the database and those in the index (e.g., transcript, genome, etc.).
+        BlastN determines the transcript regions where oligos have matching sequences.
 
         :param database: Database containing the oligos.
         :type database: dict
-        :param region: ID of the region processed.
+        :param region: ID of the region being processed.
         :type region: str
-        :param index_name: Name of the Blastn database index.
+        :param index_name: Name of the BlastN database index.
         :type index_name: str
-        :param filter_same_region_matches: Whether to filter out results within the same.
+        :param filter_same_region_matches: Whether to filter out matches within the same region.
         :type filter_same_region_matches: bool
         :param kwargs: Additional keyword arguments for the BlastN command.
         :type kwargs: dict
-        :return: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data
+        :return: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data.
         :rtype: (numpy.ndarray, pandas.DataFrame)
         """
+
         # TODO: This part has to change
         if region is not None:
             file_oligo_fasta_region = self._create_fasta_file(
@@ -263,7 +264,9 @@ class Blastn(AlignmentSpecificityFilter):
 
         return oligos_with_match, blast_matches_filtered
 
-    def get_matching_oligo_pairs(self, database: dict, reference_fasta: str, **kwargs):
+    def get_matching_oligo_pairs(
+        self, database: dict, reference_fasta: str, n_jobs: int
+    ):
         """
         Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
         contains the name of the oligo from the database and its corresponding match from the reference.
@@ -272,14 +275,18 @@ class Blastn(AlignmentSpecificityFilter):
         :type database: dict
         :param reference_fasta: path to the file that is used as an reference for the alignment
         :type reference_fasta: str
-        :param kwargs: Additional keyword arguments to customize the search.
 
         :return: A list of matching oligo pairs.
         :rtype: list of tuple
         """
-        return super().get_matching_oligo_pairs(
+        database_name = self._create_index(reference_fasta, n_jobs=n_jobs)
+        matches = self._run_search(
             database,
-            reference_fasta,
+            region=None,
+            index_name=database_name,
+            filter_same_region_matches=False,
             outfmt="6 qseqid sseqid length qstart qend qlen",
             num_threads=1,
         )
+        matches = matches[1]
+        return list(zip(matches["query"].values, matches["reference"].values))
