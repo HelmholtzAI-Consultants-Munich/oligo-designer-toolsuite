@@ -75,8 +75,9 @@ class SpecificityFilterBase(ABC):
         :return: database_region without the matching oligos
         :rtype: dict
         """
+        matching_oligos_ids = matching_oligos["query"].unique()
         oligo_ids = list(database_region.keys())
         for oligo_id in oligo_ids:
-            if oligo_id in matching_oligos:
+            if oligo_id in matching_oligos_ids:
                 del database_region[oligo_id]
         return database_region

@@ -16,7 +16,6 @@ from pathlib import Path
 from datetime import datetime
 from subprocess import Popen
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from pympler import summary, muppy, tracker
 
 
 

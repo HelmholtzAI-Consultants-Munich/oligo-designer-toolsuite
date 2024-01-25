@@ -6,11 +6,15 @@ import os
 import re
 import subprocess
 import pandas as pd
+import numpy as np
 
 from pathlib import Path
 from joblib import Parallel, delayed
+from Bio.SeqUtils import gc_fraction
+from Bio import SeqIO
 
 from . import SpecificityFilterBase
+from ..utils import get_sequence_from_annotation
 
 ############################################
 # Oligo Bowtie Filter Classes
@@ -37,6 +41,9 @@ class Bowtie(SpecificityFilterBase):
         num_mismatches: int = 3,
         mismatch_region: int = None,
         strand: str = None,
+        ai_filter: str = None,
+        ai_filter_threshold: float = 0.5,
+        ai_filter_path : str = None,
     ):
         super().__init__(dir_specificity)
 
@@ -55,6 +62,9 @@ class Bowtie(SpecificityFilterBase):
             self.mismatch_region = mismatch_region
 
         self.strand = strand
+        self.ai_filter = ai_filter
+        self.ai_filter_threshold = ai_filter_threshold
+        self.ai_filter_path = ai_filter_path
 
         self.dir_bowtie = os.path.join(self.dir_specificity, "bowtie")
         Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
@@ -98,7 +108,7 @@ class Bowtie(SpecificityFilterBase):
 
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_bowtie)(database[region], region, index_name)
+            delayed(self._run_bowtie)(database[region], region, index_name, file_reference)
             for region in regions
         )
 
@@ -108,18 +118,18 @@ class Bowtie(SpecificityFilterBase):
 
         return database
 
-    def _run_bowtie(self, databse_region, region, index_name):
+    def _run_bowtie(self, database_region, region, index_name, file_reference):
         """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
         Bowtie identifies all alignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
 
-        :param databse_region: database containing the oligos form one region
-        :type databse_region: dict
+        :param database_region: database containing the oligos form one region
+        :type database_region: dict
         :param region: id of the region processed
         :type region: str
         """
 
         file_oligo_fasta_gene = self._create_fasta_file(
-            databse_region, self.dir_fasta, region
+            database_region, self.dir_fasta, region
         )
         file_bowtie_gene = os.path.join(
             self.dir_bowtie,
@@ -162,8 +172,10 @@ class Bowtie(SpecificityFilterBase):
         bowtie_results = self._read_bowtie_output(file_bowtie_gene)
         # filter the DB based on the bowtie results
         matching_oligos = self._find_matching_oligos(bowtie_results)
+        if self.ai_filter is not None:
+            matching_oligos = self._ai_filter_matching_oligos(matching_oligos, file_reference, database_region, region)
         filtered_database_region = self._filter_matching_oligos(
-            databse_region, matching_oligos
+            database_region, matching_oligos
         )
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie, file_bowtie_gene))
@@ -223,5 +235,89 @@ class Bowtie(SpecificityFilterBase):
         elif self.strand == "minus":
             bowtie_matches = bowtie_matches[bowtie_matches["strand"] == "-"]
 
-        oligos_with_match = bowtie_matches["query"].unique()
-        return oligos_with_match
+        # bowtie_matches_filtered = bowtie_matches["query"].unique()
+        return bowtie_matches
+
+
+    def _ai_filter_matching_oligos(self, matching_oligos: pd.DataFrame, file_reference: str, database_region: dict, region: str) -> pd.DataFrame:
+        
+        from odt_ai_filters.api import APIHybridizationProbability #rewrite the import with the new
+        
+        # check if there are oligos to filter
+        if len(matching_oligos) == 0:
+            return matching_oligos
+        
+        # filter the oligos based on the ai filter outcomes
+        targets = self._get_targets_fasta(matching_oligos, file_reference, region)
+
+        # retrive original sequences of query and target adn encode the insertion and deletions
+        queries = [database_region[query_id]["sequence"] for query_id in matching_oligos["query"]]
+        assert len(queries) == len(targets), "The targets haven't been correctly retrieved."
+    
+
+        # create the dataset
+        dataset = self._create_ai_filter_dataset(queries=queries, targets=targets)
+        
+        # define the AI filter
+        if self.ai_filter == "hybridization_probability":
+            model = APIHybridizationProbability(ai_filter_path = self.ai_filter_path)
+        else:
+            raise ValueError(f"The AI filter {self.ai_filter} is not supported.")
+
+        # filter the database
+        predictions = model.predict(data = dataset)
+
+        matching_oligos.reset_index(drop=True, inplace=True)
+        above_threshold = np.where(predictions>= self.ai_filter_threshold)[0]
+        matching_oligos.drop(index=above_threshold, inplace=True)
+        print(f"Number of oligos above threshold: {len(above_threshold)}")
+        return matching_oligos
+
+
+    def _get_targets_fasta(self, matching_oligos: pd.DataFrame, file_reference: str, region: str):
+        """Create a FASTA file containing the sequences of the targets of the oligos that match the bowtie search.
+
+        :param matching_oligos: DataFrame with the oligos that match the blast search.
+        :type matching_oligos: pd.DataFrame
+        :param file_reference: _description_
+        :type file_reference: str
+        :param region: _description_
+        :type region: str
+        :return: _description_
+        :rtype: _type_
+        """
+
+        # matching_oligos["ref_end"] = matching_oligos[["ref_start", "query_sequence"]].apply(lambda x: x["ref_start"] + len(x["query_sequence"]), axis=1)
+        matching_oligos["ref_end"] = matching_oligos.apply(lambda x: x["ref_start"] + len(x["query_sequence"]), axis=1)
+        matching_oligos["score"] = 0
+        bed = matching_oligos[["reference", "ref_start", "ref_end", "query", "score", "strand"]]
+        file_bed = "bowtie_bed.txt"
+        bed.to_csv(file_bed, sep='\t', index=False, header=False)
+
+        targets_fasta_file = "bowtie_fasta.txt"
+        get_sequence_from_annotation(file_bed, file_reference,  targets_fasta_file, strand=True, nameOnly=True)
+        targets = [off_target.seq for off_target in SeqIO.parse(targets_fasta_file, "fasta")]
+        return targets
+
+    def _create_ai_filter_dataset(self, queries, targets):
+        """Create a database with the information of the oligos that match the blast search.
+
+        :param queries: List with the sequences of the query oligos.
+        :type queries: list
+        :param targets: List with the sequences of the target oligos.
+        :type targets: list
+
+        :return: dataset
+        :rtype: pd.DataFrame
+        """
+
+
+        dataset = pd.DataFrame(columns=["query_sequence", "query_length", "query_GC_content", "target_sequence", "target_length", "target_GC_content", "number_mismatches"])
+        dataset["query_sequence"] = queries
+        dataset["query_length"] = [len(query) for query in queries]
+        dataset["query_GC_content"] = [gc_fraction(query) for query in queries]
+        dataset["off_target_sequence"] = targets
+        dataset["off_target_length"] = [len(target) for target in targets]
+        dataset["off_target_GC_content"] = [gc_fraction(target) for target in targets]
+        dataset["number_mismatches"] = [sum(query != target for query, target in zip(query, target)) for query, target in zip(targets, queries)]
+        return dataset

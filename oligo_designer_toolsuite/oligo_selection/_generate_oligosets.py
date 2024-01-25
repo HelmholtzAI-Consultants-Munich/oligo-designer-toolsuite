@@ -12,7 +12,6 @@ from joblib import Parallel, delayed
 
 from ..database import OligoDatabase
 from ..oligo_efficiency_filter import OligoScoringBase, SetScoringBase
-from pympler import asizeof
 
 ############################################
 # Oligo set Generation Classes
