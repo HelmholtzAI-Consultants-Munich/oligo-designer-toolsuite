@@ -71,6 +71,9 @@ class Bowtie(SpecificityFilterBase):
 
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
+        self.filtered = pd.DataFrame(columns = ["Vanilla", "AI_filter", "Difference"])
+        self.ai_time = pd.Series()
+
 
     def apply(self, database: dict, file_reference: str, n_jobs: int):
         """Apply the bowtie filter in parallel on the given ``database``. Each jobs filters a single region, and  at the same time are generated at most ``n_job`` jobs.
@@ -173,7 +176,10 @@ class Bowtie(SpecificityFilterBase):
         # filter the DB based on the bowtie results
         matching_oligos = self._find_matching_oligos(bowtie_results)
         if self.ai_filter is not None:
+            import time
+            start = time.time()
             matching_oligos = self._ai_filter_matching_oligos(matching_oligos, file_reference, database_region, region)
+            self.ai_time[region] = time.time() - start
         filtered_database_region = self._filter_matching_oligos(
             database_region, matching_oligos
         )
@@ -267,10 +273,13 @@ class Bowtie(SpecificityFilterBase):
         # filter the database
         predictions = model.predict(data = dataset)
 
+        # filter the database, keep only the oligos above the threshold
         matching_oligos.reset_index(drop=True, inplace=True)
-        above_threshold = np.where(predictions>= self.ai_filter_threshold)[0]
-        matching_oligos.drop(index=above_threshold, inplace=True)
-        print(f"Number of oligos above threshold: {len(above_threshold)}")
+        below_threshold = np.where(predictions < self.ai_filter_threshold)[0]
+        ids_vanilla = len(matching_oligos["query"].unique())
+        matching_oligos.drop(index=below_threshold, inplace=True)
+        ids_ai_filter = len(matching_oligos["query"].unique())
+        self.filtered.loc[region] = [ids_vanilla, ids_ai_filter, ids_vanilla - ids_ai_filter]
         return matching_oligos
 
 

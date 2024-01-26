@@ -83,6 +83,8 @@ class Blastn(SpecificityFilterBase):
 
         self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
         Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
+        self.filtered = pd.DataFrame(columns = ["Vanilla", "AI_filter", "Difference"])
+        self.ai_time = pd.Series()
 
     def apply(self, database: dict, file_reference: str, n_jobs: int):
         """Apply the blastn filter in parallel on the given ``database``. Each jobs filters a single region, and  at the same time are generated at most ``n_job`` jobs.
@@ -261,11 +263,14 @@ class Blastn(SpecificityFilterBase):
         else:
             raise ValueError(f"The AI filter {self.ai_filter} is not supported.")
 
-        # filter the database
+        # filter the database, keep only the oligos above the threshold
         predictions = model.predict(data = dataset)
         matching_oligos.reset_index(drop=True, inplace=True)
-        above_threshold = np.where(predictions>= self.ai_filter_threshold)[0]
-        matching_oligos.drop(index=above_threshold, inplace=True)
+        ids_vanilla = len(matching_oligos["query"].unique())
+        below_threshold = np.where(predictions < self.ai_filter_threshold)[0]
+        matching_oligos.drop(index=below_threshold, inplace=True)
+        ids_ai_filter = len(matching_oligos["query"].unique())
+        self.filtered.loc[region] = [ids_vanilla, ids_ai_filter, ids_vanilla - ids_ai_filter]
         return matching_oligos
 
 
