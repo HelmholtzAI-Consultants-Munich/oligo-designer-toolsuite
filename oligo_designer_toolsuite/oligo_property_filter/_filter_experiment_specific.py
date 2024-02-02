@@ -62,6 +62,7 @@ class PadlockArmsFilter(PropertyFilterBase):
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
+    ###TODO: move this function to utils as it is also used in the Tm filter once database refactor is merged
     def _get_Tm(self, sequence: Seq):
         """Internal method to calculate the melting temperature of a sequence.
 
@@ -72,7 +73,7 @@ class PadlockArmsFilter(PropertyFilterBase):
         """
         Tm = mt.Tm_NN(sequence, **self.Tm_parameters)
         if self.Tm_salt_correction_parameters is not None:
-            Tm = mt.salt_correction(Tm, **self.Tm_salt_correction_parameters)
+            Tm += mt.salt_correction(**self.Tm_salt_correction_parameters, seq=sequence)
         if self.Tm_chem_correction_parameters is not None:
             Tm = mt.chem_correction(Tm, **self.Tm_chem_correction_parameters)
         return round(Tm, 4)

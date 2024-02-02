@@ -137,6 +137,72 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         return False, {}
 
 
+class FivePrimeSequenceFilter(PropertyFilterBase):
+    """A filter to check the presence or absence of a specified sequence at the 5'-end of a DNA sequence.
+
+    :param five_prime_sequence: The sequence to check at the 5'-end of the DNA sequence.
+    :type five_prime_sequence: str
+    :param remove: If True, sequences starting with the specified sequence are filtered out. If False, only sequences starting with the specified sequence are retained.
+    :type remove: bool
+    """
+
+    def __init__(self, five_prime_sequence: str, remove: bool = True) -> None:
+        """Constructor for the FivePrimeSequenceFilter class."""
+        super().__init__()
+        self.five_prime_sequence = five_prime_sequence.upper()
+        self.remove = remove
+
+    def apply(self, sequence: str):
+        """Applies the 5'-end sequence filter to a DNA sequence and eitehr keeps or removes the matching sequence, dependend on the parameter "remove".
+
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: str
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
+        """
+        if self.remove:
+            if sequence.upper().startswith(self.five_prime_sequence):
+                return False, {}
+            return True, {}
+        else:
+            if sequence.upper().startswith(self.five_prime_sequence):
+                return True, {}
+            return False, {}
+
+
+class ThreePrimeSequenceFilter(PropertyFilterBase):
+    """A filter to check the presence or absence of a specified sequence at the 3'-end of a DNA sequence.
+
+    :param three_prime_sequence: The sequence to check at the 3'-end of the DNA sequence.
+    :type three_prime_sequence: str
+    :param remove: If True, sequences ending with the specified sequence are filtered out. If False, only sequences ending with the specified sequence are retained.
+    :type remove: bool
+    """
+
+    def __init__(self, three_prime_sequence: str, remove: bool = True) -> None:
+        """Constructor for the ThreePrimeSequenceFilter class."""
+        super().__init__()
+        self.three_prime_sequence = three_prime_sequence.upper()
+        self.remove = remove
+
+    def apply(self, sequence: str):
+        """Applies the 3'-end sequence filter to a DNA sequence and eitehr keeps or removes the matching sequence, dependend on the parameter "remove".
+
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: str
+        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
+        :rtype: (bool, dict)
+        """
+        if self.remove:
+            if sequence.upper().endswith(self.three_prime_sequence):
+                return False, {}
+            return True, {}
+        else:
+            if sequence.upper().endswith(self.three_prime_sequence):
+                return True, {}
+            return False, {}
+
+
 class GCContentFilter(PropertyFilterBase):
     """A filter to check if the GC content of a DNA sequence falls within a specified range [GC_content_min, GC_content_max].
 
@@ -240,6 +306,7 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
+    ###TODO: move this function to utils as it is also used in the padlock arm filter once database refactor is merged
     def _get_Tm(self, sequence: Seq):
         """Internal method to calculate the melting temperature of a sequence.
 
@@ -250,7 +317,7 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         """
         Tm = mt.Tm_NN(sequence, **self.Tm_parameters)
         if self.Tm_salt_correction_parameters is not None:
-            Tm = mt.salt_correction(Tm, **self.Tm_salt_correction_parameters)
+            Tm += mt.salt_correction(**self.Tm_salt_correction_parameters, seq=sequence)
         if self.Tm_chem_correction_parameters is not None:
             Tm = mt.chem_correction(Tm, **self.Tm_chem_correction_parameters)
         return round(Tm, 4)
@@ -300,67 +367,3 @@ class SecondaryStructureFilter(PropertyFilterBase):
         if DG > self.thr_DG:
             return True, {"secondary_structure_DG": DG}
         return False, {}
-
-
-class ThreePrimeSequenceFilter(PropertyFilterBase):
-    """A filter to check the presence or absence of a specified sequence at the 3'-end of a DNA sequence.
-
-    :param three_prime_sequence: The sequence to check at the 3'-end of the DNA sequence.
-    :type three_prime_sequence: str
-    """
-
-    def __init__(self, three_prime_sequence: str) -> None:
-        """Constructor for the ThreePrimeSequenceFilter class."""
-        super().__init__()
-        self.three_prime_sequence = three_prime_sequence.upper()
-
-    def apply(self, sequence: str, remove: bool = True):
-        """Applies the 3'-end sequence filter to a DNA sequence and eitehr keeps or removes the matching sequence, dependend on the parameter "remove".
-
-        :param sequence: The DNA sequence to be checked.
-        :type sequence: str
-        :param remove: If True, sequences ending with the specified sequence are filtered out. If False, only sequences ending with the specified sequence are retained.
-        :type remove: bool
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
-        """
-        if remove:
-            if sequence.upper().endswith(self.three_prime_sequence):
-                return False, {}
-            return True, {}
-        else:
-            if sequence.upper().endswith(self.three_prime_sequence):
-                return True, {}
-            return False, {}
-
-
-class FivePrimeSequenceFilter(PropertyFilterBase):
-    """A filter to check the presence or absence of a specified sequence at the 5'-end of a DNA sequence.
-
-    :param five_prime_sequence: The sequence to check at the 5'-end of the DNA sequence.
-    :type five_prime_sequence: str
-    """
-
-    def __init__(self, five_prime_sequence: str) -> None:
-        """Constructor for the FivePrimeSequenceFilter class."""
-        super().__init__()
-        self.five_prime_sequence = five_prime_sequence.upper()
-
-    def apply(self, sequence: str, remove: bool = True):
-        """Applies the 5'-end sequence filter to a DNA sequence and eitehr keeps or removes the matching sequence, dependend on the parameter "remove".
-
-        :param sequence: The DNA sequence to be checked.
-        :param remove: If True, sequences starting with the specified sequence are filtered out. If False, only sequences starting with the specified sequence are retained.
-        :type sequence: str
-        :type remove: bool
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
-        """
-        if remove:
-            if sequence.upper().startswith(self.five_prime_sequence):
-                return False, {}
-            return True, {}
-        else:
-            if sequence.upper().startswith(self.five_prime_sequence):
-                return True, {}
-            return False, {}
