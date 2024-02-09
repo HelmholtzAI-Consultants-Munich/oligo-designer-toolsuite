@@ -142,10 +142,6 @@ class HomopolymericRunsFilter(PropertyFilterBase):
             elif not isinstance(n, list):
                 # n is the same for all the elements of base
                 n = [n for _ in range(len(base))]
-            elif not isinstance(n, list) and not isinstance(n, int):
-                raise TypeError("The variable n is expected to be an integer or a list of integers.")
-        else:
-            raise TypeError("The variable base is expected to be a string or a list of strings.")
         
         # base and n are now lists of the same length
         self.base = [nucleotide.upper() for nucleotide in base]
