@@ -18,9 +18,9 @@ from oligo_designer_toolsuite.utils import (
 )
 
 from oligo_designer_toolsuite.oligo_property_filter import (
-    GCContent,
-    MaskedSequences,
-    MeltingTemperatureNN,
+    GCContentFilter,
+    HardMaskedSequenceFilter,
+    MeltingTemperatureNNFilter,
     PropertyFilter,
 )
 
@@ -233,9 +233,9 @@ def test_oligo_database_filters(file_ncbi_transcriptome):
         region_ids=genes,
     )
 
-    masked_sequences = MaskedSequences(mask="N")
-    GC_content = GCContent(GC_content_min=40, GC_content_max=60)
-    melting_temperature = MeltingTemperatureNN(
+    masked_sequences = HardMaskedSequenceFilter(mask="N")
+    GC_content = GCContentFilter(GC_content_min=40, GC_content_max=60)
+    melting_temperature = MeltingTemperatureNNFilter(
         Tm_min=52,
         Tm_max=67,
         Tm_parameters=Tm_parameters,
