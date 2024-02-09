@@ -3,15 +3,15 @@
 ############################################
 
 import os
-import yaml
 import warnings
-from Bio import SeqIO
 from pathlib import Path
-
 from typing import Union
 
-from ..utils._utils import check_if_list
+import yaml
+from Bio import SeqIO
+
 from ..utils._sequence_parser import FastaParser
+from ..utils._utils import check_if_list
 
 ############################################
 # Reference Database Class
@@ -47,7 +47,9 @@ class ReferenceDatabase:
         self.metadata = {}
         self.database = []
 
-        self.dir_output = os.path.abspath(os.path.join(dir_output, "reference_database"))
+        self.dir_output = os.path.abspath(
+            os.path.join(dir_output, "reference_database")
+        )
 
     def load_metadata(self, metadata: Union[str, dict]):
         """Load metadata into the ReferenceDatabase object.
@@ -61,7 +63,9 @@ class ReferenceDatabase:
         :raises ValueError: If metadata has an incorrect format.
         """
         if self.metadata:
-            warnings.warn("Metadata not empty! Overwriting metadata with new metadata from file!")
+            warnings.warn(
+                "Metadata not empty! Overwriting metadata with new metadata from file!"
+            )
 
         if type(metadata) is str and os.path.exists(metadata):
             with open(metadata) as handle:
@@ -71,7 +75,9 @@ class ReferenceDatabase:
         else:
             raise ValueError("Metadat has icorrect format!")
 
-    def load_sequences_fom_fasta(self, file_fasta: str, database_overwrite: bool = False) -> None:
+    def load_sequences_fom_fasta(
+        self, file_fasta: str, database_overwrite: bool = False
+    ) -> None:
         """Load sequences from a FASTA file into the ReferenceDatabase object.
 
         This function reads sequences from a FASTA file and adds them to the ReferenceDatabase object.
@@ -130,7 +136,9 @@ class ReferenceDatabase:
         file_metadata = os.path.join(self.dir_output, f"{filename}.yaml")
 
         with open(file_metadata, "w") as handle:
-            yaml.safe_dump(self.metadata, handle, sort_keys=True, default_flow_style=False)
+            yaml.safe_dump(
+                self.metadata, handle, sort_keys=True, default_flow_style=False
+            )
 
         return file_metadata
 

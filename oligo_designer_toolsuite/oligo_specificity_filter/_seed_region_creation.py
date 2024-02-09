@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 # Oligo Seed Gregion Creation Classes
 ############################################
 
+
 class SeedRegionCreationBase(ABC):
     """
     Base class for all the seed region creation classes. The ``_create_seed_region`` method contains the functionalities for the specific seed region and the ``apply`` method

@@ -2,8 +2,9 @@
 # imports
 ############################################
 
-from oligo_designer_toolsuite.database import OligoDatabase
+import os
 
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
     Bowtie,
@@ -12,7 +13,6 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatches,
     LigationRegionCreation,
 )
-import os
 
 ############################################
 # Global Parameters

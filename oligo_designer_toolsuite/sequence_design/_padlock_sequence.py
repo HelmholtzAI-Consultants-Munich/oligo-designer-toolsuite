@@ -3,20 +3,22 @@
 ############################################
 
 import os
-import yaml
-import random
-import itertools
-import pandas as pd
-
 from pathlib import Path
+
+import pandas as pd
+import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
 from ..database import OligoDatabase
-from ..utils._sequence_design import SCRINSHOT_or_ISS_backbone_sequence, get_barcode, convert_complementary_seq_to_arms
+from ..utils._sequence_design import (
+    SCRINSHOT_or_ISS_backbone_sequence,
+    convert_complementary_seq_to_arms,
+)
 
 ############################################
 # oligo set generator class
 ############################################
+
 
 class PadlockSequence:
     """
@@ -272,7 +274,6 @@ class PadlockSequence:
 
         """
 
-        
         arms = convert_complementary_seq_to_arms(complementary_seq, ligation_idx)
         sub_seqs = {"arm1": arms[0]}
 

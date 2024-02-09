@@ -1,23 +1,19 @@
+import inspect
+import logging
 import os
 import sys
-import yaml
-import shutil
-import logging
-import inspect
-import warnings
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # from typing_extensions import Literal # Python 3.7 or below
 from typing import Literal
 
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
-    NcbiGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,
+    NcbiGenomicRegionGenerator,
 )
-
-from oligo_designer_toolsuite.database import OligoDatabase
 
 
 class BaseProbeDesigner:
@@ -195,7 +191,9 @@ class BaseProbeDesigner:
         genes: list,
         probe_length_min: int,
         probe_length_max: int,
-        region: Literal["genome", "gene", "transcript", "cds", "three_primer_utr", "five_primer_utr"],
+        region: Literal[
+            "genome", "gene", "transcript", "cds", "three_primer_utr", "five_primer_utr"
+        ],
         isoform_consensus: Literal["intersection", "union"] = "union",
         min_probes_per_gene: int = 0,
         n_jobs: int = 1,
@@ -213,20 +211,26 @@ class BaseProbeDesigner:
             )
         # length of exon_junction_size is probe_length - 1 to continue where exons annotation ends
         if region == "transcript":
-            file_transcriptome = self.region_generator.generate_transcript_reduced_representation(
-                include_exon_junctions=True, exon_junction_size=probe_length_max
+            file_transcriptome = (
+                self.region_generator.generate_transcript_reduced_representation(
+                    include_exon_junctions=True, exon_junction_size=probe_length_max
+                )
             )
         elif region == "genome":
             file_transcriptome = self.region_generator.generate_genome()
         elif region == "cds":
-            file_transcriptome = self.region_generator.generate_CDS_reduced_representation(
-                include_exon_junctions=True, exon_junction_size=probe_length_max
+            file_transcriptome = (
+                self.region_generator.generate_CDS_reduced_representation(
+                    include_exon_junctions=True, exon_junction_size=probe_length_max
+                )
             )
         else:
             raise Exception(f"Region generator: {region} is not implemented yet.")
 
         if isoform_consensus == "intersection":
-            raise Exception(f"Isoform consensus: {isoform_consensus} not implemented yet.")
+            raise Exception(
+                f"Isoform consensus: {isoform_consensus} not implemented yet."
+            )
 
         ##### creating the probe database #####
         # oligo database
@@ -257,7 +261,9 @@ class BaseProbeDesigner:
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = probe_database.write_database(filename="probe_database_initial.txt")
+            file_database = probe_database.write_database(
+                filename="probe_database_initial.txt"
+            )
         else:
             file_database = ""
 

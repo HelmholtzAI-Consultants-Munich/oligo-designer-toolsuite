@@ -2,12 +2,14 @@
 # imports
 ############################################
 
-import pandas as pd
 from abc import ABC, abstractmethod
+
+import pandas as pd
 
 ############################################
 # Set Scoring Classes
 ############################################
+
 
 class SetScoringBase(ABC):
     """Template class for scoring the sets of oligos."""

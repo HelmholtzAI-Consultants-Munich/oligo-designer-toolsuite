@@ -1,13 +1,12 @@
+import os
+from pathlib import Path
+
 import numpy as np
+import yaml
 from Bio.Seq import Seq
 
-from pathlib import Path
-import os
-
-import yaml
-
-from oligo_designer_toolsuite.utils import generate_codebook
 from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.utils import generate_codebook
 
 
 class MerfishSequence:

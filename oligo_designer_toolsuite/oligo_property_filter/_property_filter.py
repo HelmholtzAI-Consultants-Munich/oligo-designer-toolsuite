@@ -4,8 +4,8 @@
 
 from joblib import Parallel, delayed
 
-from . import PropertyFilterBase
 from ..database import OligoDatabase
+from . import PropertyFilterBase
 
 ############################################
 # Property Filter Class
@@ -51,7 +51,9 @@ class PropertyFilter:
         for database_region, region_id in zip(database_regions, region_ids):
             database[region_id] = database_region
         oligo_database.database = database
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
+        oligo_database.remove_regions_with_insufficient_oligos(
+            pipeline_step="Property Filters"
+        )
         return oligo_database
 
     def _filter_region(self, database_region):
@@ -65,7 +67,9 @@ class PropertyFilter:
         """
         oligo_ids = list(database_region.keys())
         for oligo_id in oligo_ids:
-            fulfills, additional_features = self._filter_sequence(database_region[oligo_id]["sequence"])
+            fulfills, additional_features = self._filter_sequence(
+                database_region[oligo_id]["sequence"]
+            )
             if fulfills:
                 database_region[oligo_id].update(additional_features)
             else:

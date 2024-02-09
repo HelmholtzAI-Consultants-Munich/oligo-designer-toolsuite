@@ -4,9 +4,9 @@ and loading genomic data via FTP.
 
 Classes:
 - OligoSequenceGenerator: Generates oligo sequences. Handles the generation of
-  random sequences based on specified probabilities. Generates sequences with 
+  random sequences based on specified probabilities. Generates sequences with
   sliding window from input sequences.
-  
+
 - CustomGenomicRegionGenerator: Base class for custom genomic region generation.
   Provides a framework for creating genomic region generators with specific data
   sources and configurations.
@@ -27,13 +27,13 @@ Classes:
   annotation and sequence files.
 """
 
-from ._oligo_sequence_generator import OligoSequenceGenerator
+from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
 from ._genomic_region_generator import (
     CustomGenomicRegionGenerator,
-    NcbiGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,
+    NcbiGenomicRegionGenerator,
 )
-from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
+from ._oligo_sequence_generator import OligoSequenceGenerator
 
 __all__ = [
     "OligoSequenceGenerator",

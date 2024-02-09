@@ -4,12 +4,10 @@
 
 import os
 import random
-
 from pathlib import Path
 
-from ..utils._utils import check_if_list
 from ..utils._sequence_parser import FastaParser
-
+from ..utils._utils import check_if_list
 
 ############################################
 # Oligo Database Class
@@ -54,7 +52,12 @@ class OligoSequenceGenerator:
         length_sequences: int,
         num_sequences: int,
         name_sequences: str = "randomsequence",
-        base_alphabet_with_probability: list[float] = {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
+        base_alphabet_with_probability: list[float] = {
+            "A": 0.25,
+            "C": 0.25,
+            "G": 0.25,
+            "T": 0.25,
+        },
     ):
         """Create a FASTA file containing random DNA sequences.
 
@@ -85,7 +88,9 @@ class OligoSequenceGenerator:
             bases = list(base_alphabet_with_probability.keys())
             sequence = "".join(
                 random.choices(
-                    bases, weights=[base_alphabet_with_probability[n] for n in bases], k=sequence_length
+                    bases,
+                    weights=[base_alphabet_with_probability[n] for n in bases],
+                    k=sequence_length,
                 )
             )
             return sequence
@@ -97,7 +102,9 @@ class OligoSequenceGenerator:
             missing_sequences = list(
                 set(
                     [
-                        get_sequence_random(length_sequences, base_alphabet_with_probability)
+                        get_sequence_random(
+                            length_sequences, base_alphabet_with_probability
+                        )
                         for i in range(num_missing_sequences)
                     ]
                 )
@@ -108,7 +115,9 @@ class OligoSequenceGenerator:
 
         with open(file_fasta_out, "w") as handle_fasta:
             for seq in sequences_list:
-                handle_fasta.write(f">{name_sequences}::regiontype=random_sequence\n{seq}\n")
+                handle_fasta.write(
+                    f">{name_sequences}::regiontype=random_sequence\n{seq}\n"
+                )
         return file_fasta_out
 
     def create_sequences_sliding_window(
@@ -177,7 +186,10 @@ class OligoSequenceGenerator:
             # generate sequences with sliding window and write to fasta file (use lock to ensure that hat only one process can write to the file at any given time)
             if len(entry_sequence) > sequence_length:
                 num_sequences = len(entry_sequence) - (sequence_length - 1)
-                sequences = [entry_sequence[i : i + sequence_length] for i in range(num_sequences)]
+                sequences = [
+                    entry_sequence[i : i + sequence_length]
+                    for i in range(num_sequences)
+                ]
 
                 for i in range(num_sequences):
                     seq = sequences[i]
@@ -199,7 +211,9 @@ class OligoSequenceGenerator:
         with open(file_fasta_out, "w") as handle_fasta:
             for file_fasta in file_fasta_in:
                 self.fasta_parser.check_fasta_format(file_fasta)
-                fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
+                fasta_sequences = self.fasta_parser.read_fasta_sequences(
+                    file_fasta, region_ids
+                )
                 # did not parallize this function because workers would be writing simultaneously to the same file
                 # which could lead to data corruption. I tried using the file_lock=Lock() function from multiprocessing
                 # as input to get_sliding_window_sequence(file_lock) and then use with file_lock: before writing to the file
@@ -208,6 +222,8 @@ class OligoSequenceGenerator:
                     for length_sequences in range(
                         length_interval_sequences[0], length_interval_sequences[1] + 1
                     ):
-                        get_sliding_window_sequence(entry, length_sequences, handle_fasta)
+                        get_sliding_window_sequence(
+                            entry, length_sequences, handle_fasta
+                        )
 
         return file_fasta_out

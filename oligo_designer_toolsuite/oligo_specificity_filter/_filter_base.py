@@ -3,8 +3,8 @@
 ############################################
 
 import os
-from pathlib import Path
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -12,6 +12,7 @@ from Bio.SeqRecord import SeqRecord
 ############################################
 # Oligo Specificity Filter Classes
 ############################################
+
 
 class SpecificityFilterBase(ABC):
     """This is the base class for all specificity filter classes

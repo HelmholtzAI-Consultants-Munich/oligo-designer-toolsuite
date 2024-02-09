@@ -17,24 +17,19 @@ Functions for processing sequences:
 
 """
 
-from ._sequence_parser import FastaParser, GffParser
-
-from ._sequence_processor import get_sequence_from_annotation, get_complement_regions
-
-from ._database_processor import merge_databases, collapse_info_for_duplicated_sequences
-
-from ._utils import check_if_list, check_tsv_format
-
+from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
 from ._sequence_design import (
-    generate_random_sequence,
-    generate_binary_sequences,
-    generate_codebook,
-    get_barcode,
     SCRINSHOT_or_ISS_backbone_sequence,
     convert_complementary_seq_to_arms,
     create_seqfish_plus_barcodes,
+    generate_binary_sequences,
+    generate_codebook,
+    generate_random_sequence,
+    get_barcode,
 )
-
+from ._sequence_parser import FastaParser, GffParser
+from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
+from ._utils import check_if_list, check_tsv_format
 
 __all__ = [
     "FastaParser",

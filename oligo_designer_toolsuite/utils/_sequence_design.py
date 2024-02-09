@@ -1,7 +1,7 @@
-import numpy as np
-import random
 import itertools
+import random
 
+import numpy as np
 from Bio.Seq import Seq
 
 

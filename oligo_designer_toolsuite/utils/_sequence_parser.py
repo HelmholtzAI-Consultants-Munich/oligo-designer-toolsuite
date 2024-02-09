@@ -2,17 +2,14 @@
 # imports
 ############################################
 
-import os
-import re
 import gzip
-import pickle
-import warnings
-
 import math
+import os
+import pickle
+import re
+
 import pandas as pd
-
 from Bio import SeqIO
-
 
 ############################################
 # GFF Parser Class
@@ -124,7 +121,9 @@ class GffParser:
 
         return dataframe_gff
 
-    def _split_annotation(self, annotation_file: str, chunk_size: int, target_lines: int):
+    def _split_annotation(
+        self, annotation_file: str, chunk_size: int, target_lines: int
+    ):
         """Split the GFF/GTF annotation file into a CSV file and an extra info file.
 
         :param annotation_file: The path to the GFF/GTF annotation file.
@@ -156,8 +155,12 @@ class GffParser:
                             try:
                                 line = next(input_file)
                                 if not line.startswith("#"):
-                                    csv_content_chunck += "\t".join(line.split("\t")[:8]) + "\n"
-                                    extra_info_content_chunck += "\t".join(line.split("\t")[8:])
+                                    csv_content_chunck += (
+                                        "\t".join(line.split("\t")[:8]) + "\n"
+                                    )
+                                    extra_info_content_chunck += "\t".join(
+                                        line.split("\t")[8:]
+                                    )
                             except:
                                 finished = True
 
@@ -292,7 +295,9 @@ class FastaParser:
             # taken from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
             with open(file, "r") as handle:
                 fasta = SeqIO.parse(handle, "fasta")
-                return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
+                return any(
+                    fasta
+                )  # False when `fasta` is empty, i.e. wasn't a FASTA file
 
         if os.path.exists(file):
             if not _check_fasta_content(file):
@@ -329,7 +334,9 @@ class FastaParser:
         region_ids = []
         with open(file_fasta_in, "r") as handle:
             for entry in SeqIO.parse(handle, "fasta"):
-                region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
+                region, _, _ = self.parse_fasta_header(
+                    entry.id, parse_additional_info=False
+                )
                 region_ids.append(region)
 
         return list(set(region_ids))
@@ -353,7 +360,9 @@ class FastaParser:
             fasta_sequences = []
             with open(file_fasta_in, "r") as handle:
                 for entry in SeqIO.parse(handle, "fasta"):
-                    region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
+                    region, _, _ = self.parse_fasta_header(
+                        entry.id, parse_additional_info=False
+                    )
                     if region in region_ids:
                         fasta_sequences.append(entry)
         else:
@@ -397,14 +406,18 @@ class FastaParser:
                 header_coordinates = header_entry.split(";")
                 coordinates = {}
                 for header_coordinate in header_coordinates:
-                    coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
+                    coordinates.setdefault("chromosome", []).append(
+                        header_coordinate.split(":")[0]
+                    )
                     coordinates.setdefault("start", []).append(
                         int(header_coordinate.split(":")[1].split("-")[0])
                     )
                     coordinates.setdefault("end", []).append(
                         int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
                     )
-                    coordinates.setdefault("strand", []).append(header_coordinate.split("(")[1].split(")")[0])
+                    coordinates.setdefault("strand", []).append(
+                        header_coordinate.split("(")[1].split(")")[0]
+                    )
             else:
                 info_list = header_entry
                 # the additional info field should be parsed, save information in dict

@@ -2,8 +2,8 @@
 # imports
 ############################################
 
-from itertools import chain
 from collections import defaultdict
+from itertools import chain
 
 ############################################
 # Collection of utility functions
@@ -93,7 +93,9 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
         :return: True if the item is a list containing only lists, False otherwise.
         :rtype: bool
         """
-        return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
+        return isinstance(item, list) and all(
+            isinstance(subitem, list) for subitem in item
+        )
 
     oligo_info = defaultdict(list)
 

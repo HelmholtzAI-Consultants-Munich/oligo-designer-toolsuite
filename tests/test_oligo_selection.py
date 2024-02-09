@@ -2,12 +2,10 @@
 # imports
 ############################################
 
-import pytest
 import pandas as pd
+import pytest
 
-from oligo_designer_toolsuite.database import (
-    OligoDatabase,
-)
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -67,6 +65,7 @@ def oligoset_generator():
     )
     return oligoset_generator
 
+
 @pytest.fixture()
 def padlock_scoring():
     padlock_scoring = PadlockOligoScoring(
@@ -99,7 +98,7 @@ def test_oligosets_generation(oligoset_generator, oligos_database):
         true_sets.reset_index(inplace=True, drop=True)
         computed_sets.sort_values(by=list(computed_sets.columns), inplace=True)
         computed_sets.reset_index(inplace=True, drop=True)
-        pd.set_option('display.max_columns', 500)
+        pd.set_option("display.max_columns", 500)
         print(true_sets)
         print(computed_sets)
         assert true_sets.equals(
@@ -169,6 +168,6 @@ def test_non_overlapping_sets(oligoset_generator, padlock_scoring):
         ],
     )
     _, computed_sets, _ = oligoset_generator._get_non_overlapping_sets(
-        oligos, overlapping_matrix, oligo_scores,100
+        oligos, overlapping_matrix, oligo_scores, 100
     )
     assert true_sets.equals(computed_sets), "Sets are not computed correctly"

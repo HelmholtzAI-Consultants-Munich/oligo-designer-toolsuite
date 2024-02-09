@@ -4,10 +4,10 @@
 
 import os
 import re
-import pandas as pd
-
 from pathlib import Path
 from subprocess import Popen
+
+import pandas as pd
 from joblib import Parallel, delayed
 
 from . import Bowtie
@@ -15,6 +15,7 @@ from . import Bowtie
 ############################################
 # Oligo Bowtie2 Filter Classes
 ############################################
+
 
 class Bowtie2(Bowtie):
     """This class filters oligos based on the Bowtie 2 read alignment tool. It is recommended to use Bowtie 2 instead of Bowtie for reads longer than about 50 bp, as it gives better performance.
@@ -100,7 +101,9 @@ class Bowtie2(Bowtie):
         :type region: str
         """
 
-        file_oligo_fasta_gene = self._create_fasta_file(database_region, self.dir_fasta, region)
+        file_oligo_fasta_gene = self._create_fasta_file(
+            database_region, self.dir_fasta, region
+        )
         file_bowtie2_gene = os.path.join(
             self.dir_bowtie2,
             f"bowtie2_{region}",
@@ -133,7 +136,9 @@ class Bowtie2(Bowtie):
         bowtie2_results = self._read_bowtie2_output(file_bowtie2_gene)
         # filter the DB based on the bowtie results
         matching_oligos = self._find_matching_oligos(bowtie2_results)
-        filtered_database_region = self._filter_matching_oligos(database_region, matching_oligos)
+        filtered_database_region = self._filter_matching_oligos(
+            database_region, matching_oligos
+        )
         # remove the temporary files
         os.remove(os.path.join(self.dir_bowtie2, file_bowtie2_gene))
         os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))

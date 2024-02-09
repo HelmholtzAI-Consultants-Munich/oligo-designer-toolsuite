@@ -8,8 +8,8 @@ from Bio import SeqIO
 
 from oligo_designer_toolsuite.utils import (
     GffParser,
-    check_gff_format,
     check_fasta_format,
+    check_gff_format,
     check_tsv_format,
     get_sequence_from_annotation,
     merge_fasta,
@@ -31,23 +31,35 @@ def test_data_parser(tmp_path):
     # test file format checkers
     file_gff = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
     res = check_gff_format(file_gff)
-    assert res == True, f"error: gff file format checker did not recognize gff file {file_gff}"
+    assert (
+        res == True
+    ), f"error: gff file format checker did not recognize gff file {file_gff}"
 
     file_gtf = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
     res = check_gff_format(file_gtf)
-    assert res == True, f"error: gff file format checker did not recognize gtf file {file_gtf}"
+    assert (
+        res == True
+    ), f"error: gff file format checker did not recognize gtf file {file_gtf}"
 
     file_fasta = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
     res = check_fasta_format(file_fasta)
-    assert res == True, f"error: fasta file format checker did not recognize fasta file {file_fasta}"
+    assert (
+        res == True
+    ), f"error: fasta file format checker did not recognize fasta file {file_fasta}"
 
-    file_tsv = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+    file_tsv = (
+        "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+    )
     res = check_tsv_format(file_tsv)
-    assert res == True, f"error: tsv file format checker did not recognize tsv file {file_tsv}"
+    assert (
+        res == True
+    ), f"error: tsv file format checker did not recognize tsv file {file_tsv}"
 
     # test sequence extraction from annotation and fasta file
     file_bed = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
-    file_reference_fasta = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+    file_reference_fasta = (
+        "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+    )
     file_fasta = os.path.join(tmp_path, "test_ann2seq_function.fna")
     get_sequence_from_annotation(
         file_bed, file_reference_fasta, file_fasta, split=False, strand=True, name=True
