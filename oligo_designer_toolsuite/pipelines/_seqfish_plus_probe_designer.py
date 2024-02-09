@@ -1,9 +1,9 @@
 from ..database import OligoDatabase, ReferenceDatabase
 from ..oligo_property_filter import (
     PropertyFilter,
-    GCContent,
-    ConsecutiveRepeats,
-    MaskedSequences,
+    GCContentFilter,
+    HomopolymericRunsFilter,
+    HardMaskedSequenceFilter,
 )
 from ..oligo_specificity_filter import (
     SpecificityFilter,
@@ -43,11 +43,11 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
     def filter_probes_by_property(
         self, oligo_database, GC_content_min, GC_content_max, number_consecutive, n_jobs
     ):
-        masked_sequences = MaskedSequences()
-        gc_content = GCContent(
+        masked_sequences = HardMaskedSequenceFilter()
+        gc_content = GCContentFilter(
             GC_content_min=GC_content_min, GC_content_max=GC_content_max
         )
-        proh_seq = ConsecutiveRepeats(num_consecutive=number_consecutive)
+        proh_seq = HomopolymericRunsFilter(base = ["A", "C", "T", "G"], n=number_consecutive)
         filters = [masked_sequences, proh_seq, gc_content]
         property_filter = PropertyFilter(filters=filters)
         oligo_database = property_filter.apply(
@@ -175,7 +175,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         """
 
         property_filters = [
-            GCContent(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
+            GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
         ]
 
         # Reuse specificity filter and cross hybridization check (different parameters)

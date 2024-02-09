@@ -1,6 +1,7 @@
 ############################################
 # imports
 ############################################
+from typing import Union, List
 
 from Bio.SeqUtils import Seq
 from Bio.SeqUtils import gc_fraction
@@ -74,18 +75,21 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
 
     :param prohibited_sequence: The DNA sequence that is to be prohibited. This sequence should
                                 be a valid DNA sequence consisting of characters A, T, C, and G only.
-    :type prohibited_sequence: str
+                                The user can privide either a single sequence or a list of sequences.
+    :type prohibited_sequence: str, list[str]
     """
 
     def __init__(
         self,
-        prohibited_sequence: str,
+        prohibited_sequence: Union[str, List[str]],
     ) -> None:
         """Constructor for the ProhibitedSequenceFilter class."""
         super().__init__()
         if not check_sequence(prohibited_sequence):
             raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
-        self.prohibited_sequence = prohibited_sequence.upper()
+        if not isinstance(prohibited_sequence, list):
+            prohibited_sequence = [prohibited_sequence]
+        self.prohibited_sequence = [s.upper() for s in prohibited_sequence]
 
     def apply(self, sequence: Seq):
         """
@@ -96,33 +100,57 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
         :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
         :rtype: (bool, dict)
         """
-        if self.prohibited_sequence not in sequence.upper():
-            return True, {}
-        return False, {}
+        for s in self.prohibited_sequence:
+            if s in sequence.upper():
+                return False, {}
+        return True, {}
 
 
 class HomopolymericRunsFilter(PropertyFilterBase):
     """A filter hat checks for the absence of a specified homopolymeric run in a DNA sequence.
     A homopolymeric run is defined as a sequence where the same nucleotide base repeats consecutively.
 
-    :param base: The nucleotide base (A, T, C, or G) that is checked for consecutive repeats.
-    :param n: The minimum number of consecutive repeats of the base that defines a homopolymeric run.
-    :type base: str
-    :type n: int
+    :param base: The nucleotide base (A, T, C, or G) that is checked for consecutive repeats. The parameter
+                 can be a single base or a list of bases. If a list is provided, the filter will check for consecutive
+                 repeats for each base in the list.
+    :type base: str, List[str]
+    :param n: The minimum number of consecutive repeats of the base that defines a homopolymeric run. If ``base`` is a list,
+              this parameter can be a single integer or a list of integers of equal lenght. If a single integer is provided, it will be assigned 
+              to all the bases in the list. Alternatively, if a list of integers is provided each element will be assigned to the bases by matching indices.
+    :type n: int, List[int]
     """
 
     def __init__(
         self,
-        base: str,
-        n: int,
+        base: Union[str, List[str]],
+        n: Union[int, List[int]],
     ) -> None:
         """Constructor for the HomopolymericRunsFilter class."""
         super().__init__()
         if not check_sequence(base):
             raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
-        self.base = base.upper()
+        # Check that the variables types are comaptible
+        if not isinstance(base, list):
+            if isinstance(n, list):
+                raise TypeError("The variable n cannot be type list when base is type string.")
+            else:
+                base = [base]
+                n = [n]
+        elif isinstance(base, list):
+            if isinstance(n, list) and len(base) != len(n):
+                raise ValueError(f"The lists base and n must have the same length, but they have {len(base)} and {len(n)} repectively.")
+            elif not isinstance(n, list):
+                # n is the same for all the elements of base
+                n = [n for _ in range(len(base))]
+            elif not isinstance(n, list) and not isinstance(n, int):
+                raise TypeError("The variable n is expected to be an integer or a list of integers.")
+        else:
+            raise TypeError("The variable base is expected to be a string or a list of strings.")
+        
+        # base and n are now lists of the same length
+        self.base = [nucleotide.upper() for nucleotide in base]
         self.n = n
-        self.homopolymeric_run = base * n
+        self.homopolymeric_runs = [nucleotide * repepeats for nucleotide, repepeats in zip(self.base, self.n)]
 
     def apply(self, sequence: Seq):
         """Applies the filter to a given DNA sequence to check if it contains a homopolymeric run.
@@ -132,9 +160,11 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
         :rtype: (bool, dict)
         """
-        if self.homopolymeric_run not in sequence.upper():
-            return True, {}
-        return False, {}
+    
+        for homopolymeric_run in self.homopolymeric_runs:
+            if homopolymeric_run in sequence.upper():
+                return False, {}
+        return True, {}
 
 
 class FivePrimeSequenceFilter(PropertyFilterBase):

@@ -149,6 +149,52 @@ def test_sequence_content_filters():
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
     print(feature)
 
+    homopolymeric_run_filter = HomopolymericRunsFilter(base=["A", "T"], n=4)
+
+    seq_keep = Seq("GGGGGGGGGGGGGGAAAATTT")
+    res, feature = homopolymeric_run_filter.apply(seq_keep)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_keep}) not fulfilling the conditions has been accepted! [HomopolymericRunsFilter]"
+    print(feature)
+
+    seq_keep = Seq("GGGGGGGGGGGGGGAAATTtT")
+    res, feature = homopolymeric_run_filter.apply(seq_keep)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
+    print(feature)
+
+    seq_keep = Seq("GGGGGGGGGGGGGGAAATTT")
+    res, feature = homopolymeric_run_filter.apply(seq_keep)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
+    print(feature)
+
+    homopolymeric_run_filter = HomopolymericRunsFilter(base=["A", "T"], n=[4,5])
+
+    seq_keep = Seq("GGGGGGGGGGGGGGAaAATTT")
+    res, feature = homopolymeric_run_filter.apply(seq_keep)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_keep}) not fulfilling the conditions has been accepted! [HomopolymericRunsFilter]"
+    print(feature)
+
+    seq_keep = Seq("GGGGGGGGGGGGGGAAATTTTT")
+    res, feature = homopolymeric_run_filter.apply(seq_keep)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
+    print(feature)
+
+    seq_keep = Seq("GGGGGGGGGGGGGGAAATTT")
+    res, feature = homopolymeric_run_filter.apply(seq_keep)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
+    print(feature)
+
     three_prime_filter = ThreePrimeSequenceFilter(three_prime_sequence="TT", remove=False)
 
     seq_remove = Seq("GGGGGGGGGGGGGGAAAAA")

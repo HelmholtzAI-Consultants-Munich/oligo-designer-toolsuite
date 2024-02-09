@@ -37,10 +37,10 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockSetScoring,
 )
 from oligo_designer_toolsuite.oligo_property_filter import (
-    GCContent,
-    MaskedSequences,
-    MeltingTemperatureNN,
-    PadlockArms,
+    GCContentFilter,
+    HardMaskedSequenceFilter,
+    MeltingTemperatureNNFilter,
+    PadlockArmsFilter,
     PropertyFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
@@ -140,17 +140,17 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         Tm_parameters_probe["de_table"] = getattr(mt, Tm_parameters_probe["de_table"])
 
         ##### initialize the filters classes #####
-        masked_sequences = MaskedSequences()
-        gc_content = GCContent(
+        masked_sequences = HardMaskedSequenceFilter()
+        gc_content = GCContentFilter(
             GC_content_min=GC_content_min, GC_content_max=GC_content_max
         )
-        melting_temperature = MeltingTemperatureNN(
+        melting_temperature = MeltingTemperatureNNFilter(
             Tm_min=Tm_min,
             Tm_max=Tm_max,
             Tm_parameters=Tm_parameters_probe,
             Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
         )
-        padlock_arms = PadlockArms(
+        padlock_arms = PadlockArmsFilter(
             min_arm_length=min_arm_length,
             max_arm_Tm_dif=max_arm_Tm_dif,
             arm_Tm_min=arm_Tm_min,

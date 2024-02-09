@@ -17,13 +17,13 @@ from ._utils import initialize_parameters
 
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
-    ConsecutiveRepeats,
-    GCClamp,
-    GCContent,
-    MeltingTemperatureNN,
+    HomopolymericRunsFilter,
+    GCClampFilter,
+    GCContentFilter,
+    MeltingTemperatureNNFilter,
     PropertyFilter,
-    SecondaryStructure,
-    MaskedSequences,
+    SecondaryStructureFilter,
+    HardMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
@@ -411,12 +411,12 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         gc_clamp_n,
         n_jobs,
     ):
-        GC_content_filter = GCContent(
+        GC_content_filter = GCContentFilter(
             GC_content_min=GC_content_min, GC_content_max=GC_content_max
         )
-        consecutive_repeats = ConsecutiveRepeats(n_repeats)
+        consecutive_repeats = HomopolymericRunsFilter(base = ["A", "C", "T", "G"], n=n_repeats)
 
-        GC_clamp = GCClamp(gc_clamp_n)
+        GC_clamp = GCClampFilter(gc_clamp_n)
 
         filters = [GC_content_filter, consecutive_repeats, GC_clamp]
 
@@ -700,21 +700,21 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         Tm_parameters_probe["imm_table"] = getattr(mt, Tm_parameters_probe["imm_table"])
         Tm_parameters_probe["de_table"] = getattr(mt, Tm_parameters_probe["de_table"])
 
-        melting_temperature = MeltingTemperatureNN(
+        melting_temperature = MeltingTemperatureNNFilter(
             Tm_min=Tm_min,
             Tm_max=Tm_max,
             Tm_parameters=Tm_parameters_probe,
             Tm_chem_correction_parameters=Tm_correction_param,
         )
-        consecutive_repeats = ConsecutiveRepeats(max_repeats_nt)
-        gc_content = GCContent(
+        consecutive_repeats = HomopolymericRunsFilter(base = ["A", "C", "T", "G"], n = max_repeats_nt)
+        gc_content = GCContentFilter(
             GC_content_min=GC_content_min, GC_content_max=GC_content_max
         )
-        secondary_structure = SecondaryStructure(
+        secondary_structure = SecondaryStructureFilter(
             T=internal_secondary_structures_T,
             DG_thr=internal_secondary_structures_threshold_deltaG,
         )
-        masked_sequences = MaskedSequences()
+        masked_sequences = HardMaskedSequenceFilter()
 
         # create the list of filters
         filters = [
