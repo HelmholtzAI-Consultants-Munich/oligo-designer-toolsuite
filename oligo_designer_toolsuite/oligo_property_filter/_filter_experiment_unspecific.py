@@ -75,7 +75,7 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
 
     :param prohibited_sequence: The DNA sequence that is to be prohibited. This sequence should
                                 be a valid DNA sequence consisting of characters A, T, C, and G only.
-                                The user can privide either a single sequence or a list of sequences.
+                                The parameter can be either a single sequence or a list of sequences.
     :type prohibited_sequence: str, list[str]
     """
 
@@ -85,12 +85,14 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
     ) -> None:
         """Constructor for the ProhibitedSequenceFilter class."""
         super().__init__()
-        if not check_sequence(prohibited_sequence):
-            raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
         if not isinstance(prohibited_sequence, list):
             prohibited_sequence = [prohibited_sequence]
         self.prohibited_sequence = [s.upper() for s in prohibited_sequence]
-
+        # Check that the prohibited sequences are valid DNA sequences.
+        for s in self.prohibited_sequence:
+            if not check_sequence(s):
+                raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
+        
     def apply(self, sequence: Seq):
         """
         Applies the filter to a given DNA sequence to check if it contains the prohibited sequence.
@@ -116,7 +118,7 @@ class HomopolymericRunsFilter(PropertyFilterBase):
     :type base: str, List[str]
     :param n: The minimum number of consecutive repeats of the base that defines a homopolymeric run. If ``base`` is a list,
               this parameter can be a single integer or a list of integers of equal lenght. If a single integer is provided, it will be assigned 
-              to all the bases in the list. Alternatively, if a list of integers is provided each element will be assigned to the bases by matching indices.
+              to all the bases in the list. Alternatively, if a list of integers is provided, each element will be assigned to the bases by matching indices.
     :type n: int, List[int]
     """
 
@@ -127,8 +129,6 @@ class HomopolymericRunsFilter(PropertyFilterBase):
     ) -> None:
         """Constructor for the HomopolymericRunsFilter class."""
         super().__init__()
-        if not check_sequence(base):
-            raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
         # Check that the variables types are comaptible
         if not isinstance(base, list):
             if isinstance(n, list):
@@ -142,12 +142,15 @@ class HomopolymericRunsFilter(PropertyFilterBase):
             elif not isinstance(n, list):
                 # n is the same for all the elements of base
                 n = [n for _ in range(len(base))]
-        
         # base and n are now lists of the same length
         self.base = [nucleotide.upper() for nucleotide in base]
         self.n = n
         self.homopolymeric_runs = [nucleotide * repepeats for nucleotide, repepeats in zip(self.base, self.n)]
-
+        # check that the nucleotides provided are valid
+        for b in self.base:
+            if not check_sequence(b):
+                raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
+            
     def apply(self, sequence: Seq):
         """Applies the filter to a given DNA sequence to check if it contains a homopolymeric run.
 

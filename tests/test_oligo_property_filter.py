@@ -134,6 +134,27 @@ def test_sequence_content_filters():
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [ProhibitedSequenceFilter]"
     print(feature)
 
+    prohibited_sequence_filter = ProhibitedSequenceFilter(prohibited_sequence=["ACT", "CCGC"])
+
+    seq_remove = Seq("GGGGGGGGGGGGGGACT")
+    res, _ = prohibited_sequence_filter.apply(seq_remove)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted! [ProhibitedSequenceFilter]"
+
+    seq_remove = Seq("GGGGGGGGGGGGGGCCGC")
+    res, _ = prohibited_sequence_filter.apply(seq_remove)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted! [ProhibitedSequenceFilter]"
+
+    seq_keep = Seq("GGGGGGGGGGGGGGATC")
+    res, feature = prohibited_sequence_filter.apply(seq_keep)
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [ProhibitedSequenceFilter]"
+    print(feature)
+
     homopolymeric_run_filter = HomopolymericRunsFilter(base="A", n=4)
 
     seq_remove = Seq("GGGGGGGGGGGGGGAAAAA")
