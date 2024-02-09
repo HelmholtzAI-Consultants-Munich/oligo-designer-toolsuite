@@ -75,7 +75,7 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
 
     :param prohibited_sequence: The DNA sequence that is to be prohibited. This sequence should
                                 be a valid DNA sequence consisting of characters A, T, C, and G only.
-                                The user can privide either a single sequence or a list of sequences.
+                                The parameter can be either a single sequence or a list of sequences.
     :type prohibited_sequence: str, list[str]
     """
 
@@ -85,11 +85,13 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
     ) -> None:
         """Constructor for the ProhibitedSequenceFilter class."""
         super().__init__()
-        if not check_sequence(prohibited_sequence):
-            raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
         if not isinstance(prohibited_sequence, list):
             prohibited_sequence = [prohibited_sequence]
         self.prohibited_sequence = [s.upper() for s in prohibited_sequence]
+        # Check that the prohibited sequences are valid DNA sequences.
+        for s in self.prohibited_sequence:
+            if not check_sequence(s):
+                raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
 
     def apply(self, sequence: Seq):
         """
@@ -127,8 +129,6 @@ class HomopolymericRunsFilter(PropertyFilterBase):
     ) -> None:
         """Constructor for the HomopolymericRunsFilter class."""
         super().__init__()
-        if not check_sequence(base):
-            raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
         # Check that the variables types are comaptible
         if not isinstance(base, list):
             if isinstance(n, list):
@@ -144,11 +144,14 @@ class HomopolymericRunsFilter(PropertyFilterBase):
             elif not isinstance(n, list):
                 # n is the same for all the elements of base
                 n = [n for _ in range(len(base))]
-
         # base and n are now lists of the same length
         self.base = [nucleotide.upper() for nucleotide in base]
         self.n = n
         self.homopolymeric_runs = [nucleotide * repepeats for nucleotide, repepeats in zip(self.base, self.n)]
+        # check that the nucleotides provided are valid
+        for b in self.base:
+            if not check_sequence(b):
+                raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
 
     def apply(self, sequence: Seq):
         """Applies the filter to a given DNA sequence to check if it contains a homopolymeric run.
@@ -264,16 +267,19 @@ class GCContentFilter(PropertyFilterBase):
 
 
 class GCClampFilter(PropertyFilterBase):
-    """A filter to check if the n 3' terminal bases end of a DNA sequence contain at least one G or C bases.
+    """A filter to check if the last `n_bases` of the 3' terminal end of a DNA sequence contain at least `n_GC` G or C bases.
 
-    :param n: The number of bases from the 3' end of the sequence to check for the presence of G or C.
-    :type n: int
+    :param n_bases: The number of bases from the 3' end of the sequence to check for the presence of G or C.
+    :type n_bases: int
+    :param n_GC: The minimum number of G or C bases at the 3' end.
+    :type n_GC: int
     """
 
-    def __init__(self, n: int) -> None:
+    def __init__(self, n_bases: int, n_GC: int) -> None:
         """Constructor for the GCClampFilter class."""
         super().__init__()
-        self.n = n
+        self.n_bases = n_bases
+        self.n_GC = n_GC
 
     def apply(self, sequence: Seq):
         """Applies the GC clamp filter to the 3' end of a DNA sequence and returns True if there is a GC clamp.
@@ -284,8 +290,11 @@ class GCClampFilter(PropertyFilterBase):
         :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
         :rtype: (bool, dict)
         """
-        for i in range(1, self.n + 1):
+        GC_counetr = 0
+        for i in range(1, self.n_bases + 1):
             if sequence.upper()[-i] == "G" or sequence.upper()[-i] == "C":
+                GC_counetr += 1
+            if GC_counetr >= self.n_GC:
                 return True, {}
         return False, {}
 
