@@ -115,7 +115,7 @@ class HomopolymericRunsFilter(PropertyFilterBase):
                  repeats for each base in the list.
     :type base: str, List[str]
     :param n: The minimum number of consecutive repeats of the base that defines a homopolymeric run. If ``base`` is a list,
-              this parameter can be a single integer or a list of integers of equal lenght. If a single integer is provided, it will be assigned 
+              this parameter can be a single integer or a list of integers of equal lenght. If a single integer is provided, it will be assigned
               to all the bases in the list. Alternatively, if a list of integers is provided each element will be assigned to the bases by matching indices.
     :type n: int, List[int]
     """
@@ -138,11 +138,13 @@ class HomopolymericRunsFilter(PropertyFilterBase):
                 n = [n]
         elif isinstance(base, list):
             if isinstance(n, list) and len(base) != len(n):
-                raise ValueError(f"The lists base and n must have the same length, but they have {len(base)} and {len(n)} repectively.")
+                raise ValueError(
+                    f"The lists base and n must have the same length, but they have {len(base)} and {len(n)} repectively."
+                )
             elif not isinstance(n, list):
                 # n is the same for all the elements of base
                 n = [n for _ in range(len(base))]
-        
+
         # base and n are now lists of the same length
         self.base = [nucleotide.upper() for nucleotide in base]
         self.n = n
@@ -156,7 +158,7 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
         :rtype: (bool, dict)
         """
-    
+
         for homopolymeric_run in self.homopolymeric_runs:
             if homopolymeric_run in sequence.upper():
                 return False, {}
@@ -360,6 +362,64 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         Tm = self._get_Tm(sequence)
         if self.Tm_min < Tm < self.Tm_max:
             return True, {"melting_temperature": Tm}
+        return False, {}
+
+
+class HomodimerFilter(PropertyFilterBase):
+    """A filter to evaluate the potential formation of homodimers. A homodimer is formed when two strands of DNA
+    bind to each other due to complementary sequences. This filter calculates the longest self-complementary
+    sequence within a given DNA sequence and compares it against a maximum allowable length to prevent homodimer
+    formation.
+
+    :param max_len_selfcomp: The maximum length of self-complementary sequence allowed to avoid homodimer formation.
+    :type max_len_selfcomp: int
+    """
+
+    def __init__(self, max_len_selfcomp: int) -> None:
+        """Constructor for the HomodimerFilter class."""
+        super().__init__()
+        self.max_len_selfcomp = max_len_selfcomp
+
+    def _calculate_len_selfcomp(self, sequence: Seq):
+        """Calculates the length of the longest self-complementary sequence in the given DNA sequence.
+
+        :param sequence: The DNA sequence to analyze for self-complementary sequences.
+        :type sequence: Seq
+        :return: The length of the longest self-complementary sequence found in the DNA sequence.
+        :rtype: int
+        """
+        # we want to check if the reverse of our sequence is complementary to itself, e.g.
+        # 5' - TAA CAA TAT ATA TTG TTA - 3' and it's reverse
+        # 3' - ATT CTT ATA TAT AAC AAT - 5' are complementary to each other
+        # but since we are comparing strings, we take the reverse complement,
+        # which should be the exact same sequence in this case
+        sequence_revcomp = sequence.reverse_complement()
+
+        # initialize counters
+        len_selfcomp_sub = 0
+        len_selfcomp = 0
+
+        # iterate through sequences
+        for i in range(len(sequence)):
+            if sequence[i] != sequence_revcomp[i]:
+                len_selfcomp_sub = 0
+            else:
+                len_selfcomp_sub += 1
+            len_selfcomp = max(len_selfcomp, len_selfcomp_sub)
+        return len_selfcomp
+
+    def apply(self, sequence: Seq):
+        """Applies the homodimer filter to a DNA sequence to evaluate its potential for homodimer formation.
+
+        :param sequence: The DNA sequence to be checked for homodimer formation potential.
+        :type sequence: Seq
+        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
+                 the maximum self-complementary length if the condition is met.
+        :rtype: (bool, dict)
+        """
+        len_selfcomp = self._calculate_len_selfcomp(sequence)
+        if len_selfcomp <= self.max_len_selfcomp:
+            return True, {"len_selfcomp": len_selfcomp}
         return False, {}
 
 

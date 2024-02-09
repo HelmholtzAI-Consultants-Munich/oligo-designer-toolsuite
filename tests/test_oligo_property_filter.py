@@ -172,7 +172,7 @@ def test_sequence_content_filters():
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
     print(feature)
 
-    homopolymeric_run_filter = HomopolymericRunsFilter(base=["A", "T"], n=[4,5])
+    homopolymeric_run_filter = HomopolymericRunsFilter(base=["A", "T"], n=[4, 5])
 
     seq_keep = Seq("GGGGGGGGGGGGGGAaAATTT")
     res, feature = homopolymeric_run_filter.apply(seq_keep)
@@ -243,7 +243,7 @@ def test_GC_content_filters():
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [GCContentFilter]"
     print(feature)
 
-    GC_clamp_filter = GCClampFilter(n=3)
+    GC_clamp_filter = GCClampFilter(n_bases=3, n_GC=1)
 
     seq_remove = Seq("TCGGGCGGGAGATCCAGGTGGCGCGCAAAAA")
     res, _ = GC_clamp_filter.apply(seq_remove)
@@ -259,7 +259,7 @@ def test_GC_content_filters():
     print(feature)
 
 
-def test_melting_temperature_filters():
+def test_sequence_structure_filters():
     """Test if melting temperature filters work, e.g. sequences having certain Tm or secondary structure probability should be removed."""
     # Test if Tm filter works with default parameters
     Tm_filter1 = MeltingTemperatureNNFilter(Tm_min=52, Tm_max=67, Tm_parameters={})
@@ -314,6 +314,19 @@ def test_melting_temperature_filters():
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [SecondaryStructureFilter]"
     print(feature)
 
+    homodimer_filer = HomodimerFilter(max_len_selfcomp=6)
+
+    seq_remove = Seq("TAACAATATATATTGTTA")
+    res, _ = homodimer_filer.apply(seq_remove)
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the condition with has been accepted!"
+
+    seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
+    res, feature = homodimer_filer.apply(seq_keep)
+    assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
+    print(feature)
+
 
 def test_experiment_specific_filters():
     """Test if experiment specific filters work, e.g. sequences not forming proper padlock arms should be removed."""
@@ -345,7 +358,7 @@ def test_property_filter():
     """Test if property filter correctly applies all given filters."""
     masked_sequences_filter = HardMaskedSequenceFilter(mask="N")
     GC_content_filter = GCContentFilter(GC_content_min=40, GC_content_max=60)
-    GC_clamp_filter = GCClampFilter(2)
+    GC_clamp_filter = GCClampFilter(n_bases=2, n_GC=1)
 
     Tm_filter = MeltingTemperatureNNFilter(
         Tm_min=52,
