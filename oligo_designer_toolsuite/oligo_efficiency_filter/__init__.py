@@ -14,9 +14,9 @@ from ._set_scoring import (
 __all__ = [
     "OligoScoringBase",
     "PadlockOligoScoring",
+    "SeqFISHOligoScoring",
     "SetScoringBase",
-    "PadlockSetScoring",
     "AverageSetScoring",
     "MaxSetScoring",
-    "SeqFISHOligoScoring"
+    "PadlockSetScoring",
 ]
