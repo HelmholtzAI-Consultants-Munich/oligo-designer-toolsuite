@@ -154,12 +154,40 @@ If the Ologo Designer Toolsuite is useful for your research, consider citing the
                      Lisa Barros de Andrade e Sousa
                      },
     title        = {{Oligo Designer Toolsuite}},
-    month        = april,
     year         = 2023,
     publisher    = {Zenodo},
     version      = {v0.1.3},
     doi          = {10.5281/zenodo.7823048},
     url          = {https://doi.org/10.5281/zenodo.7823048}
+}
+```
+
+If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing the paper:
+
+```
+@article {Kuemmerle2022.08.16.504115,
+    author 	 = { Louis B. Kuemmerle,
+		     Malte D. Luecken,
+		     Alexandra B. Firsova
+		     Lisa Barros de Andrade e Sousa
+		     Lena Strasser
+		     Lukas Heumos
+		     Ilhem Isra Mekki
+		     Krishnaa T. Mahbubani
+		     Alexandros Sountoulidis
+		     Tamas Balassa
+		     Ferenc Kovacs
+		     Peter Horvath
+		     Marie Piraud
+		     Ali Ertürk
+		     Christos Samakovlis
+		     Fabian J. Theis},
+    title 	 = {{Probe set selection for targeted spatial transcriptomics}},
+    year 	 = {2022},
+    publisher 	 = {Cold Spring Harbor Laboratory},
+    journal 	 = {bioRxiv},
+    doi 	 = {10.1101/2022.08.16.504115},
+    URL 	 = {https://www.biorxiv.org/content/early/2022/08/17/2022.08.16.504115}
 }
 ```
 
