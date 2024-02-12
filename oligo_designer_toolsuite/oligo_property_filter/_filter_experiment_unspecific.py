@@ -112,14 +112,9 @@ class HomopolymericRunsFilter(PropertyFilterBase):
     """A filter hat checks for the absence of a specified homopolymeric run in a DNA sequence.
     A homopolymeric run is defined as a sequence where the same nucleotide base repeats consecutively.
 
-    :param base: The nucleotide base (A, T, C, or G) that is checked for consecutive repeats. The parameter
-                 can be a single base or a list of bases. If a list is provided, the filter will check for consecutive
-                 repeats for each base in the list.
-    :type base: str, List[str]
-    :param n: The minimum number of consecutive repeats of the base that defines a homopolymeric run. If ``base`` is a list,
-              this parameter can be a single integer or a list of integers of equal lenght. If a single integer is provided, it will be assigned
-              to all the bases in the list. Alternatively, if a list of integers is provided each element will be assigned to the bases by matching indices.
-    :type n: int, List[int]
+    :param base_n: A dictionary where keys are nucleotide bases (A, T, C, G) and values are the minimum
+                   number of consecutive repeats that define a homopolymeric run for that base.
+    :type base_n: dict
     """
 
     def __init__(
