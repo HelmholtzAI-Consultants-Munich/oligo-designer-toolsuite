@@ -43,32 +43,24 @@ class Blastn(AlignmentSpecificityFilter):
     def __init__(
         self,
         dir_specificity: str,
-        word_size: int,
-        percent_identity: float,
-        strand: str,
         coverage: float = None,
         min_alignment_length: int = None,
+        percent_identity: float = None,
+        blast_search_parameters: dict = {}
     ):
         """Constructor."""
         super().__init__(dir_specificity)
-        self.word_size = word_size
-        self.perc_identity = percent_identity
-        self.strand = strand
-
-        if coverage is None and min_alignment_length is not None:
-            self.min_alignment_length = min_alignment_length
-        elif min_alignment_length is None and coverage is not None:
-            self.coverage = coverage
-        else:
+        if coverage is None and min_alignment_length is None:
             raise Exception(
                 "Please provide either coverage or a minimum alignment length"
             )
+        self.coverage = coverage
+        self.min_alignment_length = min_alignment_length
+        self.perc_identity = percent_identity
+        self.blast_search_parameters = blast_search_parameters
 
         self.dir_blast = os.path.join(self.dir_specificity, "blast")
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
-
-        self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
-        Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
 
     def apply(self, database: dict, file_reference: str, n_jobs: int):
         """
@@ -103,6 +95,11 @@ class Blastn(AlignmentSpecificityFilter):
             database[region] = filtered_database_region
 
         return database
+
+    def _compute_percent_identity_from_alignment_length(alignment_length):
+        if alignment_length > 50: percent_identity = 50
+        elif alignment_length 
+
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """

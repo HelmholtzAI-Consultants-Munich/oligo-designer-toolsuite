@@ -13,8 +13,17 @@ from Bio.SeqRecord import SeqRecord
 ############################################
 # Oligo Specificity Filter Classes
 ############################################
+
+
+# TODO: specify sequence type for database input (i.e. target or oligo)
 class SpecificityFilterBase(ABC):
     "This is the base class for all specificity filter classes"
+
+    def __init__(self, dir_specificity: str):
+        """Construnctor"""
+        # folder where we write the intermediate files
+        self.dir_specificity = dir_specificity
+        Path(self.dir_specificity).mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
     def apply(self, database: dict, file_reference: str, n_jobs: int):
@@ -31,9 +40,7 @@ class SpecificityFilterBase(ABC):
         :rtype: dict
         """
 
-    def _filter_matching_oligos(
-        self, database_region: dict, matching_oligos: list[str]
-    ):
+    def _filter_hits_from_database(self, database_region: dict, oligo_hits: list[str]):
         """Filer out form the database the sequences with a match.
 
         :param database_region: dictionary with all the oligos belonging to the current gene
@@ -45,7 +52,7 @@ class SpecificityFilterBase(ABC):
         """
         oligo_ids = list(database_region.keys())
         for oligo_id in oligo_ids:
-            if oligo_id in matching_oligos:
+            if oligo_id in oligo_hits:
                 del database_region[oligo_id]
         return database_region
 
@@ -64,6 +71,21 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         Path(self.dir_specificity).mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
+    def get_oligo_pair_hits(self, database: dict, file_reference: str, n_jobs: int):
+        """
+        Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
+        contains the name of the oligo from the database and its corresponding match from the reference.
+
+        :param database: database containing the oligos.
+        :type database: dict
+        :param reference_fasta: path to the file that is used as an reference for the alignment
+        :type reference_fasta: str
+
+        :return: A list of matching oligo pairs.
+        :rtype: list of tuple
+        """
+
+    @abstractmethod
     def _create_index(self, file_reference: str, n_jobs: int):
         """
         Abstract method for creating an index based on the provided file reference.
@@ -79,7 +101,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         """
 
     @abstractmethod
-    def _run_search(self, database, region, index_name, filter_same_region_matches):
+    def _run_search(self, database: dict, region: str, file_index: str, **kwargs):
         """
         Abstract method for running a search of database region and the against the provided index.
 
@@ -95,8 +117,12 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :rtype: (numpy.ndarray, pandas.DataFrame)
         """
 
+    @abstractmethod
+    def _find_hits(self, search_results, filter_hits_from_input_region):
+        """ """
+
     def _run_filter(
-        self, database, region, index_name, filter_same_region_matches=True, **kwargs
+        self, database: dict, region: str, file_index: str, filter_hits_from_input_region=True, **kwargs
     ):
         """
         Filters a database region based on alignment matches.
@@ -114,39 +140,18 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :return: The filtered database region containing matching oligos.
         :rtype: dict
         """
-        matching_oligos, _ = self._run_search(
-            database, region, index_name, filter_same_region_matches, **kwargs
-        )
-        filtered_database_region = self._filter_matching_oligos(
-            database[region], matching_oligos
-        )
-        return filtered_database_region
+        search_results = self._run_search(database, region, file_index, **kwargs)
+        oligo_hits = self._find_hits(search_results, filter_hits_from_input_region)
+        database_region_filtered = self._filter_hits_from_database(database[region], oligo_hits)
 
-    @abstractmethod
-    def get_matching_oligo_pairs(
-        self, database: dict, reference_fasta: str, n_jobs: int
-    ):
-        """
-        Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
-        contains the name of the oligo from the database and its corresponding match from the reference.
-
-        :param database: database containing the oligos.
-        :type database: dict
-        :param reference_fasta: path to the file that is used as an reference for the alignment
-        :type reference_fasta: str
-
-        :return: A list of matching oligo pairs.
-        :rtype: list of tuple
-        """
+        return database_region_filtered
 
     # TODO: Both these functions are temporary, should be solved with database.write_to_fasta
     def _create_fasta_file(self, database, directory, region):
         file_fasta_region = os.path.join(directory, f"oligos_{region}.fna")
         output = []
         for oligo_id in database[region].keys():
-            output.append(
-                SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", "")
-            )
+            output.append(SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", ""))
         with open(file_fasta_region, "w") as handle:
             SeqIO.write(output, handle, "fasta")
         return file_fasta_region
@@ -157,9 +162,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         output = []
         for region in regions:
             for oligo_id in database[region].keys():
-                output.append(
-                    SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", "")
-                )
+                output.append(SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", ""))
         with open(file_fasta, "w") as handle:
             SeqIO.write(output, handle, "fasta")
         return file_fasta
