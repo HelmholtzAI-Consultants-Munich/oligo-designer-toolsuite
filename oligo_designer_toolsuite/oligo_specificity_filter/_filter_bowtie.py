@@ -8,6 +8,8 @@ import subprocess
 from pathlib import Path
 
 import pandas as pd
+
+import pandas as pd
 from joblib import Parallel, delayed
 
 from oligo_designer_toolsuite.constants import (
@@ -86,8 +88,7 @@ class Bowtie(AlignmentSpecificityFilter):
 
         regions = list(database.keys())
         filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_filter)(database, region, index_name)
-            for region in regions
+            delayed(self._run_filter)(database, region, index_name) for region in regions
         )
 
         # reconstruct the oligos_DB
@@ -119,12 +120,7 @@ class Bowtie(AlignmentSpecificityFilter):
         # Create bowtie index if none exists
         if not index_exists:
             command1 = (
-                "bowtie-build --quiet --threads "
-                + str(n_jobs)
-                + " -f "
-                + file_reference
-                + " "
-                + index_name
+                "bowtie-build --quiet --threads " + str(n_jobs) + " -f " + file_reference + " " + index_name
             )
             process = subprocess.Popen(command1, shell=True, cwd=self.dir_bowtie).wait()
 
@@ -149,9 +145,7 @@ class Bowtie(AlignmentSpecificityFilter):
 
         # TODO: This part has to change
         if region is not None:
-            file_oligo_fasta_gene = self._create_fasta_file(
-                database, self.dir_fasta, region
-            )
+            file_oligo_fasta_gene = self._create_fasta_file(database, self.dir_fasta, region)
         else:
             file_oligo_fasta_gene = self._create_fasta_multiple_regions(
                 database, self.dir_fasta, regions=database.keys()
@@ -203,9 +197,7 @@ class Bowtie(AlignmentSpecificityFilter):
         os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
 
         # filter the DB based on the bowtie results
-        return self._find_matching_oligos(
-            bowtie_results, filter_same_gene_matches=filter_same_region_matches
-        )
+        return self._find_matching_oligos(bowtie_results, filter_same_gene_matches=filter_same_region_matches)
 
     def _read_bowtie_output(self, file_bowtie_gene):
         """Load the output of the bowtie alignment search into a DataFrame and process the results."""
@@ -237,9 +229,7 @@ class Bowtie(AlignmentSpecificityFilter):
             },
         )
         # return the real matches, that is the ones not belonging to the same region of the query oligo
-        bowtie_results["query_gene_id"] = (
-            bowtie_results["query"].str.split(REGION_SEPARATOR_OLIGO).str[0]
-        )
+        bowtie_results["query_gene_id"] = bowtie_results["query"].str.split(REGION_SEPARATOR_OLIGO).str[0]
         bowtie_results["reference_gene_id"] = (
             bowtie_results["reference"].str.split(REGION_SEPARATOR_ANNOTATION).str[0]
         )
@@ -273,9 +263,7 @@ class Bowtie(AlignmentSpecificityFilter):
 
         return oligos_with_match, bowtie_matches
 
-    def get_matching_oligo_pairs(
-        self, database: dict, reference_fasta: str, n_jobs: int
-    ):
+    def get_matching_oligo_pairs(self, database: dict, reference_fasta: str, n_jobs: int):
         """
         Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
         contains the name of the oligo from the database and its corresponding match from the reference.

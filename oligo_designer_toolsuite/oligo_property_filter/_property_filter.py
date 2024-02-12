@@ -4,8 +4,8 @@
 
 from joblib import Parallel, delayed
 
-from . import PropertyFilterBase
 from ..database import OligoDatabase
+from . import PropertyFilterBase
 
 ############################################
 # Property Filter Class
@@ -14,34 +14,34 @@ from ..database import OligoDatabase
 
 class PropertyFilter:
     """
-    Applies sequentially all the specified pre-filters based on the sequences features. All the oligos not fulfilling all the constraints are deleted form the database.
+    A class representing a collection of filters to be applied on oligo databases.
 
-    :param filters: list of filters classes already initialized
-    :type filters: list of classes
+    This class manages the application of multiple PropertyFilterBase instances on an oligo database,
+    allowing for complex filtering strategies. Oligos which don't fulfill the filtering criteria are
+    removed from the database.
+
+    :param filters: A list of filter objects derived from PropertyFilterBase.
+    :type filters: list[PropertyFilterBase]
     """
 
     def __init__(
         self,
         filters: list[PropertyFilterBase],
     ) -> None:
-        """
-        Constructor.
-        """
+        """Constructor for the PropertyFilter class."""
         self.filters = filters
 
-    def apply(self, oligo_database: OligoDatabase, n_jobs: int = None):
-        """Filters the database of oligos based on the given filters.
+    def apply(self, oligo_database: OligoDatabase, n_jobs: int = 1):
+        """
+        Applies all filters to the oligo database in parallel, modifying it in place.
 
-        :param oligo_database: database class containig the oligos and their features
+        :param oligo_database: The oligo database to which the filters are applied.
         :type oligo_database: OligoDatabase
-        :param n_jobs: nr of cores used, if None the value set in database class is used, defaults to None
+        :param n_jobs: The number of parallel jobs to run. Default is 1.
         :type n_jobs: int
-        :return: oligo database class cointainig only oligos that passed the filters
+        :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
-        if n_jobs is None:
-            n_jobs = oligo_database.n_jobs
-
         database = oligo_database.database
         region_ids = list(database.keys())
         database_regions = Parallel(n_jobs=n_jobs)(
@@ -52,20 +52,21 @@ class PropertyFilter:
             database[region_id] = database_region
         oligo_database.database = database
         oligo_database.remove_regions_with_insufficient_oligos(
-            pipeline_step="Property Filter"
+            pipeline_step="Property Filters"
         )
         return oligo_database
 
     def _filter_region(self, database_region):
-        """Apply filters to alll oligos of a specific region.
+        """
+        Applies filters to a specific region of the database.
 
-        :param database_region: Oligo database entry for one region.
+        :param database_region: A region from the oligo database.
         :type database_region: dict
-        :return: Oligo database entry for one region only contaning oligos that passed the filter.
+        :return: The filtered region.
         :rtype: dict
         """
-        oligos_id = list(database_region.keys())
-        for oligo_id in oligos_id:
+        oligo_ids = list(database_region.keys())
+        for oligo_id in oligo_ids:
             fulfills, additional_features = self._filter_sequence(
                 database_region[oligo_id]["sequence"]
             )
@@ -76,12 +77,13 @@ class PropertyFilter:
         return database_region
 
     def _filter_sequence(self, sequence):
-        """Applies the user-defined filters and returns the result and the additional computed features.
+        """
+        Applies filters to a single oligo sequence and returns the filtering outcome.
 
-        :param sequence: sequence to check
-        :type sequence: Bio.Seq
-        :return: if the filters are fulfilled and the additional features computed
-        :rtype: bool, dict
+        :param sequence: The oligo sequence to be filtered.
+        :type sequence: Bio.SeqUtils.Seq
+        :return: Tuple of filtering result and additional features.
+        :rtype: (bool, dict)
         """
         fulfills = True
         additional_features = {}

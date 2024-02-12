@@ -2,10 +2,9 @@
 # imports
 ############################################
 
-import numpy as np
-import pandas as pd
-
 from abc import ABC, abstractmethod
+
+import pandas as pd
 
 ############################################
 # Oligo Scoring Classes
@@ -15,17 +14,16 @@ from abc import ABC, abstractmethod
 class OligoScoringBase(ABC):
     """Template class for scoring the oligos."""
 
-    def apply(self, oligos: dict, oligos_indices: np.array):
+    def apply(self, oligos: dict):
         """Scores all the oligos using the defiend scoring function. The scores are both saved in the dictionary
         and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
 
         :param oligos: dictionary containing the oligos
         :type oligos: dict
-        :param oligos_indices: list of the indices of the oligos used as a reference to keep the ordering of the oligos consistent
-        :type oligos_indices: np.array
         :return: updated dictionary of the oligos, series with the computed scores
         :rtype: dict, pandas.Series
         """
+        oligos_indices = list(oligos.keys())
         oligos_scores = pd.Series(index=oligos_indices, dtype=float)
         for oligo_id in oligos_indices:
             score = self.scoring_function(oligos[oligo_id])
@@ -129,7 +127,6 @@ class PadlockOligoScoring(OligoScoringBase):
 
 
 class SeqFISHOligoScoring(OligoScoringBase):
-
     """Oligos scoring class for the SeqFISH+ experiment.
     Scoring function has the following form: ((GC_content_of_sequence - GC_opt)/(GC_max-GC_min))^2
 

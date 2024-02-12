@@ -5,6 +5,7 @@
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
+from pathlib import Path
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord

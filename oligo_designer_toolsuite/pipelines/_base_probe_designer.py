@@ -1,21 +1,18 @@
+import inspect
+import logging
 import os
 import sys
-import yaml
-import shutil
-import logging
-import inspect
-import warnings
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # from typing_extensions import Literal # Python 3.7 or below
 from typing import Literal
 
-from oligo_designer_toolsuite.database import (
-    EnsemblGenomicRegionGenerator,
+from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
+    EnsemblGenomicRegionGenerator,
     NcbiGenomicRegionGenerator,
-    OligoDatabase,
 )
 
 

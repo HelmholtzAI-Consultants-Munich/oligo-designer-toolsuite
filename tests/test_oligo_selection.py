@@ -2,12 +2,10 @@
 # imports
 ############################################
 
-import pytest
 import pandas as pd
+import pytest
 
-from oligo_designer_toolsuite.database import (
-    OligoDatabase,
-)
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -68,10 +66,23 @@ def oligoset_generator():
     return oligoset_generator
 
 
+@pytest.fixture()
+def padlock_scoring():
+    padlock_scoring = PadlockOligoScoring(
+        Tm_min=52,
+        Tm_opt=60,
+        Tm_max=67,
+        GC_content_min=40,
+        GC_content_opt=50,
+        GC_content_max=60,
+    )
+    return padlock_scoring
+
+
 # check we obtain the same result
 def test_oligosets_generation(oligoset_generator, oligos_database):
     oligos_database = oligoset_generator.apply(
-        oligo_database=oligos_database, n_sets=100
+        oligo_database=oligos_database, n_sets=100, n_jobs=1
     )
     for gene in oligos_database.oligosets.keys():
         computed_sets = oligos_database.oligosets[gene]
@@ -87,6 +98,7 @@ def test_oligosets_generation(oligoset_generator, oligos_database):
         true_sets.reset_index(inplace=True, drop=True)
         computed_sets.sort_values(by=list(computed_sets.columns), inplace=True)
         computed_sets.reset_index(inplace=True, drop=True)
+        pd.set_option("display.max_columns", 500)
         print(true_sets)
         print(computed_sets)
         assert true_sets.equals(
@@ -125,7 +137,7 @@ def test_nonoverlapping_matrix_for_nonovelapping_oligos(oligoset_generator):
     ), "overlapping matrix for two non-overlapping oligos wrongly computed"
 
 
-def test_non_overlapping_sets(oligoset_generator):
+def test_non_overlapping_sets(oligoset_generator, padlock_scoring):
     oligos = {
         "A_0": {"melting_temperature": 60, "GC_content": 50},
         "A_1": {"melting_temperature": 60, "GC_content": 55},
@@ -133,6 +145,7 @@ def test_non_overlapping_sets(oligoset_generator):
         "A_3": {"melting_temperature": 67, "GC_content": 60},
         "A_4": {"melting_temperature": 60, "GC_content": 60},
     }
+    oligos, oligo_scores = padlock_scoring.apply(oligos)
     index = ["A_0", "A_1", "A_2", "A_3", "A_4"]
     data = [
         [0, 1, 1, 0, 0],
@@ -155,6 +168,6 @@ def test_non_overlapping_sets(oligoset_generator):
         ],
     )
     _, computed_sets, _ = oligoset_generator._get_non_overlapping_sets(
-        oligos, overlapping_matrix, 100
+        oligos, overlapping_matrix, oligo_scores, 100
     )
     assert true_sets.equals(computed_sets), "Sets are not computed correctly"

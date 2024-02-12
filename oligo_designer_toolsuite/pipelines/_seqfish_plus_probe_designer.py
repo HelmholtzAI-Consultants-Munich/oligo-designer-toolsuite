@@ -8,9 +8,9 @@ from typing import List, Literal, Tuple
 from ..database import OligoDatabase, ReferenceDatabase
 from ..oligo_efficiency_filter import AverageSetScoring, SeqFISHOligoScoring
 from ..oligo_property_filter import (
-    ConsecutiveRepeats,
-    GCContent,
-    MaskedSequences,
+    GCContentFilter,
+    HardMaskedSequenceFilter,
+    HomopolymericRunsFilter,
     PropertyFilter,
 )
 from ..oligo_selection import OligosetGenerator, padlock_heuristic_selection
@@ -29,20 +29,14 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
     def filter_probes_by_property(
         self, oligo_database, GC_content_min, GC_content_max, number_consecutive, n_jobs
     ):
-        masked_sequences = MaskedSequences()
-        gc_content = GCContent(
-            GC_content_min=GC_content_min, GC_content_max=GC_content_max
-        )
-        proh_seq = ConsecutiveRepeats(num_consecutive=number_consecutive)
+        masked_sequences = HardMaskedSequenceFilter()
+        gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
+        proh_seq = HomopolymericRunsFilter(base=["A", "C", "T", "G"], n=number_consecutive)
         filters = [masked_sequences, proh_seq, gc_content]
         property_filter = PropertyFilter(filters=filters)
-        oligo_database = property_filter.apply(
-            oligo_database=oligo_database, n_jobs=n_jobs
-        )
+        oligo_database = property_filter.apply(oligo_database=oligo_database, n_jobs=n_jobs)
         if self.write_intermediate_steps:
-            file_database = oligo_database.write_database(
-                filename="oligo_database_property_filter.txt"
-            )
+            file_database = oligo_database.write_database(filename="oligo_database_property_filter.txt")
         return oligo_database, file_database
 
     # 2
@@ -72,26 +66,20 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             Tuple[OligoDatabase, str]: _description_
         """
 
-        num_genes_before, num_probes_before = self._get_probe_database_info(
-            oligo_database.database
-        )
+        num_genes_before, num_probes_before = self._get_probe_database_info(oligo_database.database)
         dir_specificity = os.path.join(
             self.dir_output, "specificity_temporary"
         )  # folder where the temporary files will be written
 
         if region_reference == "reduced_representation":
-            file_transcriptome_ref = (
-                self.region_generator.generate_transcript_reduced_representation(
-                    include_exon_junctions=True, exon_junction_size=probe_length_max
-                )
+            file_transcriptome_ref = self.region_generator.generate_transcript_reduced_representation(
+                include_exon_junctions=True, exon_junction_size=probe_length_max
             )
         elif region_reference == "genome":
             file_transcriptome_ref = self.region_generator.generate_genome()
         elif region_reference == "cds":
-            file_transcriptome_ref = (
-                self.region_generator.generate_CDS_reduced_representation(
-                    include_exon_junctions=True, exon_junction_size=probe_length_max
-                )
+            file_transcriptome_ref = self.region_generator.generate_CDS_reduced_representation(
+                include_exon_junctions=True, exon_junction_size=probe_length_max
             )
         self.reference = ReferenceDatabase(
             file_fasta=file_transcriptome_ref,
@@ -117,13 +105,9 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             n_jobs=n_jobs,
         )
         if self.write_intermediate_steps:
-            file_database = oligo_database.write_database(
-                filename="oligo_database_specificity_filter.txt"
-            )
+            file_database = oligo_database.write_database(filename="oligo_database_specificity_filter.txt")
 
-        num_genes_after, num_probes_after = self._get_probe_database_info(
-            oligo_database.database
-        )
+        num_genes_after, num_probes_after = self._get_probe_database_info(oligo_database.database)
 
         logging.info(
             f"Step - Filter Probes by Specificity: the database contains {num_probes_after} probes from {num_genes_after} genes, while {num_probes_before - num_probes_after} probes and {num_genes_before - num_genes_after} genes have been deleted in this step."
@@ -160,9 +144,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             OligoDatabase: _description_
         """
 
-        property_filters = [
-            GCContent(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
-        ]
+        property_filters = [GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)]
 
         # Reuse specificity filter and cross hybridization check (different parameters)
         specificity_filters = [blast_filter]
@@ -171,9 +153,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
 
         # TODO make sure to generate enough random probes
         # We multiply by 20 to make sure we have enough probes
-        readout_database.create_random_database(
-            length, num_probes * 20, sequence_alphabet=sequence_alphabet
-        )
+        readout_database.create_random_database(length, num_probes * 20, sequence_alphabet=sequence_alphabet)
 
         property_filter = PropertyFilter(property_filters)
         readout_database = property_filter.apply(readout_database)
@@ -214,9 +194,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             n_jobs=n_jobs,
         )
         if self.write_intermediate_steps:
-            file_database = oligo_database.write_database(
-                filename="cross_hybridation.txt"
-            )
+            file_database = oligo_database.write_database(filename="cross_hybridation.txt")
 
         logging.info(f"Cross-hybridization check is performed")
         return oligo_database, file_database
@@ -231,6 +209,7 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         oligos_scoring,
         n_sets,
         n_jobs,
+        max_oligos,
     ):
         oligos_scoring = SeqFISHOligoScoring(GC_content_opt=GC_content_opt)
         set_scoring = AverageSetScoring()
@@ -242,15 +221,12 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
             heurustic_selection=padlock_heuristic_selection,
+            max_oligos=max_oligos,
         )
-        oligo_database = oligoset_generator.apply(
-            oligo_database=oligo_database, n_sets=n_sets, n_jobs=n_jobs
-        )
+        oligo_database = oligoset_generator.apply(oligo_database=oligo_database, n_sets=n_sets, n_jobs=n_jobs)
         if self.write_intermediate_steps:
             dir_oligosets = oligo_database.write_oligosets(folder="oligosets")
-            file_database = oligo_database.write_database(
-                filename="oligo_database_oligosets.txt"
-            )
+            file_database = oligo_database.write_database(filename="oligo_database_oligosets.txt")
         logging.info(f"Oligoset generation is finished. Done!")
 
         return oligo_database, file_database, dir_oligosets

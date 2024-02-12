@@ -4,10 +4,10 @@
 from pandas import Series
 
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
-    PadlockSetScoring,
     AverageSetScoring,
     MaxSetScoring,
     PadlockOligoScoring,
+    PadlockSetScoring,
 )
 
 ############################################

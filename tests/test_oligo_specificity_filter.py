@@ -4,6 +4,8 @@
 
 import os
 
+import os
+
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
@@ -26,9 +28,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter.cross_hybridization_polic
 # Specify parameters
 n_jobs = 1
 ligation_region = 0
-dir_annotations = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "data/specificity_filter"
-)
+dir_annotations = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/specificity_filter")
 min_oligos_per_gene = 2
 
 # Reference transcriptome files for tests
@@ -39,9 +39,7 @@ file_transcriptome_fasta_ligation = dir_annotations + "/reference_sample_ligatio
 file_oligo_info_match = dir_annotations + "/oligo_DB_match.tsv"
 file_oligo_info_no_match = dir_annotations + "/oligo_DB_no_match.tsv"
 file_oligo_info_exact_matches = dir_annotations + "/oligo_DB_exact_matches.tsv"
-file_oligo_info_cross_hybridization = (
-    dir_annotations + "/oligo_DB_cross_hybridization.tsv"
-)
+file_oligo_info_cross_hybridization = dir_annotations + "/oligo_DB_cross_hybridization.tsv"
 
 # blastn parameters
 word_size = 10

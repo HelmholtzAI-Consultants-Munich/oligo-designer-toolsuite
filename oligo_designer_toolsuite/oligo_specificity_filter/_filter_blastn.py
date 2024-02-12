@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 
 import pandas as pd
+
+import pandas as pd
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 from joblib import Parallel, delayed
 

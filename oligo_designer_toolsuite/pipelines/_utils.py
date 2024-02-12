@@ -1,10 +1,10 @@
 import os
-from pathlib import Path
-import warnings
-import yaml
-from argparse import ArgumentParser
-
 import shutil
+import warnings
+from argparse import ArgumentParser
+from pathlib import Path
+
+import yaml
 
 
 def generate_config_file(
