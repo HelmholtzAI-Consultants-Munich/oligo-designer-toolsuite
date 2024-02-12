@@ -375,7 +375,7 @@ class HomodimerFilter(PropertyFilterBase):
         """
         # we want to check if the reverse of our sequence is complementary to itself, e.g.
         # 5' - TAA CAA TAT ATA TTG TTA - 3' and it's reverse
-        # 3' - ATT CTT ATA TAT AAC AAT - 5' are complementary to each other
+        # 3' - ATT GTT ATA TAT AAC AAT - 5' are complementary to each other
         # but since we are comparing strings, we take the reverse complement,
         # which should be the exact same sequence in this case
         sequence_revcomp = sequence.reverse_complement()
