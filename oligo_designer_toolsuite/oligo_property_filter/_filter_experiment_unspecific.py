@@ -14,7 +14,7 @@ from . import PropertyFilterBase
 
 ###TODO move this function to utils once database refactor is merged
 def check_sequence(seq: str, valid_characters={"A", "C", "T", "G"}) -> bool:
-    return all(char in valid_characters for char in seq)
+    return all(char.upper() in valid_characters for char in seq)
 
 
 ############################################
@@ -124,34 +124,16 @@ class HomopolymericRunsFilter(PropertyFilterBase):
 
     def __init__(
         self,
-        base: Union[str, List[str]],
-        n: Union[int, List[int]],
+        base_n: dict,
     ) -> None:
         """Constructor for the HomopolymericRunsFilter class."""
         super().__init__()
-        # Check that the variables types are comaptible
-        if not isinstance(base, list):
-            if isinstance(n, list):
-                raise TypeError("The variable n cannot be type list when base is type string.")
-            else:
-                base = [base]
-                n = [n]
-        elif isinstance(base, list):
-            if isinstance(n, list) and len(base) != len(n):
-                raise ValueError(
-                    f"The lists base and n must have the same length, but they have {len(base)} and {len(n)} repectively."
-                )
-            elif not isinstance(n, list):
-                # n is the same for all the elements of base
-                n = [n for _ in range(len(base))]
-        # base and n are now lists of the same length
-        self.base = [nucleotide.upper() for nucleotide in base]
-        self.n = n
-        self.homopolymeric_runs = [nucleotide * repepeats for nucleotide, repepeats in zip(self.base, self.n)]
         # check that the nucleotides provided are valid
-        for b in self.base:
+        for b in base_n.keys():
             if not check_sequence(b):
                 raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
+        # create all homopolymeric runs
+        self.homopolymeric_runs = [base.upper() * n for base, n in base_n.items()]
 
     def apply(self, sequence: Seq):
         """Applies the filter to a given DNA sequence to check if it contains a homopolymeric run.
@@ -161,7 +143,6 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
         :rtype: (bool, dict)
         """
-
         for homopolymeric_run in self.homopolymeric_runs:
             if homopolymeric_run in sequence.upper():
                 return False, {}

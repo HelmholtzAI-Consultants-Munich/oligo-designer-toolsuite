@@ -119,101 +119,51 @@ def test_masked_sequence_filters():
 
 def test_sequence_content_filters():
     """Test if sequence content filters work, e.g. sequences containing / not containing certain nucleotides should be removed."""
-    prohibited_sequence_filter = ProhibitedSequenceFilter(prohibited_sequence="ACT")
+    prohibited_sequence_filter1 = ProhibitedSequenceFilter(prohibited_sequence="ACT")
 
     seq_remove = Seq("GGGGGGGGGGGGGGACT")
-    res, _ = prohibited_sequence_filter.apply(seq_remove)
+    res, _ = prohibited_sequence_filter1.apply(seq_remove)
     assert (
         res == False
     ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted! [ProhibitedSequenceFilter]"
 
     seq_keep = Seq("GGGGGGGGGGGGGGATC")
-    res, feature = prohibited_sequence_filter.apply(seq_keep)
+    res, feature = prohibited_sequence_filter1.apply(seq_keep)
     assert (
         res == True
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [ProhibitedSequenceFilter]"
     print(feature)
 
-    prohibited_sequence_filter = ProhibitedSequenceFilter(prohibited_sequence=["ACT", "CCGC"])
+    prohibited_sequence_filter2 = ProhibitedSequenceFilter(prohibited_sequence=["ACT", "CCGC"])
 
     seq_remove = Seq("GGGGGGGGGGGGGGACT")
-    res, _ = prohibited_sequence_filter.apply(seq_remove)
+    res, _ = prohibited_sequence_filter2.apply(seq_remove)
     assert (
         res == False
     ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted! [ProhibitedSequenceFilter]"
 
     seq_remove = Seq("GGGGGGGGGGGGGGCCGC")
-    res, _ = prohibited_sequence_filter.apply(seq_remove)
+    res, _ = prohibited_sequence_filter2.apply(seq_remove)
     assert (
         res == False
     ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted! [ProhibitedSequenceFilter]"
 
     seq_keep = Seq("GGGGGGGGGGGGGGATC")
-    res, feature = prohibited_sequence_filter.apply(seq_keep)
+    res, feature = prohibited_sequence_filter2.apply(seq_keep)
     assert (
         res == True
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [ProhibitedSequenceFilter]"
     print(feature)
 
-    homopolymeric_run_filter = HomopolymericRunsFilter(base="A", n=4)
+    homopolymeric_run_filter = HomopolymericRunsFilter(base_n={"A": 4, "C": 5})
 
     seq_remove = Seq("GGGGGGGGGGGGGGAAAAA")
     res, _ = homopolymeric_run_filter.apply(seq_remove)
-    assert (
-        res == False
-    ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted! [HomopolymericRunsFilter]"
+    assert res == False, f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted!"
 
     seq_keep = Seq("GGGGGGGGGGGGGGAAA")
     res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
-    print(feature)
-
-    homopolymeric_run_filter = HomopolymericRunsFilter(base=["A", "T"], n=4)
-
-    seq_keep = Seq("GGGGGGGGGGGGGGAAAATTT")
-    res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == False
-    ), f"error: A sequence ({seq_keep}) not fulfilling the conditions has been accepted! [HomopolymericRunsFilter]"
-    print(feature)
-
-    seq_keep = Seq("GGGGGGGGGGGGGGAAATTtT")
-    res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == False
-    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
-    print(feature)
-
-    seq_keep = Seq("GGGGGGGGGGGGGGAAATTT")
-    res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
-    print(feature)
-
-    homopolymeric_run_filter = HomopolymericRunsFilter(base=["A", "T"], n=[4, 5])
-
-    seq_keep = Seq("GGGGGGGGGGGGGGAaAATTT")
-    res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == False
-    ), f"error: A sequence ({seq_keep}) not fulfilling the conditions has been accepted! [HomopolymericRunsFilter]"
-    print(feature)
-
-    seq_keep = Seq("GGGGGGGGGGGGGGAAATTTTT")
-    res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == False
-    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
-    print(feature)
-
-    seq_keep = Seq("GGGGGGGGGGGGGGAAATTT")
-    res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [HomopolymericRunsFilter]"
+    assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
     print(feature)
 
     three_prime_filter = ThreePrimeSequenceFilter(three_prime_sequence="TT", remove=False)
