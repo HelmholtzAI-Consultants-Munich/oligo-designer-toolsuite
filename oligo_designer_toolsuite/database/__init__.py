@@ -1,23 +1,22 @@
 """
-This module contains the OligoDatabase and ReferenceDatabase classes, which are used to store the oligo sequences and sequence from a reference. 
-The classes implement read, create and write functionalities. This module also contains a class that can be used to generate sequences from specific genomic regions. 
-The genomic regions can be automatically downloaded from NCBI or Ensemble or can be provided by the user.
+This module provides two key classes for managing oligonucleotide-related databases.
+
+Classes:
+- OligoDatabase: The OligoDatabase class facilitates the management of oligonucleotide databases. 
+  It includes functionality for loading, saving, and manipulating oligonucleotide data. 
+  Users can interact with this class to handle various tasks related to oligonucleotide design and analysis.
+
+- ReferenceDatabase: The ReferenceDatabase class is designed to handle reference databases. 
+  It supports the loading and retrieval of reference sequences and associated metadata. 
+  Users can utilize this class to incorporate reference data into their analyses and designs.
 """
 
 from ._oligos_database import OligoDatabase
 from ._reference_database import ReferenceDatabase
-from ._genomic_region_generator import (
-    CustomGenomicRegionGenerator,
-    NcbiGenomicRegionGenerator,
-    EnsemblGenomicRegionGenerator,
-)
 
 __all__ = [
     "OligoDatabase",
     "ReferenceDatabase",
-    "CustomGenomicRegionGenerator",
-    "NcbiGenomicRegionGenerator",
-    "EnsemblGenomicRegionGenerator",
 ]
 
 classes = __all__

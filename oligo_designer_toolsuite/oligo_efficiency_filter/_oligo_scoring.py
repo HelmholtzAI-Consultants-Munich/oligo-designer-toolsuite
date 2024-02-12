@@ -2,10 +2,9 @@
 # imports
 ############################################
 
-import numpy as np
-import pandas as pd
-
 from abc import ABC, abstractmethod
+
+import pandas as pd
 
 ############################################
 # Oligo Scoring Classes
@@ -128,7 +127,6 @@ class PadlockOligoScoring(OligoScoringBase):
 
 
 class SeqFISHOligoScoring(OligoScoringBase):
-
     """Oligos scoring class for the SeqFISH+ experiment.
     Scoring function has the following form: ((GC_content_of_sequence - GC_opt)/(GC_max-GC_min))^2
 

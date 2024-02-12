@@ -1,38 +1,45 @@
 """
-This module provides all additional functionalities that are needed for oligo design, e.g. a class to download annotations from NCBI and Ensembl servers.
+This module provides utilities for processing genomic databases, parsing sequences,
+and performing various sequence-related tasks.
+
+Classes:
+- FastaParser: Parses FASTA files and provides methods for extracting sequence information.
+- GffParser: Parses GFF/GTF files and provides methods for extracting annotation information.
+
+Functions for processing databases:
+- merge_databases: Merges two genomic databases.
+- collapse_info_for_duplicated_sequences: Collapses information for duplicated sequences
+  in a genomic database.
+
+Functions for processing sequences:
+- get_sequence_from_annotation: Retrieves sequences based on genomic coordinates from a BED file.
+- get_complement_regions: Computes complement regions for a given set of genomic regions.
+
 """
 
-from ._data_parser import (
-    check_gff_format,
-    check_fasta_format,
-    check_tsv_format,
-    get_sequence_from_annotation,
-    merge_fasta,
-    parse_fasta_header,
-)
-from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
-from ._gff_parser import GffParser
+from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
 from ._sequence_design import (
-    generate_random_sequence,
-    generate_binary_sequences,
-    generate_codebook,
-    get_barcode,
     SCRINSHOT_or_ISS_backbone_sequence,
     convert_complementary_seq_to_arms,
     create_seqfish_plus_barcodes,
+    generate_binary_sequences,
+    generate_codebook,
+    generate_random_sequence,
+    get_barcode,
 )
+from ._sequence_parser import FastaParser, GffParser
+from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
+from ._utils import check_if_list, check_tsv_format
 
 __all__ = [
-    "BaseFtpLoader",
-    "FtpLoaderNCBI",
-    "FtpLoaderEnsembl",
+    "FastaParser",
     "GffParser",
-    "check_gff_format",
-    "check_fasta_format",
-    "check_tsv_format",
     "get_sequence_from_annotation",
-    "merge_fasta",
-    "parse_fasta_header",
+    "get_complement_regions",
+    "merge_databases",
+    "collapse_info_for_duplicated_sequences",
+    "check_if_list",
+    "check_tsv_format",
     "generate_random_sequence",
     "generate_binary_sequences",
     "generate_codebook",

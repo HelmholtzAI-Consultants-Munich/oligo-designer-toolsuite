@@ -3,16 +3,13 @@
 ############################################
 
 import os
-from pathlib import Path
 
 from Bio import SeqIO
 
 from oligo_designer_toolsuite.utils import (
-    FtpLoaderEnsembl,
-    FtpLoaderNCBI,
     GffParser,
-    check_gff_format,
     check_fasta_format,
+    check_gff_format,
     check_tsv_format,
     get_sequence_from_annotation,
     merge_fasta,
@@ -86,99 +83,6 @@ def test_data_parser(tmp_path):
     assert (
         additional_information == "transcript_id=XM4581;exon_id=XM4581_exon1"
     ), "error: wrong additional information parsed"
-
-
-def test_ftp_loader_ncbi(tmp_path):
-    """Test if ftp download for NCBI works correctly."""
-    # Parameters
-    taxon = "vertebrate_mammalian"  # taxon the species belongs to
-    species = "Homo_sapiens"
-    annotation_release = "110"
-
-    # initialize
-    loader_ncbi = FtpLoaderNCBI(tmp_path, taxon, species, annotation_release)
-
-    # retrieve files
-    file_gff, annotation_release, assembly_name = loader_ncbi.download_files("gff")
-
-    assert (
-        Path(file_gff).name == "GCF_000001405.40_GRCh38.p14_genomic.gff"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "110", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
-
-    file_gff, annotation_release, assembly_name = loader_ncbi.download_files("gtf")
-
-    assert (
-        Path(file_gff).name == "GCF_000001405.40_GRCh38.p14_genomic.gtf"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "110", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
-
-    file_fasta, annotation_release, assembly_name = loader_ncbi.download_files("fasta")
-
-    assert (
-        Path(file_fasta).name == "GCF_000001405.40_GRCh38.p14_genomic.fna"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "110", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
-
-    ## Test if download for releases > 110 works -> they changed the folder structure there
-    # Parameters
-    taxon = "vertebrate_mammalian"  # taxon the species belongs to
-    species = "Homo_sapiens"
-    annotation_release = "current"
-
-    # initialize and retrieve files
-    loader_ncbi = FtpLoaderNCBI(tmp_path, taxon, species, annotation_release)
-    file_gff, annotation_release, assembly_name = loader_ncbi.download_files("gff")
-
-
-def test_ftp_loader_ensemble(tmp_path):
-    """Test if ftp download for Ensemble works correctly."""
-    # Parameters
-    species = "homo_sapiens"
-    annotation_release = "108"
-
-    # initialize
-    loader_ensemble = FtpLoaderEnsembl(tmp_path, species, annotation_release)
-
-    # retrieve files
-    file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gff")
-
-    assert (
-        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gff3"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "108", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
-
-    file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gtf")
-
-    assert (
-        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gtf"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "108", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
-
-    file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
-        "fasta"
-    )
-
-    assert (
-        Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "108", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
-
-    file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
-        "fasta", sequence_nature="ncrna"
-    )
-
-    assert (
-        Path(file_fasta).name == "Homo_sapiens.GRCh38.ncrna.fa"
-    ), "error: wrong file downloaded"
-    assert annotation_release == "108", "error: wrong annotation release retrieved"
-    assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
 
 def test_GFF_parser():

@@ -2,12 +2,12 @@
 # imports
 ############################################
 
+import gc
+from typing import Callable
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-import gc
-
-from typing import Callable
 from joblib import Parallel, delayed
 
 from ..database import OligoDatabase
@@ -92,7 +92,9 @@ class OligosetGenerator:
             for region in regions
         )
         # restore the database
-        for region, (database_region, oligosets_region) in zip(regions, database_regions):
+        for region, (database_region, oligosets_region) in zip(
+            regions, database_regions
+        ):
             if database_region is None:  # if no sets have been found
                 oligo_database.database[region] = {}  # oligoset is not generated
             else:
@@ -116,16 +118,17 @@ class OligosetGenerator:
         :rtype: dict
         """
         # Score oligos and create a pd series
-        database_region, oligos_scores = self.oligos_scoring.apply(database_region)  # add a entry score to the oligos
+        database_region, oligos_scores = self.oligos_scoring.apply(
+            database_region
+        )  # add a entry score to the oligos
         oligos_scores.sort_values(ascending=True, inplace=True)
         # hard limit on the number of oligos
         if len(oligos_scores) > self.max_oligos:
             # select the best oligos
-            for oligo_id in oligos_scores.index[self.max_oligos:]:
+            for oligo_id in oligos_scores.index[self.max_oligos :]:
                 del database_region[oligo_id]
                 oligos_scores.drop(oligo_id, inplace=True)
-        
-            
+
         # create the overlapping matrix
         overlapping_matrix = self._get_overlapping_matrix(database_region)
         # create the set
@@ -205,7 +208,9 @@ class OligosetGenerator:
 
         return overlapping_matrix
 
-    def _get_non_overlapping_sets(self, database_region, overlapping_matrix, oligos_scores, n_sets):
+    def _get_non_overlapping_sets(
+        self, database_region, overlapping_matrix, oligos_scores, n_sets
+    ):
         """Generates the non overlapping sets and return the best n_sets. Firstly the oligos are scored and then, if it is available,
         an heuristic method is used to reduce the number of oligos to the more promising ones. Then all the possible combination of non overlapping
         sets are considered and the best n-sets are returned.
@@ -221,10 +226,12 @@ class OligosetGenerator:
         :return: actual size of the sets, DataFrame containnig the computed oligosets, dictionary of oligos
         :rtype: int, pandas.DataFrame, dict
         """
-        
+
         # Represent overlap matrix as graph
         G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
-        G = nx.relabel_nodes(G, {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))})
+        G = nx.relabel_nodes(
+            G, {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))}
+        )
         # First check if there are no cliques with n oligos
         cliques = nx.algorithms.clique.find_cliques(G)
         n = self.oligoset_size
@@ -251,14 +258,24 @@ class OligosetGenerator:
                 heuristic_set, n
             )  # make it a list as for all the other cliques for future use
             # recompute the cliques
-            overlapping_matrix = overlapping_matrix.loc[oligos_scores.index, oligos_scores.index]
+            overlapping_matrix = overlapping_matrix.loc[
+                oligos_scores.index, oligos_scores.index
+            ]
             G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
-            G = nx.relabel_nodes(G, {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))})
+            G = nx.relabel_nodes(
+                G,
+                {
+                    i: overlapping_matrix.index[i]
+                    for i in range(len(oligos_scores.index))
+                },
+            )
         # recompute the cliques
         cliques = nx.algorithms.clique.find_cliques(G)
         # Search the best set
         if heuristic_oligoset:
-            oligosets = [heuristic_oligoset]  # add the heurustuc best set, if is in the best n-sets then it will be kept
+            oligosets = [
+                heuristic_oligoset
+            ]  # add the heurustuc best set, if is in the best n-sets then it will be kept
         else:
             oligosets = []  # initialize the list of sets
         # Note: Search could be further optimised by iteratively throwing out oligos with worse scores then current best set

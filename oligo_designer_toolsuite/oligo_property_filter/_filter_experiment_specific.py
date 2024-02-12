@@ -2,8 +2,8 @@
 # imports
 ############################################
 
-from Bio.SeqUtils import Seq
 from Bio.SeqUtils import MeltingTemp as mt
+from Bio.SeqUtils import Seq
 
 from . import PropertyFilterBase
 

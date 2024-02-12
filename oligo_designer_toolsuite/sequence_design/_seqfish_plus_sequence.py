@@ -1,10 +1,10 @@
-import numpy as np
+import os
+from pathlib import Path
+
+import yaml
 from Bio.Seq import Seq
 
 from ..utils import create_seqfish_plus_barcodes
-import os
-from pathlib import Path
-import yaml
 
 
 class SeqfishProbesCreator:

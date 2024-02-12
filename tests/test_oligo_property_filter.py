@@ -6,21 +6,20 @@
 from Bio.Seq import Seq
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.oligo_property_filter import PropertyFilter
-
 from oligo_designer_toolsuite.oligo_property_filter import (
-    SoftMaskedSequenceFilter,
-    HardMaskedSequenceFilter,
-    ProhibitedSequenceFilter,
-    HomopolymericRunsFilter,
-    GCContentFilter,
-    GCClampFilter,
-    MeltingTemperatureNNFilter,
-    SecondaryStructureFilter,
-    ThreePrimeSequenceFilter,
     FivePrimeSequenceFilter,
+    GCClampFilter,
+    GCContentFilter,
+    HardMaskedSequenceFilter,
+    HomopolymericRunsFilter,
+    MeltingTemperatureNNFilter,
+    PadlockArmsFilter,
+    ProhibitedSequenceFilter,
+    PropertyFilter,
+    SecondaryStructureFilter,
+    SoftMaskedSequenceFilter,
+    ThreePrimeSequenceFilter,
 )
-from oligo_designer_toolsuite.oligo_property_filter import PadlockArmsFilter
 
 ############################################
 # Global Parameters
@@ -134,7 +133,9 @@ def test_sequence_content_filters():
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [ProhibitedSequenceFilter]"
     print(feature)
 
-    prohibited_sequence_filter2 = ProhibitedSequenceFilter(prohibited_sequence=["ACT", "CCGC"])
+    prohibited_sequence_filter2 = ProhibitedSequenceFilter(
+        prohibited_sequence=["ACT", "CCGC"]
+    )
 
     seq_remove = Seq("GGGGGGGGGGGGGGACT")
     res, _ = prohibited_sequence_filter2.apply(seq_remove)
@@ -159,14 +160,20 @@ def test_sequence_content_filters():
 
     seq_remove = Seq("GGGGGGGGGGGGGGAAAAA")
     res, _ = homopolymeric_run_filter.apply(seq_remove)
-    assert res == False, f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted!"
+    assert (
+        res == False
+    ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted!"
 
     seq_keep = Seq("GGGGGGGGGGGGGGAAA")
     res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
     print(feature)
 
-    three_prime_filter = ThreePrimeSequenceFilter(three_prime_sequence="TT", remove=False)
+    three_prime_filter = ThreePrimeSequenceFilter(
+        three_prime_sequence="TT", remove=False
+    )
 
     seq_remove = Seq("GGGGGGGGGGGGGGAAAAA")
     res, _ = three_prime_filter.apply(seq_remove)
@@ -295,7 +302,9 @@ def test_sequence_structure_filters():
 
     seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
     res, feature = homodimer_filer.apply(seq_keep)
-    assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
     print(feature)
 
 
@@ -361,4 +370,6 @@ def test_property_filter():
 
     seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
     res, _ = property_filter._filter_sequence(seq_keep)
-    assert res == True, f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"
+    assert (
+        res == True
+    ), f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"

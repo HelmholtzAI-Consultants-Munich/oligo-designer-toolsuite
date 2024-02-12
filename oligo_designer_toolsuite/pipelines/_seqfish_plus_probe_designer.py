@@ -1,35 +1,21 @@
-from ..database import OligoDatabase, ReferenceDatabase
-from ..oligo_property_filter import (
-    PropertyFilter,
-    GCContentFilter,
-    HomopolymericRunsFilter,
-    HardMaskedSequenceFilter,
-)
-from ..oligo_specificity_filter import (
-    SpecificityFilter,
-    ExactMatches,
-    Blastn,
-)
-from ..oligo_efficiency_filter import (
-    SeqFISHOligoScoring,
-    AverageSetScoring,
-)
-from ..oligo_selection import (
-    padlock_heuristic_selection,
-    OligosetGenerator,
-)
-
-from ._base_probe_designer import BaseProbeDesigner
-
-import os
 import logging
+import os
 import shutil
 
-
 # from typing_extensions import Literal # Python 3.7 or below
-from typing import List, Tuple, Literal
+from typing import List, Literal, Tuple
 
-from Bio.Seq import Seq
+from ..database import OligoDatabase, ReferenceDatabase
+from ..oligo_efficiency_filter import AverageSetScoring, SeqFISHOligoScoring
+from ..oligo_property_filter import (
+    GCContentFilter,
+    HardMaskedSequenceFilter,
+    HomopolymericRunsFilter,
+    PropertyFilter,
+)
+from ..oligo_selection import OligosetGenerator, padlock_heuristic_selection
+from ..oligo_specificity_filter import Blastn, ExactMatches, SpecificityFilter
+from ._base_probe_designer import BaseProbeDesigner
 
 
 class SeqfishPlusProbeDesigner(BaseProbeDesigner):
@@ -47,7 +33,9 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         gc_content = GCContentFilter(
             GC_content_min=GC_content_min, GC_content_max=GC_content_max
         )
-        proh_seq = HomopolymericRunsFilter(base = ["A", "C", "T", "G"], n=number_consecutive)
+        proh_seq = HomopolymericRunsFilter(
+            base=["A", "C", "T", "G"], n=number_consecutive
+        )
         filters = [masked_sequences, proh_seq, gc_content]
         property_filter = PropertyFilter(filters=filters)
         oligo_database = property_filter.apply(
@@ -175,7 +163,9 @@ class SeqfishPlusProbeDesigner(BaseProbeDesigner):
         """
 
         property_filters = [
-            GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
+            GCContentFilter(
+                GC_content_min=GC_content_min, GC_content_max=GC_content_max
+            )
         ]
 
         # Reuse specificity filter and cross hybridization check (different parameters)

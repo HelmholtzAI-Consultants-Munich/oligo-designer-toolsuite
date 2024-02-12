@@ -4,11 +4,11 @@
 
 import os
 import re
-import pandas as pd
-
 from pathlib import Path
-from joblib import Parallel, delayed
+
+import pandas as pd
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
+from joblib import Parallel, delayed
 
 from . import SpecificityFilterBase
 

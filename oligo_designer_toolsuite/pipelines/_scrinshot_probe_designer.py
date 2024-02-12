@@ -2,36 +2,17 @@
 # imports
 ############################################
 
-import os
-import sys
-import yaml
-import shutil
-import logging
 import inspect
+import logging
+import os
+import shutil
 import warnings
-import gc
-import psutil
-
-from pathlib import Path
-from datetime import datetime
-from subprocess import Popen
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-
-# from pympler import summary, muppy, tracker
-
+from pathlib import Path
 
 from Bio.SeqUtils import MeltingTemp as mt
 
-from ._utils import initialize_parameters
-
-from oligo_designer_toolsuite.database import (
-    CustomGenomicRegionGenerator,
-    NcbiGenomicRegionGenerator,
-    EnsemblGenomicRegionGenerator,
-    OligoDatabase,
-    ReferenceDatabase,
-)
-from oligo_designer_toolsuite.sequence_design import PadlockSequence
+from oligo_designer_toolsuite.database import ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     PadlockOligoScoring,
     PadlockSetScoring,
@@ -54,9 +35,10 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     LigationRegionCreation,
     SpecificityFilter,
 )
+from oligo_designer_toolsuite.sequence_design import PadlockSequence
 
 from ._base_probe_designer import BaseProbeDesigner
-
+from ._utils import initialize_parameters
 
 ############################################
 # Scrinshot probe design class
@@ -129,7 +111,9 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         parameters = {i: values[i] for i in args}
         self._log_parameters(parameters)
 
-        num_genes_before, num_probes_before = self._get_probe_database_info(probe_database.database)
+        num_genes_before, num_probes_before = self._get_probe_database_info(
+            probe_database.database
+        )
 
         ##### preprocess melting temperature params #####
         Tm_parameters_probe["nn_table"] = getattr(mt, Tm_parameters_probe["nn_table"])
@@ -139,7 +123,9 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
 
         ##### initialize the filters classes #####
         masked_sequences = HardMaskedSequenceFilter()
-        gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
+        gc_content = GCContentFilter(
+            GC_content_min=GC_content_min, GC_content_max=GC_content_max
+        )
         melting_temperature = MeltingTemperatureNNFilter(
             Tm_min=Tm_min,
             Tm_max=Tm_max,
@@ -158,16 +144,22 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         ##### apply property filter to the database #####
         filters = [masked_sequences, gc_content, melting_temperature, padlock_arms]
         property_filter = PropertyFilter(filters=filters)
-        probe_database = property_filter.apply(oligo_database=probe_database, n_jobs=n_jobs)
+        probe_database = property_filter.apply(
+            oligo_database=probe_database, n_jobs=n_jobs
+        )
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = probe_database.write_database(filename="probe_database_property_filter.txt")
+            file_database = probe_database.write_database(
+                filename="probe_database_property_filter.txt"
+            )
         else:
             file_database = ""
 
         ##### loggig database information #####
-        num_genes_after, num_probes_after = self._get_probe_database_info(probe_database.database)
+        num_genes_after, num_probes_after = self._get_probe_database_info(
+            probe_database.database
+        )
         logging.info(
             f"Step - Filter Probes by Sequence Property: the database contains {num_probes_after} probes from {num_genes_after} genes, while {num_probes_before - num_probes_after} probes and {num_genes_before - num_genes_after} genes have been deleted in this step."
         )
@@ -191,7 +183,9 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         parameters = {i: values[i] for i in args}
         self._log_parameters(parameters)
 
-        num_genes_before, num_probes_before = self._get_probe_database_info(probe_database.database)
+        num_genes_before, num_probes_before = self._get_probe_database_info(
+            probe_database.database
+        )
 
         ##### generate transcriptome for reference #####
         # length of exon_junction_size is longer than probe length to cover bulges in alignments
@@ -199,8 +193,10 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
             probe_length_min,
             probe_length_max,
         ) = self._get_probe_length_min_max_from_database(probe_database.database)
-        file_transcriptome = self.region_generator.generate_transcript_reduced_representation(
-            include_exon_junctions=True, exon_junction_size=2 * probe_length_max
+        file_transcriptome = (
+            self.region_generator.generate_transcript_reduced_representation(
+                include_exon_junctions=True, exon_junction_size=2 * probe_length_max
+            )
         )
         reference_database = ReferenceDatabase(
             file_fasta=file_transcriptome,
@@ -210,7 +206,9 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
 
         ##### intialize the filter classes #####
         exact_mathces = ExactMatches(dir_specificity=dir_specificity)
-        seed_ligation = LigationRegionCreation(ligation_region_size=ligation_region_size)
+        seed_ligation = LigationRegionCreation(
+            ligation_region_size=ligation_region_size
+        )
         seed_region = BowtieSeedRegion(
             dir_specificity=dir_specificity,
             seed_region_creation=seed_ligation,
@@ -235,12 +233,16 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = probe_database.write_database(filename="probe_database_specificity_filters.txt")
+            file_database = probe_database.write_database(
+                filename="probe_database_specificity_filters.txt"
+            )
         else:
             file_database = ""
 
         ##### loggig database information #####
-        num_genes_after, num_probes_after = self._get_probe_database_info(probe_database.database)
+        num_genes_after, num_probes_after = self._get_probe_database_info(
+            probe_database.database
+        )
         logging.info(
             f"Step - Filter Probes by Specificity: the database contains {num_probes_after} probes from {num_genes_after} genes, while {num_probes_before - num_probes_after} probes and {num_genes_before - num_genes_after} genes have been deleted in this step."
         )
@@ -272,7 +274,9 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         parameters = {i: values[i] for i in args}
         self._log_parameters(parameters)
 
-        num_genes_before, num_probes_before = self._get_probe_database_info(probe_database.database)
+        num_genes_before, num_probes_before = self._get_probe_database_info(
+            probe_database.database
+        )
 
         ##### initialize the scoring and oligoset generator classes #####
         set_scoring = PadlockSetScoring()
@@ -296,18 +300,24 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         )
 
         ##### generate the oligoset #####
-        probe_database = oligoset_generator.apply(oligo_database=probe_database, n_sets=n_sets, n_jobs=n_jobs)
+        probe_database = oligoset_generator.apply(
+            oligo_database=probe_database, n_sets=n_sets, n_jobs=n_jobs
+        )
 
         ##### save database #####
         if self.write_intermediate_steps:
             dir_oligosets = probe_database.write_oligosets(folder="oligosets")
-            file_database = probe_database.write_database(filename="probe_database_oligosets.txt")
+            file_database = probe_database.write_database(
+                filename="probe_database_oligosets.txt"
+            )
         else:
             dir_oligosets = ""
             file_database = ""
 
         ##### loggig database information #####
-        num_genes_after, num_probes_after = self._get_probe_database_info(probe_database.database)
+        num_genes_after, num_probes_after = self._get_probe_database_info(
+            probe_database.database
+        )
         logging.info(
             f"Step - Generate Oligosets: the database contains {num_probes_after} probes from {num_genes_after} genes, while {num_probes_before - num_probes_after} probes and {num_genes_before - num_genes_after} genes have been deleted in this step."
         )
@@ -357,10 +367,18 @@ class ScrinshotProbeDesigner(BaseProbeDesigner):
         self._log_parameters(parameters)
 
         ##### preprocessing of the melting temperature parameters #####
-        Tm_parameters_detection_oligo["nn_table"] = getattr(mt, Tm_parameters_detection_oligo["nn_table"])
-        Tm_parameters_detection_oligo["tmm_table"] = getattr(mt, Tm_parameters_detection_oligo["tmm_table"])
-        Tm_parameters_detection_oligo["imm_table"] = getattr(mt, Tm_parameters_detection_oligo["imm_table"])
-        Tm_parameters_detection_oligo["de_table"] = getattr(mt, Tm_parameters_detection_oligo["de_table"])
+        Tm_parameters_detection_oligo["nn_table"] = getattr(
+            mt, Tm_parameters_detection_oligo["nn_table"]
+        )
+        Tm_parameters_detection_oligo["tmm_table"] = getattr(
+            mt, Tm_parameters_detection_oligo["tmm_table"]
+        )
+        Tm_parameters_detection_oligo["imm_table"] = getattr(
+            mt, Tm_parameters_detection_oligo["imm_table"]
+        )
+        Tm_parameters_detection_oligo["de_table"] = getattr(
+            mt, Tm_parameters_detection_oligo["de_table"]
+        )
 
         ##### initilize the padlock sequence designer class #####
         padlock_sequence = PadlockSequence(
@@ -413,11 +431,9 @@ def main():
     probe_designer = ScrinshotProbeDesigner(dir_output=dir_output)
 
     ##### load annotations #####
-    probe_designer.load_annotations(source=config["source"], source_params=config["source_params"])
-    # print('\n\n')
-    # memory_tracker.print_diff()
-    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
-    # print('\n\n')
+    probe_designer.load_annotations(
+        source=config["source"], source_params=config["source_params"]
+    )
 
     ##### read the genes file #####
     if config["file_genes"] is None:
@@ -439,11 +455,6 @@ def main():
         min_probes_per_gene=config["min_probes_per_gene"],
         n_jobs=config["n_jobs"],
     )
-    # print('\n\n')
-    # memory_tracker.print_diff()
-    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
-    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
-    # print('\n\n')
 
     ##### filter probes by property #####
     probe_database, file_database = probe_designer.filter_probes_by_property(
@@ -461,12 +472,6 @@ def main():
         n_jobs=config["n_jobs"],
     )
 
-    # print('\n\n')
-    # memory_tracker.print_diff()
-    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
-    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
-    # print('\n\n')
-
     ##### filter probes by specificity #####
     probe_database, file_database = probe_designer.filter_probes_by_specificity(
         probe_database,
@@ -476,12 +481,6 @@ def main():
         blast_coverage=config["blast_coverage"],
         n_jobs=config["n_jobs"],
     )
-    # print('\n\n')
-    # memory_tracker.print_diff()
-    # print('\n\nRAM Used (GB) (specificity):', psutil.virtual_memory()[3]/1000000000,  '\n\n')
-    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
-    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
-    # print('\n\n')
 
     ##### create probe sets #####
     probe_database, file_database, dir_oligosets = probe_designer.create_probe_sets(
@@ -500,12 +499,6 @@ def main():
         n_jobs=config["n_jobs"],
         max_oligos=config["max_graph_size"],
     )
-    # print('\n\n')
-    # memory_tracker.print_diff()
-    # print('\n\nRAM Used (GB) (probesets):', psutil.virtual_memory()[3]/1000000000,  '\n\n')
-    # print(f"annotaion class : {pympler.asizeof.asizeof(probe_designer.region_generator)/1000000000}")
-    # print(f"database class : {pympler.asizeof.asizeof(probe_database)/1000000000}")
-    # print('\n\n')
 
     ##### create final padlock sequence #####
     probe_designer.create_final_sequences(
@@ -514,7 +507,9 @@ def main():
         detect_oligo_length_max=config["detect_oligo_length_max"],
         detect_oligo_Tm_opt=config["detect_oligo_Tm_opt"],
         Tm_parameters_detection_oligo=config["Tm_parameters_detection_oligo"],
-        Tm_chem_correction_param_detection_oligo=config["Tm_chem_correction_param_detection_oligo"],
+        Tm_chem_correction_param_detection_oligo=config[
+            "Tm_chem_correction_param_detection_oligo"
+        ],
     )
 
 

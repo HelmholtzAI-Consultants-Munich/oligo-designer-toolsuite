@@ -2,27 +2,22 @@
 # imports
 ############################################
 
-import os
-import pytest
 
+import pytest
 from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.database import (
     CustomGenomicRegionGenerator,
-    ReferenceDatabase,
     OligoDatabase,
+    ReferenceDatabase,
 )
-from oligo_designer_toolsuite.utils import (
-    parse_fasta_header,
-    check_fasta_format,
-)
-
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
 )
+from oligo_designer_toolsuite.utils import check_fasta_format, parse_fasta_header
 
 ############################################
 # Global Parameters

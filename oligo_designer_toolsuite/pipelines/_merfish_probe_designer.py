@@ -1,40 +1,35 @@
 import os
-import yaml
-
 import random
 import warnings
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
-from typing import List
 
-import numpy as np
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils import MeltingTemp as mt
 
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from ._utils import initialize_parameters
-
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
-    HomopolymericRunsFilter,
     GCClampFilter,
     GCContentFilter,
+    HardMaskedSequenceFilter,
+    HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
-    HardMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     Blastn,
     ExactMatches,
     SpecificityFilter,
 )
-from ._base_probe_designer import BaseProbeDesigner
-from oligo_designer_toolsuite.utils import FtpLoaderEnsembl
+from oligo_designer_toolsuite.sequence_design import MerfishSequence
+from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl
 from oligo_designer_toolsuite.utils._sequence_design import generate_random_sequence
 
-from oligo_designer_toolsuite.sequence_design import MerfishSequence
+from ._base_probe_designer import BaseProbeDesigner
+from ._utils import initialize_parameters
 
 
 class MerfishProbeDesigner(BaseProbeDesigner):
@@ -414,7 +409,9 @@ class MerfishProbeDesigner(BaseProbeDesigner):
         GC_content_filter = GCContentFilter(
             GC_content_min=GC_content_min, GC_content_max=GC_content_max
         )
-        consecutive_repeats = HomopolymericRunsFilter(base = ["A", "C", "T", "G"], n=n_repeats)
+        consecutive_repeats = HomopolymericRunsFilter(
+            base=["A", "C", "T", "G"], n=n_repeats
+        )
 
         GC_clamp = GCClampFilter(gc_clamp_n)
 
@@ -706,7 +703,9 @@ class MerfishProbeDesigner(BaseProbeDesigner):
             Tm_parameters=Tm_parameters_probe,
             Tm_chem_correction_parameters=Tm_correction_param,
         )
-        consecutive_repeats = HomopolymericRunsFilter(base = ["A", "C", "T", "G"], n = max_repeats_nt)
+        consecutive_repeats = HomopolymericRunsFilter(
+            base=["A", "C", "T", "G"], n=max_repeats_nt
+        )
         gc_content = GCContentFilter(
             GC_content_min=GC_content_min, GC_content_max=GC_content_max
         )

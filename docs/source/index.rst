@@ -37,21 +37,22 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
    _getting_started/installation.rst
    _getting_started/introduction_framework.rst
    _getting_started/ready_to_use_pipelines_commandline_call.rst
-   _getting_started/ready_to_use_pipelines_python_api.rst
-
 
 .. toctree::
    :maxdepth: 1
    :caption: TUTORIALS
 
    _tutorials/build_a_custom_pipeline
+   _tutorials/scrinshot_probe_designer
+   _tutorials/merfish_probe_designer
+   _tutorials/seqfishplus_probe_designer
 
 
 .. toctree::
    :maxdepth: 2
    :caption: API Documentation:
 
-   oligo_designer_toolsuite.rst
+   _api_docs/oligo_designer_toolsuite.rst
 
 
 Contributing

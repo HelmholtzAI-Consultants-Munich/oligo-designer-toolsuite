@@ -19,21 +19,19 @@ Classes:
 """
 
 from ._filter_base import PropertyFilterBase
-from ._property_filter import PropertyFilter
-from ._filter_experiment_unspecific import (
-    SoftMaskedSequenceFilter,
-    HardMaskedSequenceFilter,
-    ProhibitedSequenceFilter,
-    HomopolymericRunsFilter,
-    ThreePrimeSequenceFilter,
-    FivePrimeSequenceFilter,
-    GCContentFilter,
-    GCClampFilter,
-    MeltingTemperatureNNFilter,
-    HomodimerFilter,
-    SecondaryStructureFilter,
-)
 from ._filter_experiment_specific import PadlockArmsFilter
+from ._filter_experiment_unspecific import (
+    FivePrimeSequenceFilter,
+    GCClampFilter,
+    GCContentFilter,
+    HardMaskedSequenceFilter,
+    HomodimerFilter,
+    HomopolymericRunsFilter,
+    MeltingTemperatureNNFilter,
+    SecondaryStructureFilter,
+    ThreePrimeSequenceFilter,
+)
+from ._property_filter import PropertyFilter
 
 __all__ = [
     "PropertyFilter",

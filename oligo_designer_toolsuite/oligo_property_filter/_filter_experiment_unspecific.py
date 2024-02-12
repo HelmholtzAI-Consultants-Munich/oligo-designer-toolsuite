@@ -1,12 +1,10 @@
 ############################################
 # imports
 ############################################
-from typing import Union, List
+from typing import List, Union
 
-from Bio.SeqUtils import Seq
-from Bio.SeqUtils import gc_fraction
 from Bio.SeqUtils import MeltingTemp as mt
-
+from Bio.SeqUtils import Seq, gc_fraction
 from seqfold import dg
 
 from . import PropertyFilterBase
@@ -91,7 +89,9 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
         # Check that the prohibited sequences are valid DNA sequences.
         for s in self.prohibited_sequence:
             if not check_sequence(s):
-                raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
+                raise ValueError(
+                    "Prohibited sequence ({prohibited_sequences}) is not a DNA sequence."
+                )
 
     def apply(self, sequence: Seq):
         """
