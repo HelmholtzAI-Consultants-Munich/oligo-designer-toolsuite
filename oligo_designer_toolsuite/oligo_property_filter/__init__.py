@@ -28,7 +28,9 @@ from ._filter_experiment_unspecific import (
     HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
+    ProhibitedSequenceFilter,
     SecondaryStructureFilter,
+    SoftMaskedSequenceFilter,
     ThreePrimeSequenceFilter,
 )
 from ._property_filter import PropertyFilter
