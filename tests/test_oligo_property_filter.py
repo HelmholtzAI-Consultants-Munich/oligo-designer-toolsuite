@@ -11,6 +11,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     GCClampFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
+    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PadlockArmsFilter,

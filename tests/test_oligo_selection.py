@@ -36,10 +36,9 @@ def oligos_database(tmpdir_factory):
     base_temp = tmpdir_factory.getbasetemp()
     metadata = {"species": "human", "annotation_release": "110"}
     database = OligoDatabase(
-        metadata=metadata,
-        n_jobs=2,
         dir_output=base_temp,
     )
+    database.load_metadata(metadata=metadata)
     database.load_database("tests/data/oligo_selection/oligos_info.tsv")
 
     yield database

@@ -166,7 +166,7 @@ class OligoDatabase:
                 lambda x: (
                     eval(x)
                     if isinstance(x, str) and x.startswith("[") and x.endswith("]")
-                    else x
+                    else ([int(x)] if isinstance(x, str) and x.isdigit() else x)
                 )
             )
         )
