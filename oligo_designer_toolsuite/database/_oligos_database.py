@@ -6,7 +6,7 @@ import os
 import warnings
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, Union, get_args
+from typing import Union, get_args
 
 import pandas as pd
 import yaml
@@ -21,7 +21,7 @@ from ..utils._database_processor import (
 from ..utils._sequence_parser import FastaParser
 from ..utils._utils import check_if_list, check_tsv_format
 
-_TYPES_SEQ = Literal["target", "oligo"]
+from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 
 
 ############################################
@@ -66,9 +66,7 @@ class OligoDatabase:
     ):
         """Constructor for the OligoDatabase class."""
         self.min_oligos_per_region = min_oligos_per_region
-        self.write_regions_with_insufficient_oligos = (
-            write_regions_with_insufficient_oligos
-        )
+        self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
 
         self.metadata = {}
 
@@ -79,15 +77,11 @@ class OligoDatabase:
 
         # Initialize databse object
         self.database = {}
-        self.oligosets = (
-            {}
-        )  # will be used later in the gereration of non overlpping sets
+        self.oligosets = {}  # will be used later in the gereration of non overlpping sets
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
-            self.file_removed_regions = os.path.join(
-                self.dir_output, "regions_with_insufficient_oligos.txt"
-            )
+            self.file_removed_regions = os.path.join(self.dir_output, "regions_with_insufficient_oligos.txt")
             with open(self.file_removed_regions, "a") as handle:
                 handle.write(f"Region\tPipeline step\n")
 
@@ -103,9 +97,7 @@ class OligoDatabase:
         :raises ValueError: If metadata has an incorrect format.
         """
         if self.metadata:
-            warnings.warn(
-                "Metadata not empty! Overwriting metadata with new metadata from file!"
-            )
+            warnings.warn("Metadata not empty! Overwriting metadata with new metadata from file!")
 
         if type(metadata) is str and os.path.exists(metadata):
             with open(metadata) as handle:
@@ -163,11 +155,7 @@ class OligoDatabase:
         # convert lists represented as string to proper list format in the table with the eval function
         file_tsv_content = file_tsv_content.apply(
             lambda col: col.apply(
-                lambda x: (
-                    eval(x)
-                    if isinstance(x, str) and x.startswith("[") and x.endswith("]")
-                    else x
-                )
+                lambda x: (eval(x) if isinstance(x, str) and x.startswith("[") and x.endswith("]") else x)
             )
         )
 
@@ -217,9 +205,7 @@ class OligoDatabase:
         assert (
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-        sequence_reverse_complement_type = (
-            options[0] if options[0] != sequence_type else options[1]
-        )
+        sequence_reverse_complement_type = options[0] if options[0] != sequence_type else options[1]
 
         self.fasta_parser.check_fasta_format(file_fasta_in)
 
@@ -228,14 +214,10 @@ class OligoDatabase:
 
         region_ids = check_if_list(region_ids)
 
-        fasta_sequences = self.fasta_parser.read_fasta_sequences(
-            file_fasta_in, region_ids
-        )
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta_in, region_ids)
         region_sequences = {}
         for entry in fasta_sequences:
-            region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(
-                entry.id
-            )
+            region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
             oligo_info = coordinates | additional_info
             if region in region_sequences:
                 if entry.seq in region_sequences[region]:
@@ -252,10 +234,8 @@ class OligoDatabase:
         for region, value in region_sequences.items():
             i = 1
             for oligo_sequence, oligo_info in value.items():
-                oligo_id = f"{region}::{i}"
-                oligo_sequence_reverse_complement = str(
-                    Seq(oligo_sequence).reverse_complement()
-                )
+                oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
+                oligo_sequence_reverse_complement = str(Seq(oligo_sequence).reverse_complement())
                 oligo_seq_info = {
                     sequence_type: oligo_sequence,
                     sequence_reverse_complement_type: oligo_sequence_reverse_complement,
@@ -284,9 +264,7 @@ class OligoDatabase:
         :type pipeline_step: str
         """
         regions_to_remove = [
-            region
-            for region, oligos in self.database.items()
-            if len(oligos) <= self.min_oligos_per_region
+            region for region, oligos in self.database.items() if len(oligos) <= self.min_oligos_per_region
         ]
 
         for region in regions_to_remove:
@@ -295,12 +273,7 @@ class OligoDatabase:
 
         if self.write_regions_with_insufficient_oligos and regions_to_remove:
             with open(self.file_removed_regions, "a") as handle:
-                handle.write(
-                    "\n".join(
-                        f"{region}\t{pipeline_step}" for region in regions_to_remove
-                    )
-                    + "\n"
-                )
+                handle.write("\n".join(f"{region}\t{pipeline_step}" for region in regions_to_remove) + "\n")
 
     def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
         """Retrieve a list of sequences of the specified type from the oligo database.
@@ -343,9 +316,7 @@ class OligoDatabase:
                         set(
                             item
                             for sublist in (
-                                transcript_ids
-                                if isinstance(transcript_ids[0], list)
-                                else [transcript_ids]
+                                transcript_ids if isinstance(transcript_ids[0], list) else [transcript_ids]
                             )
                             for item in sublist
                         )
@@ -368,16 +339,10 @@ class OligoDatabase:
         """
         for region_id, oligo_dict in self.database.items():
             for oligo_id, oligo_attributes in oligo_dict.items():
-                if ("number_transcripts" in oligo_attributes) and (
-                    "transcript_id" in oligo_attributes
-                ):
+                if ("number_transcripts" in oligo_attributes) and ("transcript_id" in oligo_attributes):
                     number_transcripts_gene = oligo_attributes["number_transcripts"]
                     number_transcripts_gene = int(
-                        [
-                            item
-                            for sublist in number_transcripts_gene
-                            for item in sublist
-                        ][0]
+                        [item for sublist in number_transcripts_gene for item in sublist][0]
                     )  # all values have to be the same
                     transcript_ids = [
                         item
@@ -429,9 +394,7 @@ class OligoDatabase:
         file_metadata = os.path.join(self.dir_output, filename_out + ".yaml")
 
         with open(file_metadata, "w") as handle:
-            yaml.safe_dump(
-                self.metadata, handle, sort_keys=True, default_flow_style=False
-            )
+            yaml.safe_dump(self.metadata, handle, sort_keys=True, default_flow_style=False)
 
         file_database = os.path.join(self.dir_output, filename_out + ".tsv")
         file_tsv_content = []
@@ -486,7 +449,7 @@ class OligoDatabase:
                         seq_record = SeqRecord(
                             Seq(oligo_attributes[sequence_type]),
                             id=oligo_id,
-                            name=oligo_id.split("::")[0],
+                            name=oligo_id.split(SEPARATOR_OLIGO_ID)[0],
                             description=sequence_type,
                         )
                         output_fasta.append(seq_record)
