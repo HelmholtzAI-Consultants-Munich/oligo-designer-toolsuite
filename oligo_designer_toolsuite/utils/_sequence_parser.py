@@ -302,6 +302,8 @@ class FastaParser:
         if os.path.exists(file):
             if not _check_fasta_content(file):
                 raise ValueError("Fasta file has incorrect format!")
+            else:
+                return True
         else:
             raise ValueError("Fasta file does not exist!")
 

@@ -369,6 +369,9 @@ class CustomGenomicRegionGenerator:
 
         # add transcript counts for each gene
         number_transcripts = self._get_number_transcripts()
+        print(number_transcripts)
+        print("-" * 50)
+        print(annotation)
         annotation = pd.merge(annotation, number_transcripts, on="gene_id", how="left")
 
         # generate region_id
@@ -381,7 +384,7 @@ class CustomGenomicRegionGenerator:
             + ",exon_number="
             + annotation["exon_number"].astype("str")
             + ",number_transcripts="
-            + annotation["count"].astype("str")
+            + annotation["transcript_count"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
 
@@ -938,7 +941,7 @@ class CustomGenomicRegionGenerator:
             + ",exon_number="
             + annotation["exon_number"].astype("str")
             + ",number_transcripts="
-            + annotation["count"].astype("str")
+            + annotation["transcript_count"].astype("str")
         )
         # generate regions -> taken from exon junction regions
         annotation["region"] = annotation["region_junction"]
@@ -1144,15 +1147,19 @@ class CustomGenomicRegionGenerator:
         """Get the number of transcripts associated with each gene.
 
         This function loads the annotation, extracts transcripts, and counts the number of transcripts
-        for each gene. The result is a Pandas Series with gene IDs as the index and corresponding
-        transcript counts as values.
+        for each gene. It returns a DataFrame with 'gene_id' as the first column and 'transcript_count'
+        as the second column, where 'gene_id' contains unique gene IDs and 'transcript_count' contains
+        the corresponding number of transcripts for each gene.
 
-        :return: Number of transcripts per gene.
-        :rtype: pandas.Series
+        :return: DataFrame with each gene ID and its associated transcript count.
+        :rtype: pandas.DataFrame
         """
         annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "transcript")
         number_transcripts = annotation["gene_id"].value_counts()
+
+        number_transcripts = number_transcripts.reset_index()
+        number_transcripts.columns = ["gene_id", "transcript_count"]
 
         return number_transcripts
 
