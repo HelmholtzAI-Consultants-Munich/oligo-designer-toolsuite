@@ -29,8 +29,9 @@ region_ids = [
 ]
 annotation_file_ensemble = "data/annotations/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
 sequence_file_ensemble = (
-    "data/annotations/custom_Homo_sapiens.GRCh38.dna_rm.primary_assembly_chr16.fa"
+    "data/annotations/custom_Homo_sapiens.GRCh38.dna_sm.chromosome.16.fa"
 )
+
 annotation_file_ncbi = (
     "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
 )
@@ -153,8 +154,8 @@ def test_ftp_loader_ensemble(tmp_path):
     )
 
     assert (
-        Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa"
-    ), "error: wrong file downloaded"
+        Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa"
+    ), f"error: wrong file: {file_fasta} downloaded"
     assert annotation_release == "108", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
@@ -186,33 +187,37 @@ def test_region_generator_ncbi(tmpdir_factory):
     ncbi_genes = region_generator_ncbi.get_sequence_gene()
     assert (
         fasta_parser.check_fasta_format(ncbi_genes) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ncbi_genes}"
 
     ncbi_exons = region_generator_ncbi.get_sequence_exon()
     assert (
         fasta_parser.check_fasta_format(ncbi_exons) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ncbi_exons}"
 
     ncbi_CDS = region_generator_ncbi.get_sequence_CDS()
-    assert fasta_parser.check_fasta_format(ncbi_CDS) == True, "error: wrong file format"
+    assert (
+        fasta_parser.check_fasta_format(ncbi_CDS) == True
+    ), f"error: wrong file format for file: {ncbi_CDS}"
 
     ncbi_UTR = region_generator_ncbi.get_sequence_UTR(five_prime=True, three_prime=True)
-    assert fasta_parser.check_fasta_format(ncbi_UTR) == True, "error: wrong file format"
+    assert (
+        fasta_parser.check_fasta_format(ncbi_UTR) == True
+    ), f"error: wrong file format for file: {ncbi_UTR}"
 
     ncbi_junction = region_generator_ncbi.get_sequence_exon_exon_junction(block_size=50)
     assert (
         fasta_parser.check_fasta_format(ncbi_junction) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ncbi_junction}"
 
     ncbi_intergenic = region_generator_ncbi.get_sequence_intergenic()
     assert (
         fasta_parser.check_fasta_format(ncbi_intergenic) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ncbi_intergenic}"
 
     ncbi_introns = region_generator_ncbi.get_sequence_intron()
     assert (
         fasta_parser.check_fasta_format(ncbi_introns) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ncbi_introns}"
 
 
 def test_region_generator_ensemble(tmpdir_factory):
@@ -232,41 +237,41 @@ def test_region_generator_ensemble(tmpdir_factory):
     ensembl_gene = region_generator_ensembl.get_sequence_gene()
     assert (
         fasta_parser.check_fasta_format(ensembl_gene) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ensembl_gene}"
 
     ensembl_exon = region_generator_ensembl.get_sequence_exon()
     assert (
         fasta_parser.check_fasta_format(ensembl_exon) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ensembl_exon}"
 
     ensembl_CDS = region_generator_ensembl.get_sequence_CDS()
     assert (
         fasta_parser.check_fasta_format(ensembl_CDS) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ensembl_CDS}"
 
     ensembl_UTR = region_generator_ensembl.get_sequence_UTR(
         five_prime=True, three_prime=True
     )
     assert (
         fasta_parser.check_fasta_format(ensembl_UTR) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ensembl_UTR}"
 
     ensembl_junction = region_generator_ensembl.get_sequence_exon_exon_junction(
         block_size=50
     )
     assert (
         fasta_parser.check_fasta_format(ensembl_junction) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ensembl_junction}"
 
     ensembl_intergenic = region_generator_ensembl.get_sequence_intergenic()
     assert (
         fasta_parser.check_fasta_format(ensembl_intergenic) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ensembl_intergenic}"
 
     ensembl_intron = region_generator_ensembl.get_sequence_intron()
     assert (
         fasta_parser.check_fasta_format(ensembl_intron) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for file: {ensembl_intron}"
 
 
 def test_reference_database(file_ncbi_exons):
@@ -296,7 +301,7 @@ def test_reference_database(file_ncbi_exons):
     )
     assert (
         fasta_parser.check_fasta_format(file_fasta_database) == True
-    ), "error: wrong file format"
+    ), f"error: wrong file format for database in {file_fasta_database}"
 
 
 def test_oligo_database(file_ncbi_exons):
