@@ -369,9 +369,6 @@ class CustomGenomicRegionGenerator:
 
         # add transcript counts for each gene
         number_transcripts = self._get_number_transcripts()
-        print(number_transcripts)
-        print("-" * 50)
-        print(annotation)
         annotation = pd.merge(annotation, number_transcripts, on="gene_id", how="left")
 
         # generate region_id
