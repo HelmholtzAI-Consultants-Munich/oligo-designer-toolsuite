@@ -57,6 +57,7 @@ jobs:
       run: |
         conda --version
         conda config --show channels
+        conda config --env --add pinned_packages 'python=${{ matrix.python-version }}'
         
     - name: Install conda dependencies  
       run: |  
