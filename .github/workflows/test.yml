@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - feats/add_codecov
   pull_request:
     branches:
       - main
