@@ -68,7 +68,19 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
+        pip install coverage
         pip install -e .
     
     - name: Test with pytest
-      run: pytest
+      run: |
+        coverage run -m pytest
+        coverage xml -i
+      env:
+        PLATFORM: ${{ matrix.os }}
+      
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        files: oligo_designer_toolsuite/coverage.xml
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
