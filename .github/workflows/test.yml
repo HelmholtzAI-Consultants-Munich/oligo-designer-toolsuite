@@ -57,13 +57,14 @@ jobs:
         
     - name: Conda Configs
       run: |
+        python --version
         conda --version
         conda config --show channels
         
     - name: Install conda dependencies  
       run: |  
-        conda install "blast>=2.12"
-        conda install "bedtools>=2.30"
+        # conda install "blast>=2.12"
+        # conda install "bedtools>=2.30"
         # conda install "bowtie2>=2.5"
         # conda install "bowtie>=1.3.1"
         
