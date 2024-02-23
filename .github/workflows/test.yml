@@ -53,6 +53,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         channels: 'bioconda,conda-forge'
         channel-priority: strict
+        activate-environment: oligo_env
         
     - name: Conda Configs
       run: |
@@ -61,8 +62,6 @@ jobs:
         
     - name: Install conda dependencies  
       run: |  
-        conda create -n oligo_env python=${{ matrix.python-version }}
-        conda activate oligo_env
         conda install "blast>=2.12"
         conda install "bedtools>=2.30"
         # conda install "bowtie2>=2.5"
