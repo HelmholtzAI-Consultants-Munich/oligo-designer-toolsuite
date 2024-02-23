@@ -52,7 +52,6 @@ jobs:
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
         channels: 'bioconda,conda-forge'
-        channel-priority: strict
         activate-environment: oligo_env
         
     - name: Conda Configs
