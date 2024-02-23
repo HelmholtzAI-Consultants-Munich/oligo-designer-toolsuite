@@ -46,18 +46,18 @@ jobs:
         python-version: ${{ matrix.python-version }}
         conda-channels: anaconda, bioconda, conda-forge
         
-    - name: Update conda and add channels
-      run: |
-        conda config --add channels bioconda
-        conda config --add channels conda-forge
-        # conda update conda
-        conda update --all
+    - name: Setup Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+        channels: 'bioconda,conda-forge'
+        channel-priority: strict
         
     - name: Conda Configs
       run: |
         conda --version
         conda config --show channels
-        conda config --env --add pinned_packages 'python=${{ matrix.python-version }}'
         
     - name: Install conda dependencies  
       run: |  
