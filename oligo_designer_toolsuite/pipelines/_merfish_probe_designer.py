@@ -28,15 +28,15 @@ from oligo_designer_toolsuite.sequence_design import MerfishSequence
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl
 from oligo_designer_toolsuite.utils._sequence_design import generate_random_sequence
 
-from ._base_probe_designer import BaseProbeDesigner
+from ._base_oligo_designer import BaseOligoDesigner
 from ._utils import initialize_parameters
 
 
-class MerfishProbeDesigner(BaseProbeDesigner):
+class MerfishProbeDesigner(BaseOligoDesigner):
     """_summary_
 
     Args:
-        BaseProbeDesigner (_type_): _description_
+        BaseOligoDesigner (_type_): _description_
     """
 
     def design_readout_probes(
@@ -870,7 +870,7 @@ def main():
     Path(dir_output).mkdir(parents=True, exist_ok=True)
 
     ##### Initialize ProbeDesigner Class #####
-    probe_designer = MerfishProbeDesigner(dir_output=dir_output)
+    probe_designer = MerfishProbeDesigner(dir_output=dir_output, log_name="merfish_probe_designer")
 
     ##### load annotations #####
     probe_designer.load_annotations(

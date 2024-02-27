@@ -15,14 +15,14 @@ from ..oligo_property_filter import (
 )
 from ..oligo_selection import OligosetGenerator, padlock_heuristic_selection
 from ..oligo_specificity_filter import Blastn, ExactMatches, SpecificityFilter
-from ._base_probe_designer import BaseProbeDesigner
+from ._base_oligo_designer import BaseOligoDesigner
 
 
-class SeqfishPlusProbeDesigner(BaseProbeDesigner):
+class SeqfishPlusProbeDesigner(BaseOligoDesigner):
     """_summary_
 
     Args:
-        BaseProbeDesigner (_type_): _description_
+        BaseOligoDesigner (_type_): _description_
     """
 
     # 1

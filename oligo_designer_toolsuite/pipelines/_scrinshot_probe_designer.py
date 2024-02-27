@@ -37,7 +37,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 from oligo_designer_toolsuite.sequence_design import PadlockSequence
 
-from ._base_probe_designer import BaseProbeDesigner
+from ._base_oligo_designer import BaseOligoDesigner
 from ._utils import initialize_parameters
 
 ############################################
@@ -45,7 +45,7 @@ from ._utils import initialize_parameters
 ############################################
 
 
-class ScrinshotProbeDesigner(BaseProbeDesigner):
+class ScrinshotProbeDesigner(BaseOligoDesigner):
     """This class generates all padlock probes for a SCRINSHOT experiment from a transcriptome or custom file for a user-defined set of genes.
     The probe design is done in five steps:
     1. Creating all possible probes for a provided annotation and set of genes and store them in a oligo database
@@ -428,7 +428,7 @@ def main():
     Path(dir_output).mkdir(parents=True, exist_ok=True)
 
     ##### Initialize ProbeDesigner Class #####
-    probe_designer = ScrinshotProbeDesigner(dir_output=dir_output)
+    probe_designer = ScrinshotProbeDesigner(dir_output=dir_output, log_name="scrinshot_probe_designer")
 
     ##### load annotations #####
     probe_designer.load_annotations(
