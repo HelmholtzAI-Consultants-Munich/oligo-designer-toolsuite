@@ -5,12 +5,14 @@
 from collections import defaultdict
 from itertools import chain
 
+from effidict import LRUDBDict
+
 ############################################
 # Collection of utility functions
 ############################################
 
 
-def merge_databases(database1, database2):
+def merge_databases(database1, database2, max_in_memory=10):
     """Merge two databases, combining their content while handling potential overlapping oligo sequences.
 
     :param database1: The first database.
@@ -29,7 +31,13 @@ def merge_databases(database1, database2):
         :return: A modified database with oligo sequences as keys.
         :rtype: dict
         """
-        database_modified = {region: {} for region in database.keys()}
+        database_modified = LRUDBDict(
+            max_in_memory=max_in_memory,
+            storage_path=database.storage_path,
+        )
+        for region in database.keys():
+            database_modified[region] = {}
+
         for region, values in database.items():
             for oligo_id, oligo_info in values.items():
                 oligo_sequence = oligo_info["oligo"]
@@ -58,11 +66,26 @@ def merge_databases(database1, database2):
                     database_tmp[region][oligo_sequence] = oligo_info
         return database_tmp
 
-    database_tmp = {region: {} for region in chain(database1.keys(), database2.keys())}
-    database_tmp = _add_database_content(database_tmp, _get_sequence_as_key(database1))
-    database_tmp = _add_database_content(database_tmp, _get_sequence_as_key(database2))
+    database_tmp = LRUDBDict(
+        max_in_memory=max_in_memory,
+        storage_path=database1.storage_path,
+    )
+    for region in chain(database1.keys(), database2.keys()):
+        database_tmp[region] = {}
 
-    database_merged = {region: {} for region in database_tmp.keys()}
+    db1_sequences_as_keys = _get_sequence_as_key(database1)
+    db2_sequences_as_keys = _get_sequence_as_key(database2)
+
+    database_tmp = _add_database_content(database_tmp, db1_sequences_as_keys)
+    database_tmp = _add_database_content(database_tmp, db2_sequences_as_keys)
+
+    database_merged = LRUDBDict(
+        max_in_memory=max_in_memory,
+        storage_path=database1.storage_path,
+    )
+    for region in database_tmp.keys():
+        database_merged[region] = {}
+
     for region, value in database_tmp.items():
         i = 1
         for oligo_sequence, oligo_info in value.items():
