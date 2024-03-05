@@ -5,4 +5,6 @@ This module provides sequence assembly methods for different oligonucleotide seq
 from ._MERFISH_sequence import MerfishSequence
 from ._padlock_sequence import PadlockSequence
 
-__all__ = ["PadlockSequence", "MerfishSequence"]
+# from ._merfish_sequence import MerfishSequence
+
+__all__ = ["PadlockSequence"]

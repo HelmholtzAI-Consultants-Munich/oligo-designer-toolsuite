@@ -6,6 +6,7 @@ from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq
 
 from . import PropertyFilterBase
+from ..utils._utils import get_TmNN
 
 ############################################
 # Padlock Filter Classes
@@ -62,22 +63,6 @@ class PadlockArmsFilter(PropertyFilterBase):
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
-    ###TODO: move this function to utils as it is also used in the Tm filter once database refactor is merged
-    def _get_Tm(self, sequence: Seq):
-        """Internal method to calculate the melting temperature of a sequence.
-
-        :param sequence: The DNA sequence for which Tm is calculated.
-        :type sequence: Seq
-        :return: The calculated melting temperature.
-        :rtype: float
-        """
-        Tm = mt.Tm_NN(sequence, **self.Tm_parameters)
-        if self.Tm_salt_correction_parameters is not None:
-            Tm += mt.salt_correction(**self.Tm_salt_correction_parameters, seq=sequence)
-        if self.Tm_chem_correction_parameters is not None:
-            Tm = mt.chem_correction(Tm, **self.Tm_chem_correction_parameters)
-        return round(Tm, 4)
-
     def _find_arms(self, sequence: Seq):
         """Internal method to identify the optimal ligation site in a DNA sequence for padlock probes by ensuring the arms formed are
         of sufficient length and their melting temperatures (Tm) are within specified constraints.
@@ -104,8 +89,18 @@ class PadlockArmsFilter(PropertyFilterBase):
         shift = 1  # distance of ligation site shift
 
         while arms_long_enough and not Tm_found:
-            Tm_arm1 = self._get_Tm(sequence[:ligation_site])
-            Tm_arm2 = self._get_Tm(sequence[ligation_site:])
+            Tm_arm1 = get_TmNN(
+                sequence[:ligation_site],
+                self.Tm_parameters,
+                self.Tm_salt_correction_parameters,
+                self.Tm_chem_correction_parameters,
+            )
+            Tm_arm2 = get_TmNN(
+                sequence[ligation_site:],
+                self.Tm_parameters,
+                self.Tm_salt_correction_parameters,
+                self.Tm_chem_correction_parameters,
+            )
             Tm_dif = round(abs(Tm_arm2 - Tm_arm1), 2)
             Tm_found = (
                 (Tm_dif <= self.arm_Tm_dif_max)

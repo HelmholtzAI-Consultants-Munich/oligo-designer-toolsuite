@@ -5,6 +5,8 @@
 from collections import defaultdict
 from itertools import chain
 
+from .._constants import SEPARATOR_OLIGO_ID
+
 ############################################
 # Collection of utility functions
 ############################################
@@ -66,7 +68,7 @@ def merge_databases(database1, database2):
     for region, value in database_tmp.items():
         i = 1
         for oligo_sequence, oligo_info in value.items():
-            oligo_id = f"{region}::{i}"
+            oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
             oligo_seq_info = {"oligo": oligo_sequence} | oligo_info
             database_merged[region][oligo_id] = oligo_seq_info
             i += 1
@@ -93,9 +95,7 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
         :return: True if the item is a list containing only lists, False otherwise.
         :rtype: bool
         """
-        return isinstance(item, list) and all(
-            isinstance(subitem, list) for subitem in item
-        )
+        return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
 
     oligo_info = defaultdict(list)
 

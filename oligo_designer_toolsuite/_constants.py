@@ -2,14 +2,19 @@
 # imports
 ############################################
 
+from typing import Literal
 
 ############################################
-# Global Parameters
+# types
 ############################################
 
+_TYPES_SEQ = Literal["target", "oligo"]
 
 ############################################
-# Tests
+# constants
 ############################################
 
-## TODO: add test that files generated are the same as before
+SEPARATOR_OLIGO_ID = "::"
+SEPARATOR_FASTA_HEADER_FIELDS = "::"
+SEPARATOR_FASTA_HEADER_FIELDS_LIST = ";"
+SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS = ","

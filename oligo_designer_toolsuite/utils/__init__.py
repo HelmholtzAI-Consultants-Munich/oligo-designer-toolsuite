@@ -29,7 +29,7 @@ from ._sequence_design import (
 )
 from ._sequence_parser import FastaParser, GffParser
 from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
-from ._utils import check_if_list, check_tsv_format
+from ._utils import check_if_dna_sequence, check_if_key_exists, check_if_list, check_tsv_format
 
 __all__ = [
     "FastaParser",
@@ -38,6 +38,8 @@ __all__ = [
     "get_complement_regions",
     "merge_databases",
     "collapse_info_for_duplicated_sequences",
+    "check_if_dna_sequence",
+    "check_if_key_exists",
     "check_if_list",
     "check_tsv_format",
     "generate_random_sequence",
