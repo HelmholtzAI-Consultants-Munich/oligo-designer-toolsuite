@@ -13,15 +13,17 @@ from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,
     NcbiGenomicRegionGenerator,
+    OligoSequenceGenerator,
 )
 
 
-class BaseProbeDesigner:
+class BaseOligoDesigner:
     """ """
 
     def __init__(
         self,
         dir_output: str = "output",
+        log_name: str = "oligo_designer",
         write_removed_genes: bool = True,
         write_intermediate_steps: bool = True,
     ):
@@ -32,14 +34,15 @@ class BaseProbeDesigner:
 
         self.write_removed_genes = write_removed_genes
         self.write_intermediate_steps = write_intermediate_steps
+        self.log_name = log_name
 
         ##### setup logger #####
         timestamp = datetime.now()
         file_logger = os.path.join(
             self.dir_output,
-            f"log_scrinshot_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
+            f"log_{log_name}_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
         )
-        logging.getLogger("scrinshot_probe_designer")
+        logging.getLogger("log_name")
         logging.basicConfig(
             format="%(asctime)s [%(levelname)s] %(message)s",
             level=logging.NOTSET,
@@ -68,42 +71,42 @@ class BaseProbeDesigner:
             if key != "self":
                 logging.info(f"{key} = {value}")
 
-    def _get_probe_database_info(self, probe_database: dict):
-        """Count the number of probes and genes in the database.
+    def _get_oligo_database_info(self, oligo_database: dict):
+        """Count the number of oligos and genes in the database.
 
-        :param probe_database: Database with probes.
-        :type probe_database: dict
-        :return: Numer of genes and probes in database.
+        :param oligo_database: Database with oligos.
+        :type oligo_database: dict
+        :return: Number of genes and oligos in the database.
         :rtype: int, int
         """
-        genes = probe_database.keys()
+        genes = oligo_database.keys()
         num_genes = len(genes)
-        num_probes = 0
+        num_oligos = 0
         for gene in genes:
-            num_probes += len(probe_database[gene].keys())
+            num_oligos += len(oligo_database[gene].keys())
 
-        return num_genes, num_probes
+        return num_genes, num_oligos
 
-    def _get_probe_length_min_max_from_database(self, probe_database: dict):
-        """Get minimum and maximum length of probes stored in the oligo database.
+    def _get_oligo_length_min_max_from_database(self, oligo_database: dict):
+        """Get minimum and maximum length of oligos stored in the oligo database.
 
-        :param probe_database: Database with probes.
-        :type probe_database: dict
-        :return: Min and max length of probes
+        :param oligo_database: Database with oligos.
+        :type oligo_database: dict
+        :return: Min and max length of oligos
         :rtype: int, int
         """
-        probe_length_min = sys.maxsize
-        probe_length_max = 0
+        oligo_length_min = sys.maxsize
+        oligo_length_max = 0
 
-        for region in probe_database.keys():
-            for probe in probe_database[region].keys():
-                length = probe_database[region][probe]["length"]
-                if length < probe_length_min:
-                    probe_length_min = length
-                if length > probe_length_max:
-                    probe_length_max = length
+        for region in oligo_database.keys():
+            for oligo in oligo_database[region].keys():
+                length = oligo_database[region][oligo]["length"]
+                if length < oligo_length_min:
+                    oligo_length_min = length
+                if length > oligo_length_max:
+                    oligo_length_max = length
 
-        return probe_length_min, probe_length_max
+        return oligo_length_min, oligo_length_max
 
     def load_annotations(
         self,
@@ -129,11 +132,10 @@ class BaseProbeDesigner:
         - "annotation_release": release number of provided annotation, leave empty if unknown -> optional, i.e. can be assigned None
         - "genome_assembly": genome assembly of provided annotation, leave empty if unknown -> optional, i.e. can be assigned None
 
-        :param source: _description_
+        :param source: Indicate from where the annotation files will be loaded. Options:  'ncbi', 'ensembl', 'custom'.
         :type source: str
-        :param source_params: _description_
+        :param source_params: Parameters for loading annotations. See above for details.
         :type source_params: dict
-        :raises ValueError: _description_
         """
         ##### log parameters #####
         logging.info("Parameters Load Annotations:")
@@ -186,16 +188,16 @@ class BaseProbeDesigner:
             f"The annotations are from {self.region_generator.files_source} source, for the species: {self.region_generator.species}, release number: {self.region_generator.annotation_release} and genome assembly: {self.region_generator.genome_assembly}"
         )
 
-    def create_probe_database(
+    def create_oligo_database(
         self,
-        genes: list,
-        probe_length_min: int,
-        probe_length_max: int,
-        region: Literal[
-            "genome", "gene", "transcript", "cds", "three_primer_utr", "five_primer_utr"
-        ],
+        regions: list,
+        oligo_length_min: int,
+        oligo_length_max: int,
+        genomic_regions: list[Literal[
+            "gene", "intergenic", "exon", "intron", "cds", "utr", "exon_exon_junction",
+        ]],
         isoform_consensus: Literal["intersection", "union"] = "union",
-        min_probes_per_gene: int = 0,
+        min_oligos_per_region: int = 0,
         n_jobs: int = 1,
     ):
         ##### log parameters #####
@@ -209,71 +211,83 @@ class BaseProbeDesigner:
             raise FileNotFoundError(
                 "Annotation and Sequenec file needed to create a Transcriptome. Please use 'load_annotations()' function to provide missing files."
             )
-        # length of exon_junction_size is probe_length - 1 to continue where exons annotation ends
-        if region == "transcript":
-            file_transcriptome = (
-                self.region_generator.generate_transcript_reduced_representation(
-                    include_exon_junctions=True, exon_junction_size=probe_length_max
-                )
-            )
-        elif region == "genome":
-            file_transcriptome = self.region_generator.generate_genome()
-        elif region == "cds":
-            file_transcriptome = (
-                self.region_generator.generate_CDS_reduced_representation(
-                    include_exon_junctions=True, exon_junction_size=probe_length_max
-                )
-            )
-        else:
-            raise Exception(f"Region generator: {region} is not implemented yet.")
-
-        if isoform_consensus == "intersection":
+        # length of exon_junction_size is oligo_length - 1 to continue where exons annotation ends
+        #TODO: add the new functionalities
+        fasta_files = []
+        for genomic_region in genomic_regions:
+            if genomic_region == "gene":
+                fasta_files.append(self.region_generator.get_sequence_gene())
+            elif genomic_region == "intergenic":
+                fasta_files.append(self.region_generator.get_sequence_intergenic())
+            elif genomic_region == "exon":
+                fasta_files.append(self.region_generator.get_sequence_exon())
+            elif genomic_region == "intron":
+                fasta_files.append(self.region_generator.get_sequence_intron())
+            elif genomic_region == "cds":
+                fasta_files.append(self.region_generator.get_sequence_cds())
+            elif genomic_region == "utr":
+                fasta_files.append(self.region_generator.get_sequence_utr())
+            elif genomic_region == "exon_exon_junction":
+                fasta_files.append(self.region_generator.get_sequence_exon_exon_junction(
+                    block_size=oligo_length_max - 1 # TODO: check the minus 1
+                ))
+            else:
+                raise Exception(f"Region generator: {genomic_region} is not implemented yet.")
+            
+        if isoform_consensus == "intersection": # TODO: what does it mean??
             raise Exception(
                 f"Isoform consensus: {isoform_consensus} not implemented yet."
             )
 
-        ##### creating the probe database #####
-        # oligo database
-        probe_database = OligoDatabase(
-            min_oligos_per_region=min_probes_per_gene,
-            metadata=self.metadata,
-            n_jobs=n_jobs,
-            dir_output=self.dir_output,
-        )
-        # generate the probe sequences from gene transcripts
-        probe_database.create_database(
-            file_fasta=file_transcriptome,
-            oligo_length_min=probe_length_min,
-            oligo_length_max=probe_length_max,
-            region_ids=genes,
+        ##### creating the oligo sequences #####
+        oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
+        oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
+            filename_out=f"{self.log_name}_oligos",
+            file_fasta_in=fasta_files,
+            length_interval_sequences=(oligo_length_min, oligo_length_max),
+            region_ids=regions,
         )
 
+        ##### creating the oligo database #####
+        # oligo database
+        oligo_database = OligoDatabase(
+            min_oligos_per_region=min_oligos_per_region,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=self.dir_output,
+        )
+        # load the oligo sequences
+        oligo_database.load_metadata(metadata=self.metadata)
+        oligo_database.load_sequences_from_fasta(
+            file_fasta_in=oligo_fasta_file,
+            sequence_type="oligo",
+            region_ids=regions,
+        )
+    
         ##### loggig database information #####
         if self.write_removed_genes:
             logging.info(
-                f"Genes with <= {min_probes_per_gene} probes will be removed from the probe database and their names will be stored in '{probe_database.file_removed_regions}'."
+                f"Genes with <= {min_oligos_per_region} oligos will be removed from the oligo database and their names will be stored in '{oligo_database.file_removed_regions}'."
             )
 
-        num_genes, num_probes = self._get_probe_database_info(probe_database.database)
+        num_genes, num_oligos = self._get_oligo_database_info(oligo_database.database)
         logging.info(
-            f"Step - Generate Probes: the database contains {num_probes} probes from {num_genes} genes."
+            f"Step - Generate oligos: the database contains {num_oligos} oligos from {num_genes} genes."
         )
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = probe_database.write_database(
-                filename="probe_database_initial.txt"
+            file_database = oligo_database.save_database(
+                filename_out="oligo_database_initial.txt"
             )
         else:
             file_database = ""
 
-        return probe_database, file_database
+        return oligo_database, file_database
 
-    def load_probe_database(
+    def load_oligo_database(
         self,
         file_database: str,
-        file_metadata="",
-        min_probes_per_gene: int = 0,
+        min_oligos_per_region: int = 0,
         n_jobs: int = 1,
     ):
         ##### log parameters #####
@@ -282,23 +296,22 @@ class BaseProbeDesigner:
         parameters = {i: values[i] for i in args}
         self._log_parameters(parameters)
 
-        ##### loading the probe database #####
-        probe_database = OligoDatabase(
-            min_oligos_per_region=min_probes_per_gene,
-            n_jobs=n_jobs,
+        ##### loading the oligo database #####
+        oligo_database = OligoDatabase(
+            min_oligos_per_region=min_oligos_per_region,
             dir_output=self.dir_output,
         )
-        probe_database.load_database(file_database, file_metadata)
+        oligo_database.load_database(file_database)
 
         ##### loggig database information #####
         if self.write_removed_genes:
             logging.info(
-                f"Genes with <= {min_probes_per_gene} probes will be removed from the probe database and their names will be stored in '{probe_database.file_removed_regions}'."
+                f"Genes with <= {min_oligos_per_region} oligos will be removed from the oligo database and their names will be stored in '{oligo_database.file_removed_regions}'."
             )
 
-        num_genes, num_probes = self._get_probe_database_info(probe_database.database)
+        num_regions, num_oligos = self._get_oligo_database_info(oligo_database.database)
         logging.info(
-            f"Step - Generate Probes: the database contains {num_probes} probes from {num_genes} genes."
+            f"Step - Generate oligos: the database contains {num_oligos} oligos from {num_regions} genes."
         )
 
-        return probe_database
+        return oligo_database
