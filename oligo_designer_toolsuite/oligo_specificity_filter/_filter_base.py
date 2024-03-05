@@ -3,12 +3,15 @@
 ############################################
 
 import os
-from abc import ABC, abstractmethod
-from pathlib import Path
-from pathlib import Path
+import pandas as pd
 
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
+from pathlib import Path
+from joblib import Parallel, delayed
+from abc import ABC, abstractmethod
+from typing import get_args
+
+from ..database import OligoDatabase, ReferenceDatabase
+from .._constants import SEPARATOR_OLIGO_ID, SEPARATOR_FASTA_HEADER_FIELDS, _TYPES_SEQ
 
 
 ############################################
@@ -16,154 +19,278 @@ from Bio.SeqRecord import SeqRecord
 ############################################
 
 
-# TODO: specify sequence type for database input (i.e. target or oligo)
 class SpecificityFilterBase(ABC):
-    "This is the base class for all specificity filter classes"
+    """An abstract base class for implementing specificity filters for oligonucleotide sequences.
+    Specificity filters are used to ensure that oligos do not have unintended matches within a given
+    reference database. This base class provides a common structure for such filters, including an output
+    directory setup and an abstract method for applying the filter to an oligo database.
 
-    def __init__(self, dir_specificity: str):
-        """Construnctor"""
-        # folder where we write the intermediate files
-        self.dir_specificity = dir_specificity
-        Path(self.dir_specificity).mkdir(parents=True, exist_ok=True)
+    :param dir_output: The directory where intermediate files will be saved. Defaults to "output".
+    :type dir_output: str
+    """
+
+    def __init__(self, dir_output: str = "output"):
+        """Constructor for the SpecificityFilterBase class."""
+
+        self.dir_output = dir_output
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
-    def apply(self, database: dict, file_reference: str, n_jobs: int):
-        """Apply filter to list of all possible oligos in oligo_info dictionary and filter out the oligos which don't fulfill the requirements.
-        Temporary files can be written in the ``self.dir_specificiy`` folder, but they must be removed.
+    def apply(
+        self,
+        sequence_type: _TYPES_SEQ,
+        database: OligoDatabase,
+        n_jobs: int,
+        reference_database: ReferenceDatabase = None,
+    ):
+        """Abstract method to apply the specificity filter to an oligo database.
 
-        :param database: database containing the oligos and their features
-        :type database: dict
-        :param file_reference: path to the file that is used as an reference for the alignment
-        :type file_reference: str
-        :param n_jobs: number of simultaneous parallel computations
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligo database to which the filter will be applied.
+        :type database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run.
         :type n_jobs: int
-        :return: oligo info of user-specified genes
-        :rtype: dict
+        :param reference_database: The reference database to compare against for specificity.
+            For non-alignment based specificity filter reference_database is not used, i.e. set to None.
+        :type reference_database: ReferenceDatabase, optional
         """
 
-    def _filter_hits_from_database(self, database_region: dict, oligo_hits: list[str]):
-        """Filer out form the database the sequences with a match.
+    def _filter_hits_from_database(self, database_region: dict, oligos_with_hits: list[str]):
+        """Removes oligos identified with hits in the reference database from a given region of the oligo database.
 
-        :param database_region: dictionary with all the oligos belonging to the current gene
+        :param database_region: A region of the oligo database to filter.
         :type database_region: dict
-        :param matching_oligos: list of the oligos with a match
-        :type matching_oligos: list
-        :return: database_region without the matching oligos
+        :param oligos_with_hits: A list of oligo IDs that have matches in the reference database and should be removed.
+        :type oligos_with_hits: list[str]
+        :return: The filtered region of the oligo database.
         :rtype: dict
         """
         oligo_ids = list(database_region.keys())
         for oligo_id in oligo_ids:
-            if oligo_id in oligo_hits:
+            if oligo_id in oligos_with_hits:
                 del database_region[oligo_id]
         return database_region
 
 
 class AlignmentSpecificityFilter(SpecificityFilterBase):
-    """
-    This is the base class for all specificity filter classes which are based on an alignment tool
-    :param dir_specificity: directory where alignment temporary files can be written
-    :type dir_specificity: str
+    """A class that implements specificity filtering for oligonucleotides through alignments against a reference database.
+    This filter creates an index of the reference database and then aligns oligonucleotide sequences to identify and exclude
+    sequences with significant hits in the reference, ensuring specificity of the oligonucleotide sequences.
+
+    :param dir_output: Directory for saving intermediate files generated during the filtering process.
+    :type dir_output: str
     """
 
-    def __init__(self, dir_specificity: str):
-        """Construnctor"""
+    def __init__(self, dir_output: str = "output"):
+        """Construnctor for the AlignmentSpecificityFilter class."""
         # folder where we write the intermediate files
-        self.dir_specificity = dir_specificity
-        Path(self.dir_specificity).mkdir(parents=True, exist_ok=True)
+        self.dir_output = dir_output
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-    @abstractmethod
-    def get_oligo_pair_hits(self, database: dict, file_reference: str, n_jobs: int):
+    def apply(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        n_jobs: int,
+        reference_database: ReferenceDatabase,
+    ):
+        """Applies the alignment-based specificity filter to an oligonucleotide database.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligo database to which the filter will be applied.
+        :type database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
+        :param reference_database: The reference database to compare against for specificity.
+        :type reference_database: ReferenceDatabase
+        :return: The filtered oligo database with sequences having significant hits removed.
+        :rtype: OligoDatabase
         """
-        Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
-        contains the name of the oligo from the database and its corresponding match from the reference.
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
-        :param database: database containing the oligos.
-        :type database: dict
-        :param reference_fasta: path to the file that is used as an reference for the alignment
-        :type reference_fasta: str
+        # Create index file for search
+        file_reference = reference_database.write_database_to_fasta(filename="reference_db")
+        filename_reference_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
-        :return: A list of matching oligo pairs.
-        :rtype: list of tuple
+        # Run filter for each region in parallel
+        region_ids = list(oligo_database.database.keys())
+        database_region_filtered = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_filter)(
+                sequence_type=sequence_type,
+                region_id=region_id,
+                oligo_database=oligo_database,
+                filename_reference_index=filename_reference_index,
+                consider_hits_from_input_region=True,
+            )
+            for region_id in region_ids
+        )
+        os.remove(file_reference)
+
+        # Reconstruct the oligos database and return it
+        for region_id, database_region_filtered in zip(region_ids, database_region_filtered):
+            oligo_database.database[region_id] = database_region_filtered
+
+        return oligo_database
+
+    def get_oligo_pair_hits(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        n_jobs: int,
+        reference_database: ReferenceDatabase,
+    ):
+        """Identifies oligonucleotide pairs with significant hits in the reference database.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligo database to which the filter will be applied.
+        :type database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
+        :param reference_database: The reference database to compare against for specificity.
+        :type reference_database: ReferenceDatabase
+        :return: List of oligo pairs with hits in the reference database.
+        :rtype: list[tuple]
         """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+
+        # Create index file for search
+        file_reference = reference_database.write_database_to_fasta(filename="reference_db")
+        filename_reference_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
+
+        # Run search
+        search_results = self._run_search(
+            sequence_type=sequence_type,
+            oligo_database=oligo_database,
+            filename_reference_index=filename_reference_index,
+        )
+        table_hits, _ = self._find_hits(
+            oligo_database=oligo_database,
+            search_results=search_results,
+            consider_hits_from_input_region=False,
+        )
+        os.remove(file_reference)
+
+        hits = list(zip(table_hits["query_region_id"].values, table_hits["reference_region_id"].values))
+
+        return hits
 
     @abstractmethod
     def _create_index(self, file_reference: str, n_jobs: int):
-        """
-        Abstract method for creating an index based on the provided file reference.
-        The index serves as a database specific to the alignment tool, used for facilitating the alignment processes.
+        """Abstract method to create an index of the reference database for alignment.
 
-        :param file_reference: path to the file that will be used as reference for the alignment.
+        :param file_reference: Path to the reference database fasta file.
         :type file_reference: str
-        :param n_jobs: number of jobs for parallel processing during index creation.
+        :param n_jobs: The number of parallel jobs to run.
         :type n_jobs: int
-        :returns: name of the created or initialized database.
-        :rtype: str
-        :raises NotImplementedError: If not overridden in a subclass.
         """
 
     @abstractmethod
-    def _run_search(self, database: dict, region: str, file_index: str, **kwargs):
-        """
-        Abstract method for running a search of database region and the against the provided index.
+    def _run_search(
+        self, sequence_type: _TYPES_SEQ, database: OligoDatabase, region_ids: str, file_index: str
+    ):
+        """Abstract method to execute a search against a reference database using a specific indexing strategy.
 
-        :param database: database containing the oligos
-        :type database: dict
-        :param region: id of the region processed
-        :type region: str
-        :param index_name: path of the database or index to search against
-        :type index_name: str
-        :param filter_same_region_matches: flag to indicate whether to filter matches from the same gene
-        :type filter_same_region_matches: bool
-        :returns: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data
-        :rtype: (numpy.ndarray, pandas.DataFrame)
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligonucleotide database to search against.
+        :type database: OligoDatabase
+        :param region_ids: Identifiers for the regions within the database to be searched.
+        :type region_ids: str
+        :param file_index: Path to the index file of the reference database.
+        :type file_index: str
         """
+
+    def _read_search_output(self, file_search_results: str, names_search_output: list, usecols: list = None):
+        """Reads the output from a search operation into a pandas DataFrame.
+
+        :param file_search_results: Path to the file containing search results.
+        :type file_search_results: str
+        :param names_search_output: Column names for the search result data frame.
+        :type names_search_output: list[str]
+        :param usecols: Specific columns to use from the search results. If None, all columns are used.
+        :type usecols: list, optional
+        :return: A pandas DataFrame containing the search results.
+        :rtype: pd.DataFrame
+        """
+        search_results = pd.read_csv(
+            filepath_or_buffer=file_search_results,
+            header=None,
+            sep="\t",
+            low_memory=False,
+            engine="c",
+            usecols=usecols,
+            names=names_search_output,
+        )
+
+        search_results["query_region_id"] = search_results["query"].str.split(SEPARATOR_OLIGO_ID).str[0]
+        search_results["reference_region_id"] = (
+            search_results["reference"].str.split(SEPARATOR_FASTA_HEADER_FIELDS).str[0]
+        )
+
+        return search_results
 
     @abstractmethod
-    def _find_hits(self, search_results, filter_hits_from_input_region):
-        """ """
+    def _find_hits(
+        self,
+        oligo_database: OligoDatabase,
+        search_results: pd.DataFrame,
+        consider_hits_from_input_region: bool,
+    ):
+        """Abstract method to identify hits from search results within the oligonucleotide database.
+
+        :param oligo_database: The oligonucleotide database.
+        :type oligo_database: OligoDatabase
+        :param search_results: DataFrame containing search results.
+        :type search_results: pd.DataFrame
+        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
+        :type consider_hits_from_input_region: bool
+        """
 
     def _run_filter(
-        self, database: dict, region: str, file_index: str, filter_hits_from_input_region=True, **kwargs
+        self,
+        sequence_type: _TYPES_SEQ,
+        region_id: str,
+        oligo_database: OligoDatabase,
+        filename_reference_index: str,
+        consider_hits_from_input_region: bool,
     ):
-        """
-        Filters a database region based on alignment matches.
+        """Executes the filtering process for a specific region of the oligonucleotide database based on search results.
 
-        :param database: database containing the oligos.
-        :type database: dict
-        :param region: id of the region processed
-        :type region: str
-        :param index_name: path of the database or index to search against
-        :type index_name: str
-        :param filter_same_region_matches: Whether to filter matches within the same region (default is True).
-        :type filter_same_region_matches: bool
-        :param kwargs: Additional keyword arguments to customize the search.
-
-        :return: The filtered database region containing matching oligos.
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param region_id: The identifier for the region within the database to filter.
+        :type region_id: str
+        :param oligo_database: The oligonucleotide database to apply the filter on.
+        :type oligo_database: OligoDatabase
+        :param filename_reference_index: Path to the index file used for the reference database.
+        :type filename_reference_index: str
+        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
+        :type consider_hits_from_input_region: bool
+        :return: The filtered region of the oligo database.
         :rtype: dict
         """
-        search_results = self._run_search(database, region, file_index, **kwargs)
-        oligo_hits = self._find_hits(search_results, filter_hits_from_input_region)
-        database_region_filtered = self._filter_hits_from_database(database[region], oligo_hits)
+        search_results = self._run_search(
+            sequence_type=sequence_type,
+            oligo_database=oligo_database,
+            filename_reference_index=filename_reference_index,
+            region_ids=region_id,
+        )
+        _, oligos_with_hits = self._find_hits(
+            oligo_database=oligo_database,
+            search_results=search_results,
+            consider_hits_from_input_region=consider_hits_from_input_region,
+        )
+        database_region_filtered = self._filter_hits_from_database(
+            database_region=oligo_database.database[region_id], oligos_with_hits=oligos_with_hits
+        )
 
         return database_region_filtered
-
-    # TODO: Both these functions are temporary, should be solved with database.write_to_fasta
-    def _create_fasta_file(self, database, directory, region):
-        file_fasta_region = os.path.join(directory, f"oligos_{region}.fna")
-        output = []
-        for oligo_id in database[region].keys():
-            output.append(SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", ""))
-        with open(file_fasta_region, "w") as handle:
-            SeqIO.write(output, handle, "fasta")
-        return file_fasta_region
-
-    def _create_fasta_multiple_regions(self, database, directory, regions):
-        """Temporary function"""
-        file_fasta = os.path.join(directory, "oligos_database.fna")
-        output = []
-        for region in regions:
-            for oligo_id in database[region].keys():
-                output.append(SeqRecord(database[region][oligo_id]["sequence"], oligo_id, "", ""))
-        with open(file_fasta, "w") as handle:
-            SeqIO.write(output, handle, "fasta")
-        return file_fasta

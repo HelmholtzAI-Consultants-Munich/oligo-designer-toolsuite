@@ -3,289 +3,396 @@
 ############################################
 
 import os
-import re
+import warnings
+import pandas as pd
+
 from pathlib import Path
+from typing import List, Union
+from abc import abstractmethod
 
-import pandas as pd
-
-import pandas as pd
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
-from joblib import Parallel, delayed
-
-from oligo_designer_toolsuite.constants import (
-    REGION_SEPARATOR_ANNOTATION,
-    REGION_SEPARATOR_OLIGO,
-)
 
 from . import AlignmentSpecificityFilter
+from ..database import OligoDatabase
+from ..utils._utils import check_if_list
+from .._constants import _TYPES_SEQ
 
 ############################################
 # Oligo Blast Filter Classes
 ############################################
 
 
-class Blastn(AlignmentSpecificityFilter):
-    """This class filters oligos based on the blast alignment tool. All the oligos which have a match with a percentage identity higher
-    than the one given in input are filtered out.
+class BlastNFilter(AlignmentSpecificityFilter):
+    """A class that implements specificity filtering using BLASTN to align oligonucleotides against a reference database.
+    This class allows for customization of BLAST search and hit parameters, and manages output directories for BLAST results.
 
-    :param dir_specificity: directory where alignment temporary files can be written
-    :type dir_specificity: str
-    :param word_size: word size for the blastn seed (exact match to target)
-    :type word_size: int
-    :param percent_identity: maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
-    :type percent_identity: int
-    :param strand: strand of the query sequence to search
-    :type strand: str
-    :param coverage: minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
-    :type coverage: float
-    :param min_alignment_length: minimum alignment length between oligos and target sequence
-    :type min_alignment_length: int
+    Blast (2.12 or higher)  can be installed via NCBI webpage (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+    or via Bioconda (http://bioconda.github.io/recipes/blast/README.html) installation of Bowtie2 with:
+    ``conda config --add channels conda-forge``
+    ``conda config --add channels bioconda``
+    ``conda update --all``
+    ``conda install "blast>=2.12"``
+
+    Useful BlastN search parameter:
+    - word_size: Length of initial exact match. Default: 11
+    - strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus. Default: both
+    - perc_identity: Percent identity cutoff. Default: 0
+    All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+
+    :param blast_search_parameters: Custom parameters for the BLAST search command.
+    :type blast_search_parameters: dict
+    :param blast_hit_parameters: Criteria to consider a BLAST hit significant for filtering.
+    :type blast_hit_parameters: dict
+    :param dir_output: Base directory for saving output files and BLAST databases. Defaults to "output".
+    :type dir_output: str
+    :param names_search_output: Column names for parsing BLAST search output.
+    :type names_search_output: list
     """
 
     def __init__(
         self,
-        dir_specificity: str,
-        coverage: float = None,
-        min_alignment_length: int = None,
-        percent_identity: float = None,
-        blast_search_parameters: dict = {}
+        blast_search_parameters: dict = {},
+        blast_hit_parameters: dict = {},
+        dir_output: str = "output",
+        names_search_output: list = [
+            "query",
+            "reference",
+            "alignment_length",
+            "query_start",
+            "query_end",
+            "query_length",
+        ],
     ):
-        """Constructor."""
-        super().__init__(dir_specificity)
-        if coverage is None and min_alignment_length is None:
-            raise Exception(
-                "Please provide either coverage or a minimum alignment length"
-            )
-        self.coverage = coverage
-        self.min_alignment_length = min_alignment_length
-        self.perc_identity = percent_identity
+        """Constructor for the BlastNFilter class."""
+        super().__init__(dir_output)
         self.blast_search_parameters = blast_search_parameters
+        self.blast_hit_parameters = blast_hit_parameters
+        self.names_search_output = names_search_output
 
-        self.dir_blast = os.path.join(self.dir_specificity, "blast")
+        # Define default output format for blast search filter. The fields are:
+        # query, reference, alignment_length, query_start, query_end, query_length
+        if "outfmt" not in self.blast_search_parameters.keys():
+            self.blast_search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen"
+
+        self.dir_blast = os.path.join(dir_output, "blast")
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
 
-    def apply(self, database: dict, file_reference: str, n_jobs: int):
-        """
-        Apply the blastn filter in parallel on the given ``database``. Each job filters a
-        single region, and at the same time, at most ``n_jobs`` jobs are generated.
-        The filtered database is returned.
-
-        :param database: Database containing the oligos and their features.
-        :type database: dict
-        :param file_reference: Path to the file that will be used as reference for the alignment.
-        :type file_reference: str
-        :param n_jobs: Number of simultaneous parallel computations.
-        :type n_jobs: int
-        :return: Oligo info of user-specified regions.
-        :rtype: dict
-        """
-
-        # run the balst search
-        database_name = self._create_index(file_reference, n_jobs=n_jobs)
-        kwargs = {
-            "outfmt": "6 qseqid sseqid length qstart qend qlen",
-            "num_threads": 1,  # ????
-        }
-        regions = list(database.keys())
-        filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_filter)(database, region, database_name, **kwargs)
-            for region in regions
-        )
-
-        # reconstruct the oligos db and return it
-        for region, filtered_database_region in zip(regions, filtered_database_regions):
-            database[region] = filtered_database_region
-
-        return database
-
-    def _compute_percent_identity_from_alignment_length(alignment_length):
-        if alignment_length > 50: percent_identity = 50
-        elif alignment_length 
-
-
     def _create_index(self, file_reference: str, n_jobs: int):
-        """
-        Create a Blastn database index.
+        """Creates a BLAST index for the reference database if it does not exist.
 
-        :param file_reference: Path to the reference file used for creating the index.
+        :param file_reference: Path to the reference database file.
         :type file_reference: str
-        :param n_jobs: Number of simultaneous parallel computations (currently unused)
+        :param n_jobs: The number of parallel jobs to run (currently not utilized in index creation but reserved for future use).
         :type n_jobs: int
-        :return: The name of the created database index.
+        :return: The basename of the reference file used as the index name.
         :rtype: str
         """
-        # create blast database
-        database_exists = False
-        database_name = os.path.basename(file_reference)
-        # Check if blast database exists
-        for file in os.listdir(self.dir_blast):
-            if re.search(f"^{database_name}.*", file):
-                database_exists = True
-                break
+        ## Create blast index
+        filename_reference_index = os.path.basename(file_reference)
 
-        if not database_exists:
+        # Check if blast database exists -> check for any of the blast index files, e.g. ".nhr" file
+        if not os.path.exists(os.path.join(self.dir_blast, filename_reference_index + ".nhr")):
             cmd = NcbimakeblastdbCommandline(
                 input_file=file_reference,
                 dbtype="nucl",
-                out=os.path.join(self.dir_blast, database_name),
+                out=os.path.join(self.dir_blast, filename_reference_index),
             )
             out, err = cmd()
-        return database_name
+        return filename_reference_index
 
     def _run_search(
-        self, database, region, index_name, filter_same_region_matches, **kwargs
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        filename_reference_index: str,
+        region_ids: Union[str, List[str]] = None,
     ):
-        """
-        Run the BlastN alignment tool to identify regions of local similarity between sequences.
-        These sequences include oligos from the database and those in the index (e.g., transcript, genome, etc.).
-        BlastN determines the transcript regions where oligos have matching sequences.
+        """Executes a BLASTN search for an oligo database against a reference database index.
 
-        :param database: Database containing the oligos.
-        :type database: dict
-        :param region: ID of the region being processed.
-        :type region: str
-        :param index_name: Name of the BlastN database index.
-        :type index_name: str
-        :param filter_same_region_matches: Whether to filter out matches within the same region.
-        :type filter_same_region_matches: bool
-        :param kwargs: Additional keyword arguments for the BlastN command.
-        :type kwargs: dict
-        :return: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data.
-        :rtype: (numpy.ndarray, pandas.DataFrame)
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param oligo_database: The database of oligonucleotides to search.
+        :type oligo_database: OligoDatabase
+        :param filename_reference_index: The filename of the reference database index for BLASTN search.
+        :type filename_reference_index: str
+        :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
+        :type region_ids: Union[str, List[str]], optional
+        :return: A DataFrame containing the BLASTN search results.
+        :rtype: pd.DataFrame
         """
-
-        # TODO: This part has to change
-        if region is not None:
-            file_oligo_fasta_region = self._create_fasta_file(
-                database, self.dir_fasta, region
-            )
+        region_ids = check_if_list(region_ids)
+        if region_ids:
+            region_name = "_".join(region_ids)
         else:
-            file_oligo_fasta_region = self._create_fasta_multiple_regions(
-                database, self.dir_fasta, regions=database.keys()
-            )
-            region = "multiple_regions"
+            region_name = "all_regions"
 
-        file_blast_region = os.path.join(self.dir_blast, f"blast_{region}.txt")
+        file_oligo_database = oligo_database.write_database_to_fasta(
+            filename=f"oligo_database_blast_{region_name}",
+            region_ids=region_ids,
+            sequence_type=sequence_type,
+        )
+        file_blast_results = os.path.join(self.dir_blast, f"blast_results_{region_name}.txt")
+
         cmd = NcbiblastnCommandline(
-            query=file_oligo_fasta_region,
-            out=file_blast_region,
-            db=os.path.join(self.dir_blast, index_name),
-            word_size=self.word_size,
-            perc_identity=self.perc_identity,
-            strand=self.strand,
-            **kwargs,
+            query=file_oligo_database,
+            out=file_blast_results,
+            db=os.path.join(self.dir_blast, filename_reference_index),
+            **self.blast_search_parameters,
         )
         out, err = cmd()
 
         # read the reuslts of the blast seatch
-        blast_results = self._read_blast_output(file_blast_region)
+        blast_results = self._read_search_output(
+            file_search_results=file_blast_results, names_search_output=self.names_search_output
+        )
 
         # remove temporary files
-        os.remove(file_blast_region)
-        os.remove(file_oligo_fasta_region)
-        # filter the DB based on the blast results
-        return self._find_matching_oligos(
-            blast_results, filter_same_region_matches=filter_same_region_matches
-        )
+        os.remove(file_oligo_database)
+        os.remove(file_blast_results)
 
-    def _read_blast_output(self, file_blast_region):
-        """
-        Load the output of the BlastN alignment search into a DataFrame and process the results.
-
-        :param file_blast_region: Path to the BlastN output file.
-        :type file_blast_region: str
-        :return: Processed BlastN results as a DataFrame.
-        :rtype: pandas.DataFrame
-        """
-
-        blast_results = pd.read_csv(
-            file_blast_region,
-            header=None,
-            sep="\t",
-            low_memory=False,
-            names=[
-                "query",
-                "reference",
-                "alignment_length",
-                "query_start",
-                "query_end",
-                "query_length",
-            ],
-            engine="c",
-            dtype={
-                "query": str,
-                "reference": str,
-                "alignment_length": int,
-                "query_start": int,
-                "query_end": int,
-                "query_length": int,
-            },
-        )
-        # return the real matches, that is the ones not belonging to the same region of the query oligo
-        blast_results["query_region_id"] = (
-            blast_results["query"].str.split(REGION_SEPARATOR_OLIGO).str[0]
-        )
-        blast_results["reference_region_id"] = (
-            blast_results["reference"].str.split(REGION_SEPARATOR_ANNOTATION).str[0]
-        )
+        # return loaded results
         return blast_results
 
-    def _find_matching_oligos(self, blast_results, filter_same_region_matches=True):
-        """Use the results of the BlastN alignement search to remove oligos.
+    def _find_hits(
+        self,
+        oligo_database: OligoDatabase,  # not utilized in this filter
+        search_results: pd.DataFrame,
+        consider_hits_from_input_region: bool,
+    ):
+        """Identifies significant hits from BLASTN results based on alignment length or coverage criteria.
 
-        :param blast_results: DataFrame with processed blast alignment search results.
-        :type blast_results: pandas.DataFrame:
-        param filter_same_region_matches: Whether to filter out results within the same region (default is True)
-        :type filter_same_region_matches: bool
-        :return: A tuple containing: an array of oligos with matches, and a dataframe containing alignment match data
-        :rtype: (numpy.ndarray, pandas.DataFrame)
+        :param oligo_database: The oligonucleotide database.
+        :type oligo_database: OligoDatabase
+        :param search_results: The DataFrame containing results from a BLASTN search.
+        :type search_results: pd.DataFrame
+        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
+        :type consider_hits_from_input_region: bool
+        :return: A tuple containing a DataFrame of significant BLAST hits and a list of oligos with these hits.
+        :rtype: (pd.DataFrame, list)
         """
-
-        if filter_same_region_matches:
-            blast_matches = blast_results[
-                blast_results["query_region_id"] != blast_results["reference_region_id"]
-            ]
-        else:
-            blast_matches = blast_results
-        if self.coverage is not None:
-            values = blast_matches["query_length"] * self.coverage / 100
-            blast_matches.insert(
-                len(blast_matches.columns), "min_alignment_length", values
+        if "min_alignment_length" in self.blast_hit_parameters.keys():
+            if "coverage" in self.blast_hit_parameters.keys():
+                warnings.warn(
+                    "Both, 'min_alignment_length' and 'coverage' parameters were provided. Using 'min_alignment_length' parameter."
+                )
+            min_alignment_length = self.blast_hit_parameters["min_alignment_length"]
+        elif "coverage" in self.blast_hit_parameters.keys():
+            min_alignment_length = (
+                search_results["query_length"] * self.blast_hit_parameters["coverage"] / 100
             )
         else:
-            blast_matches["min_alignment_length"] = self.min_alignment_length
+            raise KeyError(
+                "Please provide either 'coverage' or a 'min_alignment_length' in blast_hit_parameters!"
+            )
 
-        blast_matches_filtered = blast_matches.loc[
-            blast_matches.alignment_length > blast_matches.min_alignment_length
+        search_results["min_alignment_length"] = min_alignment_length
+
+        if consider_hits_from_input_region:
+            # remove all hits where query and reference come from the same region
+            search_results = search_results[
+                search_results["query_region_id"] != search_results["reference_region_id"]
+            ]
+
+        blast_table_hits = search_results.loc[
+            search_results.alignment_length > search_results.min_alignment_length
+        ]
+        oligos_with_hits = blast_table_hits["query"].unique()
+
+        return blast_table_hits, oligos_with_hits
+
+
+############################################
+# Oligo Blast Filter with Seedregion Classes
+############################################
+
+
+class BlastNSeedregionFilterBase(BlastNFilter):
+    """Base class for BLASTN-based filters focusing on seed regions within oligonucleotides. It extends the BlastNFilter class,
+    adding functionality to incorporate seed region information into the specificity filtering process. This class is designed
+    to be subclassed with a concrete implementation of the method to add seed region information to BLAST results.
+
+    :param blast_search_parameters: Custom parameters for the BLAST search command.
+    :type blast_search_parameters: dict
+    :param blast_hit_parameters: Criteria to consider a BLAST hit significant for filtering.
+    :type blast_hit_parameters: dict
+    :param dir_output: Directory for saving output files and BLAST databases.
+    :type dir_output: str
+    """
+
+    def __init__(
+        self,
+        blast_search_parameters: dict = {},
+        blast_hit_parameters: dict = {},
+        dir_output: str = "output",
+    ):
+        """Constructor for the BlastNSeedregionFilterBase class."""
+        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output)
+
+    @abstractmethod
+    def _add_seed_region_information(self, oligo_database: OligoDatabase, blast_results: pd.DataFrame):
+        """Abstract method to add seed region information to BLAST results. This method must be implemented in subclasses to define
+        how seed region data is incorporated into the filtering logic based on BLAST results.
+
+        :param oligo_database: The database of oligonucleotides being analyzed.
+        :type oligo_database: OligoDatabase
+        :param blast_results: DataFrame containing results from a BLASTN search.
+        :type blast_results: pd.DataFrame
+        """
+
+    def _find_hits(
+        self,
+        oligo_database: OligoDatabase,
+        search_results: pd.DataFrame,
+        consider_hits_from_input_region: bool,
+    ):
+        """Identifies oligonucleotides with significant hits based on BLAST results, taking into account seed region information. Adjusts hit
+        criteria based on alignment length or coverage, and applies logic to exclude or include hits from the same input region.
+
+        :param oligo_database: The oligonucleotide database.
+        :type oligo_database: OligoDatabase
+        :param search_results: DataFrame containing BLAST search results, enhanced with seed region information.
+        :type search_results: pd.DataFram
+        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
+        :type consider_hits_from_input_region: bool
+        :return: A tuple of a DataFrame of significant BLAST hits and a list of oligo IDs with these hits.
+        :rtype: (pd.DataFrame, list)
+        """
+        if "min_alignment_length" in self.blast_hit_parameters.keys():
+            if "coverage" in self.blast_hit_parameters.keys():
+                warnings.warn(
+                    "Both, 'min_alignment_length' and 'coverage' parameters were provided. Using 'min_alignment_length' parameter."
+                )
+            min_alignment_length = self.blast_hit_parameters["min_alignment_length"]
+        elif "coverage" in self.blast_hit_parameters.keys():
+            min_alignment_length = (
+                search_results["query_length"] * self.blast_hit_parameters["coverage"] / 100
+            )
+        else:
+            raise KeyError(
+                "Please provide either 'coverage' or a 'min_alignment_length' in blast_hit_parameters!"
+            )
+
+        search_results["min_alignment_length"] = min_alignment_length
+
+        search_results = self._add_seed_region_information(
+            oligo_database=oligo_database, search_results=search_results
+        )
+
+        if consider_hits_from_input_region:
+            # remove all hits where query and reference come from the same region
+            search_results = search_results[
+                search_results["query_region_id"] != search_results["reference_region_id"]
+            ]
+
+        blast_table_hits = search_results.loc[
+            (search_results.alignment_length > search_results.min_alignment_length)
+            | (
+                (search_results.query_start < search_results.seedregion_start)
+                & (search_results.query_end > search_results.seedregion_end)
+            )
         ]
 
-        oligos_with_match = blast_matches_filtered["query"].unique()
+        oligos_with_hits = blast_table_hits["query"].unique()
 
-        return oligos_with_match, blast_matches_filtered
+        return blast_table_hits, oligos_with_hits
 
-    def get_matching_oligo_pairs(
-        self, database: dict, reference_fasta: str, n_jobs: int
+
+class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
+    """Extends BlastNSeedregionFilterBase to implement specificity filtering with a focus on seed regions within oligonucleotides.
+    This class allows for the integration of seed region considerations into the specificity filtering process against a reference database.
+
+    :param seedregion_start: The start of the seed region, either as an absolute position (int) or as a percentage of the sequence length (float).
+    :type seedregion_start: Union[int, float]
+    :param seedregion_end: The end of the seed region, with the same type as seedregion_start.
+    :type seedregion_end: Union[int, float]
+    :param blast_search_parameters: Custom parameters for the BLAST search command.
+    :type blast_search_parameters: dict
+    :param blast_hit_parameters: Criteria to consider a BLAST hit significant for filtering.
+    :type blast_hit_parameters: dict
+    :param dir_output: Directory for saving output files and BLAST databases.
+    :type dir_output: str
+    """
+
+    def __init__(
+        self,
+        seedregion_start: Union[int, float],
+        seedregion_end: Union[int, float],
+        blast_search_parameters: dict = {},
+        blast_hit_parameters: dict = {},
+        dir_output: str = "output",
     ):
-        """
-        Retrieve matching oligo pairs between a reference FASTA and a database. It returns a list of pairs, where each pair
-        contains the name of the oligo from the database and its corresponding match from the reference.
+        """Constructor for the BlastNSeedregionFilter class."""
+        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output)
 
-        :param database: database containing the oligos.
-        :type database: dict
-        :param reference_fasta: path to the file that is used as an reference for the alignment
-        :type reference_fasta: str
+        self.seedregion_start = seedregion_start
+        self.seedregion_end = seedregion_end
 
-        :return: A list of matching oligo pairs.
-        :rtype: list of tuple
+    def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
+        """Adds seed region information to BLAST results for further filtering.
+
+        :param oligo_database: The oligonucleotide database being analyzed.
+        :type oligo_database: OligoDatabase
+        :param search_results: DataFrame containing results from a BLASTN search.
+        :type search_results: pd.DataFrame
+        :return: Updated BLAST results with seed region information.
+        :rtype: pd.DataFrame
         """
-        database_name = self._create_index(reference_fasta, n_jobs=n_jobs)
-        matches = self._run_search(
-            database,
-            region=None,
-            index_name=database_name,
-            filter_same_region_matches=False,
-            outfmt="6 qseqid sseqid length qstart qend qlen",
-            num_threads=1,
+        oligo_database.calculate_seedregion(start=self.seedregion_start, end=self.seedregion_end)
+
+        seedregion = pd.merge(
+            left=oligo_database.get_oligo_attribute("seedregion_start"),
+            right=oligo_database.get_oligo_attribute("seedregion_end"),
+            on="oligo_id",
         )
-        matches = matches[1]
-        return list(zip(matches["query"].values, matches["reference"].values))
+        search_results = pd.merge(
+            left=search_results, right=seedregion, left_on="query", right_on="oligo_id", how="left"
+        )
+        return search_results
+
+
+class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
+    """Extends BlastNSeedregionFilterBase to implement specificity filtering focused on the ligation site's seed regions within oligonucleotides.
+    This class considers the seed region around the ligation site for BLASTN-based specificity filtering against a reference database.
+
+    :param seedregion_size: The size of the seed region around the ligation site to be considered.
+    :type seedregion_size: int
+    :param blast_search_parameters: Custom parameters for the BLAST search command.
+    :type blast_search_parameters: dict
+    :param blast_hit_parameters: Criteria to consider a BLAST hit significant for filtering.
+    :type blast_hit_parameters: dict
+    :param dir_output: Directory for saving output files and BLAST databases.
+    :type dir_output: str
+    """
+
+    def __init__(
+        self,
+        seedregion_size: int,
+        blast_search_parameters: dict = {},
+        blast_hit_parameters: dict = {},
+        dir_output: str = "output",
+    ):
+        """Constructor for the BlastNSeedregionLigationsiteFilter class."""
+        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output)
+        self.seedregion_size = seedregion_size
+
+    def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
+        """Adds seed region information around the ligation site to BLAST results for further filtering.
+
+        :param oligo_database: The oligonucleotide database being analyzed.
+        :type oligo_database: OligoDatabase
+        :param search_results: DataFrame containing results from a BLASTN search.
+        :type search_results: pd.DataFrame
+        :return: Updated BLAST results with seed region information around the ligation site.
+        :rtype: pd.DataFrame
+        """
+        oligo_database.calculate_seedregion_ligationsite(seedregion_size=self.seedregion_size)
+
+        seedregion = pd.merge(
+            left=oligo_database.get_oligo_attribute("seedregion_start"),
+            right=oligo_database.get_oligo_attribute("seedregion_end"),
+            on="oligo_id",
+        )
+        search_results = pd.merge(
+            left=search_results, right=seedregion, left_on="query", right_on="oligo_id", how="left"
+        )
+        return search_results
