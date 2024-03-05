@@ -12,18 +12,18 @@ from . import SpecificityFilterBase
 ############################################
 
 
+# TODO provide get_oligo_pair_hits function to integrate into crosshybridization filter
 class ExactMatches(SpecificityFilterBase):
-    """This class filters oligos based duplicates found in the ``oligos_DB``. That is, oligos with the same sequences but belonging to different regions are filtered out.
+    """This class filters oligos based duplicates found in the ``database``. That is, oligos with the same sequences but belonging to different regions are filtered out.
 
     :param dir_specificity: directory where alignement temporary files can be written
     :type dir_specificity: str
     """
 
-    def __init__(self, dir_specificity: str):
-        """Counstructor."""
+    def __init__(self):
+        """Constructor for the ExactMatches class."""
 
-        super().__init__(dir_specificity)
-
+    # TODO: rewrite function such that we save oligos as "reference" file into fasta file amd then compare all oligos to themselves but remove hits from same region
     def apply(self, database: dict, file_reference: str, n_jobs: int):
         """Apply the filter in parallel on the given ``database``. Each jobs filters a single region, and at the same time are generated at most ``n_job`` jobs.
         The filtered database is returned.
@@ -43,9 +43,7 @@ class ExactMatches(SpecificityFilterBase):
         # run filter with joblib
         regions = list(database.keys())
         filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_exactmatch_gene)(
-                database[region], duplicated_sequences
-            )
+            delayed(self._filter_exactmatch_gene)(database[region], duplicated_sequences)
             for region in regions
         )
         # reconstruct the database
@@ -71,9 +69,7 @@ class ExactMatches(SpecificityFilterBase):
                 )  # sequences might be also written in lower letters
         # find the duplicates within the database
         duplicated_sequences = list(
-            iteration_utilities.unique_everseen(
-                iteration_utilities.duplicates(sequences)
-            )
+            iteration_utilities.unique_everseen(iteration_utilities.duplicates(sequences))
         )
 
         return duplicated_sequences

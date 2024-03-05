@@ -3,226 +3,380 @@
 ############################################
 
 import os
-import re
 import subprocess
-from pathlib import Path
-
 import pandas as pd
-from joblib import Parallel, delayed
 
-from . import SpecificityFilterBase
+from pathlib import Path
+from typing import List, Union, get_args
+
+from . import AlignmentSpecificityFilter
+from ..database import OligoDatabase
+from ..utils._utils import check_if_list
+
+from .._constants import _TYPES_SEQ
 
 ############################################
 # Oligo Bowtie Filter Classes
 ############################################
 
 
-class Bowtie(SpecificityFilterBase):
-    """This class filters oligos based on the Bowtie short read alignment tool.
-    The user can customize the filtering by specifying the num_mismatches per oligo and mismatch_region, the region that should be considered for counting mismatches.
-    That is, all oligos with number mismatches higher than num_mismatches inside the mismatch_region are filtered out.
+class BowtieFilter(AlignmentSpecificityFilter):
+    """A class that implements specificity filtering using the Bowtie alignment tool to align oligonucleotides against a reference database.
+    This class manages Bowtie search parameters and parses the output for specificity analysis.
 
-    Use ``conda install -c bioconda bowtie`` to install Bowtie package
+    Bowtie (1.3 or higher) can be installed via Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie)
+    or via Bioconda (http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
+    ``conda config --add channels conda-forge``
+    ``conda config --add channels bioconda``
+    ``conda update --all``
+    ``conda install "bowtie>=1.3.1"``
 
-    :param dir_specificity: directory where alignement temporary files can be written
-    :type dir_specificity: str
-    :param num_mismatches: Threshold value on the number of mismatches required for each oligo. ligos where the number of mismatches greater than this threshhold are considered valid. Possible values range from 0 to 3.
-    :type num_mismatches: int
-    :param mismatch_region: The region of the oligo where the mismatches are considered. Oligos that have less than or equal to num_mismatches in the first L bases (where L is 5 or greater) are filtered out. If ``None`` then the whole sequence is considered, defaults to None
-    :type mismatch_region: int
+    Useful bowtie search parameter:
+    --norc: only report hits on the plus strand
+    --nofw: only report hits on the minus strand
+    -v <int>: Report alignments with at most <int> mismatches.
+    -n <int>: Maximum number of mismatches permitted in the “seed”, i.e. the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2 or 3 and the default is 2.
+    -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. bowtie is faster for larger values of -l.
+    All available Bowtie search parameters are listed on the Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie).
+
+    :param bowtie_search_parameters: Custom parameters for the Bowtie search command.
+    :type bowtie_search_parameters: dict
+    :param dir_output: Base directory for saving output files and Bowtie databases. Defaults to "output".
+    :type dir_output: str
+    :param names_search_output: Column names for parsing Bowtie search output.
+    :type names_search_output: list
     """
 
     def __init__(
         self,
-        dir_specificity: str,
-        num_mismatches: int = 3,
-        mismatch_region: int = None,
-        strand: str = None,
+        bowtie_search_parameters: dict = {},
+        # bowtie_hit_parameters: dict = {},
+        dir_output: str = "output",
+        names_search_output: list = [
+            "query",
+            "strand",
+            "reference",
+            "reference_start",
+            "query_sequence",
+            "read_quality",
+            "num_instances",
+            "mismatch_positions",
+        ],
     ):
-        super().__init__(dir_specificity)
+        """Constructor for the BowtieFilter class."""
+        super().__init__(dir_output)
 
-        if num_mismatches > 3:
-            raise ValueError(
-                "Choice of min_mismatches out of range for bowtie allignment tool. Please choose a value no greater than 3"
-            )
-        else:
-            self.num_mismatches = num_mismatches
+        self.bowtie_search_parameters = bowtie_search_parameters
+        # self.bowtie_hit_parameters = bowtie_hit_parameters
+        self.names_search_output = names_search_output
 
-        if mismatch_region is not None and mismatch_region < 5:
-            raise ValueError(
-                "Choice of mismatch_region out of range for bowtie allignment tool. Please choose a value no less than 5"
-            )
-        else:
-            self.mismatch_region = mismatch_region
-
-        self.strand = strand
-
-        self.dir_bowtie = os.path.join(self.dir_specificity, "bowtie")
+        self.dir_bowtie = os.path.join(self.dir_output, "bowtie")
         Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
 
-        self.dir_fasta = os.path.join(self.dir_specificity, "fasta")
-        Path(self.dir_fasta).mkdir(parents=True, exist_ok=True)
+    def _create_index(self, file_reference: str, n_jobs: int):
+        """Creates a Bowtie index for the reference database if it doesn't already exist. The index facilitates
+        fast alignment searches against the reference.
 
-    def apply(self, database: dict, file_reference: str, n_jobs: int):
-        """Apply the bowtie filter in parallel on the given ``database``. Each jobs filters a single region, and  at the same time are generated at most ``n_job`` jobs.
-        The filtered database is returned.
-
-        :param database: database containing the oligos and their features
-        :type database: dict
-        :param file_reference: path to the file that will be used as reference for the alignement
+        :param file_reference: Path to the reference database file.
         :type file_reference: str
-        :param n_jobs: number of simultaneous parallel computations
+        :param n_jobs: The number of parallel jobs to run.
         :type n_jobs: int
-        :return: oligo info of user-specified regions
-        :rtype: dict
+        :return: The basename of the reference file used as the index name.
+        :rtype: str
         """
-        # Some bowtie initializations, change the names
-        index_exists = False
-        index_name = os.path.basename(file_reference)
-        # Check if bowtie index exists
-        for file in os.listdir(self.dir_bowtie):
-            if re.search(f"^{index_name}.*", file):
-                index_exists = True
-                break
+        ## Create bowtie index
+        file_reference = os.path.abspath(file_reference)
+        filename_reference_index = os.path.basename(file_reference)
 
-        # Create bowtie index if none exists
-        if not index_exists:
-            command1 = (
-                "bowtie-build --quiet --threads "
+        # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.ebwt" file
+        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.ebwt")):
+            cmd = (
+                "bowtie-build --quiet --offrate 4"
+                + " --threads "
                 + str(n_jobs)
                 + " -f "
                 + file_reference
                 + " "
-                + index_name
+                + filename_reference_index
             )
-            process = subprocess.Popen(command1, shell=True, cwd=self.dir_bowtie).wait()
+            process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
 
-        regions = list(database.keys())
-        filtered_database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_bowtie)(database[region], region, index_name)
-            for region in regions
-        )
+        return filename_reference_index
 
-        # reconstruct the oligos_DB
-        for region, filtered_database_region in zip(regions, filtered_database_regions):
-            database[region] = filtered_database_region
+    def _run_search(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        filename_reference_index: str,
+        region_ids: Union[str, List[str]] = None,
+    ):
+        """Performs a Bowtie search of oligonucleotide sequences against a reference database using a previously
+        created Bowtie index.
 
-        return database
-
-    def _run_bowtie(self, databse_region, region, index_name):
-        """Run Bowtie alignment tool to find regions of local similarity between sequences, where sequences are oligos and transcripts.
-        Bowtie identifies all alignments between the oligos and transcripts and returns the number of mismatches and mismatch position for each alignment.
-
-        :param databse_region: database containing the oligos form one region
-        :type databse_region: dict
-        :param region: id of the region processed
-        :type region: str
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param oligo_database: The database of oligonucleotides to search.
+        :type oligo_database: OligoDatabase
+        :param filename_reference_index: The filename of the reference database index for Bowtie search.
+        :type filename_reference_index: str
+        :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
+        :type region_ids: Union[str, List[str]], optional
+        :return: A DataFrame containing the Bowtie search results.
+        :rtype: pd.DataFrame
         """
-
-        file_oligo_fasta_gene = self._create_fasta_file(
-            databse_region, self.dir_fasta, region
-        )
-        file_bowtie_gene = os.path.join(
-            self.dir_bowtie,
-            f"bowtie_{region}.txt",
-        )
-        if self.mismatch_region is not None:
-            command = (
-                "bowtie --quiet -x "
-                + index_name
-                + " -f -a -n "
-                + str(self.num_mismatches)
-                + " -l "
-                + str(self.mismatch_region)
-                + " "
-                + file_oligo_fasta_gene
-                + " "
-                + file_bowtie_gene
-            )
+        region_ids = check_if_list(region_ids)
+        if region_ids:
+            region_name = "_".join(region_ids)
         else:
-            command = (
-                "bowtie --quiet -x "
-                + index_name
-                + " -f -a -v "
-                + str(self.num_mismatches)
-                + " "
-                + file_oligo_fasta_gene
-                + " "
-                + file_bowtie_gene
-            )
+            region_name = "all_regions"
 
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            cwd=self.dir_bowtie,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).wait()
-
-        # read the results of the bowtie search
-        bowtie_results = self._read_bowtie_output(file_bowtie_gene)
-        # filter the DB based on the bowtie results
-        matching_oligos = self._find_matching_oligos(bowtie_results)
-        filtered_database_region = self._filter_matching_oligos(
-            databse_region, matching_oligos
+        file_oligo_database = oligo_database.write_database_to_fasta(
+            filename=f"oligo_database_bowtie_{region_name}",
+            region_ids=region_ids,
+            sequence_type=sequence_type,
         )
-        # remove the temporary files
-        os.remove(os.path.join(self.dir_bowtie, file_bowtie_gene))
-        os.remove(os.path.join(self.dir_fasta, file_oligo_fasta_gene))
-        return filtered_database_region
+        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie_results_{region_name}.txt")
 
-    def _read_bowtie_output(self, file_bowtie_gene):
-        """Load the output of the bowtie alignment search into a DataFrame and process the results."""
-        bowtie_results = pd.read_csv(
-            file_bowtie_gene,
-            header=None,
-            sep="\t",
-            low_memory=False,
-            names=[
-                "query",
-                "strand",
-                "reference",
-                "ref_start",
-                "query_sequence",
-                "read_quality",
-                "num_instances",
-                "mismatch_positions",
-            ],
-            engine="c",
-            dtype={
-                "query": str,
-                "strand": str,
-                "reference": str,
-                "ref_start": int,
-                "query_sequence": str,
-                "read_quality": str,
-                "num_instances": int,
-                "mismatch_positions": str,
-            },
+        cmd_parameters = ""
+        for parameter, value in self.bowtie_search_parameters.items():
+            cmd_parameters += f" {parameter} {value}"
+
+        cmd = (
+            "bowtie --quiet"
+            + " -x "
+            + filename_reference_index
+            + " -f"  # fast file is input
+            + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
+            + cmd_parameters
+            + " "
+            + file_oligo_database
+            + " "
+            + file_bowtie_results
         )
-        # return the real matches, that is the ones not belonging to the same region of the query oligo
-        bowtie_results["query_gene_id"] = bowtie_results["query"].str.split("_").str[0]
-        bowtie_results["reference_gene_id"] = (
-            bowtie_results["reference"].str.split("::").str[0]
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+
+        # read the reuslts of the bowtie search
+        bowtie_results = self._read_search_output(
+            file_search_results=file_bowtie_results, names_search_output=self.names_search_output
         )
 
+        # remove temporary files
+        os.remove(file_oligo_database)
+        os.remove(file_bowtie_results)
+
+        # return loaded results
         return bowtie_results
 
-    def _find_matching_oligos(self, bowtie_results):
-        """Use the results of the Bowtie alignment search to identify oligos with high similarity (i.e. low number of mismatches) based on user defined thresholds.
+    def _find_hits(
+        self,
+        oligo_database: OligoDatabase,
+        search_results: pd.DataFrame,
+        consider_hits_from_input_region: bool,
+    ):
+        """Identifies oligonucleotides with significant alignment hits from Bowtie search results, optionally
+        excluding hits from the same input region.
 
-        :param bowtie_results: DataFrame with processed bowtie alignment search results.
-        :type bowtie_results: pandas.DataFrame
+        :param oligo_database: The oligonucleotide database.
+        :type oligo_database: OligoDatabase
+        :param search_results: The DataFrame containing results from a Bowtie search.
+        :type search_results: pd.DataFrame
+        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
+        :type consider_hits_from_input_region: bool
+        :return: A tuple containing a DataFrame of significant Bowtie hits and a list of oligos with these hits.
+        :rtype: (pd.DataFrame, list)
         """
+        if consider_hits_from_input_region:
+            # remove all hits where query and reference come from the same region
+            search_results = search_results[
+                search_results["query_region_id"] != search_results["reference_region_id"]
+            ]
 
-        bowtie_matches = bowtie_results[
-            bowtie_results["query_gene_id"] != bowtie_results["reference_gene_id"]
-        ]
+        oligos_with_hits = search_results["query"].unique()
 
-        if self.strand == "plus":
-            bowtie_matches = bowtie_matches[bowtie_matches["strand"] == "+"]
-        elif self.strand == "minus":
-            bowtie_matches = bowtie_matches[bowtie_matches["strand"] == "-"]
+        return search_results, oligos_with_hits
 
-        oligos_with_match = bowtie_matches["query"].unique()
-        return oligos_with_match
+
+############################################
+# Oligo Bowtie2 Filter Classes
+############################################
+
+
+class Bowtie2Filter(AlignmentSpecificityFilter):
+    """A class that implements specificity filtering using the Bowtie2 alignment tool to align oligonucleotides against a reference database.
+    This class manages Bowtie2 search parameters and parses the output for specificity analysis.
+
+    Bowtie2 (2.5 or higher) can be installed via Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2)
+    or via Bioconda (http://bioconda.github.io/recipes/bowtie2/README.html) installation of Bowtie2 with:
+    ``conda config --add channels conda-forge``
+    ``conda config --add channels bioconda``
+    ``conda update --all``
+    ``conda install "bowtie2>=2.5"``
+
+    Useful Bowtie2 search parameter:
+    --norc: only report hits on the plus strand
+    --nofw: only report hits on the minus strand
+    -N <int>: Sets the number of mismatches to allowed in a seed alignment during multiseed alignment. Can be set to 0 or 1. Setting this higher makes alignment slower (often much slower) but increases sensitivity. Default: 0.
+    -L <int>: Sets the length of the seed substrings to align during multiseed alignment. Smaller values make alignment slower but more sensitive. Default: the --sensitive preset is used by default, which sets -L to 22 and 20 in --end-to-end mode and in --local mode.
+    All available Bowtie2 search parameters are listed on the Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2).
+
+    :param bowtie_search_parameters: Custom parameters for the Bowtie2 search command.
+    :type bowtie_search_parameters: dict
+    :param dir_output: Base directory for saving output files and Bowtie2 databases. Defaults to "output".
+    :type dir_output: str
+    :param names_search_output: Column names for parsing Bowtie2 search output.
+    :type names_search_output: list
+    """
+
+    def __init__(
+        self,
+        bowtie_search_parameters: dict = {},
+        # bowtie_hit_parameters: dict = {},
+        dir_output: str = "output",
+        names_search_output: list = [
+            "query",
+            "flags",
+            "reference",
+            "reference_start",
+            "mapping_quality",
+            "CIGAR_alignment",
+            "mate_sequence_name",
+            "mate_sequence_offset",
+            "mate_sequence_fragment_length",
+            "sequence",
+            "read_qualities",
+        ],
+    ):
+        """Constructor for the Bowtie2Filter class."""
+        super().__init__(dir_output)
+
+        self.bowtie_search_parameters = bowtie_search_parameters
+        # self.bowtie_hit_parameters = bowtie_hit_parameters
+        self.names_search_output = names_search_output
+
+        self.dir_bowtie = os.path.join(self.dir_output, "bowtie2")
+        Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
+
+    def _create_index(self, file_reference: str, n_jobs: int):
+        """Creates a Bowtie2 index for the reference database if it doesn't already exist. The index facilitates
+        fast alignment searches against the reference.
+
+        :param file_reference: Path to the reference database file.
+        :type file_reference: str
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
+        :return: The basename of the reference file used as the index name.
+        :rtype: str
+        """
+        ## Create bowtie index
+        file_reference = os.path.abspath(file_reference)
+        filename_reference_index = os.path.basename(file_reference)
+
+        # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.bt2" file
+        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.bt2")):
+            cmd = (
+                "bowtie2-build --quiet --offrate 4"
+                + " --threads "
+                + str(n_jobs)
+                + " -f "
+                + file_reference
+                + " "
+                + filename_reference_index
+            )
+            process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+
+        return filename_reference_index
+
+    def _run_search(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        filename_reference_index: str,
+        region_ids: Union[str, List[str]] = None,
+    ):
+        """Performs a Bowtie2 search of oligonucleotide sequences against a reference database using a previously
+        created Bowtie2 index.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param oligo_database: The database of oligonucleotides to search.
+        :type oligo_database: OligoDatabase
+        :param filename_reference_index: The filename of the reference database index for Bowtie2 search.
+        :type filename_reference_index: str
+        :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
+        :type region_ids: Union[str, List[str]], optional
+        :return: A DataFrame containing the Bowtie2 search results.
+        :rtype: pd.DataFrame
+        """
+        region_ids = check_if_list(obj=region_ids)
+        if region_ids:
+            region_name = "_".join(region_ids)
+        else:
+            region_name = "all_regions"
+
+        file_oligo_database = oligo_database.write_database_to_fasta(
+            filename=f"oligo_database_bowtie2_{region_name}",
+            region_ids=region_ids,
+            sequence_type=sequence_type,
+        )
+        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie2_results_{region_name}.txt")
+
+        cmd_parameters = ""
+        for parameter, value in self.bowtie_search_parameters.items():
+            cmd_parameters += f" {parameter} {value}"
+
+        cmd = (
+            "bowtie2 --quiet"
+            + " --no-hd --no-unal"
+            + " -x "
+            + filename_reference_index
+            + " -f"  # fast file is input
+            + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
+            + cmd_parameters
+            + " -U "
+            + file_oligo_database
+            + " -S "
+            + file_bowtie_results
+        )
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+
+        # read the reuslts of the bowtie seatch
+        bowtie_results = self._read_search_output(
+            file_search_results=file_bowtie_results,
+            names_search_output=self.names_search_output,
+            usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        )
+
+        # remove temporary files
+        os.remove(file_oligo_database)
+        os.remove(file_bowtie_results)
+
+        # return loaded results
+        return bowtie_results
+
+    def _find_hits(
+        self,
+        oligo_database: OligoDatabase,
+        search_results: pd.DataFrame,
+        consider_hits_from_input_region: bool,
+    ):
+        """Identifies oligonucleotides with significant alignment hits from Bowtie2 search results, optionally
+        excluding hits from the same input region.
+
+        :param oligo_database: The oligonucleotide database.
+        :type oligo_database: OligoDatabase
+        :param search_results: The DataFrame containing results from a Bowtie2 search.
+        :type search_results: pd.DataFrame
+        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
+        :type consider_hits_from_input_region: bool
+        :return: A tuple containing a DataFrame of significant Bowtie2 hits and a list of oligos with these hits.
+        :rtype: (pd.DataFrame, list)
+        """
+        if consider_hits_from_input_region:
+            # remove all hits where query and reference come from the same region
+            search_results = search_results[
+                search_results["query_region_id"] != search_results["reference_region_id"]
+            ]
+
+        oligos_with_hits = search_results["query"].unique()
+
+        return search_results, oligos_with_hits
