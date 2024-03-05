@@ -3,13 +3,15 @@
 ############################################
 
 import os
-import warnings
-from collections import defaultdict
-from pathlib import Path
-from typing import Union, get_args
-
-import pandas as pd
 import yaml
+import warnings
+import pandas as pd
+
+from pathlib import Path
+from collections import defaultdict
+from typing import List, Union, get_args
+
+
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -19,7 +21,7 @@ from ..utils._database_processor import (
     merge_databases,
 )
 from ..utils._sequence_parser import FastaParser
-from ..utils._utils import check_if_list, check_tsv_format
+from ..utils._utils import check_if_list, check_tsv_format, check_if_key_exists
 
 from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 
@@ -110,7 +112,7 @@ class OligoDatabase:
     def load_database(
         self,
         file_database: str,
-        region_ids: list[str] = None,
+        region_ids: Union[str, List[str]] = None,
         database_overwrite: bool = False,
     ):
         """Load a previously saved oligo database from a TSV file.
@@ -129,7 +131,7 @@ class OligoDatabase:
         :param file_database: Path to the TSV file containing the oligo database.
         :type file_database: str
         :param region_ids: List of region IDs to filter the database. Defaults to None.
-        :type region_ids: list[str], optional
+        :type region_ids: Union[str, List[str]], optional
         :param database_overwrite: If True, overwrite the existing database. Defaults to False.
         :type database_overwrite: bool, optional
 
@@ -275,35 +277,52 @@ class OligoDatabase:
             with open(self.file_removed_regions, "a") as handle:
                 handle.write("\n".join(f"{region}\t{pipeline_step}" for region in regions_to_remove) + "\n")
 
-    def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
-        """Retrieve a list of sequences of the specified type from the oligo database.
+    def get_oligo_attribute(self, attribute: str):
+        """Retrieves a specified attribute for all oligos in the database and returns it as a pandas DataFrame.
+        This method assumes the presence of an attribute across all oligo records in the database. If the
+        attribute is not found, a KeyError is raised.
 
-        This function extracts sequences of a specified type (e.g., 'oligo' or 'target') from the oligo
-        database and returns them as a list.
-
-        :param sequence_type: Type of sequences to retrieve (default is 'oligo').
-        :type sequence_type: Literal["target", "oligo"]
-        :return: List of sequences.
-        :rtype: List[str]
+        :param attribute: The name of the attribute to retrieve for each oligo.
+        :type attribute: str
+        :return: A pandas DataFrame with two columns: 'oligo_id' and the specified 'attribute', where each row
+                corresponds to an oligo and its attribute value.
+        :rtype: pd.DataFrame
+        :raises KeyError: If the specified attribute has not been computed and added to the database.
         """
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-        sequences = [
-            str(oligo_attributes[sequence_type])
+        if not check_if_key_exists(self.database, attribute):
+            raise KeyError(f"The {attribute} attribute has not been computed!")
+        oligo_ids = [
+            oligo_id for region_id, oligo_dict in self.database.items() for oligo_id in oligo_dict.keys()
+        ]
+        attributes = [
+            oligo_attributes[attribute]
             for region_id, oligo_dict in self.database.items()
             for oligo_id, oligo_attributes in oligo_dict.items()
         ]
+        return pd.DataFrame({"oligo_id": oligo_ids, attribute: attributes})
 
-        return sequences
+    # TODO: move calculation to different class
+    def calculate_oligo_length(self):
+        """Calculate the length of each oligo sequence in the database.
 
+        This function iterates through the oligo database and calculates the length of each oligonucleotide
+        from it's oligo sequence. This method updates the database in-place, adding a 'length' key to the
+        attributes dictionary of each oligo.
+
+        :return: None
+        :rtype: None
+        """
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                oligo_attributes["length"] = len(oligo_attributes["oligo"])
+
+    # TODO: move calculation to different class
     def calculate_num_targeted_transcripts(self):
         """Calculate the number of unique transcripts targeted by each oligo in the database.
 
         This function iterates through the oligo database, extracts the transcript IDs associated with each oligo, and
-        calculates the number of unique transcripts targeted by each oligo. The results are stored in the
-        'num_targeted_transcripts' field of the oligo attributes.
+        calculates the number of unique transcripts targeted by each oligo. This method updates the database in-place,
+        adding a 'num_targeted_transcripts' key to the attributes dictionary of each oligo.
 
         :return: None
         :rtype: None
@@ -312,7 +331,7 @@ class OligoDatabase:
             for oligo_id, oligo_attributes in oligo_dict.items():
                 if "transcript_id" in oligo_attributes:
                     transcript_ids = oligo_attributes["transcript_id"]
-                    oligo_dict[oligo_id]["num_targeted_transcripts"] = len(
+                    oligo_attributes["num_targeted_transcripts"] = len(
                         set(
                             item
                             for sublist in (
@@ -322,20 +341,22 @@ class OligoDatabase:
                         )
                     )
                 else:
-                    oligo_dict[oligo_id]["num_targeted_transcripts"] = 0
+                    oligo_attributes["num_targeted_transcripts"] = 0
 
+    # TODO: move calculation to different class
     def calculate_isoform_consensus(self):
         """Calculate the isoform consensus for each oligo in the database.
 
         For each oligo in the database, this function calculates the isoform consensus based on the
         provided transcript information. It computes the percentage of unique transcript IDs over the
         total number of transcripts associated with the oligo. The maximum value for the isoform consensus
-        is 100%, which means that the region is present in all isoforms (transcripts) of the gene.
-
-        If the oligo has information about the number of transcripts ('number_transcripts') and
-        transcript IDs ('transcript_id'), the isoform consensus is calculated and stored in the
-        'isoform_consensus' attribute of the oligo. If the necessary information is not available, the
+        is 100%, which means that the region is present in all isoforms (transcripts) of the gene. This
+        method updates the database in-place, adding a 'isoform_consensus' key to the attributes dictionary
+        of each oligo. If the necessary information for isoform consensus calculation is not available, the
         'isoform_consensus' is set to None.
+
+        :return: None
+        :rtype: None
         """
         for region_id, oligo_dict in self.database.items():
             for oligo_id, oligo_attributes in oligo_dict.items():
@@ -360,6 +381,80 @@ class OligoDatabase:
                     )
                 else:
                     oligo_dict[oligo_id]["isoform_consensus"] = None
+
+    # TODO: move calculation to different class
+    def calculate_seedregion(self, start: Union[int, float], end: Union[int, float]):
+        """Calculate a seed region for each oligonucleotide in the database.
+
+        The seed region is calculated based on start and end parameters. The start and end can be specified as absolute
+        positions (int) or as a percentage of the oligo's length (float). This method updates the database in-place,
+        adding a 'seedregion_start' and 'seedregion_end' key to the attributes dictionary of each oligo.
+
+        For example:
+        start = 4
+        end = 6
+            will set the relative start and end positions wrt the oligo sequence of the seed region to 4 and 6, respectively.
+
+        start = 0.4
+        end = 0.6
+            will set the relative start and end positions wrt the oligo sequence of the seed region to 4 and 6, respectively,
+            only if the oligo length = 10.
+
+        :param start: The starting position of the seed region. Can be an integer (absolute position) or a float (percentage).
+        :type start: Union[int, float]
+        :param end: The ending position of the seed region. Must be the same type as start.
+        :type end: Union[int, float]
+        :raises ValueError: If start and end parameters are of different types, or if percentage values are outside the [0,1] range.
+        """
+        if type(start) != type(end):
+            raise ValueError(
+                "Can't mix types for start and end parameter. For both either use int (relative coordinates wrt oligo) or float (percentage for relative coordinates wrt oligo) type."
+            )
+
+        if not check_if_key_exists(self.database, "length"):
+            self.calculate_oligo_length()
+
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                if isinstance(start, int):
+                    oligo_attributes["seedregion_start"] = max(0, start)
+                    oligo_attributes["seedregion_end"] = min(oligo_attributes["length"], end)
+                else:
+                    if start < 0 or start > 1:
+                        raise ValueError("Start position must be in the interval [0,1]!")
+                    if end < 0 or end > 1:
+                        raise ValueError("End position must be in the interval [0,1]!")
+                    oligo_attributes["seedregion_start"] = int(round(start * oligo_attributes["length"]))
+                    oligo_attributes["seedregion_end"] = int(round(end * oligo_attributes["length"]))
+
+    # TODO: move calculation to different class
+    def calculate_seedregion_ligationsite(self, seedregion_size: int):
+        """Calculate a seed region around the ligation site for each oligonucleotide in the database.
+
+        The seed region is calculated based on a specified seed region size. The seed region is defined
+        symmetrically around the ligation site, considering the provided size. This method updates the
+        database in-place, adding a 'seedregion_start' and 'seedregion_end' key to the attributes dictionary
+        of each oligo.
+
+        :param seedregion_size: The size of the seed region to calculate around the ligation site.
+        :type seedregion_size: int
+        :raises KeyError: If the ligation site has not been previously computed and added to the oligo attributes.
+        """
+        if not check_if_key_exists(self.database, "ligation_site"):
+            raise KeyError("The ligation site has not been computed!")
+
+        if not check_if_key_exists(self.database, "length"):
+            self.calculate_oligo_length()
+
+        # TODO: add case when ligation_site = None
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                oligo_attributes["seedregion_start"] = int(
+                    max(0, oligo_attributes["ligation_site"] - (seedregion_size - 1))
+                )
+                oligo_attributes["seedregion_end"] = int(
+                    min(oligo_attributes["length"], oligo_attributes["ligation_site"] + seedregion_size)
+                )
 
     def save_database(
         self,
