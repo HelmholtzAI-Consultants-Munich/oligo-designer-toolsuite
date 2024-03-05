@@ -179,7 +179,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         )
         os.remove(file_reference)
 
-        hits = list(zip(table_hits["query_region_id"].values, table_hits["reference_region_id"].values))
+        hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
 
         return hits
 
