@@ -19,6 +19,8 @@ from Bio.SeqRecord import SeqRecord
 from ..utils._database_processor import (
     collapse_info_for_duplicated_sequences,
     merge_databases,
+    filter_dabase_for_region,
+    check_if_region_in_database,
 )
 from ..utils._sequence_parser import FastaParser
 from ..utils._utils import check_if_list, check_tsv_format, check_if_key_exists
@@ -177,8 +179,13 @@ class OligoDatabase:
             database_tmp2 = merge_databases(self.database, database_tmp2)
 
         if region_ids:
-            database_tmp2 = self._filter_dabase_for_region(database_tmp2, region_ids)
-            self._check_if_region_in_database(database_tmp2, region_ids)
+            database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
+            check_if_region_in_database(
+                database_tmp2,
+                region_ids,
+                self.write_regions_with_insufficient_oligos,
+                self.file_removed_regions,
+            )
 
         self.database = database_tmp2
 
@@ -199,7 +206,7 @@ class OligoDatabase:
         :param file_fasta_in: Path to the FASTA file containing the sequences.
         :type file_fasta_in: str
         :param sequence_type: Type of sequence to load, either 'target' or 'oligo'.
-        :type sequence_type: Literal["target", "oligo"]
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: List of region IDs to filter the database. Defaults to None.
         :type region_ids: list[str], optional
         :param database_overwrite: If True, overwrite the existing database. Defaults to False.
@@ -254,7 +261,12 @@ class OligoDatabase:
 
         # add this step to log regions which are not available in database
         if region_ids:
-            self._check_if_region_in_database(database_tmp, region_ids)
+            check_if_region_in_database(
+                database_tmp,
+                region_ids,
+                self.write_regions_with_insufficient_oligos,
+                self.file_removed_regions,
+            )
 
         self.database = database_tmp
 
@@ -281,6 +293,27 @@ class OligoDatabase:
             with open(self.file_removed_regions, "a") as handle:
                 handle.write("\n".join(f"{region}\t{pipeline_step}" for region in regions_to_remove) + "\n")
 
+    def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
+        """Retrieve a list of sequences of the specified type (e.g., 'oligo' or 'target') from the oligo database.
+
+        :param sequence_type: Type of sequences to retrieve (default is 'oligo').
+        :type sequence_type: _TYPES_SEQ
+        :return: List of sequences.
+        :rtype: List[str]
+        """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+        sequences = [
+            str(oligo_attributes[sequence_type])
+            for region_id, oligo_dict in self.database.items()
+            for oligo_id, oligo_attributes in oligo_dict.items()
+        ]
+
+        return sequences
+
+    # TODO: write test for function
     def get_oligo_attribute(self, attribute: str):
         """Retrieves a specified attribute for all oligos in the database and returns it as a pandas DataFrame.
         This method assumes the presence of an attribute across all oligo records in the database. If the
@@ -557,6 +590,7 @@ class OligoDatabase:
 
         return file_fasta
 
+    # TODO: write test for this function
     def write_oligosets(self, foldername_out: str = "oligo_sets"):
         """Write oligo sets to individual TSV files.
 
@@ -576,40 +610,3 @@ class OligoDatabase:
             self.oligosets[region_id].to_csv(file_oligosets, sep="\t", index=False)
 
         return dir_oligosets
-
-    def _check_if_region_in_database(self, database, region_ids):
-        """Check if specified regions exist in the provided database.
-
-        This internal method checks whether all regions provided in the region_ids list exist in the given database.
-        If a region is not found, a warning is issued, and if enabled, the information is recorded in the log file.
-
-        :param database: The database to check for region existence.
-        :type database: dict
-        :param region_ids: The list of region IDs to check.
-        :type region_ids: list
-        """
-        keys = list(database.keys())
-        for region_id in region_ids:
-            if region_id not in keys:
-                warnings.warn(f"Region {region_id} not available in reference file.")
-                if self.write_regions_with_insufficient_oligos:
-                    with open(self.file_removed_regions, "a") as hanlde:
-                        hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")
-
-    def _filter_dabase_for_region(self, database, region_ids):
-        """Filter the provided database to include only specified region IDs.
-
-        This internal method filters the given database to retain only the entries corresponding to the provided list
-        of region IDs. If a region ID is not in the specified list, it is removed from the database.
-
-        :param database: The database to filter.
-        :type database: dict
-        :param region_ids: The list of region IDs to retain in the filtered database.
-        :type region_ids: list
-        :return: The filtered database.
-        :rtype: dict
-        """
-        for key in database.keys():
-            if key not in region_ids:
-                database.pop(key)
-        return database
