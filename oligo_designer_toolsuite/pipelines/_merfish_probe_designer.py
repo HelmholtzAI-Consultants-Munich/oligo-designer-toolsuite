@@ -26,7 +26,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 from oligo_designer_toolsuite.sequence_design import MerfishSequence
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl
-from oligo_designer_toolsuite.utils._sequence_design import generate_random_sequence
+from oligo_designer_toolsuite.pipelines._sequence_design import generate_random_sequence
 
 from ._base_oligo_designer import BaseOligoDesigner
 from ._utils import initialize_parameters

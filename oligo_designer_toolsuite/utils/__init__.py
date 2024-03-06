@@ -18,7 +18,7 @@ Functions for processing sequences:
 """
 
 from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
-from ._sequence_design import (
+from ..pipelines._sequence_design import (
     SCRINSHOT_or_ISS_backbone_sequence,
     convert_complementary_seq_to_arms,
     create_seqfish_plus_barcodes,
