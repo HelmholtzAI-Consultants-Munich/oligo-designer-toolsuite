@@ -4,11 +4,12 @@ from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import inspect
 import logging
+from typing import Union, List
 
 from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.pipelines._utils import initialize_parameters
-from oligo_designer_toolsuite.pipelines import BaseOligoDesigner
+from oligo_designer_toolsuite.pipelines._base_oligo_designer import BaseOligoDesigner
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
     PropertyFilter,
@@ -65,7 +66,7 @@ class OligoSeq(BaseOligoDesigner):
                 "GC": None,
                 "fmd": 20,
             },
-            prohibited_sequence : str = "",
+            prohibited_sequence : Union[str, List[str]] = "",
             n_jobs: int = 1,
     ):
         
@@ -121,6 +122,7 @@ class OligoSeq(BaseOligoDesigner):
         property_filter = PropertyFilter(filters=filters)
         # filter the database
         oligo_database = property_filter.apply(
+            sequence_type="oligo",
             oligo_database=oligo_database,
             n_jobs=n_jobs,
         )
@@ -191,13 +193,13 @@ def main():
     )
 
     ##### read the genes file #####
-    if config["file_genes"] is None:
+    if config["file_regions"] is None:
         warnings.warn(
             "No gene list file was provided! All genes from fasta file are used to generate the oligos. This chioce can use a lot of resources."
         )
         genes = None
     else:
-        with open(config["file_genes"]) as handle:
+        with open(config["file_regions"]) as handle:
             lines = handle.readlines()
             genes = [line.rstrip() for line in lines]
 
@@ -225,17 +227,14 @@ def main():
         homopolymeric_base_n=config["homopolymeric_base_n"],
         prohibited_sequence=config["prohibited_sequence"],
         Tm_parameters=config["Tm_parameters"],
-        Tm_chem_correction_parameters=config["Tm_chem_correction_param"],
+        Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
         n_jobs=config["n_jobs"],
     )
 
     ##### filter oligos by specificity #####
     oligo_database, file_database = oligo_designer.filter_by_specificity(
         oligo_database,
-        ligation_region_size=config["ligation_region_size"],
-        blast_word_size=config["blast_word_size"],
-        blast_percent_identity=config["blast_percent_identity"],
-        blast_coverage=config["blast_coverage"],
+        #TODO
         n_jobs=config["n_jobs"],
     )
 
