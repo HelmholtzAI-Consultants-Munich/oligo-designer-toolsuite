@@ -6,8 +6,8 @@ import os
 import random
 from pathlib import Path
 
+from ..utils._checkers import check_if_list
 from ..utils._sequence_parser import FastaParser
-from ..utils._utils import check_if_list
 
 ############################################
 # Oligo Database Class
