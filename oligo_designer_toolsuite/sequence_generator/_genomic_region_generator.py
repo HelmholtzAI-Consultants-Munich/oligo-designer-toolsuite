@@ -15,18 +15,17 @@ from pathlib import Path
 
 from Bio import SeqIO
 
+from .._constants import (
+    SEPARATOR_FASTA_HEADER_FIELDS,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
+)
 from ..utils._sequence_parser import GffParser
 from ..utils._sequence_processor import (
     get_complement_regions,
     get_sequence_from_annotation,
 )
 from ._ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI
-
-from .._constants import (
-    SEPARATOR_FASTA_HEADER_FIELDS,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
-)
 
 ############################################
 # Genomic Region Generator Classes
@@ -89,11 +88,15 @@ class CustomGenomicRegionGenerator:
 
         if annotation_release is None:
             annotation_release = "unknown"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+            warnings.warn(
+                f"No annotation release defined. Using default release {annotation_release}!"
+            )
 
         if genome_assembly is None:
             genome_assembly = "unknown"
-            warnings.warn(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
+            warnings.warn(
+                f"No genome assembly defined. Using default genome assembly {genome_assembly}!"
+            )
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
@@ -114,7 +117,7 @@ class CustomGenomicRegionGenerator:
         self.gff_parser.check_gff_format(self.annotation_file)
         self.gff_parser.parse_annotation_from_gff(
             annotation_file=self.annotation_file,
-            file_pickel=self.parsed_annotation_file,
+            file_pickle=self.parsed_annotation_file,
         )
 
         # columns required for bed12 split sequence format
@@ -155,9 +158,13 @@ class CustomGenomicRegionGenerator:
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
-        annotation["add_inf"] = f"regiontype=gene{SEPARATOR_FASTA_HEADER_FIELDS_LIST}gene_id=" + annotation[
+        annotation[
+            "add_inf"
+        ] = f"regiontype=gene{SEPARATOR_FASTA_HEADER_FIELDS_LIST}gene_id=" + annotation[
             "gene_id"
-        ].astype("str")
+        ].astype(
+            "str"
+        )
         annotation["region"] = self._get_annotation_region(annotation)
 
         # add BED12 fields
@@ -173,7 +180,9 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"gene_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output, f"gene_annotation_{self.FILE_INFO}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -218,14 +227,22 @@ class CustomGenomicRegionGenerator:
             annotation = annotation[self.BED_HEADER]
 
             for seqid, gene_annotation in annotation.groupby("seqid"):
-                gene_annotation_plusstrand = gene_annotation[gene_annotation.strand == "+"]
-                gene_annotation_minusstrand = gene_annotation[gene_annotation.strand == "-"]
+                gene_annotation_plusstrand = gene_annotation[
+                    gene_annotation.strand == "+"
+                ]
+                gene_annotation_minusstrand = gene_annotation[
+                    gene_annotation.strand == "-"
+                ]
 
                 intergenic_annotation.append(
-                    _compute_intergenic_annotation_strand(gene_annotation_plusstrand, "+")
+                    _compute_intergenic_annotation_strand(
+                        gene_annotation_plusstrand, "+"
+                    )
                 )
                 intergenic_annotation.append(
-                    _compute_intergenic_annotation_strand(gene_annotation_minusstrand, "-")
+                    _compute_intergenic_annotation_strand(
+                        gene_annotation_minusstrand, "-"
+                    )
                 )
 
             intergenic_annotation = pd.concat(intergenic_annotation, ignore_index=True)
@@ -262,17 +279,21 @@ class CustomGenomicRegionGenerator:
             get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out)
 
             # load intergenic regions
-            intergenic_annotation = pd.read_csv(file_bed_out, sep="\t", comment="t", header=None)
+            intergenic_annotation = pd.read_csv(
+                file_bed_out, sep="\t", comment="t", header=None
+            )
             intergenic_annotation.columns = ["seqid", "start_0base", "end"]
-            intergenic_annotation["start_1base"] = intergenic_annotation["start_0base"] + 1
+            intergenic_annotation["start_1base"] = (
+                intergenic_annotation["start_0base"] + 1
+            )
             if strand == "+":
-                intergenic_annotation["region_id"] = "InterRegPlus" + intergenic_annotation.index.astype(
-                    "str"
-                )
+                intergenic_annotation[
+                    "region_id"
+                ] = "InterRegPlus" + intergenic_annotation.index.astype("str")
             if strand == "-":
-                intergenic_annotation["region_id"] = "InterRegMinus" + intergenic_annotation.index[
-                    ::-1
-                ].astype("str")
+                intergenic_annotation[
+                    "region_id"
+                ] = "InterRegMinus" + intergenic_annotation.index[::-1].astype("str")
             intergenic_annotation["score"] = "."
             intergenic_annotation["strand"] = strand
 
@@ -325,7 +346,9 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"intergenic_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output, f"intergenic_annotation_{self.FILE_INFO}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -387,7 +410,9 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"exon_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output, f"exon_annotation_{self.FILE_INFO}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -426,13 +451,17 @@ class CustomGenomicRegionGenerator:
             """
             intron_list = []
 
-            for transcript, transcript_annotation in annotation.groupby("transcript_id"):
+            for transcript, transcript_annotation in annotation.groupby(
+                "transcript_id"
+            ):
                 gene_id = transcript_annotation.iloc[0].gene_id
                 seqid = transcript_annotation.iloc[0].seqid
                 strand = transcript_annotation.iloc[0].strand
 
                 num_exons = transcript_annotation.shape[0]
-                transcript_annotation = transcript_annotation.sort_values(by="start_1base")
+                transcript_annotation = transcript_annotation.sort_values(
+                    by="start_1base"
+                )
 
                 for i, (start_0base, start_1base, end) in enumerate(
                     zip(
@@ -513,7 +542,9 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"intron_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output, f"intron_annotation_{self.FILE_INFO}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -569,7 +600,9 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"CDS_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output, f"CDS_annotation_{self.FILE_INFO}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -621,9 +654,15 @@ class CustomGenomicRegionGenerator:
             utrs = []
 
             # get leftmost and rightmost CDS boundaries
-            for transcript, transcript_annotation in annotation.groupby("transcript_id"):
-                cds_start = transcript_annotation[transcript_annotation.type == "CDS"].start_1base.min()
-                cds_end = transcript_annotation[transcript_annotation.type == "CDS"].end.max()
+            for transcript, transcript_annotation in annotation.groupby(
+                "transcript_id"
+            ):
+                cds_start = transcript_annotation[
+                    transcript_annotation.type == "CDS"
+                ].start_1base.min()
+                cds_end = transcript_annotation[
+                    transcript_annotation.type == "CDS"
+                ].end.max()
 
                 # based on strand, set GFF record type
                 if transcript_annotation.iloc[0].strand == "+":
@@ -653,11 +692,17 @@ class CustomGenomicRegionGenerator:
 
             return utr_annotation
 
-        annotation_exon = self._get_annotation_region_of_interest(self._load_annotation(), "exon")
-        annotation_CDS = self._get_annotation_region_of_interest(self._load_annotation(), "CDS")
+        annotation_exon = self._get_annotation_region_of_interest(
+            self._load_annotation(), "exon"
+        )
+        annotation_CDS = self._get_annotation_region_of_interest(
+            self._load_annotation(), "CDS"
+        )
 
         transcripts_with_CDS = list(set(annotation_CDS.transcript_id))
-        annotation_exon = annotation_exon[annotation_exon.transcript_id.isin(transcripts_with_CDS)]
+        annotation_exon = annotation_exon[
+            annotation_exon.transcript_id.isin(transcripts_with_CDS)
+        ]
 
         annotation = pd.concat([annotation_exon, annotation_CDS], ignore_index=True)
         annotation = _compute_UTR(annotation)
@@ -697,14 +742,18 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"UTR_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output, f"UTR_annotation_{self.FILE_INFO}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
 
         return file_fasta
 
-    def get_sequence_exon_exon_junction(self, block_size: int, collapse_duplicated_regions: bool = True):
+    def get_sequence_exon_exon_junction(
+        self, block_size: int, collapse_duplicated_regions: bool = True
+    ):
         """Generate sequence annotations for exon-exon junctions based on the input exon annotation.
 
         This method computes exon-exon junction annotations for transcripts, considering the specified block size.
@@ -741,12 +790,16 @@ class CustomGenomicRegionGenerator:
             """
             junction_list = []
 
-            for transcript, transcript_annotation in annotation.groupby("transcript_id"):
+            for transcript, transcript_annotation in annotation.groupby(
+                "transcript_id"
+            ):
                 gene_id = transcript_annotation.iloc[0].gene_id
                 seqid = transcript_annotation.iloc[0].seqid
                 strand = transcript_annotation.iloc[0].strand
 
-                transcript_annotation = transcript_annotation.sort_values(by="start_1base")
+                transcript_annotation = transcript_annotation.sort_values(
+                    by="start_1base"
+                )
 
                 for i, (exon_number, start_0base, start_1base, end) in enumerate(
                     zip(
@@ -770,7 +823,9 @@ class CustomGenomicRegionGenerator:
                         regions_exons_small = ""
 
                     # if exon is not the last exon of transcript and shorter than oligo block_size but not the last exon -> create sequence with neighboring exons
-                    elif ((i + 1) < transcript_annotation.shape[0]) & ((end - start_0base) < block_size):
+                    elif ((i + 1) < transcript_annotation.shape[0]) & (
+                        (end - start_0base) < block_size
+                    ):
                         exons_small.append(attributes)
 
                     else:
@@ -783,8 +838,12 @@ class CustomGenomicRegionGenerator:
 
                         if exons_small == []:
                             block_count = 2
-                            block_size_length_entry = f"{block_size_up},{block_size_down}"
-                            block_size_start_entry = f"{0},{exon_downstream.start_0base - start_up}"
+                            block_size_length_entry = (
+                                f"{block_size_up},{block_size_down}"
+                            )
+                            block_size_start_entry = (
+                                f"{0},{exon_downstream.start_0base - start_up}"
+                            )
 
                         # if we have exons that are smaller than the block size add block counts
                         else:
@@ -792,14 +851,22 @@ class CustomGenomicRegionGenerator:
                             block_size_length_entry = (
                                 str(block_size_up)
                                 + ","
-                                + ",".join([str(attributes.exon_size) for attributes in exons_small])
+                                + ",".join(
+                                    [
+                                        str(attributes.exon_size)
+                                        for attributes in exons_small
+                                    ]
+                                )
                                 + ","
                                 + str(block_size_down)
                             )
                             block_size_start_entry = (
                                 "0,"
                                 + ",".join(
-                                    [str(attributes.start_0base - start_up) for attributes in exons_small]
+                                    [
+                                        str(attributes.start_0base - start_up)
+                                        for attributes in exons_small
+                                    ]
                                 )
                                 + ","
                                 + str(exon_downstream.start_0base - start_up)
@@ -812,7 +879,9 @@ class CustomGenomicRegionGenerator:
                                 ]
                             )
                         # return region in 1-base offset
-                        region_up = f"{seqid}:{start_up + 1}-{start_up+block_size_up}({strand})"
+                        region_up = (
+                            f"{seqid}:{start_up + 1}-{start_up+block_size_up}({strand})"
+                        )
                         region_down = f"{seqid}:{(end_down-block_size_down) + 1}-{end_down}({strand})"
                         junction_list.append(
                             [
@@ -901,7 +970,9 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED12_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"exon_exon_junction_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output, f"exon_exon_junction_annotation_{self.FILE_INFO}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta)
 
         del annotation
@@ -919,7 +990,9 @@ class CustomGenomicRegionGenerator:
         :rtype: pd.DataFrame
         """
         # read annotation file and store in dataframe
-        annotation = self.gff_parser.load_annotation_from_pickel(self.parsed_annotation_file)
+        annotation = self.gff_parser.load_annotation_from_pickle(
+            self.parsed_annotation_file
+        )
 
         # required to ensure that sorting is done correctly
         annotation.start = annotation.start.astype("int")
@@ -1005,7 +1078,9 @@ class CustomGenomicRegionGenerator:
         aggregate_function = {col: "first" for col in annotation.columns}
         aggregate_function["add_inf"] = SEPARATOR_FASTA_HEADER_FIELDS_LIST.join
 
-        merged_annotation = annotation.groupby(annotation["region"]).agg(aggregate_function)
+        merged_annotation = annotation.groupby(annotation["region"]).agg(
+            aggregate_function
+        )
         merged_annotation.reset_index(inplace=True, drop=True)
 
         return merged_annotation
@@ -1131,7 +1206,9 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         if annotation_release is None:
             annotation_release = "current"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+            warnings.warn(
+                f"No annotation release defined. Using default release {annotation_release}!"
+            )
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
@@ -1180,7 +1257,9 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         if annotation_release is None:
             annotation_release = "current"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+            warnings.warn(
+                f"No annotation release defined. Using default release {annotation_release}!"
+            )
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
