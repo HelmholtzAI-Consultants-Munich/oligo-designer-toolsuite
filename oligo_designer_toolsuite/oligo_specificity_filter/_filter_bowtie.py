@@ -255,10 +255,11 @@ class Bowtie(SpecificityFilterBase):
         
         # filter the oligos based on the ai filter outcomes
         targets = self._get_targets_fasta(matching_oligos, file_reference, region)
+        # print(len(matching_oligos), region)
 
         # retrive original sequences of query and target adn encode the insertion and deletions
         queries = [database_region[query_id]["sequence"] for query_id in matching_oligos["query"]]
-        assert len(queries) == len(targets), "The targets haven't been correctly retrieved."
+        assert len(queries) == len(targets), f"The targets haven't been correctly retrieved: {len(queries)} queries and {len(targets)} targets."
     
 
         # create the dataset
@@ -300,10 +301,10 @@ class Bowtie(SpecificityFilterBase):
         matching_oligos["ref_end"] = matching_oligos.apply(lambda x: x["ref_start"] + len(x["query_sequence"]), axis=1)
         matching_oligos["score"] = 0
         bed = matching_oligos[["reference", "ref_start", "ref_end", "query", "score", "strand"]]
-        file_bed = "bowtie_bed.txt"
+        file_bed = os.path.join(self.dir_specificity, f"targets_{region}.bed")
         bed.to_csv(file_bed, sep='\t', index=False, header=False)
 
-        targets_fasta_file = "bowtie_fasta.txt"
+        targets_fasta_file = os.path.join(self.dir_specificity, f"targets_{region}.fasta")
         get_sequence_from_annotation(file_bed, file_reference,  targets_fasta_file, strand=True, nameOnly=True)
         targets = [off_target.seq for off_target in SeqIO.parse(targets_fasta_file, "fasta")]
         return targets
