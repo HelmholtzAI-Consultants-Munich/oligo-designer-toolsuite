@@ -3,9 +3,10 @@
 ############################################
 
 import csv
+import warnings
 
-from Bio.SeqUtils import Seq
 from Bio.SeqUtils import MeltingTemp as mt
+from Bio.SeqUtils import Seq
 
 ############################################
 # Collection of utility functions
@@ -18,12 +19,18 @@ def check_if_dna_sequence(seq: str, valid_characters=["A", "C", "T", "G"]):
 
     :param seq: The DNA sequence to validate.
     :type seq: str
-    :param valid_characters: A list of characters representing valid nucleotides. Defaults to {"A", "C", "T", "G"}.
+    :param valid_characters: A list of characters representing valid nucleotides. Defaults to ["A", "C", "T", "G"].
     :type valid_characters: list
     :return: True if the sequence is valid DNA, False otherwise.
     :rtype: bool
     """
-    return all(char.upper() in valid_characters for char in seq)
+    if any(len(char) > 1 for char in valid_characters):
+        raise ValueError("Valid characters must be single characters.")
+
+    if not all(char.upper() in ["A", "C", "T", "G", "U"] for char in valid_characters):
+        warnings.warn("Valid characters should be A, C, T, G, or U.")
+
+    return all(char.upper() in valid_characters.upper() for char in seq)
 
 
 def check_if_key_exists(nested_dict: dict, key: str):
