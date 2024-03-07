@@ -27,10 +27,13 @@ def check_if_dna_sequence(seq: str, valid_characters=["A", "C", "T", "G"]):
     if any(len(char) > 1 for char in valid_characters):
         raise ValueError("Valid characters must be single characters.")
 
-    if not all(char.upper() in ["A", "C", "T", "G", "U"] for char in valid_characters):
+    valid_characters_upper = [char.upper() for char in valid_characters]
+    if not all(
+        char.upper() in ["A", "C", "T", "G", "U"] for char in valid_characters_upper
+    ):
         warnings.warn("Valid characters should be A, C, T, G, or U.")
 
-    return all(char.upper() in valid_characters.upper() for char in seq)
+    return all(char.upper() in valid_characters_upper for char in seq)
 
 
 def check_if_key_exists(nested_dict: dict, key: str):
