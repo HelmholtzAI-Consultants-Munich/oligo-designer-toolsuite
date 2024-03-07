@@ -22,7 +22,7 @@ class OligoSequenceGenerator:
     The generated sequences are saved as fasta file with region id, additional information and coordinates in header.
     The header of each sequence must start with '>' and contain the following information:
     region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
-    where the region_id is compulsory and the other fileds are opional.
+    where the region_id is compulsory and the other fields are optional.
 
     Input Format (per sequence):
     >region_id::additional information::chromosome:start-end(strand)
