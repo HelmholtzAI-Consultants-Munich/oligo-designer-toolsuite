@@ -88,9 +88,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         filename_reference_index = os.path.basename(file_reference)
 
         # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.ebwt" file
-        if not os.path.exists(
-            os.path.join(self.dir_bowtie, filename_reference_index + ".1.ebwt")
-        ):
+        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.ebwt")):
             cmd = (
                 "bowtie-build --quiet --offrate 4"
                 + " --threads "
@@ -136,9 +134,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(
-            self.dir_bowtie, f"bowtie_results_{region_name}.txt"
-        )
+        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie_results_{region_name}.txt")
 
         cmd_parameters = ""
         for parameter, value in self.bowtie_search_parameters.items():
@@ -192,8 +188,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         if consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
-                search_results["query_region_id"]
-                != search_results["reference_region_id"]
+                search_results["query_region_id"] != search_results["reference_region_id"]
             ]
 
         oligos_with_hits = search_results["query"].unique()
@@ -277,9 +272,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         filename_reference_index = os.path.basename(file_reference)
 
         # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.bt2" file
-        if not os.path.exists(
-            os.path.join(self.dir_bowtie, filename_reference_index + ".1.bt2")
-        ):
+        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.bt2")):
             cmd = (
                 "bowtie2-build --quiet --offrate 4"
                 + " --threads "
@@ -325,9 +318,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(
-            self.dir_bowtie, f"bowtie2_results_{region_name}.txt"
-        )
+        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie2_results_{region_name}.txt")
 
         cmd_parameters = ""
         for parameter, value in self.bowtie_search_parameters.items():
@@ -383,8 +374,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         if consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
-                search_results["query_region_id"]
-                != search_results["reference_region_id"]
+                search_results["query_region_id"] != search_results["reference_region_id"]
             ]
 
         oligos_with_hits = search_results["query"].unique()

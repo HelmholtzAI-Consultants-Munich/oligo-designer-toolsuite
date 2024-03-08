@@ -31,10 +31,7 @@ def generate_binary_sequences(n_seq, n_bit=16, n_one=1):
         sequences = set()
         while len(sequences) < n_seq:
             candidate = format(random.getrandbits(n_bit), f"0{n_bit}b")
-            if (
-                bin(int(candidate, 2)).count("1") == n_one
-                and candidate not in sequences
-            ):
+            if bin(int(candidate, 2)).count("1") == n_one and candidate not in sequences:
                 sequences.add(candidate)
 
         return list(sequences)

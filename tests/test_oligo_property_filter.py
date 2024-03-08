@@ -6,6 +6,7 @@
 from Bio.Seq import Seq
 from Bio.SeqUtils import MeltingTemp as mt
 
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
     FivePrimeSequenceFilter,
     GCClampFilter,
@@ -21,8 +22,6 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
     ThreePrimeSequenceFilter,
 )
-
-from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################

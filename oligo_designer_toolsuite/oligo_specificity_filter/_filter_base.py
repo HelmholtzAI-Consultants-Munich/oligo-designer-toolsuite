@@ -3,16 +3,15 @@
 ############################################
 
 import os
-import pandas as pd
-
-from pathlib import Path
-from joblib import Parallel, delayed
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import get_args
 
-from ..database import OligoDatabase, ReferenceDatabase
-from .._constants import SEPARATOR_OLIGO_ID, SEPARATOR_FASTA_HEADER_FIELDS, _TYPES_SEQ
+import pandas as pd
+from joblib import Parallel, delayed
 
+from .._constants import _TYPES_SEQ, SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
+from ..database import OligoDatabase, ReferenceDatabase
 
 ############################################
 # Oligo Specificity Filter Classes

@@ -3,15 +3,14 @@
 ############################################
 
 import os
+from abc import ABC, abstractmethod
+from pathlib import Path
+
 import networkx as nx
 
-from pathlib import Path
-from abc import ABC, abstractmethod
-
-from . import AlignmentSpecificityFilter, SpecificityFilterBase
+from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 from ..database import OligoDatabase, ReferenceDatabase
-from .._constants import SEPARATOR_OLIGO_ID, _TYPES_SEQ
-
+from . import AlignmentSpecificityFilter, SpecificityFilterBase
 
 ############################################
 # Crosshybridization Policies

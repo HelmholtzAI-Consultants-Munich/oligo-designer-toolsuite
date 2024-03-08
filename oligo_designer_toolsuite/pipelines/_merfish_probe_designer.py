@@ -24,9 +24,9 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatches,
     SpecificityFilter,
 )
+from oligo_designer_toolsuite.pipelines._sequence_design import generate_random_sequence
 from oligo_designer_toolsuite.sequence_design import MerfishSequence
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl
-from oligo_designer_toolsuite.pipelines._sequence_design import generate_random_sequence
 
 from ._base_oligo_designer import BaseOligoDesigner
 from ._utils import initialize_parameters
@@ -826,10 +826,7 @@ def main():
     )
 
     ##### filter target probes by property #####
-    (
-        target_probe_database,
-        file_database,
-    ) = probe_designer.filter_target_probes_by_property(
+    (target_probe_database, file_database,) = probe_designer.filter_target_probes_by_property(
         probe_database=target_probe_database,
         GC_content_min=config["targets_setup"]["GC_content_min"],
         GC_content_max=config["targets_setup"]["GC_content_max"],
@@ -846,10 +843,7 @@ def main():
     )
 
     ##### filter target probes by specificity #####
-    (
-        target_probe_database,
-        file_database,
-    ) = probe_designer.filter_target_probes_by_specificity(
+    (target_probe_database, file_database,) = probe_designer.filter_target_probes_by_specificity(
         probe_database=target_probe_database,
         word_size=config["targeting_sequences_setup"]["word_size"],
         percent_identity=config["blast_percent_identity"],
@@ -859,10 +853,7 @@ def main():
     )
 
     ##### filter cross hybridization targets #####
-    (
-        target_probe_database,
-        file_database,
-    ) = probe_designer.filter_cross_hybridization_targets(
+    (target_probe_database, file_database,) = probe_designer.filter_cross_hybridization_targets(
         probe_database=target_probe_database,
         word_size=config["targeting_sequences_setup"]["word_size"],
         percent_identity_ch=config["targeting_sequences_setup"]["percent_identity_ch"],

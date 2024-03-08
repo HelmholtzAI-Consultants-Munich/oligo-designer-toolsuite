@@ -13,7 +13,7 @@ Module contents
    FtpLoaderNCBI
    FtpLoaderEnsembl
    GffParser
-   
+
    {% for name in oligo_designer_toolsuite.utils.classes %}
      {{ name }}
    {% endfor %}

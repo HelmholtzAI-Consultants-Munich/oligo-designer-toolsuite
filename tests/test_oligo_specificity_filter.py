@@ -8,8 +8,8 @@ from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
     BlastNSeedregionLigationsiteFilter,
-    BowtieFilter,
     Bowtie2Filter,
+    BowtieFilter,
     CrossHybridizationFilter,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,

@@ -16,15 +16,19 @@ Classes:
 - SpecificityFilter: Integrates various specificity filters and policies to optimize oligo sequence design.
 """
 
-from ._filter_base import SpecificityFilterBase, AlignmentSpecificityFilter
-from ._filter_exact_matches import ExactMatches
-from ._filter_blastn import BlastNFilter, BlastNSeedregionFilter, BlastNSeedregionLigationsiteFilter
-from ._filter_bowtie import BowtieFilter, Bowtie2Filter
+from ._filter_base import AlignmentSpecificityFilter, SpecificityFilterBase
+from ._filter_blastn import (
+    BlastNFilter,
+    BlastNSeedregionFilter,
+    BlastNSeedregionLigationsiteFilter,
+)
+from ._filter_bowtie import Bowtie2Filter, BowtieFilter
 from ._filter_cross_hybridization import (
     CrossHybridizationFilter,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
 )
+from ._filter_exact_matches import ExactMatches
 from ._specificity_filter import SpecificityFilter
 
 __all__ = [

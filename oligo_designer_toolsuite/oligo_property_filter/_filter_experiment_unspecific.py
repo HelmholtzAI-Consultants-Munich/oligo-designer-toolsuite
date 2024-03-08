@@ -83,9 +83,7 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
         # Check that the prohibited sequences are valid DNA sequences.
         for s in self.prohibited_sequence:
             if not check_if_dna_sequence(s):
-                raise ValueError(
-                    "Prohibited sequence ({prohibited_sequences}) is not a DNA sequence."
-                )
+                raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
 
     def apply(self, sequence: Seq):
         """

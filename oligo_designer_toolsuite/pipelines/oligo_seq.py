@@ -1,25 +1,26 @@
-import os
-import warnings
-from pathlib import Path
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import inspect
 import logging
+import os
+import warnings
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from pathlib import Path
 
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.pipelines._utils import initialize_parameters
-from oligo_designer_toolsuite.pipelines import BaseOligoDesigner
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
-    PropertyFilter,
-    HardMaskedSequenceFilter,
-    SoftMaskedSequenceFilter,
     GCContentFilter,
-    MeltingTemperatureNNFilter,
-    SecondaryStructureFilter,
+    HardMaskedSequenceFilter,
     HomopolymericRunsFilter,
+    MeltingTemperatureNNFilter,
     ProhibitedSequenceFilter,
+    PropertyFilter,
+    SecondaryStructureFilter,
+    SoftMaskedSequenceFilter,
 )
+from oligo_designer_toolsuite.pipelines import BaseOligoDesigner
+from oligo_designer_toolsuite.pipelines._utils import initialize_parameters
+
 
 class OligoSeq(BaseOligoDesigner):
     """_summary_
@@ -29,55 +30,53 @@ class OligoSeq(BaseOligoDesigner):
     """
 
     def filter_by_property(
-            self,
-            oligo_database: OligoDatabase,
-            GC_content_min: int = 40,
-            GC_content_max: int = 60,
-            Tm_min: int = 70,
-            Tm_max: int = 80,
-            secondary_structures_T: float = 76,
-            secondary_structures_threshold_deltaG: float = 0,
-            homopolymeric_base_n: str = {"A": 6}, # TODO: meaningful standard setting
-            Tm_parameters: dict = {
-                "check": True,
-                "strict": True,
-                "c_seq": None,
-                "shift": 0,
-                "nn_table": "DNA_NN3",
-                "tmm_table": "DNA_TMM1",
-                "imm_table": "DNA_IMM1",
-                "de_table": "DNA_DE1",
-                "dnac1": 50,
-                "dnac2": 0,
-                "selfcomp": False,
-                "dNTPs": 0,
-                "saltcorr": 7,
-                "Na": 1000,
-                "K": 0,
-                "Tris": 0,
-                "Mg": 0,
-            },
-            Tm_chem_correction_parameters: dict = {
-                "DMSO": 0,
-                "DMSOfactor": 0.75,
-                "fmdfactor": 0.65,
-                "fmdmethod": 1,
-                "GC": None,
-                "fmd": 20,
-            },
-            prohibited_sequence : str = "",
-            n_jobs: int = 1,
+        self,
+        oligo_database: OligoDatabase,
+        GC_content_min: int = 40,
+        GC_content_max: int = 60,
+        Tm_min: int = 70,
+        Tm_max: int = 80,
+        secondary_structures_T: float = 76,
+        secondary_structures_threshold_deltaG: float = 0,
+        homopolymeric_base_n: str = {"A": 6},  # TODO: meaningful standard setting
+        Tm_parameters: dict = {
+            "check": True,
+            "strict": True,
+            "c_seq": None,
+            "shift": 0,
+            "nn_table": "DNA_NN3",
+            "tmm_table": "DNA_TMM1",
+            "imm_table": "DNA_IMM1",
+            "de_table": "DNA_DE1",
+            "dnac1": 50,
+            "dnac2": 0,
+            "selfcomp": False,
+            "dNTPs": 0,
+            "saltcorr": 7,
+            "Na": 1000,
+            "K": 0,
+            "Tris": 0,
+            "Mg": 0,
+        },
+        Tm_chem_correction_parameters: dict = {
+            "DMSO": 0,
+            "DMSOfactor": 0.75,
+            "fmdfactor": 0.65,
+            "fmdmethod": 1,
+            "GC": None,
+            "fmd": 20,
+        },
+        prohibited_sequence: str = "",
+        n_jobs: int = 1,
     ):
-        
+
         ##### log parameters #####
         logging.info("Parameters Property Filters:")
         args, _, _, values = inspect.getargvalues(inspect.currentframe())
         parameters = {i: values[i] for i in args}
         self._log_parameters(parameters)
 
-        num_genes_before, num_oligos_before = self._get_oligo_database_info(
-            oligo_database.database
-        )
+        num_genes_before, num_oligos_before = self._get_oligo_database_info(oligo_database.database)
         ##### preprocess melting temperature params #####
         Tm_parameters["nn_table"] = getattr(mt, Tm_parameters["nn_table"])
         Tm_parameters["tmm_table"] = getattr(mt, Tm_parameters["tmm_table"])
@@ -87,10 +86,7 @@ class OligoSeq(BaseOligoDesigner):
         # define the filters
         masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
-        gc_content = GCContentFilter(
-            GC_content_min=GC_content_min, 
-            GC_content_max=GC_content_max
-        )
+        gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
         melting_temperature = MeltingTemperatureNNFilter(
             Tm_min=Tm_min,
             Tm_max=Tm_max,
@@ -105,7 +101,7 @@ class OligoSeq(BaseOligoDesigner):
             base_n=homopolymeric_base_n,
         )
         prohibited_sequences = ProhibitedSequenceFilter(
-            prohibited_sequence=prohibited_sequence # TODO: understand what they really wnat
+            prohibited_sequence=prohibited_sequence  # TODO: understand what they really wnat
         )
         filters = [
             masked_sequences,
@@ -114,7 +110,7 @@ class OligoSeq(BaseOligoDesigner):
             melting_temperature,
             secondary_sctructure,
             homopolymeric_runs,
-            prohibited_sequences
+            prohibited_sequences,
         ]
 
         # initialize the preoperty filter class
@@ -127,16 +123,12 @@ class OligoSeq(BaseOligoDesigner):
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(
-                filename_out="oligo_database_property_filter.txt"
-            )
+            file_database = oligo_database.save_database(filename_out="oligo_database_property_filter.txt")
         else:
             file_database = ""
 
         ##### loggig database information #####
-        num_genes_after, num_oligos_after = self._get_oligo_database_info(
-            oligo_database.database
-        )
+        num_genes_after, num_oligos_after = self._get_oligo_database_info(oligo_database.database)
         logging.info(
             f"Step - Filter Oligos by Sequence Property: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
         )
@@ -176,9 +168,9 @@ def main():
         description=__doc__,
         formatter_class=RawDescriptionHelpFormatter,
     )
-    print('hi')
+    print("hi")
     config = initialize_parameters(parser, exp_name="oligo_seq")
-    print('hi')
+    print("hi")
     dir_output = os.path.abspath(config["output"])
     Path(dir_output).mkdir(parents=True, exist_ok=True)
 
@@ -186,9 +178,7 @@ def main():
     oligo_designer = OligoSeq(dir_output=dir_output, log_name="oligo_seq")
 
     ##### load annotations #####
-    oligo_designer.load_annotations(
-        source=config["source"], source_params=config["source_params"]
-    )
+    oligo_designer.load_annotations(source=config["source"], source_params=config["source_params"])
 
     ##### read the genes file #####
     if config["file_genes"] is None:
@@ -264,9 +254,7 @@ def main():
         detect_oligo_length_max=config["detect_oligo_length_max"],
         detect_oligo_Tm_opt=config["detect_oligo_Tm_opt"],
         Tm_parameters_detection_oligo=config["Tm_parameters_detection_oligo"],
-        Tm_chem_correction_param_detection_oligo=config[
-            "Tm_chem_correction_param_detection_oligo"
-        ],
+        Tm_chem_correction_param_detection_oligo=config["Tm_chem_correction_param_detection_oligo"],
     )
 
 

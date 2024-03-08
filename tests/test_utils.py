@@ -30,12 +30,8 @@ from oligo_designer_toolsuite.utils import (
 class TestGffParser(unittest.TestCase):
     def setUp(self):
         self.parser = GffParser()
-        self.gff_file = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
-        )
-        self.gtf_file = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-        )
+        self.gff_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+        self.gtf_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
         self.pickle_file = ...
 
     def test_check_gff_format(self):
@@ -61,9 +57,7 @@ class TestGffParser(unittest.TestCase):
         """Test loading annotation from a pickle file."""
         expected_result = ...
         result = self.parser.load_annotation_from_pickle(self.pickle_file)
-        assert (
-            result == expected_result
-        ), f"error: loading annotation from pickle file failed"
+        assert result == expected_result, f"error: loading annotation from pickle file failed"
 
     def test_parse_annotation_from_gff(self):
         """Test parsing GFF annotation."""
@@ -79,9 +73,7 @@ class TestGffParser(unittest.TestCase):
 class TestFastaParser(unittest.TestCase):
     def setUp(self):
         self.parser = FastaParser()
-        self.fasta_file = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-        )
+        self.fasta_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 
     def test_check_fasta_format(self):
         """Test parsing fasta file."""
@@ -122,12 +114,8 @@ class TestFastaParser(unittest.TestCase):
 
     def test_parse_fasta_header(self):
         """Test if the parser extracts fasta header correctly."""
-        header = (
-            "ARPG3::transcript_id=XM4581;exon_id=XM4581_exon1::16:70265537-70265662(-)"
-        )
-        region, additional_information, coordinates = self.parser.parse_fasta_header(
-            header
-        )
+        header = "ARPG3::transcript_id=XM4581;exon_id=XM4581_exon1::16:70265537-70265662(-)"
+        region, additional_information, coordinates = self.parser.parse_fasta_header(header)
         assert region == "ARPG3", "error: wrong region parsed"
         assert coordinates["chromosome"] == ["16"], "error: wrong chrom parsed"
         assert coordinates["start"] == [70265537], "error: wrong start parsed"
@@ -141,15 +129,11 @@ class TestFastaParser(unittest.TestCase):
 class TestCheckers(unittest.TestCase):
     def test_check_tsv_format(self):
         """Test if the parser extracts fasta header correctly."""
-        file_tsv = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
-        )
+        file_tsv = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
         try:
             check_tsv_format(file_tsv)
         except Exception as e:
-            assert (
-                False
-            ), f"error: checker: check_tsv_format raised an exception: {e}, with file {file_tsv}"
+            assert False, f"error: checker: check_tsv_format raised an exception: {e}, with file {file_tsv}"
 
     # TODO
     def test_check_if_key_exists(self):
@@ -164,9 +148,7 @@ class TestCheckers(unittest.TestCase):
         """Test if the parser extracts fasta header correctly."""
         s = "test"
         result = check_if_list(s)
-        assert result == [
-            s
-        ], f"error: check_if_list failed. Expected: [{s}], got: {result}"
+        assert result == [s], f"error: check_if_list failed. Expected: [{s}], got: {result}"
 
     def test_check_if_list_list(self):
         """Test if the parser extracts fasta header correctly."""
@@ -178,9 +160,7 @@ class TestCheckers(unittest.TestCase):
         """Test if the parser extracts fasta header correctly."""
         seq = "GGctAAgTTCCaGTttGCA"
         valid_characters = ["A", "C", "T", "G"]
-        assert check_if_dna_sequence(
-            seq, valid_characters
-        ), "error: check_if_dna_sequence failed"
+        assert check_if_dna_sequence(seq, valid_characters), "error: check_if_dna_sequence failed"
 
     def test_check_if_dna_sequence_invalid(self):
         """Test if the parser extracts fasta header correctly."""
@@ -195,9 +175,7 @@ class TestSequenceProcessor(unittest.TestCase):
     def setUp(self):
         self.tmp_path = "tests/tmp"
         os.makedirs(self.tmp_path, exist_ok=True)
-        self.file_bed = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
-        )
+        self.file_bed = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
 
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
@@ -206,9 +184,7 @@ class TestSequenceProcessor(unittest.TestCase):
         """Test if the parser extracts fasta header correctly."""
         parser = FastaParser()
 
-        file_reference_fasta = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-        )
+        file_reference_fasta = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
         file_fasta = os.path.join(self.tmp_path, "test_ann2seq_function.fna")
         get_sequence_from_annotation(
             self.file_bed,

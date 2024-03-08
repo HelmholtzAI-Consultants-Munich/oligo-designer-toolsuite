@@ -18,7 +18,7 @@ Module contents
    SecondaryStructure
    GCClamp
    PadlockArms
-   
+
    {% for name in oligo_designer_toolsuite.oligo_property_filter.classes %}
      {{ name }}
    {% endfor %}
