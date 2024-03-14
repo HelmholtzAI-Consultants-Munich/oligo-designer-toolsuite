@@ -11,6 +11,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     Bowtie2Filter,
     BowtieFilter,
     CrossHybridizationFilter,
+    ExactMatchFilter,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
 )
@@ -20,6 +21,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 ############################################
 
 # Files
+file_database_oligos_exact_match = "data/tests/databases/database_oligos_exactmatch.tsv"
 file_database_oligos_match = "data/tests/databases/database_oligos_match.tsv"
 file_database_oligos_nomatch = "data/tests/databases/database_oligos_nomatch.tsv"
 
@@ -115,6 +117,18 @@ expected_oligos_degree = {
 # tmp_path generates a temporary directory unique to the test invocation, created in the base temporary directory
 # for more information see here: https://docs.pytest.org/en/6.2.x/tmpdir.html
 @pytest.fixture(scope="session")
+def oligo_database_exact_match(tmpdir_factory):
+    base_temp = tmpdir_factory.getbasetemp()
+
+    oligo_database_exact_match = OligoDatabase(
+        min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=base_temp
+    )
+    oligo_database_exact_match.load_database(file_database_oligos_exact_match)
+
+    return oligo_database_exact_match
+
+
+@pytest.fixture(scope="session")
 def oligo_database_match(tmpdir_factory):
     base_temp = tmpdir_factory.getbasetemp()
 
@@ -200,24 +214,19 @@ def reference_database_ligation(tmpdir_factory):
 # Testing
 ############################################
 
-# TODO: update when exact match filter is refactored
-# def test_filter_exact_matches():
-#     # check that exact matches filters out a doubled sequence from the db
-#     oligo_database = OligoDatabase()
-#     exact_matches = ExactMatches()
-#     oligo_database.load_database(file_oligo_info_exact_matches)
-#     filtered_oligo_info_dict_match = exact_matches.apply(
-#         database=oligo_database.database,
-#         file_reference=None,
-#         n_jobs=n_jobs,
-#     )
 
-#     assert (
-#         "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
-#     ), "A matching oligo has not been filtered from exact matches!"
-#     assert (
-#         "AGRN_1" not in filtered_oligo_info_dict_match["AGRN"].keys()
-#     ), "A matching oligo has not been filtered from exact mathces!"
+def test_exact_match_filter(tmp_path, oligo_database_exact_match):
+    sequence_type = "oligo"
+
+    exactmatch_filter = ExactMatchFilter()
+    res = exactmatch_filter.apply(sequence_type, oligo_database_exact_match, 2)
+
+    assert (
+        "WASH7P::2" not in res.database["WASH7P"].keys()
+    ), "A matching oligo has not been filtered from exact matches!"
+    assert (
+        "AGRN::1" not in res.database["AGRN"].keys()
+    ), "A matching oligo has not been filtered from exact mathces!"
 
 
 def test_blastn_filter_match(tmp_path, oligo_database_match, reference_database):
@@ -236,7 +245,6 @@ def test_blastn_filter_nomatch(tmp_path, oligo_database_nomatch, reference_datab
 
     blast_filter = BlastNFilter(blast_search_parameters, blast_hit_parameters, dir_output=tmp_path)
     res = blast_filter.apply(sequence_type, oligo_database_nomatch, 2, reference_database)
-    print(res.database)
 
     assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Blast!"
 
@@ -309,9 +317,28 @@ def test_blastn_ligation_filter_nomatch(
     res = blast_ligation_filter.apply(
         sequence_type, oligo_database_ligation_nomatch, 2, reference_database_ligation
     )
-    print(res.database)
 
     assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Blast!"
+
+
+def test_crosshyb_filter_exactmatch_bigger_region_policy(tmp_path, oligo_database_exact_match):
+    exactmatch_filter = ExactMatchFilter()
+    policy = RemoveByLargerRegionPolicy()
+
+    sequence_type = "oligo"
+
+    cross_hyb_filter = CrossHybridizationFilter(policy, exactmatch_filter, tmp_path)
+    res = cross_hyb_filter.apply(sequence_type, oligo_database_exact_match, 2)
+
+    assert (
+        "WASH7P::1" in res.database["WASH7P"].keys()
+    ), "A non matching oligo has been filtered by exact matches!"
+    assert (
+        "WASH7P::2" not in res.database["WASH7P"].keys()
+    ), "A matching oligo has not been filtered by exact mathces!"
+    assert (
+        "AGRN::1" in res.database["AGRN"].keys()
+    ), "A non matching oligo has been filtered by exact matches!"
 
 
 def test_crosshyb_filter_blast_bigger_region_policy(tmp_path, oligo_database_crosshyb):
