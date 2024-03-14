@@ -2,9 +2,14 @@
 # imports
 ############################################
 
+from typing import List, get_args
+
 import iteration_utilities
+import pandas as pd
 from joblib import Parallel, delayed
 
+from .._constants import _TYPES_SEQ
+from ..database import OligoDatabase, ReferenceDatabase
 from . import SpecificityFilterBase
 
 ############################################
@@ -12,61 +17,131 @@ from . import SpecificityFilterBase
 ############################################
 
 
-# TODO provide get_oligo_pair_hits function to integrate into crosshybridization filter
-class ExactMatches(SpecificityFilterBase):
-    """This class filters oligos based duplicates found in the ``database``. That is, oligos with the same sequences but belonging to different regions are filtered out.
+class ExactMatchFilter(SpecificityFilterBase):
+    """A filter that identifies and removes oligonucleotides with exact match sequences within the database,
+    to prevent potential off-target effects. It leverages parallel processing to efficiently analyze large oligo databases.
 
-    :param dir_specificity: directory where alignement temporary files can be written
-    :type dir_specificity: str
+    :param None: This class does not require parameters for initialization.
     """
 
     def __init__(self):
         """Constructor for the ExactMatches class."""
 
-    # TODO: rewrite function such that we save oligos as "reference" file into fasta file amd then compare all oligos to themselves but remove hits from same region
-    def apply(self, database: dict, file_reference: str, n_jobs: int):
-        """Apply the filter in parallel on the given ``database``. Each jobs filters a single region, and at the same time are generated at most ``n_job`` jobs.
-        The filtered database is returned.
+    def apply(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase, n_jobs: int):
+        """Applies the exact match filter to an oligonucleotide database.
 
-        :param database: database containing the oligos and their features
-        :type database: dict
-        :param file_reference: path to the file that will be used as reference for the alignement tools
-        :type file_reference: str
-        :param n_jobs: number of simultaneous parallel computations
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligo database to which the filter will be applied.
+        :type database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run.
         :type n_jobs: int
-        :return: oligo info of user-specified regions
-        :rtype: dict
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
         """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
-        duplicated_sequences = self._get_duplicated_sequences(database)
+        # extract all the sequences
+        search_results = self._get_duplicated_sequences(sequence_type, oligo_database)
 
-        # run filter with joblib
-        regions = list(database.keys())
-        filtered_oligo_DBs = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_exactmatch_gene)(database[region], duplicated_sequences)
-            for region in regions
+        # get mapping from sequence to oligo_id
+        sequence_oligoids_mapping = oligo_database.get_sequence_oligoid_mapping(
+            sequence_type=sequence_type, sequence_to_upper=True
         )
-        # reconstruct the database
-        for region, filtered_oligo_DB in zip(regions, filtered_oligo_DBs):
-            database[region] = filtered_oligo_DB
 
-        return database
+        region_ids = list(oligo_database.database.keys())
+        results = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_filter)(
+                sequence_type=sequence_type,
+                region_id=region_id,
+                oligo_database=oligo_database,
+                search_results=search_results,
+                sequence_oligoids_mapping=sequence_oligoids_mapping,
+            )
+            for region_id in region_ids
+        )
 
-    def _get_duplicated_sequences(self, database):
-        """Get a list of oligo sequences that have an exact match within the oligos_DB.
+        # Process results
+        table_hits, oligos_with_hits = zip(*results)
 
-        :param database: database with all the oligos and their features
-        :type database: dict
-        :return: List of oligo sequences with exact matches in the pool of oligos.
+        for region_id, oligos_with_hits_region in zip(region_ids, oligos_with_hits):
+            database_region_filtered = self._filter_hits_from_database(
+                database_region=oligo_database.database[region_id], oligos_with_hits=oligos_with_hits_region
+            )
+            oligo_database.database[region_id] = database_region_filtered
+
+        return oligo_database
+
+    def get_oligo_pair_hits(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        n_jobs: int,
+        reference_database: ReferenceDatabase = None,  # not used in this filter but needed for API
+    ):
+        """Retrieves pairs of oligonucleotides with exact matches within the oligo database.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligo database to which the filter will be applied.
+        :type database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
+        :param reference_database: The reference database to compare against for specificity.
+            Not used in this filter.
+        :type reference_database: ReferenceDatabase
+        :return: List of oligo pairs with hits in the reference database.
+        :rtype: list[tuple]
+        """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+
+        # extract all the sequences
+        search_results = self._get_duplicated_sequences(sequence_type, oligo_database)
+
+        # get mapping from sequence to oligo_id
+        sequence_oligoids_mapping = oligo_database.get_sequence_oligoid_mapping(
+            sequence_type=sequence_type, sequence_to_upper=True
+        )
+
+        region_ids = list(oligo_database.database.keys())
+        results = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_filter)(
+                sequence_type=sequence_type,
+                region_id=region_id,
+                oligo_database=oligo_database,
+                search_results=search_results,
+                sequence_oligoids_mapping=sequence_oligoids_mapping,
+            )
+            for region_id in region_ids
+        )
+
+        # Process results
+        table_hits, oligos_with_hits = zip(*results)
+        table_hits = pd.concat(table_hits, ignore_index=True)
+        hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+
+        return hits
+
+    def _get_duplicated_sequences(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase):
+        """Identifies duplicated sequences within an oligonucleotide database for a specified sequence type.
+
+        :param sequence_type: The type of sequences to analyze within the database.
+        :type sequence_type: _TYPES_SEQ
+        :param oligo_database: The oligonucleotide database being analyzed.
+        :type oligo_database: OligoDatabase
+        :return: A list of duplicated sequences found in the database.
         :rtype: list
         """
         # extract all the sequences
-        sequences = []
-        for region in database.keys():
-            for oligo_id in database[region].keys():
-                sequences.append(
-                    database[region][oligo_id]["sequence"].upper()
-                )  # sequences might be also written in lower letters
+        sequences = oligo_database.get_sequence_list(sequence_type=sequence_type)
+        sequences = [sequence.upper() for sequence in sequences]
+
         # find the duplicates within the database
         duplicated_sequences = list(
             iteration_utilities.unique_everseen(iteration_utilities.duplicates(sequences))
@@ -74,17 +149,49 @@ class ExactMatches(SpecificityFilterBase):
 
         return duplicated_sequences
 
-    def _filter_exactmatch_gene(self, database_region, duplicated_sequences):
-        """Remove sequences with exact matches.
+    def _run_filter(
+        self,
+        sequence_type: _TYPES_SEQ,
+        region_id: str,
+        oligo_database: OligoDatabase,
+        search_results: List,
+        sequence_oligoids_mapping: dict,
+    ):
+        """Filters oligonucleotides based on sequence duplications, identifying hits within and across regions.
 
-        :param database_region: database with all the oligos from one region
-        :type database_region: dict
-        :param duplicated_sequences: list of the sequences which have duplicates
-        :type duplicated_sequences: list
+        :param sequence_type: The type of sequences to filter.
+        :type sequence_type: _TYPES_SEQ
+        :param region_id: The region within the oligo database to apply the filter.
+        :type region_id: str
+        :param oligo_database: The oligo database containing sequences to be filtered.
+        :type oligo_database: OligoDatabase
+        :param search_results: A list of sequences identified as duplicates.
+        :type search_results: List
+        :param sequence_oligoids_mapping: Mapping from sequences to oligo IDs.
+        :type sequence_oligoids_mapping: dict
+        :return: A tuple containing a table of hits and a list of oligos with those hits.
+        :rtype: (pd.DataFrame, list)
         """
-        propbes_ids = list(database_region.keys())
-        for oligo_id in propbes_ids:
-            if database_region[oligo_id]["sequence"].upper() in duplicated_sequences:
-                del database_region[oligo_id]
 
-        return database_region
+        database_region = oligo_database.database[region_id]
+
+        hit_dict = {}
+        for oligo_id in database_region.keys():
+            oligo_seq = database_region[oligo_id][sequence_type].upper()
+            if oligo_seq in search_results:
+                # find all oligos with the same sequence
+                hits = [
+                    oligo_id
+                    for oligo_id in sequence_oligoids_mapping[oligo_seq]
+                    if not oligo_id.startswith(region_id)
+                ]
+                hit_dict[oligo_id] = hits
+
+        table_hits = pd.DataFrame(
+            [(key, value) for key, value in hit_dict.items()], columns=["query", "reference"]
+        )
+        table_hits = table_hits.explode("reference", ignore_index=True)
+
+        oligos_with_hits = list(set(hit_dict.keys()))
+
+        return table_hits, oligos_with_hits

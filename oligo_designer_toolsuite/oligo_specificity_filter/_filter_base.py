@@ -116,9 +116,9 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         file_reference = reference_database.write_database_to_fasta(filename="reference_db")
         filename_reference_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
-        # Run filter for each region in parallel
+        # Run search for each region in parallel
         region_ids = list(oligo_database.database.keys())
-        database_region_filtered = Parallel(n_jobs=n_jobs)(
+        results = Parallel(n_jobs=n_jobs)(
             delayed(self._run_filter)(
                 sequence_type=sequence_type,
                 region_id=region_id,
@@ -130,8 +130,13 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         )
         os.remove(file_reference)
 
-        # Reconstruct the oligos database and return it
-        for region_id, database_region_filtered in zip(region_ids, database_region_filtered):
+        # Process results
+        table_hits, oligos_with_hits = zip(*results)
+
+        for region_id, oligos_with_hits_region in zip(region_ids, oligos_with_hits):
+            database_region_filtered = self._filter_hits_from_database(
+                database_region=oligo_database.database[region_id], oligos_with_hits=oligos_with_hits_region
+            )
             oligo_database.database[region_id] = database_region_filtered
 
         return oligo_database
@@ -165,22 +170,27 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         file_reference = reference_database.write_database_to_fasta(filename="reference_db")
         filename_reference_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
-        # Run search
-        search_results = self._run_search(
-            sequence_type=sequence_type,
-            oligo_database=oligo_database,
-            filename_reference_index=filename_reference_index,
-        )
-        table_hits, _ = self._find_hits(
-            oligo_database=oligo_database,
-            search_results=search_results,
-            consider_hits_from_input_region=False,
+        # Run search for each region in parallel
+        region_ids = list(oligo_database.database.keys())
+        results = Parallel(n_jobs=n_jobs)(
+            delayed(self._run_filter)(
+                sequence_type=sequence_type,
+                region_id=region_id,
+                oligo_database=oligo_database,
+                filename_reference_index=filename_reference_index,
+                consider_hits_from_input_region=True,
+            )
+            for region_id in region_ids
         )
         os.remove(file_reference)
 
-        hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+        # Process results
+        table_hits, oligos_with_hits = zip(*results)
 
-        return hits
+        table_hits = pd.concat(table_hits, ignore_index=True)
+        oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+
+        return oligo_pair_hits
 
     @abstractmethod
     def _create_index(self, file_reference: str, n_jobs: int):
@@ -274,8 +284,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type filename_reference_index: str
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
         :type consider_hits_from_input_region: bool
-        :return: The filtered region of the oligo database.
-        :rtype: dict
+        :return: A tuple containing a table of hits and a list of oligos with those hits.
+        :rtype: (pd.DataFrame, list)
         """
         search_results = self._run_search(
             sequence_type=sequence_type,
@@ -283,13 +293,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             filename_reference_index=filename_reference_index,
             region_ids=region_id,
         )
-        _, oligos_with_hits = self._find_hits(
+        table_hits, oligos_with_hits = self._find_hits(
             oligo_database=oligo_database,
             search_results=search_results,
             consider_hits_from_input_region=consider_hits_from_input_region,
         )
-        database_region_filtered = self._filter_hits_from_database(
-            database_region=oligo_database.database[region_id], oligos_with_hits=oligos_with_hits
-        )
 
-        return database_region_filtered
+        return table_hits, oligos_with_hits

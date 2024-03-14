@@ -77,7 +77,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
-        """Creates a BLAST index for the reference database if it does not exist.
+        """Creates a BLAST index for the reference database.
 
         :param file_reference: Path to the reference database file.
         :type file_reference: str
@@ -88,15 +88,12 @@ class BlastNFilter(AlignmentSpecificityFilter):
         """
         ## Create blast index
         filename_reference_index = os.path.basename(file_reference)
-
-        # Check if blast database exists -> check for any of the blast index files, e.g. ".nhr" file
-        if not os.path.exists(os.path.join(self.dir_blast, filename_reference_index + ".nhr")):
-            cmd = NcbimakeblastdbCommandline(
-                input_file=file_reference,
-                dbtype="nucl",
-                out=os.path.join(self.dir_blast, filename_reference_index),
-            )
-            out, err = cmd()
+        cmd = NcbimakeblastdbCommandline(
+            input_file=file_reference,
+            dbtype="nucl",
+            out=os.path.join(self.dir_blast, filename_reference_index),
+        )
+        out, err = cmd()
         return filename_reference_index
 
     def _run_search(

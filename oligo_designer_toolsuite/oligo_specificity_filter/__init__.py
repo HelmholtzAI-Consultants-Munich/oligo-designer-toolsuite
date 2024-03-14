@@ -4,7 +4,7 @@ This module provides different oligo filters that assess the off-target and cros
 Classes:
 - SpecificityFilterBase: A base class for creating filters that assess the specificity of oligo sequences against target regions.
 - AlignmentSpecificityFilter: Extends SpecificityFilterBase to use sequence alignment tools for specificity checking.
-- ExactMatches: Filters oligo sequences by detecting exact matches in target regions.
+- ExactMatchFilter: Filters oligo sequences by detecting exact matches among other oligo sequences.
 - BlastNFilter: Utilizes BLASTN for identifying and filtering sequences with potential off-target effects.
 - BlastNSeedregionFilter: A BlastNFilter that focuses on the seed regions of oligo sequences for specificity filtering.
 - BlastNSeedregionLigationsiteFilter: Targets the ligation site's seed regions for more precise BLASTN-based specificity filtering.
@@ -28,13 +28,13 @@ from ._filter_cross_hybridization import (
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
 )
-from ._filter_exact_matches import ExactMatches
+from ._filter_exact_matches import ExactMatchFilter
 from ._specificity_filter import SpecificityFilter
 
 __all__ = [
     "SpecificityFilterBase",
     "AlignmentSpecificityFilter",
-    "ExactMatches",
+    "ExactMatchFilter",
     "BlastNFilter",
     "BlastNSeedregionFilter",
     "BlastNSeedregionLigationsiteFilter",

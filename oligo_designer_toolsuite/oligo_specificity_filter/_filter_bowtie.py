@@ -73,7 +73,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
-        """Creates a Bowtie index for the reference database if it doesn't already exist. The index facilitates
+        """Creates a Bowtie index for the reference database. The index facilitates
         fast alignment searches against the reference.
 
         :param file_reference: Path to the reference database file.
@@ -87,18 +87,16 @@ class BowtieFilter(AlignmentSpecificityFilter):
         file_reference = os.path.abspath(file_reference)
         filename_reference_index = os.path.basename(file_reference)
 
-        # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.ebwt" file
-        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.ebwt")):
-            cmd = (
-                "bowtie-build --quiet --offrate 4"
-                + " --threads "
-                + str(n_jobs)
-                + " -f "
-                + file_reference
-                + " "
-                + filename_reference_index
-            )
-            process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        cmd = (
+            "bowtie-build --quiet --offrate 4"
+            + " --threads "
+            + str(n_jobs)
+            + " -f "
+            + file_reference
+            + " "
+            + filename_reference_index
+        )
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
 
         return filename_reference_index
 
@@ -169,7 +167,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
     def _find_hits(
         self,
-        oligo_database: OligoDatabase,
+        oligo_database: OligoDatabase,  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
     ):
@@ -257,7 +255,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
-        """Creates a Bowtie2 index for the reference database if it doesn't already exist. The index facilitates
+        """Creates a Bowtie2 index for the reference database. The index facilitates
         fast alignment searches against the reference.
 
         :param file_reference: Path to the reference database file.
@@ -272,17 +270,16 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         filename_reference_index = os.path.basename(file_reference)
 
         # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.bt2" file
-        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.bt2")):
-            cmd = (
-                "bowtie2-build --quiet --offrate 4"
-                + " --threads "
-                + str(n_jobs)
-                + " -f "
-                + file_reference
-                + " "
-                + filename_reference_index
-            )
-            process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        cmd = (
+            "bowtie2-build --quiet --offrate 4"
+            + " --threads "
+            + str(n_jobs)
+            + " -f "
+            + file_reference
+            + " "
+            + filename_reference_index
+        )
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
 
         return filename_reference_index
 
@@ -355,7 +352,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
     def _find_hits(
         self,
-        oligo_database: OligoDatabase,
+        oligo_database: OligoDatabase,  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
     ):
