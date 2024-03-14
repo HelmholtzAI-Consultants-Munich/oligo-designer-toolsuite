@@ -309,6 +309,42 @@ class OligoDatabase:
 
         return sequences
 
+    def get_sequence_oligoid_mapping(
+        self, sequence_type: _TYPES_SEQ = "oligo", sequence_to_upper: bool = False
+    ):
+        """Generate a mapping between sequences and their corresponding oligonucleotide IDs, with an option to convert sequences to uppercase.
+
+        Validates the sequence type against predefined options. If `sequence_to_upper` is True, converts all sequences to uppercase before mapping,
+        ensuring case-insensitive comparisons. This function supports scenarios where multiple oligos share the same sequence, grouping their IDs in a list.
+
+        :param sequence_type: The type of sequence to use for the mapping, defaulting to "oligo".
+        :type sequence_type: _TYPES_SEQ
+        :param sequence_to_upper: Flag indicating whether to convert sequences to uppercase.
+        :type sequence_to_upper: bool
+        :return: A dictionary mapping sequences to lists of corresponding oligonucleotide IDs.
+        :rtype: dict
+        """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+
+        sequence_oligoids_mapping = {}
+
+        for region_id, database_region in self.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                seq = oligo_attributes[sequence_type]
+                if sequence_to_upper:
+                    seq = seq.upper()
+                if seq not in sequence_oligoids_mapping:
+                    # If the sequence key doesn't exist, create a new entry with the oligo ID in a list
+                    sequence_oligoids_mapping[seq] = [oligo_id]
+                else:
+                    # If the sequence key already exists, append the oligo ID to the existing list
+                    sequence_oligoids_mapping[seq].append(oligo_id)
+
+        return sequence_oligoids_mapping
+
     # TODO: write test for function
     def get_oligo_attribute(self, attribute: str):
         """Retrieves a specified attribute for all oligos in the database and returns it as a pandas DataFrame.
@@ -547,6 +583,7 @@ class OligoDatabase:
         filename: str = "oligo_database",
         region_ids: list[str] = None,
         sequence_type: _TYPES_SEQ = "oligo",
+        save_description: bool = False,
     ):
         """Write oligo sequences from the database to a FASTA file.
 
@@ -577,11 +614,12 @@ class OligoDatabase:
             for region_id, oligo in self.database.items():
                 if region_id in region_ids:
                     for oligo_id, oligo_attributes in oligo.items():
+                        description = sequence_type if save_description else ""
                         seq_record = SeqRecord(
                             Seq(oligo_attributes[sequence_type]),
                             id=oligo_id,
                             name=oligo_id.split(SEPARATOR_OLIGO_ID)[0],
-                            description=sequence_type,
+                            description=description,
                         )
                         output_fasta.append(seq_record)
 
