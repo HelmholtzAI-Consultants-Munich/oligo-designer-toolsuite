@@ -28,10 +28,16 @@ region_ids = [
     "this_gene_does_not_exist",
 ]
 annotation_file_ensemble = "data/annotations/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
-sequence_file_ensemble = "data/annotations/custom_Homo_sapiens.GRCh38.dna_sm.chromosome.16.fa"
+sequence_file_ensemble = (
+    "data/annotations/custom_Homo_sapiens.GRCh38.dna_sm.chromosome.16.fa"
+)
 
-annotation_file_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-sequence_file_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+annotation_file_ncbi = (
+    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+)
+sequence_file_ncbi = (
+    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+)
 
 metadata_ncbi = {
     "files_source": "NCBI",
@@ -84,19 +90,25 @@ def test_ftp_loader_ncbi(tmp_path):
     # retrieve files
     file_gff, annotation_release, assembly_name = loader_ncbi.download_files("gff")
 
-    assert Path(file_gff).name == "GCF_000001405.40_GRCh38.p14_genomic.gff", "error: wrong file downloaded"
+    assert (
+        Path(file_gff).name == "GCF_000001405.40_GRCh38.p14_genomic.gff"
+    ), "error: wrong file downloaded"
     assert annotation_release == "110", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
 
     file_gff, annotation_release, assembly_name = loader_ncbi.download_files("gtf")
 
-    assert Path(file_gff).name == "GCF_000001405.40_GRCh38.p14_genomic.gtf", "error: wrong file downloaded"
+    assert (
+        Path(file_gff).name == "GCF_000001405.40_GRCh38.p14_genomic.gtf"
+    ), "error: wrong file downloaded"
     assert annotation_release == "110", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
 
     file_fasta, annotation_release, assembly_name = loader_ncbi.download_files("fasta")
 
-    assert Path(file_fasta).name == "GCF_000001405.40_GRCh38.p14_genomic.fna", "error: wrong file downloaded"
+    assert (
+        Path(file_fasta).name == "GCF_000001405.40_GRCh38.p14_genomic.fna"
+    ), "error: wrong file downloaded"
     assert annotation_release == "110", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38.p14", "error: wrong assembly name retrieved"
 
@@ -123,17 +135,23 @@ def test_ftp_loader_ensemble(tmp_path):
     # retrieve files
     file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gff")
 
-    assert Path(file_gff).name == "Homo_sapiens.GRCh38.108.gff3", "error: wrong file downloaded"
+    assert (
+        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gff3"
+    ), "error: wrong file downloaded"
     assert annotation_release == "108", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
     file_gff, annotation_release, assembly_name = loader_ensemble.download_files("gtf")
 
-    assert Path(file_gff).name == "Homo_sapiens.GRCh38.108.gtf", "error: wrong file downloaded"
+    assert (
+        Path(file_gff).name == "Homo_sapiens.GRCh38.108.gtf"
+    ), "error: wrong file downloaded"
     assert annotation_release == "108", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
-    file_fasta, annotation_release, assembly_name = loader_ensemble.download_files("fasta")
+    file_fasta, annotation_release, assembly_name = loader_ensemble.download_files(
+        "fasta"
+    )
 
     assert (
         Path(file_fasta).name == "Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa"
@@ -145,7 +163,9 @@ def test_ftp_loader_ensemble(tmp_path):
         "fasta", sequence_nature="ncrna"
     )
 
-    assert Path(file_fasta).name == "Homo_sapiens.GRCh38.ncrna.fa", "error: wrong file downloaded"
+    assert (
+        Path(file_fasta).name == "Homo_sapiens.GRCh38.ncrna.fa"
+    ), "error: wrong file downloaded"
     assert annotation_release == "108", "error: wrong annotation release retrieved"
     assert assembly_name == "GRCh38", "error: wrong assembly name retrieved"
 
@@ -175,10 +195,14 @@ def test_region_generator_ncbi(tmpdir_factory):
     ), f"error: wrong file format for file: {ncbi_exons}"
 
     ncbi_CDS = region_generator_ncbi.get_sequence_CDS()
-    assert fasta_parser.check_fasta_format(ncbi_CDS) == True, f"error: wrong file format for file: {ncbi_CDS}"
+    assert (
+        fasta_parser.check_fasta_format(ncbi_CDS) == True
+    ), f"error: wrong file format for file: {ncbi_CDS}"
 
     ncbi_UTR = region_generator_ncbi.get_sequence_UTR(five_prime=True, three_prime=True)
-    assert fasta_parser.check_fasta_format(ncbi_UTR) == True, f"error: wrong file format for file: {ncbi_UTR}"
+    assert (
+        fasta_parser.check_fasta_format(ncbi_UTR) == True
+    ), f"error: wrong file format for file: {ncbi_UTR}"
 
     ncbi_junction = region_generator_ncbi.get_sequence_exon_exon_junction(block_size=50)
     assert (
@@ -225,12 +249,16 @@ def test_region_generator_ensemble(tmpdir_factory):
         fasta_parser.check_fasta_format(ensembl_CDS) == True
     ), f"error: wrong file format for file: {ensembl_CDS}"
 
-    ensembl_UTR = region_generator_ensembl.get_sequence_UTR(five_prime=True, three_prime=True)
+    ensembl_UTR = region_generator_ensembl.get_sequence_UTR(
+        five_prime=True, three_prime=True
+    )
     assert (
         fasta_parser.check_fasta_format(ensembl_UTR) == True
     ), f"error: wrong file format for file: {ensembl_UTR}"
 
-    ensembl_junction = region_generator_ensembl.get_sequence_exon_exon_junction(block_size=50)
+    ensembl_junction = region_generator_ensembl.get_sequence_exon_exon_junction(
+        block_size=50
+    )
     assert (
         fasta_parser.check_fasta_format(ensembl_junction) == True
     ), f"error: wrong file format for file: {ensembl_junction}"
@@ -251,8 +279,12 @@ def test_reference_database(file_ncbi_exons):
     fasta_parser = FastaParser()
     reference = ReferenceDatabase()
     reference.load_metadata(metadata=metadata_ncbi)
-    reference.load_sequences_fom_fasta(file_fasta=file_ncbi_exons, database_overwrite=True)
-    reference.load_sequences_fom_fasta(file_fasta=file_ncbi_exons, database_overwrite=False)
+    reference.load_sequences_from_fasta(
+        file_fasta=file_ncbi_exons, database_overwrite=True
+    )
+    reference.load_sequences_from_fasta(
+        file_fasta=file_ncbi_exons, database_overwrite=False
+    )
 
     reference.filter_database("AARS1")
     for entry in reference.database:
@@ -264,7 +296,9 @@ def test_reference_database(file_ncbi_exons):
         assert region == "AARS1", f"error: this region {region} should be filtered out."
 
     file_fasta_database = reference.write_database_to_fasta(filename="filtered_databse")
-    file_metadata_database = reference.write_metadata_to_yaml(filename="filtered_databse")
+    file_metadata_database = reference.write_metadata_to_yaml(
+        filename="filtered_databse"
+    )
     assert (
         fasta_parser.check_fasta_format(file_fasta_database) == True
     ), f"error: wrong file format for database in {file_fasta_database}"
@@ -293,8 +327,12 @@ def test_oligo_database(file_ncbi_exons):
         length_interval_sequences=(30, 31),
     )
 
-    oligos = OligoDatabase(min_oligos_per_region=2, write_regions_with_insufficient_oligos=True)
-    oligos2 = OligoDatabase(min_oligos_per_region=4, write_regions_with_insufficient_oligos=True)
+    oligos = OligoDatabase(
+        min_oligos_per_region=2, write_regions_with_insufficient_oligos=True
+    )
+    oligos2 = OligoDatabase(
+        min_oligos_per_region=4, write_regions_with_insufficient_oligos=True
+    )
 
     # check if we can load sequences into the database for oligo or target and if we can merge databases
     oligos.load_metadata(metadata_ncbi)
@@ -341,7 +379,9 @@ def test_oligo_database(file_ncbi_exons):
 
     # check if removale of regions works
     oligos2.remove_regions_with_insufficient_oligos("database_generation")
-    assert len(oligos2.database.keys()) == 1, "error: wrong number of regions in database"
+    assert (
+        len(oligos2.database.keys()) == 1
+    ), "error: wrong number of regions in database"
 
     # check if we get the correct number of sequences returned
     list_sequences = oligos2.get_sequence_list()

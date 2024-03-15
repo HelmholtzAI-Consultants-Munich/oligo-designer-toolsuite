@@ -5,7 +5,7 @@
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import get_args
+from typing import List, Union, get_args
 
 import pandas as pd
 from joblib import Parallel, delayed
@@ -123,7 +123,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
                 sequence_type=sequence_type,
                 region_id=region_id,
                 oligo_database=oligo_database,
-                filename_reference_index=filename_reference_index,
+                file_index=filename_reference_index,
                 consider_hits_from_input_region=True,
             )
             for region_id in region_ids
@@ -135,10 +135,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         for region_id, oligos_with_hits_region in zip(region_ids, oligos_with_hits):
             database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region_id], oligos_with_hits=oligos_with_hits_region
+                database_region=oligo_database.database[region_id],
+                oligos_with_hits=oligos_with_hits_region,
             )
             oligo_database.database[region_id] = database_region_filtered
-
         return oligo_database
 
     def get_oligo_pair_hits(
@@ -204,7 +204,11 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
     @abstractmethod
     def _run_search(
-        self, sequence_type: _TYPES_SEQ, database: OligoDatabase, region_ids: str, file_index: str
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        file_index: str,
+        region_ids: Union[str, List[str]] = None,
     ):
         """Abstract method to execute a search against a reference database using a specific indexing strategy.
 
@@ -269,7 +273,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         sequence_type: _TYPES_SEQ,
         region_id: str,
         oligo_database: OligoDatabase,
-        filename_reference_index: str,
+        file_index: str,
         consider_hits_from_input_region: bool,
     ):
         """Executes the filtering process for a specific region of the oligonucleotide database based on search results.
@@ -290,7 +294,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         search_results = self._run_search(
             sequence_type=sequence_type,
             oligo_database=oligo_database,
-            filename_reference_index=filename_reference_index,
+            file_index=file_index,
             region_ids=region_id,
         )
         table_hits, oligos_with_hits = self._find_hits(

@@ -100,7 +100,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        filename_reference_index: str,
+        file_index: str,
         region_ids: Union[str, List[str]] = None,
     ):
         """Executes a BLASTN search for an oligo database against a reference database index.
@@ -132,7 +132,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         cmd = NcbiblastnCommandline(
             query=file_oligo_database,
             out=file_blast_results,
-            db=os.path.join(self.dir_blast, filename_reference_index),
+            db=os.path.join(self.dir_blast, file_index),
             **self.blast_search_parameters,
         )
         out, err = cmd()
@@ -226,14 +226,14 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         super().__init__(blast_search_parameters, blast_hit_parameters, dir_output)
 
     @abstractmethod
-    def _add_seed_region_information(self, oligo_database: OligoDatabase, blast_results: pd.DataFrame):
+    def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
         """Abstract method to add seed region information to BLAST results. This method must be implemented in subclasses to define
         how seed region data is incorporated into the filtering logic based on BLAST results.
 
         :param oligo_database: The database of oligonucleotides being analyzed.
         :type oligo_database: OligoDatabase
-        :param blast_results: DataFrame containing results from a BLASTN search.
-        :type blast_results: pd.DataFrame
+        :param search_results: DataFrame containing results from a BLASTN search.
+        :type search_results: pd.DataFrame
         """
 
     def _find_hits(

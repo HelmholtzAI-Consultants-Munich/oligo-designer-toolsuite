@@ -104,7 +104,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        filename_reference_index: str,
+        file_index: str,
         region_ids: Union[str, List[str]] = None,
     ):
         """Performs a Bowtie search of oligonucleotide sequences against a reference database using a previously
@@ -141,7 +141,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         cmd = (
             "bowtie --quiet"
             + " -x "
-            + filename_reference_index
+            + file_index
             + " -f"  # fast file is input
             + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
             + cmd_parameters
@@ -287,7 +287,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        filename_reference_index: str,
+        file_index: str,
         region_ids: Union[str, List[str]] = None,
     ):
         """Performs a Bowtie2 search of oligonucleotide sequences against a reference database using a previously
@@ -325,7 +325,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             "bowtie2 --quiet"
             + " --no-hd --no-unal"
             + " -x "
-            + filename_reference_index
+            + file_index
             + " -f"  # fast file is input
             + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
             + cmd_parameters
