@@ -2,8 +2,6 @@
 # imports
 ############################################
 
-import os
-import shutil
 import unittest
 import warnings
 
@@ -14,7 +12,6 @@ from oligo_designer_toolsuite.utils import (
     check_if_key_exists,
     check_if_list,
     check_tsv_format,
-    get_sequence_from_annotation,
 )
 
 ############################################
@@ -189,46 +186,3 @@ class TestCheckers(unittest.TestCase):
         assert not check_if_dna_sequence(
             seq, valid_characters
         ), "error: check_if_dna_sequence succeeded when it should have failed"
-
-
-class TestSequenceProcessor(unittest.TestCase):
-    def setUp(self):
-        self.tmp_path = "tests/tmp"
-        os.makedirs(self.tmp_path, exist_ok=True)
-        self.file_bed = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
-        )
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp_path)
-
-    def test_get_sequence_from_annotation(self):
-        """Test if the parser extracts fasta header correctly."""
-        parser = FastaParser()
-
-        file_reference_fasta = (
-            "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-        )
-        file_fasta = os.path.join(self.tmp_path, "test_ann2seq_function.fna")
-        get_sequence_from_annotation(
-            self.file_bed,
-            file_reference_fasta,
-            file_fasta,
-            split=False,
-            strand=True,
-            name=True,
-        )
-        res = parser.check_fasta_format(file_fasta)
-        assert res == True, f"error: the created sequence file is not a fasta file"
-
-    # TODO
-    def test_get_complement_regions(self):
-        ...
-
-    # """Test if the parser extracts fasta header correctly."""
-    # file_bed_in = ...
-    # file_chromosome_length = ...
-    # file_bed_out = ...
-    # get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out)
-    # res = ...
-    # assert res == ..., f"error: get_complement_regions failed"

@@ -33,6 +33,8 @@ def check_if_dna_sequence(seq: str, valid_characters=["A", "C", "T", "G"]):
     ):
         warnings.warn("Valid characters should be A, C, T, G, or U.")
 
+    if seq == "":
+        return False
     return all(char.upper() in valid_characters_upper for char in seq)
 
 

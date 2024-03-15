@@ -75,7 +75,7 @@ class ReferenceDatabase:
         else:
             raise ValueError("Metadat has icorrect format!")
 
-    def load_sequences_fom_fasta(
+    def load_sequences_from_fasta(
         self, file_fasta: str, database_overwrite: bool = False
     ) -> None:
         """Load sequences from a FASTA file into the ReferenceDatabase object.

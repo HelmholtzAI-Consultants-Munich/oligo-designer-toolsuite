@@ -1,386 +1,309 @@
-############################################
-# imports
-############################################
-
-import pytest
+import os
+import shutil
+import unittest
+from abc import abstractmethod
 
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
     BlastNSeedregionLigationsiteFilter,
-    BowtieFilter,
     Bowtie2Filter,
+    BowtieFilter,
     CrossHybridizationFilter,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
 )
 
-############################################
 # Global Parameters
-############################################
-
-# Files
-file_database_oligos_match = "data/tests/databases/database_oligos_match.tsv"
-file_database_oligos_nomatch = "data/tests/databases/database_oligos_nomatch.tsv"
-
-file_database_oligos_ligation_match = "data/tests/databases/database_oligos_ligation_match.tsv"
-file_database_oligos_ligation_nomatch = "data/tests/databases/database_oligos_ligation_nomatch.tsv"
-
-file_database_oligos_crosshyb = "data/tests/databases/database_oligos_crosshybridization.tsv"
-
-file_database_reference = "data/tests/databases/database_reference.fna"
-file_database_reference_ligation = "data/tests/databases/database_reference_ligation.fna"
-
-file_annotation_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-file_sequence_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-
-# Metadata
-metadata_ncbi = {
-    "files_source": "NCBI",
-    "species": "Homo_sapiens",
-    "annotation_release": "110",
-    "genome_assembly": "GRCh38",
-}
-
-region_ids = ["AARS1", "DECR2", "FAM234A", "RHBDF1", "WASIR2"]
-
-# Blast parameters
-blast_search_parameters = {"perc_identity": 80, "strand": "plus", "word_size": 10}
-blast_search_parameters_crosshyb = {"perc_identity": 80, "strand": "minus", "word_size": 10}
-
-blast_hit_parameters = {"coverage": 50}
-blast_hit_parameters_crosshyb = {"coverage": 50}
-
-# Bowtie parameters
-bowtie_search_parameters = {"-n": 3, "-l": 5}
-bowtie_search_parameters_crosshyb = {"-n": 3, "-l": 5, "--nofw": ""}
-
-bowtie2_search_parameters = {"-N": 0}
-
-# Parameters Cross-hybridization
-expected_oligos_bigger_region = {
-    "region_1": {
-        "region_1::oligo_7",
-        "region_1::oligo_5",
-        "region_1::oligo_6",
-        "region_1::oligo_8",
-        "region_1::oligo_4",
-    },
-    "region_2": {
-        "region_2::oligo_3",
-        "region_2::oligo_2",
-        "region_2::oligo_6",
-        "region_2::oligo_5",
-        "region_2::oligo_4",
-    },
-    "region_3": {
-        "region_3::oligo_1",
-        "region_3::oligo_4",
-        "region_3::oligo_3",
-        "region_3::oligo_2",
-        "region_3::oligo_5",
-    },
-}
-
-expected_oligos_degree = {
-    "region_1": {
-        "region_1::oligo_1",
-        "region_1::oligo_4",
-        "region_1::oligo_5",
-        "region_1::oligo_6",
-        "region_1::oligo_7",
-    },
-    "region_2": {
-        "region_2::oligo_1",
-        "region_2::oligo_2",
-        "region_2::oligo_3",
-        "region_2::oligo_4",
-        "region_2::oligo_5",
-        "region_2::oligo_6",
-        "region_2::oligo_7",
-    },
-    "region_3": {
-        "region_3::oligo_2",
-        "region_3::oligo_3",
-        "region_3::oligo_4",
-        "region_3::oligo_5",
-    },
-}
-
-############################################
-# Preprocessing
-############################################
-
-
-# tmp_path generates a temporary directory unique to the test invocation, created in the base temporary directory
-# for more information see here: https://docs.pytest.org/en/6.2.x/tmpdir.html
-@pytest.fixture(scope="session")
-def oligo_database_match(tmpdir_factory):
-    base_temp = tmpdir_factory.getbasetemp()
-
-    oligo_database_match = OligoDatabase(
-        min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=base_temp
-    )
-    oligo_database_match.load_database(file_database_oligos_match)
-
-    return oligo_database_match
-
-
-@pytest.fixture(scope="session")
-def oligo_database_nomatch(tmpdir_factory):
-    base_temp = tmpdir_factory.getbasetemp()
-
-    oligo_database_nomatch = OligoDatabase(
-        min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=base_temp
-    )
-    oligo_database_nomatch.load_database(file_database_oligos_nomatch)
-
-    return oligo_database_nomatch
-
-
-@pytest.fixture(scope="session")
-def oligo_database_ligation_match(tmpdir_factory):
-    base_temp = tmpdir_factory.getbasetemp()
-
-    oligo_database_ligation_match = OligoDatabase(
-        min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=base_temp
-    )
-    oligo_database_ligation_match.load_database(file_database_oligos_ligation_match)
-
-    return oligo_database_ligation_match
-
-
-@pytest.fixture(scope="session")
-def oligo_database_ligation_nomatch(tmpdir_factory):
-    base_temp = tmpdir_factory.getbasetemp()
-
-    oligo_database_ligation_nomatch = OligoDatabase(
-        min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=base_temp
-    )
-    oligo_database_ligation_nomatch.load_database(file_database_oligos_ligation_nomatch)
-
-    return oligo_database_ligation_nomatch
-
-
-@pytest.fixture(scope="session")
-def oligo_database_crosshyb(tmpdir_factory):
-    base_temp = tmpdir_factory.getbasetemp()
-
-    oligo_database_crosshyb = OligoDatabase(
-        min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=base_temp
-    )
-    oligo_database_crosshyb.load_database(file_database_oligos_crosshyb)
-
-    return oligo_database_crosshyb
-
-
-@pytest.fixture(scope="session")
-def reference_database(tmpdir_factory):
-    base_temp = tmpdir_factory.getbasetemp()
-
-    reference_database = ReferenceDatabase(dir_output=base_temp)
-    reference_database.load_sequences_fom_fasta(file_fasta=file_database_reference, database_overwrite=True)
-
-    return reference_database
-
-
-@pytest.fixture(scope="session")
-def reference_database_ligation(tmpdir_factory):
-    base_temp = tmpdir_factory.getbasetemp()
-
-    reference_database_ligation = ReferenceDatabase(dir_output=base_temp)
-    reference_database_ligation.load_sequences_fom_fasta(
-        file_fasta=file_database_reference_ligation, database_overwrite=True
-    )
-
-    return reference_database_ligation
-
-
-############################################
-# Testing
-############################################
-
-# TODO: update when exact match filter is refactored
-# def test_filter_exact_matches():
-#     # check that exact matches filters out a doubled sequence from the db
-#     oligo_database = OligoDatabase()
-#     exact_matches = ExactMatches()
-#     oligo_database.load_database(file_oligo_info_exact_matches)
-#     filtered_oligo_info_dict_match = exact_matches.apply(
-#         database=oligo_database.database,
-#         file_reference=None,
-#         n_jobs=n_jobs,
-#     )
-
-#     assert (
-#         "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
-#     ), "A matching oligo has not been filtered from exact matches!"
-#     assert (
-#         "AGRN_1" not in filtered_oligo_info_dict_match["AGRN"].keys()
-#     ), "A matching oligo has not been filtered from exact mathces!"
-
-
-def test_blastn_filter_match(tmp_path, oligo_database_match, reference_database):
-    sequence_type = "target"
-
-    blast_filter = BlastNFilter(blast_search_parameters, blast_hit_parameters, dir_output=tmp_path)
-    res = blast_filter.apply(sequence_type, oligo_database_match, 2, reference_database)
-
-    assert (
-        "WASH7P::1" not in res.database["WASH7P"].keys()
-    ), "A matching oligo has not been filtered by Blast!"
-
-
-def test_blastn_filter_nomatch(tmp_path, oligo_database_nomatch, reference_database):
-    sequence_type = "target"
-
-    blast_filter = BlastNFilter(blast_search_parameters, blast_hit_parameters, dir_output=tmp_path)
-    res = blast_filter.apply(sequence_type, oligo_database_nomatch, 2, reference_database)
-    print(res.database)
-
-    assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Blast!"
-
-
-def test_bowtie_filter_match(tmp_path, oligo_database_match, reference_database):
-    sequence_type = "target"
-
-    bowtie_filter = BowtieFilter(bowtie_search_parameters, dir_output=tmp_path)
-    res = bowtie_filter.apply(sequence_type, oligo_database_match, 2, reference_database)
-
-    assert (
-        "WASH7P::1" not in res.database["WASH7P"].keys()
-    ), "A matching oligo has not been filtered by Bowtie!"
-
-
-def test_bowtie_filter_nomatch(tmp_path, oligo_database_nomatch, reference_database):
-    sequence_type = "target"
-
-    bowtie_filter = BowtieFilter(bowtie_search_parameters, dir_output=tmp_path)
-    res = bowtie_filter.apply(sequence_type, oligo_database_nomatch, 2, reference_database)
-
-    assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Bowtie!"
-
-
-def test_bowtie2_filter_match(tmp_path, oligo_database_match, reference_database):
-    sequence_type = "target"
-
-    bowtie_filter = Bowtie2Filter(bowtie2_search_parameters, dir_output=tmp_path)
-    res = bowtie_filter.apply(sequence_type, oligo_database_match, 2, reference_database)
-
-    assert (
-        "WASH7P::1" not in res.database["WASH7P"].keys()
-    ), "A matching oligo has not been filtered by Bowtie2!"
-
-
-def test_bowtie2_filter_nomatch(tmp_path, oligo_database_nomatch, reference_database):
-    sequence_type = "target"
-
-    bowtie_filter = Bowtie2Filter(bowtie2_search_parameters, dir_output=tmp_path)
-    res = bowtie_filter.apply(sequence_type, oligo_database_nomatch, 2, reference_database)
-
-    assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Bowtie2!"
-
-
-def test_blastn_ligation_filter_match(tmp_path, oligo_database_ligation_match, reference_database_ligation):
-    sequence_type = "target"
-    seedregion_size = 10
-
-    blast_ligation_filter = BlastNSeedregionLigationsiteFilter(
-        seedregion_size, blast_search_parameters, blast_hit_parameters, dir_output=tmp_path
-    )
-    res = blast_ligation_filter.apply(
-        sequence_type, oligo_database_ligation_match, 2, reference_database_ligation
-    )
-
-    assert (
-        "WASH7P::1" not in res.database["WASH7P"].keys()
-    ), "A matching oligo has not been filtered by Blast!"
-
-
-def test_blastn_ligation_filter_nomatch(
-    tmp_path, oligo_database_ligation_nomatch, reference_database_ligation
-):
-    sequence_type = "target"
-    seedregion_size = 5
-
-    blast_ligation_filter = BlastNSeedregionLigationsiteFilter(
-        seedregion_size, blast_search_parameters, blast_hit_parameters, dir_output=tmp_path
-    )
-    res = blast_ligation_filter.apply(
-        sequence_type, oligo_database_ligation_nomatch, 2, reference_database_ligation
-    )
-    print(res.database)
-
-    assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Blast!"
-
-
-def test_crosshyb_filter_blast_bigger_region_policy(tmp_path, oligo_database_crosshyb):
-    blast_filter = BlastNFilter(
-        blast_search_parameters_crosshyb, blast_hit_parameters_crosshyb, dir_output=tmp_path
-    )
-    policy = RemoveByLargerRegionPolicy()
-
-    sequence_type = "oligo"
-
-    cross_hyb_filter = CrossHybridizationFilter(policy, blast_filter, tmp_path)
-    res = cross_hyb_filter.apply(sequence_type, oligo_database_crosshyb, 2)
-
-    filtered_oligos = {
-        key: {key_2 for key_2 in list(res.database[key].keys())} for key in list(res.database.keys())
-    }
-    assert (
-        expected_oligos_bigger_region == filtered_oligos
-    ), f"The cross-hybridization filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos_bigger_region}\n\nGot:\n{filtered_oligos}"
-
-
-def test_crosshyb_filter_blast_degree_policy(tmp_path, oligo_database_crosshyb):
-    blast_filter = BlastNFilter(
-        blast_search_parameters_crosshyb, blast_hit_parameters_crosshyb, dir_output=tmp_path
-    )
-    policy = RemoveByDegreePolicy()
-
-    sequence_type = "oligo"
-
-    cross_hyb_filter = CrossHybridizationFilter(policy, blast_filter, tmp_path)
-    res = cross_hyb_filter.apply(sequence_type, oligo_database_crosshyb, 2)
-
-    filtered_oligos = {
-        key: {key_2 for key_2 in list(res.database[key].keys())} for key in list(res.database.keys())
-    }
-    assert (
-        expected_oligos_degree == filtered_oligos
-    ), f"The cross-hybridization filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos_degree}\n\nGot:\n{filtered_oligos}"
-
-
-def test_crosshyb_filter_bowtie_bigger_region_policy(tmp_path, oligo_database_crosshyb):
-    bowtie_filter = BowtieFilter(bowtie_search_parameters_crosshyb, dir_output=tmp_path)
-    policy = RemoveByLargerRegionPolicy()
-
-    sequence_type = "oligo"
-
-    cross_hyb_filter = CrossHybridizationFilter(policy, bowtie_filter, tmp_path)
-    res = cross_hyb_filter.apply(sequence_type, oligo_database_crosshyb, 2)
-
-    filtered_oligos = {
-        key: {key_2 for key_2 in list(res.database[key].keys())} for key in list(res.database.keys())
-    }
-    assert (
-        expected_oligos_bigger_region == filtered_oligos
-    ), f"The cross-hybridization filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos_bigger_region}\n\nGot:\n{filtered_oligos}"
-
-
-def test_crosshyb_filter_bowtie_degree_policy(tmp_path, oligo_database_crosshyb):
-    bowtie_filter = BowtieFilter(bowtie_search_parameters_crosshyb, dir_output=tmp_path)
-    policy = RemoveByDegreePolicy()
-
-    sequence_type = "oligo"
-
-    cross_hyb_filter = CrossHybridizationFilter(policy, bowtie_filter, tmp_path)
-    res = cross_hyb_filter.apply(sequence_type, oligo_database_crosshyb, 2)
-
-    filtered_oligos = {
-        key: {key_2 for key_2 in list(res.database[key].keys())} for key in list(res.database.keys())
-    }
-    assert (
-        expected_oligos_degree == filtered_oligos
-    ), f"The cross-hybridization filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos_degree}\n\nGot:\n{filtered_oligos}"
+FILE_DATABASE_OLIGOS_MATCH = "data/tests/databases/database_oligos_match.tsv"
+FILE_DATABASE_OLIGOS_NOMATCH = "data/tests/databases/database_oligos_nomatch.tsv"
+FILE_DATABASE_REFERENCE = "data/tests/databases/database_reference.fna"
+FILE_DATABASE_OLIGOS_LIGATION_MATCH = (
+    "data/tests/databases/database_oligos_ligation_match.tsv"
+)
+FILE_DATABASE_OLIGOS_LIGATION_NOMATCH = (
+    "data/tests/databases/database_oligos_ligation_nomatch.tsv"
+)
+
+FILE_DATABASE_REFERENCE_LIGATION = (
+    "data/tests/databases/database_reference_ligation.fna"
+)
+
+FILE_DATABASE_OLIGOS_CROSSHYB = (
+    "data/tests/databases/database_oligos_crosshybridization.tsv"
+)
+
+
+class FilterTestBase:
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), self.setup_tmp_path())
+        os.makedirs(self.tmp_path, exist_ok=True)
+        self.filter = self.setup_filter()
+        self._setup_databases(
+            database_file_match=FILE_DATABASE_OLIGOS_MATCH,
+            database_file_nomatch=FILE_DATABASE_OLIGOS_NOMATCH,
+            database_reference=FILE_DATABASE_REFERENCE,
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
+
+    @abstractmethod
+    def setup_tmp_path(self):
+        pass
+
+    @abstractmethod
+    def setup_filter(self):
+        pass
+
+    def _setup_databases(
+        self, database_file_match, database_file_nomatch, database_reference
+    ):
+        self.oligo_database_match = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=os.path.join(self.tmp_path, "oligo_database_match"),
+        )
+        self.oligo_database_match.load_database(database_file_match)
+
+        self.oligo_database_nomatch = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=os.path.join(self.tmp_path, "oligo_database_nomatch"),
+        )
+        self.oligo_database_nomatch.load_database(database_file_nomatch)
+
+        self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
+
+        self.reference_database.load_sequences_from_fasta(
+            file_fasta=database_reference, database_overwrite=True
+        )
+
+    def test_filter_match(self):
+        sequence_type = "target"
+
+        res = self.filter.apply(
+            sequence_type, self.oligo_database_match, 2, self.reference_database
+        )
+
+        assert (
+            "WASH7P::1" not in res.database["WASH7P"].keys()
+        ), "A matching oligo has not been filtered!"
+
+    def test_filter_nomatch(self):
+        sequence_type = "target"
+        res = self.filter.apply(
+            sequence_type, self.oligo_database_nomatch, 2, self.reference_database
+        )
+
+        assert (
+            "AGRN::1" in res.database["AGRN"].keys()
+        ), "A non matching oligo has been filtered by Blast!"
+
+
+class TestBlastFilter(FilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        blast_search_parameters = {
+            "perc_identity": 80,
+            "strand": "plus",
+            "word_size": 10,
+        }
+        blast_hit_parameters = {"coverage": 50}
+
+        return BlastNFilter(
+            blast_search_parameters, blast_hit_parameters, dir_output=self.tmp_path
+        )
+
+    def setup_tmp_path(self):
+        return "tmp_blast_outputs"
+
+
+class TestBowtieFilter(FilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        bowtie_search_parameters = {"-n": 3, "-l": 5}
+
+        return BowtieFilter(bowtie_search_parameters, dir_output=self.tmp_path)
+
+    def setup_tmp_path(self):
+        return "__tmp_bowtie_outputs"
+
+
+class TestBowtie2Filter(FilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        bowtie2_search_parameters = {"-N": 0}
+
+        return Bowtie2Filter(bowtie2_search_parameters, dir_output=self.tmp_path)
+
+    def setup_tmp_path(self):
+        return "tmp_bowtie2_outputs"
+
+
+class TestBlastNSeedregionLigationsiteFilter(FilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        blast_search_parameters = {
+            "perc_identity": 80,
+            "strand": "plus",
+            "word_size": 10,
+        }
+        blast_hit_parameters = {"coverage": 50}
+        seedregion_size = 10
+
+        return BlastNSeedregionLigationsiteFilter(
+            seedregion_size,
+            blast_search_parameters,
+            blast_hit_parameters,
+            dir_output=self.tmp_path,
+        )
+
+    def setup_tmp_path(self):
+        return "tests/tmp_blast_ligation_outputs"
+
+    def setUp(self):
+        super().setUp()
+        self._setup_databases(
+            database_file_match=FILE_DATABASE_OLIGOS_LIGATION_MATCH,
+            database_file_nomatch=FILE_DATABASE_OLIGOS_LIGATION_NOMATCH,
+            database_reference=FILE_DATABASE_REFERENCE_LIGATION,
+        )
+
+
+class TestCrossHybridizationFilter(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_crosshybridization_outputs")
+        os.makedirs(self.tmp_path, exist_ok=True)
+        self.oligo_database_crosshyb = self._setup_database()
+        self.sequence_type = "oligo"
+
+        # Blast parameters
+        self.blast_search_parameters_crosshyb = {
+            "perc_identity": 80,
+            "strand": "minus",
+            "word_size": 10,
+        }
+        self.blast_hit_parameters_crosshyb = {"coverage": 50}
+
+        # Bowtie parameters
+        self.bowtie_search_parameters_crosshyb = {"-n": 3, "-l": 5, "--nofw": ""}
+
+        self.expected_oligos_larger_region = {
+            "region_1": {
+                "region_1::oligo_7",
+                "region_1::oligo_5",
+                "region_1::oligo_6",
+                "region_1::oligo_8",
+                "region_1::oligo_4",
+            },
+            "region_2": {
+                "region_2::oligo_3",
+                "region_2::oligo_2",
+                "region_2::oligo_6",
+                "region_2::oligo_5",
+                "region_2::oligo_4",
+            },
+            "region_3": {
+                "region_3::oligo_1",
+                "region_3::oligo_4",
+                "region_3::oligo_3",
+                "region_3::oligo_2",
+                "region_3::oligo_5",
+            },
+        }
+
+        self.expected_oligos_degree = {
+            "region_1": {
+                "region_1::oligo_1",
+                "region_1::oligo_4",
+                "region_1::oligo_5",
+                "region_1::oligo_6",
+                "region_1::oligo_7",
+            },
+            "region_2": {
+                "region_2::oligo_1",
+                "region_2::oligo_2",
+                "region_2::oligo_3",
+                "region_2::oligo_4",
+                "region_2::oligo_5",
+                "region_2::oligo_6",
+                "region_2::oligo_7",
+            },
+            "region_3": {
+                "region_3::oligo_2",
+                "region_3::oligo_3",
+                "region_3::oligo_4",
+                "region_3::oligo_5",
+            },
+        }
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
+
+    def _setup_database(self):
+        oligos = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=os.path.join(self.tmp_path, "oligo_database"),
+        )
+        oligos.load_database(FILE_DATABASE_OLIGOS_CROSSHYB)
+        return oligos
+
+    def _apply_filter_and_assert(self, filter_instance, expected_oligos):
+        res = filter_instance.apply(self.sequence_type, self.oligo_database_crosshyb, 2)
+        filtered_oligos = {
+            key: {key_2 for key_2 in list(res.database[key].keys())}
+            for key in list(res.database.keys())
+        }
+        self.assertEqual(
+            expected_oligos,
+            filtered_oligos,
+            f"The cross-hybridization filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{filtered_oligos}",
+        )
+
+    def test_crosshyb_filter_blast_larger_region_policy(self):
+        filter_instance = BlastNFilter(
+            self.blast_search_parameters_crosshyb,
+            self.blast_hit_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "blast_larger_region"),
+        )
+        policy = RemoveByLargerRegionPolicy()
+        cross_hyb_filter = CrossHybridizationFilter(
+            policy, filter_instance, self.tmp_path
+        )
+        self._apply_filter_and_assert(
+            cross_hyb_filter, self.expected_oligos_larger_region
+        )
+
+    def test_crosshyb_filter_blast_degree_policy(self):
+        filter_instance = BlastNFilter(
+            self.blast_search_parameters_crosshyb,
+            self.blast_hit_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "blast_degree"),
+        )
+        policy = RemoveByDegreePolicy()
+        cross_hyb_filter = CrossHybridizationFilter(
+            policy, filter_instance, self.tmp_path
+        )
+        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)
+
+    def test_crosshyb_filter_bowtie_larger_region_policy(self):
+        filter_instance = BowtieFilter(
+            self.bowtie_search_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "bowtie_larger_region"),
+        )
+        policy = RemoveByLargerRegionPolicy()
+        cross_hyb_filter = CrossHybridizationFilter(
+            policy, filter_instance, self.tmp_path
+        )
+        self._apply_filter_and_assert(
+            cross_hyb_filter, self.expected_oligos_larger_region
+        )
+
+    def test_crosshyb_filter_bowtie_degree_policy(self):
+        filter_instance = BowtieFilter(
+            self.bowtie_search_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "bowtie_degree"),
+        )
+        policy = RemoveByDegreePolicy()
+        cross_hyb_filter = CrossHybridizationFilter(
+            policy, filter_instance, self.tmp_path
+        )
+        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)
