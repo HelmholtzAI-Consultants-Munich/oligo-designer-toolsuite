@@ -15,18 +15,17 @@ from pathlib import Path
 
 from Bio import SeqIO
 
+from .._constants import (
+    SEPARATOR_FASTA_HEADER_FIELDS,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
+)
 from ..utils._sequence_parser import GffParser
 from ..utils._sequence_processor import (
     get_complement_regions,
     get_sequence_from_annotation,
 )
 from ._ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI
-
-from .._constants import (
-    SEPARATOR_FASTA_HEADER_FIELDS,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
-)
 
 ############################################
 # Genomic Region Generator Classes
@@ -114,7 +113,7 @@ class CustomGenomicRegionGenerator:
         self.gff_parser.check_gff_format(self.annotation_file)
         self.gff_parser.parse_annotation_from_gff(
             annotation_file=self.annotation_file,
-            file_pickel=self.parsed_annotation_file,
+            file_pickle=self.parsed_annotation_file,
         )
 
         # columns required for bed12 split sequence format
@@ -366,8 +365,8 @@ class CustomGenomicRegionGenerator:
             + annotation["transcript_id"].astype("str")
             + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
             + annotation["exon_number"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}number_transcripts="
-            + annotation["count"].astype("str")
+            + ",number_transcripts="
+            + annotation["transcript_count"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
 
@@ -877,8 +876,8 @@ class CustomGenomicRegionGenerator:
             + annotation["transcript_id"].astype("str")
             + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
             + annotation["exon_number"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}number_transcripts="
-            + annotation["count"].astype("str")
+            + ",number_transcripts="
+            + annotation["transcript_count"].astype("str")
         )
         # generate regions -> taken from exon junction regions
         annotation["region"] = annotation["region_junction"]
@@ -919,7 +918,7 @@ class CustomGenomicRegionGenerator:
         :rtype: pd.DataFrame
         """
         # read annotation file and store in dataframe
-        annotation = self.gff_parser.load_annotation_from_pickel(self.parsed_annotation_file)
+        annotation = self.gff_parser.load_annotation_from_pickle(self.parsed_annotation_file)
 
         # required to ensure that sorting is done correctly
         annotation.start = annotation.start.astype("int")
@@ -1078,15 +1077,19 @@ class CustomGenomicRegionGenerator:
         """Get the number of transcripts associated with each gene.
 
         This function loads the annotation, extracts transcripts, and counts the number of transcripts
-        for each gene. The result is a Pandas Series with gene IDs as the index and corresponding
-        transcript counts as values.
+        for each gene. It returns a DataFrame with 'gene_id' as the first column and 'transcript_count'
+        as the second column, where 'gene_id' contains unique gene IDs and 'transcript_count' contains
+        the corresponding number of transcripts for each gene.
 
-        :return: Number of transcripts per gene.
-        :rtype: pandas.Series
+        :return: DataFrame with each gene ID and its associated transcript count.
+        :rtype: pandas.DataFrame
         """
         annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "transcript")
         number_transcripts = annotation["gene_id"].value_counts()
+
+        number_transcripts = number_transcripts.reset_index()
+        number_transcripts.columns = ["gene_id", "transcript_count"]
 
         return number_transcripts
 

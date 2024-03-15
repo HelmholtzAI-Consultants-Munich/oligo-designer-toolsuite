@@ -20,7 +20,7 @@ Module contents
    SeedRegionCreationStandard
    SeedRegionCreationPercentage
    LigationRegionCreation
-   
+
    {% for name in oligo_designer_toolsuite.oligo_specificity_filter.classes %}
      {{ name }}
    {% endfor %}

@@ -2,11 +2,10 @@
 # imports
 ############################################
 
-from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq
 
+from ..utils._checkers import get_TmNN
 from . import PropertyFilterBase
-from ..utils._utils import get_TmNN
 
 ############################################
 # Padlock Filter Classes

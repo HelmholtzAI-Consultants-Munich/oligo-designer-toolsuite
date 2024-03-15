@@ -10,8 +10,8 @@ from typing import Union
 import yaml
 from Bio import SeqIO
 
+from ..utils._checkers import check_if_list
 from ..utils._sequence_parser import FastaParser
-from ..utils._utils import check_if_list
 
 ############################################
 # Reference Database Class
@@ -71,7 +71,7 @@ class ReferenceDatabase:
         else:
             raise ValueError("Metadat has icorrect format!")
 
-    def load_sequences_fom_fasta(self, file_fasta: str, database_overwrite: bool = False) -> None:
+    def load_sequences_from_fasta(self, file_fasta: str, database_overwrite: bool = False) -> None:
         """Load sequences from a FASTA file into the ReferenceDatabase object.
 
         This function reads sequences from a FASTA file and adds them to the ReferenceDatabase object.

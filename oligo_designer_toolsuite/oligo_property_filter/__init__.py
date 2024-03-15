@@ -21,17 +21,17 @@ Classes:
 from ._filter_base import PropertyFilterBase
 from ._filter_experiment_specific import PadlockArmsFilter
 from ._filter_experiment_unspecific import (
-    SoftMaskedSequenceFilter,
-    HardMaskedSequenceFilter,
-    ProhibitedSequenceFilter,
-    HomopolymericRunsFilter,
-    ThreePrimeSequenceFilter,
     FivePrimeSequenceFilter,
-    GCContentFilter,
     GCClampFilter,
-    MeltingTemperatureNNFilter,
+    GCContentFilter,
+    HardMaskedSequenceFilter,
     HomodimerFilter,
+    HomopolymericRunsFilter,
+    MeltingTemperatureNNFilter,
+    ProhibitedSequenceFilter,
     SecondaryStructureFilter,
+    SoftMaskedSequenceFilter,
+    ThreePrimeSequenceFilter,
 )
 from ._property_filter import PropertyFilter
 

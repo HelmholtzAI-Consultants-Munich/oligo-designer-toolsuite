@@ -2,13 +2,13 @@
 # imports
 ############################################
 
+from typing import get_args
+
 from joblib import Parallel, delayed
 
-from typing import get_args
 from .._constants import _TYPES_SEQ
-
-from . import PropertyFilterBase
 from ..database import OligoDatabase
+from . import PropertyFilterBase
 
 ############################################
 # Property Filter Class

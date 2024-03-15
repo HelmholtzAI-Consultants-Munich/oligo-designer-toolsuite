@@ -193,9 +193,17 @@ class BaseOligoDesigner:
         regions: list,
         oligo_length_min: int,
         oligo_length_max: int,
-        genomic_regions: list[Literal[
-            "gene", "intergenic", "exon", "intron", "cds", "utr", "exon_exon_junction",
-        ]],
+        genomic_regions: list[
+            Literal[
+                "gene",
+                "intergenic",
+                "exon",
+                "intron",
+                "cds",
+                "utr",
+                "exon_exon_junction",
+            ]
+        ],
         isoform_consensus: Literal["intersection", "union"] = "union",
         min_oligos_per_region: int = 0,
         n_jobs: int = 1,
@@ -212,7 +220,7 @@ class BaseOligoDesigner:
                 "Annotation and Sequenec file needed to create a Transcriptome. Please use 'load_annotations()' function to provide missing files."
             )
         # length of exon_junction_size is oligo_length - 1 to continue where exons annotation ends
-        #TODO: add the new functionalities
+        # TODO: add the new functionalities
         fasta_files = []
         for genomic_region in genomic_regions:
             if genomic_region == "gene":
@@ -228,16 +236,16 @@ class BaseOligoDesigner:
             elif genomic_region == "utr":
                 fasta_files.append(self.region_generator.get_sequence_utr())
             elif genomic_region == "exon_exon_junction":
-                fasta_files.append(self.region_generator.get_sequence_exon_exon_junction(
-                    block_size=oligo_length_max - 1 # TODO: check the minus 1
-                ))
+                fasta_files.append(
+                    self.region_generator.get_sequence_exon_exon_junction(
+                        block_size=oligo_length_max - 1  # TODO: check the minus 1
+                    )
+                )
             else:
                 raise Exception(f"Region generator: {genomic_region} is not implemented yet.")
-            
-        if isoform_consensus == "intersection": # TODO: what does it mean??
-            raise Exception(
-                f"Isoform consensus: {isoform_consensus} not implemented yet."
-            )
+
+        if isoform_consensus == "intersection":  # TODO: what does it mean??
+            raise Exception(f"Isoform consensus: {isoform_consensus} not implemented yet.")
 
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -262,7 +270,7 @@ class BaseOligoDesigner:
             sequence_type="oligo",
             region_ids=regions,
         )
-    
+
         ##### loggig database information #####
         if self.write_removed_genes:
             logging.info(
@@ -276,9 +284,7 @@ class BaseOligoDesigner:
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(
-                filename_out="oligo_database_initial.txt"
-            )
+            file_database = oligo_database.save_database(filename_out="oligo_database_initial.txt")
         else:
             file_database = ""
 

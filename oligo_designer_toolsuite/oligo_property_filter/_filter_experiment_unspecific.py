@@ -3,13 +3,11 @@
 ############################################
 from typing import List, Union
 
-from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq, gc_fraction
 from seqfold import dg
 
+from ..utils._checkers import check_if_dna_sequence, get_TmNN
 from . import PropertyFilterBase
-from ..utils._utils import check_if_dna_sequence, get_TmNN
-
 
 ############################################
 # Oligo Property Filter Classes

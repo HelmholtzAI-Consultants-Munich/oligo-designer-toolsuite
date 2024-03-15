@@ -17,8 +17,7 @@ Functions for processing sequences:
 
 """
 
-from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
-from ._sequence_design import (
+from ..pipelines._sequence_design import (
     SCRINSHOT_or_ISS_backbone_sequence,
     convert_complementary_seq_to_arms,
     create_seqfish_plus_barcodes,
@@ -27,9 +26,15 @@ from ._sequence_design import (
     generate_random_sequence,
     get_barcode,
 )
+from ._checkers import (
+    check_if_dna_sequence,
+    check_if_key_exists,
+    check_if_list,
+    check_tsv_format,
+)
+from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
 from ._sequence_parser import FastaParser, GffParser
 from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
-from ._utils import check_if_dna_sequence, check_if_key_exists, check_if_list, check_tsv_format
 
 __all__ = [
     "FastaParser",

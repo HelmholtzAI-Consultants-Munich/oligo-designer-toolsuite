@@ -43,9 +43,7 @@ class SeqFISHProbeDesigner:
         self.config_file = config_file
         with open(config_file, "r") as yaml_file:
             self.config = yaml.safe_load(yaml_file)
-        self.dir_output = os.path.join(
-            os.path.dirname(os.getcwd()), self.config["dir_output"]
-        )
+        self.dir_output = os.path.join(os.path.dirname(os.getcwd()), self.config["dir_output"])
 
     def create_probes(self):
         """ "
@@ -77,11 +75,9 @@ class SeqFISHProbeDesigner:
                 dir_output=self.dir_output,
             )
         logging.info(f"Create file_transcriptome")
-        self.file_transcriptome = (
-            self.region_generator.generate_transcript_reduced_representation(
-                include_exon_junctions=True,
-                exon_junction_size=2 * self.config["oligo_length_max"],
-            )
+        self.file_transcriptome = self.region_generator.generate_transcript_reduced_representation(
+            include_exon_junctions=True,
+            exon_junction_size=2 * self.config["oligo_length_max"],
         )
         logging.info(f"Initialisation is finished")
         # CREATE OLIGO DATABASE
@@ -114,9 +110,7 @@ class SeqFISHProbeDesigner:
 
         # WRITE INTERMIDIATE RESULTS
         if self.config["write_intermediate_steps"]:
-            file_database = self.oligo_database.write_database(
-                filename="oligo_database_initial.txt"
-            )
+            file_database = self.oligo_database.write_database(filename="oligo_database_initial.txt")
 
         # PROPERTY FILTERS
         # Filters: MaskedSequences, GCContent, Prohibited Sequences
@@ -138,9 +132,7 @@ class SeqFISHProbeDesigner:
             pipeline_step="after applying property filters"
         )
         if self.config["write_intermediate_steps"]:
-            file_database = self.oligo_database.write_database(
-                filename="oligo_database_property_filter.txt"
-            )
+            file_database = self.oligo_database.write_database(filename="oligo_database_property_filter.txt")
 
         logging.info(f"Property filters applied")
 
@@ -189,9 +181,7 @@ class SeqFISHProbeDesigner:
         # READOUT PROBES GENERATOR
         # Readout probes are created, returned as a dictionary self.readout_probes and also stored in the file
         # inside self.dir_output
-        readouts_generator = SeqFISHReadoutProbeDesigner(
-            self.config, blastn, self.reference, self.dir_output
-        )
+        readouts_generator = SeqFISHReadoutProbeDesigner(self.config, blastn, self.reference, self.dir_output)
         self.readout_probes = readouts_generator.create_readout_probes()
         logging.info(f"Readout probes are created")
 
@@ -202,9 +192,7 @@ class SeqFISHProbeDesigner:
             self.config["num_pseudocolors"], list(self.oligo_database.database.keys())
         )
         barcodes_for_genes = barcodes_creator.create_barcodes()
-        output_file_barcodes = os.path.join(
-            self.dir_output, "barcodes_for_each_gene.txt"
-        )
+        output_file_barcodes = os.path.join(self.dir_output, "barcodes_for_each_gene.txt")
         f = open(output_file_barcodes, "w")
         for i in barcodes_for_genes.keys():
             S = "["

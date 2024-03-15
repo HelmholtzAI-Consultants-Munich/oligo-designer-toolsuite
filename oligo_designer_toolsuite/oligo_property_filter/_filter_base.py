@@ -18,7 +18,6 @@ class PropertyFilterBase(ABC):
 
     def __init__(self) -> None:
         """Constructor for the PropertyFilterBase class."""
-        pass
 
     @abstractmethod
     def apply(self, sequence: str):

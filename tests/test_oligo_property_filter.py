@@ -6,11 +6,13 @@
 from Bio.Seq import Seq
 from Bio.SeqUtils import MeltingTemp as mt
 
+from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
     FivePrimeSequenceFilter,
     GCClampFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
+    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PadlockArmsFilter,
@@ -20,6 +22,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
     ThreePrimeSequenceFilter,
 )
+from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
 # Global Parameters
@@ -133,9 +136,7 @@ def test_sequence_content_filters():
     ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [ProhibitedSequenceFilter]"
     print(feature)
 
-    prohibited_sequence_filter2 = ProhibitedSequenceFilter(
-        prohibited_sequence=["ACT", "CCGC"]
-    )
+    prohibited_sequence_filter2 = ProhibitedSequenceFilter(prohibited_sequence=["ACT", "CCGC"])
 
     seq_remove = Seq("GGGGGGGGGGGGGGACT")
     res, _ = prohibited_sequence_filter2.apply(seq_remove)
@@ -160,20 +161,14 @@ def test_sequence_content_filters():
 
     seq_remove = Seq("GGGGGGGGGGGGGGAAAAA")
     res, _ = homopolymeric_run_filter.apply(seq_remove)
-    assert (
-        res == False
-    ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted!"
+    assert res == False, f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted!"
 
     seq_keep = Seq("GGGGGGGGGGGGGGAAA")
     res, feature = homopolymeric_run_filter.apply(seq_keep)
-    assert (
-        res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
+    assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
     print(feature)
 
-    three_prime_filter = ThreePrimeSequenceFilter(
-        three_prime_sequence="TT", remove=False
-    )
+    three_prime_filter = ThreePrimeSequenceFilter(three_prime_sequence="TT", remove=False)
 
     seq_remove = Seq("GGGGGGGGGGGGGGAAAAA")
     res, _ = three_prime_filter.apply(seq_remove)
@@ -302,9 +297,7 @@ def test_sequence_structure_filters():
 
     seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
     res, feature = homodimer_filer.apply(seq_keep)
-    assert (
-        res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
+    assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
     print(feature)
 
 
@@ -370,6 +363,26 @@ def test_property_filter():
 
     seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
     res, _ = property_filter._filter_sequence(seq_keep)
-    assert (
-        res == True
-    ), f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"
+    assert res == True, f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"
+
+    # check if apply function for property filter works
+    oligo_sequence_generator = OligoSequenceGenerator()
+
+    file_fasta_random_seqs1 = oligo_sequence_generator.create_sequences_random(
+        filename_out="random_sequences1",
+        length_sequences=30,
+        num_sequences=100,
+        name_sequences="random_sequences1",
+        base_alphabet_with_probability={"A": 0.1, "C": 0.3, "G": 0.4, "T": 0.2},
+    )
+
+    oligos = OligoDatabase(min_oligos_per_region=2, write_regions_with_insufficient_oligos=True)
+
+    oligos.load_sequences_from_fasta(
+        file_fasta_in=file_fasta_random_seqs1,
+        sequence_type="oligo",
+        region_ids=["random_sequences1"],
+        database_overwrite=True,
+    )
+
+    property_filter.apply(sequence_type="oligo", oligo_database=oligos, n_jobs=2)

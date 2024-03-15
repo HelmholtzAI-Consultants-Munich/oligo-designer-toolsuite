@@ -7,6 +7,7 @@ import math
 import os
 import pickle
 import re
+import warnings
 
 import pandas as pd
 from Bio import SeqIO
@@ -72,7 +73,7 @@ class GffParser:
     def parse_annotation_from_gff(
         self,
         annotation_file: str,
-        file_pickel: str = None,
+        file_pickle: str = None,
         chunk_size: int = 10000,
         target_lines: int = math.inf,
     ):
@@ -83,13 +84,13 @@ class GffParser:
 
         :param annotation_file: The path to the GFF file to be parsed.
         :type annotation_file: str
-        :param file_pickel: Optional. The path to save the pickled DataFrame. If None, the DataFrame is returned.
-        :type file_pickel: Optional[str]
+        :param file_pickle: Optional. The path to save the pickled DataFrame. If None, the DataFrame is returned.
+        :type file_pickle: Optional[str]
         :param chunk_size: The number of lines to process in each chunk.
         :type chunk_size: int
         :param target_lines: The maximum number of lines to read from the GFF file.
         :type target_lines: int
-        :return: The parsed annotation data as a DataFrame or the path to the pickled DataFrame if 'file_pickel' is provided.
+        :return: The parsed annotation data as a DataFrame or the path to the pickled DataFrame if 'file_pickle' is provided.
         :rtype: Union[pd.DataFrame, str]
         """
         csv_file, extra_info_file = self._split_annotation(
@@ -107,14 +108,14 @@ class GffParser:
         os.remove(csv_file)
         os.remove(extra_info_file)
 
-        if file_pickel:
-            with open(file_pickel, "wb") as handle:
+        if file_pickle:
+            with open(file_pickle, "wb") as handle:
                 pickle.dump(dataframe, handle)
-            return file_pickel
+            return file_pickle
         else:
             return dataframe
 
-    def load_annotation_from_pickel(self, file_pickel: str):
+    def load_annotation_from_pickle(self, file_pickel: str):
         """
         Load annotation data from a pickled DataFrame.
 
@@ -300,10 +301,10 @@ class FastaParser:
         if os.path.exists(file):
             if not _check_fasta_content(file):
                 raise ValueError("Fasta file has incorrect format!")
+            else:
+                return True
         else:
             raise ValueError("Fasta file does not exist!")
-
-        return True
 
     def is_coordinate(self, entry: str):
         """Check if the provided entry matches a specific coordinate pattern.
@@ -361,6 +362,17 @@ class FastaParser:
                     region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
                     if region in region_ids:
                         fasta_sequences.append(entry)
+            # check if some regions were not found
+            if len(fasta_sequences) < len(region_ids):
+                missing_regions = set(region_ids) - set(
+                    [
+                        self.parse_fasta_header(entry.id, parse_additional_info=False)[0]
+                        for entry in fasta_sequences
+                    ]
+                )
+                # issue a warning if some regions were not found
+                warnings.warn(f"Regions {missing_regions} were not found in the input FASTA file.")
+
         else:
             with open(file_fasta_in, "r") as handle:
                 fasta_sequences = list(SeqIO.parse(handle, "fasta"))

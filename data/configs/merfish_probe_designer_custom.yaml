@@ -105,7 +105,7 @@ primers_blast_setup:
   #blast1 against human transcriptome
   blast1_word_size: 14 #word size for the blastn seed (exact match to target)
   #blast 2 against 3′ end of any other primer
-  blast2_word_size: 11 
+  blast2_word_size: 11
   #blast3 against 3′ end of the T7 promoter
   blast3_word_size: 5
 
@@ -123,7 +123,7 @@ targeting_sequences_setup:
 probe_setup:
   blast1_word_size: 14 #back_ground_DB: #rRNAs or tRNAs
   blast2_word_size: 17 #back_ground_DB: #highly expressed genes
-  file_highly_expressed_genes: #text file containing highly expressed genes 
+  file_highly_expressed_genes: #text file containing highly expressed genes
 
 ### Parameters for Melting Temperature
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
@@ -136,14 +136,14 @@ Tm_parameters_probe:
   tmm_table: DNA_TMM1
   imm_table: DNA_IMM1
   de_table: DNA_DE1
-  dnac1: 50 #[nM]   
+  dnac1: 50 #[nM]
   dnac2: 0
   selfcomp: False
   dNTPs: 0
   saltcorr: 7
   Na: 1000 #[mM] #1M from probeArray paper
-  K: 0 #[mM] 
-  Tris: 0 #[mM] 
+  K: 0 #[mM]
+  Tris: 0 #[mM]
   Mg: 0 #[mM]
 
 Tm_correction_parameters:
@@ -161,4 +161,3 @@ Tm_chem_correction_param:
   fmdmethod: 1
   GC: null
   fmd: 20
-

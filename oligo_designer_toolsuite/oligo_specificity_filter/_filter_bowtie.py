@@ -4,16 +4,15 @@
 
 import os
 import subprocess
+from pathlib import Path
+from typing import List, Union
+
 import pandas as pd
 
-from pathlib import Path
-from typing import List, Union, get_args
-
-from . import AlignmentSpecificityFilter
-from ..database import OligoDatabase
-from ..utils._utils import check_if_list
-
 from .._constants import _TYPES_SEQ
+from ..database import OligoDatabase
+from ..utils._checkers import check_if_list
+from . import AlignmentSpecificityFilter
 
 ############################################
 # Oligo Bowtie Filter Classes
@@ -74,7 +73,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
-        """Creates a Bowtie index for the reference database if it doesn't already exist. The index facilitates
+        """Creates a Bowtie index for the reference database. The index facilitates
         fast alignment searches against the reference.
 
         :param file_reference: Path to the reference database file.
@@ -88,18 +87,16 @@ class BowtieFilter(AlignmentSpecificityFilter):
         file_reference = os.path.abspath(file_reference)
         filename_reference_index = os.path.basename(file_reference)
 
-        # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.ebwt" file
-        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.ebwt")):
-            cmd = (
-                "bowtie-build --quiet --offrate 4"
-                + " --threads "
-                + str(n_jobs)
-                + " -f "
-                + file_reference
-                + " "
-                + filename_reference_index
-            )
-            process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        cmd = (
+            "bowtie-build --quiet --offrate 4"
+            + " --threads "
+            + str(n_jobs)
+            + " -f "
+            + file_reference
+            + " "
+            + filename_reference_index
+        )
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
 
         return filename_reference_index
 
@@ -107,7 +104,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        filename_reference_index: str,
+        file_index: str,
         region_ids: Union[str, List[str]] = None,
     ):
         """Performs a Bowtie search of oligonucleotide sequences against a reference database using a previously
@@ -117,8 +114,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :type sequence_type: _TYPES_SEQ
         :param oligo_database: The database of oligonucleotides to search.
         :type oligo_database: OligoDatabase
-        :param filename_reference_index: The filename of the reference database index for Bowtie search.
-        :type filename_reference_index: str
+        :param file_index: The filename of the reference database index for Bowtie search.
+        :type file_index: str
         :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the Bowtie search results.
@@ -144,7 +141,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         cmd = (
             "bowtie --quiet"
             + " -x "
-            + filename_reference_index
+            + file_index
             + " -f"  # fast file is input
             + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
             + cmd_parameters
@@ -157,7 +154,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         # read the reuslts of the bowtie search
         bowtie_results = self._read_search_output(
-            file_search_results=file_bowtie_results, names_search_output=self.names_search_output
+            file_search_results=file_bowtie_results,
+            names_search_output=self.names_search_output,
         )
 
         # remove temporary files
@@ -169,7 +167,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
     def _find_hits(
         self,
-        oligo_database: OligoDatabase,
+        oligo_database: OligoDatabase,  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
     ):
@@ -257,7 +255,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
-        """Creates a Bowtie2 index for the reference database if it doesn't already exist. The index facilitates
+        """Creates a Bowtie2 index for the reference database. The index facilitates
         fast alignment searches against the reference.
 
         :param file_reference: Path to the reference database file.
@@ -272,17 +270,16 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         filename_reference_index = os.path.basename(file_reference)
 
         # Check if bowtie database exists -> check for any of the bowtie index files, e.g. ".1.bt2" file
-        if not os.path.exists(os.path.join(self.dir_bowtie, filename_reference_index + ".1.bt2")):
-            cmd = (
-                "bowtie2-build --quiet --offrate 4"
-                + " --threads "
-                + str(n_jobs)
-                + " -f "
-                + file_reference
-                + " "
-                + filename_reference_index
-            )
-            process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        cmd = (
+            "bowtie2-build --quiet --offrate 4"
+            + " --threads "
+            + str(n_jobs)
+            + " -f "
+            + file_reference
+            + " "
+            + filename_reference_index
+        )
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
 
         return filename_reference_index
 
@@ -290,7 +287,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        filename_reference_index: str,
+        file_index: str,
         region_ids: Union[str, List[str]] = None,
     ):
         """Performs a Bowtie2 search of oligonucleotide sequences against a reference database using a previously
@@ -300,8 +297,8 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         :type sequence_type: _TYPES_SEQ
         :param oligo_database: The database of oligonucleotides to search.
         :type oligo_database: OligoDatabase
-        :param filename_reference_index: The filename of the reference database index for Bowtie2 search.
-        :type filename_reference_index: str
+        :param file_index: The filename of the reference database index for Bowtie2 search.
+        :type file_index: str
         :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the Bowtie2 search results.
@@ -328,7 +325,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             "bowtie2 --quiet"
             + " --no-hd --no-unal"
             + " -x "
-            + filename_reference_index
+            + file_index
             + " -f"  # fast file is input
             + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
             + cmd_parameters
@@ -355,7 +352,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
     def _find_hits(
         self,
-        oligo_database: OligoDatabase,
+        oligo_database: OligoDatabase,  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
     ):

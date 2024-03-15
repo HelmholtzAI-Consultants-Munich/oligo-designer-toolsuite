@@ -19,12 +19,8 @@ from oligo_designer_toolsuite.oligo_selection import (
 # Global Parameters
 ############################################
 
-annotation_file_ncbi = (
-    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-)
-sequence_file_ncbi = (
-    "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-)
+annotation_file_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+sequence_file_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 
 ############################################
 # Tests
@@ -36,10 +32,9 @@ def oligos_database(tmpdir_factory):
     base_temp = tmpdir_factory.getbasetemp()
     metadata = {"species": "human", "annotation_release": "110"}
     database = OligoDatabase(
-        metadata=metadata,
-        n_jobs=2,
         dir_output=base_temp,
     )
+    database.load_metadata(metadata=metadata)
     database.load_database("tests/data/oligo_selection/oligos_info.tsv")
 
     yield database
@@ -81,9 +76,7 @@ def padlock_scoring():
 
 # check we obtain the same result
 def test_oligosets_generation(oligoset_generator, oligos_database):
-    oligos_database = oligoset_generator.apply(
-        oligo_database=oligos_database, n_sets=100, n_jobs=1
-    )
+    oligos_database = oligoset_generator.apply(oligo_database=oligos_database, n_sets=100, n_jobs=1)
     for gene in oligos_database.oligosets.keys():
         computed_sets = oligos_database.oligosets[gene]
         computed_sets.drop(columns=["oligoset_id"], inplace=True)
@@ -101,9 +94,7 @@ def test_oligosets_generation(oligoset_generator, oligos_database):
         pd.set_option("display.max_columns", 500)
         print(true_sets)
         print(computed_sets)
-        assert true_sets.equals(
-            computed_sets
-        ), f"Sets for {gene} are not computed correctly!"
+        assert true_sets.equals(computed_sets), f"Sets for {gene} are not computed correctly!"
 
 
 # check the overlapping matrix is created correctly with 2 oligos given in input
@@ -114,9 +105,7 @@ def test_nonoverlapping_matrix_ovelapping_oligos(oligoset_generator):
         "A_1": {"start": [20, 53], "end": [25, 58]},
     }
     computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
-    true_matrix = pd.DataFrame(
-        data=[[0, 0], [0, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"]
-    )
+    true_matrix = pd.DataFrame(data=[[0, 0], [0, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"])
     assert true_matrix.equals(
         computed_matrix
     ), "overlapping matrix for two overlapping oligos wrongly computed"
@@ -129,9 +118,7 @@ def test_nonoverlapping_matrix_for_nonovelapping_oligos(oligoset_generator):
         "A_1": {"start": [20, 35], "end": [25, 40]},
     }
     computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
-    true_matrix = pd.DataFrame(
-        data=[[0, 1], [1, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"]
-    )
+    true_matrix = pd.DataFrame(data=[[0, 1], [1, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"])
     assert true_matrix.equals(
         computed_matrix
     ), "overlapping matrix for two non-overlapping oligos wrongly computed"

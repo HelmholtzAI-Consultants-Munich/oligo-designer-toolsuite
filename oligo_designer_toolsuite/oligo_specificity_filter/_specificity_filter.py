@@ -3,10 +3,10 @@
 ############################################
 
 from typing import get_args
-from .._constants import _TYPES_SEQ
 
-from . import SpecificityFilterBase
+from .._constants import _TYPES_SEQ
 from ..database import OligoDatabase, ReferenceDatabase
+from . import SpecificityFilterBase
 
 ############################################
 # Specificity Filter Classe

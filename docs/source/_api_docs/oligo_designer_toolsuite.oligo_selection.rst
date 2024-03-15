@@ -10,7 +10,7 @@ Module contents
 .. autosummary::
 
    OligosetGenerator
-   
+
    {% for name in oligo_designer_toolsuite.oligo_selection.classes %}
      {{ name }}
    {% endfor %}
