@@ -69,7 +69,8 @@ class ExactMatchFilter(SpecificityFilterBase):
 
         for region_id, oligos_with_hits_region in zip(region_ids, oligos_with_hits):
             database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region_id], oligos_with_hits=oligos_with_hits_region
+                database_region=oligo_database.database[region_id],
+                oligos_with_hits=oligos_with_hits_region,
             )
             oligo_database.database[region_id] = database_region_filtered
 
@@ -188,7 +189,8 @@ class ExactMatchFilter(SpecificityFilterBase):
                 hit_dict[oligo_id] = hits
 
         table_hits = pd.DataFrame(
-            [(key, value) for key, value in hit_dict.items()], columns=["query", "reference"]
+            [(key, value) for key, value in hit_dict.items()],
+            columns=["query", "reference"],
         )
         table_hits = table_hits.explode("reference", ignore_index=True)
 

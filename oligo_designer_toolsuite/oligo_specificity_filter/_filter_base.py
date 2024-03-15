@@ -177,7 +177,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
                 sequence_type=sequence_type,
                 region_id=region_id,
                 oligo_database=oligo_database,
-                filename_reference_index=filename_reference_index,
+                file_index=filename_reference_index,
                 consider_hits_from_input_region=True,
             )
             for region_id in region_ids
@@ -189,6 +189,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         table_hits = pd.concat(table_hits, ignore_index=True)
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+        print(oligo_pair_hits)
 
         return oligo_pair_hits
 

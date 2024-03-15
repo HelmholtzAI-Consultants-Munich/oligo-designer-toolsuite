@@ -39,6 +39,9 @@ class TestExactMatchFilter(unittest.TestCase):
         )
         self.oligo_database.load_database(FILE_DATABASE_OLIGOS_EXACT_MATCH)
 
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
+
     def test_exact_match_filter(self):
         sequence_type = "oligo"
 
@@ -297,18 +300,6 @@ class TestCrossHybridizationFilter(unittest.TestCase):
             self.bowtie_search_parameters_crosshyb,
             dir_output=os.path.join(self.tmp_path, "bowtie_degree"),
         )
-        policy = RemoveByDegreePolicy()
-        cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
-        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)
-
-    def crosshyb_filter_exact_match_large_region_policy(self):
-        filter_instance = ExactMatchFilter()
-        policy = RemoveByLargerRegionPolicy()
-        cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
-        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_larger_region)
-
-    def crosshyb_filter_exact_match_degree_policy(self):
-        filter_instance = ExactMatchFilter()
         policy = RemoveByDegreePolicy()
         cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
         self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)

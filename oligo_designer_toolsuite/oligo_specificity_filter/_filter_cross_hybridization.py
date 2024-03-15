@@ -55,10 +55,7 @@ class CrossHybridizationPolicy(ABC):
         :return: A dictionary mapping each region to its count of oligonucleotides.
         :rtype: dict
         """
-        return {
-            region: len(oligo_database.database[region])
-            for region in oligo_database.database.keys()
-        }
+        return {region: len(oligo_database.database[region]) for region in oligo_database.database.keys()}
 
 
 class RemoveByLargerRegionPolicy(CrossHybridizationPolicy):
@@ -71,9 +68,7 @@ class RemoveByLargerRegionPolicy(CrossHybridizationPolicy):
     def __init__(self):
         """Constructor for the RemoveByLargerRegionPolicy class."""
 
-    def apply(
-        self, graph: nx.Graph, oligo_database: OligoDatabase
-    ) -> dict[str, list[str]]:
+    def apply(self, graph: nx.Graph, oligo_database: OligoDatabase) -> dict[str, list[str]]:
         """Applies the policy to an oligo database, removing oligos to minimize cross-hybridization based on the number of oligos associated with the region.
 
         :param graph: A graph where nodes represent oligos and edges indicate potential cross-hybridization.
@@ -83,9 +78,7 @@ class RemoveByLargerRegionPolicy(CrossHybridizationPolicy):
         :return: A dictionary mapping each region to a list of oligos removed under this policy.
         :rtype: dict[str, list[str]]
         """
-        number_oligos_per_region = self._get_number_oligos_per_region(
-            oligo_database=oligo_database
-        )
+        number_oligos_per_region = self._get_number_oligos_per_region(oligo_database=oligo_database)
         removed_oligos = {region: [] for region in oligo_database.database.keys()}
 
         while graph.number_of_edges() > 0:
@@ -112,9 +105,7 @@ class RemoveByDegreePolicy(CrossHybridizationPolicy):
     def __init__(self):
         """Constructor for the RemoveByDegreePolicy class."""
 
-    def apply(
-        self, graph: nx.Graph, oligo_database: OligoDatabase
-    ) -> dict[str, list[str]]:
+    def apply(self, graph: nx.Graph, oligo_database: OligoDatabase) -> dict[str, list[str]]:
         """Applies the policy to an oligo database, prioritizing the removal of oligos with the highest node degree of in the cross-hybridization graph.
 
         :param graph: A graph where nodes represent oligos and edges indicate potential cross-hybridization.
@@ -131,14 +122,12 @@ class RemoveByDegreePolicy(CrossHybridizationPolicy):
             if degrees:
                 max_degree_node = max(degrees, key=degrees.get)
                 graph.remove_node(max_degree_node)
-                removed_oligos[self._oligo_to_region(oligo=max_degree_node)].append(
-                    max_degree_node
-                )
+                removed_oligos[self._oligo_to_region(oligo=max_degree_node)].append(max_degree_node)
         return removed_oligos
 
 
 ############################################
-# Oligo Crosshybridization Filter Classe
+# Oligo Crosshybridization Filter Class
 ############################################
 
 
@@ -197,9 +186,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
             reference_database=reference_database,
             n_jobs=n_jobs,
         )
-        oligos_with_hits = self.policy.apply(
-            graph=cross_hybridization_graph, oligo_database=database
-        )
+        oligos_with_hits = self.policy.apply(graph=cross_hybridization_graph, oligo_database=database)
 
         for region in regions:
             database_region_filtered = self._filter_hits_from_database(
@@ -209,9 +196,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
             database.database[region] = database_region_filtered
         return database
 
-    def _create_reference_database(
-        self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase
-    ):
+    def _create_reference_database(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase):
         """Creates a reference database from the given oligo database. This involves writing the oligo database to a FASTA file and loading it into a new ReferenceDatabase instance, including metadata.
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
@@ -228,9 +213,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         )
         reference_database = ReferenceDatabase(dir_output=self.dir_cross_hybridization)
         reference_database.load_metadata(metadata=oligo_database.metadata)
-        reference_database.load_sequences_from_fasta(
-            file_fasta=file_reference, database_overwrite=True
-        )
+        reference_database.load_sequences_from_fasta(file_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)
 
