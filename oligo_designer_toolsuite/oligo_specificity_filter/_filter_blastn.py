@@ -45,6 +45,9 @@ class BlastNFilter(AlignmentSpecificityFilter):
     - perc_identity: Percent identity cutoff. Default: 0
     All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
 
+    The hits returned by BLASTN can be further filtered using machine learning models. For more information regarding which filters are available 
+    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
+
     :param blast_search_parameters: Custom parameters for the BLAST search command.
     :type blast_search_parameters: dict
     :param blast_hit_parameters: Criteria to consider a BLAST hit significant for filtering.

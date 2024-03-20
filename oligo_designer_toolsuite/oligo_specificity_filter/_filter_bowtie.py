@@ -46,6 +46,9 @@ class BowtieFilter(AlignmentSpecificityFilter):
     -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. bowtie is faster for larger values of -l.
     All available Bowtie search parameters are listed on the Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie).
 
+    The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available 
+    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
+
     :param bowtie_search_parameters: Custom parameters for the Bowtie search command.
     :type bowtie_search_parameters: dict
     :param dir_output: Base directory for saving output files and Bowtie databases. Defaults to "output".
@@ -288,6 +291,9 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     -L <int>: Sets the length of the seed substrings to align during multiseed alignment. Smaller values make alignment slower but more sensitive. Default: the --sensitive preset is used by default, which sets -L to 22 and 20 in --end-to-end mode and in --local mode.
     All available Bowtie2 search parameters are listed on the Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2).
 
+    The hits returned by Bowtie2 can be further filtered using machine learning models. For more information regarding which filters are available 
+    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters
+    
     :param bowtie_search_parameters: Custom parameters for the Bowtie2 search command.
     :type bowtie_search_parameters: dict
     :param dir_output: Base directory for saving output files and Bowtie2 databases. Defaults to "output".
