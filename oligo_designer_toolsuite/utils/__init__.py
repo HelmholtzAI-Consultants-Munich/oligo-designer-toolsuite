@@ -15,26 +15,25 @@ Functions for processing sequences:
 - get_sequence_from_annotation: Retrieves sequences based on genomic coordinates from a BED file.
 - get_complement_regions: Computes complement regions for a given set of genomic regions.
 
+Functions for checking formats:
+- check_if_dna_sequence: Verifies a sequence consists only of valid DNA nucleotides (A, C, T, G), case-insensitively.
+- check_if_key_exists: Recursively searches a nested dictionary to find if a specific key exists.
+- check_if_list: Ensures the input is a list, converting it to one if necessary.
+- check_tsv_format: Checks a TSV file for content, verifying it's not empty.
+
 """
 
-from ..pipelines._sequence_design import (
-    SCRINSHOT_or_ISS_backbone_sequence,
-    convert_complementary_seq_to_arms,
-    create_seqfish_plus_barcodes,
-    generate_binary_sequences,
-    generate_codebook,
-    generate_random_sequence,
-    get_barcode,
-)
+from ._sequence_parser import FastaParser, GffParser
+from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
+from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
+
 from ._checkers import (
     check_if_dna_sequence,
     check_if_key_exists,
     check_if_list,
     check_tsv_format,
 )
-from ._database_processor import collapse_info_for_duplicated_sequences, merge_databases
-from ._sequence_parser import FastaParser, GffParser
-from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
+
 
 __all__ = [
     "FastaParser",
@@ -47,11 +46,4 @@ __all__ = [
     "check_if_key_exists",
     "check_if_list",
     "check_tsv_format",
-    "generate_random_sequence",
-    "generate_binary_sequences",
-    "generate_codebook",
-    "get_barcode",
-    "SCRINSHOT_or_ISS_backbone_sequence",
-    "convert_complementary_seq_to_arms",
-    "create_seqfish_plus_barcodes",
 ]
