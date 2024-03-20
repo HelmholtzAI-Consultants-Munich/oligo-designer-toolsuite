@@ -211,18 +211,18 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         return search_results
 
-    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region: str):
+    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
         """
         Retrieve the references sequences from the search results.
 
         :param table_hits: DataFrame with the oligos that match the blast search.
         :type table_hits: pd.DataFrame
-        :param file_reference: _description_
+        :param file_reference: Path to the fasta file used as reference for the search.
         :type file_reference: str
-        :param region: _description_
-        :type region: str
-        :return: _description_
-        :rtype: _type_
+        :param region_id: The identifier for the region within the database to filter.
+        :type region_id: str
+        :return: Reference sequences
+        :rtype: list
         """
 
         required_fields = [
@@ -239,12 +239,14 @@ class BowtieFilter(AlignmentSpecificityFilter):
         table_hits["reference_end"] = table_hits.apply(lambda x: x["reference_start"] + len(x["query_sequence"]), axis=1)
         table_hits["score"] = 0
         bed = table_hits[["reference", "reference_start", "reference_end", "query", "score", "strand"]]
-        file_bed = os.path.join(self.dir_output, f"references_{region}.bed")
+        file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
         bed.to_csv(file_bed, sep='\t', index=False, header=False)
 
-        references_fasta_file = os.path.join(self.dir_output, f"references_{region}.fasta")
+        references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
         get_sequence_from_annotation(file_bed, file_reference,  references_fasta_file, strand=True, nameOnly=True)
         references = [off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")]
+        os.remove(references_fasta_file)
+        os.remove(file_bed)
         return references
     
 
@@ -258,16 +260,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :type database_region: dict
         """
 
-        def add_gaps(seq, gaps):
-            for i, gap in enumerate(gaps):
-                seq = seq[:gap+i] + '-' + seq[gap+i:] 
-            return seq
-
-        table_hits["query_gaps"] = table_hits["query_sequence"].apply(lambda x: np.where(np.array(list(x)) == '-')[0]) + table_hits["query_start"]
-        table_hits["reference_gaps"] = table_hits["reference_sequence"].apply(lambda x: np.where(np.array(list(x)) == '-')[0]) + table_hits["query_start"]
-        gapped_queries = [add_gaps(query, gaps) for query, gaps in zip(queries, table_hits["query_gaps"])]
-        gapped_references = [add_gaps(reference, gaps) for reference, gaps in zip(references, table_hits["reference_gaps"])]
-        return gapped_queries, gapped_references
+        # bowtie does not support gaps
+        return queries, references
         
 
 

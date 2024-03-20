@@ -2,6 +2,10 @@ import os
 import shutil
 import unittest
 from abc import abstractmethod
+import numpy as np
+import pandas as pd
+
+from Bio.Seq import Seq
 
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
@@ -14,6 +18,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
 )
+from odt_ai_filters.api import APIBase
 
 # Global Parameters
 FILE_DATABASE_OLIGOS_EXACT_MATCH = "data/tests/databases/database_oligos_exactmatch.tsv"
@@ -27,6 +32,9 @@ FILE_DATABASE_REFERENCE_LIGATION = "data/tests/databases/database_reference_liga
 
 FILE_DATABASE_OLIGOS_CROSSHYB = "data/tests/databases/database_oligos_crosshybridization.tsv"
 
+FILE_DATABASE_OLIGOS_AI = "data/tests/databases/database_oligos_ai.tsv"
+FILE_TABLE_HITS_BLAST_AI = "data/tests/table_hits/table_hits_blast_ai.tsv"
+FILE_TABLE_HITS_BOWTIE_AI = "data/tests/table_hits/table_hits_bowtie_ai.tsv"
 
 class TestExactMatchFilter(unittest.TestCase):
     def setUp(self):
@@ -303,3 +311,264 @@ class TestCrossHybridizationFilter(unittest.TestCase):
         policy = RemoveByDegreePolicy()
         cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
         self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)
+
+class DummyAPI(APIBase):
+    # Class that considers real hits all the hits that have a 100% match
+    def predict(self, queries,gapped_queries,references,gapped_references):
+        predictions = np.ndarray(shape=(len(queries),), dtype=np.float32)
+        for i, (q, r) in enumerate(zip(gapped_queries, gapped_references)):
+            if q == r:
+                predictions[i] = 1
+            else:
+                predictions[i] = 0
+        return predictions
+
+
+class TestAIFiltersBalstn(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_exact_match_outputs")
+        self.filter = BlastNFilter(dir_output=self.tmp_path)
+        self.filter.ai_filter_api = DummyAPI()
+        self.filter.ai_filter_threshold = 0.1
+        self.database = OligoDatabase(dir_output=self.tmp_path)
+        self.database.load_database(FILE_DATABASE_OLIGOS_AI)
+        reference_database = ReferenceDatabase(dir_output=self.tmp_path)
+        reference_database.load_sequences_from_fasta(file_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True)
+        self.file_reference = reference_database.write_database_to_fasta(filename="reference")
+        self.table_hits = pd.read_csv(FILE_TABLE_HITS_BLAST_AI, sep="\t")
+        self.sequence_type = "target"
+        self.region_id = "region"
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+    
+    def test_ai_filter_blastn(self):
+        filtered_table_hits = self.filter._ai_filter_hits(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            file_reference=self.file_reference,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        returned_oligos = set(filtered_table_hits["query"])
+        expected_oligos = set(["region::0", "region::1"])
+        
+        assert returned_oligos == expected_oligos, f"The Blast ai filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{returned_oligos}"
+
+    def test_get_queries(self):
+        returned_queries = self.filter._get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        returned_queries = set(returned_queries)
+        expected_queries = set([
+            Seq('GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT'), 
+            Seq('AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC'), 
+            Seq('TACAGGCATGACCCACCATGCCTGGCCAACTTACATTTTT'),
+            Seq('AAAAATGTAAGTTGGCCAGGCATGGTGGGTCATGCCTGTA'),
+            Seq('AAGGCCAAGGTCTCTGGGGGGCTGGACAAGCCGCCCTCAT'), 
+            Seq('ATGAGGGCGGCTTGTCCAGCCCCCCAGAGACCTTGGCCTT'), 
+            Seq('TTTTGCACCAGCCCAGATCGCATCTTCTTTCACCTGTTTT'), 
+            Seq('AAAACAGGTGAAAGAAGATGCGATCTGGGCTGGTGCAAAA'), 
+            Seq('CCGCTCGGCTGCATGAAACCAAAACGGCTGTCCGGGGACA'), 
+            Seq('TGTCCCCGGACAGCCGTTTTGGTTTCATGCAGCCGAGCGG'), 
+            Seq('AACCCGGCATCACCAAGAGGAGGTTCAAGGGAACGCTGCA'), 
+            Seq('TGCAGCGTTCCCTTGAACCTCCTCTTGGTGATGCCGGGTT'), 
+            Seq('TGCCCGCGCCGGAGTTCTCCCCAGCCGGAGTCCGGCAGGG'), 
+            Seq('CCCTGCCGGACTCCGGCTGGGGAGAACTCCGGCGCGGGCA'), 
+            Seq('AACCTGGTTGCACCTCGGCCTGGTCCCAGCAGGTATGGTT'), 
+            Seq('AACCATACCTGCTGGGACCAGGCCGAGGTGCAACCAGGTT'), 
+            Seq('ACTGATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC'), 
+            Seq('GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAATCAGT'), 
+            Seq('TATATATTTTGCACACTTTAAAATATTGGGTTGTTTACCG'), 
+            Seq('CGGTAAACAACCCAATATTTTAAAGTGTGCAAAATATATA'),
+        ])
+        assert returned_queries == expected_queries, f"The Blast ai filter didn't return the expected queries. \n\nExpected:\n{expected_queries}\n\nGot:\n{returned_queries}"
+
+    def test_get_target_blastn(self):
+        returned_references = self.filter._get_references(
+            table_hits=self.table_hits, 
+            file_reference=self.file_reference, 
+            region_id=self.region_id
+        )
+        returned_references = set(returned_references)
+        expected_references = set([
+            Seq('GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT'), 
+            Seq('AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC'), 
+            Seq('TACAGGCATGAGCCACCATGCCTGGCCAACTCACATTTTT'),
+            Seq('AAAAATGTGAGTTGGCCAGGCATGGTGGCTCATGCCTGTA'),
+            Seq('AAGGCCGGGGTCTCTGGGGGGCTGGAGAAGCCTCCCTCAT'), 
+            Seq('ATGAGGGAGGCTTCTCCAGCCCCCCAGAGACCCCGGCCTT'), 
+            Seq('AGCAGCACCAGCCCAGATCGCATCTTCTTTCACCTGAACG'), 
+            Seq('CGTTCAGGTGAAAGAAGATGCGATCTGGGCTGGTGCTGCT'), 
+            Seq('CCGCTACCGGCTGCATGACAACCAAAACGGCTGGTCCGGGGACA'), 
+            Seq('TGTCCCCGGACCAGCCGTTTTGGTTGTCATGCAGCCGGTAGCGG'), 
+            Seq('AACCCCATCACCAAGAGGAGGTTCAGGGAAGCTGCA'), 
+            Seq('TGCAGCTTCCCTGAACCTCCTCTTGGTGATGGGGTT'), 
+            Seq('TGCCCGCGCCGGAGTTCTCCCCGGAGCCGGAGTCCGGCAGGG'), 
+            Seq('CCCTGCCGGACTCCGGCTCCGGGGAGAACTCCGGCGCGGGCA'), 
+            Seq('TCCCTGGGCACCTCGGCCTGGTCCCAGCAGGTATGGGC'), 
+            Seq('GCCCATACCTGCTGGGACCAGGCCGAGGTGCCCAGGGA'), 
+            Seq('----ATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC'), 
+            Seq('GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAAT----'), 
+            Seq('TATATATTTTGCACACTTTAAAATATTGGGTTGTTT----'), 
+            Seq('----AAACAACCCAATATTTTAAAGTGTGCAAAATATATA'),
+        ])
+        assert returned_references == expected_references, f"The Blast ai filter didn't return the expected references. \n\nExpected:\n{expected_references}\n\nGot:\n{returned_references}"
+
+
+    def test_add_alignment_gaps_queries(self):
+        queries = self.filter._get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        references = self.filter._get_references(
+            table_hits=self.table_hits, 
+            file_reference=self.file_reference, 
+            region_id=self.region_id
+        )
+        gapped_queries, _ = self.filter._add_alignement_gaps(
+            table_hits=self.table_hits,
+            queries=queries,
+            references=references,
+        )
+        gapped_queries = set(gapped_queries)
+        expected_gapped_queries = set([
+            Seq('GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT'), 
+            Seq('AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC'), 
+            Seq('TACAGGCATGACCCACCATGCCTGGCCAACTTACATTTTT'),
+            Seq('AAAAATGTAAGTTGGCCAGGCATGGTGGGTCATGCCTGTA'),
+            Seq('AAGGCCAAGGTCTCTGGGGGGCTGGACAAGCCGCCCTCAT'), 
+            Seq('ATGAGGGCGGCTTGTCCAGCCCCCCAGAGACCTTGGCCTT'), 
+            Seq('TTTTGCACCAGCCCAGATCGCATCTTCTTTCACCTGTTTT'), 
+            Seq('AAAACAGGTGAAAGAAGATGCGATCTGGGCTGGTGCAAAA'), 
+            Seq('CCGCT--CGGCTGCATGA-AACCAAAACGGCTG-TCCGGGGACA'), 
+            Seq('TGTCCCCGGA-CAGCCGTTTTGGTT-TCATGCAGCCG--AGCGG'), 
+            Seq('AACCCGGCATCACCAAGAGGAGGTTCAAGGGAACGCTGCA'), 
+            Seq('TGCAGCGTTCCCTTGAACCTCCTCTTGGTGATGCCGGGTT'), 
+            Seq('TGCCCGCGCCGGAGTTCTCCCC--AGCCGGAGTCCGGCAGGG'), 
+            Seq('CCCTGCCGGACTCCGGCT--GGGGAGAACTCCGGCGCGGGCA'), 
+            Seq('AACCTGGTTGCACCTCGGCCTGGTCCCAGCAGGTATGGTT'), 
+            Seq('AACCATACCTGCTGGGACCAGGCCGAGGTGCAACCAGGTT'), 
+            Seq('ACTGATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC'), 
+            Seq('GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAATCAGT'), 
+            Seq('TATATATTTTGCACACTTTAAAATATTGGGTTGTTTACCG'), 
+            Seq('CGGTAAACAACCCAATATTTTAAAGTGTGCAAAATATATA'),
+        ])
+        assert gapped_queries == expected_gapped_queries, f"The Blast ai filter didn't return the expected gapped queries. \n\nExpected:\n{expected_gapped_queries}\n\nGot:\n{gapped_queries}"
+
+
+    def test_add_alignment_gaps_references(self):
+        queries = self.filter._get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        references = self.filter._get_references(
+            table_hits=self.table_hits, 
+            file_reference=self.file_reference, 
+            region_id=self.region_id
+        )
+        _, gapped_references = self.filter._add_alignement_gaps(
+            table_hits=self.table_hits,
+            queries=queries,
+            references=references,
+        )
+        gapped_references = set(gapped_references)
+        expected_gapped_references = set([
+            Seq('GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT'), 
+            Seq('AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC'), 
+            Seq('TACAGGCATGAGCCACCATGCCTGGCCAACTCACATTTTT'),
+            Seq('AAAAATGTGAGTTGGCCAGGCATGGTGGCTCATGCCTGTA'),
+            Seq('AAGGCCGGGGTCTCTGGGGGGCTGGAGAAGCCTCCCTCAT'), 
+            Seq('ATGAGGGAGGCTTCTCCAGCCCCCCAGAGACCCCGGCCTT'), 
+            Seq('AGCAGCACCAGCCCAGATCGCATCTTCTTTCACCTGAACG'), 
+            Seq('CGTTCAGGTGAAAGAAGATGCGATCTGGGCTGGTGCTGCT'), 
+            Seq('CCGCTACCGGCTGCATGACAACCAAAACGGCTGGTCCGGGGACA'), 
+            Seq('TGTCCCCGGACCAGCCGTTTTGGTTGTCATGCAGCCGGTAGCGG'), 
+            Seq('AACCC--CATCACCAAGAGGAGGTTCA-GGGAA-GCTGCA'), 
+            Seq('TGCAGC-TTCCC-TGAACCTCCTCTTGGTGATG--GGGTT'), 
+            Seq('TGCCCGCGCCGGAGTTCTCCCCGGAGCCGGAGTCCGGCAGGG'), 
+            Seq('CCCTGCCGGACTCCGGCTCCGGGGAGAACTCCGGCGCGGGCA'), 
+            Seq('TCCCTGG--GCACCTCGGCCTGGTCCCAGCAGGTATGGGC'), 
+            Seq('GCCCATACCTGCTGGGACCAGGCCGAGGTGC--CCAGGGA'), 
+            Seq('----ATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC'), 
+            Seq('GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAAT----'), 
+            Seq('TATATATTTTGCACACTTTAAAATATTGGGTTGTTT----'), 
+            Seq('----AAACAACCCAATATTTTAAAGTGTGCAAAATATATA'),
+        ])
+        assert gapped_references == expected_gapped_references, f"The Blast ai filter didn't return the expected gapped references. \n\nExpected:\n{expected_gapped_references}\n\nGot:\n{gapped_references}"
+
+
+
+class TestAIFiltersBowtie(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_exact_match_outputs")
+        self.filter = BowtieFilter(dir_output=self.tmp_path)
+        self.filter.ai_filter_api = DummyAPI()
+        self.filter.ai_filter_threshold = 0.1
+        self.database = OligoDatabase(dir_output=self.tmp_path)
+        self.database.load_database(FILE_DATABASE_OLIGOS_AI)
+        reference_database = ReferenceDatabase(dir_output=self.tmp_path)
+        reference_database.load_sequences_from_fasta(file_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True)
+        self.file_reference = reference_database.write_database_to_fasta(filename="reference")
+        self.table_hits = pd.read_csv(FILE_TABLE_HITS_BOWTIE_AI, sep="\t")
+        self.sequence_type = "target"
+        self.region_id = "region"
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+    
+
+    def test_ai_filter_bowtie(self):
+        filtered_table_hits = self.filter._ai_filter_hits(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            file_reference=self.file_reference,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        returned_oligos = set(filtered_table_hits["query"])
+        expected_oligos = set(["region::0", "region::1"])
+        
+        assert returned_oligos == expected_oligos, f"The Bowtie ai filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{returned_oligos}"
+
+
+    def test_get_queries(self):
+        returned_queries = self.filter._get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        returned_queries = set(returned_queries)
+        expected_queries = set([
+            Seq('GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT'), 
+            Seq('AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC'), 
+            Seq('TACAGGCATGACCCACCATGCCTGGCCAACTTACATTTTT'),
+            Seq('AAAAATGTAAGTTGGCCAGGCATGGTGGGTCATGCCTGTA'),
+        ])
+        assert returned_queries == expected_queries, f"The Bowtie ai filter didn't return the expected queries. \n\nExpected:\n{expected_queries}\n\nGot:\n{returned_queries}"
+
+
+
+    def test_get_target_bowtie(self):
+        returned_references = self.filter._get_references(
+            table_hits=self.table_hits, 
+            file_reference=self.file_reference, 
+            region_id=self.region_id
+        )
+        returned_references = set(returned_references)
+        expected_references = set([
+            Seq('GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT'), 
+            Seq('AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC'), 
+            Seq('TACAGGCATGAGCCACCATGCCTGGCCAACTCACATTTTT'),
+            Seq('AAAAATGTGAGTTGGCCAGGCATGGTGGCTCATGCCTGTA'),
+        ])
+        assert returned_references == expected_references, f"The Bowtie ai filter didn't return the expected references. \n\nExpected:\n{expected_references}\n\nGot:\n{returned_references}"
+

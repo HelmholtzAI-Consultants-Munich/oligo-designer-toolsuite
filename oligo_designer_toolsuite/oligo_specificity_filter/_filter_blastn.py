@@ -225,19 +225,19 @@ class BlastNFilter(AlignmentSpecificityFilter):
         return blast_table_hits
 
     def _get_references(
-        self, table_hits: pd.DataFrame, file_reference: str, region: str
+        self, table_hits: pd.DataFrame, file_reference: str, region_id: str
     ):
         """
         Retrieve the references sequences from the search results.
 
         :param table_hits: Dataframe containing the search results.
         :type searchtable_hits_results: pd.DataFrame
-        :param file_reference: _description_
+        :param file_reference: Path to the fasta file used as reference for the search.
         :type file_reference: str
-        :param region: _description_
-        :type region: str
-        :return: _description_
-        :rtype: _type_
+        :param region_id: The identifier for the region within the database to filter.
+        :type region_id: str
+        :return: Reference sequences
+        :rtype: list
         """
         required_fields = [
             "query",
@@ -259,11 +259,11 @@ class BlastNFilter(AlignmentSpecificityFilter):
         
         # set the positions to a 0-based index
         references_plus = table_hits[table_hits["reference_strand"] == "plus"]
-        references_plus["query_start"] = references_plus["query_start"] - 1
-        references_plus["reference_start"] = references_plus["reference_start"] - 1
+        references_plus.loc[:, "query_start"] = references_plus["query_start"] - 1
+        references_plus.loc[:, "reference_start"] = references_plus["reference_start"] - 1
         references_minus = table_hits[table_hits["reference_strand"] == "minus"]
-        references_minus["query_start"] = references_minus["query_start"] - 1
-        references_minus["reference_end"] = references_minus["reference_end"] - 1
+        references_minus.loc[:, "query_start"] = references_minus["query_start"] - 1
+        references_minus.loc[:, "reference_end"] = references_minus["reference_end"] - 1
         table_hits = pd.concat([references_plus, references_minus])
         table_hits.sort_index(inplace=True)  # restore the intial indexes
 
@@ -313,7 +313,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             axis=1,
         )
         bed.sort_index(inplace=True)
-        file_bed = os.path.join(self.dir_output, f"references_{region}.bed")
+        file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
         bed.to_csv(
             file_bed,
             sep="\t",
@@ -324,7 +324,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         # generate the fasta file
         references_fasta_file = os.path.join(
-            self.dir_output, f"references_{region}.fasta"
+            self.dir_output, f"references_{region_id}.fasta"
         )
         get_sequence_from_annotation(
             file_bed, file_reference, references_fasta_file, strand=True, nameOnly=True
@@ -334,16 +334,24 @@ class BlastNFilter(AlignmentSpecificityFilter):
             off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")
         ]
         references_padded = []
-        for reference, overflow_start, overflow_end in zip(
-            references, bed["overflow_start"], bed["overflow_end"]
+        for reference, overflow_start, overflow_end, strand in zip(
+            references, bed["overflow_start"], bed["overflow_end"], bed["strand"]
         ):
             if overflow_start != 0:
-                # add padding in front
-                reference = "-" * overflow_start + reference
+                # add padding in front if on pls strand, at the end if on the minus strand
+                if strand == "+":
+                    reference = "-" * overflow_start + reference
+                elif strand == "-":
+                    reference = reference + "-" * overflow_start
             if overflow_end != 0:
-                # add padding at the end
-                reference = reference + "-" * overflow_end
+                # add padding at the end if on the plus strand, at the beggining if on the minus strand
+                if strand == "+":
+                    reference = reference + "-" * overflow_end
+                if strand == "-":
+                    reference = "-" * overflow_end + reference
             references_padded.append(reference)
+        os.remove(references_fasta_file)
+        os.remove(file_bed)
         return references_padded
 
     def _add_alignement_gaps(
@@ -360,21 +368,22 @@ class BlastNFilter(AlignmentSpecificityFilter):
         """
 
         def add_gaps(seq, gaps):
-            for i, gap in enumerate(gaps):
-                seq = seq[: gap + i] + "-" + seq[gap + i :]
+            for gap in gaps:
+                seq = seq[: gap] + "-" + seq[gap :]
+                print(seq)
             return seq
 
         table_hits["query_gaps"] = (
             table_hits["query_sequence"].apply(
                 lambda x: np.where(np.array(list(x)) == "-")[0]
             )
-            + table_hits["query_start"]
+            + table_hits["query_start"] - 1 # blastn has 1-based indices
         )
         table_hits["reference_gaps"] = (
             table_hits["reference_sequence"].apply(
                 lambda x: np.where(np.array(list(x)) == "-")[0]
             )
-            + table_hits["query_start"]
+            + table_hits["query_start"] - 1
         )
         gapped_queries = [
             add_gaps(query, gaps)

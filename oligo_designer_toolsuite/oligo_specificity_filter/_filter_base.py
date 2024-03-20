@@ -85,11 +85,6 @@ class SpecificityFilterBase(ABC):
             if oligo_id in oligos_with_hits:
                 del database_region[oligo_id]
         return database_region
-    
-    def __del__(self):
-        """Destructor for the SpecificityFilterBase class."""
-        # delete output directory
-        print("The destructor was called.")
 
 
 class AlignmentSpecificityFilter(SpecificityFilterBase):
@@ -183,11 +178,11 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         # delete the temporary files 
         os.remove(file_reference)
         file_index_basename = os.path.basename(file_index)
-        file_index_dir = os.path.dirname(file_index)
         regex = re.compile(file_index_basename + "\..*")
-        for file in os.listdir(file_index_dir):
-            if regex.match(file):
-                os.remove(os.path.join(file_index_dir, file))
+        for root, _,files in os.walk(self.dir_output):
+            for file in files:
+                if regex.match(file):
+                    os.remove(os.path.join(root, file))
 
         for region_id, table_hits_region in zip(region_ids, table_hits):
             oligos_with_hits_region = table_hits_region["query"].unique()
@@ -239,11 +234,18 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
                 region_id=region_id,
                 oligo_database=oligo_database,
                 file_index=file_index,
+                file_reference=file_reference,
                 consider_hits_from_input_region=True,
             )
             for region_id in region_ids
         )
         os.remove(file_reference)
+        file_index_basename = os.path.basename(file_index)
+        regex = re.compile(file_index_basename + "\..*")
+        for root, _,files in os.walk(self.dir_output):
+            for file in files:
+                if regex.match(file):
+                    os.remove(os.path.join(root, file))
 
         table_hits = pd.concat(table_hits, ignore_index=True)
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
@@ -418,7 +420,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         # align the references and queries by adding gaps
         gapped_queries, gapped_references = self._add_alignement_gaps(
-            search_results=table_hits, queries=queries, references=references
+            table_hits=table_hits, queries=queries, references=references
         )
 
         # predict the scores for each hit
@@ -444,7 +446,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         return table_hits
     
     def _get_queries(self, sequence_type, table_hits: pd.DataFrame, oligo_database: OligoDatabase, region_id: str)->List[Seq.Seq]:
-        """Abstract method to retrieve the reference sequences from the search results.
+        """Abstract method to retrieve the queries sequences from the search results.
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
@@ -454,8 +456,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type oligo_database: OligoDatabase
         :param region_id: The identifier for the region within the database to filter.
         :type region_id: str
-        :return: _description_
-        :rtype: lis
+        :return: Queries sequences.
+        :rtype: list
         """
         queries = [
             oligo_database.database[region_id][query_id][sequence_type]
