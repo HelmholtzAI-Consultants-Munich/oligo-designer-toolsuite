@@ -7,12 +7,20 @@ import subprocess
 from pathlib import Path
 from typing import List, Union
 
+from Bio.Seq import Seq
 import pandas as pd
+import numpy as np
 
-from .._constants import _TYPES_SEQ
+from pathlib import Path
+from typing import List, Union, get_args
+from Bio import SeqIO
+from Bio.SeqUtils import gc_fraction
+
+from . import AlignmentSpecificityFilter
 from ..database import OligoDatabase
 from ..utils._checkers import check_if_list
-from . import AlignmentSpecificityFilter
+from ..utils import get_sequence_from_annotation
+from .._constants import _TYPES_SEQ
 
 ############################################
 # Oligo Bowtie Filter Classes
@@ -38,12 +46,21 @@ class BowtieFilter(AlignmentSpecificityFilter):
     -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. bowtie is faster for larger values of -l.
     All available Bowtie search parameters are listed on the Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie).
 
+    The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available 
+    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
+
     :param bowtie_search_parameters: Custom parameters for the Bowtie search command.
     :type bowtie_search_parameters: dict
     :param dir_output: Base directory for saving output files and Bowtie databases. Defaults to "output".
     :type dir_output: str
     :param names_search_output: Column names for parsing Bowtie search output.
     :type names_search_output: list
+    :param ai_filter: The machine learning model used to filter the oligos {None, 'hybridization_probability'}, defaults to None
+    :type ai_filter: str, optional
+    :param ai_filter_thershold: The threshold below which the oligos are filtered, defaults to None
+    :type ai_filter_thershold: float, optional
+    :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
+    :type ai_filter_path: str, optional
     """
 
     def __init__(
@@ -61,9 +78,12 @@ class BowtieFilter(AlignmentSpecificityFilter):
             "num_instances",
             "mismatch_positions",
         ],
+        ai_filter: str = None,
+        ai_filter_threshold: float = None,
+        ai_filter_path: str = None,
     ):
         """Constructor for the BowtieFilter class."""
-        super().__init__(dir_output)
+        super().__init__(dir_output, ai_filter, ai_filter_threshold, ai_filter_path)
 
         self.bowtie_search_parameters = bowtie_search_parameters
         # self.bowtie_hit_parameters = bowtie_hit_parameters
@@ -132,7 +152,9 @@ class BowtieFilter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie_results_{region_name}.txt")
+        file_bowtie_results = os.path.join(
+            self.dir_bowtie, f"bowtie_results_{region_name}.txt"
+        )
 
         cmd_parameters = ""
         for parameter, value in self.bowtie_search_parameters.items():
@@ -181,17 +203,69 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
         :type consider_hits_from_input_region: bool
         :return: A tuple containing a DataFrame of significant Bowtie hits and a list of oligos with these hits.
-        :rtype: (pd.DataFrame, list)
+        :rtype: pd.DataFrame
         """
         if consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
-                search_results["query_region_id"] != search_results["reference_region_id"]
+                search_results["query_region_id"]
+                != search_results["reference_region_id"]
             ]
 
-        oligos_with_hits = search_results["query"].unique()
+        return search_results
 
-        return search_results, oligos_with_hits
+    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
+        """
+        Retrieve the references sequences from the search results.
+
+        :param table_hits: DataFrame with the oligos that match the blast search.
+        :type table_hits: pd.DataFrame
+        :param file_reference: Path to the fasta file used as reference for the search.
+        :type file_reference: str
+        :param region_id: The identifier for the region within the database to filter.
+        :type region_id: str
+        :return: Reference sequences
+        :rtype: list
+        """
+
+        required_fields = [
+            "query",
+            "strand",
+            "reference",
+            "reference_start",
+            "query_sequence",
+        ]
+        if not all(filed in self.names_search_output for filed in required_fields):
+            raise ValueError(
+                f"Some of the required fields {required_fields} are missing in the search results."
+            )
+        table_hits["reference_end"] = table_hits.apply(lambda x: x["reference_start"] + len(x["query_sequence"]), axis=1)
+        table_hits["score"] = 0
+        bed = table_hits[["reference", "reference_start", "reference_end", "query", "score", "strand"]]
+        file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
+        bed.to_csv(file_bed, sep='\t', index=False, header=False)
+
+        references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
+        get_sequence_from_annotation(file_bed, file_reference,  references_fasta_file, strand=True, nameOnly=True)
+        references = [off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")]
+        os.remove(references_fasta_file)
+        os.remove(file_bed)
+        return references
+    
+
+    def _add_alignement_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
+        """Adjust the sequences of the oligos and the gaps found by the alignement search. 
+        The gapped references and queries are are defined such that nucleotides in the same index are binding.
+
+        :param table_hits: DataFrame with the oligos that have a match with the query oligo.
+        :type table_hits: pandas.DataFrame
+        :param database_region: Dictionary with the information of the oligo sequences.
+        :type database_region: dict
+        """
+
+        # bowtie does not support gaps
+        return queries, references
+        
 
 
 ############################################
@@ -217,12 +291,21 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     -L <int>: Sets the length of the seed substrings to align during multiseed alignment. Smaller values make alignment slower but more sensitive. Default: the --sensitive preset is used by default, which sets -L to 22 and 20 in --end-to-end mode and in --local mode.
     All available Bowtie2 search parameters are listed on the Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2).
 
+    The hits returned by Bowtie2 can be further filtered using machine learning models. For more information regarding which filters are available 
+    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters
+    
     :param bowtie_search_parameters: Custom parameters for the Bowtie2 search command.
     :type bowtie_search_parameters: dict
     :param dir_output: Base directory for saving output files and Bowtie2 databases. Defaults to "output".
     :type dir_output: str
     :param names_search_output: Column names for parsing Bowtie2 search output.
     :type names_search_output: list
+    :param ai_filter: The machine learning model used to filter the oligos {None, 'hybridization_probability'}, defaults to None
+    :type ai_filter: str, optional
+    :param ai_filter_thershold: The threshold below which the oligos are filtered, defaults to None
+    :type ai_filter_thershold: float, optional
+    :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
+    :type ai_filter_path: str, optional
     """
 
     def __init__(
@@ -243,9 +326,12 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             "sequence",
             "read_qualities",
         ],
+        ai_filter: str = None,
+        ai_filter_threshold: float = None,
+        ai_filter_path: str = None,
     ):
         """Constructor for the Bowtie2Filter class."""
-        super().__init__(dir_output)
+        super().__init__(dir_output, ai_filter, ai_filter_threshold, ai_filter_path)
 
         self.bowtie_search_parameters = bowtie_search_parameters
         # self.bowtie_hit_parameters = bowtie_hit_parameters
@@ -315,7 +401,9 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie2_results_{region_name}.txt")
+        file_bowtie_results = os.path.join(
+            self.dir_bowtie, f"bowtie2_results_{region_name}.txt"
+        )
 
         cmd_parameters = ""
         for parameter, value in self.bowtie_search_parameters.items():
@@ -365,15 +453,20 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
         :type consider_hits_from_input_region: bool
-        :return: A tuple containing a DataFrame of significant Bowtie2 hits and a list of oligos with these hits.
-        :rtype: (pd.DataFrame, list)
+        :return: A tuple containing a DataFrame of significant Bowtie2 hits.
+        :rtype: pd.DataFrame
         """
         if consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
-                search_results["query_region_id"] != search_results["reference_region_id"]
+                search_results["query_region_id"]
+                != search_results["reference_region_id"]
             ]
 
-        oligos_with_hits = search_results["query"].unique()
+        return search_results
 
-        return search_results, oligos_with_hits
+    def _get_references(self, search_results: pd.DataFrame, file_reference: str, region_id: str):
+        raise NotImplementedError("AI filters for Bowtie2 haven't been implemented yet.")
+    
+    def _add_alignement_gaps(self, search_results: pd.DataFrame, queries: List[Seq], references: List[Seq]):
+        raise NotImplementedError("AI filters for Bowtie2 haven't been implemented yet.")
