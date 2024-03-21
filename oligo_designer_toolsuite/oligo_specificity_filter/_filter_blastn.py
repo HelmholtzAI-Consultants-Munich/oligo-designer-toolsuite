@@ -231,7 +231,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         self, table_hits: pd.DataFrame, file_reference: str, region_id: str
     ):
         """
-        Retrieve the references sequences from the search results.
+        Retrieve the reference sequences from the search results.
 
         :param table_hits: Dataframe containing the search results.
         :type searchtable_hits_results: pd.DataFrame
