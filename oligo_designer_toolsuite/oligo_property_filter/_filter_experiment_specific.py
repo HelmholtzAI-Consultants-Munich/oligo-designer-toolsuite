@@ -4,8 +4,8 @@
 
 from Bio.SeqUtils import Seq
 
-from ..utils._checkers import get_TmNN
 from . import PropertyFilterBase
+from ..database import OligoAttributes
 
 ############################################
 # Padlock Filter Classes
@@ -49,7 +49,7 @@ class PadlockArmsFilter(PropertyFilterBase):
         Tm_parameters: dict,
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
-    ) -> None:
+    ):
         """Constructor for the PadlockArmsFilter class."""
         super().__init__()
         if arm_Tm_max <= arm_Tm_min:
@@ -61,60 +61,6 @@ class PadlockArmsFilter(PropertyFilterBase):
         self.Tm_parameters = Tm_parameters
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
-
-    def _find_arms(self, sequence: Seq):
-        """Internal method to identify the optimal ligation site in a DNA sequence for padlock probes by ensuring the arms formed are
-        of sufficient length and their melting temperatures (Tm) are within specified constraints.
-
-        The method iteratively adjusts the ligation site to find arm lengths and Tm values that meet the criteria
-        of minimum arm length and Tm differences within the specified maximum. The process stops once suitable
-        arms are found or if no configuration meets the criteria.
-
-        :param sequence: The DNA sequence to analyze for padlock probe arm suitability.
-        :type sequence: Seq
-        :return: A tuple containing a boolean indicating if suitable arms were found, the Tm of the first and second
-                 arm, the difference in Tm between arms, and the final ligation site position.
-        :rtype: (bool, float, float, float, int)
-        """
-
-        len_sequence = len(sequence)
-        ligation_site = len_sequence // 2
-
-        arms_long_enough = (ligation_site >= self.arm_length_min) and (
-            (len_sequence - ligation_site) >= self.arm_length_min
-        )
-        Tm_found = False
-        sign_factor = 1  # switch between positive and negative shift
-        shift = 1  # distance of ligation site shift
-
-        while arms_long_enough and not Tm_found:
-            Tm_arm1 = get_TmNN(
-                sequence[:ligation_site],
-                self.Tm_parameters,
-                self.Tm_salt_correction_parameters,
-                self.Tm_chem_correction_parameters,
-            )
-            Tm_arm2 = get_TmNN(
-                sequence[ligation_site:],
-                self.Tm_parameters,
-                self.Tm_salt_correction_parameters,
-                self.Tm_chem_correction_parameters,
-            )
-            Tm_dif = round(abs(Tm_arm2 - Tm_arm1), 2)
-            Tm_found = (
-                (Tm_dif <= self.arm_Tm_dif_max)
-                and (self.arm_Tm_min <= Tm_arm1 <= self.arm_Tm_max)
-                and (self.arm_Tm_min <= Tm_arm2 <= self.arm_Tm_max)
-            )
-            if not Tm_found:
-                ligation_site += sign_factor * shift
-                sign_factor *= -1
-                shift += 1
-                arms_long_enough = (ligation_site >= self.arm_length_min) and (
-                    (len_sequence - ligation_site) >= self.arm_length_min
-                )
-
-        return Tm_found, Tm_arm1, Tm_arm2, Tm_dif, ligation_site
 
     def apply(self, sequence: Seq):
         """
@@ -128,14 +74,18 @@ class PadlockArmsFilter(PropertyFilterBase):
                  detailed results (arm Tm values, Tm difference, and ligation site) if the condition is met.
         :rtype: (bool, dict)
         """
-        Tm_found, Tm_arm1, Tm_arm2, Tm_dif, ligation_site = self._find_arms(sequence)
+        _, _, ligation_site = OligoAttributes()._calc_padlock_arms(
+            sequence,
+            self.arm_length_min,
+            self.arm_Tm_dif_max,
+            self.arm_Tm_min,
+            self.arm_Tm_max,
+            self.Tm_parameters,
+            self.Tm_salt_correction_parameters,
+            self.Tm_chem_correction_parameters,
+        )
 
-        if Tm_found:
-            return True, {
-                "arm1_Tm": Tm_arm1,
-                "arm2_Tm": Tm_arm2,
-                "arms_Tm_dif": Tm_dif,
-                "ligation_site": ligation_site,
-            }
+        if ligation_site:
+            return True
         else:
-            return False, {}
+            return False

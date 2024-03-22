@@ -3,11 +3,11 @@
 ############################################
 from typing import List, Union
 
-from Bio.SeqUtils import Seq, gc_fraction
-from seqfold import dg
+from Bio.SeqUtils import Seq
 
-from ..utils._checkers import check_if_dna_sequence, get_TmNN
 from . import PropertyFilterBase
+from ..database import OligoAttributes
+from ..utils._checkers import check_if_dna_sequence
 
 ############################################
 # Oligo Property Filter Classes
@@ -17,11 +17,11 @@ from . import PropertyFilterBase
 class SoftMaskedSequenceFilter(PropertyFilterBase):
     """A filter to check if a DNA sequence is soft-masked (contains lowercase letters)."""
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Constructor for the SoftMaskedSequenceFilter class."""
         super().__init__()
 
-    def apply(self, sequence: Seq) -> (bool, dict):
+    def apply(self, sequence: Seq):
         """
         Applies the soft mask filter to a DNA sequence and returns True if the sequence does not contain lower-case letters.
 
@@ -31,8 +31,8 @@ class SoftMaskedSequenceFilter(PropertyFilterBase):
         :rtype: (bool, dict)
         """
         if any(c.islower() for c in sequence):
-            return False, {}
-        return True, {}
+            return False
+        return True
 
 
 class HardMaskedSequenceFilter(PropertyFilterBase):
@@ -42,7 +42,7 @@ class HardMaskedSequenceFilter(PropertyFilterBase):
     :type mask: str
     """
 
-    def __init__(self, mask: str = "N") -> None:
+    def __init__(self, mask: str = "N"):
         """Constructor for the HardMaskedSequenceFilter class."""
         super().__init__()
         self.mask = mask
@@ -57,8 +57,8 @@ class HardMaskedSequenceFilter(PropertyFilterBase):
         :rtype: (bool, dict)
         """
         if self.mask in sequence:
-            return False, {}
-        return True, {}
+            return False
+        return True
 
 
 class ProhibitedSequenceFilter(PropertyFilterBase):
@@ -71,10 +71,7 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
     :type prohibited_sequence: str, list[str]
     """
 
-    def __init__(
-        self,
-        prohibited_sequence: Union[str, List[str]],
-    ) -> None:
+    def __init__(self, prohibited_sequence: Union[str, List[str]]):
         """Constructor for the ProhibitedSequenceFilter class."""
         super().__init__()
         if not isinstance(prohibited_sequence, list):
@@ -96,8 +93,8 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
         """
         for s in self.prohibited_sequence:
             if s in sequence.upper():
-                return False, {}
-        return True, {}
+                return False
+        return True
 
 
 class HomopolymericRunsFilter(PropertyFilterBase):
@@ -109,10 +106,7 @@ class HomopolymericRunsFilter(PropertyFilterBase):
     :type base_n: dict
     """
 
-    def __init__(
-        self,
-        base_n: dict,
-    ) -> None:
+    def __init__(self, base_n: dict):
         """Constructor for the HomopolymericRunsFilter class."""
         super().__init__()
         # check that the nucleotides provided are valid
@@ -132,8 +126,8 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         """
         for homopolymeric_run in self.homopolymeric_runs:
             if homopolymeric_run in sequence.upper():
-                return False, {}
-        return True, {}
+                return False
+        return True
 
 
 class FivePrimeSequenceFilter(PropertyFilterBase):
@@ -145,7 +139,7 @@ class FivePrimeSequenceFilter(PropertyFilterBase):
     :type remove: bool
     """
 
-    def __init__(self, five_prime_sequence: str, remove: bool = True) -> None:
+    def __init__(self, five_prime_sequence: str, remove: bool = True):
         """Constructor for the FivePrimeSequenceFilter class."""
         super().__init__()
         self.five_prime_sequence = five_prime_sequence.upper()
@@ -161,12 +155,12 @@ class FivePrimeSequenceFilter(PropertyFilterBase):
         """
         if self.remove:
             if sequence.upper().startswith(self.five_prime_sequence):
-                return False, {}
-            return True, {}
+                return False
+            return True
         else:
             if sequence.upper().startswith(self.five_prime_sequence):
-                return True, {}
-            return False, {}
+                return True
+            return False
 
 
 class ThreePrimeSequenceFilter(PropertyFilterBase):
@@ -178,7 +172,7 @@ class ThreePrimeSequenceFilter(PropertyFilterBase):
     :type remove: bool
     """
 
-    def __init__(self, three_prime_sequence: str, remove: bool = True) -> None:
+    def __init__(self, three_prime_sequence: str, remove: bool = True):
         """Constructor for the ThreePrimeSequenceFilter class."""
         super().__init__()
         self.three_prime_sequence = three_prime_sequence.upper()
@@ -194,12 +188,12 @@ class ThreePrimeSequenceFilter(PropertyFilterBase):
         """
         if self.remove:
             if sequence.upper().endswith(self.three_prime_sequence):
-                return False, {}
-            return True, {}
+                return False
+            return True
         else:
             if sequence.upper().endswith(self.three_prime_sequence):
-                return True, {}
-            return False, {}
+                return True
+            return False
 
 
 class GCContentFilter(PropertyFilterBase):
@@ -211,7 +205,7 @@ class GCContentFilter(PropertyFilterBase):
     :type GC_content_max: float
     """
 
-    def __init__(self, GC_content_min: float, GC_content_max: float) -> None:
+    def __init__(self, GC_content_min: float, GC_content_max: float):
         """Constructor for the GCContentFilter class."""
         super().__init__()
         if GC_content_max <= GC_content_min:
@@ -228,10 +222,10 @@ class GCContentFilter(PropertyFilterBase):
                  the actual GC content if the condition is met.
         :rtype: (bool, dict)
         """
-        GC_content = round(gc_fraction(sequence) * 100, 4)
+        GC_content = OligoAttributes._calc_GC_content(sequence)
         if self.GC_content_min < GC_content < self.GC_content_max:
-            return True, {"GC_content": GC_content}
-        return False, {}
+            return True
+        return False
 
 
 class GCClampFilter(PropertyFilterBase):
@@ -243,7 +237,7 @@ class GCClampFilter(PropertyFilterBase):
     :type n_GC: int
     """
 
-    def __init__(self, n_bases: int, n_GC: int) -> None:
+    def __init__(self, n_bases: int, n_GC: int):
         """Constructor for the GCClampFilter class."""
         super().__init__()
         self.n_bases = n_bases
@@ -263,8 +257,8 @@ class GCClampFilter(PropertyFilterBase):
             if sequence.upper()[-i] == "G" or sequence.upper()[-i] == "C":
                 GC_counetr += 1
             if GC_counetr >= self.n_GC:
-                return True, {}
-        return False, {}
+                return True
+        return False
 
 
 class MeltingTemperatureNNFilter(PropertyFilterBase):
@@ -300,7 +294,7 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         Tm_parameters: dict,
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
-    ) -> None:
+    ):
         """Constructor for the MeltingTemperatureNNFilter class."""
         super().__init__()
         if Tm_max <= Tm_min:
@@ -320,15 +314,15 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
                  the actual melting temperature if the condition is met.
         :rtype: (bool, dict)
         """
-        Tm = get_TmNN(
+        Tm = OligoAttributes._calc_TmNN(
             sequence,
             self.Tm_parameters,
             self.Tm_salt_correction_parameters,
             self.Tm_chem_correction_parameters,
         )
         if self.Tm_min < Tm < self.Tm_max:
-            return True, {"melting_temperature": Tm}
-        return False, {}
+            return True
+        return False
 
 
 class HomodimerFilter(PropertyFilterBase):
@@ -341,38 +335,10 @@ class HomodimerFilter(PropertyFilterBase):
     :type max_len_selfcomp: int
     """
 
-    def __init__(self, max_len_selfcomp: int) -> None:
+    def __init__(self, max_len_selfcomp: int):
         """Constructor for the HomodimerFilter class."""
         super().__init__()
         self.max_len_selfcomp = max_len_selfcomp
-
-    def _calculate_len_selfcomp(self, sequence: Seq):
-        """Calculates the length of the longest self-complementary sequence in the given DNA sequence.
-
-        :param sequence: The DNA sequence to analyze for self-complementary sequences.
-        :type sequence: Seq
-        :return: The length of the longest self-complementary sequence found in the DNA sequence.
-        :rtype: int
-        """
-        # we want to check if the reverse of our sequence is complementary to itself, e.g.
-        # 5' - TAA CAA TAT ATA TTG TTA - 3' and it's reverse
-        # 3' - ATT GTT ATA TAT AAC AAT - 5' are complementary to each other
-        # but since we are comparing strings, we take the reverse complement,
-        # which should be the exact same sequence in this case
-        sequence_revcomp = sequence.reverse_complement()
-
-        # initialize counters
-        len_selfcomp_sub = 0
-        len_selfcomp = 0
-
-        # iterate through sequences
-        for i in range(len(sequence)):
-            if sequence[i] != sequence_revcomp[i]:
-                len_selfcomp_sub = 0
-            else:
-                len_selfcomp_sub += 1
-            len_selfcomp = max(len_selfcomp, len_selfcomp_sub)
-        return len_selfcomp
 
     def apply(self, sequence: Seq):
         """Applies the homodimer filter to a DNA sequence to evaluate its potential for homodimer formation.
@@ -383,10 +349,10 @@ class HomodimerFilter(PropertyFilterBase):
                  the maximum self-complementary length if the condition is met.
         :rtype: (bool, dict)
         """
-        len_selfcomp = self._calculate_len_selfcomp(sequence)
+        len_selfcomp = OligoAttributes._calc_length_selfcomplement(sequence)
         if len_selfcomp <= self.max_len_selfcomp:
-            return True, {"len_selfcomp": len_selfcomp}
-        return False, {}
+            return True
+        return False
 
 
 class SecondaryStructureFilter(PropertyFilterBase):
@@ -400,7 +366,7 @@ class SecondaryStructureFilter(PropertyFilterBase):
     :type thr_DG: float
     """
 
-    def __init__(self, T: float, thr_DG: float) -> None:
+    def __init__(self, T: float, thr_DG: float):
         """Constructor for the SecondaryStructureFilter class."""
         super().__init__()
         self.T = T
@@ -415,7 +381,7 @@ class SecondaryStructureFilter(PropertyFilterBase):
                  the actual ∆G value if the condition is met.
         :rtype: (bool, dict)
         """
-        DG = dg(sequence, temp=self.T)
-        if DG > self.thr_DG:
-            return True, {"secondary_structure_DG": DG}
-        return False, {}
+        DG_secondary_structure = OligoAttributes._calc_DG_secondary_structure(sequence, self.T)
+        if DG_secondary_structure > self.thr_DG:
+            return True
+        return False
