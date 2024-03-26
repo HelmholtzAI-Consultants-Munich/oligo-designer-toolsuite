@@ -184,7 +184,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         search_results["min_alignment_length"] = min_alignment_length
 
-        if consider_hits_from_input_region:
+        if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
                 search_results["query_region_id"] != search_results["reference_region_id"]
@@ -275,7 +275,7 @@ class BlastNSeedregionFilterBase(BlastNFilter):
             oligo_database=oligo_database, search_results=search_results
         )
 
-        if consider_hits_from_input_region:
+        if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
                 search_results["query_region_id"] != search_results["reference_region_id"]
