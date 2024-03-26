@@ -12,7 +12,7 @@ import pandas as pd
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
 from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase
+from ..database import OligoDatabase, OligoAttributes
 from ..utils._checkers import check_if_list
 from . import AlignmentSpecificityFilter
 
@@ -334,7 +334,10 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         :return: Updated BLAST results with seed region information.
         :rtype: pd.DataFrame
         """
-        oligo_database.calculate_seedregion(start=self.seedregion_start, end=self.seedregion_end)
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_seedregion(
+            oligo_database=oligo_database, start=self.seedregion_start, end=self.seedregion_end
+        )
 
         seedregion = pd.merge(
             left=oligo_database.get_oligo_attribute("seedregion_start"),
@@ -386,7 +389,10 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         :return: Updated BLAST results with seed region information around the ligation site.
         :rtype: pd.DataFrame
         """
-        oligo_database.calculate_seedregion_ligationsite(seedregion_size=self.seedregion_size)
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_seedregion_ligationsite(
+            oligo_database=oligo_database, seedregion_size=self.seedregion_size
+        )
 
         seedregion = pd.merge(
             left=oligo_database.get_oligo_attribute("seedregion_start"),
