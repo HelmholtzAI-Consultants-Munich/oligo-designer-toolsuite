@@ -51,8 +51,8 @@ class TestExactMatchFilter(unittest.TestCase):
             "WASH7P::2" not in res.database["WASH7P"].keys()
         ), "A matching oligo has not been filtered from exact matches!"
         assert (
-            "AGRN::1" not in res.database["AGRN"].keys()
-        ), "A matching oligo has not been filtered from exact mathces!"
+            "AGRN::1" in res.database["AGRN"].keys()
+        ), "A non-matching oligo has been filtered from exact mathces!"
 
 
 class AlignmentFilterTestBase:
@@ -180,7 +180,8 @@ class TestCrossHybridizationFilter(unittest.TestCase):
     def setUp(self):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_crosshybridization_outputs")
         os.makedirs(self.tmp_path, exist_ok=True)
-        self.oligo_database_crosshyb = self._setup_database()
+        self.oligo_database_crosshyb = self._setup_database(FILE_DATABASE_OLIGOS_CROSSHYB)
+        self.oligo_database_crosshyb_exactmatch = self._setup_database(FILE_DATABASE_OLIGOS_EXACT_MATCH)
         self.sequence_type = "oligo"
 
         # Blast parameters
@@ -246,13 +247,13 @@ class TestCrossHybridizationFilter(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
 
-    def _setup_database(self):
+    def _setup_database(self, file_database):
         oligos = OligoDatabase(
             min_oligos_per_region=2,
             write_regions_with_insufficient_oligos=True,
             dir_output=os.path.join(self.tmp_path, "oligo_database"),
         )
-        oligos.load_database(FILE_DATABASE_OLIGOS_CROSSHYB)
+        oligos.load_database(file_database)
         return oligos
 
     def _apply_filter_and_assert(self, filter_instance, expected_oligos):
@@ -303,3 +304,20 @@ class TestCrossHybridizationFilter(unittest.TestCase):
         policy = RemoveByDegreePolicy()
         cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
         self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)
+
+    def test_crosshyb_filter_exactmatch_larger_region_policy(self):
+        filter_instance = ExactMatchFilter()
+        policy = RemoveByLargerRegionPolicy()
+
+        cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
+        res = cross_hyb_filter.apply(self.sequence_type, self.oligo_database_crosshyb_exactmatch, 2)
+
+        assert (
+            "WASH7P::1" not in res.database["WASH7P"].keys()
+        ), "A non matching oligo has been filtered by exact matches!"
+        assert (
+            "WASH7P::3" not in res.database["WASH7P"].keys()
+        ), "A matching oligo has not been filtered by exact mathces!"
+        assert (
+            "AGRN::1" in res.database["AGRN"].keys()
+        ), "A non matching oligo has been filtered by exact matches!"
