@@ -13,7 +13,7 @@ from .._constants import _TYPES_SEQ
 from ..database import OligoDatabase, ReferenceDatabase
 
 from ._filter_base import SpecificityFilterBase
-from ._policies import RemoveByLargerRegionPolicy
+from ._policies import FilterPolicyBase
 
 ############################################
 # Oligo Exact Match Filter Classes
@@ -24,11 +24,13 @@ class ExactMatchFilter(SpecificityFilterBase):
     """A filter that identifies and removes oligonucleotides with exact match sequences within the database,
     to prevent potential off-target effects. It leverages parallel processing to efficiently analyze large oligo databases.
 
-    :param None: This class does not require parameters for initialization.
+    :param policy: The filter policy to apply for minimizing cross-hybridization.
+    :type policy: FilterPolicyBase
     """
 
-    def __init__(self):
+    def __init__(self, policy: FilterPolicyBase = None):
         """Constructor for the ExactMatches class."""
+        self.policy = policy
 
     def apply(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase, n_jobs: int):
         """Applies the exact match filter to an oligonucleotide database.
@@ -70,13 +72,16 @@ class ExactMatchFilter(SpecificityFilterBase):
             for region_id in region_ids
         )
 
-        table_hits = pd.concat(table_hits, ignore_index=True)
-        oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
-
-        policy = RemoveByLargerRegionPolicy()
-        oligos_with_hits = policy.apply(
-            graph=nx.from_edgelist(oligo_pair_hits), oligo_database=oligo_database
-        )
+        if self.policy:
+            table_hits = pd.concat(table_hits, ignore_index=True)
+            oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+            oligos_with_hits = self.policy.apply(
+                graph=nx.from_edgelist(oligo_pair_hits), oligo_database=oligo_database
+            )
+        else:
+            oligos_with_hits = {}
+            for region_id, table_hits_region in zip(region_ids, table_hits):
+                oligos_with_hits[str(region_id)] = table_hits_region["query"].unique()
 
         for region in region_ids:
             database_region_filtered = self._filter_hits_from_database(

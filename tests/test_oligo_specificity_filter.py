@@ -31,7 +31,6 @@ FILE_DATABASE_OLIGOS_CROSSHYB = "data/tests/databases/database_oligos_crosshybri
 class TestExactMatchFilter(unittest.TestCase):
     def setUp(self):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_exact_match_outputs")
-        self.filter = ExactMatchFilter()
         self.oligo_database = OligoDatabase(
             min_oligos_per_region=2,
             write_regions_with_insufficient_oligos=True,
@@ -42,10 +41,24 @@ class TestExactMatchFilter(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
 
-    def test_exact_match_filter(self):
+    def test_exact_match_filter_no_policy(self):
         sequence_type = "oligo"
 
-        res = self.filter.apply(sequence_type, self.oligo_database, 2)
+        filter = ExactMatchFilter()
+        res = filter.apply(sequence_type, self.oligo_database, 2)
+
+        assert (
+            "WASH7P::2" not in res.database["WASH7P"].keys()
+        ), "A matching oligo has not been filtered from exact matches!"
+        assert (
+            "AGRN::1" not in res.database["AGRN"].keys()
+        ), "A non-matching oligo has been filtered from exact mathces!"
+
+    def test_exact_match_filter_policy(self):
+        sequence_type = "oligo"
+        policy = RemoveByLargerRegionPolicy()
+        filter = ExactMatchFilter(policy)
+        res = filter.apply(sequence_type, self.oligo_database, 2)
 
         assert (
             "WASH7P::2" not in res.database["WASH7P"].keys()
