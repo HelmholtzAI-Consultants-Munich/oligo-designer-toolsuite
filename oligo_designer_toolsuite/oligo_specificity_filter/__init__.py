@@ -11,10 +11,13 @@ Classes:
 - BowtieFilter: Employs Bowtie for alignment-based specificity filtering of oligo sequences.
 - Bowtie2Filter: Leverages Bowtie2, an advanced version of Bowtie, for enhanced specificity filtering.
 - CrossHybridizationFilter: Applies policies to reduce cross-hybridization within oligo databases.
+- FilterPolicyBase: A base class for filtering policies.
 - RemoveByDegreePolicy: A policy for removing oligos based on their connectivity degree in cross-hybridization analysis.
 - RemoveByLargerRegionPolicy: Eliminates oligos from regions with higher number of assigned oligos to manage cross-hybridization.
 - SpecificityFilter: Integrates various specificity filters and policies to optimize oligo sequence design.
 """
+
+from ._filter_exact_matches import ExactMatchFilter
 
 from ._filter_base import AlignmentSpecificityFilter, SpecificityFilterBase
 from ._filter_blastn import (
@@ -25,10 +28,9 @@ from ._filter_blastn import (
 from ._filter_bowtie import Bowtie2Filter, BowtieFilter
 from ._filter_cross_hybridization import (
     CrossHybridizationFilter,
-    RemoveByDegreePolicy,
-    RemoveByLargerRegionPolicy,
 )
-from ._filter_exact_matches import ExactMatchFilter
+from ._policies import FilterPolicyBase, RemoveByDegreePolicy, RemoveByLargerRegionPolicy
+
 from ._specificity_filter import SpecificityFilter
 
 __all__ = [
@@ -41,6 +43,7 @@ __all__ = [
     "BowtieFilter",
     "Bowtie2Filter",
     "CrossHybridizationFilter",
+    "FilterPolicyBase",
     "RemoveByDegreePolicy",
     "RemoveByLargerRegionPolicy",
     "SpecificityFilter",

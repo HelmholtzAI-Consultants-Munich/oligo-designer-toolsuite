@@ -219,7 +219,7 @@ class OligoDatabase:
         assert (
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-        sequence_reverse_complement_type = options[0] if options[0] != sequence_type else options[1]
+        sequence_type_reverse_complement = options[0] if options[0] != sequence_type else options[1]
 
         if database_overwrite:
             warnings.warn("Overwriting database!")
@@ -257,7 +257,7 @@ class OligoDatabase:
                     oligo_sequence_reverse_complement = str(Seq(oligo_sequence).reverse_complement())
                     oligo_seq_info = {
                         sequence_type: oligo_sequence,
-                        sequence_reverse_complement_type: oligo_sequence_reverse_complement,
+                        sequence_type_reverse_complement: oligo_sequence_reverse_complement,
                     } | oligo_info
                     database_loaded[region][oligo_id] = oligo_seq_info
                     i += 1
