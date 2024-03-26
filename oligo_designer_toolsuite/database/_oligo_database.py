@@ -521,6 +521,9 @@ class OligoDatabase:
         Iterates through each oligonucleotide in the database and updates its attributes based on the provided new attribute values.
         The update is done in place, modifying the existing attributes of the oligonucleotides.
 
+        Input format of new attribute:
+        new_attribute = {"region_x::1": {"attribute_y": 110}}
+
         :param new_oligo_attribute: A dictionary mapping oligonucleotide IDs to their new attributes.
         :type new_oligo_attribute: dict
         """

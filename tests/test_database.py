@@ -229,80 +229,88 @@ class TestOligoAttributes(unittest.TestCase):
         shutil.rmtree(self.tmp_path)
 
     def test_calculate_oligo_length(self):
-        new_attribute = self.oligo_attributes.calculate_oligo_length(self.oligo_database)
+        oligo_database = self.oligo_attributes.calculate_oligo_length(self.oligo_database)
 
-        assert new_attribute["region_1::1"]["length"] == 20, "error: wrong oligo length"
-        assert new_attribute["region_1::2"]["length"] == 29, "error: wrong oligo length"
+        assert oligo_database.database["region_1"]["region_1::1"]["length"] == 20, "error: wrong oligo length"
+        assert oligo_database.database["region_1"]["region_1::2"]["length"] == 29, "error: wrong oligo length"
 
     def test_calculate_num_targeted_transcripts(self):
-        new_attribute = self.oligo_attributes.calculate_num_targeted_transcripts(self.oligo_database)
+        oligo_database = self.oligo_attributes.calculate_num_targeted_transcripts(self.oligo_database)
 
         assert (
-            new_attribute["region_1::1"]["num_targeted_transcripts"] == 2
+            oligo_database.database["region_1"]["region_1::1"]["num_targeted_transcripts"] == 2
         ), "error: wrong number targeted transcripts"
         assert (
-            new_attribute["region_2::1"]["num_targeted_transcripts"] == 1
+            oligo_database.database["region_2"]["region_2::1"]["num_targeted_transcripts"] == 1
         ), "error: wrong number targeted transcripts"
         assert (
-            new_attribute["region_3::4"]["num_targeted_transcripts"] == 28
+            oligo_database.database["region_3"]["region_3::4"]["num_targeted_transcripts"] == 28
         ), "error: wrong number targeted transcripts"
 
     def test_calculate_isoform_consensus(self):
-        new_attribute = self.oligo_attributes.calculate_isoform_consensus(self.oligo_database)
+        oligo_database = self.oligo_attributes.calculate_isoform_consensus(self.oligo_database)
 
         assert (
-            new_attribute["region_1::1"]["isoform_consensus"] == 100
+            oligo_database.database["region_1"]["region_1::1"]["isoform_consensus"] == 100
         ), "error: wrong isoform consensus, should be 100%"
         assert (
-            new_attribute["region_2::1"]["isoform_consensus"] == 50
+            oligo_database.database["region_2"]["region_2::1"]["isoform_consensus"] == 50
         ), "error: wrong isoform consensus, should be 50%"
 
     def test_calculate_seedregion(self):
-        new_attribute = self.oligo_attributes.calculate_seedregion(self.oligo_database, start=0.4, end=0.6)
+        oligo_database = self.oligo_attributes.calculate_seedregion(self.oligo_database, start=0.4, end=0.6)
 
-        assert (new_attribute["region_1::1"]["seedregion_start"] == 8) and (
-            new_attribute["region_1::1"]["seedregion_end"] == 12
+        assert (oligo_database.database["region_1"]["region_1::1"]["seedregion_start"] == 8) and (
+            oligo_database.database["region_1"]["region_1::1"]["seedregion_end"] == 12
         ), "error: wrong seedregion calculated"
 
     def test_calculate_seedregion_ligationsite(self):
-        new_attribute = self.oligo_attributes.calculate_seedregion_ligationsite(
+        oligo_database = self.oligo_attributes.calculate_seedregion_ligationsite(
             self.oligo_database, seedregion_size=5
         )
 
-        assert (new_attribute["region_1::1"]["seedregion_start"] == 6) and (
-            new_attribute["region_1::1"]["seedregion_end"] == 15
+        assert (oligo_database.database["region_1"]["region_1::1"]["seedregion_start"] == 6) and (
+            oligo_database.database["region_1"]["region_1::1"]["seedregion_end"] == 15
         ), "error: wrong seedregion calculated"
 
     def test_calculate_GC_content(self):
-        new_attribute = self.oligo_attributes.calculate_GC_content(self.oligo_database, sequence_type="oligo")
-
-        assert new_attribute["region_1::1"]["GC_content"] == 50, "error: wrong GC content calculated"
-
-    def test_calculate_TmNN(self):
-        new_attribute = self.oligo_attributes.calculate_TmNN(
-            self.oligo_database, sequence_type="oligo", Tm_parameters={}
-        )
-
-        assert new_attribute["region_1::1"]["TmNN"] == 53.57, "error: wrong Tm calculated"
-
-    def test_calculate_len_selfcomp(self):
-        new_attribute = self.oligo_attributes.calculate_length_selfcomplement(
+        oligo_database = self.oligo_attributes.calculate_GC_content(
             self.oligo_database, sequence_type="oligo"
         )
 
         assert (
-            new_attribute["region_3::3"]["length_selfcomplement"] == 18
+            oligo_database.database["region_1"]["region_1::1"]["GC_content"] == 50
+        ), "error: wrong GC content calculated"
+
+    def test_calculate_TmNN(self):
+        oligo_database = self.oligo_attributes.calculate_TmNN(
+            self.oligo_database, sequence_type="oligo", Tm_parameters={}
+        )
+
+        assert (
+            oligo_database.database["region_1"]["region_1::1"]["TmNN"] == 53.57
+        ), "error: wrong Tm calculated"
+
+    def test_calculate_len_selfcomp(self):
+        oligo_database = self.oligo_attributes.calculate_length_selfcomplement(
+            self.oligo_database, sequence_type="oligo"
+        )
+
+        assert (
+            oligo_database.database["region_3"]["region_3::3"]["length_selfcomplement"] == 18
         ), "error: wrong length of selfcomplement calculated"
 
     def test_calculate_secondary_structure_DG(self):
-        new_attribute = self.oligo_attributes.calculate_DG_secondary_structure(
+        oligo_database = self.oligo_attributes.calculate_DG_secondary_structure(
             self.oligo_database, sequence_type="oligo", T=37
         )
 
-        assert new_attribute["region_1::1"]["DG_secondary_structure"] == 0.8, "error: wrong DG calculated"
+        assert (
+            oligo_database.database["region_1"]["region_1::1"]["DG_secondary_structure"] == 0.8
+        ), "error: wrong DG calculated"
 
     def test_calculate_padlock_arms(self):
-        new_attribute = self.oligo_attributes.calculate_padlock_arms(
+        oligo_database = self.oligo_attributes.calculate_padlock_arms(
             self.oligo_database,
             sequence_type="oligo",
             arm_length_min=3,
@@ -312,4 +320,6 @@ class TestOligoAttributes(unittest.TestCase):
             Tm_parameters={},
         )
 
-        assert new_attribute["region_1::2"]["ligation_site"] == 14, "error: wrong padlock arms calculated"
+        assert (
+            oligo_database.database["region_1"]["region_1::2"]["ligation_site"] == 14
+        ), "error: wrong padlock arms calculated"
