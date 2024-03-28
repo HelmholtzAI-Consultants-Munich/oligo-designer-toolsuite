@@ -114,8 +114,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :type sequence_type: _TYPES_SEQ
         :param oligo_database: The database of oligonucleotides to search.
         :type oligo_database: OligoDatabase
-        :param filename_reference_index: The filename of the reference database index for Bowtie search.
-        :type filename_reference_index: str
+        :param file_index: The filename of the reference database index for Bowtie search.
+        :type file_index: str
         :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the Bowtie search results.
@@ -297,8 +297,8 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         :type sequence_type: _TYPES_SEQ
         :param oligo_database: The database of oligonucleotides to search.
         :type oligo_database: OligoDatabase
-        :param filename_reference_index: The filename of the reference database index for Bowtie2 search.
-        :type filename_reference_index: str
+        :param file_index: The filename of the reference database index for Bowtie2 search.
+        :type file_index: str
         :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the Bowtie2 search results.
