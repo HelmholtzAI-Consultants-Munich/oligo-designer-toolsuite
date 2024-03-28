@@ -3,17 +3,11 @@
 ############################################
 from typing import List, Union
 
-from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq, gc_fraction
 from seqfold import dg
 
+from ..utils._checkers import check_if_dna_sequence, get_TmNN
 from . import PropertyFilterBase
-
-
-###TODO move this function to utils once database refactor is merged
-def check_sequence(seq: str, valid_characters={"A", "C", "T", "G"}) -> bool:
-    return all(char.upper() in valid_characters for char in seq)
-
 
 ############################################
 # Oligo Property Filter Classes
@@ -88,10 +82,8 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
         self.prohibited_sequence = [s.upper() for s in prohibited_sequence]
         # Check that the prohibited sequences are valid DNA sequences.
         for s in self.prohibited_sequence:
-            if not check_sequence(s):
-                raise ValueError(
-                    "Prohibited sequence ({prohibited_sequences}) is not a DNA sequence."
-                )
+            if not check_if_dna_sequence(s):
+                raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
 
     def apply(self, sequence: Seq):
         """
@@ -125,7 +117,7 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         super().__init__()
         # check that the nucleotides provided are valid
         for b in base_n.keys():
-            if not check_sequence(b):
+            if not check_if_dna_sequence(b):
                 raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
         # create all homopolymeric runs
         self.homopolymeric_runs = [base.upper() * n for base, n in base_n.items()]
@@ -319,22 +311,6 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
-    ###TODO: move this function to utils as it is also used in the padlock arm filter once database refactor is merged
-    def _get_Tm(self, sequence: Seq):
-        """Internal method to calculate the melting temperature of a sequence.
-
-        :param sequence: The DNA sequence for which Tm is calculated.
-        :type sequence: Seq
-        :return: The calculated melting temperature.
-        :rtype: float
-        """
-        Tm = mt.Tm_NN(sequence, **self.Tm_parameters)
-        if self.Tm_salt_correction_parameters is not None:
-            Tm += mt.salt_correction(**self.Tm_salt_correction_parameters, seq=sequence)
-        if self.Tm_chem_correction_parameters is not None:
-            Tm = mt.chem_correction(Tm, **self.Tm_chem_correction_parameters)
-        return round(Tm, 4)
-
     def apply(self, sequence: Seq):
         """Applies the melting temperature filter to a DNA sequence.
 
@@ -344,7 +320,12 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
                  the actual melting temperature if the condition is met.
         :rtype: (bool, dict)
         """
-        Tm = self._get_Tm(sequence)
+        Tm = get_TmNN(
+            sequence,
+            self.Tm_parameters,
+            self.Tm_salt_correction_parameters,
+            self.Tm_chem_correction_parameters,
+        )
         if self.Tm_min < Tm < self.Tm_max:
             return True, {"melting_temperature": Tm}
         return False, {}

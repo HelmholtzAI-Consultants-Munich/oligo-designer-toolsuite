@@ -68,29 +68,22 @@ class SeqfishProbesCreator:
                 seq = str(oligo_database[region][oligo]["sequence"])
                 yaml_dict[region][f"{region}_oligo_{i+1}"]["id"] = oligo
                 yaml_dict[region][f"{region}_oligo_{i+1}"]["region"] = region
-                yaml_dict[region][f"{region}_oligo_{i+1}"][
-                    "seqfish_plus_full_probe"
-                ] = (left + "T" + seq + "T" + right)
-                yaml_dict[region][f"{region}_oligo_{i+1}"].update(
-                    oligo_database[region][oligo]
+                yaml_dict[region][f"{region}_oligo_{i+1}"]["seqfish_plus_full_probe"] = (
+                    left + "T" + seq + "T" + right
                 )
+                yaml_dict[region][f"{region}_oligo_{i+1}"].update(oligo_database[region][oligo])
                 yaml_dict[region][f"{region}_oligo_{i+1}"]["start"] = ",".join(
-                    f"{start}"
-                    for start in yaml_dict[region][f"{region}_oligo_{i+1}"].pop("start")
+                    f"{start}" for start in yaml_dict[region][f"{region}_oligo_{i+1}"].pop("start")
                 )
                 yaml_dict[region][f"{region}_oligo_{i+1}"]["end"] = ",".join(
-                    f"{end}"
-                    for end in yaml_dict[region][f"{region}_oligo_{i+1}"].pop("end")
+                    f"{end}" for end in yaml_dict[region][f"{region}_oligo_{i+1}"].pop("end")
                 )
-                yaml_dict[region][f"{region}_oligo_{i+1}"][
-                    "target_sequence"
-                ] = yaml_dict[region][f"{region}_oligo_{i+1}"].pop("sequence")
+                yaml_dict[region][f"{region}_oligo_{i+1}"]["target_sequence"] = yaml_dict[region][
+                    f"{region}_oligo_{i+1}"
+                ].pop("sequence")
 
                 yaml_dict[region][f"{region}_oligo_{i+1}"].update(
-                    {
-                        f"readout_sequece_{i+1}": readout_sequences[barcode[i]]
-                        for i in range(4)
-                    }
+                    {f"readout_sequece_{i+1}": readout_sequences[barcode[i]] for i in range(4)}
                 )
         # save
         probes_dir = os.path.join(self.dir_output, "final_seqfish_plus_sequences")
@@ -104,15 +97,15 @@ class SeqfishProbesCreator:
             yaml_order[region] = {}
             for oligo_id in yaml_dict[region]:
                 yaml_order[region][oligo_id] = {}
-                yaml_order[region][oligo_id]["merfish_probe_full_sequence"] = yaml_dict[
-                    region
-                ][oligo_id]["merfish_probe_full_sequence"]
-                yaml_order[region][oligo_id]["readout_probe_1"] = yaml_dict[region][
-                    oligo_id
-                ]["readout_probe_1"]
-                yaml_order[region][oligo_id]["readout_probe_2"] = yaml_dict[region][
-                    oligo_id
-                ]["readout_probe_2"]
+                yaml_order[region][oligo_id]["merfish_probe_full_sequence"] = yaml_dict[region][oligo_id][
+                    "merfish_probe_full_sequence"
+                ]
+                yaml_order[region][oligo_id]["readout_probe_1"] = yaml_dict[region][oligo_id][
+                    "readout_probe_1"
+                ]
+                yaml_order[region][oligo_id]["readout_probe_2"] = yaml_dict[region][oligo_id][
+                    "readout_probe_2"
+                ]
         with open(os.path.join(probes_dir, "merfish_probes_order.yml"), "w") as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
@@ -121,9 +114,7 @@ class SeqfishProbesCreator:
         yaml_readout["Bit"] = "Readout Probe"
         for i in range(num_bits):
             yaml_readout[str(i + 1)] = readout_probes[i] + "/3Cy5Sp"
-        with open(
-            os.path.join(probes_dir, "merfish_readout_probes.yml"), "w"
-        ) as outfile:
+        with open(os.path.join(probes_dir, "merfish_readout_probes.yml"), "w") as outfile:
             yaml.dump(yaml_readout, outfile, default_flow_style=False, sort_keys=False)
 
         # Create codebook file

@@ -7,9 +7,7 @@ from pathlib import Path
 import yaml
 
 
-def generate_config_file(
-    exp_name: str, directory: str = "output", source: str = "custom"
-):
+def generate_config_file(exp_name: str, directory: str = "output", source: str = "custom"):
     Path(directory).mkdir(parents=True, exist_ok=True)
 
     config_parent_dir = os.path.join(
@@ -23,28 +21,20 @@ def generate_config_file(
     if source == "custom":
         # function generating the config file
         # config_file = generate_custom_config(directory)
-        config_file = os.path.join(
-            config_parent_dir, f"{exp_name}_probe_designer_custom.yaml"
-        )
+        config_file = os.path.join(config_parent_dir, f"{exp_name}_probe_designer_custom.yaml")
     elif source == "ncbi":
         # function generating the config file
         # config_file = generate_ncbi_config(directory)
-        config_file = os.path.join(
-            config_parent_dir, f"{exp_name}_probe_designer_ncbi.yaml"
-        )
+        config_file = os.path.join(config_parent_dir, f"{exp_name}_probe_designer_ncbi.yaml")
     elif source == "ensembl":
         # function generating the config file
         # config_file = generate_ensembl_config(directory)
-        config_file = os.path.join(
-            config_parent_dir, f"{exp_name}_probe_designer_ensembl.yaml"
-        )
+        config_file = os.path.join(config_parent_dir, f"{exp_name}_probe_designer_ensembl.yaml")
     else:
         config_file = ""
         raise ValueError(f"No config file found for source {source}'.")
 
-    shutil.copyfile(
-        config_file, os.path.join(directory, f"config_{exp_name}_{source}.yaml")
-    )
+    shutil.copyfile(config_file, os.path.join(directory, f"config_{exp_name}_{source}.yaml"))
     warnings.warn(f"Using default config: {config_file}.")
     return config_file
 

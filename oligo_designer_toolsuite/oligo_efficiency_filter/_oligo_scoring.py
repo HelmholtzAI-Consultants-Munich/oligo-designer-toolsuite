@@ -95,13 +95,9 @@ class PadlockOligoScoring(OligoScoringBase):
         """
         # distance from the optimal melting temperature weightend by the how far is the optimum from the min/ max
         # the scoring is the lower the better
-        Tm_dif = (
-            oligo["melting_temperature"] - self.Tm_opt
-        )  # check the names of the columns
+        Tm_dif = oligo["melting_temperature"] - self.Tm_opt  # check the names of the columns
         GC_dif = oligo["GC_content"] - self.GC_opt
-        score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(
-            GC_dif
-        )
+        score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(GC_dif)
         return score
 
     def __generate_scoring_functions(self):
@@ -112,18 +108,18 @@ class PadlockOligoScoring(OligoScoringBase):
         if Tm_dif_max == Tm_dif_min:
             self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max
         else:
-            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max * (
-                Tm_dif > 0
-            ) + abs(Tm_dif) / Tm_dif_min * (Tm_dif < 0)
+            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max * (Tm_dif > 0) + abs(
+                Tm_dif
+            ) / Tm_dif_min * (Tm_dif < 0)
         # define the error function for the GC content
         GC_dif_max = self.GC_max - self.GC_opt
         GC_dif_min = self.GC_opt - self.GC_min
         if GC_dif_max == GC_dif_min:
             self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max
         else:
-            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (
-                GC_dif > 0
-            ) + abs(GC_dif) / GC_dif_min * (GC_dif < 0)
+            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (GC_dif > 0) + abs(
+                GC_dif
+            ) / GC_dif_min * (GC_dif < 0)
 
 
 class SeqFISHOligoScoring(OligoScoringBase):

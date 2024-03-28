@@ -7,9 +7,16 @@ import math
 import os
 import pickle
 import re
+import warnings
 
 import pandas as pd
 from Bio import SeqIO
+
+from .._constants import (
+    SEPARATOR_FASTA_HEADER_FIELDS,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
+)
 
 ############################################
 # GFF Parser Class
@@ -66,7 +73,7 @@ class GffParser:
     def parse_annotation_from_gff(
         self,
         annotation_file: str,
-        file_pickel: str = None,
+        file_pickle: str = None,
         chunk_size: int = 10000,
         target_lines: int = math.inf,
     ):
@@ -77,13 +84,13 @@ class GffParser:
 
         :param annotation_file: The path to the GFF file to be parsed.
         :type annotation_file: str
-        :param file_pickel: Optional. The path to save the pickled DataFrame. If None, the DataFrame is returned.
-        :type file_pickel: Optional[str]
+        :param file_pickle: Optional. The path to save the pickled DataFrame. If None, the DataFrame is returned.
+        :type file_pickle: Optional[str]
         :param chunk_size: The number of lines to process in each chunk.
         :type chunk_size: int
         :param target_lines: The maximum number of lines to read from the GFF file.
         :type target_lines: int
-        :return: The parsed annotation data as a DataFrame or the path to the pickled DataFrame if 'file_pickel' is provided.
+        :return: The parsed annotation data as a DataFrame or the path to the pickled DataFrame if 'file_pickle' is provided.
         :rtype: Union[pd.DataFrame, str]
         """
         csv_file, extra_info_file = self._split_annotation(
@@ -101,14 +108,14 @@ class GffParser:
         os.remove(csv_file)
         os.remove(extra_info_file)
 
-        if file_pickel:
-            with open(file_pickel, "wb") as handle:
+        if file_pickle:
+            with open(file_pickle, "wb") as handle:
                 pickle.dump(dataframe, handle)
-            return file_pickel
+            return file_pickle
         else:
             return dataframe
 
-    def load_annotation_from_pickel(self, file_pickel: str):
+    def load_annotation_from_pickle(self, file_pickel: str):
         """
         Load annotation data from a pickled DataFrame.
 
@@ -121,9 +128,7 @@ class GffParser:
 
         return dataframe_gff
 
-    def _split_annotation(
-        self, annotation_file: str, chunk_size: int, target_lines: int
-    ):
+    def _split_annotation(self, annotation_file: str, chunk_size: int, target_lines: int):
         """Split the GFF/GTF annotation file into a CSV file and an extra info file.
 
         :param annotation_file: The path to the GFF/GTF annotation file.
@@ -155,12 +160,8 @@ class GffParser:
                             try:
                                 line = next(input_file)
                                 if not line.startswith("#"):
-                                    csv_content_chunck += (
-                                        "\t".join(line.split("\t")[:8]) + "\n"
-                                    )
-                                    extra_info_content_chunck += "\t".join(
-                                        line.split("\t")[8:]
-                                    )
+                                    csv_content_chunck += "\t".join(line.split("\t")[:8]) + "\n"
+                                    extra_info_content_chunck += "\t".join(line.split("\t")[8:])
                             except:
                                 finished = True
 
@@ -295,9 +296,7 @@ class FastaParser:
             # taken from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
             with open(file, "r") as handle:
                 fasta = SeqIO.parse(handle, "fasta")
-                return any(
-                    fasta
-                )  # False when `fasta` is empty, i.e. wasn't a FASTA file
+                return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
 
         if os.path.exists(file):
             if not _check_fasta_content(file):
@@ -336,9 +335,7 @@ class FastaParser:
         region_ids = []
         with open(file_fasta_in, "r") as handle:
             for entry in SeqIO.parse(handle, "fasta"):
-                region, _, _ = self.parse_fasta_header(
-                    entry.id, parse_additional_info=False
-                )
+                region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
                 region_ids.append(region)
 
         return list(set(region_ids))
@@ -362,11 +359,20 @@ class FastaParser:
             fasta_sequences = []
             with open(file_fasta_in, "r") as handle:
                 for entry in SeqIO.parse(handle, "fasta"):
-                    region, _, _ = self.parse_fasta_header(
-                        entry.id, parse_additional_info=False
-                    )
+                    region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
                     if region in region_ids:
                         fasta_sequences.append(entry)
+            # check if some regions were not found
+            if len(fasta_sequences) < len(region_ids):
+                missing_regions = set(region_ids) - set(
+                    [
+                        self.parse_fasta_header(entry.id, parse_additional_info=False)[0]
+                        for entry in fasta_sequences
+                    ]
+                )
+                # issue a warning if some regions were not found
+                warnings.warn(f"Regions {missing_regions} were not found in the input FASTA file.")
+
         else:
             with open(file_fasta_in, "r") as handle:
                 fasta_sequences = list(SeqIO.parse(handle, "fasta"))
@@ -400,35 +406,31 @@ class FastaParser:
             "strand": [None],
         }
 
-        for header_entry in header.split("::"):
+        for header_entry in header.split(SEPARATOR_FASTA_HEADER_FIELDS):
             header_entry = header_entry.strip()
             if not region:
                 region = header_entry
             elif self.is_coordinate(header_entry):
-                header_coordinates = header_entry.split(";")
+                header_coordinates = header_entry.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST)
                 coordinates = {}
                 for header_coordinate in header_coordinates:
-                    coordinates.setdefault("chromosome", []).append(
-                        header_coordinate.split(":")[0]
-                    )
+                    coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
                     coordinates.setdefault("start", []).append(
                         int(header_coordinate.split(":")[1].split("-")[0])
                     )
                     coordinates.setdefault("end", []).append(
                         int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
                     )
-                    coordinates.setdefault("strand", []).append(
-                        header_coordinate.split("(")[1].split(")")[0]
-                    )
+                    coordinates.setdefault("strand", []).append(header_coordinate.split("(")[1].split(")")[0])
             else:
                 info_list = header_entry
                 # the additional info field should be parsed, save information in dict
                 if parse_additional_info:
-                    if ";" in info_list:
-                        info_list = info_list.split(";")
+                    if SEPARATOR_FASTA_HEADER_FIELDS_LIST in info_list:
+                        info_list = info_list.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST)
 
                         for infos in info_list:
-                            key_values = infos.split(",")
+                            key_values = infos.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS)
 
                             for key_value in key_values:
                                 key, value = key_value.split("=")

@@ -14,7 +14,7 @@ Module contents
    CustomGenomicRegionGenerator
    NcbiGenomicRegionGenerator
    EnsemblGenomicRegionGenerator
-   
+
    {% for name in oligo_designer_toolsuite.database.classes %}
      {{ name }}
    {% endfor %}

@@ -89,15 +89,11 @@ class MerfishSequence:
                 full_sequence = database[gene][oligo_id]["sequence"]
                 primer1 = full_sequence[:primer1_length]
                 primer2 = full_sequence[-primer2_length:]
-                readout_seq_1 = full_sequence[
-                    primer1_length : primer1_length + readout_length
-                ]
+                readout_seq_1 = full_sequence[primer1_length : primer1_length + readout_length]
                 target_sequence = full_sequence[
                     primer1_length + readout_length : -(primer2_length + readout_length)
                 ]
-                readout_seq_2 = full_sequence[
-                    -(primer2_length + readout_length) : -primer2_length
-                ]
+                readout_seq_2 = full_sequence[-(primer2_length + readout_length) : -primer2_length]
 
                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"] = {}
                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"]["id"] = oligo_id
@@ -122,29 +118,19 @@ class MerfishSequence:
                 yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"].update(
                     {
                         "merfish_probe_full_sequence": str(full_sequence),
-                        "readout_probe_1": str(
-                            readout_seq_1.reverse_complement() + "/3Cy5Sp"
-                        ),
-                        "readout_probe_2": str(
-                            readout_seq_2.reverse_complement() + "/3Cy5Sp"
-                        ),
+                        "readout_probe_1": str(readout_seq_1.reverse_complement() + "/3Cy5Sp"),
+                        "readout_probe_2": str(readout_seq_2.reverse_complement() + "/3Cy5Sp"),
                         "primer_sequence_1": str(primer1),
                         "primer_sequence_2": str(primer2),
                         "merfish_barcode_sequence": str(self.code[gene_idx]),
                         "target_sequence": str(target_sequence),
-                        "recognised_mRNA_sequence": str(
-                            target_sequence.reverse_complement()
-                        ),
+                        "recognised_mRNA_sequence": str(target_sequence.reverse_complement()),
                     }
                 )
                 for key in ["GC_content", "melting_temperature"]:
-                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = float(
-                        database_region[oligo_id][key]
-                    )
+                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = float(database_region[oligo_id][key])
                 for key in ["length"]:
-                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = int(
-                        database_region[oligo_id][key]
-                    )
+                    yaml_dict[gene][f"{gene}_oligo{oligo_idx+1}"][key] = int(database_region[oligo_id][key])
         # save
         final_dir_output = os.path.join(self.dir_output, "final_merfish_probes")
         Path(final_dir_output).mkdir(parents=True, exist_ok=True)
@@ -157,18 +143,16 @@ class MerfishSequence:
             yaml_order[region] = {}
             for oligo_id in yaml_dict[region]:
                 yaml_order[region][oligo_id] = {}
-                yaml_order[region][oligo_id]["merfish_probe_full_sequence"] = yaml_dict[
-                    region
-                ][oligo_id]["merfish_probe_full_sequence"]
-                yaml_order[region][oligo_id]["readout_probe_1"] = yaml_dict[region][
-                    oligo_id
-                ]["readout_probe_1"]
-                yaml_order[region][oligo_id]["readout_probe_2"] = yaml_dict[region][
-                    oligo_id
-                ]["readout_probe_2"]
-        with open(
-            os.path.join(final_dir_output, "merfish_probes_order.yml"), "w"
-        ) as outfile:
+                yaml_order[region][oligo_id]["merfish_probe_full_sequence"] = yaml_dict[region][oligo_id][
+                    "merfish_probe_full_sequence"
+                ]
+                yaml_order[region][oligo_id]["readout_probe_1"] = yaml_dict[region][oligo_id][
+                    "readout_probe_1"
+                ]
+                yaml_order[region][oligo_id]["readout_probe_2"] = yaml_dict[region][oligo_id][
+                    "readout_probe_2"
+                ]
+        with open(os.path.join(final_dir_output, "merfish_probes_order.yml"), "w") as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
         # Create readout probe file
@@ -176,9 +160,7 @@ class MerfishSequence:
         yaml_readout["Bit"] = "Readout Probe"
         for i in range(num_bits):
             yaml_readout[str(i + 1)] = readout_probes[i] + "/3Cy5Sp"
-        with open(
-            os.path.join(final_dir_output, "merfish_readout_probes.yml"), "w"
-        ) as outfile:
+        with open(os.path.join(final_dir_output, "merfish_readout_probes.yml"), "w") as outfile:
             yaml.dump(yaml_readout, outfile, default_flow_style=False, sort_keys=False)
 
         # Create codebook file
@@ -188,7 +170,5 @@ class MerfishSequence:
 
         for i in range(self.n_blanks):
             yaml_codebook[f"blank_barcode_{i + 1}"] = self.code[n_genes + i]
-        with open(
-            os.path.join(final_dir_output, "merfish_codebook.yml"), "w"
-        ) as outfile:
+        with open(os.path.join(final_dir_output, "merfish_codebook.yml"), "w") as outfile:
             yaml.dump(yaml_codebook, outfile, default_flow_style=False, sort_keys=False)

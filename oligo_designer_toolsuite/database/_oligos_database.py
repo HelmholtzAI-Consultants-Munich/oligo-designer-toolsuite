@@ -5,7 +5,7 @@
 import os
 import warnings
 from pathlib import Path
-from typing import Literal, Union, get_args
+from typing import List, Union, get_args
 
 import pandas as pd
 import yaml
@@ -14,15 +14,15 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from effidict import LRUDBDict
 
+from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
+from ..utils._checkers import check_if_key_exists, check_if_list, check_tsv_format
 from ..utils._database_processor import (
+    check_if_region_in_database,
     collapse_info_for_duplicated_sequences,
+    filter_dabase_for_region,
     merge_databases,
 )
 from ..utils._sequence_parser import FastaParser
-from ..utils._utils import check_if_list, check_tsv_format
-
-_TYPES_SEQ = Literal["target", "oligo"]
-
 
 ############################################
 # Oligo Database Class
@@ -67,18 +67,14 @@ class OligoDatabase:
     ):
         """Constructor for the OligoDatabase class."""
         self.min_oligos_per_region = min_oligos_per_region
-        self.write_regions_with_insufficient_oligos = (
-            write_regions_with_insufficient_oligos
-        )
+        self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
         self.lru_db_max_in_memory = lru_db_max_in_memory
 
         self.metadata = {}
 
         self.dir_output = os.path.abspath(os.path.join(dir_output, "oligo_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-        Path(os.path.join(self.dir_output, "cache_files")).mkdir(
-            parents=True, exist_ok=True
-        )
+        Path(os.path.join(self.dir_output, "cache_files")).mkdir(parents=True, exist_ok=True)
 
         self.fasta_parser = FastaParser()
 
@@ -95,9 +91,7 @@ class OligoDatabase:
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
-            self.file_removed_regions = os.path.join(
-                self.dir_output, "regions_with_insufficient_oligos.txt"
-            )
+            self.file_removed_regions = os.path.join(self.dir_output, "regions_with_insufficient_oligos.txt")
             with open(self.file_removed_regions, "a") as handle:
                 handle.write(f"Region\tPipeline step\n")
 
@@ -113,9 +107,7 @@ class OligoDatabase:
         :raises ValueError: If metadata has an incorrect format.
         """
         if self.metadata:
-            warnings.warn(
-                "Metadata not empty! Overwriting metadata with new metadata from file!"
-            )
+            warnings.warn("Metadata not empty! Overwriting metadata with new metadata from file!")
 
         if type(metadata) is str and os.path.exists(metadata):
             with open(metadata) as handle:
@@ -128,7 +120,7 @@ class OligoDatabase:
     def load_database(
         self,
         file_database: str,
-        region_ids: list[str] = None,
+        region_ids: Union[str, List[str]] = None,
         database_overwrite: bool = False,
     ):
         """Load a previously saved oligo database from a TSV file.
@@ -147,7 +139,7 @@ class OligoDatabase:
         :param file_database: Path to the TSV file containing the oligo database.
         :type file_database: str
         :param region_ids: List of region IDs to filter the database. Defaults to None.
-        :type region_ids: list[str], optional
+        :type region_ids: Union[str, List[str]], optional
         :param database_overwrite: If True, overwrite the existing database. Defaults to False.
         :type database_overwrite: bool, optional
 
@@ -196,8 +188,13 @@ class OligoDatabase:
             database_tmp2 = merge_databases(self.database, database_tmp2)
 
         if region_ids:
-            database_tmp2 = self._filter_dabase_for_region(database_tmp2, region_ids)
-            self._check_if_region_in_database(database_tmp2, region_ids)
+            database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
+            check_if_region_in_database(
+                database_tmp2,
+                region_ids,
+                self.write_regions_with_insufficient_oligos,
+                self.file_removed_regions,
+            )
 
         self.database = database_tmp2
 
@@ -218,7 +215,7 @@ class OligoDatabase:
         :param file_fasta_in: Path to the FASTA file containing the sequences.
         :type file_fasta_in: str
         :param sequence_type: Type of sequence to load, either 'target' or 'oligo'.
-        :type sequence_type: Literal["target", "oligo"]
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: List of region IDs to filter the database. Defaults to None.
         :type region_ids: list[str], optional
         :param database_overwrite: If True, overwrite the existing database. Defaults to False.
@@ -230,9 +227,7 @@ class OligoDatabase:
         assert (
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-        sequence_reverse_complement_type = (
-            options[0] if options[0] != sequence_type else options[1]
-        )
+        sequence_reverse_complement_type = options[0] if options[0] != sequence_type else options[1]
 
         self.fasta_parser.check_fasta_format(file_fasta_in)
 
@@ -241,14 +236,10 @@ class OligoDatabase:
 
         region_ids = check_if_list(region_ids)
 
-        fasta_sequences = self.fasta_parser.read_fasta_sequences(
-            file_fasta_in, region_ids
-        )
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta_in, region_ids)
         region_sequences = {}
         for entry in fasta_sequences:
-            region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(
-                entry.id
-            )
+            region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
             oligo_info = coordinates | additional_info
             if region in region_sequences:
                 if entry.seq in region_sequences[region]:
@@ -271,10 +262,8 @@ class OligoDatabase:
         for region, value in region_sequences.items():
             i = 1
             for oligo_sequence, oligo_info in value.items():
-                oligo_id = f"{region}::{i}"
-                oligo_sequence_reverse_complement = str(
-                    Seq(oligo_sequence).reverse_complement()
-                )
+                oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
+                oligo_sequence_reverse_complement = str(Seq(oligo_sequence).reverse_complement())
                 oligo_seq_info = {
                     sequence_type: oligo_sequence,
                     sequence_reverse_complement_type: oligo_sequence_reverse_complement,
@@ -287,7 +276,12 @@ class OligoDatabase:
 
         # add this step to log regions which are not available in database
         if region_ids:
-            self._check_if_region_in_database(database_tmp, region_ids)
+            check_if_region_in_database(
+                database_tmp,
+                region_ids,
+                self.write_regions_with_insufficient_oligos,
+                self.file_removed_regions,
+            )
 
         self.database = database_tmp
 
@@ -303,9 +297,7 @@ class OligoDatabase:
         :type pipeline_step: str
         """
         regions_to_remove = [
-            region
-            for region, oligos in self.database.items()
-            if len(oligos) <= self.min_oligos_per_region
+            region for region, oligos in self.database.items() if len(oligos) <= self.min_oligos_per_region
         ]
 
         for region in regions_to_remove:
@@ -314,21 +306,13 @@ class OligoDatabase:
 
         if self.write_regions_with_insufficient_oligos and regions_to_remove:
             with open(self.file_removed_regions, "a") as handle:
-                handle.write(
-                    "\n".join(
-                        f"{region}\t{pipeline_step}" for region in regions_to_remove
-                    )
-                    + "\n"
-                )
+                handle.write("\n".join(f"{region}\t{pipeline_step}" for region in regions_to_remove) + "\n")
 
     def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
-        """Retrieve a list of sequences of the specified type from the oligo database.
-
-        This function extracts sequences of a specified type (e.g., 'oligo' or 'target') from the oligo
-        database and returns them as a list.
+        """Retrieve a list of sequences of the specified type (e.g., 'oligo' or 'target') from the oligo database.
 
         :param sequence_type: Type of sequences to retrieve (default is 'oligo').
-        :type sequence_type: Literal["target", "oligo"]
+        :type sequence_type: _TYPES_SEQ
         :return: List of sequences.
         :rtype: List[str]
         """
@@ -344,12 +328,89 @@ class OligoDatabase:
 
         return sequences
 
+    def get_sequence_oligoid_mapping(
+        self, sequence_type: _TYPES_SEQ = "oligo", sequence_to_upper: bool = False
+    ):
+        """Generate a mapping between sequences and their corresponding oligonucleotide IDs, with an option to convert sequences to uppercase.
+
+        Validates the sequence type against predefined options. If `sequence_to_upper` is True, converts all sequences to uppercase before mapping,
+        ensuring case-insensitive comparisons. This function supports scenarios where multiple oligos share the same sequence, grouping their IDs in a list.
+
+        :param sequence_type: The type of sequence to use for the mapping, defaulting to "oligo".
+        :type sequence_type: _TYPES_SEQ
+        :param sequence_to_upper: Flag indicating whether to convert sequences to uppercase.
+        :type sequence_to_upper: bool
+        :return: A dictionary mapping sequences to lists of corresponding oligonucleotide IDs.
+        :rtype: dict
+        """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+
+        sequence_oligoids_mapping = {}
+
+        for region_id, database_region in self.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                seq = oligo_attributes[sequence_type]
+                if sequence_to_upper:
+                    seq = seq.upper()
+                if seq not in sequence_oligoids_mapping:
+                    # If the sequence key doesn't exist, create a new entry with the oligo ID in a list
+                    sequence_oligoids_mapping[seq] = [oligo_id]
+                else:
+                    # If the sequence key already exists, append the oligo ID to the existing list
+                    sequence_oligoids_mapping[seq].append(oligo_id)
+
+        return sequence_oligoids_mapping
+
+    # TODO: write test for function
+    def get_oligo_attribute(self, attribute: str):
+        """Retrieves a specified attribute for all oligos in the database and returns it as a pandas DataFrame.
+        This method assumes the presence of an attribute across all oligo records in the database. If the
+        attribute is not found, a KeyError is raised.
+
+        :param attribute: The name of the attribute to retrieve for each oligo.
+        :type attribute: str
+        :return: A pandas DataFrame with two columns: 'oligo_id' and the specified 'attribute', where each row
+                corresponds to an oligo and its attribute value.
+        :rtype: pd.DataFrame
+        :raises KeyError: If the specified attribute has not been computed and added to the database.
+        """
+        if not check_if_key_exists(self.database, attribute):
+            raise KeyError(f"The {attribute} attribute has not been computed!")
+        oligo_ids = [
+            oligo_id for region_id, oligo_dict in self.database.items() for oligo_id in oligo_dict.keys()
+        ]
+        attributes = [
+            oligo_attributes[attribute]
+            for region_id, oligo_dict in self.database.items()
+            for oligo_id, oligo_attributes in oligo_dict.items()
+        ]
+        return pd.DataFrame({"oligo_id": oligo_ids, attribute: attributes})
+
+    # TODO: move calculation to different class
+    def calculate_oligo_length(self):
+        """Calculate the length of each oligo sequence in the database.
+
+        This function iterates through the oligo database and calculates the length of each oligonucleotide
+        from it's oligo sequence. This method updates the database in-place, adding a 'length' key to the
+        attributes dictionary of each oligo.
+
+        :return: None
+        :rtype: None
+        """
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                oligo_attributes["length"] = len(oligo_attributes["oligo"])
+
+    # TODO: move calculation to different class
     def calculate_num_targeted_transcripts(self):
         """Calculate the number of unique transcripts targeted by each oligo in the database.
 
         This function iterates through the oligo database, extracts the transcript IDs associated with each oligo, and
-        calculates the number of unique transcripts targeted by each oligo. The results are stored in the
-        'num_targeted_transcripts' field of the oligo attributes.
+        calculates the number of unique transcripts targeted by each oligo. This method updates the database in-place,
+        adding a 'num_targeted_transcripts' key to the attributes dictionary of each oligo.
 
         :return: None
         :rtype: None
@@ -358,45 +419,39 @@ class OligoDatabase:
             for oligo_id, oligo_attributes in oligo_dict.items():
                 if "transcript_id" in oligo_attributes:
                     transcript_ids = oligo_attributes["transcript_id"]
-                    oligo_dict[oligo_id]["num_targeted_transcripts"] = len(
+                    oligo_attributes["num_targeted_transcripts"] = len(
                         set(
                             item
                             for sublist in (
-                                transcript_ids
-                                if isinstance(transcript_ids[0], list)
-                                else [transcript_ids]
+                                transcript_ids if isinstance(transcript_ids[0], list) else [transcript_ids]
                             )
                             for item in sublist
                         )
                     )
                 else:
-                    oligo_dict[oligo_id]["num_targeted_transcripts"] = 0
+                    oligo_attributes["num_targeted_transcripts"] = 0
 
+    # TODO: move calculation to different class
     def calculate_isoform_consensus(self):
         """Calculate the isoform consensus for each oligo in the database.
 
         For each oligo in the database, this function calculates the isoform consensus based on the
         provided transcript information. It computes the percentage of unique transcript IDs over the
         total number of transcripts associated with the oligo. The maximum value for the isoform consensus
-        is 100%, which means that the region is present in all isoforms (transcripts) of the gene.
-
-        If the oligo has information about the number of transcripts ('number_transcripts') and
-        transcript IDs ('transcript_id'), the isoform consensus is calculated and stored in the
-        'isoform_consensus' attribute of the oligo. If the necessary information is not available, the
+        is 100%, which means that the region is present in all isoforms (transcripts) of the gene. This
+        method updates the database in-place, adding a 'isoform_consensus' key to the attributes dictionary
+        of each oligo. If the necessary information for isoform consensus calculation is not available, the
         'isoform_consensus' is set to None.
+
+        :return: None
+        :rtype: None
         """
         for region_id, oligo_dict in self.database.items():
             for oligo_id, oligo_attributes in oligo_dict.items():
-                if ("number_transcripts" in oligo_attributes) and (
-                    "transcript_id" in oligo_attributes
-                ):
+                if ("number_transcripts" in oligo_attributes) and ("transcript_id" in oligo_attributes):
                     number_transcripts_gene = oligo_attributes["number_transcripts"]
                     number_transcripts_gene = int(
-                        [
-                            item
-                            for sublist in number_transcripts_gene
-                            for item in sublist
-                        ][0]
+                        [item for sublist in number_transcripts_gene for item in sublist][0]
                     )  # all values have to be the same
                     transcript_ids = [
                         item
@@ -414,6 +469,83 @@ class OligoDatabase:
                     )
                 else:
                     oligo_dict[oligo_id]["isoform_consensus"] = None
+
+    # TODO: move calculation to different class
+    def calculate_seedregion(self, start: Union[int, float], end: Union[int, float]):
+        """Calculate a seed region for each oligonucleotide in the database.
+
+        The seed region is calculated based on start and end parameters. The start and end can be specified as absolute
+        positions (int) or as a percentage of the oligo's length (float). This method updates the database in-place,
+        adding a 'seedregion_start' and 'seedregion_end' key to the attributes dictionary of each oligo.
+
+        For example:
+        start = 4
+        end = 6
+            will set the relative start and end positions wrt the oligo sequence of the seed region to 4 and 6, respectively.
+
+        start = 0.4
+        end = 0.6
+            will set the relative start and end positions wrt the oligo sequence of the seed region to 4 and 6, respectively,
+            only if the oligo length = 10.
+
+        :param start: The starting position of the seed region. Can be an integer (absolute position) or a float (percentage).
+        :type start: Union[int, float]
+        :param end: The ending position of the seed region. Must be the same type as start.
+        :type end: Union[int, float]
+        :raises ValueError: If start and end parameters are of different types, or if percentage values are outside the [0,1] range.
+        """
+        if type(start) != type(end):
+            raise ValueError(
+                "Can't mix types for start and end parameter. For both either use int (relative coordinates wrt oligo) or float (percentage for relative coordinates wrt oligo) type."
+            )
+
+        if not check_if_key_exists(self.database, "length"):
+            self.calculate_oligo_length()
+
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                if isinstance(start, int):
+                    oligo_attributes["seedregion_start"] = max(0, start)
+                    oligo_attributes["seedregion_end"] = min(oligo_attributes["length"], end)
+                else:
+                    if start < 0 or start > 1:
+                        raise ValueError("Start position must be in the interval [0,1]!")
+                    if end < 0 or end > 1:
+                        raise ValueError("End position must be in the interval [0,1]!")
+                    oligo_attributes["seedregion_start"] = int(round(start * oligo_attributes["length"]))
+                    oligo_attributes["seedregion_end"] = int(round(end * oligo_attributes["length"]))
+
+    # TODO: move calculation to different class
+    def calculate_seedregion_ligationsite(self, seedregion_size: int):
+        """Calculate a seed region around the ligation site for each oligonucleotide in the database.
+
+        The seed region is calculated based on a specified seed region size. The seed region is defined
+        symmetrically around the ligation site, considering the provided size. This method updates the
+        database in-place, adding a 'seedregion_start' and 'seedregion_end' key to the attributes dictionary
+        of each oligo.
+
+        :param seedregion_size: The size of the seed region to calculate around the ligation site.
+        :type seedregion_size: int
+        :raises KeyError: If the ligation site has not been previously computed and added to the oligo attributes.
+        """
+        if not check_if_key_exists(self.database, "ligation_site"):
+            raise KeyError("The ligation site has not been computed!")
+
+        if not check_if_key_exists(self.database, "length"):
+            self.calculate_oligo_length()
+
+        # TODO: add case when ligation_site = None
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                oligo_attributes["seedregion_start"] = int(
+                    max(0, oligo_attributes["ligation_site"] - (seedregion_size - 1))
+                )
+                oligo_attributes["seedregion_end"] = int(
+                    min(
+                        oligo_attributes["length"],
+                        oligo_attributes["ligation_site"] + seedregion_size,
+                    )
+                )
 
     def save_database(
         self,
@@ -448,9 +580,7 @@ class OligoDatabase:
         file_metadata = os.path.join(self.dir_output, filename_out + ".yaml")
 
         with open(file_metadata, "w") as handle:
-            yaml.safe_dump(
-                self.metadata, handle, sort_keys=True, default_flow_style=False
-            )
+            yaml.safe_dump(self.metadata, handle, sort_keys=True, default_flow_style=False)
 
         file_database = os.path.join(self.dir_output, filename_out + ".tsv")
         file_tsv_content = []
@@ -472,6 +602,7 @@ class OligoDatabase:
         filename: str = "oligo_database",
         region_ids: list[str] = None,
         sequence_type: _TYPES_SEQ = "oligo",
+        save_description: bool = False,
     ):
         """Write oligo sequences from the database to a FASTA file.
 
@@ -502,11 +633,12 @@ class OligoDatabase:
             for region_id, oligo in self.database.items():
                 if region_id in region_ids:
                     for oligo_id, oligo_attributes in oligo.items():
+                        description = sequence_type if save_description else ""
                         seq_record = SeqRecord(
                             Seq(oligo_attributes[sequence_type]),
                             id=oligo_id,
-                            name=oligo_id.split("::")[0],
-                            description=sequence_type,
+                            name=oligo_id.split(SEPARATOR_OLIGO_ID)[0],
+                            description=description,
                         )
                         output_fasta.append(seq_record)
 
@@ -514,6 +646,7 @@ class OligoDatabase:
 
         return file_fasta
 
+    # TODO: write test for this function
     def write_oligosets(self, foldername_out: str = "oligo_sets"):
         """Write oligo sets to individual TSV files.
 
@@ -533,40 +666,3 @@ class OligoDatabase:
             self.oligosets[region_id].to_csv(file_oligosets, sep="\t", index=False)
 
         return dir_oligosets
-
-    def _check_if_region_in_database(self, database, region_ids):
-        """Check if specified regions exist in the provided database.
-
-        This internal method checks whether all regions provided in the region_ids list exist in the given database.
-        If a region is not found, a warning is issued, and if enabled, the information is recorded in the log file.
-
-        :param database: The database to check for region existence.
-        :type database: dict
-        :param region_ids: The list of region IDs to check.
-        :type region_ids: list
-        """
-        keys = list(database.keys())
-        for region_id in region_ids:
-            if region_id not in keys:
-                warnings.warn(f"Region {region_id} not available in reference file.")
-                if self.write_regions_with_insufficient_oligos:
-                    with open(self.file_removed_regions, "a") as hanlde:
-                        hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")
-
-    def _filter_dabase_for_region(self, database, region_ids):
-        """Filter the provided database to include only specified region IDs.
-
-        This internal method filters the given database to retain only the entries corresponding to the provided list
-        of region IDs. If a region ID is not in the specified list, it is removed from the database.
-
-        :param database: The database to filter.
-        :type database: dict
-        :param region_ids: The list of region IDs to retain in the filtered database.
-        :type region_ids: list
-        :return: The filtered database.
-        :rtype: dict
-        """
-        for key in database.keys():
-            if key not in region_ids:
-                database.pop(key)
-        return database

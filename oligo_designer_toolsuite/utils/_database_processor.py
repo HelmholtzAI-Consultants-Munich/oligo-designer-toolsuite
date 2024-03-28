@@ -2,10 +2,13 @@
 # imports
 ############################################
 
+import warnings
 from collections import defaultdict
 from itertools import chain
 
 from effidict import LRUDBDict
+
+from .._constants import SEPARATOR_OLIGO_ID
 
 ############################################
 # Collection of utility functions
@@ -89,7 +92,7 @@ def merge_databases(database1, database2, max_in_memory=10):
     for region, value in database_tmp.items():
         i = 1
         for oligo_sequence, oligo_info in value.items():
-            oligo_id = f"{region}::{i}"
+            oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
             oligo_seq_info = {"oligo": oligo_sequence} | oligo_info
             database_merged[region][oligo_id] = oligo_seq_info
             i += 1
@@ -116,9 +119,7 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
         :return: True if the item is a list containing only lists, False otherwise.
         :rtype: bool
         """
-        return isinstance(item, list) and all(
-            isinstance(subitem, list) for subitem in item
-        )
+        return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
 
     oligo_info = defaultdict(list)
 
@@ -135,3 +136,48 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
     oligo_info = dict(oligo_info)
 
     return oligo_info
+
+
+def filter_dabase_for_region(database, region_ids):
+    """Filter the provided database to include only specified region IDs.
+
+    This internal method filters the given database to retain only the entries corresponding to the provided list
+    of region IDs. If a region ID is not in the specified list, it is removed from the database.
+
+    :param database: The database to filter.
+    :type database: dict
+    :param region_ids: The list of region IDs to retain in the filtered database.
+    :type region_ids: list
+    :return: The filtered database.
+    :rtype: dict
+    """
+    for key in database.keys():
+        if key not in region_ids:
+            database.pop(key)
+    return database
+
+
+def check_if_region_in_database(
+    database, region_ids, write_regions_with_insufficient_oligos, file_removed_regions
+):
+    """Check if specified regions exist in the provided database.
+
+    This internal method checks whether all regions provided in the region_ids list exist in the given database.
+    If a region is not found, a warning is issued, and if enabled, the information is recorded in the log file.
+
+    :param database: The database to check for region existence.
+    :type database: dict
+    :param region_ids: The list of region IDs to check.
+    :type region_ids: list
+    :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file.
+    :type write_regions_with_insufficient_oligos: bool
+    :param file_removed_regions: Path to file writing regions with insufficient oligos.
+    :type file_removed_regions: str
+    """
+    keys = list(database.keys())
+    for region_id in region_ids:
+        if region_id not in keys:
+            warnings.warn(f"Region {region_id} not available in reference file.")
+            if write_regions_with_insufficient_oligos:
+                with open(file_removed_regions, "a") as hanlde:
+                    hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")

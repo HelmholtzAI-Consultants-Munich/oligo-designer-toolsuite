@@ -11,7 +11,7 @@ Module contents
 
    PadlockSequence
    MerfishSequence
-   
+
    {% for name in oligo_designer_toolsuite.sequence_design.classes %}
      {{ name }}
    {% endfor %}

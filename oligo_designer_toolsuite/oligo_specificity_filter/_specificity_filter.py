@@ -2,6 +2,9 @@
 # imports
 ############################################
 
+from typing import get_args
+
+from .._constants import _TYPES_SEQ
 from ..database import OligoDatabase, ReferenceDatabase
 from . import SpecificityFilterBase
 
@@ -11,50 +14,51 @@ from . import SpecificityFilterBase
 
 
 class SpecificityFilter:
-    """
-    This class applies the specificity filters given in input sequentially to a ``CustomDB`` class.
+    """A class to apply a series of specificity filters to an oligonucleotide database to ensure that oligos
+    do not bind to off-targets of a given reference databse or cross-hybridize with other oligos in the oligo databse.
 
-    :param filters: List of all the filter classes that we want to apply to the database
-    :type filters: list of ``SpecificityFilterBase`` class
+    :param filters: A list of filter instances derived from SpecificityFilterBase that define the specificity criteria.
+    :type filters: list[SpecificityFilterBase]
     """
 
     def __init__(
         self,
         filters: list[SpecificityFilterBase],
     ):
-        """
-        Constructor.
-        """
-
+        """Constructor for the SpecificityFilter class."""
         self.filters = filters
 
     def apply(
         self,
+        sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,
         n_jobs: int = None,
+        reference_database: ReferenceDatabase = None,
     ):
-        """
-        Applies all the class filter sequentially to the ``oligos_DB`` stored in the data_base class given in input. Each filter parallelized and ``n_jobs`` represents the maximum number of cores available.
+        """Applies all provided specificity filters to the oligo database against a reference database.
 
-        :param oligo_database: Oligos Database class to filter.
-        :type oligo_database: CustomOligoDB class
-        :param oligo_database: Database class containing the reference region for the alignement methods.
-        :type oligo_database: CustomReferenceDB class
-        :param n_jobs: maximum number of available jobs, if ``None`` the number of jobs of the ``data_base`` class is used, defaults to None
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param oligo_database: The database of oligonucleotides to be filtered.
+        :type oligo_database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run. Defaults to the number of jobs defined in oligo_database.
         :type n_jobs: int, optional
-
-        :return: filtered data_base class
-        :rtype: CustomDB class
+        :param reference_database: The reference database to compare against for specificity.
+            For non-alignment based specificity filter reference_database is not used, i.e. set to None.
+        :type reference_database: ReferenceDatabase, optional
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
         """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
         if n_jobs is None:
             n_jobs = oligo_database.n_jobs
 
-        database = oligo_database.database
         for filter in self.filters:
-            database = filter.apply(database, reference_database.file_fasta, n_jobs)
+            oligo_database = filter.apply(sequence_type, oligo_database, reference_database, n_jobs)
 
-        oligo_database.database = database
-        oligo_database.remove_regions_with_insufficient_oligos("Specificity filter")
+        oligo_database.remove_regions_with_insufficient_oligos("Specificity Filters")
         return oligo_database
