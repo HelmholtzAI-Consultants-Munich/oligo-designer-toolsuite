@@ -92,8 +92,6 @@ def test_oligosets_generation(oligoset_generator, oligos_database):
         computed_sets.sort_values(by=list(computed_sets.columns), inplace=True)
         computed_sets.reset_index(inplace=True, drop=True)
         pd.set_option("display.max_columns", 500)
-        print(true_sets)
-        print(computed_sets)
         assert true_sets.equals(computed_sets), f"Sets for {gene} are not computed correctly!"
 
 

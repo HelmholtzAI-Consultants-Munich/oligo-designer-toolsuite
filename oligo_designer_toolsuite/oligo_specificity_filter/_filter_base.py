@@ -189,7 +189,6 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         table_hits = pd.concat(table_hits, ignore_index=True)
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
-        print(oligo_pair_hits)
 
         return oligo_pair_hits
 

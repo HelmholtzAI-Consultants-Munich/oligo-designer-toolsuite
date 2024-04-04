@@ -6,7 +6,7 @@ import warnings
 from collections import defaultdict
 from itertools import chain
 
-from effidict import LRUDBDict
+from effidict import LRUDict
 
 from .._constants import SEPARATOR_OLIGO_ID
 
@@ -34,7 +34,7 @@ def merge_databases(database1, database2, max_in_memory=10):
         :return: A modified database with oligo sequences as keys.
         :rtype: dict
         """
-        database_modified = LRUDBDict(
+        database_modified = LRUDict(
             max_in_memory=max_in_memory,
             storage_path=database.storage_path,
         )
@@ -69,7 +69,7 @@ def merge_databases(database1, database2, max_in_memory=10):
                     database_tmp[region][oligo_sequence] = oligo_info
         return database_tmp
 
-    database_tmp = LRUDBDict(
+    database_tmp = LRUDict(
         max_in_memory=max_in_memory,
         storage_path=database1.storage_path,
     )
@@ -82,7 +82,7 @@ def merge_databases(database1, database2, max_in_memory=10):
     database_tmp = _add_database_content(database_tmp, db1_sequences_as_keys)
     database_tmp = _add_database_content(database_tmp, db2_sequences_as_keys)
 
-    database_merged = LRUDBDict(
+    database_merged = LRUDict(
         max_in_memory=max_in_memory,
         storage_path=database1.storage_path,
     )

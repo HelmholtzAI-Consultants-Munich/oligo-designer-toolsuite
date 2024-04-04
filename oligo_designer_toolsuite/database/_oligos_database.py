@@ -12,7 +12,7 @@ import yaml
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from effidict import LRUDBDict
+from effidict import LRUDict
 
 from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 from ..utils._checkers import check_if_key_exists, check_if_list, check_tsv_format
@@ -79,12 +79,12 @@ class OligoDatabase:
         self.fasta_parser = FastaParser()
 
         # Initialize databse object
-        self.database = LRUDBDict(
+        self.database = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
         )
 
-        self.oligosets = LRUDBDict(
+        self.oligosets = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
         )  # will be used later in the generation of non overlapping sets
@@ -174,7 +174,7 @@ class OligoDatabase:
         )
 
         database_tmp1 = file_tsv_content.to_dict(orient="records")
-        database_tmp2 = LRUDBDict(
+        database_tmp2 = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
         )
@@ -252,7 +252,7 @@ class OligoDatabase:
             else:
                 region_sequences[region] = {str(entry.seq): oligo_info}
 
-        database_tmp = LRUDBDict(
+        database_tmp = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
         )
