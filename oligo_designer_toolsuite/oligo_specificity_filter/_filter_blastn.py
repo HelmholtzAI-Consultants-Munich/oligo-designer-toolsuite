@@ -5,19 +5,16 @@
 import os
 import warnings
 from abc import abstractmethod
-import pandas as pd
-import numpy as np
-
 from pathlib import Path
 from typing import List, Union
 
 import pandas as pd
+import numpy as np
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 from Bio import SeqIO
-from Bio.SeqUtils import gc_fraction
 
 from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase
+from ..database import OligoDatabase, ReferenceDatabase
 from ..utils._checkers import check_if_list
 from . import AlignmentSpecificityFilter
 from ..utils import get_sequence_from_annotation
@@ -56,12 +53,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
     :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
-    :param ai_filter: The machine learning model used to filter the oligos {None, 'hybridization_probability'}, defaults to None
-    :type ai_filter: str, optional
-    :param ai_filter_thershold: The threshold below which the oligos are filtered, defaults to None
-    :type ai_filter_thershold: float, optional
-    :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
-    :type ai_filter_path: str, optional
     """
 
     def __init__(
@@ -76,18 +67,10 @@ class BlastNFilter(AlignmentSpecificityFilter):
             "query_start",
             "query_end",
             "query_length",
-            "query_sequence",
-            "reference_start",
-            "reference_end",
-            "reference_sequence",
-            "reference_strand"
-        ], #TODO: update based on ai filters
-        ai_filter: str = None,
-        ai_filter_threshold: float = None,
-        ai_filter_path: str = None,
+        ],
 ):
         """Constructor for the BlastNFilter class."""
-        super().__init__(dir_output, ai_filter, ai_filter_threshold, ai_filter_path)
+        super().__init__(dir_output)
         self.blast_search_parameters = blast_search_parameters
         self.blast_hit_parameters = blast_hit_parameters
         self.names_search_output = names_search_output
@@ -95,9 +78,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         # Define default output format for blast search filter. The fields are:
         # query, reference, alignment_length, query_start, query_end, query_length
         if "outfmt" not in self.blast_search_parameters.keys():
-            self.blast_search_parameters["outfmt"] = (
-                "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"# TODO: update based on the requirements for ai filters,
-            )
+            self.blast_search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen"
 
         self.dir_blast = os.path.join(dir_output, "blast")
         Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
@@ -227,84 +208,69 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         return blast_table_hits
 
-    def _get_references(
-        self, table_hits: pd.DataFrame, file_reference: str, region_id: str
+    def get_references(
+        self, table_hits: pd.DataFrame, reference_database: ReferenceDatabase, region_id: str
     ):
         """
         Retrieve the reference sequences from the search results.
 
         :param table_hits: Dataframe containing the search results.
         :type searchtable_hits_results: pd.DataFrame
-        :param file_reference: Path to the fasta file used as reference for the search.
-        :type file_reference: str
+        :param reference_database: The reference database to compare against for specificity.
+        :type reference_database: ReferenceDatabase
         :param region_id: The identifier for the region within the database to filter.
         :type region_id: str
         :return: Reference sequences
         :rtype: list
         """
-        required_fields = [
-            "query",
-            "reference",
-            "alignment_length",
-            "query_start",
-            "query_end",
-            "query_length",
-            "query_sequence",
-            "reference_start",
-            "reference_end",
-            "reference_sequence",
-            "reference_strand"
-        ]
-        if not all(field in self.names_search_output for field in required_fields):
-            raise ValueError(
-                f"Some of the required fields {required_fields} are missing in the search results."
-            )
+        # required_fields = [
+        #     "query",
+        #     "reference",
+        #     "alignment_length",
+        #     "query_start",
+        #     "query_end",
+        #     "query_length",
+        #     "query_sequence",
+        #     "reference_start",
+        #     "reference_end",
+        #     "reference_sequence",
+        #     "reference_strand"
+        # ]
+        # if not all(field in self.names_search_output for field in required_fields):
+        #     raise ValueError(
+        #         f"Some of the required fields {required_fields} are missing in the search results."
+        #     )
         
         # set the positions to a 0-based index
-        references_plus = table_hits[table_hits["reference_strand"] == "plus"]
-        references_plus.loc[:, "query_start"] = references_plus["query_start"] - 1
-        references_plus.loc[:, "reference_start"] = references_plus["reference_start"] - 1
-        references_minus = table_hits[table_hits["reference_strand"] == "minus"]
-        references_minus.loc[:, "query_start"] = references_minus["query_start"] - 1
-        references_minus.loc[:, "reference_end"] = references_minus["reference_end"] - 1
-        table_hits = pd.concat([references_plus, references_minus])
-        table_hits.sort_index(inplace=True)  # restore the intial indexes
+        table_hits["query_start_corr"] = table_hits["query_start"] - 1  
+        table_hits["reference_start_corr"] = np.where(table_hits["reference_strand"] == "plus", table_hits["reference_start"] - 1, table_hits["reference_start"])  
+        table_hits["reference_end_corr"] = np.where(table_hits["reference_strand"] == "minus", table_hits["reference_end"] - 1, table_hits["reference_end"]) 
 
-        # create bed file for the plus strand
-        bed_plus = pd.DataFrame(
-            columns=["chr", "start", "end", "name", "score", "strand"],
-            index=references_plus.index,
-        )
-        bed_plus["chr"] = references_plus["reference"]
-        bed_plus["start"] = references_plus["reference_start"] - references_plus["query_start"]
-        bed_plus["end"] = references_plus["reference_end"] + (
-            references_plus["query_length"] - references_plus["query_end"]
-        )
-        bed_plus["name"] = references_plus["query"]
-        bed_plus["score"] = 0
-        bed_plus["strand"] = "+"
+        # Calculate adjusted "start" and "end" for BED format based on strand
+        table_hits["start"] = np.where(table_hits["reference_strand"] == "plus",
+                                        table_hits["reference_start_corr"] - table_hits["query_start_corr"],
+                                        table_hits["reference_end_corr"] - (table_hits["query_length"] - table_hits["query_end"]))
+        table_hits["end"] = np.where(table_hits["reference_strand"] == "plus",
+                                        table_hits["reference_end_corr"] + (table_hits["query_length"] - table_hits["query_end"]),
+                                        table_hits["reference_start_corr"] + table_hits["query_start_corr"])
 
-        # create bed file for the minus strand
-        bed_minus = pd.DataFrame(
-            columns=["chr", "start", "end", "name", "score", "strand"],
-            index=references_minus.index,
-        )
-        bed_minus["chr"] = references_minus["reference"]
-        bed_minus["start"] = references_minus["reference_end"] - (
-            references_minus["query_length"] - references_minus["query_end"]
-        )
-        bed_minus["end"] = references_minus["reference_start"] + references_minus["query_start"]
-        bed_minus["name"] = references_minus["query"]
-        bed_minus["score"] = 0
-        bed_minus["strand"] = "-"
-
-        # concatenate the bed files
-        bed = pd.concat([bed_plus, bed_minus])
+        # create bed file
+        bed = pd.DataFrame({  
+            "chr": table_hits["reference"],  
+            "start": table_hits["start"],  
+            "end": table_hits["end"],  
+            "name": table_hits["query"],  
+            "score": 0,  
+            "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"})  
+        })
         # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
         # additionally we store how muchpadding we have to do to have two seqeunces of the same length
         bed["overflow_start"] = bed["start"].apply(lambda x: -x if x < 0 else 0)
         bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
         # what about having the leght of a region as a method of the reference database?
+        file_reference = reference_database.write_database_to_fasta(
+            filename="reference_db"
+        )
         records = SeqIO.index(file_reference, "fasta")
         bed["len_region"] = bed["chr"].apply(lambda x: len(records[x].seq))
         bed["overflow_end"] = bed[["end", "len_region"]].apply(
@@ -355,12 +321,13 @@ class BlastNFilter(AlignmentSpecificityFilter):
             references_padded.append(reference)
         os.remove(references_fasta_file)
         os.remove(file_bed)
+        os.remove(file_reference)
         return references_padded
 
-    def _add_alignement_gaps(
+    def add_alignement_gaps(
         self, table_hits: pd.DataFrame, queries: list, references: list
     ):
-        """Adjust the sequences of the oligos to remove the gaps introduced by the alignement search.
+        """Adjust the sequences of the oligos to add the gaps introduced by the alignement search.
 
         :param table_hits: Dataframe containing the search results.
         :type table_hits: pandas.DataFrame
@@ -373,7 +340,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
         def add_gaps(seq, gaps):
             for gap in gaps:
                 seq = seq[: gap] + "-" + seq[gap :]
-                print(seq)
             return seq
 
         table_hits["query_gaps"] = (
@@ -417,12 +383,6 @@ class BlastNSeedregionFilterBase(BlastNFilter):
     :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
-    :param ai_filter: The machine learning model used to filter the oligos {None, 'hybridization_probability'}, defaults to None
-    :type ai_filter: str, optional
-    :param ai_filter_thershold: The threshold below which the oligos are filtered, defaults to None
-    :type ai_filter_thershold: float, optional
-    :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
-    :type ai_filter_path: str, optional
     """
 
     def __init__(
@@ -437,18 +397,10 @@ class BlastNSeedregionFilterBase(BlastNFilter):
             "query_start",
             "query_end",
             "query_length",
-            "query_sequence",
-            "reference_start",
-            "reference_end",
-            "reference_sequence",
-            "reference_strand"
         ],
-        ai_filter: str = None,
-        ai_filter_threshold: float = None,
-        ai_filter_path: str = None,
     ):
         """Constructor for the BlastNSeedregionFilterBase class."""
-        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output, names_search_output, ai_filter, ai_filter_threshold, ai_filter_path)
+        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output, names_search_output)
 
     @abstractmethod
     def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
@@ -536,12 +488,6 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
     :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
-    :param ai_filter: The machine learning model used to filter the oligos {None, 'hybridization_probability'}, defaults to None
-    :type ai_filter: str, optional
-    :param ai_filter_thershold: The threshold below which the oligos are filtered, defaults to None
-    :type ai_filter_thershold: float, optional
-    :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
-    :type ai_filter_path: str, optional
     
     """
 
@@ -559,18 +505,10 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
             "query_start",
             "query_end",
             "query_length",
-            "query_sequence",
-            "reference_start",
-            "reference_end",
-            "reference_sequence",
-            "reference_strand"
         ],
-        ai_filter: str = None,
-        ai_filter_threshold: float = None,
-        ai_filter_path: str = None,
     ):
         """Constructor for the BlastNSeedregionFilter class."""
-        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output, names_search_output, ai_filter, ai_filter_threshold, ai_filter_path)
+        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output, names_search_output)
 
         self.seedregion_start = seedregion_start
         self.seedregion_end = seedregion_end
@@ -620,12 +558,6 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
     :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
-    :param ai_filter: The machine learning model used to filter the oligos {None, 'hybridization_probability'}, defaults to None
-    :type ai_filter: str, optional
-    :param ai_filter_thershold: The threshold below which the oligos are filtered, defaults to None
-    :type ai_filter_thershold: float, optional
-    :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
-    :type ai_filter_path: str, optional
     """
 
     def __init__(
@@ -641,18 +573,10 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
             "query_start",
             "query_end",
             "query_length",
-            "query_sequence",
-            "reference_start",
-            "reference_end",
-            "reference_sequence",
-            "reference_strand"
         ],
-        ai_filter: str = None,
-        ai_filter_threshold: float = None,
-        ai_filter_path: str = None,
     ):
         """Constructor for the BlastNSeedregionLigationsiteFilter class."""
-        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output, names_search_output, ai_filter, ai_filter_threshold, ai_filter_path)
+        super().__init__(blast_search_parameters, blast_hit_parameters, dir_output, names_search_output)
         self.seedregion_size = seedregion_size
 
     def _add_seed_region_information(
