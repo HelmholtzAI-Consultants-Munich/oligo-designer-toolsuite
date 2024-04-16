@@ -42,9 +42,9 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
 
         self.alignment_method = alignment_method
         self.overwrite_output_format()
-        # create ai API
+        # instatiate ai model
         self.threshold  = threshold
-        self.api = APIHybridizationProbability(ai_filter_path=ai_filter_path)
+        self.model = APIHybridizationProbability(ai_filter_path=ai_filter_path)
         self.dir_output = dir_output
 
 
@@ -136,12 +136,13 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         )
 
         # predict the scores for each hit
-        predictions = self.api.predict(
+        predictions = self.model.predict(
             queries=queries,
             gapped_queries=gapped_queries,
             references=references,
             gapped_references=gapped_references,
         )
+        print(predictions)
 
         # filter the database, keep only the oligos above the threshold
         table_hits = table_hits[predictions >= self.threshold]

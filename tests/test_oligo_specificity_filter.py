@@ -336,7 +336,7 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
             dir_output=self.tmp_path
         )
         self.filter = HybridizationProbabilityFilter(alignment_method=self.alignment_filter, threshold=0.1)
-        self.filter.api = DummyAPI()
+        self.filter.model = DummyAPI()
         self.database = OligoDatabase(dir_output=self.tmp_path)
         self.database.load_database(FILE_DATABASE_OLIGOS_AI)
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
@@ -517,7 +517,7 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         bowtie_search_parameters = {"-n": 3, "-l": 5}
         self.alignment_filter = BowtieFilter(bowtie_search_parameters=bowtie_search_parameters,dir_output=self.tmp_path)
         self.filter = HybridizationProbabilityFilter(alignment_method=self.alignment_filter, threshold=0.1)
-        self.filter.api = DummyAPI()
+        self.filter.model = DummyAPI()
         self.database = OligoDatabase(dir_output=self.tmp_path)
         self.database.load_database(FILE_DATABASE_OLIGOS_AI)
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)

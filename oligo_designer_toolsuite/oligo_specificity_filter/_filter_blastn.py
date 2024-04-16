@@ -215,7 +215,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         Retrieve the reference sequences from the search results.
 
         :param table_hits: Dataframe containing the search results.
-        :type searchtable_hits_results: pd.DataFrame
+        :type table_hits: pd.DataFrame
         :param reference_database: The reference database to compare against for specificity.
         :type reference_database: ReferenceDatabase
         :param region_id: The identifier for the region within the database to filter.
@@ -223,23 +223,24 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :return: Reference sequences
         :rtype: list
         """
-        # required_fields = [
-        #     "query",
-        #     "reference",
-        #     "alignment_length",
-        #     "query_start",
-        #     "query_end",
-        #     "query_length",
-        #     "query_sequence",
-        #     "reference_start",
-        #     "reference_end",
-        #     "reference_sequence",
-        #     "reference_strand"
-        # ]
-        # if not all(field in self.names_search_output for field in required_fields):
-        #     raise ValueError(
-        #         f"Some of the required fields {required_fields} are missing in the search results."
-        #     )
+        
+        required_fields = [
+            "query",
+            "reference",
+            "alignment_length",
+            "query_start",
+            "query_end",
+            "query_length",
+            "query_sequence",
+            "reference_start",
+            "reference_end",
+            "reference_sequence",
+            "reference_strand"
+        ]
+        if not all(field in self.names_search_output for field in required_fields):
+            raise ValueError(
+                f"Some of the required fields {required_fields} are missing in the search results."
+            )
         
         # set the positions to a 0-based index
         table_hits["query_start_corr"] = table_hits["query_start"] - 1  
@@ -272,6 +273,8 @@ class BlastNFilter(AlignmentSpecificityFilter):
             filename="reference_db"
         )
         records = SeqIO.index(file_reference, "fasta")
+        # regions_length = {region: len(record.seq) for region, record in records.items()}
+        # bed["len_region"] = bed["chr"].map(regions_length)
         bed["len_region"] = bed["chr"].apply(lambda x: len(records[x].seq))
         bed["overflow_end"] = bed[["end", "len_region"]].apply(
             lambda x: x["end"] - x["len_region"] if x["end"] > x["len_region"] else 0,
@@ -306,6 +309,12 @@ class BlastNFilter(AlignmentSpecificityFilter):
         for reference, overflow_start, overflow_end, strand in zip(
             references, bed["overflow_start"], bed["overflow_end"], bed["strand"]
         ):
+            # padding_start = "-"*overflow_start
+            # padding_end = "-"*overflow_end
+            # if strand == "+":
+            #     reference = padding_start + reference + padding_end
+            # elif strand == "-":
+            #     reference = padding_end + reference + padding_start
             if overflow_start != 0:
                 # add padding in front if on pls strand, at the end if on the minus strand
                 if strand == "+":

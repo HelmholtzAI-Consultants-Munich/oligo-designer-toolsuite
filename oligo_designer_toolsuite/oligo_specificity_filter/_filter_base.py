@@ -16,9 +16,6 @@ from Bio import Seq
 from .._constants import _TYPES_SEQ, SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
 from ..database import OligoDatabase, ReferenceDatabase
 
-#TODO: add imports for specificity filters here, e.g. from . import specificity_filter_1, specificity_filter_2, ...
-
-
 ############################################
 # Oligo Specificity Filter Classes
 ############################################

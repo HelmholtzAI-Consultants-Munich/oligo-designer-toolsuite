@@ -221,7 +221,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             "reference_start",
             "query_sequence",
         ]
-        if not all(filed in self.names_search_output for filed in required_fields):
+        if not all(field in self.names_search_output for field in required_fields):
             raise ValueError(
                 f"Some of the required fields {required_fields} are missing in the search results."
             )
