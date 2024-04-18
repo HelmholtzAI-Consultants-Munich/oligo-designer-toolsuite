@@ -241,6 +241,14 @@ class OligoSeq(BaseOligoDesigner):
             n_sets: int,
             n_jobs: int = 1,
     ):
+        ##### log parameters #####
+        logging.info("Parameters Oligo Selection:")
+        args, _, _, values = inspect.getargvalues(inspect.currentframe())
+        parameters = {i: values[i] for i in args}
+        self._log_parameters(parameters)
+
+        num_genes_before, num_oligos_before = self._get_oligo_database_info(oligo_database.database)
+
         oligos_scoring = PadlockOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,

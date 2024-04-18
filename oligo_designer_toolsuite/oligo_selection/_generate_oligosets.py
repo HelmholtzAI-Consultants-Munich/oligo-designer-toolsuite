@@ -165,7 +165,7 @@ class OligosetGenerator:
             interval = []
             for start, end in zip(database_region[oligo_id]["start"], database_region[oligo_id]["end"]):
                 interval.append(
-                    [start, end]
+                    [start[0], end[0]]
                 )  # save a list of couples of [start,end] of the duplicates of that oligo
             intervals.append(interval)
 
