@@ -120,9 +120,9 @@ class OligoDatabase:
         fasta headers or information computed by the filtering classes.
         The order of columns in the database file is:
 
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
+        +-----------+----------+-------+--------+------------+-------+-----+--------+------------------+
+        | region_id | oligo_id | oligo | target | chromosome | start | end | strand | additional feat. |
+        +-----------+----------+-------+--------+------------+-------+-----+--------+------------------+
 
         The database can be optionally filtered by specifying a list of region IDs.
 

@@ -22,7 +22,7 @@ from ._filter_blastn import (
     BlastNSeedregionFilter,
     BlastNSeedregionLigationsiteFilter,
 )
-from ._filter_bowtie import Bowtie2Filter, BowtieFilter
+from ._filter_bowtie import BowtieFilter, Bowtie2Filter
 from ._filter_cross_hybridization import (
     CrossHybridizationFilter,
     RemoveByDegreePolicy,
@@ -30,6 +30,8 @@ from ._filter_cross_hybridization import (
 )
 from ._filter_exact_matches import ExactMatchFilter
 from ._specificity_filter import SpecificityFilter
+from ._ai_filter import HybridizationProbabilityFilter
+
 
 __all__ = [
     "SpecificityFilterBase",
@@ -44,4 +46,5 @@ __all__ = [
     "RemoveByDegreePolicy",
     "RemoveByLargerRegionPolicy",
     "SpecificityFilter",
+    "HybridizationProbabilityFilter",
 ]
