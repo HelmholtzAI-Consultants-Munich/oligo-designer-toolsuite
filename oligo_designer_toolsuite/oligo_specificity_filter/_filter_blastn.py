@@ -243,18 +243,11 @@ class BlastNFilter(AlignmentSpecificityFilter):
             )
         
         # set the positions to a 0-based index
-        table_hits["query_start_corr"] = table_hits["query_start"] - 1  
-        table_hits["reference_start_corr"] = np.where(table_hits["reference_strand"] == "plus", table_hits["reference_start"] - 1, table_hits["reference_start"])  
-        table_hits["reference_end_corr"] = np.where(table_hits["reference_strand"] == "minus", table_hits["reference_end"] - 1, table_hits["reference_end"]) 
-
+        table_hits = self._0_index_coordinates(table_hits)
+        
         # Calculate adjusted "start" and "end" for BED format based on strand
-        table_hits["start"] = np.where(table_hits["reference_strand"] == "plus",
-                                        table_hits["reference_start_corr"] - table_hits["query_start_corr"],
-                                        table_hits["reference_end_corr"] - (table_hits["query_length"] - table_hits["query_end"]))
-        table_hits["end"] = np.where(table_hits["reference_strand"] == "plus",
-                                        table_hits["reference_end_corr"] + (table_hits["query_length"] - table_hits["query_end"]),
-                                        table_hits["reference_start_corr"] + table_hits["query_start_corr"])
-
+        table_hits = self._extend_reference_start_end_coordinates(table_hits)
+    
         # create bed file
         bed = pd.DataFrame({  
             "chr": table_hits["reference"],  
@@ -264,27 +257,13 @@ class BlastNFilter(AlignmentSpecificityFilter):
             "score": 0,  
             "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"})  
         })
-        # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
-        # additionally we store how muchpadding we have to do to have two seqeunces of the same length
-        bed["overflow_start"] = bed["start"].apply(lambda x: -x if x < 0 else 0)
-        bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
-        # what about having the leght of a region as a method of the reference database?
         file_reference = reference_database.write_database_to_fasta(
             filename="reference_db"
         )
-        records = SeqIO.index(file_reference, "fasta")
-        # regions_length = {region: len(record.seq) for region, record in records.items()}
-        # bed["len_region"] = bed["chr"].map(regions_length)
-        bed["len_region"] = bed["chr"].apply(lambda x: len(records[x].seq))
-        bed["overflow_end"] = bed[["end", "len_region"]].apply(
-            lambda x: x["end"] - x["len_region"] if x["end"] > x["len_region"] else 0,
-            axis=1,
-        )
-        bed["end"] = bed[["end", "len_region"]].apply(
-            lambda x: x["end"] if x["end"] <= x["len_region"] else x["len_region"],
-            axis=1,
-        )
-        bed.sort_index(inplace=True)
+        # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
+        # additionally we store how muchpadding we have to do to have two seqeunces of the same length
+        bed = self._remove_overflows(bed, file_reference)
+
         file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
         bed.to_csv(
             file_bed,
@@ -305,32 +284,91 @@ class BlastNFilter(AlignmentSpecificityFilter):
         references = [
             off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")
         ]
+        references_padded = self._pad_overflows(bed, references)
+        
+        os.remove(references_fasta_file)
+        os.remove(file_bed)
+        os.remove(file_reference)
+        return references_padded
+    
+    def _0_index_coordinates(self, table_hits: pd.DataFrame):
+        """Converts the coordiantes into a 0-based index.
+
+        :param table_hits: Dataframe containing the search results.
+        :type table_hits: pd.DataFrame
+        :return: Corrected table_hits dataframe.
+        :rtype: pd.DataFrame
+        """
+        table_hits["query_start_corr"] = table_hits["query_start"] - 1  
+        table_hits["reference_start_corr"] = np.where(table_hits["reference_strand"] == "plus", table_hits["reference_start"] - 1, table_hits["reference_start"])  
+        table_hits["reference_end_corr"] = np.where(table_hits["reference_strand"] == "minus", table_hits["reference_end"] - 1, table_hits["reference_end"]) 
+        return table_hits
+
+    def _extend_reference_start_end_coordinates(self, table_hits: pd.DataFrame):
+        """Extend the length of the reference sequence to match the length of the query sequence.
+
+        :param table_hits: Dataframe containing the search results.
+        :type table_hits: pd.DataFrame
+        :return: Corrected table_hits dataframe.
+        :rtype: pd.DataFrame
+        """
+        table_hits["start"] = np.where(table_hits["reference_strand"] == "plus",
+                                        table_hits["reference_start_corr"] - table_hits["query_start_corr"],
+                                        table_hits["reference_end_corr"] - (table_hits["query_length"] - table_hits["query_end"]))
+        table_hits["end"] = np.where(table_hits["reference_strand"] == "plus",
+                                        table_hits["reference_end_corr"] + (table_hits["query_length"] - table_hits["query_end"]),
+                                        table_hits["reference_start_corr"] + table_hits["query_start_corr"])
+        return table_hits
+
+    def _remove_overflows(self, bed: pd.DataFrame, file_reference: str):
+        """Shortens the reference sequences that exceed the length of the gemonic region they belong to.
+
+        :param bed: Table containing the information of each reference sequence in bed format.
+        :type bed: pd.DataFrame
+        :param file_reference: Path to the reference database file.
+        :type file_reference: str
+        :return: Corrected bed dataframe.
+        :rtype: pd.DataFrame
+        """
+        bed["overflow_start"] = bed["start"].apply(lambda x: -x if x < 0 else 0)
+        bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
+        
+        records = SeqIO.index(file_reference, "fasta")
+        regions_length = {region: len(record.seq) for region, record in records.items()}
+        bed["len_region"] = bed["chr"].map(regions_length)
+
+        bed["overflow_end"] = bed[["end", "len_region"]].apply(
+            lambda x: x["end"] - x["len_region"] if x["end"] > x["len_region"] else 0,
+            axis=1,
+        )
+        bed["end"] = bed[["end", "len_region"]].apply(
+            lambda x: x["end"] if x["end"] <= x["len_region"] else x["len_region"],
+            axis=1,
+        )
+        return bed
+
+    def _pad_overflows(self, bed: pd.DataFrame, references: List):
+        """Add padding to the reference sequences that exceed the length of the gemonic region they belong to.
+
+        :param bed: Table containing the information of each reference sequence in bed format.
+        :type bed: pd.DataFrame
+        :param references: List with the sequences of the reference oligos.
+        :type references: list
+        :return: Padded reference sequences.
+        :rtype: list
+        """
         references_padded = []
         for reference, overflow_start, overflow_end, strand in zip(
             references, bed["overflow_start"], bed["overflow_end"], bed["strand"]
         ):
-            # padding_start = "-"*overflow_start
-            # padding_end = "-"*overflow_end
-            # if strand == "+":
-            #     reference = padding_start + reference + padding_end
-            # elif strand == "-":
-            #     reference = padding_end + reference + padding_start
-            if overflow_start != 0:
-                # add padding in front if on pls strand, at the end if on the minus strand
-                if strand == "+":
-                    reference = "-" * overflow_start + reference
-                elif strand == "-":
-                    reference = reference + "-" * overflow_start
-            if overflow_end != 0:
-                # add padding at the end if on the plus strand, at the beggining if on the minus strand
-                if strand == "+":
-                    reference = reference + "-" * overflow_end
-                if strand == "-":
-                    reference = "-" * overflow_end + reference
+            padding_start = "-"*overflow_start
+            padding_end = "-"*overflow_end
+            if strand == "+":
+                reference = padding_start + reference + padding_end
+            elif strand == "-":
+                reference = padding_end + reference + padding_start
+            
             references_padded.append(reference)
-        os.remove(references_fasta_file)
-        os.remove(file_bed)
-        os.remove(file_reference)
         return references_padded
 
     def add_alignement_gaps(
