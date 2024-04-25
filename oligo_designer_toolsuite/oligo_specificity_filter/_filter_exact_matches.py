@@ -24,7 +24,9 @@ class ExactMatchFilter(SpecificityFilterBase):
     """A filter that identifies and removes oligonucleotides with exact match sequences within the database,
     to prevent potential off-target effects. It leverages parallel processing to efficiently analyze large oligo databases.
 
-    :param policy: The filter policy to apply for minimizing cross-hybridization.
+    :param policy: The filter policy to apply for minimizing cross-hybridization. 
+        If a policy is provided only one oligo of a hit is removed. 
+        If no policy is provided (i.e. policy = None) both oligos of a hit are removed. Defaults to None.
     :type policy: FilterPolicyBase
     """
 
@@ -98,7 +100,8 @@ class ExactMatchFilter(SpecificityFilterBase):
         n_jobs: int,
         reference_database: ReferenceDatabase = None,  # not used in this filter but needed for API
     ):
-        """Retrieves pairs of oligonucleotides with exact matches within the oligo database.
+        """Retrieves pairs of oligonucleotides with exact matches within the oligo database. 
+        Here we match the sequenecs to their reverse complements
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
