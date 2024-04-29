@@ -16,16 +16,22 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 
 # Global Parameters
-FILE_DATABASE_OLIGOS_EXACT_MATCH = "data/tests/databases/database_oligos_exactmatch.tsv"
-FILE_DATABASE_OLIGOS_MATCH = "data/tests/databases/database_oligos_match.tsv"
-FILE_DATABASE_OLIGOS_NOMATCH = "data/tests/databases/database_oligos_nomatch.tsv"
-FILE_DATABASE_REFERENCE = "data/tests/databases/database_reference.fna"
-FILE_DATABASE_OLIGOS_LIGATION_MATCH = "data/tests/databases/database_oligos_ligation_match.tsv"
-FILE_DATABASE_OLIGOS_LIGATION_NOMATCH = "data/tests/databases/database_oligos_ligation_nomatch.tsv"
+FILE_DATABASE_OLIGOS_EXACT_MATCH = "data/tests/databases/database_oligos_tsv/database_oligos_exactmatch.tsv"
+FILE_DATABASE_OLIGOS_MATCH = "data/tests/databases/database_oligos_tsv/database_oligos_match.tsv"
+FILE_DATABASE_OLIGOS_NOMATCH = "data/tests/databases/database_oligos_tsv/database_oligos_nomatch.tsv"
+FILE_DATABASE_REFERENCE = "data/tests/databases/database_reference/database_reference.fna"
+FILE_DATABASE_OLIGOS_LIGATION_MATCH = (
+    "data/tests/databases/database_oligos_tsv/database_oligos_ligation_match.tsv"
+)
+FILE_DATABASE_OLIGOS_LIGATION_NOMATCH = (
+    "data/tests/databases/database_oligos_tsv/database_oligos_ligation_nomatch.tsv"
+)
 
-FILE_DATABASE_REFERENCE_LIGATION = "data/tests/databases/database_reference_ligation.fna"
+FILE_DATABASE_REFERENCE_LIGATION = "data/tests/databases/database_reference/database_reference_ligation.fna"
 
-FILE_DATABASE_OLIGOS_CROSSHYB = "data/tests/databases/database_oligos_crosshybridization.tsv"
+FILE_DATABASE_OLIGOS_CROSSHYB = (
+    "data/tests/databases/database_oligos_tsv/database_oligos_crosshybridization.tsv"
+)
 
 
 class TestExactMatchFilter(unittest.TestCase):
