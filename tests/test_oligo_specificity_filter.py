@@ -32,6 +32,12 @@ FILE_DATABASE_REFERENCE_LIGATION = "data/tests/databases/database_reference/data
 FILE_DATABASE_OLIGOS_CROSSHYB = (
     "data/tests/databases/database_oligos_tsv/database_oligos_crosshybridization.tsv"
 )
+SOLUTIONS_LARGER_REGION = [
+    f"data/tests/databases/expected_results/solution_crosshyb_larger_region_{i}.tsv" for i in range(3)
+]
+SOLUTIONS_DEGREE = [
+    f"data/tests/databases/expected_results/solution_crosshyb_degree_{i}.tsv" for i in range(8)
+]
 
 
 class TestExactMatchFilter(unittest.TestCase):
@@ -200,54 +206,25 @@ class TestCrossHybridizationFilter(unittest.TestCase):
         # Bowtie parameters
         self.bowtie_search_parameters_crosshyb = {"-n": 3, "-l": 5, "--nofw": ""}
 
-        self.expected_oligos_larger_region = {
-            "region_1": {
-                "region_1::oligo_7",
-                "region_1::oligo_5",
-                "region_1::oligo_6",
-                "region_1::oligo_8",
-                "region_1::oligo_4",
-            },
-            "region_2": {
-                "region_2::oligo_3",
-                "region_2::oligo_2",
-                "region_2::oligo_6",
-                "region_2::oligo_5",
-                "region_2::oligo_4",
-            },
-            "region_3": {
-                "region_3::oligo_1",
-                "region_3::oligo_4",
-                "region_3::oligo_3",
-                "region_3::oligo_2",
-                "region_3::oligo_5",
-            },
-        }
+        self.expected_oligos_larger_region = []
+        for i, solution_file in enumerate(SOLUTIONS_LARGER_REGION):
+            solution = OligoDatabase(
+                min_oligos_per_region=2,
+                write_regions_with_insufficient_oligos=True,
+                dir_output=os.path.join(self.tmp_path, f"oligo_database_solution_larger_region_{i}"),
+            )
+            solution.load_database(solution_file)
+            self.expected_oligos_larger_region.append(solution.database)
 
-        self.expected_oligos_degree = {
-            "region_1": {
-                "region_1::oligo_1",
-                "region_1::oligo_4",
-                "region_1::oligo_5",
-                "region_1::oligo_6",
-                "region_1::oligo_7",
-            },
-            "region_2": {
-                "region_2::oligo_1",
-                "region_2::oligo_2",
-                "region_2::oligo_3",
-                "region_2::oligo_4",
-                "region_2::oligo_5",
-                "region_2::oligo_6",
-                "region_2::oligo_7",
-            },
-            "region_3": {
-                "region_3::oligo_2",
-                "region_3::oligo_3",
-                "region_3::oligo_4",
-                "region_3::oligo_5",
-            },
-        }
+        self.expected_oligos_degree = []
+        for i, solution_file in enumerate(SOLUTIONS_DEGREE):
+            solution = OligoDatabase(
+                min_oligos_per_region=2,
+                write_regions_with_insufficient_oligos=True,
+                dir_output=os.path.join(self.tmp_path, f"oligo_database_solution_degree_{i}"),
+            )
+            solution.load_database(solution_file)
+            self.expected_oligos_degree.append(solution.database)
 
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
@@ -263,14 +240,9 @@ class TestCrossHybridizationFilter(unittest.TestCase):
 
     def _apply_filter_and_assert(self, filter_instance, expected_oligos):
         res = filter_instance.apply(self.sequence_type, self.oligo_database_crosshyb, 2)
-        filtered_oligos = {
-            key: {key_2 for key_2 in list(res.database[key].keys())} for key in list(res.database.keys())
-        }
-        self.assertEqual(
-            expected_oligos,
-            filtered_oligos,
-            f"The cross-hybridization filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{filtered_oligos}",
-        )
+        assert (
+            res.database in expected_oligos
+        ), f"The cross-hybridization filter didn't return the expected oligos."
 
     def test_crosshyb_filter_blast_larger_region_policy(self):
         filter_instance = BlastNFilter(
