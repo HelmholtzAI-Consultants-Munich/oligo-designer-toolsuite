@@ -149,6 +149,8 @@ If the Ologo Designer Toolsuite is useful for your research, consider citing the
     author       = { Francesco Campi,
                      Isra Mekki,  
                      Louis Kümmerle,
+		     Chelsea Bright,
+		     Malte Lücken
                      Fabian Theis,
                      Marie Piraud,
                      Lisa Barros de Andrade e Sousa
