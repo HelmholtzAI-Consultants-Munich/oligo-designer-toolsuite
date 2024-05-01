@@ -146,8 +146,8 @@ If the Ologo Designer Toolsuite is useful for your research, consider citing the
 
 ```
 @software{campi_2023_7823048,
-    author       = { Francesco Campi,
-                     Isra Mekki,  
+    author       = { Isra Mekki,
+		     Francesco Campi,  
                      Louis Kümmerle,
 		     Chelsea Bright,
 		     Malte Lücken
