@@ -68,13 +68,13 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         reference_database = self._create_reference_database(
             sequence_type=sequence_type, oligo_database=oligo_database
         )
-        cross_hybridization_graph = self._create_cross_hybridization_graph(
+        oligo_pair_hits = self.specificity_filter.get_oligo_pair_hits(
             sequence_type=sequence_type,
             oligo_database=oligo_database,
-            reference_database=reference_database,
             n_jobs=n_jobs,
+            reference_database=reference_database,
         )
-        oligos_with_hits = self.policy.apply(graph=cross_hybridization_graph, oligo_database=oligo_database)
+        oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 
         for region in regions:
             database_region_filtered = self._filter_hits_from_database(
@@ -106,32 +106,3 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         os.remove(file_reference)
 
         return reference_database
-
-    def _create_cross_hybridization_graph(
-        self,
-        sequence_type: _TYPES_SEQ,
-        oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,
-        n_jobs: int,
-    ):
-        """Creates a graph representing potential cross-hybridization events between oligonucleotides.
-
-        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
-        :type sequence_type: _TYPES_SEQ
-        :param oligo_database: The oligonucleotide database.
-        :type oligo_database: OligoDatabase
-        :param reference_database: The reference database to compare against for cross-hybridization.
-        :type reference_database: ReferenceDatabase
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
-        :return: A graph where nodes represent oligonucleotides and edges represent potential cross-hybridization.
-        :rtype: nx.Graph
-        """
-        oligo_pair_hits = self.specificity_filter.get_oligo_pair_hits(
-            sequence_type=sequence_type,
-            oligo_database=oligo_database,
-            n_jobs=n_jobs,
-            reference_database=reference_database,
-        )
-
-        return nx.from_edgelist(oligo_pair_hits)

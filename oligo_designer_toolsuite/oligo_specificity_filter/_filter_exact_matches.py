@@ -13,7 +13,7 @@ from .._constants import _TYPES_SEQ
 from ..database import OligoDatabase, ReferenceDatabase
 
 from ._filter_base import SpecificityFilterBase
-from ._policies import FilterPolicyBase
+from ._policies import FilterPolicyBase, RemoveAllPolicy
 
 ############################################
 # Oligo Exact Match Filter Classes
@@ -24,15 +24,16 @@ class ExactMatchFilter(SpecificityFilterBase):
     """A filter that identifies and removes oligonucleotides with exact match sequences within the database,
     to prevent potential off-target effects. It leverages parallel processing to efficiently analyze large oligo databases.
 
-    :param policy: The filter policy to apply for minimizing cross-hybridization. 
-        If a policy is provided only one oligo of a hit is removed. 
-        If no policy is provided (i.e. policy = None) both oligos of a hit are removed. Defaults to None.
-    :type policy: FilterPolicyBase
+    :param policy: The filter policy to apply for minimizing cross-hybridization.
+        If no policy is provided (i.e. policy = None) the RemoveAllPolicy() is applied. Defaults to None.
     """
 
     def __init__(self, policy: FilterPolicyBase = None):
         """Constructor for the ExactMatches class."""
-        self.policy = policy
+        if policy:
+            self.policy = policy
+        else:
+            self.policy = RemoveAllPolicy()
 
     def apply(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase, n_jobs: int):
         """Applies the exact match filter to an oligonucleotide database.
@@ -74,16 +75,9 @@ class ExactMatchFilter(SpecificityFilterBase):
             for region_id in region_ids
         )
 
-        if self.policy:
-            table_hits = pd.concat(table_hits, ignore_index=True)
-            oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
-            oligos_with_hits = self.policy.apply(
-                graph=nx.from_edgelist(oligo_pair_hits), oligo_database=oligo_database
-            )
-        else:
-            oligos_with_hits = {}
-            for region_id, table_hits_region in zip(region_ids, table_hits):
-                oligos_with_hits[str(region_id)] = table_hits_region["query"].unique()
+        table_hits = pd.concat(table_hits, ignore_index=True)
+        oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+        oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 
         for region in region_ids:
             database_region_filtered = self._filter_hits_from_database(
@@ -100,7 +94,7 @@ class ExactMatchFilter(SpecificityFilterBase):
         n_jobs: int,
         reference_database: ReferenceDatabase = None,  # not used in this filter but needed for API
     ):
-        """Retrieves pairs of oligonucleotides with exact matches within the oligo database. 
+        """Retrieves pairs of oligonucleotides with exact matches within the oligo database.
         Here we match the sequenecs to their reverse complements
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.

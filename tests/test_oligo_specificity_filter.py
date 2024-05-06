@@ -11,6 +11,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     BowtieFilter,
     CrossHybridizationFilter,
     ExactMatchFilter,
+    RemoveAllPolicy,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
 )
@@ -43,8 +44,8 @@ class TestExactMatchFilter(unittest.TestCase):
 
     def test_exact_match_filter_no_policy(self):
         sequence_type = "oligo"
-
-        filter = ExactMatchFilter()
+        policy = RemoveAllPolicy()
+        filter = ExactMatchFilter(policy)
         res = filter.apply(sequence_type, self.oligo_database, 2)
 
         assert (
