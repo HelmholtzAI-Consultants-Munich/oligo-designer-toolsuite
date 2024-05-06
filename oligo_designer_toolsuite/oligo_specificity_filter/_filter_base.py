@@ -3,12 +3,15 @@
 ############################################
 
 import os
+import re
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Union, get_args
 
 import pandas as pd
+import numpy as np
 from joblib import Parallel, delayed
+from Bio import Seq
 
 from .._constants import _TYPES_SEQ, SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
 from ..database import OligoDatabase, ReferenceDatabase
@@ -81,7 +84,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
     :type dir_output: str
     """
 
-    def __init__(self, dir_output: str = "output"):
+    def __init__(
+        self,
+        dir_output: str = "output",
+    ):
         """Construnctor for the AlignmentSpecificityFilter class."""
         # folder where we write the intermediate files
         self.dir_output = dir_output
@@ -106,39 +112,21 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type reference_database: ReferenceDatabase
         :return: The filtered oligo database with sequences having significant hits removed.
         :rtype: OligoDatabase
+
         """
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
-        # Create index file for search
-        file_reference = reference_database.write_database_to_fasta(filename="reference_db")
-        filename_reference_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
-
-        # Run search for each region in parallel
         region_ids = list(oligo_database.database.keys())
-        results = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_filter)(
-                sequence_type=sequence_type,
-                region_id=region_id,
-                oligo_database=oligo_database,
-                file_index=filename_reference_index,
-                consider_hits_from_input_region=False,  # for filter we do not want to remove hits within the same region
-            )
-            for region_id in region_ids
+        table_hits = self.get_table_hits(
+            sequence_type=sequence_type,
+            oligo_database=oligo_database,
+            n_jobs=n_jobs,
+            reference_database=reference_database,
+            region_ids=region_ids,
         )
-        os.remove(file_reference)
 
-        # Process results
-        table_hits, oligos_with_hits = zip(*results)
-
-        for region_id, oligos_with_hits_region in zip(region_ids, oligos_with_hits):
-            database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region_id],
-                oligos_with_hits=oligos_with_hits_region,
-            )
-            oligo_database.database[region_id] = database_region_filtered
+        oligo_database = self.filter_oligo_database(
+            table_hits=table_hits, region_ids=region_ids, oligo_database=oligo_database
+        )
         return oligo_database
 
     def get_oligo_pair_hits(
@@ -161,6 +149,45 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :return: List of oligo pairs with hits in the reference database.
         :rtype: list[tuple]
         """
+
+        region_ids = list(oligo_database.database.keys())
+        table_hits = self.get_table_hits(
+            sequence_type=sequence_type,
+            oligo_database=oligo_database,
+            n_jobs=n_jobs,
+            reference_database=reference_database,
+            region_ids=region_ids,
+        )
+
+        table_hits = pd.concat(table_hits, ignore_index=True)
+        oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+
+        return oligo_pair_hits
+
+    def get_table_hits(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        n_jobs: int,
+        reference_database: ReferenceDatabase,
+        region_ids: List[str],
+    ) -> List[pd.DataFrame]:
+        """Applies the alignment-based specificity filter to an oligonucleotide database adn return a DataFrame containing all the positive hits.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligo database to which the filter will be applied.
+        :type database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
+        :param reference_database: The reference database to compare against for specificity.
+        :type reference_database: ReferenceDatabase
+        :param region_ids: Regions for which to genereate the table hits.
+        :type region_ids: List[str]
+        :return: List of tables containing the positive hits. Each table contain the hits of one single region, anf the list is ordered as the list region_ids.
+        :rtype: List[pd.DataFrame]
+        """
+
         options = get_args(_TYPES_SEQ)
         assert (
             sequence_type in options
@@ -168,29 +195,46 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         # Create index file for search
         file_reference = reference_database.write_database_to_fasta(filename="reference_db")
-        filename_reference_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
+        file_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
         # Run search for each region in parallel
-        region_ids = list(oligo_database.database.keys())
-        results = Parallel(n_jobs=n_jobs)(
+        table_hits = Parallel(n_jobs=n_jobs)(
             delayed(self._run_filter)(
                 sequence_type=sequence_type,
                 region_id=region_id,
                 oligo_database=oligo_database,
-                file_index=filename_reference_index,
-                consider_hits_from_input_region=True,  # for cross-hybridization we also want to remove hits within the same region
+                file_index=file_index,
+                file_reference=file_reference,
+                consider_hits_from_input_region=True,
             )
             for region_id in region_ids
         )
         os.remove(file_reference)
+        self._remove_index(file_index)
+        return table_hits
 
-        # Process results
-        table_hits, oligos_with_hits = zip(*results)
+    def filter_oligo_database(
+        self, table_hits: List[pd.DataFrame], region_ids: List[str], oligo_database: OligoDatabase
+    ):
+        """Filter the oligos with a hit contained in the table_hits given in input.
 
-        table_hits = pd.concat(table_hits, ignore_index=True)
-        oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
+        :param table_hits: _description_
+        :type table_hits: List[pd.DataFrame]
+        :param region_ids: _description_
+        :type region_ids: List[str]
+        :param oligo_database: _description_
+        :type oligo_database: OligoDatabase
+        """
 
-        return oligo_pair_hits
+        for region_id, table_hits_region in zip(region_ids, table_hits):
+            oligos_with_hits_region = table_hits_region["query"].unique()
+            database_region_filtered = self._filter_hits_from_database(
+                database_region=oligo_database.database[region_id],
+                oligos_with_hits=oligos_with_hits_region,
+            )
+            oligo_database.database[region_id] = database_region_filtered
+
+        return oligo_database
 
     @abstractmethod
     def _create_index(self, file_reference: str, n_jobs: int):
@@ -274,6 +318,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         region_id: str,
         oligo_database: OligoDatabase,
         file_index: str,
+        file_reference: str,
         consider_hits_from_input_region: bool,
     ):
         """Executes the filtering process for a specific region of the oligonucleotide database based on search results.
@@ -284,8 +329,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type region_id: str
         :param oligo_database: The oligonucleotide database to apply the filter on.
         :type oligo_database: OligoDatabase
-        :param filename_reference_index: Path to the index file used for the reference database.
-        :type filename_reference_index: str
+        :param file_index: Path to the index file used for the reference database.
+        :type file_index: str
+        :param file_reference: Path to the reference database fasta file.
+        :type file_reference: str
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
         :type consider_hits_from_input_region: bool
         :return: A tuple containing a table of hits and a list of oligos with those hits.
@@ -297,10 +344,74 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             file_index=file_index,
             region_ids=region_id,
         )
-        table_hits, oligos_with_hits = self._find_hits(
+        table_hits = self._find_hits(
             oligo_database=oligo_database,
             search_results=search_results,
             consider_hits_from_input_region=consider_hits_from_input_region,
         )
 
-        return table_hits, oligos_with_hits
+        return table_hits
+
+    def get_queries(
+        self,
+        sequence_type: _TYPES_SEQ,
+        table_hits: pd.DataFrame,
+        oligo_database: OligoDatabase,
+        region_id: str,
+    ) -> List[Seq.Seq]:
+        """Abstract method to retrieve the queries sequences from the search results.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param table_hits: Dataframe containing the search results.
+        :type table_hits: pd.DataFrame
+        :param oligo_database: The oligo database to which the filter will be applied.
+        :type oligo_database: OligoDatabase
+        :param region_id: The identifier for the region within the database to filter.
+        :type region_id: str
+        :return: Queries sequences.
+        :rtype: list
+        """
+        queries = [
+            oligo_database.database[region_id][query_id][sequence_type] for query_id in table_hits["query"]
+        ]
+        return queries
+
+    @abstractmethod
+    def get_references(self, table_hits: pd.DataFrame, reference_database: ReferenceDatabase, region_id: str):
+        """Abstract method to retrieve the reference sequences from the search results.
+
+        :param table_hits: Dataframe containing the search results.
+        :type table_hits: pd.DataFrame
+        :param reference_database: The reference database to compare against for specificity.
+        :type reference_database: ReferenceDatabase
+        :param region_id: The identifier for the region within the database to filter.
+        :type region_id: str
+        """
+
+    @abstractmethod
+    def add_alignement_gaps(
+        self, table_hits: pd.DataFrame, queries: List[Seq.Seq], references: List[Seq.Seq]
+    ):
+        """Abstract method to add gaps to the references and queries sequences.
+
+        :param table_hits: Dataframe containing the search results.
+        :type table_hits: pd.DataFrame
+        :param queries: List of the queries sequences.
+        :type queries: List[Seq.Seq]
+        :param references: List of the references sequences.
+        :type references: List[Seq.Seq]
+        """
+
+    def _remove_index(self, file_index: str):
+        """Remove all the temporary index files geenrated by the alignment method.
+
+        :param file_index: Path to the index files (the extesion is not specified).
+        :type file_index: str
+        """
+        file_index_basename = os.path.basename(file_index)
+        regex = re.compile(file_index_basename + "\..*")
+        for root, _, files in os.walk(self.dir_output):
+            for file in files:
+                if regex.match(file):
+                    os.remove(os.path.join(root, file))
