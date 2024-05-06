@@ -14,7 +14,7 @@ from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommand
 from Bio import SeqIO
 
 from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase, ReferenceDatabase
+from ..database import OligoDatabase, OligoAttributes
 from ..utils._checkers import check_if_list
 from . import AlignmentSpecificityFilter
 from ..utils import get_sequence_from_annotation
@@ -42,7 +42,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
     - perc_identity: Percent identity cutoff. Default: 0
     All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
 
-    The hits returned by BLASTN can be further filtered using machine learning models. For more information regarding which filters are available 
+    The hits returned by BLASTN can be further filtered using machine learning models. For more information regarding which filters are available
     refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
     :param blast_search_parameters: Custom parameters for the BLAST search command.
@@ -68,7 +68,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             "query_end",
             "query_length",
         ],
-):
+    ):
         """Constructor for the BlastNFilter class."""
         super().__init__(dir_output)
         self.blast_search_parameters = blast_search_parameters
@@ -134,9 +134,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_blast_results = os.path.join(
-            self.dir_blast, f"blast_results_{region_name}.txt"
-        )
+        file_blast_results = os.path.join(self.dir_blast, f"blast_results_{region_name}.txt")
 
         cmd = NcbiblastnCommandline(
             query=file_oligo_database,
@@ -184,9 +182,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             min_alignment_length = self.blast_hit_parameters["min_alignment_length"]
         elif "coverage" in self.blast_hit_parameters.keys():
             min_alignment_length = (
-                search_results["query_length"]
-                * self.blast_hit_parameters["coverage"]
-                / 100
+                search_results["query_length"] * self.blast_hit_parameters["coverage"] / 100
             )
         else:
             raise KeyError(
@@ -195,11 +191,10 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         search_results["min_alignment_length"] = min_alignment_length
 
-        if consider_hits_from_input_region:
+        if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
-                search_results["query_region_id"]
-                != search_results["reference_region_id"]
+                search_results["query_region_id"] != search_results["reference_region_id"]
             ]
 
         blast_table_hits = search_results.loc[
@@ -208,9 +203,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         return blast_table_hits
 
-    def get_references(
-        self, table_hits: pd.DataFrame, reference_database: ReferenceDatabase, region_id: str
-    ):
+    def get_references(self, table_hits: pd.DataFrame, reference_database: ReferenceDatabase, region_id: str):
         """
         Retrieve the reference sequences from the search results.
 
@@ -223,7 +216,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :return: Reference sequences
         :rtype: list
         """
-        
+
         required_fields = [
             "query",
             "reference",
@@ -235,31 +228,31 @@ class BlastNFilter(AlignmentSpecificityFilter):
             "reference_start",
             "reference_end",
             "reference_sequence",
-            "reference_strand"
+            "reference_strand",
         ]
         if not all(field in self.names_search_output for field in required_fields):
             raise ValueError(
                 f"Some of the required fields {required_fields} are missing in the search results."
             )
-        
+
         # set the positions to a 0-based index
         table_hits = self._0_index_coordinates(table_hits)
-        
+
         # Calculate adjusted "start" and "end" for BED format based on strand
         table_hits = self._extend_reference_start_end_coordinates(table_hits)
-    
+
         # create bed file
-        bed = pd.DataFrame({  
-            "chr": table_hits["reference"],  
-            "start": table_hits["start"],  
-            "end": table_hits["end"],  
-            "name": table_hits["query"],  
-            "score": 0,  
-            "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"})  
-        })
-        file_reference = reference_database.write_database_to_fasta(
-            filename="reference_db"
+        bed = pd.DataFrame(
+            {
+                "chr": table_hits["reference"],
+                "start": table_hits["start"],
+                "end": table_hits["end"],
+                "name": table_hits["query"],
+                "score": 0,
+                "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"}),
+            }
         )
+        file_reference = reference_database.write_database_to_fasta(filename="reference_db")
         # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
         # additionally we store how muchpadding we have to do to have two seqeunces of the same length
         bed = self._remove_overflows(bed, file_reference)
@@ -274,23 +267,19 @@ class BlastNFilter(AlignmentSpecificityFilter):
         )
 
         # generate the fasta file
-        references_fasta_file = os.path.join(
-            self.dir_output, f"references_{region_id}.fasta"
-        )
+        references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
         get_sequence_from_annotation(
             file_bed, file_reference, references_fasta_file, strand=True, nameOnly=True
         )
 
-        references = [
-            off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")
-        ]
+        references = [off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")]
         references_padded = self._pad_overflows(bed, references)
-        
+
         os.remove(references_fasta_file)
         os.remove(file_bed)
         os.remove(file_reference)
         return references_padded
-    
+
     def _0_index_coordinates(self, table_hits: pd.DataFrame):
         """Converts the coordiantes into a 0-based index.
 
@@ -299,9 +288,17 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :return: Corrected table_hits dataframe.
         :rtype: pd.DataFrame
         """
-        table_hits["query_start_corr"] = table_hits["query_start"] - 1  
-        table_hits["reference_start_corr"] = np.where(table_hits["reference_strand"] == "plus", table_hits["reference_start"] - 1, table_hits["reference_start"])  
-        table_hits["reference_end_corr"] = np.where(table_hits["reference_strand"] == "minus", table_hits["reference_end"] - 1, table_hits["reference_end"]) 
+        table_hits["query_start_corr"] = table_hits["query_start"] - 1
+        table_hits["reference_start_corr"] = np.where(
+            table_hits["reference_strand"] == "plus",
+            table_hits["reference_start"] - 1,
+            table_hits["reference_start"],
+        )
+        table_hits["reference_end_corr"] = np.where(
+            table_hits["reference_strand"] == "minus",
+            table_hits["reference_end"] - 1,
+            table_hits["reference_end"],
+        )
         return table_hits
 
     def _extend_reference_start_end_coordinates(self, table_hits: pd.DataFrame):
@@ -312,12 +309,16 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :return: Corrected table_hits dataframe.
         :rtype: pd.DataFrame
         """
-        table_hits["start"] = np.where(table_hits["reference_strand"] == "plus",
-                                        table_hits["reference_start_corr"] - table_hits["query_start_corr"],
-                                        table_hits["reference_end_corr"] - (table_hits["query_length"] - table_hits["query_end"]))
-        table_hits["end"] = np.where(table_hits["reference_strand"] == "plus",
-                                        table_hits["reference_end_corr"] + (table_hits["query_length"] - table_hits["query_end"]),
-                                        table_hits["reference_start_corr"] + table_hits["query_start_corr"])
+        table_hits["start"] = np.where(
+            table_hits["reference_strand"] == "plus",
+            table_hits["reference_start_corr"] - table_hits["query_start_corr"],
+            table_hits["reference_end_corr"] - (table_hits["query_length"] - table_hits["query_end"]),
+        )
+        table_hits["end"] = np.where(
+            table_hits["reference_strand"] == "plus",
+            table_hits["reference_end_corr"] + (table_hits["query_length"] - table_hits["query_end"]),
+            table_hits["reference_start_corr"] + table_hits["query_start_corr"],
+        )
         return table_hits
 
     def _remove_overflows(self, bed: pd.DataFrame, file_reference: str):
@@ -332,7 +333,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         """
         bed["overflow_start"] = bed["start"].apply(lambda x: -x if x < 0 else 0)
         bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
-        
+
         records = SeqIO.index(file_reference, "fasta")
         regions_length = {region: len(record.seq) for region, record in records.items()}
         bed["len_region"] = bed["chr"].map(regions_length)
@@ -361,19 +362,17 @@ class BlastNFilter(AlignmentSpecificityFilter):
         for reference, overflow_start, overflow_end, strand in zip(
             references, bed["overflow_start"], bed["overflow_end"], bed["strand"]
         ):
-            padding_start = "-"*overflow_start
-            padding_end = "-"*overflow_end
+            padding_start = "-" * overflow_start
+            padding_end = "-" * overflow_end
             if strand == "+":
                 reference = padding_start + reference + padding_end
             elif strand == "-":
                 reference = padding_end + reference + padding_start
-            
+
             references_padded.append(reference)
         return references_padded
 
-    def add_alignement_gaps(
-        self, table_hits: pd.DataFrame, queries: list, references: list
-    ):
+    def add_alignement_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
         """Adjust the sequences of the oligos to add the gaps introduced by the alignement search.
 
         :param table_hits: Dataframe containing the search results.
@@ -386,28 +385,22 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         def add_gaps(seq, gaps):
             for gap in gaps:
-                seq = seq[: gap] + "-" + seq[gap :]
+                seq = seq[:gap] + "-" + seq[gap:]
             return seq
 
         table_hits["query_gaps"] = (
-            table_hits["query_sequence"].apply(
-                lambda x: np.where(np.array(list(x)) == "-")[0]
-            )
-            + table_hits["query_start"] - 1 # blastn has 1-based indices
+            table_hits["query_sequence"].apply(lambda x: np.where(np.array(list(x)) == "-")[0])
+            + table_hits["query_start"]
+            - 1  # blastn has 1-based indices
         )
         table_hits["reference_gaps"] = (
-            table_hits["reference_sequence"].apply(
-                lambda x: np.where(np.array(list(x)) == "-")[0]
-            )
-            + table_hits["query_start"] - 1
+            table_hits["reference_sequence"].apply(lambda x: np.where(np.array(list(x)) == "-")[0])
+            + table_hits["query_start"]
+            - 1
         )
-        gapped_queries = [
-            add_gaps(query, gaps)
-            for query, gaps in zip(queries, table_hits["query_gaps"])
-        ]
+        gapped_queries = [add_gaps(query, gaps) for query, gaps in zip(queries, table_hits["query_gaps"])]
         gapped_references = [
-            add_gaps(reference, gaps)
-            for reference, gaps in zip(references, table_hits["reference_gaps"])
+            add_gaps(reference, gaps) for reference, gaps in zip(references, table_hits["reference_gaps"])
         ]
         return gapped_queries, gapped_references
 
@@ -486,9 +479,7 @@ class BlastNSeedregionFilterBase(BlastNFilter):
             min_alignment_length = self.blast_hit_parameters["min_alignment_length"]
         elif "coverage" in self.blast_hit_parameters.keys():
             min_alignment_length = (
-                search_results["query_length"]
-                * self.blast_hit_parameters["coverage"]
-                / 100
+                search_results["query_length"] * self.blast_hit_parameters["coverage"] / 100
             )
         else:
             raise KeyError(
@@ -501,11 +492,10 @@ class BlastNSeedregionFilterBase(BlastNFilter):
             oligo_database=oligo_database, search_results=search_results
         )
 
-        if consider_hits_from_input_region:
+        if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
-                search_results["query_region_id"]
-                != search_results["reference_region_id"]
+                search_results["query_region_id"] != search_results["reference_region_id"]
             ]
 
         blast_table_hits = search_results.loc[
@@ -535,7 +525,7 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
     :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
-    
+
     """
 
     def __init__(
@@ -560,9 +550,7 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         self.seedregion_start = seedregion_start
         self.seedregion_end = seedregion_end
 
-    def _add_seed_region_information(
-        self, oligo_database: OligoDatabase, search_results: pd.DataFrame
-    ):
+    def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
         """Adds seed region information to BLAST results for further filtering.
 
         :param oligo_database: The oligonucleotide database being analyzed.
@@ -572,8 +560,9 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         :return: Updated BLAST results with seed region information.
         :rtype: pd.DataFrame
         """
-        oligo_database.calculate_seedregion(
-            start=self.seedregion_start, end=self.seedregion_end
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_seedregion(
+            oligo_database=oligo_database, start=self.seedregion_start, end=self.seedregion_end
         )
 
         seedregion = pd.merge(
@@ -626,9 +615,7 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         super().__init__(blast_search_parameters, blast_hit_parameters, dir_output, names_search_output)
         self.seedregion_size = seedregion_size
 
-    def _add_seed_region_information(
-        self, oligo_database: OligoDatabase, search_results: pd.DataFrame
-    ):
+    def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
         """Adds seed region information around the ligation site to BLAST results for further filtering.
 
         :param oligo_database: The oligonucleotide database being analyzed.
@@ -638,8 +625,9 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         :return: Updated BLAST results with seed region information around the ligation site.
         :rtype: pd.DataFrame
         """
-        oligo_database.calculate_seedregion_ligationsite(
-            seedregion_size=self.seedregion_size
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_seedregion_ligationsite(
+            oligo_database=oligo_database, seedregion_size=self.seedregion_size
         )
 
         seedregion = pd.merge(

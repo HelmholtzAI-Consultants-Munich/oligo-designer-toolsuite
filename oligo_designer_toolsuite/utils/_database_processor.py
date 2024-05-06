@@ -131,9 +131,10 @@ def filter_dabase_for_region(database, region_ids):
     :return: The filtered database.
     :rtype: dict
     """
-    for key in database.keys():
-        if key not in region_ids:
-            database.pop(key)
+    regions = list(database.keys())
+    for region in regions:
+        if region not in region_ids:
+            database.pop(region)
     return database
 
 

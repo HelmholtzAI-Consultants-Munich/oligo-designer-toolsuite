@@ -191,7 +191,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :return: A tuple containing a DataFrame of significant Bowtie hits and a list of oligos with these hits.
         :rtype: pd.DataFrame
         """
-        if consider_hits_from_input_region:
+        if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
                 search_results["query_region_id"]
@@ -449,7 +449,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         :return: A tuple containing a DataFrame of significant Bowtie2 hits.
         :rtype: pd.DataFrame
         """
-        if consider_hits_from_input_region:
+        if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
                 search_results["query_region_id"]
