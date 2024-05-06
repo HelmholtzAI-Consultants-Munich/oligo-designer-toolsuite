@@ -5,8 +5,9 @@
 import warnings
 from collections import defaultdict
 from itertools import chain
+from typing import List
 
-from effidict import LRUDict
+from effidict import EffiDictBase, LRUDict
 
 from .._constants import SEPARATOR_OLIGO_ID
 
@@ -15,15 +16,15 @@ from .._constants import SEPARATOR_OLIGO_ID
 ############################################
 
 
-def merge_databases(database1, database2, max_in_memory=10):
+def merge_databases(database1: EffiDictBase, database2: EffiDictBase) -> EffiDictBase:
     """Merge two databases, combining their content while handling potential overlapping oligo sequences.
 
     :param database1: The first database.
-    :type database1: dict
+    :type database1: EffiDictBase
     :param database2: The second database.
-    :type database2: dict
+    :type database2: EffiDictBase
     :return: The merged database.
-    :rtype: dict
+    :rtype: EffiDictBase
     """
 
     def _get_sequence_as_key(database):
@@ -35,7 +36,7 @@ def merge_databases(database1, database2, max_in_memory=10):
         :rtype: dict
         """
         database_modified = LRUDict(
-            max_in_memory=max_in_memory,
+            max_in_memory=database.max_in_memory,
             storage_path=database.storage_path,
         )
         for region in database.keys():
@@ -69,6 +70,7 @@ def merge_databases(database1, database2, max_in_memory=10):
                     database_tmp[region][oligo_sequence] = oligo_info
         return database_tmp
 
+    max_in_memory = min(database1.max_in_memory, database2.max_in_memory)
     database_tmp = LRUDict(
         max_in_memory=max_in_memory,
         storage_path=database1.storage_path,
@@ -100,7 +102,7 @@ def merge_databases(database1, database2, max_in_memory=10):
     return database_merged
 
 
-def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
+def collapse_info_for_duplicated_sequences(oligo_info1: dict, oligo_info2: dict) -> dict:
     """Collapse information for duplicated sequences by combining information from two dictionaries.
 
     :param oligo_info1: The first dictionary of information.
@@ -138,18 +140,18 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
     return oligo_info
 
 
-def filter_dabase_for_region(database, region_ids):
+def filter_dabase_for_region(database: EffiDictBase, region_ids: List[str]) -> EffiDictBase:
     """Filter the provided database to include only specified region IDs.
 
     This internal method filters the given database to retain only the entries corresponding to the provided list
     of region IDs. If a region ID is not in the specified list, it is removed from the database.
 
     :param database: The database to filter.
-    :type database: dict
+    :type database: EffiDictBase
     :param region_ids: The list of region IDs to retain in the filtered database.
     :type region_ids: list
     :return: The filtered database.
-    :rtype: dict
+    :rtype: EffiDictBase
     """
     for key in database.keys():
         if key not in region_ids:
@@ -158,15 +160,18 @@ def filter_dabase_for_region(database, region_ids):
 
 
 def check_if_region_in_database(
-    database, region_ids, write_regions_with_insufficient_oligos, file_removed_regions
-):
+    database: EffiDictBase,
+    region_ids: List[str],
+    write_regions_with_insufficient_oligos: bool,
+    file_removed_regions: str,
+) -> None:
     """Check if specified regions exist in the provided database.
 
     This internal method checks whether all regions provided in the region_ids list exist in the given database.
     If a region is not found, a warning is issued, and if enabled, the information is recorded in the log file.
 
     :param database: The database to check for region existence.
-    :type database: dict
+    :type database: EffiDictBase
     :param region_ids: The list of region IDs to check.
     :type region_ids: list
     :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file.

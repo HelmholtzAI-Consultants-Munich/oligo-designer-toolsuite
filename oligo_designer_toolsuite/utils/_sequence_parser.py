@@ -8,7 +8,7 @@ import os
 import pickle
 import re
 import warnings
-from typing import List
+from typing import List, Union
 
 import pandas as pd
 from Bio import SeqIO
@@ -48,7 +48,7 @@ class GffParser:
         self.R_COMMA = re.compile(r"\s*,\s*")
         self.R_KEYVALUE = re.compile(r"(\s+|\s*=\s*)")
 
-    def check_gff_format(self, file: str):
+    def check_gff_format(self, file: str) -> None:
         """
         Checks the format of a GFF (General Feature Format) file.
 
@@ -77,7 +77,7 @@ class GffParser:
         file_pickle: str = None,
         chunk_size: int = 10000,
         target_lines: int = math.inf,
-    ):
+    ) -> Union[pd.DataFrame, str]:
         """Parses annotation data from a GFF (General Feature Format) file.
 
         This method reads the GFF file, splits it into chunks for processing, and returns a DataFrame
@@ -116,7 +116,7 @@ class GffParser:
         else:
             return dataframe
 
-    def load_annotation_from_pickle(self, file_pickel: str):
+    def load_annotation_from_pickle(self, file_pickel: str) -> pd.DataFrame:
         """
         Load annotation data from a pickled DataFrame.
 
@@ -270,7 +270,7 @@ class FastaParser:
     def __init__(self) -> None:
         """Constructor for the FastaParser class."""
 
-    def check_fasta_format(self, file: str):
+    def check_fasta_format(self, file: str) -> None:
         """Check the format of a FASTA file.
 
         This method verifies whether the given file is a valid FASTA file by attempting
@@ -307,7 +307,7 @@ class FastaParser:
         else:
             raise ValueError("Fasta file does not exist!")
 
-    def is_coordinate(self, entry: str):
+    def is_coordinate(self, entry: str) -> bool:
         """Check if the provided entry matches a specific coordinate pattern.
 
         This function uses a regular expression pattern to check if the entry follows
@@ -322,7 +322,7 @@ class FastaParser:
         pattern = r"\S+:\S+-\S+\(.*\)"
         return bool(re.match(pattern, entry))
 
-    def get_fasta_regions(self, file_fasta_in: str):
+    def get_fasta_regions(self, file_fasta_in: str) -> List[str]:
         """Extract unique region identifiers from the headers of a FASTA file.
 
         This function parses the headers of a FASTA file to extract region identifiers.
@@ -341,7 +341,7 @@ class FastaParser:
 
         return list(set(region_ids))
 
-    def read_fasta_sequences(self, file_fasta_in: str, region_ids: List[str] = None):
+    def read_fasta_sequences(self, file_fasta_in: str, region_ids: List[str] = None) -> List[SeqIO.SeqRecord]:
         """Read FASTA sequences from a file, optionally filtering by specified region identifiers.
 
         This function reads sequences from a FASTA file. If region_ids are provided, only the sequences
@@ -378,7 +378,7 @@ class FastaParser:
 
         return fasta_sequences
 
-    def parse_fasta_header(self, header: str, parse_additional_info: bool = True):
+    def parse_fasta_header(self, header: str, parse_additional_info: bool = True) -> tuple[str, dict, dict]:
         """Parse information from a FASTA header.
 
         This function extracts region, additional information, and coordinates from a FASTA header.
