@@ -90,7 +90,7 @@ class OligoDatabase:
     # Load Functions
     ############################################
 
-    def load_metadata(self, metadata: Union[str, dict]):
+    def load_metadata(self, metadata: Union[str, dict]) -> None:
         """Load metadata into the OligoDatabase object.
 
         If metadata already exists, a warning is issued about overwriting the existing metadata. The new metadata can be
@@ -117,7 +117,7 @@ class OligoDatabase:
         file_database: str,
         region_ids: Union[str, List[str]] = None,
         database_overwrite: bool = False,
-    ):
+    ) -> None:
         """Load a previously saved oligo database from a TSV file.
 
         This function loads the oligo database from a tab-separated values (TSV) file. The file must contain
@@ -192,11 +192,11 @@ class OligoDatabase:
 
     def load_sequences_from_fasta(
         self,
-        file_fasta: list[str],
+        files_fasta: list[str],
         sequence_type: _TYPES_SEQ,
         region_ids: list[str] = None,
         database_overwrite: bool = False,
-    ):
+    ) -> None:
         """Load "oligo" or "target" sequences from one or more FASTA files into the oligo database.
 
         This function reads sequences from FASTA file(s) and adds them to the oligo database, eitehr as 'oligo' or
@@ -204,8 +204,8 @@ class OligoDatabase:
         headers of the FASTA entries to extract region information, and assigns unique IDs to the oligos within
         each region.
 
-        :param file_fasta: Path to the FASTA file(s) containing the sequences.
-        :type file_fasta: list[str]
+        :param files_fasta: Path to the FASTA file(s) containing the sequences.
+        :type files_fasta: list[str]
         :param sequence_type: Type of sequence to load, either 'target' or 'oligo'.
         :type sequence_type: _TYPES_SEQ
         :param region_ids: List of region IDs to filter the database. Defaults to None.
@@ -223,14 +223,12 @@ class OligoDatabase:
 
         if database_overwrite:
             warnings.warn("Overwriting database!")
-            database_tmp = {}
-        else:
-            database_tmp = self.database
+            self.database = {}
 
         region_ids = check_if_list(region_ids)
-        file_fasta = check_if_list(file_fasta)
+        files_fasta = check_if_list(files_fasta)
 
-        for file in file_fasta:
+        for file in files_fasta:
 
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
@@ -261,21 +259,21 @@ class OligoDatabase:
                     } | oligo_info
                     database_loaded[region][oligo_id] = oligo_seq_info
                     i += 1
-            if database_tmp:
-                database_tmp = merge_databases(database_tmp, database_loaded)
+            if self.database:
+                self.database = merge_databases(self.database, database_loaded)
             else:
-                database_tmp = database_loaded
+                self.database = database_loaded
 
         # add this step to log regions which are not available in database
         if region_ids:
             check_if_region_in_database(
-                database_tmp,
+                self.database,
                 region_ids,
                 self.write_regions_with_insufficient_oligos,
                 self.file_removed_regions,
             )
 
-        self.database = database_tmp
+        self.database = self.database
 
     ############################################
     # Save Functions

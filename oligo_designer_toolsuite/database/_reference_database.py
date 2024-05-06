@@ -50,7 +50,7 @@ class ReferenceDatabase:
         self.dir_output = os.path.abspath(os.path.join(dir_output, "reference_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-    def load_metadata(self, metadata: Union[str, dict]):
+    def load_metadata(self, metadata: Union[str, dict]) -> None:
         """Load metadata into the ReferenceDatabase object.
 
         If metadata already exists, a warning is issued about overwriting the existing metadata.
@@ -72,7 +72,7 @@ class ReferenceDatabase:
         else:
             raise ValueError("Metadat has icorrect format!")
 
-    def load_sequences_from_fasta(self, file_fasta: list[str], database_overwrite: bool = False):
+    def load_sequences_from_fasta(self, file_fasta: list[str], database_overwrite: bool = False) -> None:
         """Load sequences from one or more FASTA files into the ReferenceDatabase object.
 
         This function reads sequences from FASTA file(s) and adds them to the ReferenceDatabase object.
@@ -94,7 +94,7 @@ class ReferenceDatabase:
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file)
             self.database.extend(fasta_sequences)
 
-    def write_database_to_fasta(self, filename: str):
+    def write_database_to_fasta(self, filename: str) -> str:
         """Write sequences from the database to a FASTA file.
 
         This function writes the sequences from the database to a FASTA file. The file is saved in the specified
@@ -118,7 +118,7 @@ class ReferenceDatabase:
 
         return file_database
 
-    def write_metadata_to_yaml(self, filename: str):
+    def write_metadata_to_yaml(self, filename: str) -> str:
         """Write metadata to a YAML file.
 
         This function writes the metadata of the OligoDatabase object to a YAML file.
@@ -137,7 +137,7 @@ class ReferenceDatabase:
 
         return file_metadata
 
-    def filter_database(self, region_ids: list[str] = None, remove_region: bool = True):
+    def filter_database(self, region_ids: list[str] = None, remove_region: bool = True) -> None:
         """Filters the database entries based on specified region IDs, either keeping or removing entries from those regions.
 
         This method modifies the database in-place, selectively keeping or excluding entries based on their region ID. It's
