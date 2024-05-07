@@ -74,19 +74,20 @@ class OligoDatabase:
 
         self.dir_output = os.path.abspath(os.path.join(dir_output, "oligo_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-        Path(os.path.join(self.dir_output, "cache_files")).mkdir(parents=True, exist_ok=True)
+        self.dir_cache_files = os.path.join(self.dir_output, "cache_files")
+        Path(self.dir_cache_files).mkdir(parents=True, exist_ok=True)
 
         self.fasta_parser = FastaParser()
 
         # Initialize databse object
         self.database = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
-            storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
+            storage_path=self.dir_cache_files,
         )
 
         self.oligosets = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
-            storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
+            storage_path=self.dir_cache_files,
         )  # will be used later in the generation of non overlapping sets
 
         # Initialize the file for regions with insufficient oligos
@@ -176,7 +177,7 @@ class OligoDatabase:
         database_tmp1 = file_tsv_content.to_dict(orient="records")
         database_tmp2 = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
-            storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
+            storage_path=self.dir_cache_files,
         )
         for entry in database_tmp1:
             region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
@@ -254,7 +255,7 @@ class OligoDatabase:
 
         database_tmp = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
-            storage_path=os.path.join(self.dir_output, "cache_files", "cache"),
+            storage_path=self.dir_cache_files,
         )
         for region in region_sequences.keys():
             database_tmp[region] = {}
