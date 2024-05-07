@@ -35,7 +35,7 @@ def oligos_database(tmpdir_factory):
         dir_output=base_temp,
     )
     database.load_metadata(metadata=metadata)
-    database.load_database("tests/data/oligo_selection/oligos_info.tsv")
+    database.load_database("data/tests/oligo_selection/oligos_info.tsv")
 
     yield database
 
@@ -81,7 +81,7 @@ def test_oligosets_generation(oligoset_generator, oligos_database):
         computed_sets = oligos_database.oligosets[gene]
         computed_sets.drop(columns=["oligoset_id"], inplace=True)
         true_sets = pd.read_csv(
-            f"tests/data/oligo_selection/ranked_oligosets_{gene}.txt",
+            f"data/tests/oligo_selection/ranked_oligosets_{gene}.txt",
             sep="\t",
             index_col=0,
             float_precision="round_trip",

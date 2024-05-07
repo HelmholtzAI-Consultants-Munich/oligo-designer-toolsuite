@@ -14,7 +14,7 @@ from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommand
 from Bio import SeqIO
 
 from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase, OligoAttributes
+from ..database import ReferenceDatabase, OligoDatabase, OligoAttributes
 from ..utils._checkers import check_if_list
 from . import AlignmentSpecificityFilter
 from ..utils import get_sequence_from_annotation

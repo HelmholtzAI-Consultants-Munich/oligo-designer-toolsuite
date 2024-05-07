@@ -8,6 +8,7 @@ import os
 import pickle
 import re
 import warnings
+from typing import List
 
 import pandas as pd
 from Bio import SeqIO
@@ -340,7 +341,7 @@ class FastaParser:
 
         return list(set(region_ids))
 
-    def read_fasta_sequences(self, file_fasta_in: str, region_ids: list[str] = None):
+    def read_fasta_sequences(self, file_fasta_in: str, region_ids: List[str] = None):
         """Read FASTA sequences from a file, optionally filtering by specified region identifiers.
 
         This function reads sequences from a FASTA file. If region_ids are provided, only the sequences
@@ -354,28 +355,26 @@ class FastaParser:
         :return: List of FASTA sequences from the file, filtered by region_ids if specified.
         :rtype: list[SeqRecord]
         """
-        # remove undesired regions already at the beginning
-        if region_ids:
-            fasta_sequences = []
-            with open(file_fasta_in, "r") as handle:
-                for entry in SeqIO.parse(handle, "fasta"):
-                    region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
-                    if region in region_ids:
-                        fasta_sequences.append(entry)
-            # check if some regions were not found
-            if len(fasta_sequences) < len(region_ids):
-                missing_regions = set(region_ids) - set(
-                    [
-                        self.parse_fasta_header(entry.id, parse_additional_info=False)[0]
-                        for entry in fasta_sequences
-                    ]
-                )
-                # issue a warning if some regions were not found
-                warnings.warn(f"Regions {missing_regions} were not found in the input FASTA file.")
+        region_ids_set = set(region_ids) if region_ids else None
 
-        else:
-            with open(file_fasta_in, "r") as handle:
+        # Open the file once and parse sequences accordingly
+        with open(file_fasta_in, "r") as handle:
+            if region_ids_set:
+                fasta_sequences = []
+                found_regions = set()
+                for entry in SeqIO.parse(handle, "fasta"):
+                    region = self.parse_fasta_header(entry.id, parse_additional_info=False)[0]
+                    found_regions.add(region)
+                    if region in region_ids_set:
+                        fasta_sequences.append(entry)
+            else:
                 fasta_sequences = list(SeqIO.parse(handle, "fasta"))
+
+        # Check for missing regions after filtering, if necessary
+        if region_ids_set and len(fasta_sequences) < len(region_ids):
+            missing_regions = region_ids_set - found_regions
+            if missing_regions:
+                warnings.warn(f"Regions {missing_regions} were not found in the input FASTA file.")
 
         return fasta_sequences
 
