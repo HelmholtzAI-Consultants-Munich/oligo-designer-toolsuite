@@ -131,7 +131,10 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
                 else:
                     oligo_info[key] = [values]
             else:
-                oligo_info[key].extend([values])
+                if _is_list_of_lists(values):
+                    oligo_info[key].extend(values)
+                else:
+                    oligo_info[key].extend([values])
 
     oligo_info = dict(oligo_info)
 
@@ -151,9 +154,10 @@ def filter_dabase_for_region(database, region_ids):
     :return: The filtered database.
     :rtype: dict
     """
-    for key in database.keys():
-        if key not in region_ids:
-            database.pop(key)
+    regions = list(database.keys())
+    for region in regions:
+        if region not in region_ids:
+            database.pop(region)
     return database
 
 
@@ -181,3 +185,14 @@ def check_if_region_in_database(
             if write_regions_with_insufficient_oligos:
                 with open(file_removed_regions, "a") as hanlde:
                     hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")
+
+
+def make_entries_list_of_list(oligo_info):
+    """Tranform the entries of a disctionary into a list of lists.
+
+    :param oligo_info: The dictionary to convert.
+    :type oligo_info: dict
+    :return: Dictionary tranformed.
+    :rtype: list
+    """
+    return {key: [value] for key, value in oligo_info.items()}
