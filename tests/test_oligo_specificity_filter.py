@@ -2,10 +2,11 @@ import os
 import shutil
 import unittest
 from abc import abstractmethod
+
 import numpy as np
 import pandas as pd
-
 from Bio.Seq import Seq
+from oligo_designer_toolsuite_ai_filters.api import APIBase
 
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
@@ -15,12 +16,11 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     BowtieFilter,
     CrossHybridizationFilter,
     ExactMatchFilter,
+    HybridizationProbabilityFilter,
     RemoveAllPolicy,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
-    HybridizationProbabilityFilter,
 )
-from oligo_designer_toolsuite_ai_filters.api import APIBase
 
 # Global Parameters
 FILE_DATABASE_OLIGOS_EXACT_MATCH = "data/tests/databases/database_oligos_tsv/database_oligos_exactmatch.tsv"
@@ -46,7 +46,7 @@ SOLUTIONS_DEGREE = [
     f"data/tests/databases/expected_results/solution_crosshyb_degree_{i}.tsv" for i in range(8)
 ]
 
-FILE_DATABASE_OLIGOS_AI = "data/tests/databases/database_oligos_ai.tsv"
+FILE_DATABASE_OLIGOS_AI = "data/tests/databases/database_oligos_tsv/database_oligos_ai.tsv"
 FILE_TABLE_HITS_BLAST_AI = "data/tests/table_hits/table_hits_blast_ai.tsv"
 FILE_TABLE_HITS_BOWTIE_AI = "data/tests/table_hits/table_hits_bowtie_ai.tsv"
 
