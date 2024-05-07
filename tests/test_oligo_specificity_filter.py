@@ -131,7 +131,7 @@ class AlignmentFilterTestBase:
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
 
         self.reference_database.load_sequences_from_fasta(
-            file_fasta=database_reference, database_overwrite=True
+            files_fasta=database_reference, database_overwrite=True
         )
 
     def test_filter_match(self):
@@ -340,7 +340,7 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         self.database.load_database(FILE_DATABASE_OLIGOS_AI)
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
         self.reference_database.load_sequences_from_fasta(
-            file_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
+            files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
         )
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BLAST_AI, sep="\t")
         self.sequence_type = "target"
@@ -534,7 +534,7 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         self.database.load_database(FILE_DATABASE_OLIGOS_AI)
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
         self.reference_database.load_sequences_from_fasta(
-            file_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
+            files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
         )
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BOWTIE_AI, sep="\t")
         self.sequence_type = "target"
