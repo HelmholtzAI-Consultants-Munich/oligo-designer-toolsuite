@@ -4,7 +4,6 @@
 
 import os
 import warnings
-
 from pathlib import Path
 from typing import List, Union, get_args
 
@@ -13,7 +12,6 @@ import yaml
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-
 from effidict import LRUDict
 
 from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
@@ -79,20 +77,20 @@ class OligoDatabase:
         self.dir_output = os.path.abspath(os.path.join(dir_output, "oligo_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        self.__dir_cache_files = os.path.join(self.dir_output, "cache_files")
-        Path(self.__dir_cache_files).mkdir(parents=True, exist_ok=True)
+        self._dir_cache_files = os.path.join(self.dir_output, "cache_files")
+        Path(self._dir_cache_files).mkdir(parents=True, exist_ok=True)
 
         self.fasta_parser = FastaParser()
 
         # Initialize databse object
         self.database = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
-            storage_path=self.__dir_cache_files,
+            storage_path=self._dir_cache_files,
         )
 
         self.oligosets = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
-            storage_path=self.__dir_cache_files,
+            storage_path=self._dir_cache_files,
         )  # will be used later in the gereration of non overlpping sets
 
         # Initialize the file for regions with insufficient oligos
@@ -186,7 +184,7 @@ class OligoDatabase:
         database_tmp1 = file_tsv_content.to_dict(orient="records")
         database_tmp2 = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
-            storage_path=self.__dir_cache_files,
+            storage_path=self._dir_cache_files,
         )
         for entry in database_tmp1:
             region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
@@ -196,7 +194,7 @@ class OligoDatabase:
 
         if not database_overwrite and self.database:
             database_tmp2 = merge_databases(
-                self.database, database_tmp2, self.__dir_cache_files, self.lru_db_max_in_memory
+                self.database, database_tmp2, self._dir_cache_files, self.lru_db_max_in_memory
             )
 
         if region_ids:
@@ -269,7 +267,7 @@ class OligoDatabase:
 
             database_loaded = LRUDict(
                 max_in_memory=self.lru_db_max_in_memory,
-                storage_path=self.__dir_cache_files,
+                storage_path=self._dir_cache_files,
             )
             for region in region_sequences.keys():
                 database_loaded[region] = {}
@@ -286,7 +284,7 @@ class OligoDatabase:
                     i += 1
             if self.database:
                 self.database = merge_databases(
-                    self.database, database_loaded, self.__dir_cache_files, self.lru_db_max_in_memory
+                    self.database, database_loaded, self._dir_cache_files, self.lru_db_max_in_memory
                 )
             else:
                 self.database = database_loaded

@@ -2,7 +2,6 @@
 # imports
 ############################################
 
-import os
 from typing import get_args
 
 from effidict import LRUDict
@@ -59,7 +58,7 @@ class PropertyFilter:
         )
         database = LRUDict(
             max_in_memory=oligo_database.lru_db_max_in_memory,
-            storage_path=os.path.join(oligo_database.dir_cache_files, "cache"),
+            storage_path=oligo_database._dir_cache_files,
         )
         for database_region, region_id in zip(database_regions, region_ids):
             database[region_id] = database_region
