@@ -72,15 +72,15 @@ class ReferenceDatabase:
         else:
             raise ValueError("Metadat has icorrect format!")
 
-    def load_sequences_from_fasta(self, file_fasta: list[str], database_overwrite: bool = False) -> None:
+    def load_sequences_from_fasta(self, files_fasta: list[str], database_overwrite: bool = False) -> None:
         """Load sequences from one or more FASTA files into the ReferenceDatabase object.
 
         This function reads sequences from FASTA file(s) and adds them to the ReferenceDatabase object.
         If 'database_overwrite' is True, it clears the existing database before loading new sequences;
         otherwise, the new sequences are appended to the existing database.
 
-        :param file_fasta: Paths to the FASTA file(s) containing sequences.
-        :type file_fasta: list[str]
+        :param files_fasta: Paths to the FASTA file(s) containing sequences.
+        :type files_fasta: list[str]
         :param database_overwrite: Flag indicating whether to overwrite the existing database, defaults to False.
         :type database_overwrite: bool, optional
         """
@@ -88,8 +88,8 @@ class ReferenceDatabase:
             warnings.warn("Overwriting database!")
             self.database = []
 
-        file_fasta = check_if_list(file_fasta)
-        for file in file_fasta:
+        files_fasta = check_if_list(files_fasta)
+        for file in files_fasta:
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file)
             self.database.extend(fasta_sequences)

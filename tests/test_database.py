@@ -48,9 +48,9 @@ class TestReferenceDatabase(unittest.TestCase):
         self.reference = ReferenceDatabase(dir_output=self.tmp_path)
         self.reference.load_metadata(metadata=METADATA)
         self.reference.load_sequences_from_fasta(
-            file_fasta=[FILE_NCBI_EXONS, FILE_NCBI_EXONS], database_overwrite=True
+            files_fasta=[FILE_NCBI_EXONS, FILE_NCBI_EXONS], database_overwrite=True
         )
-        self.reference.load_sequences_from_fasta(file_fasta=FILE_NCBI_EXONS, database_overwrite=False)
+        self.reference.load_sequences_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=False)
 
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
@@ -105,13 +105,13 @@ class TestOligoDatabase(unittest.TestCase):
 
     def test_load_sequences_from_fasta(self):
         self.oligo_database.load_sequences_from_fasta(
-            file_fasta=self.file_random_seqs,
+            files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             region_ids=["random_sequences1"],
             database_overwrite=True,
         )
         self.oligo_database.load_sequences_from_fasta(
-            file_fasta=self.file_sliding_window,
+            files_fasta=self.file_sliding_window,
             sequence_type="target",
             region_ids=REGION_IDS,
             database_overwrite=False,
@@ -148,13 +148,13 @@ class TestOligoDatabase(unittest.TestCase):
 
     def test_remove_regions_with_insufficient_oligos(self):
         self.oligo_database.load_sequences_from_fasta(
-            file_fasta=self.file_sliding_window,
+            files_fasta=self.file_sliding_window,
             sequence_type="target",
             region_ids=REGION_IDS,
             database_overwrite=True,
         )
         self.oligo_database.load_sequences_from_fasta(
-            file_fasta=self.file_random_seqs,
+            files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             database_overwrite=False,
         )
@@ -166,7 +166,7 @@ class TestOligoDatabase(unittest.TestCase):
 
     def test_get_sequence_list(self):
         self.oligo_database.load_sequences_from_fasta(
-            file_fasta=self.file_random_seqs,
+            files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             database_overwrite=True,
         )
