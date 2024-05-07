@@ -2,8 +2,10 @@
 # imports
 ############################################
 
+import os
 from typing import get_args
 
+from effidict import LRUDict
 from joblib import Parallel, delayed
 
 from .._constants import _TYPES_SEQ
@@ -55,9 +57,13 @@ class PropertyFilter:
         database_regions = Parallel(n_jobs=n_jobs)(
             delayed(self._filter_region)(sequence_type, database[region]) for region in region_ids
         )
-        database = {}
+        database = LRUDict(
+            max_in_memory=oligo_database.lru_db_max_in_memory,
+            storage_path=os.path.join(oligo_database.dir_cache_files, "cache"),
+        )
         for database_region, region_id in zip(database_regions, region_ids):
             database[region_id] = database_region
+
         oligo_database.database = database
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
         return oligo_database

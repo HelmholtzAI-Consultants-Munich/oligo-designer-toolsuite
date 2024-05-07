@@ -43,14 +43,15 @@ def check_if_key_exists(nested_dict: dict, key: str):
     :return: True if the key is found anywhere within the nested dictionary, False otherwise.
     :rtype: bool
     """
-    if isinstance(nested_dict, dict):
-        if key in nested_dict:
+    try:
+        if key in nested_dict.keys():
             return True
         else:
             for value in nested_dict.values():
                 if check_if_key_exists(value, key):
                     return True
-    return False
+    except:
+        return False
 
 
 def check_if_list(obj):

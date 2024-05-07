@@ -4,7 +4,7 @@
 
 import os
 import warnings
-from collections import defaultdict
+
 from pathlib import Path
 from typing import List, Union, get_args
 
@@ -14,6 +14,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
+from effidict import LRUDict
 
 from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 from ..utils._checkers import check_if_key_exists, check_if_list, check_tsv_format
@@ -55,8 +56,10 @@ class OligoDatabase:
     :type min_oligos_per_region: int, optional
     :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file (default is True).
     :type write_regions_with_insufficient_oligos: bool, optional
-    :param dir_output: Directory path for the output (default is "output").
+    :param dir_output: Directory path for the output, defaults to "output".
     :type dir_output: str, optional
+    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 100.
+    :type lru_db_max_in_memory: int, optional
     """
 
     def __init__(
@@ -64,21 +67,33 @@ class OligoDatabase:
         min_oligos_per_region: int = 0,
         write_regions_with_insufficient_oligos: bool = True,
         dir_output: str = "output",
+        lru_db_max_in_memory: int = 100,
     ):
         """Constructor for the OligoDatabase class."""
         self.min_oligos_per_region = min_oligos_per_region
         self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
+        self.lru_db_max_in_memory = lru_db_max_in_memory
 
         self.metadata = {}
 
         self.dir_output = os.path.abspath(os.path.join(dir_output, "oligo_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
+        self.dir_cache_files = os.path.join(self.dir_output, "cache_files")
+        Path(self.dir_cache_files).mkdir(parents=True, exist_ok=True)
+
         self.fasta_parser = FastaParser()
 
         # Initialize databse object
-        self.database = {}
-        self.oligosets = {}  # will be used later in the gereration of non overlpping sets
+        self.database = LRUDict(
+            max_in_memory=self.lru_db_max_in_memory,
+            storage_path=self.dir_cache_files,
+        )
+
+        self.oligosets = LRUDict(
+            max_in_memory=self.lru_db_max_in_memory,
+            storage_path=self.dir_cache_files,
+        )  # will be used later in the gereration of non overlpping sets
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
@@ -169,15 +184,20 @@ class OligoDatabase:
         )
 
         database_tmp1 = file_tsv_content.to_dict(orient="records")
-        database_tmp2 = defaultdict(dict)
+        database_tmp2 = LRUDict(
+            max_in_memory=self.lru_db_max_in_memory,
+            storage_path=self.dir_cache_files,
+        )
         for entry in database_tmp1:
             region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
+            if region_id not in database_tmp2:
+                database_tmp2[region_id] = {}
             database_tmp2[region_id][oligo_id] = entry
 
-        database_tmp2 = dict(database_tmp2)
-
         if not database_overwrite and self.database:
-            database_tmp2 = merge_databases(self.database, database_tmp2)
+            database_tmp2 = merge_databases(
+                self.database, database_tmp2, self.dir_cache_files, self.lru_db_max_in_memory
+            )
 
         if region_ids:
             database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
@@ -199,7 +219,7 @@ class OligoDatabase:
     ) -> None:
         """Load "oligo" or "target" sequences from one or more FASTA files into the oligo database.
 
-        This function reads sequences from FASTA file(s) and adds them to the oligo database, eitehr as 'oligo' or
+        This function reads sequences from FASTA file(s) and adds them to the oligo database, either as 'oligo' or
         'target' sequence and computes the reverse compliment sequence for the other sequence type. It parses the
         headers of the FASTA entries to extract region information, and assigns unique IDs to the oligos within
         each region.
@@ -247,7 +267,12 @@ class OligoDatabase:
                 else:
                     region_sequences[region] = {str(entry.seq): oligo_info}
 
-            database_loaded = {region: {} for region in region_sequences.keys()}
+            database_loaded = LRUDict(
+                max_in_memory=self.lru_db_max_in_memory,
+                storage_path=self.dir_cache_files,
+            )
+            for region in region_sequences.keys():
+                database_loaded[region] = {}
             for region, value in region_sequences.items():
                 i = 1
                 for oligo_sequence, oligo_info in value.items():
@@ -260,7 +285,9 @@ class OligoDatabase:
                     database_loaded[region][oligo_id] = oligo_seq_info
                     i += 1
             if self.database:
-                self.database = merge_databases(self.database, database_loaded)
+                self.database = merge_databases(
+                    self.database, database_loaded, self.dir_cache_files, self.lru_db_max_in_memory
+                )
             else:
                 self.database = database_loaded
 
