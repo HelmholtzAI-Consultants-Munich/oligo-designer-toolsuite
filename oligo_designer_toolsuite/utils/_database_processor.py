@@ -15,13 +15,17 @@ from .._constants import SEPARATOR_OLIGO_ID
 ############################################
 
 
-def merge_databases(database1, database2, max_in_memory=10):
+def merge_databases(database1, database2, dir_cache_files, max_in_memory):
     """Merge two databases, combining their content while handling potential overlapping oligo sequences.
 
     :param database1: The first database.
     :type database1: dict
     :param database2: The second database.
     :type database2: dict
+    :param dir_cache_files: Directory path for the cache files.
+    :type dir_cache_files: str
+    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 100.
+    :type lru_db_max_in_memory: int, optional
     :return: The merged database.
     :rtype: dict
     """
@@ -36,7 +40,7 @@ def merge_databases(database1, database2, max_in_memory=10):
         """
         database_modified = LRUDict(
             max_in_memory=max_in_memory,
-            storage_path=database.storage_path,
+            storage_path=dir_cache_files,
         )
         for region in database.keys():
             database_modified[region] = {}
@@ -69,27 +73,27 @@ def merge_databases(database1, database2, max_in_memory=10):
                     database_tmp[region][oligo_sequence] = oligo_info
         return database_tmp
 
-    database_tmp = LRUDict(
+    database_concat = LRUDict(
         max_in_memory=max_in_memory,
-        storage_path=database1.storage_path,
+        storage_path=dir_cache_files,
     )
     for region in chain(database1.keys(), database2.keys()):
-        database_tmp[region] = {}
+        database_concat[region] = {}
 
     db1_sequences_as_keys = _get_sequence_as_key(database1)
     db2_sequences_as_keys = _get_sequence_as_key(database2)
 
-    database_tmp = _add_database_content(database_tmp, db1_sequences_as_keys)
-    database_tmp = _add_database_content(database_tmp, db2_sequences_as_keys)
+    database_concat = _add_database_content(database_concat, db1_sequences_as_keys)
+    database_concat = _add_database_content(database_concat, db2_sequences_as_keys)
 
     database_merged = LRUDict(
         max_in_memory=max_in_memory,
-        storage_path=database1.storage_path,
+        storage_path=dir_cache_files,
     )
-    for region in database_tmp.keys():
+    for region in database_concat.keys():
         database_merged[region] = {}
 
-    for region, value in database_tmp.items():
+    for region, value in database_concat.items():
         i = 1
         for oligo_sequence, oligo_info in value.items():
             oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
