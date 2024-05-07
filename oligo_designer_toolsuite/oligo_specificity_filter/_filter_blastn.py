@@ -203,14 +203,14 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         return blast_table_hits
 
-    def get_references(self, table_hits: pd.DataFrame, reference_database: ReferenceDatabase, region_id: str):
+    def get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
         """
         Retrieve the reference sequences from the search results.
 
         :param table_hits: Dataframe containing the search results.
         :type table_hits: pd.DataFrame
-        :param reference_database: The reference database to compare against for specificity.
-        :type reference_database: ReferenceDatabase
+        :param file_reference: Path to the fasta file used as reference for the search.
+        :type file_reference: str
         :param region_id: The identifier for the region within the database to filter.
         :type region_id: str
         :return: Reference sequences
@@ -243,16 +243,16 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         # create bed file
         bed = pd.DataFrame(
-            {
-                "chr": table_hits["reference"],
-                "start": table_hits["start"],
-                "end": table_hits["end"],
-                "name": table_hits["query"],
-                "score": 0,
-                "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"}),
+            {  
+                "chr": table_hits["reference"],  
+                "start": table_hits["start"],  
+                "end": table_hits["end"],  
+                "name": table_hits["query"],  
+                "score": 0,  
+                "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"})  
             }
         )
-        file_reference = reference_database.write_database_to_fasta(filename="reference_db")
+
         # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
         # additionally we store how muchpadding we have to do to have two seqeunces of the same length
         bed = self._remove_overflows(bed, file_reference)
@@ -277,7 +277,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         os.remove(references_fasta_file)
         os.remove(file_bed)
-        os.remove(file_reference)
         return references_padded
 
     def _0_index_coordinates(self, table_hits: pd.DataFrame):
@@ -334,7 +333,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         bed["overflow_start"] = bed["start"].apply(lambda x: -x if x < 0 else 0)
         bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
 
-        records = SeqIO.index(file_reference, "fasta")
+        records = SeqIO.parse(file_reference, "fasta")
         regions_length = {region: len(record.seq) for region, record in records.items()}
         bed["len_region"] = bed["chr"].map(regions_length)
 
