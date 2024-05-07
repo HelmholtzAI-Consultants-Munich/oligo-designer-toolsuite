@@ -16,10 +16,10 @@ name = "oligo-designer-toolsuite"
 dynamic = ["version"]
 #version = "1.0.2"
 authors = [
-  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
-  { name = "Isra Mekki", email = "isra.mekki@helmholtz-muenchen.de" },
-  { name = "Louis Kümmerle" },
+  { name = "Lisa Barros de Andrade e Sousa" },
+  { name = "Isra Mekki" },
   { name = "Francesco Campi" },
+  { name = "Louis Kümmerle" },
   { name = "Chelsea Bright" },
 ]
 maintainers = [

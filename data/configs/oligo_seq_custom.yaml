@@ -1,5 +1,5 @@
 ### General parameters
-n_jobs: 2 # number of cores used to run the pipeline
+n_jobs: 1 # number of cores used to run the pipeline
 dir_output: oligo_seq_output # name of the directory where the output files will be written
 file_format: tsv # fromat of the written files, can be "tsv" or "gtf"
 min_oligos_per_gene: 24 # minimum number of oligos that a gene must have before it gets deleted
@@ -48,10 +48,31 @@ prohibited_sequence: # list od subsequences the used does not wnat in the oligos
   - CCGAGTC
 
 ### Parameters for the specificity filters
+specificity_genomic_regions:
+  - exon
+  - exon_exon_junctions
+cross_hybridization_balstn_search_parameters:
+  perc_identity: 80
+  strand: minus # this parameter is fixed
+  word_size: 10
+cross_hybridization_balstn_hit_parameters:
+  coverage: 50 # could be turned into min_alignment_length
+hybridization_probability_balstn_search_parameters:
+  perc_identity: 80
+  strand: plus 
+  word_size: 10
+hybridization_probability_balstn_hit_parameters:
+  coverage: 50 # could be turned into min_alignment_length
+hybridization_probability_threshold: 0.0001
 
 
 ### Parameters for the Oligo set selection
-
+GC_content_opt: 55 # max and min values are defiend above
+Tm_opt: 60 # max and min values are defiend above
+oligoset_size: 4
+min_oligoset_size: 3
+max_graph_size: 5000
+n_sets: 100
 
 ### Parameters for Melting Temperature 
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.

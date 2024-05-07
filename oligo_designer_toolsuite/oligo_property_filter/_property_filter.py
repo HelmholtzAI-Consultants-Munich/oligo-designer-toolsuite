@@ -31,7 +31,7 @@ class PropertyFilter:
     def __init__(
         self,
         filters: list[PropertyFilterBase],
-    ) -> None:
+    ):
         """Constructor for the PropertyFilter class."""
         self.filters = filters
 
@@ -59,7 +59,7 @@ class PropertyFilter:
         )
         database = LRUDict(
             max_in_memory=oligo_database.lru_db_max_in_memory,
-            storage_path=os.path.join(oligo_database.dir_output, "cache_files", "cache"),
+            storage_path=os.path.join(oligo_database.dir_cache_files, "cache"),
         )
         for database_region, region_id in zip(database_regions, region_ids):
             database[region_id] = database_region
@@ -80,10 +80,8 @@ class PropertyFilter:
         """
         oligo_ids = list(database_region.keys())
         for oligo_id in oligo_ids:
-            fulfills, additional_features = self._filter_sequence(database_region[oligo_id][sequence_type])
-            if fulfills:
-                database_region[oligo_id].update(additional_features)
-            else:
+            fulfills_all_filter = self._filter_sequence(database_region[oligo_id][sequence_type])
+            if not fulfills_all_filter:
                 del database_region[oligo_id]
         return database_region
 
@@ -92,14 +90,11 @@ class PropertyFilter:
 
         :param sequence: The oligo sequence to be filtered.
         :type sequence: Bio.SeqUtils.Seq
-        :return: Tuple of filtering result and additional features.
-        :rtype: (bool, dict)
+        :return: Filtering result.
+        :rtype: bool
         """
-        fulfills = True
-        additional_features = {}
         for filter in self.filters:
-            out, feat = filter.apply(sequence)
-            if not out:  # stop at the first false we obtain
-                return False, {}
-            additional_features.update(feat)
-        return fulfills, additional_features
+            fulfills_filter = filter.apply(sequence)
+            if not fulfills_filter:  # stop at the first false we obtain
+                return False
+        return True

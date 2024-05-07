@@ -220,30 +220,8 @@ class BaseOligoDesigner:
                 "Annotation and Sequenec file needed to create a Transcriptome. Please use 'load_annotations()' function to provide missing files."
             )
         # length of exon_junction_size is oligo_length - 1 to continue where exons annotation ends
-        # TODO: add the new functionalities
-        fasta_files = []
-        for genomic_region in genomic_regions:
-            if genomic_region == "gene":
-                fasta_files.append(self.region_generator.get_sequence_gene())
-            elif genomic_region == "intergenic":
-                fasta_files.append(self.region_generator.get_sequence_intergenic())
-            elif genomic_region == "exon":
-                fasta_files.append(self.region_generator.get_sequence_exon())
-            elif genomic_region == "intron":
-                fasta_files.append(self.region_generator.get_sequence_intron())
-            elif genomic_region == "cds":
-                fasta_files.append(self.region_generator.get_sequence_cds())
-            elif genomic_region == "utr":
-                fasta_files.append(self.region_generator.get_sequence_utr())
-            elif genomic_region == "exon_exon_junction":
-                fasta_files.append(
-                    self.region_generator.get_sequence_exon_exon_junction(
-                        block_size=oligo_length_max - 1  # TODO: check the minus 1
-                    )
-                )
-            else:
-                raise Exception(f"Region generator: {genomic_region} is not implemented yet.")
-
+        fasta_files = self._parse_genomic_regions(genomic_regions=genomic_regions, block_size=oligo_length_max-1) # TODO: check the minus 1
+        
         if isoform_consensus == "intersection":  # TODO: what does it mean??
             raise Exception(f"Isoform consensus: {isoform_consensus} not implemented yet.")
 
@@ -321,3 +299,28 @@ class BaseOligoDesigner:
         )
 
         return oligo_database
+    
+    def _parse_genomic_regions(self, genomic_regions, block_size = 0):
+        fasta_files = []
+        for genomic_region in genomic_regions:
+            if genomic_region == "gene":
+                fasta_files.append(self.region_generator.get_sequence_gene())
+            elif genomic_region == "intergenic":
+                fasta_files.append(self.region_generator.get_sequence_intergenic())
+            elif genomic_region == "exon":
+                fasta_files.append(self.region_generator.get_sequence_exon())
+            elif genomic_region == "intron":
+                fasta_files.append(self.region_generator.get_sequence_intron())
+            elif genomic_region == "cds":
+                fasta_files.append(self.region_generator.get_sequence_cds())
+            elif genomic_region == "utr":
+                fasta_files.append(self.region_generator.get_sequence_utr())
+            elif genomic_region == "exon_exon_junction":
+                fasta_files.append(
+                    self.region_generator.get_sequence_exon_exon_junction(
+                        block_size=block_size  
+                    )
+                )
+            else:
+                raise Exception(f"Region generator: {genomic_region} is not implemented.")
+        return fasta_files
