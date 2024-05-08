@@ -334,7 +334,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
 
         records = SeqIO.parse(file_reference, "fasta")
-        regions_length = {region: len(record.seq) for region, record in records.items()}
+        regions_length = {record.id: len(record.seq) for record in records}
         bed["len_region"] = bed["chr"].map(regions_length)
 
         bed["overflow_end"] = bed[["end", "len_region"]].apply(

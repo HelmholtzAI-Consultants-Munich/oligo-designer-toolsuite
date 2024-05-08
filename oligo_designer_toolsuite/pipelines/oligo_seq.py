@@ -8,7 +8,7 @@ from typing import List, Union, Literal
 
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
+from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase, OligoAttributes
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
@@ -29,7 +29,6 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByLargerRegionPolicy,
     HybridizationProbabilityFilter,
 )
-from oligo_designer_toolsuite.oligo_specificity_filter._filter_cross_hybridization import CrossHybridizationPolicy
 from oligo_designer_toolsuite.oligo_selection import OligosetGenerator, padlock_heuristic_selection
 from oligo_designer_toolsuite.oligo_efficiency_filter import PadlockOligoScoring, AverageSetScoring
 from oligo_designer_toolsuite.pipelines._base_oligo_designer import BaseOligoDesigner
@@ -119,9 +118,19 @@ class OligoSeq(BaseOligoDesigner):
             n_jobs=n_jobs,
         )
 
+        # add required fileds
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_GC_content(oligo_database, sequence_type="oligo")
+        oligo_database = oligo_attributes.calculate_TmNN(
+            oligo_database=oligo_database,
+            sequence_type="oligo",
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters
+        )
+
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename_out="oligo_database_property_filter")
+            file_database = oligo_database.save_database(filename="oligo_database_property_filter")
         else:
             file_database = ""
 
@@ -159,7 +168,7 @@ class OligoSeq(BaseOligoDesigner):
         fasta_files = self._parse_genomic_regions(genomic_regions=genomic_regions, block_size=block_size)
         reference_database = ReferenceDatabase()
         for fasta_file in fasta_files:
-            reference_database.load_sequences_from_fasta(file_fasta=fasta_file, database_overwrite=False)
+            reference_database.load_sequences_from_fasta(files_fasta=[fasta_file], database_overwrite=False)
 
         # specificity filters
         # for the future: add policy
@@ -196,7 +205,7 @@ class OligoSeq(BaseOligoDesigner):
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename_out="oligo_database_specificty_filter")
+            file_database = oligo_database.save_database(filename="oligo_database_specificty_filter")
         else:
             file_database = ""
 
@@ -217,7 +226,7 @@ class OligoSeq(BaseOligoDesigner):
             GC_content_min: float,
             GC_content_opt: float,
             GC_content_max: float,
-            opt_oligoset_size: int,
+            oligoset_size: int,
             min_oligoset_size: int,
             max_oligos: int,
             n_sets: int,
@@ -241,7 +250,7 @@ class OligoSeq(BaseOligoDesigner):
         )
         set_scoring = AverageSetScoring()
         oligoset_generator = OligosetGenerator(
-            opt_oligoset_size=opt_oligoset_size,
+            oligoset_size=oligoset_size,
             min_oligoset_size=min_oligoset_size,
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
@@ -256,7 +265,7 @@ class OligoSeq(BaseOligoDesigner):
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename_out="oligo_database_specificty_filter")
+            file_database = oligo_database.save_database(filename="oligo_database_specificty_filter")
             file_oligosets = oligo_database.write_oligosets()
         else:
             file_database = ""
@@ -368,7 +377,7 @@ def main():
         GC_content_min=config["GC_content_min"],
         GC_content_max=config["GC_content_max"],
         GC_content_opt=config["GC_content_opt"],
-        opt_oligoset_size=config["opt_oligoset_size"],
+        oligoset_size=config["oligoset_size"],
         min_oligoset_size=config["min_oligoset_size"],
         max_oligos=config["max_graph_size"],
         n_sets = config["n_sets"],

@@ -244,7 +244,7 @@ class BaseOligoDesigner:
         # load the oligo sequences
         oligo_database.load_metadata(metadata=self.metadata)
         oligo_database.load_sequences_from_fasta(
-            file_fasta_in=oligo_fasta_file,
+            files_fasta=[oligo_fasta_file],
             sequence_type="oligo",
             region_ids=regions,
         )
@@ -262,7 +262,7 @@ class BaseOligoDesigner:
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename_out="oligo_database_initial.txt")
+            file_database = oligo_database.save_database(filename="oligo_database_initial.txt")
         else:
             file_database = ""
 
