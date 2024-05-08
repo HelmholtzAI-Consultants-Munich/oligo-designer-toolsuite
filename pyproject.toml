@@ -61,6 +61,7 @@ dev = ["pytest"]
 [project.scripts]
 scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_designer:main"
 merfish_probe_designer = "oligo_designer_toolsuite.pipelines._merfish_probe_designer:main"
+oligo_seq = "oligo_designer_toolsuite.pipelines._oligo_seq:main"
 
 
 [project.urls]
