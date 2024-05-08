@@ -56,6 +56,7 @@ class PropertyFilter:
         database_regions = Parallel(n_jobs=n_jobs)(
             delayed(self._filter_region)(sequence_type, database[region]) for region in region_ids
         )
+
         database = LRUDict(
             max_in_memory=oligo_database.lru_db_max_in_memory,
             storage_path=oligo_database._dir_cache_files,

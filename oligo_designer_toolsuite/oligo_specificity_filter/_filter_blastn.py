@@ -14,7 +14,7 @@ from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommand
 from Bio import SeqIO
 
 from .._constants import _TYPES_SEQ
-from ..database import ReferenceDatabase, OligoDatabase, OligoAttributes
+from ..database import OligoDatabase, OligoAttributes
 from ..utils._checkers import check_if_list
 from . import AlignmentSpecificityFilter
 from ..utils import get_sequence_from_annotation
@@ -203,7 +203,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         return blast_table_hits
 
-    def get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
+    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
         """
         Retrieve the reference sequences from the search results.
 
@@ -216,7 +216,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :return: Reference sequences
         :rtype: list
         """
-
         required_fields = [
             "query",
             "reference",
@@ -243,13 +242,13 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         # create bed file
         bed = pd.DataFrame(
-            {  
-                "chr": table_hits["reference"],  
-                "start": table_hits["start"],  
-                "end": table_hits["end"],  
-                "name": table_hits["query"],  
-                "score": 0,  
-                "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"})  
+            {
+                "chr": table_hits["reference"],
+                "start": table_hits["start"],
+                "end": table_hits["end"],
+                "name": table_hits["query"],
+                "score": 0,
+                "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"}),
             }
         )
 
@@ -371,7 +370,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             references_padded.append(reference)
         return references_padded
 
-    def add_alignement_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
+    def _add_alignement_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
         """Adjust the sequences of the oligos to add the gaps introduced by the alignement search.
 
         :param table_hits: Dataframe containing the search results.

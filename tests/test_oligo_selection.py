@@ -124,11 +124,11 @@ def test_nonoverlapping_matrix_for_nonovelapping_oligos(oligoset_generator):
 
 def test_non_overlapping_sets(oligoset_generator, padlock_scoring):
     oligos = {
-        "A_0": {"melting_temperature": 60, "GC_content": 50},
-        "A_1": {"melting_temperature": 60, "GC_content": 55},
-        "A_2": {"melting_temperature": 67, "GC_content": 55},
-        "A_3": {"melting_temperature": 67, "GC_content": 60},
-        "A_4": {"melting_temperature": 60, "GC_content": 60},
+        "A_0": {"TmNN": 60, "GC_content": 50},
+        "A_1": {"TmNN": 60, "GC_content": 55},
+        "A_2": {"TmNN": 67, "GC_content": 55},
+        "A_3": {"TmNN": 67, "GC_content": 60},
+        "A_4": {"TmNN": 60, "GC_content": 60},
     }
     oligos, oligo_scores = padlock_scoring.apply(oligos)
     index = ["A_0", "A_1", "A_2", "A_3", "A_4"]

@@ -35,7 +35,13 @@ class ExactMatchFilter(SpecificityFilterBase):
         else:
             self.policy = RemoveAllPolicy()
 
-    def apply(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase, n_jobs: int, reference_database: ReferenceDatabase = None):
+    def apply(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        n_jobs: int,
+        reference_database: ReferenceDatabase = None,
+    ):
         """Applies the exact match filter to an oligonucleotide database.
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
@@ -98,7 +104,7 @@ class ExactMatchFilter(SpecificityFilterBase):
         reference_database: ReferenceDatabase = None,  # not used in this filter but needed for API
     ):
         """Retrieves pairs of oligonucleotides with exact matches within the oligo database.
-        Here we match the sequenecs to their reverse complements
+        Here we match the sequenecs to their reverse complements as a basis for the cross-hybridization filter.
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ

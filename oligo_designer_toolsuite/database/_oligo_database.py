@@ -91,7 +91,7 @@ class OligoDatabase:
         self.oligosets = LRUDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=self._dir_cache_files,
-        )  # will be used later in the gereration of non overlpping sets
+        )  # will be used later in the gereration of oligo sets
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
