@@ -10,7 +10,7 @@ import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
 from ..database import OligoDatabase
-from ..utils._sequence_design import (
+from ..pipelines._sequence_design import (
     SCRINSHOT_or_ISS_backbone_sequence,
     convert_complementary_seq_to_arms,
 )
@@ -90,9 +90,7 @@ class PadlockSequence:
                 #       changed, but the naming (arm1, arm2) still fits and Tm(seq)==Tm(rev_compl(seq)) (properly tested).
                 target_mRNA = database_region[oligo_id]["sequence"]
                 complementary_seq = str(target_mRNA.reverse_complement())
-                ligation_idx = len(target_mRNA) - int(
-                    database_region[oligo_id]["ligation_site"]
-                )
+                ligation_idx = len(target_mRNA) - int(database_region[oligo_id]["ligation_site"])
                 full_seq, sub_seqs = self._get_padlock_oligo(
                     region_idx,
                     complementary_seq,
@@ -121,9 +119,9 @@ class PadlockSequence:
                             database_region[oligo_id][key][0]
                         )
                     else:
-                        yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][
-                            key
-                        ] = ",".join(str(database_region[oligo_id][key]))
+                        yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = ",".join(
+                            str(database_region[oligo_id][key])
+                        )
                 yaml_dict[region][f"{region}_oligo{oligo_idx+1}"].update(
                     {
                         "padlock_probe_full_sequence": str(full_seq),
@@ -154,12 +152,10 @@ class PadlockSequence:
                     yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][key] = int(
                         database_region[oligo_id][key]
                     )
-                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][
-                    "ligation_site"
-                ] = int(ligation_idx)
-                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"][
-                    "melt_temp_detection_probe"
-                ] = float(det_oligo_Tm)
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"]["ligation_site"] = int(ligation_idx)
+                yaml_dict[region][f"{region}_oligo{oligo_idx+1}"]["melt_temp_detection_probe"] = float(
+                    det_oligo_Tm
+                )
 
         with open(os.path.join(self.dir_output, "padlock_probes.yml"), "w") as outfile:
             yaml.dump(yaml_dict, outfile, default_flow_style=False, sort_keys=False)
@@ -169,16 +165,14 @@ class PadlockSequence:
             yaml_order[region] = {}
             for oligo_id in yaml_dict[region]:
                 yaml_order[region][oligo_id] = {}
-                yaml_order[region][oligo_id]["padlock_probe_full_sequence"] = yaml_dict[
-                    region
-                ][oligo_id]["padlock_probe_full_sequence"]
-                yaml_order[region][oligo_id]["detection_probe_sequence"] = yaml_dict[
-                    region
-                ][oligo_id]["detection_probe_sequence"]
+                yaml_order[region][oligo_id]["padlock_probe_full_sequence"] = yaml_dict[region][oligo_id][
+                    "padlock_probe_full_sequence"
+                ]
+                yaml_order[region][oligo_id]["detection_probe_sequence"] = yaml_dict[region][oligo_id][
+                    "detection_probe_sequence"
+                ]
 
-        with open(
-            os.path.join(self.dir_output, "padlock_probes_order.yml"), "w"
-        ) as outfile:
+        with open(os.path.join(self.dir_output, "padlock_probes_order.yml"), "w") as outfile:
             yaml.dump(yaml_order, outfile, default_flow_style=False, sort_keys=False)
 
     def _best_oligoset_with_possible_detection_oligos(
@@ -215,30 +209,22 @@ class PadlockSequence:
             for oligo_id in oligoset:
                 target_mRNA = oligos_DB_gene[oligo_id]["sequence"]
                 complementary_seq = str(target_mRNA.reverse_complement())
-                ligation_idx = len(target_mRNA) - int(
-                    oligos_DB_gene[oligo_id]["ligation_site"]
-                )
+                ligation_idx = len(target_mRNA) - int(oligos_DB_gene[oligo_id]["ligation_site"])
 
                 (
                     start_oligo,
                     start_oligo_long_left,
                     start_oligo_long_right,
                 ) = self._get_initial_oligos_for_search(complementary_seq, ligation_idx)
-                if (start_oligo_long_left is not None) and (
-                    start_oligo_long_left.count("T") >= minT
-                ):
+                if (start_oligo_long_left is not None) and (start_oligo_long_left.count("T") >= minT):
                     return oligoset
-                elif (start_oligo_long_right is not None) and (
-                    start_oligo_long_right.count("T") >= minT
-                ):
+                elif (start_oligo_long_right is not None) and (start_oligo_long_right.count("T") >= minT):
                     return oligoset
                 elif start_oligo.count("T") >= minT:
                     return oligoset
 
         return [
-            oligosets_region[col].iloc[0]
-            for col in oligosets_region.columns
-            if col.startswith("oligo_")
+            oligosets_region[col].iloc[0] for col in oligosets_region.columns if col.startswith("oligo_")
         ]  # return the first set
 
     def _get_padlock_oligo(
@@ -335,9 +321,7 @@ class PadlockSequence:
             :type Tm_chem_correction_parameters: dict
             """
             Tm = mt.Tm_NN(oligo_sequence, **Tm_parameters)
-            Tm_corrected = round(
-                mt.chem_correction(Tm, **Tm_chem_correction_parameters), 2
-            )
+            Tm_corrected = round(mt.chem_correction(Tm, **Tm_chem_correction_parameters), 2)
             return Tm_corrected
 
         def _find_best_oligo(start_oligo, best_oligo, best_Tm_dif, minT, get_Tm_dif):
@@ -467,8 +451,7 @@ class PadlockSequence:
             return p, fluorophor_pos
 
         get_Tm_dif = lambda seq: abs(
-            _get_oligo_Tm(seq, self.Tm_parameters, self.Tm_correction_parameters)
-            - self.detect_oligo_Tm_opt
+            _get_oligo_Tm(seq, self.Tm_parameters, self.Tm_correction_parameters) - self.detect_oligo_Tm_opt
         )
 
         # Search for best oligos
@@ -482,9 +465,7 @@ class PadlockSequence:
         best_oligo = start_oligo
         # The 10000 is for the case that start_oligo doesn't contain minT: The longer sequences could still contain minT
         # and Tm_dif of the longer sequences are definitely below 10000.
-        best_Tm_dif = (
-            get_Tm_dif(start_oligo) if (start_oligo.count("T") >= minT) else 10000
-        )
+        best_Tm_dif = get_Tm_dif(start_oligo) if (start_oligo.count("T") >= minT) else 10000
         for tmp_oligo in [start_oligo_long_left, start_oligo_long_right]:
             if tmp_oligo is not None:
                 Tm_dif = get_Tm_dif(tmp_oligo)
@@ -493,19 +474,13 @@ class PadlockSequence:
                     best_oligo = tmp_oligo
 
         # Iterative search through shorter oligos
-        best_oligo, best_Tm_dif = _find_best_oligo(
-            start_oligo, best_oligo, best_Tm_dif, minT, get_Tm_dif
-        )
+        best_oligo, best_Tm_dif = _find_best_oligo(start_oligo, best_oligo, best_Tm_dif, minT, get_Tm_dif)
 
         # exchange T's with U (for enzymatic degradation of oligos)
-        oligo_seq, fluorophor_pos = _exchange_T_with_U(
-            best_oligo, minT=minT, U_distance=5
-        )
+        oligo_seq, fluorophor_pos = _exchange_T_with_U(best_oligo, minT=minT, U_distance=5)
 
         if oligo_seq != "NOT-ENOUGH-THYMINES-FOR-DETECTION-OLIGO":
-            oligo_Tm = _get_oligo_Tm(
-                best_oligo, self.Tm_parameters, self.Tm_correction_parameters
-            )
+            oligo_Tm = _get_oligo_Tm(best_oligo, self.Tm_parameters, self.Tm_correction_parameters)
         else:
             oligo_Tm = 0
 
@@ -587,30 +562,20 @@ class PadlockSequence:
             # 1.1
             if max_len_constraint_is_even:
                 start_oligo = oligo_sequence[
-                    ligation_site
-                    - constraint_half_len : ligation_site
-                    + constraint_half_len
+                    ligation_site - constraint_half_len : ligation_site + constraint_half_len
                 ]
                 start_oligo_long_left = None
                 start_oligo_long_right = None
             # 1.2
             else:
                 start_oligo = oligo_sequence[
-                    ligation_site
-                    - constraint_half_len : ligation_site
-                    + constraint_half_len
+                    ligation_site - constraint_half_len : ligation_site + constraint_half_len
                 ]
                 start_oligo_long_left = oligo_sequence[
-                    ligation_site
-                    - constraint_half_len
-                    - 1 : ligation_site
-                    + constraint_half_len
+                    ligation_site - constraint_half_len - 1 : ligation_site + constraint_half_len
                 ]
                 start_oligo_long_right = oligo_sequence[
-                    ligation_site
-                    - constraint_half_len : ligation_site
-                    + constraint_half_len
-                    + 1
+                    ligation_site - constraint_half_len : ligation_site + constraint_half_len + 1
                 ]
         else:
             # 2.1

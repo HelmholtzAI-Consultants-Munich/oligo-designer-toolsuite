@@ -67,7 +67,7 @@ Tm_parameters_probe:
     check: True #default
     strict: True #default
     c_seq: None #default
-    shift: 0 #default 
+    shift: 0 #default
     nn_table: DNA_NN3 # Allawi & SantaLucia (1997)
     tmm_table: DNA_TMM1 #default
     imm_table: DNA_IMM1 #default
@@ -80,7 +80,7 @@ Tm_parameters_probe:
     K: 75 #[mM]
     Tris: 20 #[mM]
     Mg: 10 #[mM]
-    dNTPs: 0 #[mM] default    
+    dNTPs: 0 #[mM] default
 
 Tm_chem_correction_param_probe:
     DMSO: 0 #default
@@ -104,10 +104,10 @@ Tm_parameters_detection_oligo:
     selfcomp: False #default
     saltcorr: 7 # Owczarzy et al. (2008)
     Na: 39 #[mM]
-    K: 0 #[mM] default 
-    Tris: 0 #[mM] default 
-    Mg: 0 #[mM] default 
-    dNTPs: 0 #[mM] default 
+    K: 0 #[mM] default
+    Tris: 0 #[mM] default
+    Mg: 0 #[mM] default
+    dNTPs: 0 #[mM] default
 
 Tm_chem_correction_param_detection_oligo:
     DMSO: 0 #default

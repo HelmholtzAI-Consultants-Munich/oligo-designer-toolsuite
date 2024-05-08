@@ -10,8 +10,8 @@ from typing import Union
 import yaml
 from Bio import SeqIO
 
+from ..utils._checkers import check_if_list
 from ..utils._sequence_parser import FastaParser
-from ..utils._utils import check_if_list
 
 ############################################
 # Reference Database Class
@@ -47,11 +47,10 @@ class ReferenceDatabase:
         self.metadata = {}
         self.database = []
 
-        self.dir_output = os.path.abspath(
-            os.path.join(dir_output, "reference_database")
-        )
+        self.dir_output = os.path.abspath(os.path.join(dir_output, "reference_database"))
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-    def load_metadata(self, metadata: Union[str, dict]):
+    def load_metadata(self, metadata: Union[str, dict]) -> None:
         """Load metadata into the ReferenceDatabase object.
 
         If metadata already exists, a warning is issued about overwriting the existing metadata.
@@ -63,9 +62,7 @@ class ReferenceDatabase:
         :raises ValueError: If metadata has an incorrect format.
         """
         if self.metadata:
-            warnings.warn(
-                "Metadata not empty! Overwriting metadata with new metadata from file!"
-            )
+            warnings.warn("Metadata not empty! Overwriting metadata with new metadata from file!")
 
         if type(metadata) is str and os.path.exists(metadata):
             with open(metadata) as handle:
@@ -75,26 +72,26 @@ class ReferenceDatabase:
         else:
             raise ValueError("Metadat has icorrect format!")
 
-    def load_sequences_fom_fasta(
-        self, file_fasta: str, database_overwrite: bool = False
-    ) -> None:
-        """Load sequences from a FASTA file into the ReferenceDatabase object.
+    def load_sequences_from_fasta(self, files_fasta: list[str], database_overwrite: bool = False) -> None:
+        """Load sequences from one or more FASTA files into the ReferenceDatabase object.
 
-        This function reads sequences from a FASTA file and adds them to the ReferenceDatabase object.
-        If database_overwrite is True, the existing database is replaced with the new sequences;
+        This function reads sequences from FASTA file(s) and adds them to the ReferenceDatabase object.
+        If 'database_overwrite' is True, it clears the existing database before loading new sequences;
         otherwise, the new sequences are appended to the existing database.
 
-        :param file_fasta: Path to the FASTA file containing sequences.
-        :type file_fasta: str
+        :param files_fasta: Paths to the FASTA file(s) containing sequences.
+        :type files_fasta: list[str]
         :param database_overwrite: Flag indicating whether to overwrite the existing database, defaults to False.
         :type database_overwrite: bool, optional
         """
-        self.fasta_parser.check_fasta_format(file_fasta)
-        fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta)
         if database_overwrite:
             warnings.warn("Overwriting database!")
-            self.database = fasta_sequences
-        else:
+            self.database = []
+
+        files_fasta = check_if_list(files_fasta)
+        for file in files_fasta:
+            self.fasta_parser.check_fasta_format(file)
+            fasta_sequences = self.fasta_parser.read_fasta_sequences(file)
             self.database.extend(fasta_sequences)
 
     def write_database_to_fasta(self, filename: str) -> str:
@@ -136,21 +133,21 @@ class ReferenceDatabase:
         file_metadata = os.path.join(self.dir_output, f"{filename}.yaml")
 
         with open(file_metadata, "w") as handle:
-            yaml.safe_dump(
-                self.metadata, handle, sort_keys=True, default_flow_style=False
-            )
+            yaml.safe_dump(self.metadata, handle, sort_keys=True, default_flow_style=False)
 
         return file_metadata
 
-    def filter_database(self, region_ids: list[str] = None) -> None:
-        """Filter the database entries based on specified region IDs.
+    def filter_database(self, region_ids: list[str] = None, remove_region: bool = True) -> None:
+        """Filters the database entries based on specified region IDs, either keeping or removing entries from those regions.
 
-        This function filters the database entries, keeping only those corresponding to the specified region IDs.
-        If the database is empty, it raises a ValueError.
+        This method modifies the database in-place, selectively keeping or excluding entries based on their region ID. It's
+        essential to have the database loaded before invoking this function; otherwise, a ValueError is raised to indicate an
+        empty database.
 
-        :param region_ids: A list of region IDs to filter the database entries. If None, no filtering is applied.
+        :param region_ids: A list of region IDs to filter the database entries by. If None, no filtering is applied.
         :type region_ids: list[str], optional
-
+        :param remove_region: A flag indicating whether to remove (True) or keep (False) the entries from the specified regions.
+        :type remove_region: bool
         :raises ValueError: If the database is empty.
         """
         region_ids = check_if_list(region_ids)
@@ -158,9 +155,13 @@ class ReferenceDatabase:
         if self.database:
             database_filtered = []
             for entry in self.database:
-                region, _, _ = self.fasta_parser.parse_fasta_header(entry.id)
-                if region in region_ids:
-                    database_filtered.append(entry)
+                region, _, _ = self.fasta_parser.parse_fasta_header(entry.id, parse_additional_info=False)
+                if remove_region:
+                    if region not in region_ids:
+                        database_filtered.append(entry)
+                else:
+                    if region in region_ids:
+                        database_filtered.append(entry)
             self.database = database_filtered
         else:
             raise ValueError(

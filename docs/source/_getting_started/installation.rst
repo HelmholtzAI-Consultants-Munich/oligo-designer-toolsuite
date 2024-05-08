@@ -27,7 +27,7 @@ Follow this instruction to install the required additional tools:
 	::
 
 		conda install "bedtools>=2.30"
-		
+
 - **Bowtie** (1.3 or higher) can be installed via `Bowtie webpage <https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie>`__ or via `Bioconda <http://bioconda.github.io/recipes/bowtie/README.html>`__ installation of Bowtie with:
 
 	::
@@ -65,7 +65,7 @@ Installation from source:
 
 	::
 
-		pip install .   
+		pip install .
 
 
 - Development Installation as python package (run inside directory):
@@ -73,5 +73,3 @@ Installation from source:
 	::
 
 		pip install -e . [dev]
-
-

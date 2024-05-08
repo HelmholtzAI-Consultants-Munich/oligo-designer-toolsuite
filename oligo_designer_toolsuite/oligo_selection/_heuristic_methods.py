@@ -10,9 +10,7 @@ import numpy as np
 ############################################
 
 
-def padlock_heuristic_selection(
-    database_region, oligos_scores, overlapping_matrix, n_oligo, n_trials=10000
-):
+def padlock_heuristic_selection(database_region, oligos_scores, overlapping_matrix, n_oligo, n_trials=10000):
     """This method tries to find empirically a good set of teh padlock design of oligos. For teh best n_trials oligos a set is cretaed
     by adding one by one the best non overlapping oligo untiil a set is created. The best obtained set saved and returned. Moreover, foor how this particular
     scoring method works we know that all the oligos with a higher score than the worse oligo of the best set are going to yield a worse set the one just found,

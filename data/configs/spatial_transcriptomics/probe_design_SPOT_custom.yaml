@@ -73,10 +73,10 @@ detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo
 num_pseudocolors: 60 # number of pseudocolors
 length_readout: 15 # length of readout probe
 GC_min_readout: 45 # min GC content
-GC_max_readout: 55 # max GC content 
+GC_max_readout: 55 # max GC content
 number_consecutive_readout: 5 # min number of not allowed consecutive nucleotides
 
-### Parameters for Melting Temperature 
+### Parameters for Melting Temperature
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:

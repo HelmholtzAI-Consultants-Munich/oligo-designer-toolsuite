@@ -71,7 +71,7 @@ detect_oligo_length_max: 25 # max length of detection oligo
 detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo
 
 
-### Parameters for Melting Temperature 
+### Parameters for Melting Temperature
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:

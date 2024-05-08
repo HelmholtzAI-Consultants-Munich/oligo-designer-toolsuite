@@ -1,209 +1,595 @@
-############################################
-# imports
-############################################
-
 import os
+import shutil
+import unittest
+from abc import abstractmethod
 
-from oligo_designer_toolsuite.database import OligoDatabase
+import numpy as np
+import pandas as pd
+from Bio.Seq import Seq
+from oligo_designer_toolsuite_ai_filters.api import APIBase
+
+from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
-    Blastn,
-    Bowtie,
-    Bowtie2,
-    BowtieSeedRegion,
-    ExactMatches,
-    LigationRegionCreation,
+    BlastNFilter,
+    BlastNSeedregionLigationsiteFilter,
+    Bowtie2Filter,
+    BowtieFilter,
+    CrossHybridizationFilter,
+    ExactMatchFilter,
+    HybridizationProbabilityFilter,
+    RemoveAllPolicy,
+    RemoveByDegreePolicy,
+    RemoveByLargerRegionPolicy,
 )
 
-############################################
 # Global Parameters
-############################################
-
-# Specify parameters
-n_jobs = 1
-ligation_region = 0
-dir_annotations = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "data/specificity_filter"
+FILE_DATABASE_OLIGOS_EXACT_MATCH = "data/tests/databases/database_oligos_tsv/database_oligos_exactmatch.tsv"
+FILE_DATABASE_OLIGOS_MATCH = "data/tests/databases/database_oligos_tsv/database_oligos_match.tsv"
+FILE_DATABASE_OLIGOS_NOMATCH = "data/tests/databases/database_oligos_tsv/database_oligos_nomatch.tsv"
+FILE_DATABASE_REFERENCE = "data/tests/databases/database_reference/database_reference.fna"
+FILE_DATABASE_OLIGOS_LIGATION_MATCH = (
+    "data/tests/databases/database_oligos_tsv/database_oligos_ligation_match.tsv"
 )
-min_oligos_per_gene = 2
+FILE_DATABASE_OLIGOS_LIGATION_NOMATCH = (
+    "data/tests/databases/database_oligos_tsv/database_oligos_ligation_nomatch.tsv"
+)
 
-# Reference transcriptome files for tests
-file_transcriptome_fasta = dir_annotations + "/reference_sample.fna"
-file_transcriptome_fasta_ligation = dir_annotations + "/reference_sample_ligation.fna"
+FILE_DATABASE_REFERENCE_LIGATION = "data/tests/databases/database_reference/database_reference_ligation.fna"
 
-# Files containing oligo info for tests
-file_oligo_info_match = dir_annotations + "/oligo_DB_match.tsv"
-file_oligo_info_no_match = dir_annotations + "/oligo_DB_no_match.tsv"
-file_oligo_info_exact_matches = dir_annotations + "/oligo_DB_exact_matches.tsv"
+FILE_DATABASE_OLIGOS_CROSSHYB = (
+    "data/tests/databases/database_oligos_tsv/database_oligos_crosshybridization.tsv"
+)
+SOLUTIONS_LARGER_REGION = [
+    f"data/tests/databases/expected_results/solution_crosshyb_larger_region_{i}.tsv" for i in range(3)
+]
+SOLUTIONS_DEGREE = [
+    f"data/tests/databases/expected_results/solution_crosshyb_degree_{i}.tsv" for i in range(8)
+]
 
-# blastn parameters
-word_size = 10
-percent_identity = 80
-oligo_length_min = 30
-oligo_length_max = 40
-coverage = 50
-strand = "plus"
-
-# bowtie parameters
-num_mismatches = 3
-mismatch_region = 5
+FILE_DATABASE_OLIGOS_AI = "data/tests/databases/database_oligos_tsv/database_oligos_ai.tsv"
+FILE_TABLE_HITS_BLAST_AI = "data/tests/table_hits/table_hits_blast_ai.tsv"
+FILE_TABLE_HITS_BOWTIE_AI = "data/tests/table_hits/table_hits_bowtie_ai.tsv"
 
 
-# Parameters to test ligation region argument
-file_oligo_info_ligation_match = dir_annotations + "/oligo_DB_ligation_match.tsv"
-file_oligo_info_ligation_nomatch = dir_annotations + "/oligo_DB_ligation_no_match.tsv"
+class TestExactMatchFilter(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_exact_match_outputs")
+        self.oligo_database = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=os.path.join(self.tmp_path, "oligo_database_match"),
+        )
+        self.oligo_database.load_database(FILE_DATABASE_OLIGOS_EXACT_MATCH)
 
-############################################
-# Tests
-############################################
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
 
+    def test_exact_match_filter_no_policy(self):
+        sequence_type = "oligo"
+        policy = RemoveAllPolicy()
+        filter = ExactMatchFilter(policy)
+        res = filter.apply(sequence_type, self.oligo_database, 2)
 
-def test_filter_exact_matches(tmp_path):
-    print(dir_annotations)
-    # check that exact matches filters out a doubled sequence from the db
-    oligo_database = OligoDatabase()
-    exact_matches = ExactMatches(tmp_path)
-    oligo_database.load_database(file_oligo_info_exact_matches)
-    filtered_oligo_info_dict_match = exact_matches.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
-    )
+        assert (
+            "WASH7P::2" not in res.database["WASH7P"].keys()
+        ), "A matching oligo has not been filtered from exact matches!"
+        assert (
+            "AGRN::1" not in res.database["AGRN"].keys()
+        ), "A non-matching oligo has been filtered from exact mathces!"
 
-    assert (
-        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
-    ), "A matching oligo has not been filtered from exact matches!"
-    assert (
-        "AGRN_1" not in filtered_oligo_info_dict_match["AGRN"].keys()
-    ), "A matching oligo has not been filtered from exact mathces!"
+    def test_exact_match_filter_policy(self):
+        sequence_type = "oligo"
+        policy = RemoveByLargerRegionPolicy()
+        filter = ExactMatchFilter(policy)
+        res = filter.apply(sequence_type, self.oligo_database, 2)
 
-
-def test_filter_bowtie_match(tmp_path):
-    # Check that bowtie filter filters out a sequence that is identified as a match for user-defined threshholds
-
-    oligo_database = OligoDatabase()
-    bowtie_filter = Bowtie(
-        tmp_path,
-        num_mismatches,
-        mismatch_region,
-    )
-    oligo_database.load_database(file_oligo_info_match)
-    filtered_oligo_info_dict_match = bowtie_filter.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
-    )
-
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
-    ), "A matching oligo has not been filtered from Bowtie!"
+        assert (
+            "WASH7P::2" not in res.database["WASH7P"].keys()
+        ), "A matching oligo has not been filtered from exact matches!"
+        assert (
+            "AGRN::1" in res.database["AGRN"].keys()
+        ), "A non-matching oligo has been filtered from exact mathces!"
 
 
-def test_filter_bowtie_no_match(tmp_path):
-    # Check that bowtie does not filter filters out a sequence which is not a match
-    oligo_database = OligoDatabase()
-    bowtie_filter = Bowtie(
-        tmp_path,
-        num_mismatches,
-        mismatch_region,
-    )
-    oligo_database.load_database(file_oligo_info_no_match)
-    filtered_oligo_info_dict_match = bowtie_filter.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
-    )
+class AlignmentFilterTestBase:
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), self.setup_tmp_path())
+        os.makedirs(self.tmp_path, exist_ok=True)
+        self.filter = self.setup_filter()
+        self._setup_databases(
+            database_file_match=FILE_DATABASE_OLIGOS_MATCH,
+            database_file_nomatch=FILE_DATABASE_OLIGOS_NOMATCH,
+            database_reference=FILE_DATABASE_REFERENCE,
+        )
 
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "AGRN_1" in filtered_oligo_info_dict_match["AGRN"].keys()
-    ), "A non matching oligo has been filtered from Bowtie!"
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
 
+    @abstractmethod
+    def setup_tmp_path(self):
+        pass
 
-def test_filter_bowtie2_match(tmp_path):
-    # Check that bowtie filter filters out a sequence that is identified as a match for user-defined threshholds
-    oligo_database = OligoDatabase()
-    bowtie2_filter = Bowtie2(
-        tmp_path,
-    )
-    oligo_database.load_database(file_oligo_info_match)
-    filtered_oligo_info_dict_match = bowtie2_filter.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
-    )
+    @abstractmethod
+    def setup_filter(self):
+        pass
 
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
-    ), "A matching oligo has not been filtered from Bowtie!"
+    def _setup_databases(self, database_file_match, database_file_nomatch, database_reference):
+        self.oligo_database_match = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=os.path.join(self.tmp_path, "oligo_database_match"),
+        )
+        self.oligo_database_match.load_database(database_file_match)
 
+        self.oligo_database_nomatch = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=os.path.join(self.tmp_path, "oligo_database_nomatch"),
+        )
+        self.oligo_database_nomatch.load_database(database_file_nomatch)
 
-def test_filter_bowtie2_no_match(tmp_path):
-    # Check that bowtie does not filter filters out a sequence which is not a match
-    oligo_database = OligoDatabase()
-    bowtie2_filter = Bowtie2(
-        tmp_path,
-    )
-    oligo_database.load_database(file_oligo_info_no_match)
-    filtered_oligo_info_dict_match = bowtie2_filter.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
-    )
+        self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
 
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "AGRN_1" in filtered_oligo_info_dict_match["AGRN"].keys()
-    ), "A non matching oligo has been filtered from Bowtie!"
+        self.reference_database.load_sequences_from_fasta(
+            files_fasta=database_reference, database_overwrite=True
+        )
 
+    def test_filter_match(self):
+        sequence_type = "target"
 
-def test_filter_blast_match(tmp_path):
-    # Check that blast filter filters out a sequence that is identified as a match for user-defined threshholds
+        res = self.filter.apply(sequence_type, self.oligo_database_match, 2, self.reference_database)
 
-    # Run blast filter
-    oligo_database = OligoDatabase()
-    blast_filter = Blastn(tmp_path, word_size, percent_identity, strand, coverage)
-    oligo_database.load_database(file_oligo_info_match)
-    filtered_oligo_info_dict_match = blast_filter.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
-    )
+        assert "WASH7P::1" not in res.database["WASH7P"].keys(), "A matching oligo has not been filtered!"
 
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "WASH7P_1" not in filtered_oligo_info_dict_match["WASH7P"].keys()
-    ), "A matching oligo has not been filtered from Blast!"
+    def test_filter_nomatch(self):
+        sequence_type = "target"
+        res = self.filter.apply(sequence_type, self.oligo_database_nomatch, 2, self.reference_database)
+
+        assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Blast!"
 
 
-def test_filter_blast_no_match(tmp_path):
-    # Check that blast does not filter filters out a sequence which is not a match
-    oligo_database = OligoDatabase()
-    blast_filter = Blastn(tmp_path, word_size, percent_identity, strand, coverage)
-    oligo_database.load_database(file_oligo_info_no_match)
-    filtered_oligo_info_dict_match = blast_filter.apply(
-        oligo_database.database, file_transcriptome_fasta, n_jobs
-    )
+class TestBlastFilter(AlignmentFilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        blast_search_parameters = {
+            "perc_identity": 80,
+            "strand": "plus",
+            "word_size": 10,
+        }
+        blast_hit_parameters = {"coverage": 50}
 
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "AGRN_1" in filtered_oligo_info_dict_match["AGRN"].keys()
-    ), "A non matching oligo has been filtered from Bowtie!"
+        return BlastNFilter(blast_search_parameters, blast_hit_parameters, dir_output=self.tmp_path)
 
-
-def test_seed_filter_match(tmp_path):
-    oligo_database = OligoDatabase()
-    ligation_seed_region = LigationRegionCreation(ligation_region_size=10)
-    seed_region_filter = BowtieSeedRegion(tmp_path, ligation_seed_region)
-    oligo_database.load_database(file_oligo_info_ligation_match)
-    filtered_oligo_info_dict_ligation_match = seed_region_filter.apply(
-        oligo_database.database, file_transcriptome_fasta_ligation, n_jobs
-    )
-
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "WASH7P_1" not in filtered_oligo_info_dict_ligation_match["WASH7P"].keys()
-    ), "A  matching oligo hasn't been filtered from Seed Region Filter!"
+    def setup_tmp_path(self):
+        return "tmp_blast_outputs"
 
 
-def test_seed_filter_no_match(tmp_path):
-    oligo_database = OligoDatabase()
-    ligation_seed_region = LigationRegionCreation(ligation_region_size=10)
-    seed_region_filter = BowtieSeedRegion(tmp_path, ligation_seed_region)
-    oligo_database.load_database(file_oligo_info_ligation_nomatch)
-    filtered_oligo_info_dict_ligation_no_match = seed_region_filter.apply(
-        oligo_database.database, file_transcriptome_fasta_ligation, n_jobs
-    )
-    # check tha the oligo has been removed form the dataset
-    assert (
-        "WASH7P_1" in filtered_oligo_info_dict_ligation_no_match["WASH7P"].keys()
-    ), "A non matching oligo has been filtered from Seed Region Filter!"
+class TestBowtieFilter(AlignmentFilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        bowtie_search_parameters = {"-n": 3, "-l": 5}
+
+        return BowtieFilter(bowtie_search_parameters, dir_output=self.tmp_path)
+
+    def setup_tmp_path(self):
+        return "__tmp_bowtie_outputs"
+
+
+class TestBowtie2Filter(AlignmentFilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        bowtie2_search_parameters = {"-N": 0}
+
+        return Bowtie2Filter(bowtie2_search_parameters, dir_output=self.tmp_path)
+
+    def setup_tmp_path(self):
+        return "tmp_bowtie2_outputs"
+
+
+class TestBlastNSeedregionLigationsiteFilter(AlignmentFilterTestBase, unittest.TestCase):
+    def setup_filter(self):
+        blast_search_parameters = {
+            "perc_identity": 80,
+            "strand": "plus",
+            "word_size": 10,
+        }
+        blast_hit_parameters = {"coverage": 50}
+        seedregion_size = 10
+
+        return BlastNSeedregionLigationsiteFilter(
+            seedregion_size,
+            blast_search_parameters,
+            blast_hit_parameters,
+            dir_output=self.tmp_path,
+        )
+
+    def setup_tmp_path(self):
+        return "tests/tmp_blast_ligation_outputs"
+
+    def setUp(self):
+        super().setUp()
+        self._setup_databases(
+            database_file_match=FILE_DATABASE_OLIGOS_LIGATION_MATCH,
+            database_file_nomatch=FILE_DATABASE_OLIGOS_LIGATION_NOMATCH,
+            database_reference=FILE_DATABASE_REFERENCE_LIGATION,
+        )
+
+
+class TestCrossHybridizationFilter(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_crosshybridization_outputs")
+        os.makedirs(self.tmp_path, exist_ok=True)
+        self.oligo_database_crosshyb = self._setup_database(FILE_DATABASE_OLIGOS_CROSSHYB)
+        self.oligo_database_crosshyb_exactmatch = self._setup_database(FILE_DATABASE_OLIGOS_EXACT_MATCH)
+        self.sequence_type = "oligo"
+
+        # Blast parameters
+        self.blast_search_parameters_crosshyb = {
+            "perc_identity": 80,
+            "strand": "minus",
+            "word_size": 10,
+        }
+        self.blast_hit_parameters_crosshyb = {"coverage": 50}
+
+        # Bowtie parameters
+        self.bowtie_search_parameters_crosshyb = {"-n": 3, "-l": 5, "--nofw": ""}
+
+        self.expected_oligos_larger_region = []
+        for i, solution_file in enumerate(SOLUTIONS_LARGER_REGION):
+            solution = OligoDatabase(
+                min_oligos_per_region=2,
+                write_regions_with_insufficient_oligos=True,
+                dir_output=os.path.join(self.tmp_path, f"oligo_database_solution_larger_region_{i}"),
+            )
+            solution.load_database(solution_file)
+            self.expected_oligos_larger_region.append(solution.database)
+
+        self.expected_oligos_degree = []
+        for i, solution_file in enumerate(SOLUTIONS_DEGREE):
+            solution = OligoDatabase(
+                min_oligos_per_region=2,
+                write_regions_with_insufficient_oligos=True,
+                dir_output=os.path.join(self.tmp_path, f"oligo_database_solution_degree_{i}"),
+            )
+            solution.load_database(solution_file)
+            self.expected_oligos_degree.append(solution.database)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
+
+    def _setup_database(self, file_database):
+        oligos = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=os.path.join(self.tmp_path, "oligo_database"),
+        )
+        oligos.load_database(file_database)
+        return oligos
+
+    def _apply_filter_and_assert(self, filter_instance, expected_oligos):
+        res = filter_instance.apply(self.sequence_type, self.oligo_database_crosshyb, 2)
+        assert (
+            res.database in expected_oligos
+        ), f"The cross-hybridization filter didn't return the expected oligos."
+
+    def test_crosshyb_filter_blast_larger_region_policy(self):
+        filter_instance = BlastNFilter(
+            self.blast_search_parameters_crosshyb,
+            self.blast_hit_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "blast_larger_region"),
+        )
+        policy = RemoveByLargerRegionPolicy()
+        cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
+        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_larger_region)
+
+    def test_crosshyb_filter_blast_degree_policy(self):
+        filter_instance = BlastNFilter(
+            self.blast_search_parameters_crosshyb,
+            self.blast_hit_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "blast_degree"),
+        )
+        policy = RemoveByDegreePolicy()
+        cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
+        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)
+
+    def test_crosshyb_filter_bowtie_larger_region_policy(self):
+        filter_instance = BowtieFilter(
+            self.bowtie_search_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "bowtie_larger_region"),
+        )
+        policy = RemoveByLargerRegionPolicy()
+        cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
+        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_larger_region)
+
+    def test_crosshyb_filter_bowtie_degree_policy(self):
+        filter_instance = BowtieFilter(
+            self.bowtie_search_parameters_crosshyb,
+            dir_output=os.path.join(self.tmp_path, "bowtie_degree"),
+        )
+        policy = RemoveByDegreePolicy()
+        cross_hyb_filter = CrossHybridizationFilter(policy, filter_instance, self.tmp_path)
+        self._apply_filter_and_assert(cross_hyb_filter, self.expected_oligos_degree)
+
+
+class DummyAPI(APIBase):
+    # Class that considers real hits all the hits that have a 100% match
+    def predict(self, queries, gapped_queries, references, gapped_references):
+        predictions = np.ndarray(shape=(len(queries),), dtype=np.float32)
+        for i, (q, r) in enumerate(zip(gapped_queries, gapped_references)):
+            if q == r:
+                predictions[i] = 1
+            else:
+                predictions[i] = 0
+        return predictions
+
+
+class TestHybridizationProbabilityBalstn(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_hybridization_probability_outputs")
+        blast_search_parameters = blast_search_parameters = {
+            "perc_identity": 80,
+            "strand": "both",
+            "word_size": 10,
+        }
+        blast_hit_parameters = {"coverage": 50}
+        self.alignment_filter = BlastNFilter(
+            blast_search_parameters=blast_search_parameters,
+            blast_hit_parameters=blast_hit_parameters,
+            dir_output=self.tmp_path,
+        )
+        self.filter = HybridizationProbabilityFilter(alignment_method=self.alignment_filter, threshold=0.1)
+        self.filter.model = DummyAPI()
+        self.database = OligoDatabase(dir_output=self.tmp_path)
+        self.database.load_database(FILE_DATABASE_OLIGOS_AI)
+        self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
+        self.reference_database.load_sequences_from_fasta(
+            files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
+        )
+        self.table_hits = pd.read_csv(FILE_TABLE_HITS_BLAST_AI, sep="\t")
+        self.sequence_type = "target"
+        self.region_id = "region"
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_ai_filter_blastn(self):
+        filtered_database = self.filter.apply(
+            sequence_type=self.sequence_type,
+            oligo_database=self.database,
+            n_jobs=2,
+            reference_database=self.reference_database,
+        )
+        returned_oligos = set(filtered_database.database["region"].keys())
+        expected_oligos = set(f"region::{i}" for i in range(2, 20))
+
+        assert (
+            returned_oligos == expected_oligos
+        ), f"The Blast ai filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{returned_oligos}"
+
+    def test_get_queries(self):
+        returned_queries = self.alignment_filter.get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        returned_queries = set(returned_queries)
+        expected_queries = set(
+            [
+                Seq("GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT"),
+                Seq("AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC"),
+                Seq("TACAGGCATGACCCACCATGCCTGGCCAACTTACATTTTT"),
+                Seq("AAAAATGTAAGTTGGCCAGGCATGGTGGGTCATGCCTGTA"),
+                Seq("AAGGCCAAGGTCTCTGGGGGGCTGGACAAGCCGCCCTCAT"),
+                Seq("ATGAGGGCGGCTTGTCCAGCCCCCCAGAGACCTTGGCCTT"),
+                Seq("TTTTGCACCAGCCCAGATCGCATCTTCTTTCACCTGTTTT"),
+                Seq("AAAACAGGTGAAAGAAGATGCGATCTGGGCTGGTGCAAAA"),
+                Seq("CCGCTCGGCTGCATGAAACCAAAACGGCTGTCCGGGGACA"),
+                Seq("TGTCCCCGGACAGCCGTTTTGGTTTCATGCAGCCGAGCGG"),
+                Seq("AACCCGGCATCACCAAGAGGAGGTTCAAGGGAACGCTGCA"),
+                Seq("TGCAGCGTTCCCTTGAACCTCCTCTTGGTGATGCCGGGTT"),
+                Seq("TGCCCGCGCCGGAGTTCTCCCCAGCCGGAGTCCGGCAGGG"),
+                Seq("CCCTGCCGGACTCCGGCTGGGGAGAACTCCGGCGCGGGCA"),
+                Seq("AACCTGGTTGCACCTCGGCCTGGTCCCAGCAGGTATGGTT"),
+                Seq("AACCATACCTGCTGGGACCAGGCCGAGGTGCAACCAGGTT"),
+                Seq("ACTGATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC"),
+                Seq("GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAATCAGT"),
+                Seq("TATATATTTTGCACACTTTAAAATATTGGGTTGTTTACCG"),
+                Seq("CGGTAAACAACCCAATATTTTAAAGTGTGCAAAATATATA"),
+            ]
+        )
+        assert (
+            returned_queries == expected_queries
+        ), f"The Blast ai filter didn't return the expected queries. \n\nExpected:\n{expected_queries}\n\nGot:\n{returned_queries}"
+
+    def test_get_target_blastn(self):
+        returned_references = self.alignment_filter.get_references(
+            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        )
+        returned_references = set(returned_references)
+        expected_references = set(
+            [
+                Seq("GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT"),
+                Seq("AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC"),
+                Seq("TACAGGCATGAGCCACCATGCCTGGCCAACTCACATTTTT"),
+                Seq("AAAAATGTGAGTTGGCCAGGCATGGTGGCTCATGCCTGTA"),
+                Seq("AAGGCCGGGGTCTCTGGGGGGCTGGAGAAGCCTCCCTCAT"),
+                Seq("ATGAGGGAGGCTTCTCCAGCCCCCCAGAGACCCCGGCCTT"),
+                Seq("AGCAGCACCAGCCCAGATCGCATCTTCTTTCACCTGAACG"),
+                Seq("CGTTCAGGTGAAAGAAGATGCGATCTGGGCTGGTGCTGCT"),
+                Seq("CCGCTACCGGCTGCATGACAACCAAAACGGCTGGTCCGGGGACA"),
+                Seq("TGTCCCCGGACCAGCCGTTTTGGTTGTCATGCAGCCGGTAGCGG"),
+                Seq("AACCCCATCACCAAGAGGAGGTTCAGGGAAGCTGCA"),
+                Seq("TGCAGCTTCCCTGAACCTCCTCTTGGTGATGGGGTT"),
+                Seq("TGCCCGCGCCGGAGTTCTCCCCGGAGCCGGAGTCCGGCAGGG"),
+                Seq("CCCTGCCGGACTCCGGCTCCGGGGAGAACTCCGGCGCGGGCA"),
+                Seq("TCCCTGGGCACCTCGGCCTGGTCCCAGCAGGTATGGGC"),
+                Seq("GCCCATACCTGCTGGGACCAGGCCGAGGTGCCCAGGGA"),
+                Seq("----ATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC"),
+                Seq("GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAAT----"),
+                Seq("TATATATTTTGCACACTTTAAAATATTGGGTTGTTT----"),
+                Seq("----AAACAACCCAATATTTTAAAGTGTGCAAAATATATA"),
+            ]
+        )
+        assert (
+            returned_references == expected_references
+        ), f"The Blast ai filter didn't return the expected references. \n\nExpected:\n{expected_references}\n\nGot:\n{returned_references}"
+
+    def test_add_alignment_gaps_queries(self):
+        queries = self.alignment_filter.get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        references = self.alignment_filter.get_references(
+            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        )
+        gapped_queries, _ = self.alignment_filter.add_alignement_gaps(
+            table_hits=self.table_hits,
+            queries=queries,
+            references=references,
+        )
+        gapped_queries = set(gapped_queries)
+        expected_gapped_queries = set(
+            [
+                Seq("GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT"),
+                Seq("AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC"),
+                Seq("TACAGGCATGACCCACCATGCCTGGCCAACTTACATTTTT"),
+                Seq("AAAAATGTAAGTTGGCCAGGCATGGTGGGTCATGCCTGTA"),
+                Seq("AAGGCCAAGGTCTCTGGGGGGCTGGACAAGCCGCCCTCAT"),
+                Seq("ATGAGGGCGGCTTGTCCAGCCCCCCAGAGACCTTGGCCTT"),
+                Seq("TTTTGCACCAGCCCAGATCGCATCTTCTTTCACCTGTTTT"),
+                Seq("AAAACAGGTGAAAGAAGATGCGATCTGGGCTGGTGCAAAA"),
+                Seq("CCGCT--CGGCTGCATGA-AACCAAAACGGCTG-TCCGGGGACA"),
+                Seq("TGTCCCCGGA-CAGCCGTTTTGGTT-TCATGCAGCCG--AGCGG"),
+                Seq("AACCCGGCATCACCAAGAGGAGGTTCAAGGGAACGCTGCA"),
+                Seq("TGCAGCGTTCCCTTGAACCTCCTCTTGGTGATGCCGGGTT"),
+                Seq("TGCCCGCGCCGGAGTTCTCCCC--AGCCGGAGTCCGGCAGGG"),
+                Seq("CCCTGCCGGACTCCGGCT--GGGGAGAACTCCGGCGCGGGCA"),
+                Seq("AACCTGGTTGCACCTCGGCCTGGTCCCAGCAGGTATGGTT"),
+                Seq("AACCATACCTGCTGGGACCAGGCCGAGGTGCAACCAGGTT"),
+                Seq("ACTGATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC"),
+                Seq("GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAATCAGT"),
+                Seq("TATATATTTTGCACACTTTAAAATATTGGGTTGTTTACCG"),
+                Seq("CGGTAAACAACCCAATATTTTAAAGTGTGCAAAATATATA"),
+            ]
+        )
+        assert (
+            gapped_queries == expected_gapped_queries
+        ), f"The Blast ai filter didn't return the expected gapped queries. \n\nExpected:\n{expected_gapped_queries}\n\nGot:\n{gapped_queries}"
+
+    def test_add_alignment_gaps_references(self):
+        queries = self.alignment_filter.get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        references = self.alignment_filter.get_references(
+            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        )
+        _, gapped_references = self.alignment_filter.add_alignement_gaps(
+            table_hits=self.table_hits,
+            queries=queries,
+            references=references,
+        )
+        gapped_references = set(gapped_references)
+        expected_gapped_references = set(
+            [
+                Seq("GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT"),
+                Seq("AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC"),
+                Seq("TACAGGCATGAGCCACCATGCCTGGCCAACTCACATTTTT"),
+                Seq("AAAAATGTGAGTTGGCCAGGCATGGTGGCTCATGCCTGTA"),
+                Seq("AAGGCCGGGGTCTCTGGGGGGCTGGAGAAGCCTCCCTCAT"),
+                Seq("ATGAGGGAGGCTTCTCCAGCCCCCCAGAGACCCCGGCCTT"),
+                Seq("AGCAGCACCAGCCCAGATCGCATCTTCTTTCACCTGAACG"),
+                Seq("CGTTCAGGTGAAAGAAGATGCGATCTGGGCTGGTGCTGCT"),
+                Seq("CCGCTACCGGCTGCATGACAACCAAAACGGCTGGTCCGGGGACA"),
+                Seq("TGTCCCCGGACCAGCCGTTTTGGTTGTCATGCAGCCGGTAGCGG"),
+                Seq("AACCC--CATCACCAAGAGGAGGTTCA-GGGAA-GCTGCA"),
+                Seq("TGCAGC-TTCCC-TGAACCTCCTCTTGGTGATG--GGGTT"),
+                Seq("TGCCCGCGCCGGAGTTCTCCCCGGAGCCGGAGTCCGGCAGGG"),
+                Seq("CCCTGCCGGACTCCGGCTCCGGGGAGAACTCCGGCGCGGGCA"),
+                Seq("TCCCTGG--GCACCTCGGCCTGGTCCCAGCAGGTATGGGC"),
+                Seq("GCCCATACCTGCTGGGACCAGGCCGAGGTGC--CCAGGGA"),
+                Seq("----ATTGCTGCAGACGCTCACCCCAGACACTCACTGCAC"),
+                Seq("GTGCAGTGAGTGTCTGGGGTGAGCGTCTGCAGCAAT----"),
+                Seq("TATATATTTTGCACACTTTAAAATATTGGGTTGTTT----"),
+                Seq("----AAACAACCCAATATTTTAAAGTGTGCAAAATATATA"),
+            ]
+        )
+        assert (
+            gapped_references == expected_gapped_references
+        ), f"The Blast ai filter didn't return the expected gapped references. \n\nExpected:\n{expected_gapped_references}\n\nGot:\n{gapped_references}"
+
+
+class TestHybridizationProbabilityBowtie(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_exact_match_outputs")
+        bowtie_search_parameters = {"-n": 3, "-l": 5}
+        self.alignment_filter = BowtieFilter(
+            bowtie_search_parameters=bowtie_search_parameters, dir_output=self.tmp_path
+        )
+        self.filter = HybridizationProbabilityFilter(alignment_method=self.alignment_filter, threshold=0.1)
+        self.filter.model = DummyAPI()
+        self.database = OligoDatabase(dir_output=self.tmp_path)
+        self.database.load_database(FILE_DATABASE_OLIGOS_AI)
+        self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
+        self.reference_database.load_sequences_from_fasta(
+            files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
+        )
+        self.table_hits = pd.read_csv(FILE_TABLE_HITS_BOWTIE_AI, sep="\t")
+        self.sequence_type = "target"
+        self.region_id = "region"
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_ai_filter_bowtie(self):
+        filtered_database = self.filter.apply(
+            sequence_type=self.sequence_type,
+            oligo_database=self.database,
+            n_jobs=2,
+            reference_database=self.reference_database,
+        )
+        returned_oligos = set(filtered_database.database["region"].keys())
+        expected_oligos = set(f"region::{i}" for i in range(2, 20))
+
+        assert (
+            returned_oligos == expected_oligos
+        ), f"The Bowtie ai filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{returned_oligos}"
+
+    def test_get_queries(self):
+        returned_queries = self.alignment_filter.get_queries(
+            sequence_type=self.sequence_type,
+            table_hits=self.table_hits,
+            oligo_database=self.database,
+            region_id=self.region_id,
+        )
+        returned_queries = set(returned_queries)
+        expected_queries = set(
+            [
+                Seq("GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT"),
+                Seq("AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC"),
+                Seq("TACAGGCATGACCCACCATGCCTGGCCAACTTACATTTTT"),
+                Seq("AAAAATGTAAGTTGGCCAGGCATGGTGGGTCATGCCTGTA"),
+            ]
+        )
+        assert (
+            returned_queries == expected_queries
+        ), f"The Bowtie ai filter didn't return the expected queries. \n\nExpected:\n{expected_queries}\n\nGot:\n{returned_queries}"
+
+    def test_get_target_bowtie(self):
+        returned_references = self.alignment_filter.get_references(
+            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        )
+        returned_references = set(returned_references)
+        expected_references = set(
+            [
+                Seq("GCTCGGGCTTGTCCACAGGATGGACCCAGCTGAGCAAGCT"),
+                Seq("AGCTTGCTCAGCTGGGTCCATCCTGTGGACAAGCCCGAGC"),
+                Seq("TACAGGCATGAGCCACCATGCCTGGCCAACTCACATTTTT"),
+                Seq("AAAAATGTGAGTTGGCCAGGCATGGTGGCTCATGCCTGTA"),
+            ]
+        )
+        assert (
+            returned_references == expected_references
+        ), f"The Bowtie ai filter didn't return the expected references. \n\nExpected:\n{expected_references}\n\nGot:\n{returned_references}"

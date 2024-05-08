@@ -2,18 +2,19 @@
 # imports
 ############################################
 
-import os
+import unittest
+import warnings
 
-from Bio import SeqIO
+import pandas as pd
+from effidict import LRUDict
 
 from oligo_designer_toolsuite.utils import (
+    FastaParser,
     GffParser,
-    check_fasta_format,
-    check_gff_format,
+    check_if_dna_sequence,
+    check_if_key_exists,
+    check_if_list,
     check_tsv_format,
-    get_sequence_from_annotation,
-    merge_fasta,
-    parse_fasta_header,
 )
 
 ############################################
@@ -26,77 +27,168 @@ from oligo_designer_toolsuite.utils import (
 ############################################
 
 
-def test_data_parser(tmp_path):
-    """Test if data parser functionalities work correctly."""
-    # test file format checkers
-    file_gff = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
-    res = check_gff_format(file_gff)
-    assert (
-        res == True
-    ), f"error: gff file format checker did not recognize gff file {file_gff}"
+class TestGffParser(unittest.TestCase):
+    def setUp(self):
+        self.parser = GffParser()
+        self.gff_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+        self.gtf_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+        self.pickle_file = "data/tests/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16_gtf.pickle"
 
-    file_gtf = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-    res = check_gff_format(file_gtf)
-    assert (
-        res == True
-    ), f"error: gff file format checker did not recognize gtf file {file_gtf}"
+    def test_check_gff_format(self):
+        """Test parsing GFF annotation data."""
+        try:
+            self.parser.check_gff_format(self.gff_file)
+        except Exception as e:
+            assert (
+                False
+            ), f"error: checker: check_gff_format raised an exception: {e}, with file {self.gff_file}"
 
-    file_fasta = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-    res = check_fasta_format(file_fasta)
-    assert (
-        res == True
-    ), f"error: fasta file format checker did not recognize fasta file {file_fasta}"
+    def test_check_gtf_format(self):
+        """Test parsing GTF annotation data."""
+        try:
+            self.parser.check_gff_format(self.gtf_file)
+        except Exception as e:
+            assert (
+                False
+            ), f"error: checker: check_gff_format raised an exception: {e}, with file {self.gtf_file}"
 
-    file_tsv = (
-        "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
-    )
-    res = check_tsv_format(file_tsv)
-    assert (
-        res == True
-    ), f"error: tsv file format checker did not recognize tsv file {file_tsv}"
+    def test_parse_annotation_from_gff(self):
+        """Test parsing GFF annotation."""
+        result = self.parser.parse_annotation_from_gff(self.gff_file, target_lines=10)
+        assert result.shape[1] == 23, "error: GFF3 dataframe not correctly loaded"
 
-    # test sequence extraction from annotation and fasta file
-    file_bed = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.bed"
-    file_reference_fasta = (
-        "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-    )
-    file_fasta = os.path.join(tmp_path, "test_ann2seq_function.fna")
-    get_sequence_from_annotation(
-        file_bed, file_reference_fasta, file_fasta, split=False, strand=True, name=True
-    )
-    res = check_fasta_format(file_fasta)
-    assert res == True, f"error: the created sequence file is not a fasta file"
+    def test_parse_annotation_from_gtf(self):
+        """Test parsing GTF annotation."""
+        result = self.parser.parse_annotation_from_gff(self.gtf_file, target_lines=10)
+        assert result.shape[1] == 20, "error: GTF dataframe not correctly loaded"
 
-    files_fasta = [file_reference_fasta, file_reference_fasta]
-    file_merged_fasta = os.path.join(tmp_path, "test_merge_fasta_function.fna")
-    merge_fasta(files_fasta, file_merged_fasta)
-    res = len(list(SeqIO.parse(file_merged_fasta, "fasta")))
-    assert res == 2, f"error: the fasta files were not merged correctly"
-
-    header = "ARPG3::transcript_id=XM4581;exon_id=XM4581_exon1::16:70265537-70265662(-)"
-    region, additional_information, coordinates = parse_fasta_header(header)
-    assert region == "ARPG3", "error: wrong region parsed"
-    assert coordinates["chromosome"] == ["16"], "error: wrong chrom parsed"
-    assert coordinates["start"] == [70265537], "error: wrong start parsed"
-    assert coordinates["end"] == [70265662], "error: wrong end parsed"
-    assert coordinates["strand"] == ["-"], "error: wrong strand parsed"
-    assert (
-        additional_information == "transcript_id=XM4581;exon_id=XM4581_exon1"
-    ), "error: wrong additional information parsed"
+    def test_load_annotation_from_pickle_file(self):
+        """Test loading annotation from a pickle file."""
+        result = self.parser.load_annotation_from_pickle(self.pickle_file)
+        assert type(result) == pd.DataFrame, f"error: GTF dataframe not correctly loaded from pickle file"
 
 
-def test_GFF_parser():
-    """Test of GFF/GTF parser parses file correctly."""
-    ##### Test GFF3 parsing
-    parser = GffParser()
-    file_gff = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+class TestFastaParser(unittest.TestCase):
+    def setUp(self):
+        self.parser = FastaParser()
+        self.fasta_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 
-    dataframe_gff = parser.read_gff(file_gff, target_lines=10)
-    assert dataframe_gff.shape[1] == 23, "error: GFF3 dataframe not correctly loaded"
+    def test_check_fasta_format(self):
+        """Test parsing fasta file."""
+        try:
+            self.parser.check_fasta_format(self.fasta_file)
+        except Exception as e:
+            assert (
+                False
+            ), f"error: checker: check_fasta_format raised an exception: {e}, with file {self.fasta_file}"
 
-    ##### Test GTF parsing
-    parser = GffParser()
-    file_gtf = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+    def test_read_fasta_sequences_existing_regions(self):
+        """Test parsing fasta file."""
+        ids = ["16"]
+        result = self.parser.read_fasta_sequences(self.fasta_file, region_ids=ids)
 
-    dataframe_gtf = parser.read_gff(file_gtf, target_lines=10)
-    assert dataframe_gtf.shape[1] == 20, "error: GTF dataframe not correctly loaded"
+        assert len(result) == 1, f"error: the function loaded {len(result)} entries instead of 1"
+        assert result[0].name == "16", f"error: the name should be '16' instead of {result[0].name}"
+        assert (
+            result[0].description == "16 Homo sapiens chromosome 16, GRCh38.p14 Primary Assembly"
+        ), f"error: the description should be '16 Homo sapiens chromosome 16, GRCh38.p14 Primary Assembly' instead of {result[0].description}"
+        assert (
+            result[0].dbxrefs == []
+        ), f"error: the dbxrefs should be an empty list instead of {result[0].dbxrefs}"
+
+    def test_read_fasta_sequences_non_existing_region(self):
+        """Test parsing fasta file."""
+        ids = ["1"]
+        result = self.parser.read_fasta_sequences(self.fasta_file, region_ids=ids)
+        # check if a warning was raised
+        with warnings.catch_warnings(record=True) as w:
+            result = self.parser.read_fasta_sequences(self.fasta_file, region_ids=ids)
+            assert len(w) > 0, "error: no warning was raised"
+        assert len(result) == 0, f"error: the function loaded {len(result)} entries instead of an empty list"
+
+    def test_get_fasta_regions(self):
+        """Test if the parser extracts fasta regions correctly."""
+        expected_result = ["16"]
+        result = self.parser.get_fasta_regions(self.fasta_file)
+        assert (
+            result == expected_result
+        ), f"error: fasta regions not correctly extracted. Expected ['16'] got {result}"
+
+    def test_parse_fasta_header(self):
+        """Test if the parser extracts fasta header correctly."""
+        header = "ARPG3::transcript_id=XM4581;exon_id=XM4581_exon1::16:70265537-70265662(-)"
+        region, additional_information, coordinates = self.parser.parse_fasta_header(header)
+        assert region == "ARPG3", "error: wrong region parsed"
+        assert coordinates["chromosome"] == ["16"], "error: wrong chrom parsed"
+        assert coordinates["start"] == [70265537], "error: wrong start parsed"
+        assert coordinates["end"] == [70265662], "error: wrong end parsed"
+        assert coordinates["strand"] == ["-"], "error: wrong strand parsed"
+        assert additional_information == {
+            "transcript_id": ["XM4581"],
+            "exon_id": ["XM4581_exon1"],
+        }, f"error: wrong additional information parsed: {additional_information}"
+
+
+class TestCheckers(unittest.TestCase):
+    def test_check_tsv_format(self):
+        """Test if the parser extracts fasta header correctly."""
+        file_tsv = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+        try:
+            check_tsv_format(file_tsv)
+        except Exception as e:
+            assert False, f"error: checker: check_tsv_format raised an exception: {e}, with file {file_tsv}"
+
+    def test_check_if_key_exists_empty(self):
+        """Test the check_if_key_exists function with an empty cache."""
+        empty_dict = LRUDict()
+        assert not check_if_key_exists(empty_dict, "a"), "Failed: Should return False for empty dictionary"
+
+    def test_check_if_key_exists_flat(self):
+        """Test the check_if_key_exists function with a flat cache."""
+        flat_database = LRUDict()
+        flat_database.load_from_dict({"a": 1, "b": 2})
+
+        assert check_if_key_exists(flat_database, "a"), "Failed: Key 'a' should exist in flat_database"
+        assert not check_if_key_exists(
+            flat_database, "z"
+        ), "Failed: Key 'z' should not exist in flat_database"
+
+    def test_check_if_key_exists_nested(self):
+        """Test the check_if_key_exists function with a nested cache."""
+
+        nested_database = LRUDict()
+        nested_database.load_from_dict({"a": {"b": {"c": 1}}, "d": 2, "e": {"f": {"g": {"h": 3}}}})
+
+        assert check_if_key_exists(nested_database, "c"), "Failed: Key 'c' should exist in nested_database"
+        assert not check_if_key_exists(
+            nested_database, "z"
+        ), "Failed: Key 'z' should not exist in nested_database"
+        assert check_if_key_exists(
+            nested_database, "h"
+        ), "Failed: Key 'h' should exist deep within nested_database"
+
+    def test_check_if_list_str(self):
+        """Test if check_if_list works correctly for a string."""
+        s = "test"
+        result = check_if_list(s)
+        assert result == [s], f"error: check_if_list failed. Expected: [{s}], got: {result}"
+
+    def test_check_if_list_list(self):
+        """Test if check_if_list works correctly for a list."""
+        l = ["test", ["test2"]]
+        result = check_if_list(l)
+        assert result == l, f"error: check_if_list failed. Expected: {l}, got: {result}"
+
+    def test_check_if_dna_sequence_valid(self):
+        """Test if check_if_dna_sequence works correctly for a valid DNA sequence."""
+        seq = "GGctAAgTTCCaGTttGCA"
+        valid_characters = ["A", "C", "T", "G"]
+        assert check_if_dna_sequence(seq, valid_characters), "error: check_if_dna_sequence failed"
+
+    def test_check_if_dna_sequence_invalid(self):
+        """Test if check_if_dna_sequence works correctly for an invalid DNA sequence."""
+        seq = "GGctAAgTuuTCCaGTttGCA"
+        valid_characters = ["A", "C", "T", "G", "W", "X"]
+        assert not check_if_dna_sequence(
+            seq, valid_characters
+        ), "error: check_if_dna_sequence succeeded when it should have failed"

@@ -85,9 +85,7 @@ class BaseFtpLoader:
 
         return file_output
 
-    def _download_and_decompress(
-        self, ftp_link: str, ftp_directory: str, file_name: str
-    ):
+    def _download_and_decompress(self, ftp_link: str, ftp_directory: str, file_name: str):
         """Download and decompress a file from an FTP server.
 
         This method downloads a file from the specified FTP server, decompresses it if it is gzip-compressed,
@@ -118,9 +116,7 @@ class BaseFtpLoader:
         :raises AssertionError: If the provided file type is not in the list of supported options.
         """
         options = get_args(_TYPES_FILE)
-        assert (
-            file_type in options
-        ), f"File type not supported! '{file_type}' is not in {options}."
+        assert file_type in options, f"File type not supported! '{file_type}' is not in {options}."
 
     def _check_sequence_nature_type(self, sequence_nature: _TYPES_SEQ):
         """Check if the provided sequence nature type is supported.
@@ -170,9 +166,7 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             "fasta": "dna_sm.primary_assembly.fa.gz",  # soft-masked version of the genome
         }
 
-    def download_files(
-        self, file_type: _TYPES_FILE, sequence_nature: _TYPES_SEQ = "dna"
-    ):
+    def download_files(self, file_type: _TYPES_FILE, sequence_nature: _TYPES_SEQ = "dna"):
         """Download and decompress Ensembl files.
 
         This method downloads and decompresses Ensembl files of a specified type and sequence nature.
@@ -188,15 +182,9 @@ class FtpLoaderEnsembl(BaseFtpLoader):
         self._check_sequence_nature_type(sequence_nature)
 
         ftp_directory, ftp_file = self._get_params(file_type, sequence_nature)
-        dowloaded_file = self._download_and_decompress(
-            self.ftp_link, ftp_directory, ftp_file
-        )
+        dowloaded_file = self._download_and_decompress(self.ftp_link, ftp_directory, ftp_file)
 
-        self.assembly_name = (
-            re.search("\\.([^\\.]*)\\.", Path(dowloaded_file).name)
-            .group()
-            .replace(".", "")
-        )
+        self.assembly_name = re.search("\\.([^\\.]*)\\.", Path(dowloaded_file).name).group().replace(".", "")
 
         return dowloaded_file, self.annotation_release, self.assembly_name
 
@@ -228,9 +216,13 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             if sequence_nature == "dna":
                 ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.file_type_ending[file_type]}"
             else:
-                ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{sequence_nature}.fa.gz"
+                ftp_file = (
+                    f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{sequence_nature}.fa.gz"
+                )
         else:
-            ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder[file_type]}/{self.species}/"
+            ftp_directory = (
+                f"pub/release-{self.annotation_release}/{self.file_type_folder[file_type]}/{self.species}/"
+            )
             ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.annotation_release}.{self.file_type_ending[file_type]}"
 
         return ftp_directory, ftp_file
@@ -253,9 +245,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
     :type annotation_release: str
     """
 
-    def __init__(
-        self, dir_output: str, taxon: str, species: str, annotation_release: str
-    ):
+    def __init__(self, dir_output: str, taxon: str, species: str, annotation_release: str):
         """Constructor for the FtpLoaderNCBI class."""
         super().__init__(dir_output)
         self.taxon = taxon
@@ -295,9 +285,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
         ftp_directory, ftp_file, ftp_file_chr_mapping = self._get_params(file_type)
 
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
-        dowloaded_file = self._download_and_decompress(
-            self.ftp_link, ftp_directory, ftp_file
-        )
+        dowloaded_file = self._download_and_decompress(self.ftp_link, ftp_directory, ftp_file)
 
         self.file_type_function[file_type](dowloaded_file, mapping)
 
@@ -317,13 +305,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
         """
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ftp_directory = (
-            "genomes/refseq/"
-            + self.taxon
-            + "/"
-            + self.species
-            + "/annotation_releases/"
-        )
+        ftp_directory = "genomes/refseq/" + self.taxon + "/" + self.species + "/annotation_releases/"
 
         if self.annotation_release == "current":
             ftp_directory = ftp_directory + "current/"
@@ -337,9 +319,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
 
         ftp_directory = ftp_directory + f"{self.annotation_release}/"
 
-        file_readme = self._download(
-            self.ftp_link, ftp_directory, f"README_.*{self.annotation_release}"
-        )
+        file_readme = self._download(self.ftp_link, ftp_directory, f"README_.*{self.annotation_release}")
         with open(file_readme, "r") as handle:
             for line in handle:
                 if line.startswith("ASSEMBLY NAME:"):
@@ -353,26 +333,18 @@ class FtpLoaderNCBI(BaseFtpLoader):
         ftp = FTP(self.ftp_link)
         ftp.login()
         try:
-            ftp.cwd(
-                ftp_directory + f"{self.assembly_accession}_{self.assembly_name}"
-            )  # move to directory
-            ftp_directory = (
-                ftp_directory + f"{self.assembly_accession}_{self.assembly_name}"
-            )
+            ftp.cwd(ftp_directory + f"{self.assembly_accession}_{self.assembly_name}")  # move to directory
+            ftp_directory = ftp_directory + f"{self.assembly_accession}_{self.assembly_name}"
         except error_perm:
             ftp_directory = ftp_directory
         ftp.quit()
 
         ftp_file = f"{self.assembly_accession}_{self.assembly_name}_{self.file_type_ending[file_type]}"
-        ftp_file_chr_mapping = (
-            f"{self.assembly_accession}_{self.assembly_name}_assembly_report.txt"
-        )
+        ftp_file_chr_mapping = f"{self.assembly_accession}_{self.assembly_name}_assembly_report.txt"
 
         return ftp_directory, ftp_file, ftp_file_chr_mapping
 
-    def _download_mapping_chr_names(
-        self, ftp_directory: str, ftp_file_chr_mapping: str
-    ):
+    def _download_mapping_chr_names(self, ftp_directory: str, ftp_file_chr_mapping: str):
         """Download and parse the chromosome name mapping file.
 
         This method downloads the chromosome name mapping file from the specified FTP directory, parses the file to extract
@@ -385,32 +357,22 @@ class FtpLoaderNCBI(BaseFtpLoader):
         :return: A dictionary mapping RefSeq accessions to chromosome names.
         :rtype: Dict
         """
-        file_mapping = self._download(
-            self.ftp_link, ftp_directory, ftp_file_chr_mapping
-        )
+        file_mapping = self._download(self.ftp_link, ftp_directory, ftp_file_chr_mapping)
 
         # skip comment lines but keep last comment line for header
         with open(file_mapping) as handle:
-            *_comments, names = itertools.takewhile(
-                lambda line: line.startswith("#"), handle
-            )
+            *_comments, names = itertools.takewhile(lambda line: line.startswith("#"), handle)
             names = names[1:].split()
 
-        assembly_report = pd.read_table(
-            file_mapping, names=names, sep="\t", comment="#"
-        )
+        assembly_report = pd.read_table(file_mapping, names=names, sep="\t", comment="#")
 
-        mapping_chromosome = assembly_report[
-            assembly_report["Sequence-Role"] == "assembled-molecule"
-        ]
+        mapping_chromosome = assembly_report[assembly_report["Sequence-Role"] == "assembled-molecule"]
         mapping_chromosome = pd.Series(
             mapping_chromosome["Sequence-Name"].values,
             index=mapping_chromosome["RefSeq-Accn"],
         ).to_dict()
 
-        mapping_scaffolds = assembly_report[
-            assembly_report["Sequence-Role"] != "assembled-molecule"
-        ]
+        mapping_scaffolds = assembly_report[assembly_report["Sequence-Role"] != "assembled-molecule"]
         mapping_scaffolds = pd.Series(
             mapping_scaffolds["GenBank-Accn"].values,
             index=mapping_scaffolds["RefSeq-Accn"],
@@ -437,9 +399,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
         # write comment lines to new file
         with open(file_tmp, "w") as handle_out:
             with open(ftp_file) as handle_in:
-                *_comments, names = itertools.takewhile(
-                    lambda line: line.startswith("#"), handle_in
-                )
+                *_comments, names = itertools.takewhile(lambda line: line.startswith("#"), handle_in)
                 handle_out.write(names)
 
             # read gtf file without comment lines
@@ -486,15 +446,11 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 if accession_number in mapping:
                     chromosome_sequnece.id = mapping[accession_number]
                     chromosome_sequnece.name = mapping[accession_number]
-                    chromosome_sequnece.description = (
-                        chromosome_sequnece.description.replace(
-                            accession_number, mapping[accession_number]
-                        )
+                    chromosome_sequnece.description = chromosome_sequnece.description.replace(
+                        accession_number, mapping[accession_number]
                     )
                     SeqIO.write(chromosome_sequnece, handle, "fasta")
                 else:
-                    self.logging.info(
-                        "No mapping for accession number: {}".format(accession_number)
-                    )
+                    self.logging.info("No mapping for accession number: {}".format(accession_number))
 
         os.replace(file_tmp, ftp_file)

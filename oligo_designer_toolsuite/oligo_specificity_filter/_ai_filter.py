@@ -1,0 +1,171 @@
+from abc import ABC, abstractmethod
+
+import pandas as pd
+import numpy as np
+from joblib import Parallel, delayed
+from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
+
+from . import AlignmentSpecificityFilter, SpecificityFilterBase, BlastNFilter, BlastNSeedregionFilter, BlastNSeedregionLigationsiteFilter
+from ..database import OligoDatabase, ReferenceDatabase
+from .._constants import _TYPES_SEQ
+
+class HybridizationProbabilityFilter(SpecificityFilterBase):
+    """
+    This class filters oligos based on the result of a user-specified aligment method and the hibridization probability of the oligos with the off-target sites.
+    In particiular, the method considers as hits only the off-target sites with an hybridization probability wiht the oligos higher than a user-defined threshold.
+    
+    To define the hybridization probability we cosider an experiment where the oligo sequence, the on-target site and the off-target site are intruduced with the 
+    same concentration. Next, the hybridization probability is the ration of the final concentration of DNA complex composed by the the oligo and the off-target site,
+    and all the DNA complexes that contain the oligo (oligo + off-target and oligo + on-target):
+
+    $$C_{oligo + off-t} /C_{oligo + off-t}  + C_{oligo + on-t}$$.  
+
+    In simpler terms, the hybridization probability the frequency with which the oligo binds to the off-target site, compared to the number of succesfull bindinbgs of the oligo.
+
+    :param alignment_method: The alignment specificity filter to use.
+    :type alignment_method: AlignmentSpecificityFilter
+    :param threshold: The threshold below which the oligos are filtered.
+    :type threshold: float, optional
+    :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
+    :type ai_filter_path: str, optional
+    :param dir_output: The directory where the intermediate files are written, defaults to "output"
+    :type dir_output: str, optional
+    """
+
+    def __init__(
+            self, 
+            alignment_method: AlignmentSpecificityFilter,
+            threshold: float,
+            ai_filter_path: str = None, 
+            dir_output: str = "output",
+        ) -> None:
+
+        self.alignment_method = alignment_method
+        self.overwrite_output_format()
+        # instatiate ai model
+        self.threshold  = threshold
+        self.model = APIHybridizationProbability(ai_filter_path=ai_filter_path)
+        self.dir_output = dir_output
+
+
+    def apply(
+        self, 
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        n_jobs: int,
+        reference_database: ReferenceDatabase,
+    ):
+        """
+        Applies the alignment-based specificity filter and the  machine leanrning based filter to an oligonucleotide database.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param database: The oligo database to which the filter will be applied.
+        :type database: OligoDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
+        :param reference_database: The reference database to compare against for specificity.
+        :type reference_database: ReferenceDatabase
+        :return: The filtered oligo database with sequences having significant hits removed.
+        :rtype: OligoDatabase
+        """
+        region_ids = list(oligo_database.database.keys())
+        table_hits = self.alignment_method.get_table_hits(
+              sequence_type=sequence_type,
+              oligo_database=oligo_database,
+              n_jobs=n_jobs,
+              reference_database=reference_database,
+              region_ids=region_ids,
+        )
+        print(table_hits)
+        table_hits = Parallel(n_jobs=n_jobs)(
+              delayed(self._filter_table_hits)(
+                    sequence_type=sequence_type,
+                    table_hits=table_hits_region,
+                    oligo_database=oligo_database,
+                    reference_database=reference_database,
+                    region_id= region_id,
+              )
+              for table_hits_region, region_id in zip(table_hits, region_ids)
+        )
+        # filter the oligo database
+        oligo_database = self.alignment_method.filter_oligo_database(
+              table_hits=table_hits,
+              region_ids=region_ids,
+              oligo_database=oligo_database,
+        )
+
+        return oligo_database
+    
+
+    def _filter_table_hits(
+        self,
+        sequence_type: _TYPES_SEQ,
+        table_hits: pd.DataFrame,
+        oligo_database: OligoDatabase,
+        reference_database: ReferenceDatabase,
+        region_id: str,
+    ) -> pd.DataFrame:
+        """Filters the hits from a search operation using Machine Learning models. The Hits that recieve a score form the machine learning model lower that the given threshold are filtered out.
+
+        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :param table_hits: Dataframe containing the strue hits of the search results.
+        :type table_hits: pd.DataFrame
+        :param file_reference: Path to the fasta file used as reference for the search.
+        :type file_reference: str
+        :param oligo_database: The oligo database to which the filter will be applied.
+        :type oligo_database: OligoDatabase
+        :param region_id: The identifier for the region within the database to filter.
+        :type region_id: str
+        :return: Dataframe containing the filtered true hits
+        :rtype: pd.DataFrame
+        """
+
+        # check if there are any oligos to filter
+        if len(table_hits) == 0:
+            return table_hits
+        
+        # generate the references and queries sequences
+        references = self.alignment_method.get_references(table_hits, reference_database, region_id)
+        queries = self.alignment_method.get_queries(sequence_type, table_hits, oligo_database, region_id)
+
+        # align the references and queries by adding gaps
+        gapped_queries, gapped_references = self.alignment_method.add_alignement_gaps(
+            table_hits=table_hits, queries=queries, references=references
+        )
+
+        # predict the scores for each hit
+        predictions = self.model.predict(
+            queries=queries,
+            gapped_queries=gapped_queries,
+            references=references,
+            gapped_references=gapped_references,
+        )
+        print(predictions)
+
+        # filter the database, keep only the oligos above the threshold
+        table_hits = table_hits[predictions >= self.threshold]
+
+        return table_hits
+    
+    def overwrite_output_format(self):
+        """
+        The output format of the alignment method is overwritten to be compatible with the hybridization probability filter.
+        """
+        # if the alignment method is a  Blastn method overwrite the 
+        if type(self.alignment_method) in [BlastNFilter, BlastNSeedregionFilter, BlastNSeedregionLigationsiteFilter]:
+            self.alignment_method.names_search_output = [
+                    "query",
+                    "reference",
+                    "alignment_length",
+                    "query_start",
+                    "query_end",
+                    "query_length",
+                    "query_sequence",
+                    "reference_start",
+                    "reference_end",
+                    "reference_sequence",
+                    "reference_strand"
+                ]
+            self.alignment_method.blast_search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
