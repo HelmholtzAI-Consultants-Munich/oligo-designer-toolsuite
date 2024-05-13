@@ -20,6 +20,7 @@ from ..utils._database_processor import (
     check_if_region_in_database,
     collapse_info_for_duplicated_sequences,
     filter_dabase_for_region,
+    make_entries_list_of_list,
     merge_databases,
 )
 from ..utils._sequence_parser import FastaParser
@@ -254,6 +255,7 @@ class OligoDatabase:
             for entry in fasta_sequences:
                 region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
                 oligo_info = coordinates | additional_info
+                oligo_info = make_entries_list_of_list(oligo_info)
                 if region in region_sequences:
                     if entry.seq in region_sequences[region]:
                         oligo_info_merged = collapse_info_for_duplicated_sequences(

@@ -76,6 +76,11 @@ def padlock_scoring():
 
 # check we obtain the same result
 def test_oligosets_generation(oligoset_generator, oligos_database):
+    for gene in oligos_database.database.keys():
+        for oligo_id in oligos_database.database[gene].keys():
+            print(oligos_database.database[gene][oligo_id])
+        break
+
     oligos_database = oligoset_generator.apply(oligo_database=oligos_database, n_sets=100, n_jobs=1)
     for gene in oligos_database.oligosets.keys():
         computed_sets = oligos_database.oligosets[gene]
@@ -99,8 +104,8 @@ def test_oligosets_generation(oligoset_generator, oligos_database):
 def test_nonoverlapping_matrix_ovelapping_oligos(oligoset_generator):
     # generate sinthetic oligos that overlap
     oligos = {
-        "A_0": {"start": [10, 50], "end": [15, 55]},
-        "A_1": {"start": [20, 53], "end": [25, 58]},
+        "A_0": {"start": [[10], [50]], "end": [[15], [55]]},
+        "A_1": {"start": [[20], [53]], "end": [[25], [58]]},
     }
     computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
     true_matrix = pd.DataFrame(data=[[0, 0], [0, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"])
@@ -112,8 +117,8 @@ def test_nonoverlapping_matrix_ovelapping_oligos(oligoset_generator):
 def test_nonoverlapping_matrix_for_nonovelapping_oligos(oligoset_generator):
     # generate sinthetic oligos that overlap
     oligos = {
-        "A_0": {"start": [10, 50], "end": [15, 55]},
-        "A_1": {"start": [20, 35], "end": [25, 40]},
+        "A_0": {"start": [[10], [50]], "end": [[15], [55]]},
+        "A_1": {"start": [[20], [35]], "end": [[25], [40]]},
     }
     computed_matrix = oligoset_generator._get_overlapping_matrix(database_region=oligos)
     true_matrix = pd.DataFrame(data=[[0, 1], [1, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"])
