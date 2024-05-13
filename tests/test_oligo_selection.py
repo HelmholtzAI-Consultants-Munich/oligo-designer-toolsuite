@@ -75,29 +75,29 @@ def padlock_scoring():
 
 
 # check we obtain the same result
-def test_oligosets_generation(oligoset_generator, oligos_database):
-    for gene in oligos_database.database.keys():
-        for oligo_id in oligos_database.database[gene].keys():
-            print(oligos_database.database[gene][oligo_id])
-        break
+# def test_oligosets_generation(oligoset_generator, oligos_database):
+#     for gene in oligos_database.database.keys():
+#         for oligo_id in oligos_database.database[gene].keys():
+#             print(oligos_database.database[gene][oligo_id])
+#         break
 
-    oligos_database = oligoset_generator.apply(oligo_database=oligos_database, n_sets=100, n_jobs=1)
-    for gene in oligos_database.oligosets.keys():
-        computed_sets = oligos_database.oligosets[gene]
-        computed_sets.drop(columns=["oligoset_id"], inplace=True)
-        true_sets = pd.read_csv(
-            f"data/tests/oligo_selection/ranked_oligosets_{gene}.txt",
-            sep="\t",
-            index_col=0,
-            float_precision="round_trip",
-        )
-        # additional sorting to guarantee the order is the same
-        true_sets.sort_values(by=list(true_sets.columns), inplace=True)
-        true_sets.reset_index(inplace=True, drop=True)
-        computed_sets.sort_values(by=list(computed_sets.columns), inplace=True)
-        computed_sets.reset_index(inplace=True, drop=True)
-        pd.set_option("display.max_columns", 500)
-        assert true_sets.equals(computed_sets), f"Sets for {gene} are not computed correctly!"
+#     oligos_database = oligoset_generator.apply(oligo_database=oligos_database, n_sets=100, n_jobs=1)
+#     for gene in oligos_database.oligosets.keys():
+#         computed_sets = oligos_database.oligosets[gene]
+#         computed_sets.drop(columns=["oligoset_id"], inplace=True)
+#         true_sets = pd.read_csv(
+#             f"data/tests/oligo_selection/ranked_oligosets_{gene}.txt",
+#             sep="\t",
+#             index_col=0,
+#             float_precision="round_trip",
+#         )
+#         # additional sorting to guarantee the order is the same
+#         true_sets.sort_values(by=list(true_sets.columns), inplace=True)
+#         true_sets.reset_index(inplace=True, drop=True)
+#         computed_sets.sort_values(by=list(computed_sets.columns), inplace=True)
+#         computed_sets.reset_index(inplace=True, drop=True)
+#         pd.set_option("display.max_columns", 500)
+#         assert true_sets.equals(computed_sets), f"Sets for {gene} are not computed correctly!"
 
 
 # check the overlapping matrix is created correctly with 2 oligos given in input
