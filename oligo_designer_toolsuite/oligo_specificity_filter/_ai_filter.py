@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import os
 
 import pandas as pd
 import numpy as np
@@ -77,17 +78,21 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
               reference_database=reference_database,
               region_ids=region_ids,
         )
-        print(table_hits)
+        # filter the table hits
+        file_reference = reference_database.write_database_to_fasta(
+            filename="reference_db_hybr_prob"
+        ) # defined in advance to avoid writing the file multiple times
         table_hits = Parallel(n_jobs=n_jobs)(
               delayed(self._filter_table_hits)(
                     sequence_type=sequence_type,
                     table_hits=table_hits_region,
                     oligo_database=oligo_database,
-                    reference_database=reference_database,
+                    file_reference=file_reference,
                     region_id= region_id,
               )
               for table_hits_region, region_id in zip(table_hits, region_ids)
         )
+        os.remove(file_reference)
         # filter the oligo database
         oligo_database = self.alignment_method.filter_oligo_database(
               table_hits=table_hits,
@@ -103,7 +108,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         sequence_type: _TYPES_SEQ,
         table_hits: pd.DataFrame,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,
+        file_reference: str,
         region_id: str,
     ) -> pd.DataFrame:
         """Filters the hits from a search operation using Machine Learning models. The Hits that recieve a score form the machine learning model lower that the given threshold are filtered out.
@@ -127,7 +132,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
             return table_hits
         
         # generate the references and queries sequences
-        references = self.alignment_method.get_references(table_hits, reference_database, region_id)
+        references = self.alignment_method.get_references(table_hits, file_reference, region_id)
         queries = self.alignment_method.get_queries(sequence_type, table_hits, oligo_database, region_id)
 
         # align the references and queries by adding gaps
@@ -142,7 +147,6 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
             references=references,
             gapped_references=gapped_references,
         )
-        print(predictions)
 
         # filter the database, keep only the oligos above the threshold
         table_hits = table_hits[predictions >= self.threshold]

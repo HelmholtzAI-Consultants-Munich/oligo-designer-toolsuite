@@ -95,7 +95,7 @@ class PadlockOligoScoring(OligoScoringBase):
         """
         # distance from the optimal melting temperature weightend by the how far is the optimum from the min/ max
         # the scoring is the lower the better
-        Tm_dif = oligo["melting_temperature"] - self.Tm_opt  # check the names of the columns
+        Tm_dif = oligo["TmNN"] - self.Tm_opt  # check the names of the columns
         GC_dif = oligo["GC_content"] - self.GC_opt
         score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(GC_dif)
         return score

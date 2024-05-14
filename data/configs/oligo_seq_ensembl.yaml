@@ -11,14 +11,10 @@ write_removed_genes: true # write in a file the removed genes
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
 
 ### Parameters for genome and gene annotation
-source: custom # required: indicate that own annotation should be used
+source: ensembl # required: indicate that ensembl annotation should be used
 source_params:
-  file_annotation: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf #output_seqfish/annotation/GCF_000001405.40_GRCh38.p14_genomic.gtf # required: GTF file with gene annotation
-  file_sequence: data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna #output_seqfish/annotation/GCF_000001405.40_GRCh38.p14_genomic.fna # required: FASTA file with genome sequence
-  files_source: NCBI # optional: original source of the genomic files
-  species: Homo_sapiens # optional: species of provided annotation, leave empty if unknown
-  annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
-  genome_assembly: GRCh38 # optional: genome assembly of provided annotation, leave empty if unknown
+  species: homo_sapiens # required: species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
+  annotation_release: current # required: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
 
 ### Parameters for oligo sequences generation
 file_regions: data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used

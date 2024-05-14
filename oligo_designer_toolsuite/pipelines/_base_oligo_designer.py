@@ -244,7 +244,7 @@ class BaseOligoDesigner:
         # load the oligo sequences
         oligo_database.load_metadata(metadata=self.metadata)
         oligo_database.load_sequences_from_fasta(
-            file_fasta_in=oligo_fasta_file,
+            files_fasta=[oligo_fasta_file],
             sequence_type="oligo",
             region_ids=regions,
         )
@@ -262,7 +262,7 @@ class BaseOligoDesigner:
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename_out="oligo_database_initial.txt")
+            file_database = oligo_database.save_database(filename="oligo_database_initial.txt")
         else:
             file_database = ""
 
@@ -300,27 +300,28 @@ class BaseOligoDesigner:
 
         return oligo_database
     
-    def _parse_genomic_regions(self, genomic_regions, block_size = 0):
+    def _parse_genomic_regions(self, genomic_regions: dict, block_size: int = 0):
         fasta_files = []
-        for genomic_region in genomic_regions:
-            if genomic_region == "gene":
-                fasta_files.append(self.region_generator.get_sequence_gene())
-            elif genomic_region == "intergenic":
-                fasta_files.append(self.region_generator.get_sequence_intergenic())
-            elif genomic_region == "exon":
-                fasta_files.append(self.region_generator.get_sequence_exon())
-            elif genomic_region == "intron":
-                fasta_files.append(self.region_generator.get_sequence_intron())
-            elif genomic_region == "cds":
-                fasta_files.append(self.region_generator.get_sequence_cds())
-            elif genomic_region == "utr":
-                fasta_files.append(self.region_generator.get_sequence_utr())
-            elif genomic_region == "exon_exon_junction":
-                fasta_files.append(
-                    self.region_generator.get_sequence_exon_exon_junction(
-                        block_size=block_size  
+        for genomic_region, use_flag in genomic_regions.items():
+            if  use_flag: # generate the fasta file only if the flas is set to True
+                if genomic_region == "gene":
+                    fasta_files.append(self.region_generator.get_sequence_gene())
+                elif genomic_region == "intergenic":
+                    fasta_files.append(self.region_generator.get_sequence_intergenic())
+                elif genomic_region == "exon":
+                    fasta_files.append(self.region_generator.get_sequence_exon())
+                elif genomic_region == "intron":
+                    fasta_files.append(self.region_generator.get_sequence_intron())
+                elif genomic_region == "cds":
+                    fasta_files.append(self.region_generator.get_sequence_cds())
+                elif genomic_region == "utr":
+                    fasta_files.append(self.region_generator.get_sequence_utr())
+                elif genomic_region == "exon_exon_junction":
+                    fasta_files.append(
+                        self.region_generator.get_sequence_exon_exon_junction(
+                            block_size=block_size  
+                        )
                     )
-                )
-            else:
-                raise Exception(f"Region generator: {genomic_region} is not implemented.")
+                else:
+                    raise Exception(f"Region generator: {genomic_region} is not implemented.")
         return fasta_files

@@ -200,14 +200,14 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         return search_results
 
-    def get_references(self, table_hits: pd.DataFrame, reference_database: ReferenceDatabase, region_id: str):
+    def get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
         """
         Retrieve the references sequences from the search results.
 
         :param table_hits: DataFrame with the oligos that match the blast search.
         :type table_hits: pd.DataFrame
-        :param reference_database: The reference database to compare against for specificity.
-        :type reference_database: ReferenceDatabase
+        :param file_reference: Path to the fasta file used as reference for the search.
+        :type file_reference: str
         :param region_id: The identifier for the region within the database to filter.
         :type region_id: str
         :return: Reference sequences
@@ -238,9 +238,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         bed.to_csv(file_bed, sep='\t', index=False, header=False)
 
         references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
-        file_reference = reference_database.write_database_to_fasta(
-            filename="reference_db"
-        )
+        
         get_sequence_from_annotation(file_bed, file_reference,  references_fasta_file, strand=True, nameOnly=True)
         references = [off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")]
         os.remove(references_fasta_file)

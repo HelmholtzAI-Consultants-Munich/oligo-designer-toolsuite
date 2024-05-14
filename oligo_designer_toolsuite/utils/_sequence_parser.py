@@ -446,3 +446,22 @@ class FastaParser:
                     additional_info = info_list
 
         return region, additional_info, coordinates
+
+
+def merge_fasta_files(files_in: list, file_out: str, overwrite: bool = False):
+    """Merge a list of fasta files on a sigle file. The overwrite flag allows to choose whether to overwrite the content of the outfile
+    or to append the content of the input files to the output file.
+
+    :param files_in: List of paths to the input files. 
+    :type files_in: list
+    :param file_out: Path to the output file.
+    :type file_out: str
+    :param overwrite: Flag to indicate the the content of the out_file will be written or not, defaults to False
+    :type overwrite: bool, optional
+    """
+    out_file_mode = "w" if overwrite else "a"
+    with open(file_out, out_file_mode) as out:
+        for file_in in files_in:
+            if os.path.isfile(file_in):
+                with open(file_in, "r") as in_f:
+                    out.write(in_f.read())
