@@ -67,6 +67,16 @@ def check_if_list(obj):
         obj = [obj] if not isinstance(obj, list) else obj
     return obj
 
+def check_if_list_of_lists(item):
+    """Check if the given item is a list of lists.
+
+    :param item: The item to check.
+    :type item: Any
+    :return: True if the item is a list containing only lists, False otherwise.
+    :rtype: bool
+    """
+    return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
+
 
 def check_tsv_format(file: str):
     """Check if a given TSV file has any content.
@@ -79,3 +89,6 @@ def check_tsv_format(file: str):
     with open(file, "r") as tsv:
         read_tsv = csv.reader(tsv, delimiter="\t")
         return any(read_tsv)
+    
+
+

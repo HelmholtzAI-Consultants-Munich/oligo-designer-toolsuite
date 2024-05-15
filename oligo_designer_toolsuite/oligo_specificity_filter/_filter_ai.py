@@ -59,8 +59,8 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,
         n_jobs: int,
+        reference_database: ReferenceDatabase,
     ):
         """
         Applies the alignment-based specificity filter and the  machine leanrning based filter to an oligonucleotide database.
@@ -69,10 +69,10 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         :type sequence_type: _TYPES_SEQ
         :param database: The oligo database to which the filter will be applied.
         :type database: OligoDatabase
-        :param reference_database: The reference database to compare against for specificity.
-        :type reference_database: ReferenceDatabase
         :param n_jobs: The number of parallel jobs to run.
         :type n_jobs: int
+        :param reference_database: The reference database to compare against for specificity.
+        :type reference_database: ReferenceDatabase
         :return: The filtered oligo database with sequences having significant hits removed.
         :rtype: OligoDatabase
         """
