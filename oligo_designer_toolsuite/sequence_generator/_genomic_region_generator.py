@@ -154,9 +154,15 @@ class CustomGenomicRegionGenerator:
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
-        annotation["add_inf"] = f"regiontype=gene{SEPARATOR_FASTA_HEADER_FIELDS_LIST}gene_id=" + annotation[
-            "gene_id"
-        ].astype("str")
+        annotation["add_inf"] = (
+            f"source={self.files_source}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype=gene{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + "gene_id="
+            + annotation["gene_id"].astype("str")
+        )
         annotation["region"] = self._get_annotation_region(annotation)
 
         # add BED12 fields
@@ -308,7 +314,13 @@ class CustomGenomicRegionGenerator:
         annotation = _compute_intergenic_annotation(annotation)
 
         # generate region_id
-        annotation["add_inf"] = "regiontype=intergenic"
+        annotation["add_inf"] = (
+            f"source={self.files_source}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype=intergenic"
+        )
         annotation["region"] = self._get_annotation_region(annotation)
 
         # add BED12 fields
@@ -379,7 +391,12 @@ class CustomGenomicRegionGenerator:
         annotation["score"] = 0
         annotation["fasta_header"] = (
             annotation["region_id"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS}regiontype=exon{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + SEPARATOR_FASTA_HEADER_FIELDS
+            + f"source={self.files_source}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype=exon{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -504,7 +521,12 @@ class CustomGenomicRegionGenerator:
         annotation["score"] = 0
         annotation["fasta_header"] = (
             annotation["region_id"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS}regiontype=intron{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + SEPARATOR_FASTA_HEADER_FIELDS
+            + f"source={self.files_source}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype=intron{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -561,7 +583,12 @@ class CustomGenomicRegionGenerator:
         annotation["score"] = 0
         annotation["fasta_header"] = (
             annotation["region_id"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS}regiontype=CDS{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + SEPARATOR_FASTA_HEADER_FIELDS
+            + f"source={self.files_source}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype=CDS{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -687,9 +714,12 @@ class CustomGenomicRegionGenerator:
         annotation["score"] = 0
         annotation["fasta_header"] = (
             annotation["region_id"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS}regiontype="
-            + annotation["type"]
-            + SEPARATOR_FASTA_HEADER_FIELDS_LIST
+            + SEPARATOR_FASTA_HEADER_FIELDS
+            + f"source={self.files_source}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype={annotation["type"]}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -893,7 +923,12 @@ class CustomGenomicRegionGenerator:
         annotation["itemRgb"] = 0
         annotation["fasta_header"] = (
             annotation["region_id"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS}regiontype=exonexonjunction{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + SEPARATOR_FASTA_HEADER_FIELDS
+            + f"source={self.files_source}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype=exonexonjunction{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
