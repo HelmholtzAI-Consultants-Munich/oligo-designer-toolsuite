@@ -85,13 +85,14 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         return oligo_database
 
     def _create_reference_database(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase):
-        """Creates a reference database from the given oligo database. This involves writing the oligo database to a FASTA file and loading it into a new ReferenceDatabase instance, including metadata.
+        """Creates a reference database from the given oligo database. This involves writing the oligo database to a FASTA file
+        and loading it into a new ReferenceDatabase instance.
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
         :param oligo_database: The oligo database from which the reference database is created.
         :type oligo_database: OligoDatabase
-        :return: A ReferenceDatabase instance populated with sequences and metadata from the oligo database.
+        :return: A ReferenceDatabase instance populated with sequences from the oligo database.
         :rtype: ReferenceDatabase
         """
         file_reference = oligo_database.write_database_to_fasta(
@@ -100,7 +101,6 @@ class CrossHybridizationFilter(SpecificityFilterBase):
             sequence_type=sequence_type,
         )
         reference_database = ReferenceDatabase(dir_output=self.dir_cross_hybridization)
-        reference_database.load_metadata(metadata=oligo_database.metadata)
         reference_database.load_sequences_from_fasta(files_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)

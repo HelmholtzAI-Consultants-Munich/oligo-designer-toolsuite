@@ -32,7 +32,7 @@ from ..utils._sequence_parser import FastaParser
 class OligoDatabase:
     """Class for managing the oligo databases. This class provides functionality for handling oligo databases,
     allowing users to load, manipulate, and save oligo information efficiently. It includes methods for
-    loading metadata, loading and managing oligo databases from various sources (e.g. fasta file or saved database),
+    loading and managing oligo databases from various sources (e.g. fasta file or saved database),
     and performing operations such as removing regions with insufficient oligos and calculating the number of targeted
     transcripts for each oligo.
 
@@ -72,8 +72,6 @@ class OligoDatabase:
         self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
         self.lru_db_max_in_memory = lru_db_max_in_memory
 
-        self.metadata = {}
-
         self.dir_output = os.path.abspath(os.path.join(dir_output, "oligo_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
@@ -102,28 +100,6 @@ class OligoDatabase:
     ############################################
     # Load Functions
     ############################################
-
-    def load_metadata(self, metadata: Union[str, dict]) -> None:
-        """Load metadata into the OligoDatabase object.
-
-        If metadata already exists, a warning is issued about overwriting the existing metadata. The new metadata can be
-        provided either as a path to a YAML file or directly as a dictionary.
-
-        :param metadata: Path to a YAML file or a dictionary containing metadata information.
-        :type metadata: Union[str, dict]
-
-        :raises ValueError: If metadata has an incorrect format.
-        """
-        if self.metadata:
-            warnings.warn("Metadata not empty! Overwriting metadata with new metadata from file!")
-
-        if type(metadata) is str and os.path.exists(metadata):
-            with open(metadata) as handle:
-                self.metadata = yaml.safe_load(handle)
-        elif type(metadata) is dict:
-            self.metadata = metadata
-        else:
-            raise ValueError("Metadat has icorrect format!")
 
     def load_database(
         self,
@@ -311,8 +287,8 @@ class OligoDatabase:
     ):
         """Save the oligo database to YAML and TSV files.
 
-        This function saves the oligo database to two files: a YAML file containing metadata and a TSV (tab-separated values)
-        file containing the oligo database entries. The files are saved in the specified output directory with the provided
+        This function saves the oligo database to a TSV (tab-separated values) file containing the
+        oligo database entries. The files are saved in the specified output directory with the provided
         filenames. The order of the columns in the TSV file is:
 
         +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
@@ -334,11 +310,6 @@ class OligoDatabase:
         else:
             region_ids = self.database.keys()
 
-        file_metadata = os.path.join(self.dir_output, filename + ".yaml")
-
-        with open(file_metadata, "w") as handle:
-            yaml.safe_dump(self.metadata, handle, sort_keys=True, default_flow_style=False)
-
         file_database = os.path.join(self.dir_output, filename + ".tsv")
         file_tsv_content = []
 
@@ -352,7 +323,7 @@ class OligoDatabase:
         file_tsv_content = pd.DataFrame(data=file_tsv_content)
         file_tsv_content.to_csv(file_database, sep="\t", index=False)
 
-        return file_database, file_metadata
+        return file_database
 
     def write_database_to_fasta(
         self,
