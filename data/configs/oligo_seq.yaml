@@ -10,25 +10,12 @@ min_oligos_per_gene: 5 # minimum number of oligos that a gene must have before i
 write_removed_genes: true # write in a file the removed genes
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
 
-### Parameters for genome and gene annotation
-source: ensembl # required: indicate that ensembl annotation should be used
-source_params:
-  species: homo_sapiens # required: species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
-  annotation_release: current # required: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
-
 ### Parameters for oligo sequences generation
 file_regions: data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+files_fasta_oligo_database:
+  - data/annotations/... # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
 oligo_length_min: 26 #min length of oligos
 oligo_length_max: 30 #max length of oligos
-genomic_regions:
-  # list of genomic region the user wants to use to generate the oligos, set to True the ones you want to use
-  gene: false
-  intergenic: false
-  exon: true
-  intron: false
-  cds: false
-  utr: false
-  exon_exon_junction: true
 
 ### Parameters for the property filers
 # oligo sequence
@@ -44,21 +31,10 @@ homopolymeric_base_n:
   T: 6
   C: 7
 homodimer_max_len_selfcomp: 10 #The maximum length of self-complementary sequence allowed to avoid homodimer formation.
-prohibited_sequence:
-  # list od subsequences the used does not wnat in the oligos
-  - AAACGTCG
-  - CCGAGTC
 
 ### Parameters for the specificity filters
-specificity_genomic_regions:
-  # list of genomic region the user wants to use to generate the oligos, set to True the ones you want to use
-  gene: false
-  intergenic: false
-  exon: true
-  intron: false
-  cds: false
-  utr: false
-  exon_exon_junction: true
+files_fasta_reference_database:
+  - data/annotations/... # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
 hybridization_probability_threshold: 0.0001
 
 ### Parameters for the Oligo set selection
@@ -73,17 +49,17 @@ n_sets: 100
 ############################
 
 ### Parameters for the specificity filters
-cross_hybridization_balstn_search_parameters:
+cross_hybridization_blastn_search_parameters:
   perc_identity: 80
   strand: minus # this parameter is fixed
   word_size: 10
-cross_hybridization_balstn_hit_parameters:
+cross_hybridization_blastn_hit_parameters:
   coverage: 50 # could be turned into min_alignment_length
-hybridization_probability_balstn_search_parameters:
+hybridization_probability_blastn_search_parameters:
   perc_identity: 80
   strand: plus
   word_size: 10
-hybridization_probability_balstn_hit_parameters:
+hybridization_probability_blastn_hit_parameters:
   coverage: 50 # could be turned into min_alignment_length
 
 ### Parameters for the Oligo set selection
