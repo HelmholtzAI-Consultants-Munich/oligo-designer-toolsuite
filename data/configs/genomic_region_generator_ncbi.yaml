@@ -3,7 +3,7 @@
 #######################
 
 ### General parameters
-n_jobs: 2 # number of cores used to run the pipeline
+n_jobs: 4 # number of cores used to run the pipeline
 dir_output: genomic_regions # name of the directory where the output files will be written
 
 ### Parameters for genome and gene annotation
@@ -19,8 +19,8 @@ genomic_regions:
   gene: false
   intergenic: false
   exon: true
-  intron: false
-  cds: false
+  intron: true
+  cds: true
   utr: false
   exon_exon_junction: true
 

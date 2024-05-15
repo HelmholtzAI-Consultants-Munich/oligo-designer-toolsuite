@@ -42,8 +42,8 @@ class SpecificityFilterBase(ABC):
         self,
         sequence_type: _TYPES_SEQ,
         database: OligoDatabase,
-        n_jobs: int,
         reference_database: ReferenceDatabase = None,
+        n_jobs: int = 1,
     ):
         """Abstract method to apply the specificity filter to an oligo database.
 
@@ -51,11 +51,11 @@ class SpecificityFilterBase(ABC):
         :type sequence_type: _TYPES_SEQ
         :param database: The oligo database to which the filter will be applied.
         :type database: OligoDatabase
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
         :param reference_database: The reference database to compare against for specificity.
             For non-alignment based specificity filter reference_database is not used, i.e. set to None.
         :type reference_database: ReferenceDatabase, optional
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
         """
 
     def _filter_hits_from_database(self, database_region: dict, oligos_with_hits: list[str]):
@@ -97,8 +97,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        n_jobs: int,
         reference_database: ReferenceDatabase,
+        n_jobs: int,
     ):
         """Applies the alignment-based specificity filter to an oligonucleotide database.
 
@@ -106,10 +106,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type sequence_type: _TYPES_SEQ
         :param database: The oligo database to which the filter will be applied.
         :type database: OligoDatabase
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
         :param reference_database: The reference database to compare against for specificity.
         :type reference_database: ReferenceDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
         :return: The filtered oligo database with sequences having significant hits removed.
         :rtype: OligoDatabase
 

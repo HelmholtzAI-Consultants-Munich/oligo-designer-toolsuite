@@ -719,7 +719,7 @@ class CustomGenomicRegionGenerator:
             + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
-            + f"regiontype={annotation["type"]}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype={annotation['type']}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]

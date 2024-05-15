@@ -39,8 +39,8 @@ class ExactMatchFilter(SpecificityFilterBase):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        n_jobs: int,
         reference_database: ReferenceDatabase = None,
+        n_jobs: int = 1,
     ):
         """Applies the exact match filter to an oligonucleotide database.
 
@@ -48,11 +48,11 @@ class ExactMatchFilter(SpecificityFilterBase):
         :type sequence_type: _TYPES_SEQ
         :param database: The oligo database to which the filter will be applied.
         :type database: OligoDatabase
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
         :param reference_database: The reference database to compare against for specificity.
             For non-alignment based specificity filter reference_database is not used, i.e. set to None, defaults to None.
         :type reference_database: ReferenceDatabase, optional
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """

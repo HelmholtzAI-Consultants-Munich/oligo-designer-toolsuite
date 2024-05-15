@@ -121,7 +121,7 @@ class OligoSequenceGenerator:
     def create_sequences_sliding_window(
         self,
         filename_out: str,
-        file_fasta_in: list[str],
+        files_fasta_in: list[str],
         length_interval_sequences: tuple,
         region_ids: list[str] = None,
         n_jobs: int = 1
@@ -130,8 +130,8 @@ class OligoSequenceGenerator:
 
         :param filename_out: The name of the output FASTA file.
         :type filename_out: str
-        :param file_fasta_in: List of input FASTA files.
-        :type file_fasta_in: list[str]
+        :param files_fasta_in: List of input FASTA files.
+        :type files_fasta_in: list[str]
         :param length_interval_sequences: A tuple representing the interval of sliding window lengths to generate.
         :type length_interval_sequences: tuple
         :param region_ids: List of region IDs to consider. If None, all regions are considered.
@@ -208,11 +208,11 @@ class OligoSequenceGenerator:
             return file_fasta_region
 
         region_ids = check_if_list(region_ids)
-        file_fasta_in = check_if_list(file_fasta_in)
+        files_fasta_in = check_if_list(files_fasta_in)
 
         # file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
         # with open(file_fasta_out, "w") as handle_fasta:
-        #     for file_fasta in file_fasta_in:
+        #     for file_fasta in files_fasta_in:
         #         self.fasta_parser.check_fasta_format(file_fasta)
         #         fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
         #         # did not parallize this function because workers would be writing simultaneously to the same file
@@ -225,7 +225,7 @@ class OligoSequenceGenerator:
         #             ):
         #                 get_sliding_window_sequence(entry, length_sequences, handle_fasta)
         file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
-        for file_fasta in file_fasta_in:
+        for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
             files_fasta_region = Parallel(n_jobs=n_jobs)(
