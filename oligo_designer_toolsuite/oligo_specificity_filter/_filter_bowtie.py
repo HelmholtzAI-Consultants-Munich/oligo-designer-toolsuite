@@ -44,8 +44,10 @@ class BowtieFilter(AlignmentSpecificityFilter):
     The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available
     refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
-    :param bowtie_search_parameters: Custom parameters for the Bowtie search command.
-    :type bowtie_search_parameters: dict
+    :param search_parameters: Custom parameters for the Bowtie search command.
+    :type search_parameters: dict
+    :param hit_parameters: Criteria to consider a Bowtie hit significant for filtering.
+    :type hit_parameters: dict
     :param dir_output: Base directory for saving output files and Bowtie databases. Defaults to "output".
     :type dir_output: str
     :param names_search_output: Column names for parsing Bowtie search output.
@@ -54,8 +56,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
     def __init__(
         self,
-        bowtie_search_parameters: dict = {},
-        # bowtie_hit_parameters: dict = {},
+        search_parameters: dict = {},
+        hit_parameters: dict = {},
         dir_output: str = "output",
         names_search_output: list = [
             "query",
@@ -71,8 +73,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
         """Constructor for the BowtieFilter class."""
         super().__init__(dir_output)
 
-        self.bowtie_search_parameters = bowtie_search_parameters
-        # self.bowtie_hit_parameters = bowtie_hit_parameters
+        self.search_parameters = search_parameters
+        self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
 
         self.dir_bowtie = os.path.join(self.dir_output, "bowtie")
@@ -141,7 +143,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie_results_{region_name}.txt")
 
         cmd_parameters = ""
-        for parameter, value in self.bowtie_search_parameters.items():
+        for parameter, value in self.search_parameters.items():
             cmd_parameters += f" {parameter} {value}"
 
         cmd = (
@@ -287,8 +289,10 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     The hits returned by Bowtie2 can be further filtered using machine learning models. For more information regarding which filters are available
     refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters
 
-    :param bowtie_search_parameters: Custom parameters for the Bowtie2 search command.
-    :type bowtie_search_parameters: dict
+    :param search_parameters: Custom parameters for the Bowtie2 search command.
+    :type search_parameters: dict
+    :param hit_parameters: Criteria to consider a Bowtie hit significant for filtering.
+    :type hit_parameters: dict
     :param dir_output: Base directory for saving output files and Bowtie2 databases. Defaults to "output".
     :type dir_output: str
     :param names_search_output: Column names for parsing Bowtie2 search output.
@@ -303,8 +307,8 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
     def __init__(
         self,
-        bowtie_search_parameters: dict = {},
-        # bowtie_hit_parameters: dict = {},
+        search_parameters: dict = {},
+        hit_parameters: dict = {},
         dir_output: str = "output",
         names_search_output: list = [
             "query",
@@ -323,8 +327,8 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         """Constructor for the Bowtie2Filter class."""
         super().__init__(dir_output)
 
-        self.bowtie_search_parameters = bowtie_search_parameters
-        # self.bowtie_hit_parameters = bowtie_hit_parameters
+        self.search_parameters = search_parameters
+        self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
 
         self.dir_bowtie = os.path.join(self.dir_output, "bowtie2")
@@ -394,7 +398,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie2_results_{region_name}.txt")
 
         cmd_parameters = ""
-        for parameter, value in self.bowtie_search_parameters.items():
+        for parameter, value in self.search_parameters.items():
             cmd_parameters += f" {parameter} {value}"
 
         cmd = (
