@@ -227,7 +227,7 @@ class OligoSequenceGenerator:
         file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
         if os.path.isfile(file_fasta_out): # delete previous content
             os.remove(file_fasta_out)
-        for file_fasta in file_fasta_in:
+        for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
             files_fasta_region = Parallel(n_jobs=n_jobs)(
