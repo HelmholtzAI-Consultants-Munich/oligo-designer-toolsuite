@@ -60,7 +60,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
         reference_database: ReferenceDatabase,
-        n_jobs: int,
+        n_jobs: int = 1,
     ):
         """
         Applies the alignment-based specificity filter and the  machine leanrning based filter to an oligonucleotide database.

@@ -100,8 +100,8 @@ class ExactMatchFilter(SpecificityFilterBase):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        n_jobs: int,
         reference_database: ReferenceDatabase = None,  # not used in this filter but needed for API
+        n_jobs: int = 1,
     ):
         """Retrieves pairs of oligonucleotides with exact matches within the oligo database.
         Here we match the sequenecs to their reverse complements as a basis for the cross-hybridization filter.
@@ -110,11 +110,11 @@ class ExactMatchFilter(SpecificityFilterBase):
         :type sequence_type: _TYPES_SEQ
         :param database: The oligo database to which the filter will be applied.
         :type database: OligoDatabase
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
         :param reference_database: The reference database to compare against for specificity.
             Not used in this filter.
         :type reference_database: ReferenceDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
         :return: List of oligo pairs with hits in the reference database.
         :rtype: list[tuple]
         """
