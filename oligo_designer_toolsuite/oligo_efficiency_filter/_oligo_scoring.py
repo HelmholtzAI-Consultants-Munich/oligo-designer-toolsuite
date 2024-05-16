@@ -48,8 +48,11 @@ class OligoScoringBase(ABC):
         """
 
 
-class PadlockOligoScoring(OligoScoringBase):
-    """Oligos scoring class for the padlock experiment.
+class TmGCOligoScoring(OligoScoringBase):
+    """This class computes the efficiency scores for the oligos. The efficiency computed as the difference of the Melting Temperature and the GC Content
+    with optimal values defined by the user:
+    
+    $score = w_{Tm}\dfrac{|Tm_{opt} - Tm_{oligo}|}{Tm_{max} - Tm_{min}} + w_{GC}\dfrac{|GC_{opt} - GC_{oligo}|}{GC_{max} - GC_{min}}$.
 
     :param Tm_min: minimal melting temperature
     :type Tm_min: float

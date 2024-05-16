@@ -32,7 +32,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     HybridizationProbabilityFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import OligosetGenerator, padlock_heuristic_selection
-from oligo_designer_toolsuite.oligo_efficiency_filter import PadlockOligoScoring, AverageSetScoring
+from oligo_designer_toolsuite.oligo_efficiency_filter import TmGCOligoScoring, AverageSetScoring
 from oligo_designer_toolsuite.pipelines._base_oligo_designer import BaseOligoDesigner
 from oligo_designer_toolsuite.pipelines._utils import log_parameters
 
@@ -236,7 +236,7 @@ class OligoSeq(BaseOligoDesigner):
         #     Tm_chem_correction_parameters=Tm_chem_correction_parameters
         # )
 
-        oligos_scoring = PadlockOligoScoring(
+        oligos_scoring = TmGCOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,
             Tm_max=Tm_max,
