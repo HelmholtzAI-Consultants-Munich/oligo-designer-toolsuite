@@ -77,8 +77,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
         self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
 
-        self.dir_bowtie = os.path.join(self.dir_output, "bowtie")
-        Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
+        self.dir_output = os.path.join(self.dir_output, "bowtie")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """Creates a Bowtie index for the reference database. The index facilitates
@@ -104,7 +104,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             + " "
             + filename_reference_index
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
 
         return filename_reference_index
 
@@ -140,7 +140,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie_results_{region_name}.txt")
+        file_bowtie_results = os.path.join(self.dir_output, f"bowtie_results_{region_name}.txt")
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
@@ -158,7 +158,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             + " "
             + file_bowtie_results
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
 
         # read the reuslts of the bowtie search
         bowtie_results = self._read_search_output(
@@ -331,8 +331,8 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
 
-        self.dir_bowtie = os.path.join(self.dir_output, "bowtie2")
-        Path(self.dir_bowtie).mkdir(parents=True, exist_ok=True)
+        self.dir_output = os.path.join(self.dir_output, "bowtie2")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """Creates a Bowtie2 index for the reference database. The index facilitates
@@ -359,7 +359,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             + " "
             + filename_reference_index
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
 
         return filename_reference_index
 
@@ -395,7 +395,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(self.dir_bowtie, f"bowtie2_results_{region_name}.txt")
+        file_bowtie_results = os.path.join(self.dir_output, f"bowtie2_results_{region_name}.txt")
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
@@ -414,7 +414,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             + " -S "
             + file_bowtie_results
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_bowtie).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
 
         # read the reuslts of the bowtie seatch
         bowtie_results = self._read_search_output(

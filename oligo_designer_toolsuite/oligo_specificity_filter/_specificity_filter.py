@@ -2,6 +2,7 @@
 # imports
 ############################################
 
+import shutil
 from typing import get_args
 
 from .._constants import _TYPES_SEQ
@@ -59,3 +60,10 @@ class SpecificityFilter:
 
         oligo_database.remove_regions_with_insufficient_oligos("Specificity Filters")
         return oligo_database
+
+    # def __del__(self):
+    #     for filter in self.filters:
+    #         try:
+    #             shutil.rmtree(filter.dir_output)
+    #         except:
+    #             pass

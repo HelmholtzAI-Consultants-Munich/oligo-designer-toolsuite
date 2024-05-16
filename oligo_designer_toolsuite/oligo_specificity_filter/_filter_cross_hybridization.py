@@ -28,8 +28,8 @@ class CrossHybridizationFilter(SpecificityFilterBase):
     :type policy: FilterPolicyBase
     :param alignment_method: The alignment specificity filter used to identify potential cross-hybridization events.
     :type alignment_method: AlignmentSpecificityFilter
-    :param dir_cross_hybridization: Directory for saving output files related to cross-hybridization filtering.
-    :type dir_cross_hybridization: str
+    :param dir_output: Directory for saving output files related to cross-hybridization filtering.
+    :type dir_output: str
     """
 
     def __init__(
@@ -42,8 +42,8 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         self.policy = policy
         self.alignment_method = alignment_method
 
-        self.dir_cross_hybridization = os.path.join(dir_output, "crosshybridization")
-        Path(self.dir_cross_hybridization).mkdir(parents=True, exist_ok=True)
+        self.dir_output = os.path.join(dir_output, "crosshybridization")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def apply(
         self,
@@ -102,7 +102,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
             region_ids=None,
             sequence_type=sequence_type,
         )
-        reference_database = ReferenceDatabase(dir_output=self.dir_cross_hybridization)
+        reference_database = ReferenceDatabase(dir_output=self.dir_output)
         reference_database.load_sequences_from_fasta(files_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)

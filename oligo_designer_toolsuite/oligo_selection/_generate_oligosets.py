@@ -136,8 +136,8 @@ class OligosetGenerator:
             updated_database_region = {}
             for set_id, row in oligosets.iterrows():
                 for i in range(1, n + 1):
-                    if row[i] not in updated_database_region:
-                        updated_database_region[row[i]] = database_region[row[i]]
+                    if row.iloc[i] not in updated_database_region:
+                        updated_database_region[row.iloc[i]] = database_region[row.iloc[i]]
             return updated_database_region, oligosets
 
     def _get_overlapping_matrix(self, database_region):
