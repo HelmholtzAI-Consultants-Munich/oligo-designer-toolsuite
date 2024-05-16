@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import shutil
 from pathlib import Path
 
 from .._constants import _TYPES_SEQ
@@ -104,3 +105,6 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         os.remove(file_reference)
 
         return reference_database
+
+    def __del__(self):
+        shutil.rmtree(self.dir_output) if os.path.exists(self.dir_output) else None
