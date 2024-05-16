@@ -2,9 +2,7 @@
 # imports
 ############################################
 
-import warnings
-
-from typing import Union, List
+from typing import Union
 
 from seqfold import dg
 from Bio.SeqUtils import MeltingTemp as mt

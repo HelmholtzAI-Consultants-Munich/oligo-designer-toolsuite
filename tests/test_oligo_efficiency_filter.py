@@ -42,6 +42,6 @@ def test_max():
 
 def test_padlock_oligo():
     score = PadlockOligoScoring(0, 1, 2, 0.25, 0.5, 0.75)
-    oligo = {"melting_temperature": 0.5, "GC_content": 0.55}
+    oligo = {"TmNN": 0.5, "GC_content": 0.55}
     oligo_score = score.scoring_function(oligo)
     assert abs(oligo_score - 0.7) < 1e-5, "Oligo padlock score failed!"

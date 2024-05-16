@@ -44,33 +44,10 @@ class ReferenceDatabase:
         """Constructor for the ReferenceDatabase class."""
         self.fasta_parser = FastaParser()
 
-        self.metadata = {}
         self.database = []
 
         self.dir_output = os.path.abspath(os.path.join(dir_output, "reference_database"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-
-    def load_metadata(self, metadata: Union[str, dict]) -> None:
-        """Load metadata into the ReferenceDatabase object.
-
-        If metadata already exists, a warning is issued about overwriting the existing metadata.
-        The new metadata can be provided either as a path to a YAML file or directly as a dictionary.
-
-        :param metadata: Path to a YAML file or a dictionary containing metadata information.
-        :type metadata: Union[str, dict]
-
-        :raises ValueError: If metadata has an incorrect format.
-        """
-        if self.metadata:
-            warnings.warn("Metadata not empty! Overwriting metadata with new metadata from file!")
-
-        if type(metadata) is str and os.path.exists(metadata):
-            with open(metadata) as handle:
-                self.metadata = yaml.safe_load(handle)
-        elif type(metadata) is dict:
-            self.metadata = metadata
-        else:
-            raise ValueError("Metadat has icorrect format!")
 
     def load_sequences_from_fasta(self, files_fasta: list[str], database_overwrite: bool = False) -> None:
         """Load sequences from one or more FASTA files into the ReferenceDatabase object.
@@ -117,25 +94,6 @@ class ReferenceDatabase:
             raise ValueError("Database is empty! Nothing to be written to fasta file.")
 
         return file_database
-
-    def write_metadata_to_yaml(self, filename: str) -> str:
-        """Write metadata to a YAML file.
-
-        This function writes the metadata of the OligoDatabase object to a YAML file.
-        The file is saved in the specified directory with the given filename.
-
-        :param filename: The name of the output YAML file (without extension).
-        :type filename: str
-        :return: Path to the generated YAML file.
-        :rtype: str
-        """
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-        file_metadata = os.path.join(self.dir_output, f"{filename}.yaml")
-
-        with open(file_metadata, "w") as handle:
-            yaml.safe_dump(self.metadata, handle, sort_keys=True, default_flow_style=False)
-
-        return file_metadata
 
     def filter_database(self, region_ids: list[str] = None, remove_region: bool = True) -> None:
         """Filters the database entries based on specified region IDs, either keeping or removing entries from those regions.

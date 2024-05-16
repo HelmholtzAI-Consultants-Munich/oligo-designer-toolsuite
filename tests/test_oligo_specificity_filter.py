@@ -342,6 +342,7 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         self.reference_database.load_sequences_from_fasta(
             files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
         )
+        self.file_reference = self.reference_database.write_database_to_fasta(filename="reference_db")
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BLAST_AI, sep="\t")
         self.sequence_type = "target"
         self.region_id = "region"
@@ -364,7 +365,7 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         ), f"The Blast ai filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{returned_oligos}"
 
     def test_get_queries(self):
-        returned_queries = self.alignment_filter.get_queries(
+        returned_queries = self.alignment_filter._get_queries(
             sequence_type=self.sequence_type,
             table_hits=self.table_hits,
             oligo_database=self.database,
@@ -400,8 +401,8 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         ), f"The Blast ai filter didn't return the expected queries. \n\nExpected:\n{expected_queries}\n\nGot:\n{returned_queries}"
 
     def test_get_target_blastn(self):
-        returned_references = self.alignment_filter.get_references(
-            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        returned_references = self.alignment_filter._get_references(
+            table_hits=self.table_hits, file_reference=self.file_reference, region_id=self.region_id
         )
         returned_references = set(returned_references)
         expected_references = set(
@@ -433,16 +434,16 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         ), f"The Blast ai filter didn't return the expected references. \n\nExpected:\n{expected_references}\n\nGot:\n{returned_references}"
 
     def test_add_alignment_gaps_queries(self):
-        queries = self.alignment_filter.get_queries(
+        queries = self.alignment_filter._get_queries(
             sequence_type=self.sequence_type,
             table_hits=self.table_hits,
             oligo_database=self.database,
             region_id=self.region_id,
         )
-        references = self.alignment_filter.get_references(
-            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        references = self.alignment_filter._get_references(
+            table_hits=self.table_hits, file_reference=self.file_reference, region_id=self.region_id
         )
-        gapped_queries, _ = self.alignment_filter.add_alignement_gaps(
+        gapped_queries, _ = self.alignment_filter._add_alignement_gaps(
             table_hits=self.table_hits,
             queries=queries,
             references=references,
@@ -477,16 +478,16 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         ), f"The Blast ai filter didn't return the expected gapped queries. \n\nExpected:\n{expected_gapped_queries}\n\nGot:\n{gapped_queries}"
 
     def test_add_alignment_gaps_references(self):
-        queries = self.alignment_filter.get_queries(
+        queries = self.alignment_filter._get_queries(
             sequence_type=self.sequence_type,
             table_hits=self.table_hits,
             oligo_database=self.database,
             region_id=self.region_id,
         )
-        references = self.alignment_filter.get_references(
-            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        references = self.alignment_filter._get_references(
+            table_hits=self.table_hits, file_reference=self.file_reference, region_id=self.region_id
         )
-        _, gapped_references = self.alignment_filter.add_alignement_gaps(
+        _, gapped_references = self.alignment_filter._add_alignement_gaps(
             table_hits=self.table_hits,
             queries=queries,
             references=references,
@@ -536,6 +537,7 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         self.reference_database.load_sequences_from_fasta(
             files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
         )
+        self.file_reference = self.reference_database.write_database_to_fasta(filename="reference_db")
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BOWTIE_AI, sep="\t")
         self.sequence_type = "target"
         self.region_id = "region"
@@ -558,7 +560,7 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         ), f"The Bowtie ai filter didn't return the expected oligos. \n\nExpected:\n{expected_oligos}\n\nGot:\n{returned_oligos}"
 
     def test_get_queries(self):
-        returned_queries = self.alignment_filter.get_queries(
+        returned_queries = self.alignment_filter._get_queries(
             sequence_type=self.sequence_type,
             table_hits=self.table_hits,
             oligo_database=self.database,
@@ -578,8 +580,8 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         ), f"The Bowtie ai filter didn't return the expected queries. \n\nExpected:\n{expected_queries}\n\nGot:\n{returned_queries}"
 
     def test_get_target_bowtie(self):
-        returned_references = self.alignment_filter.get_references(
-            table_hits=self.table_hits, reference_database=self.reference_database, region_id=self.region_id
+        returned_references = self.alignment_filter._get_references(
+            table_hits=self.table_hits, file_reference=self.file_reference, region_id=self.region_id
         )
         returned_references = set(returned_references)
         expected_references = set(

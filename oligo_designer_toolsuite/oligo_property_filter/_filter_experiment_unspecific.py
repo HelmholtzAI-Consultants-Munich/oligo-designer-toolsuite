@@ -1,6 +1,7 @@
 ############################################
 # imports
 ############################################
+
 from typing import List, Union
 
 from Bio.SeqUtils import Seq

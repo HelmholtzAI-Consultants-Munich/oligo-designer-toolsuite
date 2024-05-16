@@ -3,8 +3,19 @@ import shutil
 import warnings
 from argparse import ArgumentParser
 from pathlib import Path
+import logging
 
 import yaml
+
+def log_parameters(parameters):
+    """Log function parameters.
+
+    :param parameters: Dict with parameter name : parameter value pairs
+    :type parameters: dict
+    """
+    for key, value in parameters.items():
+        if key != "self":
+            logging.info(f"{key} = {value}")
 
 
 def generate_config_file(exp_name: str, directory: str = "output", source: str = "custom"):
