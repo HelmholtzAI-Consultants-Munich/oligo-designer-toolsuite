@@ -5,6 +5,10 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
+from Bio.SeqUtils import Seq
+
+from .._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoAttributes
 
 ############################################
 # Oligo Scoring Classes
@@ -14,29 +18,31 @@ import pandas as pd
 class OligoScoringBase(ABC):
     """Template class for scoring the oligos."""
 
-    def apply(self, oligos: dict):
+    def apply(self, oligos: dict, sequence_type: _TYPES_SEQ):
         """Scores all the oligos using the defiend scoring function. The scores are both saved in the dictionary
         and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
 
         :param oligos: dictionary containing the oligos
         :type oligos: dict
+        :param sequence_type: The type of sequences being selected, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
         :return: updated dictionary of the oligos, series with the computed scores
         :rtype: dict, pandas.Series
         """
         oligos_indices = list(oligos.keys())
         oligos_scores = pd.Series(index=oligos_indices, dtype=float)
         for oligo_id in oligos_indices:
-            score = self.scoring_function(oligos[oligo_id])
+            score = self.scoring_function(oligos[oligo_id][sequence_type])
             oligos[oligo_id]["oligo_score"] = score
             oligos_scores[oligo_id] = score
         return oligos, oligos_scores
 
     @abstractmethod
-    def scoring_function(self, oligo: dict):
+    def scoring_function(self, sequence: Seq):
         """Computes the score of the given oligo
 
-        :param oligo: dictionary containing all the features of the given oligo
-        :type oligo: dict
+        :param sequence: seqeunce of the oligo fo score.
+        :type sequence: Seq
         :return: score of the oligo
         :rtype: float
         """
@@ -71,6 +77,9 @@ class PadlockOligoScoring(OligoScoringBase):
         GC_content_min: float,
         GC_content_opt: float,
         GC_content_max: float,
+        Tm_parameters: dict,
+        Tm_salt_correction_parameters: dict = None,
+        Tm_chem_correction_parameters: dict = None,
         Tm_weight: float = 1,
         GC_weight: float = 1,
     ):
@@ -81,22 +90,32 @@ class PadlockOligoScoring(OligoScoringBase):
         self.GC_min = GC_content_min
         self.GC_opt = GC_content_opt
         self.GC_max = GC_content_max
+        self.Tm_parameters = Tm_parameters
+        self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
+        self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
         self.Tm_weight = Tm_weight
         self.GC_weight = GC_weight
         self.__generate_scoring_functions()
 
-    def scoring_function(self, oligo):
+    def scoring_function(self, sequence: Seq):
         """Computes the score of the given oligo
 
-        :param oligo: dictionary containing all the features of the given oligo
-        :type oligo: dict
+        :param sequence: seqeunce of the oligo fo score.
+        :type sequence: Seq
         :return: score of the oligo
         :rtype: float
         """
         # distance from the optimal melting temperature weightend by the how far is the optimum from the min/ max
         # the scoring is the lower the better
-        Tm_dif = oligo["TmNN"] - self.Tm_opt  # check the names of the columns
-        GC_dif = oligo["GC_content"] - self.GC_opt
+        Tm_oligo  = OligoAttributes._calc_TmNN(
+            sequence=sequence,
+            Tm_parameters=self.Tm_parameters,
+            Tm_salt_correction_parameters=self.Tm_salt_correction_parameters,
+            Tm_chem_correction_parameters=self.Tm_chem_correction_parameters,
+        )
+        GC_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
+        Tm_dif = Tm_oligo - self.Tm_opt  # check the names of the columns
+        GC_dif = GC_oligo - self.GC_opt
         score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(GC_dif)
         return score
 
@@ -144,13 +163,14 @@ class SeqFISHOligoScoring(OligoScoringBase):
         """
         self.GC_opt = GC_content_opt
 
-    def scoring_function(self, oligo):
+    def scoring_function(self, sequence: Seq):
         """Computes the score of the given oligo
 
-        :param oligo: dictionary containing all the features of the given oligo
-        :type oligo: dict
+        :param sequence: seqeunce of the oligo fo score.
+        :type sequence: Seq
         :return: score of the oligo
         :rtype: float
         """
         # distance from optimal GC (the lower the better)
-        return abs(oligo["GC_content"] - self.GC_opt)
+        GC_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
+        return abs(GC_oligo - self.GC_opt)

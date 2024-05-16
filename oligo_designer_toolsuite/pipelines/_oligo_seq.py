@@ -39,13 +39,14 @@ from oligo_designer_toolsuite.pipelines._utils import log_parameters
 # _ALIGNMENT_METHODS = Literal["blastn", "blastn_seedregion", "blastn_seedregion_ligationsite", "bowtie", "bowtie2"] #this should go to constants?
 # _POLICIES = Literal["larger_region", "degree"]
 
+
 class OligoSeq(BaseOligoDesigner):
     """_summary_
 
     :param BaseOligoDesigner: _description_
     :type BaseOligoDesigner: _type_
     """
-    
+
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
@@ -69,11 +70,6 @@ class OligoSeq(BaseOligoDesigner):
         log_parameters(parameters)
 
         num_genes_before, num_oligos_before = self._get_oligo_database_info(oligo_database.database)
-        ##### preprocess melting temperature params #####
-        Tm_parameters["nn_table"] = getattr(mt, Tm_parameters["nn_table"])
-        Tm_parameters["tmm_table"] = getattr(mt, Tm_parameters["tmm_table"])
-        Tm_parameters["imm_table"] = getattr(mt, Tm_parameters["imm_table"])
-        Tm_parameters["de_table"] = getattr(mt, Tm_parameters["de_table"])
 
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
@@ -115,16 +111,6 @@ class OligoSeq(BaseOligoDesigner):
             n_jobs=n_jobs,
         )
 
-        # add required fileds
-        oligo_attributes = OligoAttributes()
-        oligo_database = oligo_attributes.calculate_GC_content(oligo_database, sequence_type="oligo")
-        oligo_database = oligo_attributes.calculate_TmNN(
-            oligo_database=oligo_database,
-            sequence_type="oligo",
-            Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_parameters
-        )
-
         # write the intermediate result in a file
         if self.write_intermediate_steps:
             file_database = oligo_database.save_database(filename="oligo_database_property_filter")
@@ -140,19 +126,18 @@ class OligoSeq(BaseOligoDesigner):
         return oligo_database, file_database
 
     def filter_by_specificity(
-            self,
-            oligo_database: OligoDatabase,
-            files_fasta_reference_database: List[str],
-            cross_hybridization_alignment_method: str,
-            cross_hybridization_search_parameters: dict,
-            cross_hybridization_hit_parameters: dict,
-            hybridization_probability_alignment_method: str,
-            hybridization_probability_search_parameters: dict,
-            hybridization_probability_hit_parameters: dict,
-            hybridization_probability_threshold: float,
-            n_jobs: int = 1,
-            
-        ):
+        self,
+        oligo_database: OligoDatabase,
+        files_fasta_reference_database: List[str],
+        cross_hybridization_alignment_method: str,
+        cross_hybridization_search_parameters: dict,
+        cross_hybridization_hit_parameters: dict,
+        hybridization_probability_alignment_method: str,
+        hybridization_probability_search_parameters: dict,
+        hybridization_probability_hit_parameters: dict,
+        hybridization_probability_threshold: float,
+        n_jobs: int = 1,
+    ):
 
         ##### log parameters #####
         logging.info("Parameters Specificty Filters:")
@@ -161,10 +146,12 @@ class OligoSeq(BaseOligoDesigner):
         log_parameters(parameters)
 
         num_genes_before, num_oligos_before = self._get_oligo_database_info(oligo_database.database)
-        
+
         # define reference database
-        reference_database = ReferenceDatabase()
-        reference_database.load_sequences_from_fasta(files_fasta=files_fasta_reference_database, database_overwrite=False)
+        reference_database = ReferenceDatabase(dir_output=self.dir_output)
+        reference_database.load_sequences_from_fasta(
+            files_fasta=files_fasta_reference_database, database_overwrite=False
+        )
 
         # specificity filters
         # for the future: add policy
@@ -176,8 +163,9 @@ class OligoSeq(BaseOligoDesigner):
         )
         cross_hybridization_policy = RemoveByLargerRegionPolicy()
         cross_hybridization = CrossHybridizationFilter(
-            policy=cross_hybridization_policy, 
+            policy=cross_hybridization_policy,
             alignment_method=cross_hybridization_aligner,
+            dir_output=self.dir_output,
         )
         hybridization_probability_aligner = self._get_alignment_method(
             alignment_method=hybridization_probability_alignment_method,
@@ -190,7 +178,7 @@ class OligoSeq(BaseOligoDesigner):
             dir_output=self.dir_output,
         )
 
-        filters = [exact_matches, cross_hybridization, hybridization_probability] #TODO add hybrid. prob
+        filters = [exact_matches, cross_hybridization, hybridization_probability]  # TODO add hybrid. prob
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
@@ -219,6 +207,8 @@ class OligoSeq(BaseOligoDesigner):
             Tm_min: float,
             Tm_opt: float,
             Tm_max: float,
+            Tm_parameters: dict,
+            Tm_chem_correction_parameters: dict,
             GC_content_min: float,
             GC_content_opt: float,
             GC_content_max: float,
@@ -236,6 +226,16 @@ class OligoSeq(BaseOligoDesigner):
 
         num_genes_before, num_oligos_before = self._get_oligo_database_info(oligo_database.database)
 
+        # add required fileds
+        # oligo_attributes = OligoAttributes()
+        # oligo_database = oligo_attributes.calculate_GC_content(oligo_database=oligo_database, sequence_type="oligo")
+        # oligo_database = oligo_attributes.calculate_TmNN(
+        #     oligo_database=oligo_database,
+        #     sequence_type="oligo",
+        #     Tm_parameters=Tm_parameters,
+        #     Tm_chem_correction_parameters=Tm_chem_correction_parameters
+        # )
+
         oligos_scoring = PadlockOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,
@@ -243,6 +243,8 @@ class OligoSeq(BaseOligoDesigner):
             GC_content_min=GC_content_min,
             GC_content_opt=GC_content_opt,
             GC_content_max=GC_content_max,
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
         set_scoring = AverageSetScoring()
         oligoset_generator = OligosetGenerator(
@@ -255,6 +257,7 @@ class OligoSeq(BaseOligoDesigner):
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,
+            sequence_type="oligo",
             n_sets=n_sets,
             n_jobs=n_jobs,
         )
@@ -274,13 +277,13 @@ class OligoSeq(BaseOligoDesigner):
         )
 
         return oligo_database, file_database, file_oligosets
-    
+
     def create_final_sequences():
         pass
 
     def _get_alignment_method(self, alignment_method, search_parameters, hit_parameters):
         if alignment_method == "blastn":
-            return  BlastNFilter(
+            return BlastNFilter(
                 search_parameters=search_parameters,
                 hit_parameters=hit_parameters,
                 dir_output=self.dir_output,
@@ -293,6 +296,29 @@ class OligoSeq(BaseOligoDesigner):
             )
         else:
             raise ValueError(f"The alignment method {alignment_method} is not supported.")
+        
+    def compute_oligo_attributes(
+            self,
+            oligo_database: OligoDatabase,
+            Tm_parameters: dict,
+            Tm_chem_correction_parameters: dict,
+    ):
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_oligo_length(oligo_database=oligo_database)
+        oligo_database = oligo_attributes.calculate_GC_content(oligo_database=oligo_database, sequence_type="oligo")
+        oligo_database = oligo_attributes.calculate_TmNN(
+            oligo_database=oligo_database, 
+            sequence_type="oligo",
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters
+        )
+        oligo_database = oligo_attributes.calculate_num_targeted_transcripts(oligo_database=oligo_database)
+        oligo_database = oligo_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
+        oligo_database = oligo_attributes.calculate_length_selfcomplement(oligo_database=oligo_database, sequence_type="oligo")
+        oligo_database = oligo_attributes.calculate_DG_secondary_structure(oligo_database=oligo_database, sequence_type="oligo")
+
+
+
 
 
 def main():
@@ -348,6 +374,13 @@ def main():
             lines = handle.readlines()
             genes = [line.rstrip() for line in lines]
 
+    ##### preprocess melting temperature params #####
+    Tm_parameters = config["Tm_parameters"]
+    Tm_parameters["nn_table"] = getattr(mt, Tm_parameters["nn_table"])
+    Tm_parameters["tmm_table"] = getattr(mt, Tm_parameters["tmm_table"])
+    Tm_parameters["imm_table"] = getattr(mt, Tm_parameters["imm_table"])
+    Tm_parameters["de_table"] = getattr(mt, Tm_parameters["de_table"])
+
     ##### create oligo database #####
     oligo_database, file_database = oligo_designer.create_oligo_database(
         regions=genes,
@@ -357,7 +390,7 @@ def main():
         min_oligos_per_region=config["min_oligos_per_gene"],
         n_jobs=config["n_jobs"],
     )
-    
+
     ##### filter oligos by property #####
 
     oligo_database, file_database = oligo_designer.filter_by_property(
@@ -370,7 +403,7 @@ def main():
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
         homopolymeric_base_n=config["homopolymeric_base_n"],
         homodimer_max_len_selfcomp=config["homodimer_max_len_selfcomp"],
-        Tm_parameters=config["Tm_parameters"],
+        Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
         n_jobs=config["n_jobs"],
     )
@@ -378,14 +411,22 @@ def main():
     # ##### filter oligos by specificity #####
     oligo_database, file_database = oligo_designer.filter_by_specificity(
         oligo_database,
-        files_fasta_reference_database = config["files_fasta_reference_database"],
-        cross_hybridization_alignment_method = config["cross_hybridization_alignment_method"],
-        cross_hybridization_search_parameters=config[f"cross_hybridization_{config['cross_hybridization_alignment_method']}_search_parameters"],
-        cross_hybridization_hit_parameters=config[f"cross_hybridization_{config['cross_hybridization_alignment_method']}_hit_parameters"],
-        hybridization_probability_alignment_method = config["hybridization_probability_alignment_method"],
-        hybridization_probability_search_parameters=config[f"hybridization_probability_{config['hybridization_probability_alignment_method']}_search_parameters"],
-        hybridization_probability_hit_parameters=config[f"hybridization_probability_{config['hybridization_probability_alignment_method']}_hit_parameters"],
-        hybridization_probability_threshold = config['hybridization_probability_threshold'],
+        files_fasta_reference_database=config["files_fasta_reference_database"],
+        cross_hybridization_alignment_method=config["cross_hybridization_alignment_method"],
+        cross_hybridization_search_parameters=config[
+            f"cross_hybridization_{config['cross_hybridization_alignment_method']}_search_parameters"
+        ],
+        cross_hybridization_hit_parameters=config[
+            f"cross_hybridization_{config['cross_hybridization_alignment_method']}_hit_parameters"
+        ],
+        hybridization_probability_alignment_method=config["hybridization_probability_alignment_method"],
+        hybridization_probability_search_parameters=config[
+            f"hybridization_probability_{config['hybridization_probability_alignment_method']}_search_parameters"
+        ],
+        hybridization_probability_hit_parameters=config[
+            f"hybridization_probability_{config['hybridization_probability_alignment_method']}_hit_parameters"
+        ],
+        hybridization_probability_threshold=config["hybridization_probability_threshold"],
         n_jobs=config["n_jobs"],
     )
 
@@ -395,28 +436,20 @@ def main():
         Tm_min=config["Tm_min"],
         Tm_max=config["Tm_max"],
         Tm_opt=config["Tm_opt"],
+        Tm_parameters=Tm_parameters,
+        Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
         GC_content_min=config["GC_content_min"],
         GC_content_max=config["GC_content_max"],
         GC_content_opt=config["GC_content_opt"],
         oligoset_size=config["oligoset_size"],
         min_oligoset_size=config["min_oligoset_size"],
         max_oligos=config["max_graph_size"],
-        n_sets = config["n_sets"],
+        n_sets=config["n_sets"],
         n_jobs=config["n_jobs"],
     )
 
     logging.info(f"Oligo sets were saved in {dir_oligosets}")
     logging.info("##### End of the pipeline. #####")
-
-    # ##### create final padlock sequence #####
-    # oligo_designer.create_final_sequences(
-    #     oligo_database,
-    #     detect_oligo_length_min=config["detect_oligo_length_min"],
-    #     detect_oligo_length_max=config["detect_oligo_length_max"],
-    #     detect_oligo_Tm_opt=config["detect_oligo_Tm_opt"],
-    #     Tm_parameters_detection_oligo=config["Tm_parameters_detection_oligo"],
-    #     Tm_chem_correction_param_detection_oligo=config["Tm_chem_correction_param_detection_oligo"],
-    # )
 
 
 if __name__ == "__main__":

@@ -109,6 +109,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
             oligo_database.database[region_id] = database_region_filtered
 
         os.remove(file_reference)
+        os.remove(file_reference + ".fai")
         return oligo_database
 
     def _filter_table_hits(

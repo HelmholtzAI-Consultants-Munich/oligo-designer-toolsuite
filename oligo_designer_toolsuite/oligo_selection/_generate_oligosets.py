@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 
+from .._constants import _TYPES_SEQ
 from ..database import OligoDatabase
 from ..oligo_efficiency_filter import OligoScoringBase, SetScoringBase
 
@@ -54,7 +55,7 @@ class OligosetGenerator:
         self.set_scoring = set_scoring
         self.max_oligos = max_oligos
 
-    def apply(self, oligo_database: OligoDatabase, n_sets: int = 50, n_jobs: int = None):
+    def apply(self, oligo_database: OligoDatabase, sequence_type: _TYPES_SEQ, n_sets: int = 50, n_jobs: int = None):
         """Generates in parallel the oligosets and selects the best ``n_sets`` according to the
         The database class is updated, in particular form the ``oligos_DB`` are filtered out all the oligos that don't belong to any oligoset and in the class attruibute ``oligosets`` are stored
         the computed oligosets. The latter is a dictionary having as keys the regions names and as values a pandas.DataFrame containinig the oligosets. The strucutre of the pandas.DataFrame is the following:
@@ -67,6 +68,8 @@ class OligosetGenerator:
 
         :param oligo_database: class containg the oligo sequences and their features
         :type oligo_database: OligoDatabase class
+        :param sequence_type: The type of sequences being selected, must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
         :param n_sets: maximal number of sets that will be generated, defaults to 50
         :type n_sets: int, optional
         :param n_jobs: nr of cores used, if None the value set in database class is used, defaults to None
@@ -82,7 +85,7 @@ class OligosetGenerator:
         regions = list(oligo_database.database.keys())
         # get the oligo set for this region in parallel
         database_regions = Parallel(n_jobs=n_jobs)(  # there should be an explicit return
-            delayed(self._get_oligo_set_for_gene)(region, oligo_database.database[region], n_sets)
+            delayed(self._get_oligo_set_for_gene)(region, oligo_database.database[region], sequence_type, n_sets)
             for region in regions
         )
         # restore the database
@@ -95,7 +98,7 @@ class OligosetGenerator:
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="oligoset generation")
         return oligo_database
 
-    def _get_oligo_set_for_gene(self, region: str, database_region: dict, n_sets: int):
+    def _get_oligo_set_for_gene(self, region: str, database_region: dict, sequence_type: _TYPES_SEQ, n_sets: int):
         """Generate the oligosets for a region.
 
         :param region: region for which the oligosets are computed
@@ -109,7 +112,8 @@ class OligosetGenerator:
         """
         # Score oligos and create a pd series
         database_region, oligos_scores = self.oligos_scoring.apply(
-            database_region
+            oligos=database_region,
+            sequence_type=sequence_type
         )  # add a entry score to the oligos
         oligos_scores.sort_values(ascending=True, inplace=True)
         # hard limit on the number of oligos
@@ -136,8 +140,8 @@ class OligosetGenerator:
             updated_database_region = {}
             for set_id, row in oligosets.iterrows():
                 for i in range(1, n + 1):
-                    if row[i] not in updated_database_region:
-                        updated_database_region[row[i]] = database_region[row[i]]
+                    if row.iloc[i] not in updated_database_region:
+                        updated_database_region[row.iloc[i]] = database_region[row.iloc[i]]
             return updated_database_region, oligosets
 
     def _get_overlapping_matrix(self, database_region):

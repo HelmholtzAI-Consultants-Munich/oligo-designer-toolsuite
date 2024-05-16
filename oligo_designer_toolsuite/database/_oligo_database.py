@@ -77,7 +77,6 @@ class OligoDatabase:
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self._dir_cache_files = os.path.join(self.dir_output, "cache_files")
-        Path(self._dir_cache_files).mkdir(parents=True, exist_ok=True)
 
         self.fasta_parser = FastaParser()
 

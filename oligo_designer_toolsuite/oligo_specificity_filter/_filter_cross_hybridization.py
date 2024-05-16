@@ -24,8 +24,8 @@ class CrossHybridizationFilter(SpecificityFilterBase):
     :type policy: FilterPolicyBase
     :param alignment_method: The alignment specificity filter used to identify potential cross-hybridization events.
     :type alignment_method: AlignmentSpecificityFilter
-    :param dir_cross_hybridization: Directory for saving output files related to cross-hybridization filtering.
-    :type dir_cross_hybridization: str
+    :param dir_output: Directory for saving output files related to cross-hybridization filtering.
+    :type dir_output: str
     """
 
     def __init__(
