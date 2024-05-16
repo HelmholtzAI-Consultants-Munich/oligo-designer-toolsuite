@@ -195,8 +195,8 @@ class OligoSeq(BaseOligoDesigner):
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
             oligo_database=oligo_database,
-            n_jobs=n_jobs,
             reference_database=reference_database,
+            n_jobs=n_jobs,
         )
 
         # write the intermediate result in a file

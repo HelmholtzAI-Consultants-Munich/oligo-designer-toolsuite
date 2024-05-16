@@ -30,11 +30,9 @@ sequence_file_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomi
 @pytest.fixture(scope="session")
 def oligos_database(tmpdir_factory):
     base_temp = tmpdir_factory.getbasetemp()
-    metadata = {"species": "human", "annotation_release": "110"}
     database = OligoDatabase(
         dir_output=base_temp,
     )
-    database.load_metadata(metadata=metadata)
     database.load_database("data/tests/oligo_selection/oligos_info.tsv")
 
     yield database

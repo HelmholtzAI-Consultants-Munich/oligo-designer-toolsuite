@@ -73,8 +73,8 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         oligo_pair_hits = self.alignment_method.get_oligo_pair_hits(
             sequence_type=sequence_type,
             oligo_database=oligo_database,
-            n_jobs=n_jobs,
             reference_database=reference_database,
+            n_jobs=n_jobs,
         )
         oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 

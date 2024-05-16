@@ -15,15 +15,8 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 ############################################
 
 # Global Parameters
-FILE_NCBI_EXONS = "data/tests/annotations/sequences_ncbi_exons.fna"
+FILE_NCBI_EXONS = "data/tests/genomic_regions/sequences_ncbi_exons.fna"
 FILE_DATABASE_OLIGO_ATTRIBUTES = "data/tests/databases/database_oligo_attributes.fna"
-
-METADATA = {
-    "files_source": "NCBI",
-    "species": "Homo_sapiens",
-    "annotation_release": "110",
-    "genome_assembly": "GRCh38",
-}
 
 REGION_IDS = [
     "AARS1",
@@ -46,7 +39,6 @@ class TestReferenceDatabase(unittest.TestCase):
         self.fasta_parser = FastaParser()
 
         self.reference = ReferenceDatabase(dir_output=self.tmp_path)
-        self.reference.load_metadata(metadata=METADATA)
         self.reference.load_sequences_from_fasta(
             files_fasta=[FILE_NCBI_EXONS, FILE_NCBI_EXONS], database_overwrite=True
         )
@@ -68,7 +60,6 @@ class TestReferenceDatabase(unittest.TestCase):
 
     def test_write_database(self):
         file_fasta_database = self.reference.write_database_to_fasta(filename="filtered_databse")
-        file_metadata_database = self.reference.write_metadata_to_yaml(filename="filtered_databse")
         assert (
             self.fasta_parser.check_fasta_format(file_fasta_database) == True
         ), f"error: wrong file format for database in {file_fasta_database}"
@@ -84,7 +75,6 @@ class TestOligoDatabase(unittest.TestCase):
         self.oligo_database = OligoDatabase(
             min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=self.tmp_path
         )
-        self.oligo_database.load_metadata(METADATA)
 
         self.file_random_seqs = self.oligo_sequence_generator.create_sequences_random(
             filename_out="random_sequences1",
@@ -96,7 +86,7 @@ class TestOligoDatabase(unittest.TestCase):
 
         self.file_sliding_window = self.oligo_sequence_generator.create_sequences_sliding_window(
             filename_out="sliding_window_sequences",
-            file_fasta_in=FILE_NCBI_EXONS,
+            files_fasta_in=FILE_NCBI_EXONS,
             length_interval_sequences=(30, 31),
         )
 
@@ -122,14 +112,12 @@ class TestOligoDatabase(unittest.TestCase):
     def test_save_load_database(self):
         self.oligo_database.load_database(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
 
-        file_database, file_metadata = self.oligo_database.save_database(
+        file_database = self.oligo_database.save_database(
             region_ids=["region_1", "region_2"], filename="database_region1_region2"
         )
 
-        self.oligo_database.load_metadata(file_metadata)
         self.oligo_database.load_database(file_database, database_overwrite=True)
 
-        assert self.oligo_database.metadata["files_source"] == "NCBI", "error: wrong metadata loaded"
         assert len(self.oligo_database.database.keys()) == 2, "error: wrong number regions saved and loaded"
 
     def test_write_database_to_fasta(self):
@@ -220,7 +208,6 @@ class TestOligoAttributes(unittest.TestCase):
         self.oligo_database = OligoDatabase(
             min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=self.tmp_path
         )
-        self.oligo_database.load_metadata(METADATA)
         self.oligo_database.load_database(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
 
         self.oligo_attributes = OligoAttributes()

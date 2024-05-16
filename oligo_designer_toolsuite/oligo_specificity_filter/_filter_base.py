@@ -98,7 +98,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
         reference_database: ReferenceDatabase,
-        n_jobs: int,
+        n_jobs: int = 1,
     ):
         """Applies the alignment-based specificity filter to an oligonucleotide database.
 
@@ -118,9 +118,9 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         table_hits = self._get_table_hits(
             sequence_type=sequence_type,
             oligo_database=oligo_database,
-            n_jobs=n_jobs,
             reference_database=reference_database,
             region_ids=region_ids,
+            n_jobs=n_jobs,
         )
 
         for region_id, table_hits_region in zip(region_ids, table_hits):
@@ -137,8 +137,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        n_jobs: int,
         reference_database: ReferenceDatabase,
+        n_jobs: int,
     ):
         """Identifies oligonucleotide pairs with significant hits in the reference database.
 
@@ -146,10 +146,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type sequence_type: _TYPES_SEQ
         :param database: The oligo database to which the filter will be applied.
         :type database: OligoDatabase
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
         :param reference_database: The reference database to compare against for specificity.
         :type reference_database: ReferenceDatabase
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
         :return: List of oligo pairs with hits in the reference database.
         :rtype: list[tuple]
         """
@@ -157,9 +157,9 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         table_hits = self._get_table_hits(
             sequence_type=sequence_type,
             oligo_database=oligo_database,
-            n_jobs=n_jobs,
             reference_database=reference_database,
             region_ids=region_ids,
+            n_jobs=n_jobs,
         )
 
         table_hits = pd.concat(table_hits, ignore_index=True)
@@ -171,9 +171,9 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        n_jobs: int,
         reference_database: ReferenceDatabase,
         region_ids: List[str],
+        n_jobs: int,
     ) -> List[pd.DataFrame]:
         """Applies the alignment-based specificity filter to an oligonucleotide database and return a DataFrame containing all hits.
 
@@ -181,12 +181,12 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type sequence_type: _TYPES_SEQ
         :param database: The oligo database to which the filter will be applied.
         :type database: OligoDatabase
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
         :param reference_database: The reference database to compare against for specificity.
         :type reference_database: ReferenceDatabase
         :param region_ids: Regions for which to genereate the table hits.
         :type region_ids: List[str]
+        :param n_jobs: The number of parallel jobs to run.
+        :type n_jobs: int
         :return: List of tables containing the all hits. Each table contain the hits of one single region, and the list is ordered by the list region_ids.
         :rtype: List[pd.DataFrame]
         """
