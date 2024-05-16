@@ -32,8 +32,8 @@ class SpecificityFilter:
         self,
         sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        n_jobs: int = None,
         reference_database: ReferenceDatabase = None,
+        n_jobs: int = 1,
     ):
         """Applies all provided specificity filters to the oligo database against a reference database.
 
@@ -41,10 +41,10 @@ class SpecificityFilter:
         :type sequence_type: _TYPES_SEQ
         :param oligo_database: The database of oligonucleotides to be filtered.
         :type oligo_database: OligoDatabase
-        :param n_jobs: The number of parallel jobs to run. Defaults to the number of jobs defined in oligo_database.
-        :type n_jobs: int, optional
         :param reference_database: The reference database to compare against for specificity.
             For non-alignment based specificity filter reference_database is not used, i.e. set to None.
+        :param n_jobs: The number of parallel jobs to run. Defaults to the number of jobs defined in oligo_database.
+        :type n_jobs: int, optional
         :type reference_database: ReferenceDatabase, optional
         :return: The filtered oligo database.
         :rtype: OligoDatabase
@@ -53,9 +53,6 @@ class SpecificityFilter:
         assert (
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-
-        if n_jobs is None:
-            n_jobs = oligo_database.n_jobs
 
         for filter in self.filters:
             oligo_database = filter.apply(sequence_type, oligo_database, reference_database, n_jobs)

@@ -25,11 +25,11 @@ region_ids = [
     "WASIR2",
     "this_gene_does_not_exist",
 ]
-annotation_file_ensemble = "data/annotations/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
-sequence_file_ensemble = "data/annotations/custom_Homo_sapiens.GRCh38.dna_sm.chromosome.16.fa"
+annotation_file_ensemble = "data/tests/annotations/custom_Homo_sapiens.GRCh38.108.chr16.gtf"
+sequence_file_ensemble = "data/tests/annotations/custom_Homo_sapiens.GRCh38.dna_sm.chromosome.16.fa"
 
-annotation_file_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-sequence_file_ncbi = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+annotation_file_ncbi = "data/tests/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+sequence_file_ncbi = "data/tests/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 
 metadata_ncbi = {
     "files_source": "NCBI",
