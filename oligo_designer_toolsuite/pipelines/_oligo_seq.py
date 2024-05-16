@@ -70,11 +70,6 @@ class OligoSeq(BaseOligoDesigner):
         log_parameters(parameters)
 
         num_genes_before, num_oligos_before = self._get_oligo_database_info(oligo_database.database)
-        ##### preprocess melting temperature params #####
-        Tm_parameters["nn_table"] = getattr(mt, Tm_parameters["nn_table"])
-        Tm_parameters["tmm_table"] = getattr(mt, Tm_parameters["tmm_table"])
-        Tm_parameters["imm_table"] = getattr(mt, Tm_parameters["imm_table"])
-        Tm_parameters["de_table"] = getattr(mt, Tm_parameters["de_table"])
 
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
@@ -114,16 +109,6 @@ class OligoSeq(BaseOligoDesigner):
             sequence_type="oligo",
             oligo_database=oligo_database,
             n_jobs=n_jobs,
-        )
-
-        # add required fileds
-        oligo_attributes = OligoAttributes()
-        oligo_database = oligo_attributes.calculate_GC_content(oligo_database, sequence_type="oligo")
-        oligo_database = oligo_attributes.calculate_TmNN(
-            oligo_database=oligo_database,
-            sequence_type="oligo",
-            Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
 
         # write the intermediate result in a file
@@ -217,19 +202,21 @@ class OligoSeq(BaseOligoDesigner):
         return oligo_database, file_database
 
     def create_oligo_sets(
-        self,
-        oligo_database: OligoDatabase,
-        Tm_min: float,
-        Tm_opt: float,
-        Tm_max: float,
-        GC_content_min: float,
-        GC_content_opt: float,
-        GC_content_max: float,
-        oligoset_size: int,
-        min_oligoset_size: int,
-        max_oligos: int,
-        n_sets: int,
-        n_jobs: int = 1,
+            self,
+            oligo_database: OligoDatabase,
+            Tm_min: float,
+            Tm_opt: float,
+            Tm_max: float,
+            Tm_parameters: dict,
+            Tm_chem_correction_parameters: dict,
+            GC_content_min: float,
+            GC_content_opt: float,
+            GC_content_max: float,
+            oligoset_size: int,
+            min_oligoset_size: int,
+            max_oligos: int,
+            n_sets: int,
+            n_jobs: int = 1,
     ):
         ##### log parameters #####
         logging.info("Parameters Oligo Selection:")
@@ -239,6 +226,16 @@ class OligoSeq(BaseOligoDesigner):
 
         num_genes_before, num_oligos_before = self._get_oligo_database_info(oligo_database.database)
 
+        # add required fileds
+        # oligo_attributes = OligoAttributes()
+        # oligo_database = oligo_attributes.calculate_GC_content(oligo_database=oligo_database, sequence_type="oligo")
+        # oligo_database = oligo_attributes.calculate_TmNN(
+        #     oligo_database=oligo_database,
+        #     sequence_type="oligo",
+        #     Tm_parameters=Tm_parameters,
+        #     Tm_chem_correction_parameters=Tm_chem_correction_parameters
+        # )
+
         oligos_scoring = PadlockOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,
@@ -246,6 +243,8 @@ class OligoSeq(BaseOligoDesigner):
             GC_content_min=GC_content_min,
             GC_content_opt=GC_content_opt,
             GC_content_max=GC_content_max,
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
         set_scoring = AverageSetScoring()
         oligoset_generator = OligosetGenerator(
@@ -258,6 +257,7 @@ class OligoSeq(BaseOligoDesigner):
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,
+            sequence_type="oligo",
             n_sets=n_sets,
             n_jobs=n_jobs,
         )
@@ -296,6 +296,29 @@ class OligoSeq(BaseOligoDesigner):
             )
         else:
             raise ValueError(f"The alignment method {alignment_method} is not supported.")
+        
+    def compute_oligo_attributes(
+            self,
+            oligo_database: OligoDatabase,
+            Tm_parameters: dict,
+            Tm_chem_correction_parameters: dict,
+    ):
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_oligo_length(oligo_database=oligo_database)
+        oligo_database = oligo_attributes.calculate_GC_content(oligo_database=oligo_database, sequence_type="oligo")
+        oligo_database = oligo_attributes.calculate_TmNN(
+            oligo_database=oligo_database, 
+            sequence_type="oligo",
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters
+        )
+        oligo_database = oligo_attributes.calculate_num_targeted_transcripts(oligo_database=oligo_database)
+        oligo_database = oligo_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
+        oligo_database = oligo_attributes.calculate_length_selfcomplement(oligo_database=oligo_database, sequence_type="oligo")
+        oligo_database = oligo_attributes.calculate_DG_secondary_structure(oligo_database=oligo_database, sequence_type="oligo")
+
+
+
 
 
 def main():
@@ -351,6 +374,13 @@ def main():
             lines = handle.readlines()
             genes = [line.rstrip() for line in lines]
 
+    ##### preprocess melting temperature params #####
+    Tm_parameters = config["Tm_parameters"]
+    Tm_parameters["nn_table"] = getattr(mt, Tm_parameters["nn_table"])
+    Tm_parameters["tmm_table"] = getattr(mt, Tm_parameters["tmm_table"])
+    Tm_parameters["imm_table"] = getattr(mt, Tm_parameters["imm_table"])
+    Tm_parameters["de_table"] = getattr(mt, Tm_parameters["de_table"])
+
     ##### create oligo database #####
     oligo_database, file_database = oligo_designer.create_oligo_database(
         regions=genes,
@@ -373,7 +403,7 @@ def main():
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
         homopolymeric_base_n=config["homopolymeric_base_n"],
         homodimer_max_len_selfcomp=config["homodimer_max_len_selfcomp"],
-        Tm_parameters=config["Tm_parameters"],
+        Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
         n_jobs=config["n_jobs"],
     )
@@ -406,6 +436,8 @@ def main():
         Tm_min=config["Tm_min"],
         Tm_max=config["Tm_max"],
         Tm_opt=config["Tm_opt"],
+        Tm_parameters=Tm_parameters,
+        Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
         GC_content_min=config["GC_content_min"],
         GC_content_max=config["GC_content_max"],
         GC_content_opt=config["GC_content_opt"],
@@ -418,16 +450,6 @@ def main():
 
     logging.info(f"Oligo sets were saved in {dir_oligosets}")
     logging.info("##### End of the pipeline. #####")
-
-    # ##### create final padlock sequence #####
-    # oligo_designer.create_final_sequences(
-    #     oligo_database,
-    #     detect_oligo_length_min=config["detect_oligo_length_min"],
-    #     detect_oligo_length_max=config["detect_oligo_length_max"],
-    #     detect_oligo_Tm_opt=config["detect_oligo_Tm_opt"],
-    #     Tm_parameters_detection_oligo=config["Tm_parameters_detection_oligo"],
-    #     Tm_chem_correction_param_detection_oligo=config["Tm_chem_correction_param_detection_oligo"],
-    # )
 
 
 if __name__ == "__main__":

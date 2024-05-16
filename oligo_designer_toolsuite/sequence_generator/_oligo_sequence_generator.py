@@ -224,6 +224,7 @@ class OligoSequenceGenerator:
         #                 length_interval_sequences[0], length_interval_sequences[1] + 1
         #             ):
         #                 get_sliding_window_sequence(entry, length_sequences, handle_fasta)
+        
         file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
         if os.path.isfile(file_fasta_out): # delete previous content
             os.remove(file_fasta_out)
