@@ -9,9 +9,8 @@ from pathlib import Path
 from typing import List, Union, get_args
 
 import pandas as pd
-import numpy as np
-from joblib import Parallel, delayed
 from Bio import Seq
+from joblib import Parallel, delayed
 
 from .._constants import _TYPES_SEQ, SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
 from ..database import OligoDatabase, ReferenceDatabase
@@ -368,6 +367,9 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             oligo_database.database[region_id][query_id][sequence_type] for query_id in table_hits["query"]
         ]
         return queries
+
+    def __del__(self):
+        os.rmdir(self.dir_output)
 
     @abstractmethod
     def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):

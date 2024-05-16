@@ -3,16 +3,12 @@
 ############################################
 
 import os
-from abc import ABC, abstractmethod
 from pathlib import Path
 
-import networkx as nx
-
-from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
+from .._constants import _TYPES_SEQ
 from ..database import OligoDatabase, ReferenceDatabase
 from ._filter_base import AlignmentSpecificityFilter, SpecificityFilterBase
 from ._policies import FilterPolicyBase
-
 
 ############################################
 # Oligo Crosshybridization Filter Class
@@ -42,8 +38,8 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         self.policy = policy
         self.alignment_method = alignment_method
 
-        self.dir_cross_hybridization = os.path.join(dir_output, "crosshybridization")
-        Path(self.dir_cross_hybridization).mkdir(parents=True, exist_ok=True)
+        self.dir_output = os.path.join(dir_output, "crosshybridization")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def apply(
         self,
@@ -102,7 +98,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
             region_ids=None,
             sequence_type=sequence_type,
         )
-        reference_database = ReferenceDatabase(dir_output=self.dir_cross_hybridization)
+        reference_database = ReferenceDatabase(dir_output=self.dir_output)
         reference_database.load_sequences_from_fasta(files_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)

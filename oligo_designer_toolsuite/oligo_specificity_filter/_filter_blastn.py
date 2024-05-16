@@ -8,17 +8,16 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import List, Union
 
-import pandas as pd
 import numpy as np
-from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
+import pandas as pd
 from Bio import SeqIO
+from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
 from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase, OligoAttributes
+from ..database import OligoAttributes, OligoDatabase
+from ..utils import get_sequence_from_annotation
 from ..utils._checkers import check_if_list
 from . import AlignmentSpecificityFilter
-from ..utils import get_sequence_from_annotation
-
 
 ############################################
 # Oligo Blast Filter Classes
@@ -80,8 +79,8 @@ class BlastNFilter(AlignmentSpecificityFilter):
         if "outfmt" not in self.search_parameters.keys():
             self.search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen"
 
-        self.dir_blast = os.path.join(dir_output, "blast")
-        Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
+        self.dir_output = os.path.join(dir_output, "blast")
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """Creates a BLAST index for the reference database.
@@ -98,7 +97,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         cmd = NcbimakeblastdbCommandline(
             input_file=file_reference,
             dbtype="nucl",
-            out=os.path.join(self.dir_blast, filename_reference_index),
+            out=os.path.join(self.dir_output, filename_reference_index),
         )
         out, err = cmd()
         return filename_reference_index
@@ -134,12 +133,12 @@ class BlastNFilter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_blast_results = os.path.join(self.dir_blast, f"blast_results_{region_name}.txt")
+        file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_name}.txt")
 
         cmd = NcbiblastnCommandline(
             query=file_oligo_database,
             out=file_blast_results,
-            db=os.path.join(self.dir_blast, file_index),
+            db=os.path.join(self.dir_output, file_index),
             **self.search_parameters,
         )
         out, err = cmd()
