@@ -369,7 +369,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         return queries
 
     def __del__(self):
-        os.rmdir(self.dir_output)
+        os.rmdir(self.dir_output) if os.path.exists(self.dir_output) else None
 
     @abstractmethod
     def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
