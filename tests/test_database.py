@@ -88,6 +88,7 @@ class TestOligoDatabase(unittest.TestCase):
             filename_out="sliding_window_sequences",
             files_fasta_in=FILE_NCBI_EXONS,
             length_interval_sequences=(30, 31),
+            n_jobs=2,
         )
 
     def tearDown(self):
