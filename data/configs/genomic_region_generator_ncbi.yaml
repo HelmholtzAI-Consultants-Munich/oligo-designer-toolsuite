@@ -3,7 +3,6 @@
 #######################
 
 ### General parameters
-n_jobs: 4 # number of cores used to run the pipeline
 dir_output: genomic_regions # name of the directory where the output files will be written
 
 ### Parameters for genome and gene annotation

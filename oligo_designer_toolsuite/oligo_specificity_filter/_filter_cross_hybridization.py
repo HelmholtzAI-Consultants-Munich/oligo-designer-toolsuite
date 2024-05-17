@@ -106,5 +106,13 @@ class CrossHybridizationFilter(SpecificityFilterBase):
 
         return reference_database
 
-    def __del__(self):
-        shutil.rmtree(self.dir_output) if os.path.exists(self.dir_output) else None
+    # def __del__(self):
+    #     """
+    #     Cleans up by removing the output directory when the object is deleted, if the directory exists.
+
+    #     This method is called when an instance of the class is about to be destroyed and ensures that the output directory
+    #     does not remain on the filesystem, thus cleaning up any leftover data storage used by the instance.
+
+    #     :return: None
+    #     """
+    #     shutil.rmtree(self.dir_output) if os.path.exists(self.dir_output) else None

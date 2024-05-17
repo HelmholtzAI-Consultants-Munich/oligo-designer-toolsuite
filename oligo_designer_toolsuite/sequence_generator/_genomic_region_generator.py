@@ -2,9 +2,10 @@
 # imports
 ############################################
 
-import copy
 import os
+import copy
 import warnings
+import random
 
 import numpy as np
 import pandas as pd
@@ -1094,7 +1095,8 @@ class CustomGenomicRegionGenerator:
         annotation.reset_index(inplace=True, drop=True)
 
         # save the annotation as bed file
-        file_bed = os.path.join(self.dir_output, "annotation.bed")
+        id = random.randint(0, 10000000)
+        file_bed = os.path.join(self.dir_output, f"annotation_{id}.bed")
         annotation.to_csv(file_bed, sep="\t", header=False, index=False)
 
         # create the fasta file

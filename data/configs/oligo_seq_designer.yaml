@@ -44,7 +44,7 @@ hybridization_probability_threshold: 0.0001
 ### Parameters for the Oligo set selection
 GC_content_opt: 55 # max and min values are defiend above
 Tm_opt: 60 # max and min values are defiend above
-oligoset_size: 4 # optimal size of oligo sets
+oligoset_size: 5 # optimal size of oligo sets
 min_oligoset_size: 3 # minimum size of the oligosets (in case there exist no set of the optimal size)
 n_sets: 100
 
@@ -62,10 +62,11 @@ cross_hybridization_blastn_hit_parameters:
   coverage: 50 # could be turned into min_alignment_length
 hybridization_probability_blastn_search_parameters:
   perc_identity: 80
-  strand: plus
+  strand: plus # this parameter is fixed
   word_size: 10
 hybridization_probability_blastn_hit_parameters:
   coverage: 50 # could be turned into min_alignment_length
+
 # bowtie
 cross_hybridization_bowtie_search_parameters:
   -v: 3
@@ -73,7 +74,7 @@ cross_hybridization_bowtie_search_parameters:
 cross_hybridization_bowtie_hit_parameters:
 hybridization_probability_bowtie_search_parameters:
   -v: 3
-  --norc: ""
+  --norc: "" # this parameter is fixed
 hybridization_probability_bowtie_hit_parameters:
 
 ### Parameters for the Oligo set selection
