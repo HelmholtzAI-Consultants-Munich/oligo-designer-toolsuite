@@ -19,6 +19,8 @@ from oligo_designer_toolsuite.pipelines._utils import (
     log_parameters,
     base_parser,
     get_oligo_database_info,
+    generation_step,
+    filtering_step,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase, OligoAttributes
