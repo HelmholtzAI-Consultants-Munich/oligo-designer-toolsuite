@@ -7,6 +7,7 @@ import yaml
 import inspect
 import logging
 import warnings
+import shutil
 
 from pathlib import Path
 from datetime import datetime

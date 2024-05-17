@@ -98,6 +98,7 @@ def generation_step(step_name):
             logging.info(f"Parameters {step_name}:")
             arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
             parameters = {i: values[i] for i in arguments}
+            parameters.update(kwargs)
             log_parameters(parameters)
 
             #### call the function
@@ -114,11 +115,12 @@ def generation_step(step_name):
 def filtering_step(step_name):
     def decorator(function):
         def wrapper(oligo_database: OligoDatabase, *args, **kwargs):
-            
+
             ##### log parameters #####
             logging.info(f"Parameters {step_name}:")
             arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
             parameters = {i: values[i] for i in arguments}
+            parameters.update(kwargs)
             log_parameters(parameters)
             num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
