@@ -15,11 +15,9 @@ source_params:
 # List of genomic that should be generated, set the genomic regions you want to generate to True
 genomic_regions:
   gene: false
-  intergenic: false
   exon: true
   intron: false
   cds: false
-  utr: false
   exon_exon_junction: true
 
 # If exon_exon_junction is ste to true, specify the block size, i.e. +/- "block_size" bp around the junction 
