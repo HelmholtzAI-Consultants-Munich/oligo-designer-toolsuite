@@ -6,6 +6,8 @@ import logging
 import inspect
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
+from oligo_designer_toolsuite.database import OligoDatabase
+
 ############################################
 # Utils functions
 ############################################
@@ -94,8 +96,8 @@ def generation_step(step_name):
         def wrapper(*args, **kwargs):
             ##### log parameters #####
             logging.info(f"Parameters {step_name}:")
-            args, _, _, values = inspect.getargvalues(inspect.currentframe())
-            parameters = {i: values[i] for i in args}
+            arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
+            parameters = {i: values[i] for i in arguments}
             log_parameters(parameters)
 
             #### call the function
@@ -111,15 +113,17 @@ def generation_step(step_name):
 
 def filtering_step(step_name):
     def decorator(function):
-        def wrapper(*args, **kwargs):
+        def wrapper(oligo_database: OligoDatabase, *args, **kwargs):
+            
             ##### log parameters #####
             logging.info(f"Parameters {step_name}:")
-            args, _, _, values = inspect.getargvalues(inspect.currentframe())
-            parameters = {i: values[i] for i in args}
+            arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
+            parameters = {i: values[i] for i in arguments}
             log_parameters(parameters)
+            num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
             #### call the function
-            oligo_database, *returned_values = function(*args, **kwargs)
+            oligo_database, *returned_values = function(oligo_database, *args, **kwargs)
 
             ##### loggig database information #####
             num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
