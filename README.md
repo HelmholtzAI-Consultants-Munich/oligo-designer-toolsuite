@@ -43,14 +43,14 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
 
 **Requirements:**
 
-This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. 
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. Therefore, first setup a conda environment, e.g.:
 
 ```
 conda create -n odt python=3.10
 conda activate odt
 ```
 
-To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
+It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
 
 ```
 conda config --add channels bioconda
