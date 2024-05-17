@@ -69,7 +69,9 @@ class BlastNFilter(AlignmentSpecificityFilter):
         ],
     ):
         """Constructor for the BlastNFilter class."""
-        super().__init__(dir_output)
+        self.dir_output = os.path.join(dir_output, "blast")
+        super().__init__(self.dir_output)
+
         self.search_parameters = search_parameters
         self.hit_parameters = hit_parameters
         self.names_search_output = names_search_output
@@ -78,9 +80,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
         # query, reference, alignment_length, query_start, query_end, query_length
         if "outfmt" not in self.search_parameters.keys():
             self.search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen"
-
-        self.dir_output = os.path.join(dir_output, "blast")
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """Creates a BLAST index for the reference database.

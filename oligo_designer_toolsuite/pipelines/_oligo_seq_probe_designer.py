@@ -87,7 +87,7 @@ def create_oligo_database(
     # load the oligo sequences
     oligo_database.load_sequences_from_fasta(
         files_fasta=[oligo_fasta_file],
-        sequence_type="oligo",
+        sequence_type="target",
         region_ids=regions,
     )
 
@@ -228,7 +228,7 @@ def filter_by_specificity(
     num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
     ##### define reference database #####
-    reference_database = ReferenceDatabase(dir_output=dir_output)
+    reference_database = ReferenceDatabase()
     reference_database.load_sequences_from_fasta(
         files_fasta=files_fasta_reference_database, database_overwrite=False
     )
@@ -263,13 +263,10 @@ def filter_by_specificity(
         dir_output=dir_output,
     )
 
-    # TODO check correct sequence types
-    # filters_oligo_sequence = [exact_matches]
-    # filters_target_sequence = []
     filters = [exact_matches, cross_hybridization, hybridization_probability]
     specificity_filter = SpecificityFilter(filters=filters)
     oligo_database = specificity_filter.apply(
-        sequence_type="target",
+        sequence_type="oligo",
         oligo_database=oligo_database,
         reference_database=reference_database,
         n_jobs=n_jobs,
@@ -517,6 +514,15 @@ def main():
         write_intermediate_steps=config["write_intermediate_steps"],
         n_jobs=config["n_jobs"],
     )
+
+    dir_blast = os.path.join(dir_output, "blast")
+    os.rmdir(dir_blast) if os.path.exists(dir_blast) else None
+    dir_bowtie = os.path.join(dir_output, "bowtie")
+    os.rmdir(dir_bowtie) if os.path.exists(dir_bowtie) else None
+    dir_crosshybridization = os.path.join(dir_output, "crosshybridization")
+    os.rmdir(dir_crosshybridization) if os.path.exists(dir_crosshybridization) else None
+    dir_aifilter = os.path.join(dir_output, "aifilter")
+    os.rmdir(dir_aifilter) if os.path.exists(dir_aifilter) else None
 
     logging.info(f"Oligo sets were saved in {dir_oligosets}")
     logging.info("##### End of the pipeline. #####")

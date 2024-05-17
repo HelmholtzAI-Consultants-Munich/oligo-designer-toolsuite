@@ -195,7 +195,9 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
         # Create index file for search
-        file_reference = reference_database.write_database_to_fasta(filename="reference_db")
+        file_reference = reference_database.write_database_to_fasta(
+            filename="reference_db", dir_output=self.dir_output
+        )
         file_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
         # Run search for each region in parallel
@@ -393,14 +395,3 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :param references: List of the references sequences.
         :type references: List[Seq.Seq]
         """
-
-    # def __del__(self):
-    #     """
-    #     Cleans up by removing the output directory when the object is deleted, if the directory exists.
-
-    #     This method is called when an instance of the class is about to be destroyed and ensures that the output directory
-    #     does not remain on the filesystem, thus cleaning up any leftover data storage used by the instance.
-
-    #     :return: None
-    #     """
-    #     os.rmdir(self.dir_output) if os.path.exists(self.dir_output) else None

@@ -47,13 +47,15 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         ai_filter_path: str = None,
         dir_output: str = "output",
     ) -> None:
+        self.dir_output = os.path.join(dir_output, "aifilter")
+        super().__init__(self.dir_output)
 
         self.alignment_method = alignment_method
         self.overwrite_output_format()
+
         # instatiate ai model
         self.threshold = threshold
         self.model = APIHybridizationProbability(ai_filter_path=ai_filter_path)
-        self.dir_output = dir_output
 
     def apply(
         self,
@@ -86,7 +88,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         )
         # filter the table hits
         file_reference = reference_database.write_database_to_fasta(
-            filename="reference_db_hybridization_probability"
+            filename="reference_db", dir_output=self.dir_output
         )  # defined in advance to avoid writing the file multiple times
         table_hits = Parallel(n_jobs=n_jobs)(
             delayed(self._filter_table_hits)(

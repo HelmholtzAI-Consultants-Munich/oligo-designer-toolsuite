@@ -32,22 +32,13 @@ class ReferenceDatabase:
     Example:
     >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
     AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
-
-    :param dir_output: The directory path for storing the reference database files. Defaults to "output".
-    :type dir_output: str
     """
 
-    def __init__(
-        self,
-        dir_output: str = "output",
-    ):
+    def __init__(self):
         """Constructor for the ReferenceDatabase class."""
         self.fasta_parser = FastaParser()
 
         self.database = []
-
-        self.dir_output = os.path.abspath(os.path.join(dir_output, "reference_database"))
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def load_sequences_from_fasta(self, files_fasta: list[str], database_overwrite: bool = False) -> None:
         """Load sequences from one or more FASTA files into the ReferenceDatabase object.
@@ -71,7 +62,7 @@ class ReferenceDatabase:
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file)
             self.database.extend(fasta_sequences)
 
-    def write_database_to_fasta(self, filename: str) -> str:
+    def write_database_to_fasta(self, filename: str, dir_output: str) -> str:
         """Write sequences from the database to a FASTA file.
 
         This function writes the sequences from the database to a FASTA file. The file is saved in the specified
@@ -84,8 +75,8 @@ class ReferenceDatabase:
 
         :raises ValueError: If the database is empty.
         """
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-        file_database = os.path.join(self.dir_output, f"{filename}.fna")
+        Path(dir_output).mkdir(parents=True, exist_ok=True)
+        file_database = os.path.join(dir_output, f"{filename}.fna")
         if self.database:
             with open(file_database, "w") as handle_fasta:
                 SeqIO.write(self.database, handle_fasta, "fasta")

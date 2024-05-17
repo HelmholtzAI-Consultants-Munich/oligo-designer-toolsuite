@@ -36,11 +36,11 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         dir_output: str = "output",
     ):
         """Constructor for the CrossHybridizationFilter class."""
+        self.dir_output = os.path.join(dir_output, "crosshybridization")
+        super().__init__(self.dir_output)
+
         self.policy = policy
         self.alignment_method = alignment_method
-
-        self.dir_output = os.path.join(dir_output, "crosshybridization")
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def apply(
         self,
@@ -99,20 +99,9 @@ class CrossHybridizationFilter(SpecificityFilterBase):
             region_ids=None,
             sequence_type=sequence_type,
         )
-        reference_database = ReferenceDatabase(dir_output=self.dir_output)
+        reference_database = ReferenceDatabase()
         reference_database.load_sequences_from_fasta(files_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)
 
         return reference_database
-
-    # def __del__(self):
-    #     """
-    #     Cleans up by removing the output directory when the object is deleted, if the directory exists.
-
-    #     This method is called when an instance of the class is about to be destroyed and ensures that the output directory
-    #     does not remain on the filesystem, thus cleaning up any leftover data storage used by the instance.
-
-    #     :return: None
-    #     """
-    #     shutil.rmtree(self.dir_output) if os.path.exists(self.dir_output) else None

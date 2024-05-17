@@ -71,14 +71,13 @@ class BowtieFilter(AlignmentSpecificityFilter):
         ],
     ):
         """Constructor for the BowtieFilter class."""
-        super().__init__(dir_output)
+        self.dir_output = os.path.join(dir_output, "bowtie")
+
+        super().__init__(self.dir_output)
 
         self.search_parameters = search_parameters
         self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
-
-        self.dir_output = os.path.join(self.dir_output, "bowtie")
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """Creates a Bowtie index for the reference database. The index facilitates
@@ -325,14 +324,13 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         ],
     ):
         """Constructor for the Bowtie2Filter class."""
+        self.dir_output = os.path.join(dir_output, "bowtie2")
+
         super().__init__(dir_output)
 
         self.search_parameters = search_parameters
         self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
-
-        self.dir_output = os.path.join(self.dir_output, "bowtie2")
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """Creates a Bowtie2 index for the reference database. The index facilitates
