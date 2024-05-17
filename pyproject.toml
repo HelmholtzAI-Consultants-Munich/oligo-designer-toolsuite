@@ -59,11 +59,9 @@ dependencies = [
 dev = ["pytest"]
 
 [project.scripts]
-genomic_region_generation = "oligo_designer_toolsuite.pipelines._genomic_region_generation:main"
+genomic_region_generator = "oligo_designer_toolsuite.pipelines._genomic_region_generator:main"
+oligo_seq_probe_designer = "oligo_designer_toolsuite.pipelines._oligo_seq_probe_designer:main"
 scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_designer:main"
-merfish_probe_designer = "oligo_designer_toolsuite.pipelines._merfish_probe_designer:main"
-oligo_seq = "oligo_designer_toolsuite.pipelines._oligo_seq_designer:main"
-
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
