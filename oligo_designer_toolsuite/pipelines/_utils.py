@@ -3,6 +3,7 @@
 ############################################
 
 import logging
+import inspect
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 ############################################
@@ -87,3 +88,45 @@ def get_oligo_length_min_max_from_database(oligo_database: dict):
                 oligo_length_max = length
 
     return oligo_length_min, oligo_length_max
+
+def generation_step(step_name):
+    def decorator(function):
+        def wrapper(*args, **kwargs):
+            ##### log parameters #####
+            logging.info(f"Parameters {step_name}:")
+            args, _, _, values = inspect.getargvalues(inspect.currentframe())
+            parameters = {i: values[i] for i in args}
+            log_parameters(parameters)
+
+            #### call the function
+            oligo_database, *returned_values = function(*args, **kwargs)
+
+            ##### loggig database information #####
+            num_genes, num_oligos = get_oligo_database_info(oligo_database.database)
+            logging.info(f"Step - Generate oligos: the database contains {num_oligos} oligos from {num_genes} genes.")
+
+            return oligo_database, *returned_values
+        return wrapper
+    return decorator
+
+def filtering_step(step_name):
+    def decorator(function):
+        def wrapper(*args, **kwargs):
+            ##### log parameters #####
+            logging.info(f"Parameters {step_name}:")
+            args, _, _, values = inspect.getargvalues(inspect.currentframe())
+            parameters = {i: values[i] for i in args}
+            log_parameters(parameters)
+
+            #### call the function
+            oligo_database, *returned_values = function(*args, **kwargs)
+
+            ##### loggig database information #####
+            num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
+            logging.info(
+                f"Step - Filter Oligos by {step_name}: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
+            )
+            return oligo_database, *returned_values
+        return wrapper
+    return decorator
+        
