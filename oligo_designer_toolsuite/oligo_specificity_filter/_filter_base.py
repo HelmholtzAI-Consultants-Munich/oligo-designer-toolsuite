@@ -12,8 +12,8 @@ import pandas as pd
 from Bio import Seq
 from joblib import Parallel, delayed
 
-from .._constants import _TYPES_SEQ, SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
-from ..database import OligoDatabase, ReferenceDatabase
+from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 
 ############################################
 # Oligo Specificity Filter Classes
@@ -26,14 +26,17 @@ class SpecificityFilterBase(ABC):
     reference database. This base class provides a common structure for such filters, including an output
     directory setup and an abstract method for applying the filter to an oligo database.
 
-    :param dir_output: The directory where intermediate files will be saved. Defaults to "output".
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>.
+    :type filter_name: str
+    :param dir_output: The directory where intermediate files will be saved.
     :type dir_output: str
     """
 
-    def __init__(self, dir_output: str = "output"):
+    def __init__(self, filter_name: str, dir_output: str):
         """Constructor for the SpecificityFilterBase class."""
-
-        self.dir_output = dir_output
+        # folder where we write the intermediate files
+        self.filter_name = filter_name
+        self.dir_output = os.path.abspath(os.path.join(dir_output, self.filter_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
@@ -79,17 +82,21 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
     This filter creates an index of the reference database and then aligns oligonucleotide sequences to identify and exclude
     sequences with significant hits in the reference, ensuring specificity of the oligonucleotide sequences.
 
-    :param dir_output: Directory for saving intermediate files generated during the filtering process.
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>.
+    :type filter_name: str
+    :param dir_output: Directory for saving intermediate files.
     :type dir_output: str
     """
 
     def __init__(
         self,
-        dir_output: str = "output",
+        filter_name: str,
+        dir_output: str,
     ):
         """Construnctor for the AlignmentSpecificityFilter class."""
         # folder where we write the intermediate files
-        self.dir_output = dir_output
+        self.filter_name = filter_name
+        self.dir_output = os.path.abspath(os.path.join(dir_output, self.filter_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
     def apply(
@@ -196,7 +203,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         # Create index file for search
         file_reference = reference_database.write_database_to_fasta(
-            filename="reference_db", dir_output=self.dir_output
+            filename=f"db_reference_{self.filter_name}"
         )
         file_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
@@ -207,7 +214,6 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
                 region_id=region_id,
                 oligo_database=oligo_database,
                 file_index=file_index,
-                file_reference=file_reference,
                 consider_hits_from_input_region=True,
             )
             for region_id in region_ids
@@ -232,7 +238,6 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         region_id: str,
         oligo_database: OligoDatabase,
         file_index: str,
-        file_reference: str,
         consider_hits_from_input_region: bool,
     ):
         """Executes the filtering process for a specific region of the oligonucleotide database based on search results.
@@ -245,8 +250,6 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type oligo_database: OligoDatabase
         :param file_index: Path to the index file used for the reference database.
         :type file_index: str
-        :param file_reference: Path to the reference database fasta file.
-        :type file_reference: str
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
         :type consider_hits_from_input_region: bool
         :return: A tuple containing a table of hits and a list of oligos with those hits.

@@ -2,12 +2,11 @@
 # imports
 ############################################
 
-import shutil
 from typing import get_args
 
-from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase, ReferenceDatabase
-from . import SpecificityFilterBase
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
+from oligo_designer_toolsuite.oligo_specificity_filter import SpecificityFilterBase
 
 ############################################
 # Specificity Filter Classe

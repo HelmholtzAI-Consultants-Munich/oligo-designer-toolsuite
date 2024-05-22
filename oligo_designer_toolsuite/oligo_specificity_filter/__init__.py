@@ -19,9 +19,9 @@ Classes:
 - SpecificityFilter: Integrates various specificity filters and policies to optimize oligo sequence design.
 """
 
-from ._filter_exact_matches import ExactMatchFilter
+from ._filter_base import SpecificityFilterBase, AlignmentSpecificityFilter
 
-from ._filter_base import AlignmentSpecificityFilter, SpecificityFilterBase
+from ._filter_exact_matches import ExactMatchFilter
 from ._filter_blastn import (
     BlastNFilter,
     BlastNSeedregionFilter,

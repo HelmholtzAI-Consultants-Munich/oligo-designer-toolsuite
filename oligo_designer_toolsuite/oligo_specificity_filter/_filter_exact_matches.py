@@ -4,15 +4,14 @@
 
 import iteration_utilities
 import pandas as pd
-import networkx as nx
 
 from typing import List, get_args
 from joblib import Parallel, delayed
 
-from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase, ReferenceDatabase
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
+from oligo_designer_toolsuite.oligo_specificity_filter import SpecificityFilterBase
 
-from ._filter_base import SpecificityFilterBase
 from ._policies import FilterPolicyBase, RemoveAllPolicy
 
 ############################################

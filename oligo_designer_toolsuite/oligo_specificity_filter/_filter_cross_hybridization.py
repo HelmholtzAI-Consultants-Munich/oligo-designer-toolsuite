@@ -3,12 +3,14 @@
 ############################################
 
 import os
-import shutil
-from pathlib import Path
 
-from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase, ReferenceDatabase
-from ._filter_base import AlignmentSpecificityFilter, SpecificityFilterBase
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
+from oligo_designer_toolsuite.oligo_specificity_filter import (
+    AlignmentSpecificityFilter,
+    SpecificityFilterBase,
+)
+
 from ._policies import FilterPolicyBase
 
 ############################################
@@ -25,19 +27,27 @@ class CrossHybridizationFilter(SpecificityFilterBase):
     :type policy: FilterPolicyBase
     :param alignment_method: The alignment specificity filter used to identify potential cross-hybridization events.
     :type alignment_method: AlignmentSpecificityFilter
-    :param dir_output: Directory for saving output files related to cross-hybridization filtering.
-    :type dir_output: str
+    :param database_name_reference: Subdirectory path for the reference database, i.e. <dir_output>/<database_name_reference>, defaults to "db_reference".
+    :type database_name_reference: str, optional
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "crosshybridization_filter".
+    :type filter_name: str, optional
+    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :type dir_output: str, optional
     """
 
     def __init__(
         self,
         policy: FilterPolicyBase,
         alignment_method: AlignmentSpecificityFilter,
+        database_name_reference: str = "db_reference",
+        filter_name: str = "crosshybridization_filter",
         dir_output: str = "output",
     ):
         """Constructor for the CrossHybridizationFilter class."""
-        self.dir_output = os.path.join(dir_output, "crosshybridization")
-        super().__init__(self.dir_output)
+        super().__init__(filter_name, dir_output)
+
+        self.database_name_reference = database_name_reference
+        self.dir_output_reference = dir_output
 
         self.policy = policy
         self.alignment_method = alignment_method
@@ -95,11 +105,13 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         :rtype: ReferenceDatabase
         """
         file_reference = oligo_database.write_database_to_fasta(
-            filename=f"oligo_database_crosshybridization_with_{sequence_type}",
+            filename=f"db_reference_{self.filter_name}",
             region_ids=None,
             sequence_type=sequence_type,
         )
-        reference_database = ReferenceDatabase()
+        reference_database = ReferenceDatabase(
+            database_name=self.database_name_reference, dir_output=self.dir_output_reference
+        )
         reference_database.load_sequences_from_fasta(files_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)
