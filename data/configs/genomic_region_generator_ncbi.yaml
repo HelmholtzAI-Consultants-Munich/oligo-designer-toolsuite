@@ -3,7 +3,7 @@
 #######################
 
 ### General parameters
-dir_output: genomic_regions # name of the directory where the output files will be written
+dir_output: output_genomic_region_generator_ncbi # name of the directory where the output files will be written
 
 ### Parameters for genome and gene annotation
 source: ncbi # required: indicate that own annotation should be used

@@ -15,8 +15,8 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 ############################################
 
 # Global Parameters
-FILE_NCBI_EXONS = "data/tests/genomic_regions/sequences_ncbi_exons.fna"
-FILE_DATABASE_OLIGO_ATTRIBUTES = "data/tests/databases/database_oligo_attributes.fna"
+FILE_NCBI_EXONS = "tests/data/genomic_regions/sequences_ncbi_exons.fna"
+FILE_DATABASE_OLIGO_ATTRIBUTES = "tests/data/databases/database_oligo_attributes.fna"
 
 REGION_IDS = [
     "AARS1",
@@ -38,14 +38,17 @@ class TestReferenceDatabase(unittest.TestCase):
 
         self.fasta_parser = FastaParser()
 
-        self.reference = ReferenceDatabase(dir_output=self.tmp_path)
+        self.reference = ReferenceDatabase(database_name="test_reference_database", dir_output=self.tmp_path)
         self.reference.load_sequences_from_fasta(
             files_fasta=[FILE_NCBI_EXONS, FILE_NCBI_EXONS], database_overwrite=True
         )
         self.reference.load_sequences_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=False)
 
     def tearDown(self):
-        shutil.rmtree(self.tmp_path)
+        try:
+            shutil.rmtree(self.tmp_path)
+        except:
+            pass
 
     def test_filter_database(self):
         """Test creation of reference database as well as load, write and filter functionalities."""
@@ -73,7 +76,10 @@ class TestOligoDatabase(unittest.TestCase):
 
         self.oligo_sequence_generator = OligoSequenceGenerator(dir_output=self.tmp_path)
         self.oligo_database = OligoDatabase(
-            min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=self.tmp_path
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            database_name="test_oligo_database",
+            dir_output=self.tmp_path,
         )
 
         self.file_random_seqs = self.oligo_sequence_generator.create_sequences_random(
@@ -207,7 +213,10 @@ class TestOligoAttributes(unittest.TestCase):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_attributes")
 
         self.oligo_database = OligoDatabase(
-            min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=self.tmp_path
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            database_name="test_oligo_attributes",
+            dir_output=self.tmp_path,
         )
         self.oligo_database.load_database(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
 

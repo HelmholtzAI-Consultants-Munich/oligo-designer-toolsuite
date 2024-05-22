@@ -4,13 +4,11 @@
 
 ### General parameters
 n_jobs: 2 # number of cores used to run the pipeline
-dir_output: oligo_seq_output # name of the directory where the output files will be written
-min_oligos_per_gene: 5 # minimum number of oligos that a gene must have before it gets deleted
-write_removed_genes: true # write in a file the removed genes
+dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
 
 ### Parameters for oligo sequences generation
-file_regions: data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+file_regions: data/genes/custom_2.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 files_fasta_oligo_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
@@ -24,12 +22,12 @@ GC_content_max: 65 # maximum GC content of oligos
 Tm_min: 50 # minimum melting temperature of oligos
 Tm_max: 70 # maximum melting temperature of oligos
 secondary_structures_T: 37 # temperature to compute the secondary structure free energy
-secondary_structures_threshold_deltaG: 0.1 # threshold for the secondary structure free energy
-homopolymeric_base_n:
-  # minimum homopolymeric base length for each nucletide
-  A: 5
+secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy
+homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
+  A: 6
   T: 6
-  C: 7
+  C: 6
+  G: 6
 homodimer_max_len_selfcomp: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
 
 ### Parameters for the specificity filters
@@ -43,8 +41,9 @@ hybridization_probability_threshold: 0.0001 #the lower the threshold the more st
 ### Parameters for the Oligo set selection
 GC_content_opt: 55 # max and min values are defiend above
 Tm_opt: 60 # max and min values are defiend above
-oligoset_size: 5 # optimal size of oligo sets
-min_oligoset_size: 3 # minimum size of the oligosets (in case there exist no set of the optimal size)
+min_oligoset_size: 3 # minimum size of oligo sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
+opt_oligoset_size: 5 # optimal size of oligo sets
+distance_between_oligos: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
 n_sets: 100 # Maximum number of sets to report
 
 ############################

@@ -11,6 +11,9 @@ from effidict import LRUDict
 from oligo_designer_toolsuite.utils import (
     FastaParser,
     GffParser,
+)
+
+from oligo_designer_toolsuite.utils._checkers import (
     check_if_dna_sequence,
     check_if_key_exists,
     check_if_list,
@@ -21,11 +24,11 @@ from oligo_designer_toolsuite.utils import (
 # Global Parameters
 ############################################
 
-FILE_GFF = "data/tests/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
-FILE_GTF = "data/tests/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-FILE_FASTA = "data/tests/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
-FILE_TSV = "data/tests/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
-FILE_PICKLE = "data/tests/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16_gtf.pickle"
+FILE_GFF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+FILE_GTF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+FILE_FASTA = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+FILE_TSV = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+FILE_PICKLE = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16_gtf.pickle"
 
 ############################################
 # Tests
