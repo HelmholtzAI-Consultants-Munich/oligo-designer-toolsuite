@@ -1,11 +1,17 @@
 """
-This module provides different approaches on how to select optimal sets of oligos for each region, e.g. sets of high scoring oligos based on oligo efficiencies.
+This module provides different approaches for a strategic selection of optimal oligo sets for genomic regions, focusing on efficiency and scoring.
+
+Classes:
+- OligosetGeneratorIndependentSet: A class that generates sets of oligonucleotides for genomic regions, aiming to identify the most efficient combinations based on specific scoring strategies.
+
+Functions:
+- heuristic_selection_independent_set: A function that applies heuristic methods to select optimal oligos, enhancing the selection process by focusing on non-overlapping and high-efficiency criteria.
 """
 
-from ._generate_oligosets import OligosetGenerator
-from ._heuristic_methods import padlock_heuristic_selection
+from ._generate_oligosets import OligosetGeneratorIndependentSet
+from ._heuristic_selection_methods import heuristic_selection_independent_set
 
 __all__ = [
-    "OligosetGenerator",
-    "padlock_heuristic_selection",
+    "OligosetGeneratorIndependentSet",
+    "heuristic_selection_independent_set",
 ]

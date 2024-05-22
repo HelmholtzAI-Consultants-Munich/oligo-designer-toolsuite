@@ -4,40 +4,48 @@
 
 import networkx as nx
 import numpy as np
+import pandas as pd
 
 ############################################
 # Heuristic Selection Methods
 ############################################
 
 
-def padlock_heuristic_selection(database_region, oligos_scores, overlapping_matrix, n_oligo, n_trials=100):
-    """This method tries to find empirically a good set of teh padlock design of oligos. For teh best n_trials oligos a set is cretaed
-    by adding one by one the best non overlapping oligo untiil a set is created. The best obtained set saved and returned. Moreover, foor how this particular
-    scoring method works we know that all the oligos with a higher score than the worse oligo of the best set are going to yield a worse set the one just found,
-    hence are deleted form the dictionary and the series of scores.
+def heuristic_selection_independent_set(
+    database_region: dict,
+    oligos_scores: pd.Series,
+    overlapping_matrix: pd.DataFrame,
+    n_oligo: int,
+    ascending: bool = True,
+    n_trials=100,
+):
+    """
+    This method empirically finds an optimal set of non-overlapping oligos based on their scores. It iteratively
+    selects the best non-overlapping oligos to form a set, evaluates their scores, and discards oligos unlikely
+    to produce a better set than the best found set.
 
-    :param database_region: dictionary with all the oligos of the region
+    :param database_region: Dictionary containing oligos information for the region.
     :type database_region: dict
-    :param oligos_scores: scores of the oligos
-    :type oligos_scores: pandas.Series
-    :param overlapping_matrix: matrix containig information about the overlapping of the oligos
-    :type overlapping_matrix: pandas.DataFrame
-    :param n_oligo: size of the set
+    :param oligos_scores: Series containing scores of oligos.
+    :type oligos_scores: pd.Series
+    :param overlapping_matrix: Dataframe indicating overlap between oligos.
+    :type overlapping_matrix: pd.DataFrame
+    :param n_oligo: The number of oligos to select in each set.
     :type n_oligo: int
-    :param n_trials: number of sets to be tried, defaults to 100
-    :type n_trials: int, optional
-    :return: filtered dict of the oligos, filtered scores of the oligos, best set found
-    :rtype: dict, pandas.Series, pandas.Series
+    :param ascending: Determines if scores should be sorted in ascending order, defaults to True.
+    :type ascending: bool
+    :param n_trials: Number of top scoring oligos to consider for set formation, defaults to 100.
+    :type n_trials: int
+    :return: Updated database_region with oligos forming the best set, updated scores, and the best set found.
+    :rtype: tuple(dict, pd.Series, pd.Series)
     """
 
     # sort the oligos by their score
-    oligos_sorted = oligos_scores.sort_values()
+    oligos_sorted = oligos_scores.sort_values(ascending=ascending)
     oligo_ids_sorted = oligos_sorted.index.tolist()
+
     # overlapping matrix must have a consistent oreder
     mat_sorted = overlapping_matrix.loc[oligo_ids_sorted, oligo_ids_sorted].values
-
-    # already sorted df, the max is the last entry
-    # max_score = (oligos_sorted.iloc[-1] * 1.1)
 
     # Represent overlap matrix as graph
     G = nx.convert_matrix.from_numpy_array(mat_sorted)
@@ -53,9 +61,8 @@ def padlock_heuristic_selection(database_region, oligos_scores, overlapping_matr
     # initialize max_score with score from set chosen above
     max_score = np.max(oligos_sorted.values[best_idx_set])
 
-    for first_idx in range(
-        min(len(oligo_ids_sorted), n_trials)
-    ):  # use the integer index because the matric is a np array
+    for first_idx in range(min(len(oligo_ids_sorted), n_trials)):
+        # use the integer index because the matric is a np array
         set_idxs = np.array([first_idx])
         for _ in range(n_oligo - 1):
             # find first oligo in sorted array that is not overlapping with any selected oligo
