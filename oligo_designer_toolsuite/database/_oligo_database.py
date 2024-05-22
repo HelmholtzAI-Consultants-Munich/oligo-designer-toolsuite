@@ -14,7 +14,8 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from effidict import LRUDict
 
-from .._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite.utils import FastaParser
 from ..utils._checkers import check_if_key_exists, check_if_list, check_tsv_format
 from ..utils._database_processor import (
     check_if_region_in_database,
@@ -23,7 +24,6 @@ from ..utils._database_processor import (
     merge_databases,
     format_oligo_info,
 )
-from ..utils._sequence_parser import FastaParser
 
 ############################################
 # Oligo Database Class
@@ -55,25 +55,29 @@ class OligoDatabase:
     :type min_oligos_per_region: int, optional
     :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file (default is True).
     :type write_regions_with_insufficient_oligos: bool, optional
-    :param dir_output: Directory path for the output, defaults to "output".
-    :type dir_output: str, optional
     :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 100.
     :type lru_db_max_in_memory: int, optional
+    :param database_name: Subdirectory path for the output, i.e. <dir_output>/<database_name>, defaults to "db_oligo".
+    :type database_name: str, optional
+    :param dir_output: Directory path for the output, defaults to "output".
+    :type dir_output: str, optional
     """
 
     def __init__(
         self,
         min_oligos_per_region: int = 0,
         write_regions_with_insufficient_oligos: bool = True,
-        dir_output: str = "output",
         lru_db_max_in_memory: int = 100,
+        database_name: str = "db_oligo",
+        dir_output: str = "output",
     ):
         """Constructor for the OligoDatabase class."""
         self.min_oligos_per_region = min_oligos_per_region
         self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
         self.lru_db_max_in_memory = lru_db_max_in_memory
 
-        self.dir_output = os.path.abspath(os.path.join(dir_output, "oligo_database"))
+        self.database_name = database_name
+        self.dir_output = os.path.abspath(os.path.join(dir_output, database_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self._dir_cache_files = os.path.join(self.dir_output, "cache_files")
@@ -93,7 +97,9 @@ class OligoDatabase:
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
-            self.file_removed_regions = os.path.join(self.dir_output, "regions_with_insufficient_oligos.txt")
+            self.file_removed_regions = os.path.join(
+                self.dir_output, f"regions_with_insufficient_oligos_for_{self.database_name}.txt"
+            )
             with open(self.file_removed_regions, "a") as handle:
                 handle.write(f"Region\tPipeline step\n")
 
@@ -283,8 +289,8 @@ class OligoDatabase:
 
     def save_database(
         self,
+        filename: str = "db_oligo",
         region_ids: list[str] = None,
-        filename: str = "oligo_database",
     ):
         """Save the oligo database to YAML and TSV files.
 
@@ -301,7 +307,7 @@ class OligoDatabase:
 
         :param region_ids: A list of region IDs to include in the saved database. If None, all regions are included.
         :type region_ids: list[str], optional
-        :param filename: The base filename for the output files (without extensions), defaults to "oligo_database".
+        :param filename: The base filename for the output files (without extensions), defaults to "db_oligo".
         :type filename: str, optional
         :return: Paths to the saved YAML and TSV files.
         :rtype: tuple
@@ -328,7 +334,7 @@ class OligoDatabase:
 
     def write_database_to_fasta(
         self,
-        filename: str = "oligo_database",
+        filename: str = "db_oligo",
         region_ids: list[str] = None,
         sequence_type: _TYPES_SEQ = "oligo",
         save_description: bool = False,
@@ -338,7 +344,7 @@ class OligoDatabase:
         This function writes the sequences from the oligo database to a FASTA file. Each sequence is represented as a
         SeqRecord in the FASTA file.
 
-        :param filename: The base filename for the output FASTA file (without extension), defaults to "oligo_database".
+        :param filename: The base filename for the output FASTA file (without extension), defaults to "db_oligo".
         :type filename: str, optional
         :param region_ids: A list of region IDs to include in the saved database. If None, all regions are included.
         :type region_ids: list[str], optional
@@ -379,18 +385,19 @@ class OligoDatabase:
 
         return file_fasta
 
-    def write_oligosets(self, foldername_out: str = "oligo_sets"):
+    def write_oligosets(self, foldername_out: str = "sets_of_oligos"):
         """Write oligo sets to individual TSV files.
 
         This function writes the oligo sets to individual TSV files, with each file representing the oligo sets
         for a specific region.
 
-        :param foldername_out: The name of the folder to store the oligo set files, defaults to "oligo_sets".
+        :param foldername_out: The name of the folder to store the oligo set files, defaults to "sets".
         :type foldername_out: str, optional
         :return: Path to the folder containing the generated oligo set files.
         :rtype: str
         """
-        dir_oligosets = os.path.join(self.dir_output, foldername_out)
+        dir_output_components = self.dir_output.split(os.sep)
+        dir_oligosets = os.path.join(os.sep.join(dir_output_components[:-1]), foldername_out)
         Path(dir_oligosets).mkdir(parents=True, exist_ok=True)
 
         for region_id in self.oligosets.keys():

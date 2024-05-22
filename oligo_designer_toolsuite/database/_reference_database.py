@@ -5,13 +5,11 @@
 import os
 import warnings
 from pathlib import Path
-from typing import Union
-
-import yaml
 from Bio import SeqIO
 
+from oligo_designer_toolsuite.utils import FastaParser
 from ..utils._checkers import check_if_list
-from ..utils._sequence_parser import FastaParser
+
 
 ############################################
 # Reference Database Class
@@ -32,10 +30,19 @@ class ReferenceDatabase:
     Example:
     >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
     AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
+
+    :param database_name: Subdirectory path for the output, i.e. <dir_output>/<database_name>, defaults to "db_reference".
+    :type database_name: str, optional
+    :param dir_output: Directory path for the output, defaults to "output".
+    :type dir_output: str, optional
     """
 
-    def __init__(self):
+    def __init__(self, database_name: str = "db_reference", dir_output: str = "output"):
         """Constructor for the ReferenceDatabase class."""
+        self.database_name = database_name
+        self.dir_output = os.path.abspath(os.path.join(dir_output, database_name))
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+
         self.fasta_parser = FastaParser()
 
         self.database = []
@@ -62,7 +69,7 @@ class ReferenceDatabase:
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file)
             self.database.extend(fasta_sequences)
 
-    def write_database_to_fasta(self, filename: str, dir_output: str) -> str:
+    def write_database_to_fasta(self, filename: str) -> str:
         """Write sequences from the database to a FASTA file.
 
         This function writes the sequences from the database to a FASTA file. The file is saved in the specified
@@ -70,13 +77,15 @@ class ReferenceDatabase:
 
         :param filename: The name of the output FASTA file (without extension).
         :type filename: str
+        :param dir_output: Directory path for the output.
+        :type dir_output: str
         :return: Path to the generated FASTA file.
         :rtype: str
 
         :raises ValueError: If the database is empty.
         """
-        Path(dir_output).mkdir(parents=True, exist_ok=True)
-        file_database = os.path.join(dir_output, f"{filename}.fna")
+        file_database = os.path.join(self.dir_output, f"{filename}.fna")
+
         if self.database:
             with open(file_database, "w") as handle_fasta:
                 SeqIO.write(self.database, handle_fasta, "fasta")
