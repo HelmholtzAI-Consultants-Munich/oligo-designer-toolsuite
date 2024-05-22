@@ -2,16 +2,17 @@
 # imports
 ############################################
 
-import gzip
-import itertools
 import os
 import re
+import gzip
 import shutil
+import itertools
+import pandas as pd
+
 from ftplib import FTP, error_perm
 from pathlib import Path
 from typing import Literal, get_args
 
-import pandas as pd
 from Bio import SeqIO
 
 _TYPES_FILE = Literal["gff", "gtf", "fasta"]

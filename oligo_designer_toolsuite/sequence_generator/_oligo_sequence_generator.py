@@ -8,8 +8,10 @@ from pathlib import Path
 
 from joblib import Parallel, delayed
 
+from oligo_designer_toolsuite.utils import FastaParser
+
 from ..utils._checkers import check_if_list
-from ..utils._sequence_parser import FastaParser, merge_fasta_files
+from ..utils._sequence_parser import merge_fasta_files
 
 ############################################
 # Oligo Database Class
@@ -124,7 +126,7 @@ class OligoSequenceGenerator:
         files_fasta_in: list[str],
         length_interval_sequences: tuple,
         region_ids: list[str] = None,
-        n_jobs: int = 1
+        n_jobs: int = 1,
     ):
         """Generate sequences with sliding windows from input FASTA files and write them to an output FASTA file.
 
@@ -136,7 +138,7 @@ class OligoSequenceGenerator:
         :type length_interval_sequences: tuple
         :param region_ids: List of region IDs to consider. If None, all regions are considered.
         :type region_ids: list[str], optional
-        :param n_jobs: The number of jobs to use for parallel processing. 
+        :param n_jobs: The number of jobs to use for parallel processing.
         :type n_jobs: int
         :return: The path to the generated output FASTA file.
         :rtype: str
@@ -151,7 +153,7 @@ class OligoSequenceGenerator:
             :type length_interval_sequences: List[int]
             :param handle_fasta: The file handle for writing the output FASTA file.
             :type handle_fasta: _io.TextIOWrapper
-            """              
+            """
 
             entry_sequence = entry.seq
             region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(
@@ -210,34 +212,24 @@ class OligoSequenceGenerator:
         region_ids = check_if_list(region_ids)
         files_fasta_in = check_if_list(files_fasta_in)
 
-        # file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
-        # with open(file_fasta_out, "w") as handle_fasta:
-        #     for file_fasta in files_fasta_in:
-        #         self.fasta_parser.check_fasta_format(file_fasta)
-        #         fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
-        #         # did not parallize this function because workers would be writing simultaneously to the same file
-        #         # which could lead to data corruption. I tried using the file_lock=Lock() function from multiprocessing
-        #         # as input to get_sliding_window_sequence(file_lock) and then use with file_lock: before writing to the file
-        #         # but this lead to an pickle error from joblib which I could not solve, so I left it like that for now
-        #         for entry in fasta_sequences:
-        #             for length_sequences in range(
-        #                 length_interval_sequences[0], length_interval_sequences[1] + 1
-        #             ):
-        #                 get_sliding_window_sequence(entry, length_sequences, handle_fasta)
-        
         file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
-        if os.path.isfile(file_fasta_out): # delete previous content
+
+        # delete previous content
+        if os.path.isfile(file_fasta_out):
             os.remove(file_fasta_out)
+
         for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
             files_fasta_region = Parallel(n_jobs=n_jobs)(
-            delayed(get_sliding_window_sequence)(entry, length_interval_sequences) for entry in fasta_sequences)
+                delayed(get_sliding_window_sequence)(entry, length_interval_sequences)
+                for entry in fasta_sequences
+            )
             # merge the fasta files into one single file
             merge_fasta_files(files_in=files_fasta_region, file_out=file_fasta_out, overwrite=False)
             # remove the temporary fasta files
             for file_fasta_region in files_fasta_region:
                 if os.path.isfile(file_fasta_region):
                     os.remove(file_fasta_region)
-            
+
         return file_fasta_out
