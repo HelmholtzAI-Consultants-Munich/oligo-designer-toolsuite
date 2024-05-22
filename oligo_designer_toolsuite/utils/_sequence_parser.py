@@ -13,7 +13,7 @@ from typing import List
 import pandas as pd
 from Bio import SeqIO
 
-from .._constants import (
+from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
@@ -452,7 +452,7 @@ def merge_fasta_files(files_in: list, file_out: str, overwrite: bool = False):
     """Merge a list of fasta files on a sigle file. The overwrite flag allows to choose whether to overwrite the content of the outfile
     or to append the content of the input files to the output file.
 
-    :param files_in: List of paths to the input files. 
+    :param files_in: List of paths to the input files.
     :type files_in: list
     :param file_out: Path to the output file.
     :type file_out: str
