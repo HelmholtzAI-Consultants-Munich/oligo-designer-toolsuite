@@ -53,7 +53,7 @@ dependencies = [
   "joblib",
   "seqfold",
   "effidict",
-  "oligo-designer-toolsuite-AI-filters",
+  "oligo-designer-toolsuite-ai-filters",
 ]
 
 [project.optional-dependencies]

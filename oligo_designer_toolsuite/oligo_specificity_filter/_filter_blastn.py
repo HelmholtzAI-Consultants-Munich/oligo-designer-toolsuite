@@ -229,10 +229,8 @@ class BlastNFilter(AlignmentSpecificityFilter):
             raise ValueError(
                 f"Some of the required fields {required_fields} are missing in the search results."
             )
-
         # set the positions to a 0-based index
         table_hits = self._0_index_coordinates(table_hits)
-
         # Calculate adjusted "start" and "end" for BED format based on strand
         table_hits = self._extend_reference_start_end_coordinates(table_hits)
 
@@ -251,7 +249,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
         # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
         # additionally we store how muchpadding we have to do to have two seqeunces of the same length
         bed = self._remove_overflows(bed, file_reference)
-
         file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
         bed.to_csv(
             file_bed,
@@ -260,7 +257,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
             header=False,
             columns=["chr", "start", "end", "name", "score", "strand"],
         )
-
         # generate the fasta file
         references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
         get_sequence_from_annotation(

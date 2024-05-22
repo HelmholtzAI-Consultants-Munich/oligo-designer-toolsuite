@@ -151,11 +151,9 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         # check if there are any oligos to filter
         if len(table_hits) == 0:
             return table_hits
-
         # generate the references and queries sequences
         references = self.alignment_method._get_references(table_hits, file_reference, region_id)
         queries = self.alignment_method._get_queries(sequence_type, table_hits, oligo_database, region_id)
-
         # align the references and queries by adding gaps
         gapped_queries, gapped_references = self.alignment_method._add_alignement_gaps(
             table_hits=table_hits, queries=queries, references=references
