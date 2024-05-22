@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from Bio.SeqUtils import Seq
 
-from .._constants import _TYPES_SEQ
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoAttributes
 
 ############################################
@@ -16,22 +16,25 @@ from oligo_designer_toolsuite.database import OligoAttributes
 
 
 class OligoScoringBase(ABC):
-    """Template class for scoring the oligos."""
+    """Abstract base class for scoring oligonucleotides based on specified criteria.
+    It provides a framework for scoring oligos, with an abstract method `scoring_function` that must be implemented in subclasses.
+    """
 
     def apply(self, oligos: dict, sequence_type: _TYPES_SEQ):
-        """Scores all the oligos using the defiend scoring function. The scores are both saved in the dictionary
-        and in a pandas.Series. The latter is generated because it is the fastest way to generate the sets.
+        """Scores all oligonucleotides in the provided dictionary using a defined scoring function,
+        updating the dictionary with scores and also returning scores as a pandas.Series for efficient data manipulation.
 
-        :param oligos: dictionary containing the oligos
+        :param oligos: Dictionary containing the oligonucleotides with their respective information.
         :type oligos: dict
-        :param sequence_type: The type of sequences being selected, must be one of the predefined sequence types.
+        :param sequence_type: The type of sequences being scored, which must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :return: updated dictionary of the oligos, series with the computed scores
-        :rtype: dict, pandas.Series
+        :return: Tuple containing the updated dictionary of oligonucleotides and a pandas.Series with the computed scores.
+        :rtype: (dict, pandas.Series)
         """
-        oligos_indices = list(oligos.keys())
-        oligos_scores = pd.Series(index=oligos_indices, dtype=float)
-        for oligo_id in oligos_indices:
+
+        oligos_ids = list(oligos.keys())
+        oligos_scores = pd.Series(index=oligos_ids, dtype=float)
+        for oligo_id in oligos_ids:
             score = self.scoring_function(oligos[oligo_id][sequence_type])
             oligos[oligo_id]["oligo_score"] = score
             oligos_scores[oligo_id] = score
@@ -39,37 +42,74 @@ class OligoScoringBase(ABC):
 
     @abstractmethod
     def scoring_function(self, sequence: Seq):
-        """Computes the score of the given oligo
+        """Abstract method to compute the score of a given oligonucleotide sequence.
+        This method needs to be implemented by all subclasses to define specific scoring logic.
 
-        :param sequence: seqeunce of the oligo fo score.
+        :param sequence: Sequence of the oligonucleotide to score.
         :type sequence: Seq
-        :return: score of the oligo
+        :return: Computed score of the oligonucleotide.
         :rtype: float
         """
 
 
-class TmGCOligoScoring(OligoScoringBase):
-    """This class computes the efficiency scores for the oligos. The efficiency computed as the difference of the Melting Temperature and the GC Content
-    with optimal values defined by the user:
-    
+class GCOligoScoring(OligoScoringBase):
+    """Scoring class that calculates oligo scores based on their GC content deviation from the optimal GC content.
+
+    $score = |GC_{opt} - GC_{oligo}|$.
+
+
+    :param GC_content_opt: Optimal GC content.
+    :type GC_content_opt: float
+    """
+
+    def __init__(
+        self,
+        GC_content_opt: float,
+    ):
+        """Constructor for the GCOligoScoring class."""
+        self.GC_opt = GC_content_opt
+
+    def scoring_function(self, sequence: Seq):
+        """Calculates the GC content score for a given oligonucleotide sequence based
+        on its deviation from the optimal GC content.
+        Score: the lower the better.
+
+        :param sequence: The DNA sequence of the oligonucleotide to score.
+        :type sequence: Seq
+        :return: The computed GC content score for the oligonucleotide.
+        :rtype: float
+        """
+        GC_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
+        return abs(self.GC_opt - GC_oligo)
+
+
+class WeightedTmGCOligoScoring(OligoScoringBase):
+    """Scoring class that calculates oligo scores based on their melting temperature (Tm) and GC content.
+
     $score = w_{Tm}\dfrac{|Tm_{opt} - Tm_{oligo}|}{Tm_{max} - Tm_{min}} + w_{GC}\dfrac{|GC_{opt} - GC_{oligo}|}{GC_{max} - GC_{min}}$.
 
-    :param Tm_min: minimal melting temperature
+    :param Tm_min: Minimum acceptable melting temperature.
     :type Tm_min: float
-    :param Tm_opt: minimal melting temperature
+    :param Tm_opt: Optimal melting temperature.
     :type Tm_opt: float
-    :param Tm_max: maximal melting temperature
+    :param Tm_max: Maximum acceptable melting temperature.
     :type Tm_max: float
-    :param GC_min: minimal percentage of guanine and cytosine
-    :type GC_min: float
-    :param GC_opt: optimal percentage of guanine and cytosine
-    :type GC_opt: float
-    :param GC_max: maximal percentage of guanine and cytosine
-    :type GC_max: float
-    :param Tm_weight: relevance of the melting temperature in the scoring function, defaults to 1
-    :type Tm_weight: int, optional
-    :param GC_weight: relevance of the GC content in the scoring function, defaults to 1
-    :type GC_weight: int, optional
+    :param GC_content_min: Minimum acceptable GC content.
+    :type GC_content_min: float
+    :param GC_content_opt: Optimal GC content.
+    :type GC_content_opt: float
+    :param GC_content_max: Maximum acceptable GC content.
+    :type GC_content_max: float
+    :param Tm_parameters: Parameters for calculating melting temperature.
+    :type Tm_parameters: dict
+    :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation, optional.
+    :type Tm_salt_correction_parameters: dict, optional
+    :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation, optional.
+    :type Tm_chem_correction_parameters: dict, optional
+    :param Tm_weight: Weight factor for Tm deviations in score calculation.
+    :type Tm_weight: float
+    :param GC_weight: Weight factor for GC content deviations in score calculation.
+    :type GC_weight: float
     """
 
     def __init__(
@@ -86,94 +126,65 @@ class TmGCOligoScoring(OligoScoringBase):
         Tm_weight: float = 1,
         GC_weight: float = 1,
     ):
-        """Constructor method"""
+        """Constructor for the WeightedTmGCOligoScoring class."""
         self.Tm_min = Tm_min
         self.Tm_opt = Tm_opt
         self.Tm_max = Tm_max
-        self.GC_min = GC_content_min
-        self.GC_opt = GC_content_opt
-        self.GC_max = GC_content_max
+        self.GC_content_min = GC_content_min
+        self.GC_content_opt = GC_content_opt
+        self.GC_content_max = GC_content_max
         self.Tm_parameters = Tm_parameters
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
         self.Tm_weight = Tm_weight
         self.GC_weight = GC_weight
-        self.__generate_scoring_functions()
+        self._generate_scoring_functions()
 
     def scoring_function(self, sequence: Seq):
-        """Computes the score of the given oligo
+        """Calculates the oligo score based on Tm and GC content deviations from their optimal values.
+        An error term is added to the GC and Tm scores to normalize both properties and make them comparable for the scoring.
+        Score: the lower the better.
 
-        :param sequence: seqeunce of the oligo fo score.
+        :param sequence: The DNA sequence of the oligo to score.
         :type sequence: Seq
-        :return: score of the oligo
+        :return: The calculated score based on Tm and GC content.
         :rtype: float
         """
-        # distance from the optimal melting temperature weightend by the how far is the optimum from the min/ max
-        # the scoring is the lower the better
-        Tm_oligo  = OligoAttributes._calc_TmNN(
+        Tm_oligo = OligoAttributes._calc_TmNN(
             sequence=sequence,
             Tm_parameters=self.Tm_parameters,
             Tm_salt_correction_parameters=self.Tm_salt_correction_parameters,
             Tm_chem_correction_parameters=self.Tm_chem_correction_parameters,
         )
         GC_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
-        Tm_dif = Tm_oligo - self.Tm_opt  # check the names of the columns
-        GC_dif = GC_oligo - self.GC_opt
+
+        Tm_dif = Tm_oligo - self.Tm_opt
+        GC_dif = GC_oligo - self.GC_content_opt
         score = self.Tm_weight * self.Tm_error(Tm_dif) + self.GC_weight * self.GC_error(GC_dif)
         return score
 
-    def __generate_scoring_functions(self):
-        """Computes relevant parts of the scoring function."""
-        # define the error function for the melting temperature
-        Tm_dif_max = self.Tm_max - self.Tm_opt
-        Tm_dif_min = self.Tm_opt - self.Tm_min
-        if Tm_dif_max == Tm_dif_min:
-            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max
+    def _generate_scoring_functions(self):
+        """Sets up dynamic functions to calculate errors in Tm and GC content based on the deviation from optimal values.
+        This method is intended for internal use to configure the scoring calculations upon initialization.
+        """
+        self.Tm_error = self._generate_error_function(self.Tm_min, self.Tm_opt, self.Tm_max)
+        self.GC_error = self._generate_error_function(
+            self.GC_content_min, self.GC_content_opt, self.GC_content_max
+        )
+
+    def _generate_error_function(self, min_val, opt_val, max_val):
+        """Generates scoring functions for Tm and GC content based on provided parameters.
+
+        :param min_val: The minimum value.
+        :type min_val: float
+        :param opt_val: The optimal value.
+        :type opt_val: float
+        :param max_val: The maximum value.
+        :type max_val: float
+        """
+        dif_max = max_val - opt_val
+        dif_min = opt_val - min_val
+        if dif_max == dif_min:
+            return lambda dif: abs(dif) / dif_max
         else:
-            self.Tm_error = lambda Tm_dif: abs(Tm_dif) / Tm_dif_max * (Tm_dif > 0) + abs(
-                Tm_dif
-            ) / Tm_dif_min * (Tm_dif < 0)
-        # define the error function for the GC content
-        GC_dif_max = self.GC_max - self.GC_opt
-        GC_dif_min = self.GC_opt - self.GC_min
-        if GC_dif_max == GC_dif_min:
-            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max
-        else:
-            self.GC_error = lambda GC_dif: abs(GC_dif) / GC_dif_max * (GC_dif > 0) + abs(
-                GC_dif
-            ) / GC_dif_min * (GC_dif < 0)
-
-
-class SeqFISHOligoScoring(OligoScoringBase):
-    """Oligos scoring class for the SeqFISH+ experiment.
-    Scoring function has the following form: ((GC_content_of_sequence - GC_opt)/(GC_max-GC_min))^2
-
-    :param GC_min: minimal percentage of guanine and cytosine
-    :type GC_min: float
-    :param GC_opt: optimal percentage of guanine and cytosine
-    :type GC_opt: float
-    :param GC_max: maximal percentage of guanine and cytosine
-    :type GC_max: float
-
-    """
-
-    def __init__(
-        self,
-        GC_content_opt: float,
-    ):
-        """
-        Initialize the class
-        """
-        self.GC_opt = GC_content_opt
-
-    def scoring_function(self, sequence: Seq):
-        """Computes the score of the given oligo
-
-        :param sequence: seqeunce of the oligo fo score.
-        :type sequence: Seq
-        :return: score of the oligo
-        :rtype: float
-        """
-        # distance from optimal GC (the lower the better)
-        GC_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
-        return abs(GC_oligo - self.GC_opt)
+            return lambda dif: abs(dif) / (dif_max if dif > 0 else dif_min)
