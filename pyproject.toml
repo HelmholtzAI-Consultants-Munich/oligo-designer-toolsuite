@@ -54,6 +54,7 @@ dependencies = [
   "seqfold",
   "effidict",
   "oligo-designer-toolsuite-ai-filters",
+  "scipy",
 ]
 
 [project.optional-dependencies]
