@@ -8,6 +8,7 @@ import networkx as nx
 
 from typing import Callable
 from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 from scipy.sparse import lil_matrix
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
@@ -90,10 +91,11 @@ class OligosetGeneratorIndependentSet:
         """
         regions = list(oligo_database.database.keys())
         # get the oligo set for this region in parallel
-        database_regions = Parallel(n_jobs=n_jobs)(  # there should be an explicit return
-            delayed(self._get_oligo_set_for_gene)(oligo_database.database[region], sequence_type, n_sets)
-            for region in regions
-        )
+        with joblib_progress(description="Find Oligosets", total = len(regions)):
+            database_regions = Parallel(n_jobs=n_jobs)(  # there should be an explicit return
+                delayed(self._get_oligo_set_for_gene)(oligo_database.database[region], sequence_type, n_sets)
+                for region in regions
+            )
 
         # restore the database
         for region, (database_region, oligosets_region) in zip(regions, database_regions):

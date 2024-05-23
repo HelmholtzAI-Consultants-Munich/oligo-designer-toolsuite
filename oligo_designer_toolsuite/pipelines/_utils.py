@@ -114,9 +114,10 @@ def generation_step(step_name):
 
 def filtering_step(step_name):
     def decorator(function):
-        def wrapper(oligo_database: OligoDatabase, *args, **kwargs):
+        def wrapper(*args, **kwargs):
 
             ##### log parameters #####
+            oligo_database = kwargs["oligo_database"]
             logging.info(f"Parameters {step_name}:")
             arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
             parameters = {i: values[i] for i in arguments}
@@ -125,7 +126,7 @@ def filtering_step(step_name):
             num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
             #### call the function
-            oligo_database, *returned_values = function(oligo_database, *args, **kwargs)
+            oligo_database, *returned_values = function(*args, **kwargs)
 
             ##### loggig database information #####
             num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)

@@ -36,7 +36,7 @@ files_fasta_reference_database: # fasta file with sequences used as reference fo
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 cross_hybridization_alignment_method: blastn # options: blastn, bowtie
 hybridization_probability_alignment_method: blastn # options: blastn, bowtie
-hybridization_probability_threshold: 0.0001 #the lower the threshold the more stringent the filter
+hybridization_probability_threshold: 0.001 #the lower the threshold the more stringent the filter
 
 ### Parameters for the Oligo set selection
 GC_content_opt: 55 # max and min values are defiend above

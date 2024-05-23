@@ -112,6 +112,7 @@ class OligoSeqProbeDesigner:
 
         self.n_jobs = n_jobs
 
+    @generation_step(step_name="Create Database")
     def create_oligo_database(
         self,
         oligo_length_min: int,
@@ -135,10 +136,10 @@ class OligoSeqProbeDesigner:
         :rtype: (OligoDatabase, str)
         """
         ##### log parameters #####
-        logging.info("Parameters Create Database:")
-        args, _, _, values = inspect.getargvalues(inspect.currentframe())
-        parameters = {i: values[i] for i in args}
-        log_parameters(parameters)
+        # logging.info("Parameters Create Database:")
+        # args, _, _, values = inspect.getargvalues(inspect.currentframe())
+        # parameters = {i: values[i] for i in args}
+        # log_parameters(parameters)
 
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -164,14 +165,14 @@ class OligoSeqProbeDesigner:
         )
 
         ##### loggig database information #####
-        logging.info(
-            f"Genes with <= {min_oligos_per_region} oligos will be removed from the oligo database and stored in '{oligo_database.file_removed_regions}'."
-        )
+        # logging.info(
+        #     f"Genes with <= {min_oligos_per_region} oligos will be removed from the oligo database and stored in '{oligo_database.file_removed_regions}'."
+        # )
 
-        num_genes, num_oligos = get_oligo_database_info(oligo_database.database)
-        logging.info(
-            f"Step - Generate oligos: the database contains {num_oligos} oligos from {num_genes} genes."
-        )
+        # num_genes, num_oligos = get_oligo_database_info(oligo_database.database)
+        # logging.info(
+        #     f"Step - Generate oligos: the database contains {num_oligos} oligos from {num_genes} genes."
+        # )
 
         ##### save database #####
         if self.write_intermediate_steps:
@@ -181,6 +182,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database, file_database
 
+    @filtering_step(step_name="Property Filters")
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
@@ -225,12 +227,12 @@ class OligoSeqProbeDesigner:
         :rtype: (OligoDatabase, str)
         """
         ##### log parameters #####
-        logging.info("Parameters Property Filters:")
-        args, _, _, values = inspect.getargvalues(inspect.currentframe())
-        parameters = {i: values[i] for i in args}
-        log_parameters(parameters)
+        # logging.info("Parameters Property Filters:")
+        # args, _, _, values = inspect.getargvalues(inspect.currentframe())
+        # parameters = {i: values[i] for i in args}
+        # log_parameters(parameters)
 
-        num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
+        # num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
@@ -280,13 +282,14 @@ class OligoSeqProbeDesigner:
             file_database = ""
 
         ##### loggig database information #####
-        num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
-        logging.info(
-            f"Step - Filter Oligos by Sequence Property: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
-        )
+        # num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
+        # logging.info(
+        #     f"Step - Filter Oligos by Sequence Property: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
+        # )
 
         return oligo_database, file_database
 
+    @filtering_step(step_name="Specificty Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -326,29 +329,31 @@ class OligoSeqProbeDesigner:
         :rtype: (OligoDatabase, str)
         """
 
-        def _get_alignment_method(alignment_method, search_parameters, hit_parameters):
+        def _get_alignment_method(alignment_method, search_parameters, hit_parameters, filter_name_specification :str = ""):
             if alignment_method == "blastn":
                 return BlastNFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
+                    filter_name="blast_" + filter_name_specification
                 )
             elif alignment_method == "bowtie":
                 return BowtieFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
+                    filter_name="bowtie_" + filter_name_specification
                 )
             else:
                 raise ValueError(f"The alignment method {alignment_method} is not supported.")
 
         ##### log parameters #####
-        logging.info("Parameters Specificty Filters:")
-        args, _, _, values = inspect.getargvalues(inspect.currentframe())
-        parameters = {i: values[i] for i in args}
-        log_parameters(parameters)
+        # logging.info("Parameters Specificty Filters:")
+        # args, _, _, values = inspect.getargvalues(inspect.currentframe())
+        # parameters = {i: values[i] for i in args}
+        # log_parameters(parameters)
 
-        num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
+        # num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
         ##### define reference database #####
         reference_database = ReferenceDatabase(
@@ -367,6 +372,7 @@ class OligoSeqProbeDesigner:
             alignment_method=cross_hybridization_alignment_method,
             search_parameters=cross_hybridization_search_parameters,
             hit_parameters=cross_hybridization_hit_parameters,
+            filter_name_specification="cross_hybr"
         )
         cross_hybridization_policy = RemoveByLargerRegionPolicy()
         cross_hybridization = CrossHybridizationFilter(
@@ -380,6 +386,7 @@ class OligoSeqProbeDesigner:
             alignment_method=hybridization_probability_alignment_method,
             search_parameters=hybridization_probability_search_parameters,
             hit_parameters=hybridization_probability_hit_parameters,
+            filter_name_specification="hybr_prob"
         )
         hybridization_probability = HybridizationProbabilityFilter(
             alignment_method=hybridization_probability_aligner,
@@ -403,10 +410,10 @@ class OligoSeqProbeDesigner:
             file_database = ""
 
         ##### loggig database information #####
-        num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
-        logging.info(
-            f"Step - Filter Oligos by Sequence Specificity: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
-        )
+        # num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
+        # logging.info(
+        #     f"Step - Filter Oligos by Sequence Specificity: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
+        # )
 
         dir = reference_database.dir_output
         os.rmdir(dir) if os.path.exists(dir) else None
