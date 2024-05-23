@@ -83,7 +83,7 @@ jobs:
     
     - name: Test with pytest and codecov
       run: |
-        coverage run -m pytest tests/test_database.py --disable-warnings --continue-on-collection-errors || true 
+        coverage run -m pytest --log-cli-level=INFO tests/test_oligo_specificity_filter.py --disable-warnings --continue-on-collection-errors || true
         coverage xml -i
       env:
         PLATFORM: ${{ matrix.os }}
