@@ -2,9 +2,10 @@
 # imports
 ############################################
 
-import copy
 import os
+import copy
 import warnings
+import random
 
 import numpy as np
 import pandas as pd
@@ -15,17 +16,19 @@ from pathlib import Path
 
 from Bio import SeqIO
 
-from .._constants import (
+from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
-from ..utils._sequence_parser import GffParser
+from oligo_designer_toolsuite.utils import GffParser
+from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
+
 from ..utils._sequence_processor import (
     get_complement_regions,
     get_sequence_from_annotation,
 )
-from ._ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI
+
 
 ############################################
 # Genomic Region Generator Classes
@@ -1094,7 +1097,8 @@ class CustomGenomicRegionGenerator:
         annotation.reset_index(inplace=True, drop=True)
 
         # save the annotation as bed file
-        file_bed = os.path.join(self.dir_output, "annotation.bed")
+        id = random.randint(0, 10000000)
+        file_bed = os.path.join(self.dir_output, f"annotation_{id}.bed")
         annotation.to_csv(file_bed, sep="\t", header=False, index=False)
 
         # create the fasta file
@@ -1153,7 +1157,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         annotation_release: str = None,
         dir_output: str = "output",
     ):
-        """Constructor"""
+        """Constructor for the NcbiGenomicRegionGenerator class."""
         files_source = "NCBI"
         if taxon is None:
             taxon = "vertebrate_mammalian"
@@ -1206,7 +1210,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
         annotation_release: str = None,
         dir_output: str = "output",
     ):
-        """Constructor"""
+        """Constructor for the EnsemblGenomicRegionGenerator class."""
         files_source = "Ensemble"
         if species is None:
             species = "homo_sapiens"

@@ -53,17 +53,16 @@ dependencies = [
   "joblib",
   "seqfold",
   "effidict",
-  "oligo_designer_toolsuite_ai_filters",
+  "oligo-designer-toolsuite-ai-filters",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest"]
 
 [project.scripts]
+genomic_region_generator = "oligo_designer_toolsuite.pipelines._genomic_region_generator:main"
+oligo_seq_probe_designer = "oligo_designer_toolsuite.pipelines._oligo_seq_probe_designer:main"
 scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_designer:main"
-merfish_probe_designer = "oligo_designer_toolsuite.pipelines._merfish_probe_designer:main"
-oligo_seq = "oligo_designer_toolsuite.pipelines._oligo_seq:main"
-
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"

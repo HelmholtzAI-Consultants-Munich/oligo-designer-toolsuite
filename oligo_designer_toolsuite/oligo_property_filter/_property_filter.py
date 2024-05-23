@@ -7,9 +7,9 @@ from typing import get_args
 from effidict import LRUDict
 from joblib import Parallel, delayed
 
-from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase
-from . import PropertyFilterBase
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.oligo_property_filter import PropertyFilterBase
 
 ############################################
 # Property Filter Class

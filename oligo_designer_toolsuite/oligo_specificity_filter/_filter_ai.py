@@ -1,20 +1,27 @@
-from abc import ABC, abstractmethod
-import os
+############################################
+# imports
+############################################
 
+import os
 import pandas as pd
-import numpy as np
+
 from joblib import Parallel, delayed
 from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
 
-from . import (
-    AlignmentSpecificityFilter,
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
+
+from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilterBase,
+    AlignmentSpecificityFilter,
     BlastNFilter,
     BlastNSeedregionFilter,
     BlastNSeedregionLigationsiteFilter,
 )
-from ..database import OligoDatabase, ReferenceDatabase
-from .._constants import _TYPES_SEQ
+
+############################################
+# Oligo AI Filter Classes
+############################################
 
 
 class HybridizationProbabilityFilter(SpecificityFilterBase):
@@ -36,7 +43,9 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
     :type threshold: float, optional
     :param ai_filter_path: The path to the machine learning model used to filter the oligos, if None the pretrained model provided will be used, defaults to None
     :type ai_filter_path: str, optional
-    :param dir_output: The directory where the intermediate files are written, defaults to "output"
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "ai_filter".
+    :type filter_name: str, optional
+    :param dir_output: Directory for saving intermediate files, defaults to "output"
     :type dir_output: str, optional
     """
 
@@ -45,15 +54,18 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         alignment_method: AlignmentSpecificityFilter,
         threshold: float,
         ai_filter_path: str = None,
+        filter_name: str = "ai_filter",
         dir_output: str = "output",
     ) -> None:
+        """Constructor for the HybridizationProbabilityFilter class."""
+        super().__init__(filter_name, dir_output)
 
         self.alignment_method = alignment_method
         self.overwrite_output_format()
+
         # instatiate ai model
         self.threshold = threshold
         self.model = APIHybridizationProbability(ai_filter_path=ai_filter_path)
-        self.dir_output = dir_output
 
     def apply(
         self,
@@ -86,7 +98,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         )
         # filter the table hits
         file_reference = reference_database.write_database_to_fasta(
-            filename="reference_db_hybridization_probability"
+            filename=f"db_reference_{self.filter_name}"
         )  # defined in advance to avoid writing the file multiple times
         table_hits = Parallel(n_jobs=n_jobs)(
             delayed(self._filter_table_hits)(
@@ -109,6 +121,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
             oligo_database.database[region_id] = database_region_filtered
 
         os.remove(file_reference)
+        os.remove(file_reference + ".fai")
         return oligo_database
 
     def _filter_table_hits(
@@ -138,11 +151,9 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         # check if there are any oligos to filter
         if len(table_hits) == 0:
             return table_hits
-
         # generate the references and queries sequences
         references = self.alignment_method._get_references(table_hits, file_reference, region_id)
         queries = self.alignment_method._get_queries(sequence_type, table_hits, oligo_database, region_id)
-
         # align the references and queries by adding gaps
         gapped_queries, gapped_references = self.alignment_method._add_alignement_gaps(
             table_hits=table_hits, queries=queries, references=references

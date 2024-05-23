@@ -1,4 +1,4 @@
-region_id	oligo_id	sequence	chromosome	start	end	strand	length	additional_information_fasta	GC_content	TmNN	melt_temp_arm1	melt_temp_arm2	melt_temp_dif_arms	ligation_site
+region_id	oligo_id	oligo	chromosome	start	end	strand	length	additional_information_fasta	GC_content	TmNN	melt_temp_arm1	melt_temp_arm2	melt_temp_dif_arms	ligation_site
 AGRN	AGRN_pid77	CACAGCGTCAGTGAAAGTCGTCCTTGTCTCAGAATGAC	[[1]]	[[1055821], [1055821]]	[[1055859], [1055859]]	+	38		50.0	62.17	48.32	48.5	0.18	18
 AGRN	AGRN_pid78	ACAGCGTCAGTGAAAGTCGTCCTTGTCTCAGAATGACC	[[1]]	[[1055822], [1055822]]	[[1055860], [1055860]]	+	38		50.0	63.02	48.01	48.24	0.23	18
 AGRN	AGRN_pid80	GTGGGGCTGGGTGCCGTGTTACTAACTCTAGTATGTTT	[[1]]	[[1056037], [1056037]]	[[1056075], [1056075]]	+	38		50.0	62.95	46.82	48.07	1.25	13

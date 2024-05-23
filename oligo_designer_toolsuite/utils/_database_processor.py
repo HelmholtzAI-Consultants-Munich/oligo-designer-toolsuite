@@ -3,13 +3,13 @@
 ############################################
 
 import warnings
-from collections import defaultdict
 from itertools import chain
+from collections import defaultdict
 
 from effidict import LRUDict
 
 from ._checkers import check_if_list_of_lists
-from .._constants import SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 
 ############################################
 # Collection of utility functions
@@ -116,8 +116,6 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
     :rtype: dict
     """
 
-    
-
     oligo_info = defaultdict(list)
 
     for d in (oligo_info1, oligo_info2):
@@ -136,6 +134,7 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
     oligo_info = dict(oligo_info)
 
     return oligo_info
+
 
 def format_oligo_info(oligo_info: dict):
     """Format the ontries of an oligo_info dictionary to be list of lists.

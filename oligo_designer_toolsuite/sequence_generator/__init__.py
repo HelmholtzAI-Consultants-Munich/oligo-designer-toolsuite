@@ -36,13 +36,13 @@ from ._genomic_region_generator import (
 from ._oligo_sequence_generator import OligoSequenceGenerator
 
 __all__ = [
-    "OligoSequenceGenerator",
-    "CustomGenomicRegionGenerator",
-    "NcbiGenomicRegionGenerator",
-    "EnsemblGenomicRegionGenerator",
     "BaseFtpLoader",
     "FtpLoaderEnsembl",
     "FtpLoaderNCBI",
+    "CustomGenomicRegionGenerator",
+    "NcbiGenomicRegionGenerator",
+    "EnsemblGenomicRegionGenerator",
+    "OligoSequenceGenerator",
 ]
 
 classes = __all__

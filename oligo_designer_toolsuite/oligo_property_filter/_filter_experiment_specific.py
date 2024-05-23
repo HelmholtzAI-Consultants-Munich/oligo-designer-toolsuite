@@ -4,8 +4,8 @@
 
 from Bio.SeqUtils import Seq
 
-from . import PropertyFilterBase
-from ..database import OligoAttributes
+from oligo_designer_toolsuite.database import OligoAttributes
+from oligo_designer_toolsuite.oligo_property_filter import PropertyFilterBase
 
 ############################################
 # Padlock Filter Classes
@@ -63,8 +63,7 @@ class PadlockArmsFilter(PropertyFilterBase):
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
     def apply(self, sequence: Seq):
-        """
-        Applies the padlock arms filter to a DNA sequence.
+        """Applies the padlock arms filter to a DNA sequence.
         Applies the filter to evaluate if a given sequence is suitable for padlock probes based on
         arm length and melting temperature criteria.
 

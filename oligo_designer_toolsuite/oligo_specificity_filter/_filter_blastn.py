@@ -4,21 +4,21 @@
 
 import os
 import warnings
+import numpy as np
+import pandas as pd
+
 from abc import abstractmethod
-from pathlib import Path
 from typing import List, Union
 
-import pandas as pd
-import numpy as np
-from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 from Bio import SeqIO
+from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
-from .._constants import _TYPES_SEQ
-from ..database import OligoDatabase, OligoAttributes
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
+from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
+
 from ..utils._checkers import check_if_list
-from . import AlignmentSpecificityFilter
-from ..utils import get_sequence_from_annotation
-
+from ..utils._sequence_processor import get_sequence_from_annotation
 
 ############################################
 # Oligo Blast Filter Classes
@@ -49,17 +49,18 @@ class BlastNFilter(AlignmentSpecificityFilter):
     :type search_parameters: dict
     :param hit_parameters: Criteria to consider a BLAST hit significant for filtering.
     :type hit_parameters: dict
-    :param dir_output: Base directory for saving output files and BLAST databases. Defaults to "output".
-    :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "blast_filter".
+    :type filter_name: str, optional
+    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :type dir_output: str, optional
     """
 
     def __init__(
         self,
         search_parameters: dict = {},
         hit_parameters: dict = {},
-        dir_output: str = "output",
         names_search_output: list = [
             "query",
             "reference",
@@ -68,9 +69,12 @@ class BlastNFilter(AlignmentSpecificityFilter):
             "query_end",
             "query_length",
         ],
+        filter_name: str = "blast_filter",
+        dir_output: str = "output",
     ):
         """Constructor for the BlastNFilter class."""
-        super().__init__(dir_output)
+        super().__init__(filter_name, dir_output)
+
         self.search_parameters = search_parameters
         self.hit_parameters = hit_parameters
         self.names_search_output = names_search_output
@@ -79,9 +83,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
         # query, reference, alignment_length, query_start, query_end, query_length
         if "outfmt" not in self.search_parameters.keys():
             self.search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen"
-
-        self.dir_blast = os.path.join(dir_output, "blast")
-        Path(self.dir_blast).mkdir(parents=True, exist_ok=True)
 
     def _create_index(self, file_reference: str, n_jobs: int):
         """Creates a BLAST index for the reference database.
@@ -98,7 +99,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         cmd = NcbimakeblastdbCommandline(
             input_file=file_reference,
             dbtype="nucl",
-            out=os.path.join(self.dir_blast, filename_reference_index),
+            out=os.path.join(self.dir_output, filename_reference_index),
         )
         out, err = cmd()
         return filename_reference_index
@@ -134,12 +135,12 @@ class BlastNFilter(AlignmentSpecificityFilter):
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
-        file_blast_results = os.path.join(self.dir_blast, f"blast_results_{region_name}.txt")
+        file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_name}.txt")
 
         cmd = NcbiblastnCommandline(
             query=file_oligo_database,
             out=file_blast_results,
-            db=os.path.join(self.dir_blast, file_index),
+            db=os.path.join(self.dir_output, file_index),
             **self.search_parameters,
         )
         out, err = cmd()
@@ -200,8 +201,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         return blast_table_hits
 
     def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
-        """
-        Retrieve the reference sequences from the search results.
+        """Retrieve the reference sequences from the search results.
 
         :param table_hits: Dataframe containing the search results.
         :type table_hits: pd.DataFrame
@@ -229,10 +229,8 @@ class BlastNFilter(AlignmentSpecificityFilter):
             raise ValueError(
                 f"Some of the required fields {required_fields} are missing in the search results."
             )
-
         # set the positions to a 0-based index
         table_hits = self._0_index_coordinates(table_hits)
-
         # Calculate adjusted "start" and "end" for BED format based on strand
         table_hits = self._extend_reference_start_end_coordinates(table_hits)
 
@@ -251,7 +249,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
         # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
         # additionally we store how muchpadding we have to do to have two seqeunces of the same length
         bed = self._remove_overflows(bed, file_reference)
-
         file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
         bed.to_csv(
             file_bed,
@@ -260,7 +257,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
             header=False,
             columns=["chr", "start", "end", "name", "score", "strand"],
         )
-
         # generate the fasta file
         references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
         get_sequence_from_annotation(
@@ -413,17 +409,18 @@ class BlastNSeedregionFilterBase(BlastNFilter):
     :type search_parameters: dict
     :param hit_parameters: Criteria to consider a BLAST hit significant for filtering.
     :type hit_parameters: dict
-    :param dir_output: Directory for saving output files and BLAST databases.
-    :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "blast_filter".
+    :type filter_name: str, optional
+    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :type dir_output: str, optional
     """
 
     def __init__(
         self,
         search_parameters: dict = {},
         hit_parameters: dict = {},
-        dir_output: str = "output",
         names_search_output: list = [
             "query",
             "reference",
@@ -432,9 +429,11 @@ class BlastNSeedregionFilterBase(BlastNFilter):
             "query_end",
             "query_length",
         ],
+        filter_name: str = "blast_filter",
+        dir_output: str = "output",
     ):
         """Constructor for the BlastNSeedregionFilterBase class."""
-        super().__init__(search_parameters, hit_parameters, dir_output, names_search_output)
+        super().__init__(search_parameters, hit_parameters, names_search_output, filter_name, dir_output)
 
     @abstractmethod
     def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
@@ -511,10 +510,12 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
     :type search_parameters: dict
     :param hit_parameters: Criteria to consider a BLAST hit significant for filtering.
     :type hit_parameters: dict
-    :param dir_output: Directory for saving output files and BLAST databases.
-    :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "blast_filter".
+    :type filter_name: str, optional
+    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :type dir_output: str, optional
 
     """
 
@@ -524,7 +525,6 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         seedregion_end: Union[int, float],
         search_parameters: dict = {},
         hit_parameters: dict = {},
-        dir_output: str = "output",
         names_search_output: list = [
             "query",
             "reference",
@@ -533,9 +533,11 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
             "query_end",
             "query_length",
         ],
+        filter_name: str = "blast_filter",
+        dir_output: str = "output",
     ):
         """Constructor for the BlastNSeedregionFilter class."""
-        super().__init__(search_parameters, hit_parameters, dir_output, names_search_output)
+        super().__init__(search_parameters, hit_parameters, names_search_output, filter_name, dir_output)
 
         self.seedregion_start = seedregion_start
         self.seedregion_end = seedregion_end
@@ -580,10 +582,12 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
     :type search_parameters: dict
     :param hit_parameters: Criteria to consider a BLAST hit significant for filtering.
     :type hit_parameters: dict
-    :param dir_output: Directory for saving output files and BLAST databases.
-    :type dir_output: str
     :param names_search_output: Column names for parsing BLAST search output.
     :type names_search_output: list
+    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "blast_filter".
+    :type filter_name: str, optional
+    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :type dir_output: str, optional
     """
 
     def __init__(
@@ -591,7 +595,6 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         seedregion_size: int,
         search_parameters: dict = {},
         hit_parameters: dict = {},
-        dir_output: str = "output",
         names_search_output: list = [
             "query",
             "reference",
@@ -600,9 +603,11 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
             "query_end",
             "query_length",
         ],
+        filter_name: str = "blast_filter",
+        dir_output: str = "output",
     ):
         """Constructor for the BlastNSeedregionLigationsiteFilter class."""
-        super().__init__(search_parameters, hit_parameters, dir_output, names_search_output)
+        super().__init__(search_parameters, hit_parameters, names_search_output, filter_name, dir_output)
         self.seedregion_size = seedregion_size
 
     def _add_seed_region_information(self, oligo_database: OligoDatabase, search_results: pd.DataFrame):
