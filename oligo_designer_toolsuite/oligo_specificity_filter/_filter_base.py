@@ -127,6 +127,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             oligo_database=oligo_database,
             reference_database=reference_database,
             region_ids=region_ids,
+            consider_hits_from_input_region=False,
             n_jobs=n_jobs,
         )
 
@@ -166,6 +167,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
             oligo_database=oligo_database,
             reference_database=reference_database,
             region_ids=region_ids,
+            consider_hits_from_input_region=True,
             n_jobs=n_jobs,
         )
 
@@ -180,6 +182,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         oligo_database: OligoDatabase,
         reference_database: ReferenceDatabase,
         region_ids: List[str],
+        consider_hits_from_input_region: bool,
         n_jobs: int,
     ) -> List[pd.DataFrame]:
         """Applies the alignment-based specificity filter to an oligonucleotide database and return a DataFrame containing all hits.
@@ -209,14 +212,14 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         file_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
         # Run search for each region in parallel
-        with joblib_progress(description=self.filter_name, total = len(region_ids)):
+        with joblib_progress(description=self.filter_name, total=len(region_ids)):
             table_hits = Parallel(n_jobs=n_jobs)(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
                     region_id=region_id,
                     oligo_database=oligo_database,
                     file_index=file_index,
-                    consider_hits_from_input_region=True,
+                    consider_hits_from_input_region=consider_hits_from_input_region,
                 )
                 for region_id in region_ids
             )
