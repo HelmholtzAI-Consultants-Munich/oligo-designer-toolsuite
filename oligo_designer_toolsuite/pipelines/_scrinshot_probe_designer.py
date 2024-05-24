@@ -84,7 +84,7 @@ class ScrinshotProbeDesigner:
 
         self.n_jobs = n_jobs
 
-        self.probe_attributes = OligoAttributes()
+        self.probe_attributes_calculator = OligoAttributes()
 
         ##### setup logger #####
         timestamp = datetime.now()
@@ -232,7 +232,7 @@ class ScrinshotProbeDesigner:
         )
 
         ##### calculate required probe attributes #####
-        oligo_database = self.probe_attributes.calculate_padlock_arms(
+        oligo_database = self.probe_attributes_calculator.calculate_padlock_arms(
             oligo_database=oligo_database,
             sequence_type="oligo",
             arm_length_min=arm_length_min,
@@ -313,35 +313,24 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
     ):
-        """
-        Computes various attributes for probes and stores them in the provided probe database.
-
-        :param oligo_database: The database containing probes for which attributes are to be computed.
-        :type oligo_database: OligoDatabase
-        :param secondary_structures_T: Temperature at which secondary structure delta G is calculated.
-        :type secondary_structures_T: float
-        :param Tm_parameters: Parameters to calculate melting temperature.
-        :type Tm_parameters: dict
-        :param Tm_chem_correction_param_probe: Chemical correction parameters for melting temperature calculation.
-        :type Tm_chem_correction_param_probe: dict
-        :return: Updated probe database with new attributes.
-        :rtype: OligoDatabase
-        """
-
-        oligo_database = self.probe_attributes.calculate_oligo_length(oligo_database=oligo_database)
-        oligo_database = self.probe_attributes.calculate_GC_content(
+        oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_GC_content(
             oligo_database=oligo_database, sequence_type="oligo"
         )
-        oligo_database = self.probe_attributes.calculate_TmNN(
+        oligo_database = self.probe_attributes_calculator.calculate_TmNN(
             oligo_database=oligo_database,
             sequence_type="oligo",
             Tm_parameters=Tm_parameters_probe,
             Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
         )
-        oligo_database = self.probe_attributes.calculate_num_targeted_transcripts(
+        oligo_database = self.probe_attributes_calculator.calculate_num_targeted_transcripts(
             oligo_database=oligo_database
         )
-        oligo_database = self.probe_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
+        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
 
         return oligo_database
 
@@ -405,6 +394,274 @@ class ScrinshotProbeDesigner:
             file_probesets = ""
 
         return oligo_database, file_database, file_probesets
+
+    def design_final_padlock_sequence(
+        self,
+        oligo_database: OligoDatabase,
+        min_thymines: int,
+        U_distance: int,
+        detect_oligo_length_min: int,
+        detect_oligo_length_max: int,
+        detect_oligo_Tm_opt: float,
+        Tm_parameters_detection_oligo: dict,
+        Tm_chem_correction_param_detection_oligo: dict,
+    ):
+        """ """
+
+        def _get_barcode(number_regions: int, barcode_length: int, seed: int, choices: list):
+
+            while len(choices) ** barcode_length < number_regions:
+                barcode_length += 1
+
+            barcodes = ["".join(nts) for nts in itertools.product(choices, repeat=barcode_length)]
+            random.seed(seed)
+            random.shuffle(barcodes)
+
+            return barcodes
+
+        def _best_probeset_with_possible_detection_oligos(
+            probesets_region: pd.DataFrame,
+            database_region: dict,
+        ):
+
+            probe_columns = [col for col in probesets_region.columns if col.startswith("oligo_")]
+
+            for index, row in probesets_region.iterrows():
+                probeset = list(row[probe_columns])
+
+                for probe_id in probeset:
+                    probe_sequence = database_region[probe_id]["oligo"]
+                    ligation_site = database_region[probe_id]["ligation_site"]
+                    probe_start, probe_start_long_left, probe_start_long_right = (
+                        _get_initial_probes_for_search(probe_sequence, ligation_site)
+                    )
+                    if (probe_start_long_left is not None) and (
+                        probe_start_long_left.count("T") >= min_thymines
+                    ):
+                        return probeset
+                    elif (probe_start_long_right is not None) and (
+                        probe_start_long_right.count("T") >= min_thymines
+                    ):
+                        return probeset
+                    elif probe_start.count("T") >= min_thymines:
+                        return probeset
+
+            return list(probesets_region.loc[0, probe_columns])  # return the first set
+
+        def _get_initial_probes_for_search(probe_sequence, ligation_site):
+
+            if detect_oligo_length_max == 0:
+                return None, None, None
+
+            detect_oligo_length_max_even = (detect_oligo_length_max % 2) == 0
+            detect_oligo_length_max_half = detect_oligo_length_max // 2
+
+            probe_length = len(probe_sequence)
+            probe_length_half_max = min(ligation_site, probe_length - ligation_site)
+
+            if ligation_site == (probe_length - ligation_site):
+                probe = probe_sequence
+            elif ligation_site > (probe_length - ligation_site):
+                probe = probe_sequence[probe_length - 2 * probe_length_half_max - 1 :]
+            else:
+                probe = probe_sequence[: 2 * probe_length_half_max + 1]
+
+            # Different scenarios
+            if detect_oligo_length_max < len(probe):
+                # 1.1
+                if detect_oligo_length_max_even:
+                    probe_start = probe_sequence[
+                        ligation_site
+                        - detect_oligo_length_max_half : ligation_site
+                        + detect_oligo_length_max_half
+                    ]
+                    probe_start_long_left = None
+                    probe_start_long_right = None
+                # 1.2
+                else:
+                    probe_start = probe_sequence[
+                        ligation_site
+                        - detect_oligo_length_max_half : ligation_site
+                        + detect_oligo_length_max_half
+                    ]
+                    probe_start_long_left = probe_sequence[
+                        ligation_site
+                        - detect_oligo_length_max_half
+                        - 1 : ligation_site
+                        + detect_oligo_length_max_half
+                    ]
+                    probe_start_long_right = probe_sequence[
+                        ligation_site
+                        - detect_oligo_length_max_half : ligation_site
+                        + detect_oligo_length_max_half
+                        + 1
+                    ]
+            else:
+                # 2.1
+                if (len(probe) % 2) == 0:
+                    probe_start = probe
+                    probe_start_long_left = None
+                    probe_start_long_right = None
+                else:
+                    # 2.2.1
+                    if (len(probe) - ligation_site) > ligation_site:
+                        probe_start = probe[:-1]
+                        probe_start_long_left = None
+                        probe_start_long_right = probe
+                    # 2.2.2
+                    else:
+                        probe_start = probe[1:]
+                        probe_start_long_left = probe
+                        probe_start_long_right = None
+
+            return probe_start, probe_start_long_left, probe_start_long_right
+
+        def _get_padlock_probe(probe_attributes: dict):
+
+            ligation_site = probe_attributes["ligation_site"]
+            probe_attributes["sequence_padlock_arm1"] = probe_attributes["oligo"][ligation_site:]
+            probe_attributes["sequence_padlock_arm2"] = probe_attributes["oligo"][:ligation_site]
+
+            probe_attributes["sequence_padlock_accessory1"] = "TCCTCTATGATTACTGAC"
+            probe_attributes["sequence_padlock_ISS_anchor"] = "TGCGTCTATTTAGTGGAGCC"
+            probe_attributes["sequence_padlock_accessory2"] = "CTATCTTCTTT"
+
+            probe_attributes["sequence_padlock_backbone"] = (
+                probe_attributes["sequence_padlock_accessory1"]
+                + probe_attributes["sequence_padlock_ISS_anchor"]
+                + probe_attributes["barcode"]
+                + probe_attributes["sequence_padlock_accessory2"]
+            )
+
+            probe_attributes["sequence_padlock_probe"] = (
+                probe_attributes["sequence_padlock_arm1"]
+                + probe_attributes["sequence_padlock_backbone"]
+                + probe_attributes["sequence_padlock_arm2"]
+            )
+
+            return probe_attributes
+
+        def _get_detection_oligo(probe_attributes: dict):
+            def get_Tm_dif(oligo):
+                Tm = self.probe_attributes_calculator._calc_TmNN(
+                    oligo, Tm_parameters_detection_oligo, Tm_chem_correction_param_detection_oligo
+                )
+                return abs(Tm - detect_oligo_Tm_opt)
+
+            def _find_best_oligo(oligo, cut_from_right):
+
+                oligos = [oligo]
+                Tm_dif = [get_Tm_dif(oligo)]
+
+                # either start cut from left or right and make sure that oligo length is >= detect_oligo_length_min
+                for count in range(0, len(oligo) - detect_oligo_length_min):
+                    if bool(count % 2) * cut_from_right:
+                        oligo = oligo[1:]
+                    else:
+                        oligo = oligo[:-1]
+
+                    if oligo.count("T") >= min_thymines:
+                        oligos.append(oligo)
+                        Tm_dif.append(get_Tm_dif(oligo))
+
+                return oligos, Tm_dif
+
+            def _exchange_T_with_U(oligo):
+                if oligo.find("T") < oligo[::-1].find("T"):
+                    fluorophor_pos = "left"
+                else:
+                    fluorophor_pos = "right"
+                    oligo = oligo[::-1]
+
+                pos = 0
+                new_pos = 1
+                for _ in range(min_thymines):
+                    while True:
+                        shift = 0 if (pos == 0 and (new_pos != 0)) else U_distance
+                        start = min(pos + shift, len(oligo))
+                        new_pos = oligo[start:].find("T")
+                        if new_pos == -1:
+                            pos = oligo.rfind("T") - U_distance
+                        else:
+                            pos = pos + shift + new_pos
+                            oligo = oligo[:pos] + "U" + oligo[pos + 1 :]
+                            break
+
+                # Add fluorophore
+                if fluorophor_pos == "left":
+                    oligo_seq = "[fluorophore]" + oligo_seq
+                elif fluorophor_pos == "right":
+                    oligo = oligo[::-1] + "[fluorophore]"
+
+                return oligo
+
+            # Search for best oligos
+            oligo_start, oligo_start_long_left, oligo_start_long_right = _get_initial_probes_for_search(
+                probe_attributes["oligo"], probe_attributes["ligation_site"]
+            )
+
+            initial_oligos = [
+                oligo
+                for oligo in [oligo_start, oligo_start_long_left, oligo_start_long_right]
+                if (oligo is not None) and (oligo.count("T") >= min_thymines)
+            ]
+
+            # if none of the oligos contain min x thymines then return oligo_start and Tm=0
+            if not initial_oligos:
+                return oligo_start, 0
+
+            # Check which of the three initial probes is the best one
+            Tm_dif = [get_Tm_dif(probe, detect_oligo_Tm_opt) for probe in initial_oligos]
+            best_initial_oligo = initial_oligos[Tm_dif.index(min(Tm_dif))]
+
+            # Iterative search through shorter oligos
+            oligos_cut_from_right, Tm_dif_cut_from_right = _find_best_oligo(
+                best_initial_oligo, cut_from_right=True
+            )
+            oligos_cut_from_left, Tm_dif_cut_from_left = _find_best_oligo(
+                best_initial_oligo, cut_from_right=False
+            )
+            oligos = oligos_cut_from_right + oligos_cut_from_left
+            Tm_dif = Tm_dif_cut_from_right + Tm_dif_cut_from_left
+            detection_oligo = oligos[Tm_dif.index(min(Tm_dif))]
+
+            # exchange T's with U (for enzymatic degradation of oligos)
+            detection_oligo = _exchange_T_with_U(detection_oligo)
+            probe_attributes["sequence_detection_oligo"] = detection_oligo
+            probe_attributes["Tm_detection_oligo"] = self.probe_attributes_calculator._calc_TmNN(
+                detection_oligo,
+                Tm_parameters_detection_oligo,
+                Tm_chem_correction_param_detection_oligo,
+            )
+
+            return probe_attributes
+
+        region_ids = list(oligo_database.database.keys())
+        best_probesets = {region: {} for region in region_ids}
+
+        barcodes = _get_barcode(len(region_ids), barcode_length=4, seed=0, choices=["A", "C", "T", "G"])
+
+        for region_idx, region in enumerate(region_ids):
+
+            database_region = oligo_database.database[region]
+            probesets_region = oligo_database.oligosets[region]
+
+            best_probeset = _best_probeset_with_possible_detection_oligos(probesets_region, database_region)
+            best_probesets[region] = best_probeset
+
+            for probe_idx, probe_id in enumerate(best_probeset):
+                probe_attributes = database_region[probe_id]
+
+                probe_attributes["barcode"] = barcodes[region_idx]
+
+                probe_attributes = _get_padlock_probe(probe_attributes)
+                probe_attributes = _get_detection_oligo(probe_attributes)
+
+                database_region[probe_id] = probe_attributes
+
+            oligo_database.database[region] = database_region
+
+        return oligo_database, best_probesets
 
 
 ############################################
@@ -511,6 +768,20 @@ def main():
         n_sets=config["n_sets"],
         distance_between_probes=config["distance_between_probes"],
     )
+
+    probe_database, best_probesets = pipeline.design_final_padlock_sequence(
+        oligo_database=probe_database,
+        min_thymines=config["min_thymines"],
+        U_distance=config["U_distance"],
+        detect_oligo_length_min=config["detect_oligo_length_min"],
+        detect_oligo_length_max=config["detect_oligo_length_max"],
+        detect_oligo_Tm_opt=config["detect_oligo_Tm_opt"],
+        Tm_parameters_detection_oligo=config["Tm_parameters_detection_oligo"],
+        Tm_chem_correction_param_detection_oligo=config["Tm_chem_correction_param_detection_oligo"],
+    )
+
+    print(probe_database)
+    print(best_probesets)
 
     logging.info(f"Oligo sets were saved in {dir_probesets}")
     logging.info("##### End of the pipeline. #####")
