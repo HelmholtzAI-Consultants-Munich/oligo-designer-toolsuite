@@ -90,7 +90,9 @@ class GCOligoScoring(OligoScoringBase):
 class WeightedTmGCOligoScoring(OligoScoringBase):
     """Scoring class that calculates oligo scores based on their melting temperature (Tm) and GC content (GC).
 
-    $score = w_{Tm}\dfrac{|Tm_{opt} - Tm_{oligo}|}{Tm_{max} - Tm_{min}} + w_{GC}\dfrac{|GC_{opt} - GC_{oligo}|}{GC_{max} - GC_{min}}$.
+    $score = 
+    w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] + 
+    w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}]$.
 
     :param Tm_min: Minimum acceptable melting temperature.
     :type Tm_min: float
@@ -201,7 +203,10 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
     """Scoring class that calculates oligo scores based on their melting temperature (Tm), GC content (GC) and isoform consensus (IC).
     The isoform consensus indicated the percentage of the total number of isoforms of the genomic region that are covered by the oligo.
 
-    $score = w_{Tm}\dfrac{|Tm_{opt} - Tm_{oligo}|}{Tm_{max} - Tm_{min}} + w_{GC}\dfrac{|GC_{opt} - GC_{oligo}|}{GC_{max} - GC_{min}} + w_{IC}IC$.
+    $score = 
+    w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] + 
+    w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}] + 
+    w_{IC}IC$.
 
     :param Tm_min: Minimum acceptable melting temperature.
     :type Tm_min: float
