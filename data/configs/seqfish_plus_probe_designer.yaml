@@ -1,0 +1,108 @@
+########################
+### BASIC PARAMETERS ###
+########################
+
+### General parameters
+n_jobs: 2 # number of cores used to run the pipeline
+dir_output: output_seqfish_plus_probe_designer # name of the directory where the output files will be written
+write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
+min_oligos_per_gene: 24 # minimum number of oligos that a gene must have before it gets deleted
+
+
+### Parameters for probe sequences generation
+file_regions: data/genes/custom_2.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+files_fasta_probe_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+probe_length_min: 26 #min length of oligos
+probe_length_max: 30 #max length of oligos
+
+
+### Parameters for the property filers
+# oligo sequence
+GC_content_min: 45 # minimum GC content of oligos
+GC_content_max: 65 # maximum GC content of oligos
+number_consecutive: 5 # min number of not allowed consecutive nucleotides
+
+
+### Parameters for the specificity filters
+# Bowtie Ligation Region filter
+ligation_region_size: 5 #coverage between oligos and target sequence should not span region around ligation site (e.g. ligation_region = 5 would correspond to -4 to +5 nt around ligation site), if ligation_region = 0, omit this requirement
+
+# Blastn Similarity Filter
+word_size: 10 #word size for the blastn x (exact match to target)
+coverage: 50 #minimum coverage between oligos and target sequence, ranging from 0 to 100% (full coverage)
+percent_identity: 80 #maximum similarity between oligos and target sequences, ranging from 0 to 100% (no missmatch)
+strand: plus # strand of the query sequence to search
+
+### Parameters for the oligo efficiency
+# Here also Tm_min, Tm_max, GC_content_min, GC_content_max are used, but have been defined before
+Tm_opt: 60 #60 #optimal melting temperature of oligos
+GC_content_opt: 55 #optimal GC content of oligos
+Tm_weight: 1 # weight of the Tm of the oligo in the efficiency score
+GC_weight: 1 # weight of the GC content of the oligo in the efficiency score
+
+
+### Parameters for the oligosets generation
+oligoset_size: 5 #ideal number of oligos per oligoset
+min_oligoset_size: 2 #minimum number of oligos per oligoset
+n_sets: 100 # maximum number of sets per gene
+
+
+### Parameters for the padlock detection oligo design
+detect_oligo_length_min: 18 # min length of detection oligo
+detect_oligo_length_max: 25 # max length of detection oligo
+detect_oligo_Tm_opt: 32 # optimal melting temperature of detection oligo
+
+
+### Parameters for readout probes design
+num_pseudocolors: 60 # number of pseudocolors
+length_readout: 15 # length of readout probe
+GC_min_readout: 45 # min GC content
+GC_max_readout: 55 # max GC content
+number_consecutive_readout: 5 # min number of not allowed consecutive nucleotides
+
+###########################
+### Advanced PARAMETERS ###
+###########################
+
+### Parameters for Melting Temperature
+# The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
+# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+Tm_parameters:
+    shared:
+        check: True
+        strict: True
+        c_seq: null
+        shift: 0
+        nn_table: DNA_NN3
+        tmm_table: DNA_TMM1
+        imm_table: DNA_IMM1
+        de_table: DNA_DE1
+        dnac1: 50 #[nM]
+        dnac2: 0
+        selfcomp: False
+        dNTPs: 0
+        saltcorr: 7
+    property_filter:
+        Na: 1.25 #[mM]
+        K: 75 #[mM]
+        Tris: 20 #[mM]
+        Mg: 10 #[mM]
+    detection_oligo:
+        Na: 39 #[mM]
+        K: 0 #[mM]
+        Tris: 0 #[mM]
+        Mg: 0 #[mM]
+
+Tm_correction_parameters:
+    shared:
+        DMSO: 0
+        DMSOfactor: 0.75
+        fmdfactor: 0.65
+        fmdmethod: 1
+        GC: null
+    property_filter:
+        fmd: 20
+    detection_oligo:
+        fmd: 30
