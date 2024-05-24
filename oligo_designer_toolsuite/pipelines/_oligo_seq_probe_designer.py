@@ -474,7 +474,8 @@ class OligoSeqProbeDesigner:
         )
 
         return oligo_database
-
+    
+    @filtering_step(step_name="Oligo Selection")
     def create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
@@ -529,12 +530,12 @@ class OligoSeqProbeDesigner:
         :rtype: tuple(OligoDatabase, str, str)
         """
         ##### log parameters #####
-        logging.info("Parameters Oligo Selection:")
-        args, _, _, values = inspect.getargvalues(inspect.currentframe())
-        parameters = {i: values[i] for i in args}
-        log_parameters(parameters)
+        # logging.info("Parameters Oligo Selection:")
+        # args, _, _, values = inspect.getargvalues(inspect.currentframe())
+        # parameters = {i: values[i] for i in args}
+        # log_parameters(parameters)
 
-        num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
+        # num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
         oligos_scoring = WeightedTmGCOligoScoring(
             Tm_min=Tm_min,
@@ -572,10 +573,10 @@ class OligoSeqProbeDesigner:
             file_oligosets = ""
 
         ##### loggig database information #####
-        num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
-        logging.info(
-            f"Step - Filter Oligos by Sequence Efficiency: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
-        )
+        # num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
+        # logging.info(
+        #     f"Step - Filter Oligos by Sequence Efficiency: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
+        # )
 
         return oligo_database, file_database, file_oligosets
 
