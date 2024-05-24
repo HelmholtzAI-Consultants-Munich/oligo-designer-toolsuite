@@ -1,5 +1,5 @@
 ############################################
-# imports
+# Imports
 ############################################
 
 import os
@@ -26,20 +26,20 @@ class BowtieFilter(AlignmentSpecificityFilter):
     """A class that implements specificity filtering using the Bowtie alignment tool to align oligonucleotides against a reference database.
     This class manages Bowtie search parameters and parses the output for specificity analysis.
 
-    Bowtie (1.3 or higher) can be installed via Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie)
-    or via Bioconda (http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
+    Bowtie (1.3 or higher) can be installed via the Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie)
+    or via Bioconda (http://bioconda.github.io/recipes/bowtie/README.html) with:
     ``conda config --add channels conda-forge``
     ``conda config --add channels bioconda``
     ``conda update --all``
     ``conda install "bowtie>=1.3.1"``
 
-    Useful bowtie search parameter:
+    Useful Bowtie search parameters:
     --norc: only report hits on the plus strand
     --nofw: only report hits on the minus strand
     -v <int>: Report alignments with at most <int> mismatches.
-    -n <int>: Maximum number of mismatches permitted in the “seed”, i.e. the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2 or 3 and the default is 2.
-    -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. bowtie is faster for larger values of -l.
-    All available Bowtie search parameters are listed on the Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie).
+    -n <int>: Maximum number of mismatches permitted in the “seed”, i.e., the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2, or 3 and the default is 2.
+    -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. Bowtie is faster for larger values of -l.
+    All available Bowtie search parameters are listed on the Bowtie webpage.
 
     The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available
     refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
@@ -50,9 +50,9 @@ class BowtieFilter(AlignmentSpecificityFilter):
     :type hit_parameters: dict
     :param names_search_output: Column names for parsing Bowtie search output.
     :type names_search_output: list
-    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "bowtie_filter".
+    :param filter_name: Subdirectory path for the output, i.e., <dir_output>/<filter_name>, defaults to "bowtie_filter".
     :type filter_name: str, optional
-    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :param dir_output: Directory for saving intermediate files, defaults to "output".
     :type dir_output: str, optional
     """
 
@@ -105,7 +105,6 @@ class BowtieFilter(AlignmentSpecificityFilter):
             + filename_reference_index
         )
         process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
-
         return filename_reference_index
 
     def _run_search(
@@ -150,7 +149,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             "bowtie --quiet"
             + " -x "
             + file_index
-            + " -f"  # fast file is input
+            + " -f"  # fasta file is input
             + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
             + cmd_parameters
             + " "
@@ -201,15 +200,15 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
     def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
         """
-        Retrieve the references sequences from the search results.
+        Retrieve the reference sequences from the search results.
 
-        :param table_hits: DataFrame with the oligos that match the blast search.
+        :param table_hits: DataFrame with the oligos that match the BLAST search.
         :type table_hits: pd.DataFrame
         :param file_reference: Path to the fasta file used as reference for the search.
         :type file_reference: str
         :param region_id: The identifier for the region within the database to filter.
         :type region_id: str
-        :return: Reference sequences
+        :return: Reference sequences.
         :rtype: list
         """
         required_fields = [
@@ -249,9 +248,9 @@ class BowtieFilter(AlignmentSpecificityFilter):
         os.remove(file_bed)
         return references
 
-    def _add_alignement_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
-        """Adjust the sequences of the oligos and the gaps found by the alignement search.
-        The gapped references and queries are are defined such that nucleotides in the same index are binding.
+    def _add_alignment_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
+        """Adjust the sequences of the oligos and the gaps found by the alignment search.
+        The gapped references and queries are defined such that nucleotides in the same index are binding.
 
         :param table_hits: DataFrame with the oligos that have a match with the query oligo.
         :type table_hits: pandas.DataFrame
@@ -272,22 +271,22 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     """A class that implements specificity filtering using the Bowtie2 alignment tool to align oligonucleotides against a reference database.
     This class manages Bowtie2 search parameters and parses the output for specificity analysis.
 
-    Bowtie2 (2.5 or higher) can be installed via Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2)
-    or via Bioconda (http://bioconda.github.io/recipes/bowtie2/README.html) installation of Bowtie2 with:
+    Bowtie2 (2.5 or higher) can be installed via the Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2)
+    or via Bioconda (http://bioconda.github.io/recipes/bowtie2/README.html) with:
     ``conda config --add channels conda-forge``
     ``conda config --add channels bioconda``
     ``conda update --all``
     ``conda install "bowtie2>=2.5"``
 
-    Useful Bowtie2 search parameter:
+    Useful Bowtie2 search parameters:
     --norc: only report hits on the plus strand
     --nofw: only report hits on the minus strand
-    -N <int>: Sets the number of mismatches to allowed in a seed alignment during multiseed alignment. Can be set to 0 or 1. Setting this higher makes alignment slower (often much slower) but increases sensitivity. Default: 0.
+    -N <int>: Sets the number of mismatches allowed in a seed alignment during multiseed alignment. Can be set to 0 or 1. Setting this higher makes alignment slower (often much slower) but increases sensitivity. Default: 0.
     -L <int>: Sets the length of the seed substrings to align during multiseed alignment. Smaller values make alignment slower but more sensitive. Default: the --sensitive preset is used by default, which sets -L to 22 and 20 in --end-to-end mode and in --local mode.
-    All available Bowtie2 search parameters are listed on the Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2).
+    All available Bowtie2 search parameters are listed on the Bowtie2 webpage.
 
     The hits returned by Bowtie2 can be further filtered using machine learning models. For more information regarding which filters are available
-    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters
+    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
     :param search_parameters: Custom parameters for the Bowtie2 search command.
     :type search_parameters: dict
@@ -295,9 +294,9 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     :type hit_parameters: dict
     :param names_search_output: Column names for parsing Bowtie2 search output.
     :type names_search_output: list
-    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "bowtie2_filter".
+    :param filter_name: Subdirectory path for the output, i.e., <dir_output>/<filter_name>, defaults to "bowtie2_filter".
     :type filter_name: str, optional
-    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :param dir_output: Directory for saving intermediate files, defaults to "output".
     :type dir_output: str, optional
     """
 
@@ -453,5 +452,5 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     def _get_references(self, search_results: pd.DataFrame, file_reference: str, region_id: str):
         raise NotImplementedError("AI filters not supported for Bowtie2.")
 
-    def _add_alignement_gaps(self, search_results: pd.DataFrame, queries: List[Seq], references: List[Seq]):
+    def _add_alignment_gaps(self, search_results: pd.DataFrame, queries: List[Seq], references: List[Seq]):
         raise NotImplementedError("AI filters not supported for Bowtie2.")

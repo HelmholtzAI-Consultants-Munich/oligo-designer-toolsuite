@@ -8,21 +8,22 @@ from pathlib import Path
 from typing import List, Union, get_args
 
 import pandas as pd
-import yaml
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from effidict import LRUDict
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
-from oligo_designer_toolsuite.utils import FastaParser
-from ..utils._checkers import check_if_key_exists, check_if_list, check_tsv_format
-from ..utils._database_processor import (
+from oligo_designer_toolsuite.utils import (
+    FastaParser,
+    check_if_key_exists,
+    check_if_list,
     check_if_region_in_database,
+    check_tsv_format,
     collapse_info_for_duplicated_sequences,
     filter_dabase_for_region,
-    merge_databases,
     format_oligo_info,
+    merge_databases,
 )
 
 ############################################
@@ -391,7 +392,7 @@ class OligoDatabase:
         This function writes the oligo sets to individual TSV files, with each file representing the oligo sets
         for a specific region.
 
-        :param foldername_out: The name of the folder to store the oligo set files, defaults to "sets".
+        :param foldername_out: The name of the folder to store the oligo set files, defaults to "sets_of_oligos".
         :type foldername_out: str, optional
         :return: Path to the folder containing the generated oligo set files.
         :rtype: str

@@ -4,13 +4,13 @@
 
 from typing import Union
 
-from seqfold import dg
 from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq, gc_fraction
+from seqfold import dg
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
-from ..utils._checkers import check_if_key_exists
+from oligo_designer_toolsuite.utils import check_if_key_exists
 
 ############################################
 # Attrubite Calculation Class

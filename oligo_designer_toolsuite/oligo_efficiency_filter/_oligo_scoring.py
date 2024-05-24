@@ -17,7 +17,7 @@ from oligo_designer_toolsuite.database import OligoAttributes
 
 class OligoScoringBase(ABC):
     """Abstract base class for scoring oligonucleotides based on specified criteria.
-    It provides a framework for scoring oligos, with an abstract method `scoring_function` that must be implemented in subclasses.
+    It provides a framework for scoring oligos, with an abstract method `get_score` that must be implemented in subclasses.
     """
 
     def apply(self, oligos: dict, sequence_type: _TYPES_SEQ):
@@ -35,13 +35,13 @@ class OligoScoringBase(ABC):
         oligos_ids = list(oligos.keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)
         for oligo_id in oligos_ids:
-            score = self.scoring_function(oligos[oligo_id][sequence_type])
+            score = self.get_score(oligos[oligo_id][sequence_type])
             oligos[oligo_id]["oligo_score"] = score
             oligos_scores[oligo_id] = score
         return oligos, oligos_scores
 
     @abstractmethod
-    def scoring_function(self, sequence: Seq):
+    def get_score(self, sequence: Seq):
         """Abstract method to compute the score of a given oligonucleotide sequence.
         This method needs to be implemented by all subclasses to define specific scoring logic.
 
@@ -69,7 +69,7 @@ class GCOligoScoring(OligoScoringBase):
         """Constructor for the GCOligoScoring class."""
         self.GC_opt = GC_content_opt
 
-    def scoring_function(self, sequence: Seq):
+    def get_score(self, sequence: Seq):
         """Calculates the GC content score for a given oligonucleotide sequence based
         on its deviation from the optimal GC content.
         Score: the lower the better.
@@ -140,7 +140,7 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         self.GC_weight = GC_weight
         self._generate_scoring_functions()
 
-    def scoring_function(self, sequence: Seq):
+    def get_score(self, sequence: Seq):
         """Calculates the oligo score based on Tm and GC content deviations from their optimal values.
         An error term is added to the GC and Tm scores to normalize both properties and make them comparable for the scoring.
         Score: the lower the better.

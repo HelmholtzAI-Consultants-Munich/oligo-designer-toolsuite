@@ -479,7 +479,7 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         references = self.alignment_filter._get_references(
             table_hits=self.table_hits, file_reference=self.file_reference, region_id=self.region_id
         )
-        gapped_queries, _ = self.alignment_filter._add_alignement_gaps(
+        gapped_queries, _ = self.alignment_filter._add_alignment_gaps(
             table_hits=self.table_hits,
             queries=queries,
             references=references,
@@ -523,7 +523,7 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         references = self.alignment_filter._get_references(
             table_hits=self.table_hits, file_reference=self.file_reference, region_id=self.region_id
         )
-        _, gapped_references = self.alignment_filter._add_alignement_gaps(
+        _, gapped_references = self.alignment_filter._add_alignment_gaps(
             table_hits=self.table_hits,
             queries=queries,
             references=references,
