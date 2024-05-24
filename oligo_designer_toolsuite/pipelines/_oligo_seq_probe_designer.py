@@ -2,54 +2,55 @@
 # imports
 ############################################
 
-import os
-import yaml
 import inspect
 import logging
+import os
 import warnings
-import shutil
-
-from pathlib import Path
 from datetime import datetime
-
+from pathlib import Path
 from typing import List
 
+import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.pipelines._utils import (
-    log_parameters,
-    base_parser,
-    get_oligo_database_info,
-    generation_step,
-    filtering_step,
+from oligo_designer_toolsuite.database import (
+    OligoAttributes,
+    OligoDatabase,
+    ReferenceDatabase,
 )
-from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase, OligoAttributes
+from oligo_designer_toolsuite.oligo_efficiency_filter import (
+    AverageSetScoring,
+    WeightedTmGCOligoScoring,
+)
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
+    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
     SoftMaskedSequenceFilter,
-    HomodimerFilter,
-)
-from oligo_designer_toolsuite.oligo_specificity_filter import (
-    ExactMatchFilter,
-    BlastNFilter,
-    BowtieFilter,
-    CrossHybridizationFilter,
-    HybridizationProbabilityFilter,
-    RemoveByLargerRegionPolicy,
-    SpecificityFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
     OligosetGeneratorIndependentSet,
     heuristic_selection_independent_set,
 )
-from oligo_designer_toolsuite.oligo_efficiency_filter import WeightedTmGCOligoScoring, AverageSetScoring
-
+from oligo_designer_toolsuite.oligo_specificity_filter import (
+    BlastNFilter,
+    BowtieFilter,
+    CrossHybridizationFilter,
+    ExactMatchFilter,
+    HybridizationProbabilityFilter,
+    RemoveByLargerRegionPolicy,
+    SpecificityFilter,
+)
+from oligo_designer_toolsuite.pipelines._utils import (
+    base_parser,
+    get_oligo_database_info,
+    log_parameters,
+)
+from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
 # Oligo-seq Designer Functions
@@ -552,7 +553,7 @@ class OligoSeqProbeDesigner:
             min_oligoset_size=min_oligoset_size,
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
-            heurustic_selection=heuristic_selection_independent_set,
+            heuristic_selection=heuristic_selection_independent_set,
             max_oligos=max_oligos,
             distance_between_oligos=distance_between_oligos,
         )

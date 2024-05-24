@@ -5,8 +5,8 @@
 import os
 import shutil
 import unittest
-import pandas as pd
 
+import pandas as pd
 from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -61,7 +61,6 @@ TM_PARAMETERS_CHEM_CORR = {
 
 
 class TestOverlapMatrix(unittest.TestCase):
-
     def setUp(self):
         oligo_scoring = WeightedTmGCOligoScoring(
             Tm_min=52,
@@ -79,7 +78,7 @@ class TestOverlapMatrix(unittest.TestCase):
             min_oligoset_size=2,
             oligos_scoring=oligo_scoring,
             set_scoring=set_scoring,
-            heurustic_selection=None,
+            heuristic_selection=None,
         )
 
     def test_nonoverlapping_matrix_ovelapping_oligos(self):
@@ -109,7 +108,6 @@ class TestOverlapMatrix(unittest.TestCase):
 
 
 class TestOligoScoring(unittest.TestCase):
-
     def setUp(self):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_selection")
         self.oligo_database = OligoDatabase(
@@ -135,7 +133,7 @@ class TestOligoScoring(unittest.TestCase):
             min_oligoset_size=2,
             oligos_scoring=self.oligo_scoring,
             set_scoring=set_scoring,
-            heurustic_selection=heuristic_selection_independent_set,
+            heuristic_selection=heuristic_selection_independent_set,
         )
 
     def tearDown(self) -> None:

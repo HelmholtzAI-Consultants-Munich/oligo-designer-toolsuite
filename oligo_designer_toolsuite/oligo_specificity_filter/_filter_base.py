@@ -13,7 +13,11 @@ from Bio import Seq
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
-from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite._constants import (
+    _TYPES_SEQ,
+    SEPARATOR_FASTA_HEADER_FIELDS,
+    SEPARATOR_OLIGO_ID,
+)
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 
 ############################################
@@ -44,7 +48,7 @@ class SpecificityFilterBase(ABC):
     def apply(
         self,
         sequence_type: _TYPES_SEQ,
-        database: OligoDatabase,
+        oligo_database: OligoDatabase,
         reference_database: ReferenceDatabase = None,
         n_jobs: int = 1,
     ):
@@ -52,8 +56,8 @@ class SpecificityFilterBase(ABC):
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :param database: The oligo database to which the filter will be applied.
-        :type database: OligoDatabase
+        :param oligo_database: The oligo database to which the filter will be applied.
+        :type oligo_database: OligoDatabase
         :param reference_database: The reference database to compare against for specificity.
             For non-alignment based specificity filter reference_database is not used, i.e. set to None.
         :type reference_database: ReferenceDatabase, optional
@@ -94,7 +98,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         filter_name: str,
         dir_output: str,
     ):
-        """Construnctor for the AlignmentSpecificityFilter class."""
+        """Constructor for the AlignmentSpecificityFilter class."""
         # folder where we write the intermediate files
         self.filter_name = filter_name
         self.dir_output = os.path.abspath(os.path.join(dir_output, self.filter_name))
@@ -111,8 +115,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :param database: The oligo database to which the filter will be applied.
-        :type database: OligoDatabase
+        :param oligo_database: The oligo database to which the filter will be applied.
+        :type oligo_database: OligoDatabase
         :param reference_database: The reference database to compare against for specificity.
         :type reference_database: ReferenceDatabase
         :param n_jobs: The number of parallel jobs to run.
@@ -152,8 +156,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :param database: The oligo database to which the filter will be applied.
-        :type database: OligoDatabase
+        :param oligo_database: The oligo database to which the filter will be applied.
+        :type oligo_database: OligoDatabase
         :param reference_database: The reference database to compare against for specificity.
         :type reference_database: ReferenceDatabase
         :param n_jobs: The number of parallel jobs to run.
@@ -189,15 +193,15 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :param database: The oligo database to which the filter will be applied.
-        :type database: OligoDatabase
+        :param oligo_database: The oligo database to which the filter will be applied.
+        :type oligo_database: OligoDatabase
         :param reference_database: The reference database to compare against for specificity.
         :type reference_database: ReferenceDatabase
-        :param region_ids: Regions for which to genereate the table hits.
+        :param region_ids: Regions for which to generate the table hits.
         :type region_ids: List[str]
         :param n_jobs: The number of parallel jobs to run.
         :type n_jobs: int
-        :return: List of tables containing the all hits. Each table contain the hits of one single region, and the list is ordered by the list region_ids.
+        :return: List of tables containing all hits. Each table contain the hits of one single region, and the list is ordered by the list region_ids.
         :rtype: List[pd.DataFrame]
         """
         options = get_args(_TYPES_SEQ)
@@ -286,8 +290,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :param database: The oligonucleotide database to search against.
-        :type database: OligoDatabase
+        :param oligo_database: The oligonucleotide database to search against.
+        :type oligo_database: OligoDatabase
         :param region_ids: Identifiers for the regions within the database to be searched.
         :type region_ids: str
         :param file_index: Path to the index file of the reference database.
@@ -341,9 +345,9 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         """
 
     def _remove_index(self, file_index: str):
-        """Remove all the temporary index files geenrated by the alignment method.
+        """Remove all the temporary index files generated by the alignment method.
 
-        :param file_index: Path to the index files (the extesion is not specified).
+        :param file_index: Path to the index files (the extension is not specified).
         :type file_index: str
         """
         file_index_basename = os.path.basename(file_index)
@@ -391,7 +395,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         """
 
     @abstractmethod
-    def _add_alignement_gaps(
+    def _add_alignment_gaps(
         self, table_hits: pd.DataFrame, queries: List[Seq.Seq], references: List[Seq.Seq]
     ):
         """Abstract method to add gaps to the references and queries sequences.

@@ -35,10 +35,10 @@ class SetScoringBase(ABC):
 
 
 class LowestSetScoring(SetScoringBase):
-    """Implements the SetScoringBase to score a set of oligonucletides by it's lowest oligo score (dependent on the
+    """Implements the SetScoringBase to score a set of oligonucleotides by its lowest oligo score (dependent on the
     meaning of the score). In case of ties, the sum of all oligo scores in the set is provided as well.
 
-    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depens on the meaning of the score.
+    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
     :type ascending: bool
     """
 
@@ -76,7 +76,7 @@ class AverageSetScoring(SetScoringBase):
     """Implements the SetScoringBase to score a set of oligonucletides by the average of all oligo scores in the set.
     In case of ties, lowest oligo score (dependent on the meaning of the score) of the set is provided as well.
 
-    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depens on the meaning of the score.
+    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
     :type ascending: bool
     """
 

@@ -3,12 +3,13 @@
 ############################################
 
 import unittest
-from pandas import Series
 
 from Bio.SeqUtils import MeltingTemp as mt
+from pandas import Series
 
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
+    GCOligoScoring,
     LowestSetScoring,
     GCOligoScoring,
     WeightedTmGCOligoScoring,
@@ -45,7 +46,6 @@ TM_PARAMETERS = {
 
 
 class TestOligoScoring(unittest.TestCase):
-
     def setUp(self):
         self.score_gc = GCOligoScoring(GC_content_opt=43.75)
         self.score_weighted_gc_tm = WeightedTmGCOligoScoring(
@@ -97,7 +97,6 @@ class TestOligoScoring(unittest.TestCase):
 
 
 class TestSetScoring(unittest.TestCase):
-
     def setUp(self):
         self.score_max_sum = LowestSetScoring()
         self.score_ave_max = AverageSetScoring()

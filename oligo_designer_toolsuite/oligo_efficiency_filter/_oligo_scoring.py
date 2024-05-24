@@ -17,7 +17,7 @@ from oligo_designer_toolsuite.database import OligoAttributes
 
 class OligoScoringBase(ABC):
     """Abstract base class for scoring oligonucleotides based on specified criteria.
-    It provides a framework for scoring oligos, with an abstract method `scoring_function` that must be implemented in subclasses.
+    It provides a framework for scoring oligos, with an abstract method `get_score` that must be implemented in subclasses.
     """
 
     def apply(self, oligos: dict, sequence_type: _TYPES_SEQ):

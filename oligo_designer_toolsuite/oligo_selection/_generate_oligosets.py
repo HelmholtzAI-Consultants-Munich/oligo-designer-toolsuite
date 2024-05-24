@@ -3,17 +3,20 @@
 ############################################
 
 import gc
-import pandas as pd
-import networkx as nx
-
 from typing import Callable
+
+import networkx as nx
+import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 from scipy.sparse import lil_matrix
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.oligo_efficiency_filter import OligoScoringBase, SetScoringBase
+from oligo_designer_toolsuite.oligo_efficiency_filter import (
+    OligoScoringBase,
+    SetScoringBase,
+)
 
 ############################################
 # Oligo set Generation Classes
@@ -46,7 +49,7 @@ class OligosetGeneratorIndependentSet:
         min_oligoset_size: int,
         oligos_scoring: OligoScoringBase,
         set_scoring: SetScoringBase,
-        heurustic_selection: Callable = None,
+        heuristic_selection: Callable = None,
         distance_between_oligos: int = 0,
         max_oligos: int = 5000,
     ) -> None:
@@ -54,7 +57,7 @@ class OligosetGeneratorIndependentSet:
 
         self.opt_oligoset_size = opt_oligoset_size
         self.min_oligoset_size = min_oligoset_size
-        self.heurustic_selection = heurustic_selection
+        self.heuristic_selection = heuristic_selection
         self.oligos_scoring = oligos_scoring
         self.set_scoring = set_scoring
         self.distance_between_oligos = distance_between_oligos
@@ -64,9 +67,11 @@ class OligosetGeneratorIndependentSet:
     def apply(
         self, oligo_database: OligoDatabase, sequence_type: _TYPES_SEQ, n_sets: int = 50, n_jobs: int = 1
     ):
-        """Applies the oligo set generation process to an entire oligo database and returns updated database with selected best `n_sets` oligo sets.
-        Oligosets are stores in the class attruibute `oligosets`, which is a dictionary with regions names as keys oligoset dataframe as values.
-        The strucutre of the pandas.DataFrame is the following:
+        """
+        Applies the oligo set generation process to an entire oligo database and returns updated database with selected best `n_sets` oligo sets.
+        Oligosets are stored in the class attribute `oligosets`, which is a dictionary with region names as keys and oligoset dataframes as values.
+        The structure of the pandas.DataFrame is the following:
+
 
         +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
         | oligoset_id | oligo_0  | oligo_1  | oligo_2  |  ...  | oligo_n  | set_score_1 | set_score_2 |  ...  |
@@ -261,9 +266,9 @@ class OligosetGeneratorIndependentSet:
 
         # if we have an heuristic apply it
         heuristic_oligoset = None
-        if self.heurustic_selection is not None and n == self.opt_oligoset_size:
+        if self.heuristic_selection is not None and n == self.opt_oligoset_size:
             # apply the heuristic
-            database_region, oligos_scores, heuristic_set = self.heurustic_selection(
+            database_region, oligos_scores, heuristic_set = self.heuristic_selection(
                 database_region, oligos_scores, overlapping_matrix, n, self.ascending
             )
             heuristic_oligoset = self.set_scoring.apply(
