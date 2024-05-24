@@ -7,6 +7,7 @@ import pandas as pd
 
 from typing import List, get_args
 from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
@@ -71,17 +72,18 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        table_hits = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_filter)(
-                sequence_type=sequence_type,
-                region_id=region_id,
-                oligo_database=oligo_database,
-                search_results=search_results,
-                sequence_oligoids_mapping=sequence_oligoids_mapping,
-                consider_hits_from_input_region=False,
+        with joblib_progress(description="Exact Matches", total = len(region_ids)):
+            table_hits = Parallel(n_jobs=n_jobs)(
+                delayed(self._run_filter)(
+                    sequence_type=sequence_type,
+                    region_id=region_id,
+                    oligo_database=oligo_database,
+                    search_results=search_results,
+                    sequence_oligoids_mapping=sequence_oligoids_mapping,
+                    consider_hits_from_input_region=False,
+                )
+                for region_id in region_ids
             )
-            for region_id in region_ids
-        )
 
         table_hits = pd.concat(table_hits, ignore_index=True)
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
@@ -134,17 +136,18 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        table_hits = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_filter)(
-                sequence_type=sequence_type,
-                region_id=region_id,
-                oligo_database=oligo_database,
-                search_results=search_results,
-                sequence_oligoids_mapping=sequence_oligoids_mapping,
-                consider_hits_from_input_region=True,
+        with joblib_progress(description="Exact Matches", total = len(region_ids)):
+            table_hits = Parallel(n_jobs=n_jobs)(
+                delayed(self._run_filter)(
+                    sequence_type=sequence_type,
+                    region_id=region_id,
+                    oligo_database=oligo_database,
+                    search_results=search_results,
+                    sequence_oligoids_mapping=sequence_oligoids_mapping,
+                    consider_hits_from_input_region=True,
+                )
+                for region_id in region_ids
             )
-            for region_id in region_ids
-        )
 
         # Process results
         table_hits = pd.concat(table_hits, ignore_index=True)

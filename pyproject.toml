@@ -46,6 +46,7 @@ dependencies = [
   "argparse",
   "numpy",
   "pandas",
+  "scipy",
   "iteration_utilities",
   "Bio",
   "pyyaml",
@@ -53,6 +54,7 @@ dependencies = [
   "joblib",
   "seqfold",
   "effidict",
+  "joblib_progress",
   "oligo-designer-toolsuite-ai-filters",
 ]
 

@@ -11,6 +11,7 @@ from typing import List, Union, get_args
 import pandas as pd
 from Bio import Seq
 from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite._constants import (
     _TYPES_SEQ,
@@ -212,16 +213,17 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         file_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
         # Run search for each region in parallel
-        table_hits = Parallel(n_jobs=n_jobs)(
-            delayed(self._run_filter)(
-                sequence_type=sequence_type,
-                region_id=region_id,
-                oligo_database=oligo_database,
-                file_index=file_index,
-                consider_hits_from_input_region=True,
+        with joblib_progress(description=self.filter_name, total=len(region_ids)):
+            table_hits = Parallel(n_jobs=n_jobs)(
+                delayed(self._run_filter)(
+                    sequence_type=sequence_type,
+                    region_id=region_id,
+                    oligo_database=oligo_database,
+                    file_index=file_index,
+                    consider_hits_from_input_region=True,
+                )
+                for region_id in region_ids
             )
-            for region_id in region_ids
-        )
         os.remove(file_reference)
         self._remove_index(file_index)
         return table_hits

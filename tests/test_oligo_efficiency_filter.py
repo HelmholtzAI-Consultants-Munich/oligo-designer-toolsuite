@@ -11,6 +11,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
     GCOligoScoring,
     LowestSetScoring,
+    WeightedIsoformTmGCOligoScoring,
     WeightedTmGCOligoScoring,
 )
 
@@ -55,16 +56,43 @@ class TestOligoScoring(unittest.TestCase):
             GC_content_max=75,
             Tm_parameters=TM_PARAMETERS,
         )
+        self.score_weighted_isoform_gc_tm = WeightedIsoformTmGCOligoScoring(
+            Tm_min=50,
+            Tm_opt=65,
+            Tm_max=70,
+            GC_content_min=25,
+            GC_content_opt=50,
+            GC_content_max=75,
+            Tm_parameters=TM_PARAMETERS,
+        )
 
-        self.oligo = "TATTTCGGGCATGCAT"
+        # in this test case we test for one oligos sequence that is found at two different sites in one genomic region
+        # one site covers two transcripts and the other site only one transcript (which is already covered by the first site)
+        # hence with 4 transcripts in total we should get an isoform consensus of 0.5
+        self.oligo_attributes = {
+            "oligo": "TATTTCGGGCATGCAT",
+            "transcript_id": [["tr1"], ["tr1", "tr3"]],
+            "number_transcripts": [[4], [4]],
+        }
+        self.sequence_type = "oligo"
 
     def test_GC_score(self):
-        oligo_score = self.score_gc.get_score(self.oligo)
+        oligo_score = self.score_gc.get_score(
+            oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
+        )
         assert oligo_score == 0, "GC score failed!"
 
     def test_weighted_GC_Tm_score(self):
-        oligo_score = self.score_weighted_gc_tm.get_score(self.oligo)
+        oligo_score = self.score_weighted_gc_tm.get_score(
+            oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
+        )
         assert abs(oligo_score - 0.74666) < 1e-5, "Weighted GC-Tm score failed!"
+
+    def test_weighted_isoform_GC_Tm_score(self):
+        oligo_score = self.score_weighted_isoform_gc_tm.get_score(
+            oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
+        )
+        assert abs(oligo_score - 1.74666) < 1e-5, "Weighted GC-Tm score failed!"
 
 
 class TestSetScoring(unittest.TestCase):

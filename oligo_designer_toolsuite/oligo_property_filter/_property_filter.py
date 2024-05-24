@@ -6,6 +6,7 @@ from typing import get_args
 
 from effidict import LRUDict
 from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -53,9 +54,10 @@ class PropertyFilter:
 
         database = oligo_database.database
         region_ids = list(database.keys())
-        database_regions = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_region)(sequence_type, database[region]) for region in region_ids
-        )
+        with joblib_progress(description="Property Filter", total = len(region_ids)):
+            database_regions = Parallel(n_jobs=n_jobs)(
+                delayed(self._filter_region)(sequence_type, database[region]) for region in region_ids
+            )
 
         database = LRUDict(
             max_in_memory=oligo_database.lru_db_max_in_memory,

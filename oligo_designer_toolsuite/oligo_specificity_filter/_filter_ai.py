@@ -2,10 +2,12 @@
 # imports
 ############################################
 
+import logging
 import os
 
 import pandas as pd
 from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
@@ -99,16 +101,17 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         file_reference = reference_database.write_database_to_fasta(
             filename=f"db_reference_{self.filter_name}"
         )  # defined in advance to avoid writing the file multiple times
-        table_hits = Parallel(n_jobs=n_jobs)(
-            delayed(self._filter_table_hits)(
-                sequence_type=sequence_type,
-                table_hits=table_hits_region,
-                oligo_database=oligo_database,
-                file_reference=file_reference,
-                region_id=region_id,
+        with joblib_progress(description="Hybridization Probability", total=len(region_ids)):
+            table_hits = Parallel(n_jobs=n_jobs)(
+                delayed(self._filter_table_hits)(
+                    sequence_type=sequence_type,
+                    table_hits=table_hits_region,
+                    oligo_database=oligo_database,
+                    file_reference=file_reference,
+                    region_id=region_id,
+                )
+                for table_hits_region, region_id in zip(table_hits, region_ids)
             )
-            for table_hits_region, region_id in zip(table_hits, region_ids)
-        )
 
         # filter the oligo database
         for region_id, table_hits_region in zip(region_ids, table_hits):
@@ -167,8 +170,11 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         )
 
         # filter the database, keep only the oligos above the threshold
+        len_1 = len(table_hits)
         table_hits = table_hits[predictions >= self.threshold]
-
+        logging.info(
+            f"In {region_id}: AI filter removed{len_1 - len(table_hits)} hits out of {len_1} total hits"
+        )
         return table_hits
 
     def overwrite_output_format(self):

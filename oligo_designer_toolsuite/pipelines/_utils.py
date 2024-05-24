@@ -91,7 +91,13 @@ def get_oligo_length_min_max_from_database(oligo_database: dict):
 
     return oligo_length_min, oligo_length_max
 
-def generation_step(step_name):
+def generation_step(step_name: str):
+    """Decorator function to log the input parameter of a general generative step (where an oligo database is created) of any pipeline and the information of the database generated. 
+    This decorator requires that the first returned value of the function is the oligo database.
+
+    :param step_name: Name identifying the step.
+    :type step_name: str.
+    """
     def decorator(function):
         def wrapper(*args, **kwargs):
             ##### log parameters #####
@@ -113,10 +119,17 @@ def generation_step(step_name):
     return decorator
 
 def filtering_step(step_name):
+    """Decorator function to log the input parameter of a general filtering step (where an oligo database is filtered) of any pipeline and the information of the changes applied to the database. 
+    This decorator requires that the first returned value of the function is the oligo database.
+
+    :param step_name: Name identifying the step.
+    :type step_name: str.
+    """
     def decorator(function):
-        def wrapper(oligo_database: OligoDatabase, *args, **kwargs):
+        def wrapper(*args, **kwargs):
 
             ##### log parameters #####
+            oligo_database = kwargs["oligo_database"]
             logging.info(f"Parameters {step_name}:")
             arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
             parameters = {i: values[i] for i in arguments}
@@ -125,7 +138,7 @@ def filtering_step(step_name):
             num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
             #### call the function
-            oligo_database, *returned_values = function(oligo_database, *args, **kwargs)
+            oligo_database, *returned_values = function(*args, **kwargs)
 
             ##### loggig database information #####
             num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)

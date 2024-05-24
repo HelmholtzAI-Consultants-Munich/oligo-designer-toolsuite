@@ -116,6 +116,7 @@ class OligoAttributes:
         """
         # number transcripts is the number of transcripts of a genomic region
         # hence, all values have to be the same for each transcript coming from the same oligo
+        # since only oligos from the same genomic region are merged into one entry
         number_transcripts = int([item for sublist in number_transcripts for item in sublist][0])
         num_targeted_transcripts = len(
             set(

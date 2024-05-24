@@ -3,14 +3,20 @@ This module provides different evaluation strategies for oligonucleotides and th
 
 Classes:
 - OligoScoringBase: This abstract base class provides a template for implementing scoring mechanisms that evaluate the efficiency of oligonucleotides based on specific criteria.
-- WeightedTmGCOligoScoring: A class that scores oligos by calculating a weighted score based on their melting temperature (Tm) and GC content, allowing for optimal oligo design based on thermal stability and nucleotide composition.
-- GCOligoScoring: This class scores oligonucleotides based purely on their GC content wrt. certain GC content ranges.
+- GCOligoScoring: A class for scoring oligos considering the distance of the oligos GC content to an optimal user-defined GC content.
+- WeightedTmGCOligoScoring: A class for scoring oligos considering melting temperature (Tm), and GC content, with customizable weights for each factor.
+- WeightedIsoformTmGCOligoScoring: A class for scoring oligos considering isoform consensus, melting temperature (Tm), and GC content, with customizable weights for each factor.
 - SetScoringBase: An abstract base class designed for scoring sets of oligonucleotides, facilitating the selection of optimal oligo sets based on collective properties.
 - LowestSetScoring: A scoring strategy that selects sets of oligonucleotides by scoring the set by it's lowest oligo score, or in case of ties by the sum all oligo scores within the set.
 - AverageSetScoring: A scoring strategy that selects sets of oligonucleotides by scoring the set by the average of all oligo scores within the set, or in case of ties by the lowest oligo score.
 """
 
-from ._oligo_scoring import OligoScoringBase, WeightedTmGCOligoScoring, GCOligoScoring
+from ._oligo_scoring import (
+    OligoScoringBase,
+    GCOligoScoring,
+    WeightedTmGCOligoScoring,
+    WeightedIsoformTmGCOligoScoring,
+)
 from ._set_scoring import (
     SetScoringBase,
     LowestSetScoring,
@@ -19,8 +25,9 @@ from ._set_scoring import (
 
 __all__ = [
     "OligoScoringBase",
-    "WeightedTmGCOligoScoring",
     "GCOligoScoring",
+    "WeightedTmGCOligoScoring",
+    "WeightedIsoformTmGCOligoScoring",
     "SetScoringBase",
     "LowestSetScoring",
     "AverageSetScoring",
