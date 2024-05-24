@@ -91,7 +91,13 @@ def get_oligo_length_min_max_from_database(oligo_database: dict):
 
     return oligo_length_min, oligo_length_max
 
-def generation_step(step_name):
+def generation_step(step_name: str):
+    """Decorator function to log the input parameter of a general generative step (where an oligo database is created) of any pipeline and the information of the database generated. 
+    This decorator requires that the first returned value of the function is the oligo database.
+
+    :param step_name: Name identifying the step.
+    :type step_name: str.
+    """
     def decorator(function):
         def wrapper(*args, **kwargs):
             ##### log parameters #####
@@ -113,6 +119,12 @@ def generation_step(step_name):
     return decorator
 
 def filtering_step(step_name):
+    """Decorator function to log the input parameter of a general filtering step (where an oligo database is filtered) of any pipeline and the information of the changes applied to the database. 
+    This decorator requires that the first returned value of the function is the oligo database.
+
+    :param step_name: Name identifying the step.
+    :type step_name: str.
+    """
     def decorator(function):
         def wrapper(*args, **kwargs):
 
