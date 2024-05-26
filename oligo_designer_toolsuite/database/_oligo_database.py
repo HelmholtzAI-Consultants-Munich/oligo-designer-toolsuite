@@ -461,7 +461,7 @@ class OligoDatabase:
         with open(os.path.join(dir_yaml, filename), "w") as handle:
             yaml.dump(yaml_dict, handle, default_flow_style=False, sort_keys=False)
 
-    def write_oligosets(self, foldername_out: str = "sets_of_oligos"):
+    def write_oligosets_to_table(self, foldername_out: str = "sets_of_oligos"):
         """Write oligo sets to individual TSV files.
 
         This function writes the oligo sets to individual TSV files, with each file representing the oligo sets
