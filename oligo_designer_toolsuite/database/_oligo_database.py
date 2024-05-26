@@ -385,6 +385,82 @@ class OligoDatabase:
 
         return file_fasta
 
+    def write_oligosets_to_yaml(
+        self,
+        attributes: list[str],
+        top_n_sets: int,
+        ascending: bool,
+        filename: str = "oligos",
+        region_ids: list[str] = None,
+    ):
+        dir_output_components = self.dir_output.split(os.sep)
+        dir_yaml = os.path.join(os.sep.join(dir_output_components[:-1]))
+
+        if region_ids:
+            region_ids = check_if_list(region_ids)
+        else:
+            region_ids = self.database.keys()
+
+        yaml_dict = {region: {} for region in region_ids}
+
+        for region_id, oligo_dict in self.database.items():
+            if region_id in region_ids:
+                oligosets_region = self.oligosets[region_id]
+                oligosets_oligo_columns = [
+                    col for col in oligosets_region.columns if col.startswith("oligo_")
+                ]
+                oligosets_score_columns = [
+                    col for col in oligosets_region.columns if col.startswith("set_score_")
+                ]
+
+                oligosets_region.sort_values(oligosets_score_columns, ascending=ascending)
+                oligosets_region_oligos = oligosets_region.loc[range(top_n_sets), oligosets_oligo_columns]
+                oligosets_region_scores = oligosets_region.loc[range(top_n_sets), oligosets_score_columns]
+
+                # iterate through all oligo sets
+                for oligoset_idx, oligoset in oligosets_region_oligos.iterrows():
+                    oligoset_id = f"{region_id}_oligoset_{oligoset_idx + 1}"
+
+                    yaml_dict[region_id][oligoset_id] = {
+                        "region_id": region_id,
+                        "oligo_score": oligosets_region_scores.iloc[oligoset_idx].to_dict(),
+                    }
+
+                    # iterate through all oligos in the set
+                    for oligo_idx, oligo_id in enumerate(oligoset):
+                        yaml_dict_oligo_entry = {"oligo_id": oligo_id}
+
+                        # iterate through all attributes that should be written
+                        for attribute in attributes:
+                            if attribute in oligo_dict[oligo_id]:
+                                oligo_attribute = check_if_list(oligo_dict[oligo_id][attribute])
+                                if len(oligo_attribute) == 1:
+                                    oligo_attribute = check_if_list(oligo_attribute[0])
+                                    if len(oligo_attribute) == 1:
+                                        oligo_attribute = oligo_attribute[0]
+                                        yaml_dict_oligo_entry[attribute] = str(oligo_attribute)
+                                    else:
+                                        yaml_dict_oligo_entry[attribute] = ",".join(map(str, oligo_attribute))
+                                else:
+                                    oligo_attribute_entry_list = []
+                                    for oligo_attribute_entry in oligo_attribute:
+                                        oligo_attribute_entry = check_if_list(oligo_attribute[0])
+                                        if len(oligo_attribute_entry) == 1:
+                                            oligo_attribute_entry_list.append(oligo_attribute_entry[0])
+                                        else:
+                                            oligo_attribute_entry_list.append(
+                                                ",".join(map(str, oligo_attribute_entry))
+                                            )
+                                    yaml_dict_oligo_entry[attribute] = ";".join(
+                                        map(str, oligo_attribute_entry_list)
+                                    )
+
+                        oligo_id_yaml = f"{region_id}_oligo{oligo_idx + 1}"
+                        yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
+
+        with open(os.path.join(dir_yaml, filename), "w") as handle:
+            yaml.dump(yaml_dict, handle, default_flow_style=False, sort_keys=False)
+
     def write_oligosets(self, foldername_out: str = "sets_of_oligos"):
         """Write oligo sets to individual TSV files.
 
