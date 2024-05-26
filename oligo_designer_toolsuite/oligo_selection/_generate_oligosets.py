@@ -36,8 +36,6 @@ class OligosetGeneratorIndependentSet:
     :param heurustic_selection: A callable for heuristic selection of oligo sets, default is None.
     :type heurustic_selection: Callable, optional
     :param distance_between_oligos: Distance between neighboring oligos, e.g. -x: oligos overlap x bases; 0: oligos can be next to each other; +x: oligos are x bases apart
-    :param ascending: Determines if the scoring should sort in ascending order dependent on meaning of scores, defaults to True.
-    :type ascending: bool
     :param max_oligos: Maximum number of oligos to consider in the generation process, defaults to 5000.
     :type max_oligos: int
     """
@@ -50,7 +48,6 @@ class OligosetGeneratorIndependentSet:
         set_scoring: SetScoringBase,
         heurustic_selection: Callable = None,
         distance_between_oligos: int = 0,
-        ascending: bool = True,
         max_oligos: int = 5000,
     ) -> None:
         """Constructor for the OligosetGenerator class."""
@@ -61,7 +58,7 @@ class OligosetGeneratorIndependentSet:
         self.oligos_scoring = oligos_scoring
         self.set_scoring = set_scoring
         self.distance_between_oligos = distance_between_oligos
-        self.ascending = ascending
+        self.ascending = set_scoring.ascending
         self.max_oligos = max_oligos
 
     def apply(
@@ -91,7 +88,7 @@ class OligosetGeneratorIndependentSet:
         """
         regions = list(oligo_database.database.keys())
         # get the oligo set for this region in parallel
-        with joblib_progress(description="Find Oligosets", total = len(regions)):
+        with joblib_progress(description="Find Oligosets", total=len(regions)):
             database_regions = Parallel(n_jobs=n_jobs)(  # there should be an explicit return
                 delayed(self._get_oligo_set_for_gene)(oligo_database.database[region], sequence_type, n_sets)
                 for region in regions
