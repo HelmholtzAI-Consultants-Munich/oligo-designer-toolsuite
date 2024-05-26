@@ -3,7 +3,7 @@
 #######################
 
 ### General parameters
-n_jobs: 2 # number of cores used to run the pipeline
+n_jobs: 4 # number of cores used to run the pipeline
 dir_output: output_scrinshot_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
 
@@ -48,12 +48,14 @@ probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
 probeset_size_min: 3 # minimum size of probe sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
 probeset_size_opt: 5 # optimal size of probe sets
 distance_between_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
-n_sets: 100 # Maximum number of sets to report
+n_sets: 100 # maximum number of sets to generate
+top_n_sets: 3 #maximum number of sets to report in "padlock_probes_order.yaml"
 
 ### Parameters for the padlock detection probe design
 min_thymines: 2 # minimal number of Thymines in detection oligo.
+U_distance: 5 # preferred minimal distance between U(racils)
 detect_oligo_length_min: 15 # minimum length of detection probe
-detect_oligo_length_max: 45 # maximum length of detection probe
+detect_oligo_length_max: 40 # maximum length of detection probe
 detect_oligo_Tm_opt: 56 # optimal melting temperature of detection probe
 
 
