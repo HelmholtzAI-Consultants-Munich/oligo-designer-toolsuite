@@ -392,7 +392,7 @@ class ScrinshotProbeDesigner:
         # write the intermediate result in a file
         if self.write_intermediate_steps:
             file_database = oligo_database.save_database(filename="4_db_probes_probesets")
-            file_probesets = oligo_database.write_oligosets()
+            file_probesets = oligo_database.write_oligosets_to_table()
         else:
             file_database = ""
             file_probesets = ""
