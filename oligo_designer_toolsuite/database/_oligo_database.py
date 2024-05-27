@@ -434,27 +434,35 @@ class OligoDatabase:
                         # iterate through all attributes that should be written
                         for attribute in attributes:
                             if attribute in oligo_dict[oligo_id]:
-                                oligo_attribute = check_if_list(oligo_dict[oligo_id][attribute])
-                                if len(oligo_attribute) == 1:
-                                    oligo_attribute = check_if_list(oligo_attribute[0])
-                                    if len(oligo_attribute) == 1:
-                                        oligo_attribute = oligo_attribute[0]
-                                        yaml_dict_oligo_entry[attribute] = str(oligo_attribute)
-                                    else:
-                                        yaml_dict_oligo_entry[attribute] = ",".join(map(str, oligo_attribute))
-                                else:
-                                    oligo_attribute_entry_list = []
-                                    for oligo_attribute_entry in oligo_attribute:
-                                        oligo_attribute_entry = check_if_list(oligo_attribute[0])
-                                        if len(oligo_attribute_entry) == 1:
-                                            oligo_attribute_entry_list.append(oligo_attribute_entry[0])
-                                        else:
-                                            oligo_attribute_entry_list.append(
-                                                ",".join(map(str, oligo_attribute_entry))
-                                            )
-                                    yaml_dict_oligo_entry[attribute] = ";".join(
-                                        map(str, oligo_attribute_entry_list)
-                                    )
+                                yaml_dict_oligo_entry[attribute] = (
+                                    str(oligo_dict[oligo_id][attribute])
+                                    .replace("'", "")
+                                    .replace("[[", "[")
+                                    .replace("]]", "]")
+                                )
+                                print(str(oligo_dict[oligo_id][attribute]))
+                                print(yaml_dict_oligo_entry[attribute])
+                                # oligo_attribute = check_if_list(oligo_dict[oligo_id][attribute])
+                                # if len(oligo_attribute) == 1:
+                                #     oligo_attribute = check_if_list(oligo_attribute[0])
+                                #     if len(oligo_attribute) == 1:
+                                #         oligo_attribute = oligo_attribute[0]
+                                #         yaml_dict_oligo_entry[attribute] = str(oligo_attribute)
+                                #     else:
+                                #         yaml_dict_oligo_entry[attribute] = ",".join(map(str, oligo_attribute))
+                                # else:
+                                #     oligo_attribute_entry_list = []
+                                #     for oligo_attribute_entry in oligo_attribute:
+                                #         oligo_attribute_entry = check_if_list(oligo_attribute[0])
+                                #         if len(oligo_attribute_entry) == 1:
+                                #             oligo_attribute_entry_list.append(oligo_attribute_entry[0])
+                                #         else:
+                                #             oligo_attribute_entry_list.append(
+                                #                 ",".join(map(str, oligo_attribute_entry))
+                                #             )
+                                #     yaml_dict_oligo_entry[attribute] = ";".join(
+                                #         map(str, oligo_attribute_entry_list)
+                                #     )
 
                         oligo_id_yaml = f"{region_id}_oligo{oligo_idx + 1}"
                         yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
