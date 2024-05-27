@@ -8,7 +8,7 @@ dir_output: output_oligo_seq_probe_designer # name of the directory where the ou
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
 
 ### Parameters for oligo sequences generation
-file_regions: data/genes/custom_2.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 files_fasta_oligo_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna

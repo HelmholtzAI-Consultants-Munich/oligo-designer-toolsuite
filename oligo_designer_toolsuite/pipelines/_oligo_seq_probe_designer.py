@@ -47,8 +47,8 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
-    get_oligo_database_info,
-    log_parameters,
+    filtering_step,
+    generation_step,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
@@ -330,20 +330,22 @@ class OligoSeqProbeDesigner:
         :rtype: (OligoDatabase, str)
         """
 
-        def _get_alignment_method(alignment_method, search_parameters, hit_parameters, filter_name_specification :str = ""):
+        def _get_alignment_method(
+            alignment_method, search_parameters, hit_parameters, filter_name_specification: str = ""
+        ):
             if alignment_method == "blastn":
                 return BlastNFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
-                    filter_name="blast_" + filter_name_specification
+                    filter_name="blast_" + filter_name_specification,
                 )
             elif alignment_method == "bowtie":
                 return BowtieFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
-                    filter_name="bowtie_" + filter_name_specification
+                    filter_name="bowtie_" + filter_name_specification,
                 )
             else:
                 raise ValueError(f"The alignment method {alignment_method} is not supported.")
@@ -373,7 +375,7 @@ class OligoSeqProbeDesigner:
             alignment_method=cross_hybridization_alignment_method,
             search_parameters=cross_hybridization_search_parameters,
             hit_parameters=cross_hybridization_hit_parameters,
-            filter_name_specification="cross_hybr"
+            filter_name_specification="cross_hybr",
         )
         cross_hybridization_policy = RemoveByLargerRegionPolicy()
         cross_hybridization = CrossHybridizationFilter(
@@ -387,7 +389,7 @@ class OligoSeqProbeDesigner:
             alignment_method=hybridization_probability_alignment_method,
             search_parameters=hybridization_probability_search_parameters,
             hit_parameters=hybridization_probability_hit_parameters,
-            filter_name_specification="hybr_prob"
+            filter_name_specification="hybr_prob",
         )
         hybridization_probability = HybridizationProbabilityFilter(
             alignment_method=hybridization_probability_aligner,
@@ -475,7 +477,7 @@ class OligoSeqProbeDesigner:
         )
 
         return oligo_database
-    
+
     @filtering_step(step_name="Oligo Selection")
     def create_oligo_sets(
         self,
@@ -625,10 +627,10 @@ def main():
 
     ##### filter oligos by property #####
     oligo_database, file_database = pipeline.filter_by_property(
-        oligo_database=oligo_database,
-        GC_content_min=config["GC_content_min"],
-        GC_content_max=config["GC_content_max"],
-        Tm_min=config["Tm_min"],
+        oligo_database,
+        config["GC_content_min"],
+        config["GC_content_max"],
+        config["Tm_min"],
         Tm_max=config["Tm_max"],
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
