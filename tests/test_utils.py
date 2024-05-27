@@ -11,6 +11,9 @@ from effidict import LRUDict
 from oligo_designer_toolsuite.utils import (
     FastaParser,
     GffParser,
+)
+
+from oligo_designer_toolsuite.utils._checkers import (
     check_if_dna_sequence,
     check_if_key_exists,
     check_if_list,
@@ -21,6 +24,11 @@ from oligo_designer_toolsuite.utils import (
 # Global Parameters
 ############################################
 
+FILE_GFF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
+FILE_GTF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+FILE_FASTA = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+FILE_TSV = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
+FILE_PICKLE = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16_gtf.pickle"
 
 ############################################
 # Tests
@@ -30,62 +38,54 @@ from oligo_designer_toolsuite.utils import (
 class TestGffParser(unittest.TestCase):
     def setUp(self):
         self.parser = GffParser()
-        self.gff_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
-        self.gtf_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
-        self.pickle_file = "data/tests/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16_gtf.pickle"
 
     def test_check_gff_format(self):
         """Test parsing GFF annotation data."""
         try:
-            self.parser.check_gff_format(self.gff_file)
+            self.parser.check_gff_format(FILE_GFF)
         except Exception as e:
-            assert (
-                False
-            ), f"error: checker: check_gff_format raised an exception: {e}, with file {self.gff_file}"
+            assert False, f"error: checker: check_gff_format raised an exception: {e}, with file {FILE_GFF}"
 
     def test_check_gtf_format(self):
         """Test parsing GTF annotation data."""
         try:
-            self.parser.check_gff_format(self.gtf_file)
+            self.parser.check_gff_format(FILE_GTF)
         except Exception as e:
-            assert (
-                False
-            ), f"error: checker: check_gff_format raised an exception: {e}, with file {self.gtf_file}"
+            assert False, f"error: checker: check_gff_format raised an exception: {e}, with file {FILE_GTF}"
 
     def test_parse_annotation_from_gff(self):
         """Test parsing GFF annotation."""
-        result = self.parser.parse_annotation_from_gff(self.gff_file, target_lines=10)
+        result = self.parser.parse_annotation_from_gff(FILE_GFF, target_lines=10)
         assert result.shape[1] == 23, "error: GFF3 dataframe not correctly loaded"
 
     def test_parse_annotation_from_gtf(self):
         """Test parsing GTF annotation."""
-        result = self.parser.parse_annotation_from_gff(self.gtf_file, target_lines=10)
+        result = self.parser.parse_annotation_from_gff(FILE_GTF, target_lines=10)
         assert result.shape[1] == 20, "error: GTF dataframe not correctly loaded"
 
     def test_load_annotation_from_pickle_file(self):
         """Test loading annotation from a pickle file."""
-        result = self.parser.load_annotation_from_pickle(self.pickle_file)
+        result = self.parser.load_annotation_from_pickle(FILE_PICKLE)
         assert type(result) == pd.DataFrame, f"error: GTF dataframe not correctly loaded from pickle file"
 
 
 class TestFastaParser(unittest.TestCase):
     def setUp(self):
         self.parser = FastaParser()
-        self.fasta_file = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 
     def test_check_fasta_format(self):
         """Test parsing fasta file."""
         try:
-            self.parser.check_fasta_format(self.fasta_file)
+            self.parser.check_fasta_format(FILE_FASTA)
         except Exception as e:
             assert (
                 False
-            ), f"error: checker: check_fasta_format raised an exception: {e}, with file {self.fasta_file}"
+            ), f"error: checker: check_fasta_format raised an exception: {e}, with file {FILE_FASTA}"
 
     def test_read_fasta_sequences_existing_regions(self):
         """Test parsing fasta file."""
         ids = ["16"]
-        result = self.parser.read_fasta_sequences(self.fasta_file, region_ids=ids)
+        result = self.parser.read_fasta_sequences(FILE_FASTA, region_ids=ids)
 
         assert len(result) == 1, f"error: the function loaded {len(result)} entries instead of 1"
         assert result[0].name == "16", f"error: the name should be '16' instead of {result[0].name}"
@@ -99,17 +99,17 @@ class TestFastaParser(unittest.TestCase):
     def test_read_fasta_sequences_non_existing_region(self):
         """Test parsing fasta file."""
         ids = ["1"]
-        result = self.parser.read_fasta_sequences(self.fasta_file, region_ids=ids)
+        result = self.parser.read_fasta_sequences(FILE_FASTA, region_ids=ids)
         # check if a warning was raised
         with warnings.catch_warnings(record=True) as w:
-            result = self.parser.read_fasta_sequences(self.fasta_file, region_ids=ids)
+            result = self.parser.read_fasta_sequences(FILE_FASTA, region_ids=ids)
             assert len(w) > 0, "error: no warning was raised"
         assert len(result) == 0, f"error: the function loaded {len(result)} entries instead of an empty list"
 
     def test_get_fasta_regions(self):
         """Test if the parser extracts fasta regions correctly."""
         expected_result = ["16"]
-        result = self.parser.get_fasta_regions(self.fasta_file)
+        result = self.parser.get_fasta_regions(FILE_FASTA)
         assert (
             result == expected_result
         ), f"error: fasta regions not correctly extracted. Expected ['16'] got {result}"
@@ -132,11 +132,10 @@ class TestFastaParser(unittest.TestCase):
 class TestCheckers(unittest.TestCase):
     def test_check_tsv_format(self):
         """Test if the parser extracts fasta header correctly."""
-        file_tsv = "data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
         try:
-            check_tsv_format(file_tsv)
+            check_tsv_format(FILE_TSV)
         except Exception as e:
-            assert False, f"error: checker: check_tsv_format raised an exception: {e}, with file {file_tsv}"
+            assert False, f"error: checker: check_tsv_format raised an exception: {e}, with file {FILE_TSV}"
 
     def test_check_if_key_exists_empty(self):
         """Test the check_if_key_exists function with an empty cache."""

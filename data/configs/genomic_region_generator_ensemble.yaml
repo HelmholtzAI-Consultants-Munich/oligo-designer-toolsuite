@@ -1,0 +1,25 @@
+#######################
+### BASIC PARAMETERS ###
+#######################
+
+### General parameters
+dir_output: output_genomic_region_generator_ensembl # name of the directory where the output files will be written
+
+### Parameters for genome and gene annotation
+source: ensembl # required: indicate that ensembl annotation should be used
+source_params:
+  species: homo_sapiens # required: species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
+  annotation_release: current # required: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
+
+### Parameters for oligo sequences generation
+# List of genomic that should be generated, set the genomic regions you want to generate to True
+genomic_regions:
+  gene: false
+  exon: true
+  intron: false
+  cds: false
+  exon_exon_junction: true
+
+# If exon_exon_junction is ste to true, specify the block size, i.e. +/- "block_size" bp around the junction
+# Hint: it does not make sense to set the block size larger than the maximum oligo length
+exon_exon_junction_block_size: 50

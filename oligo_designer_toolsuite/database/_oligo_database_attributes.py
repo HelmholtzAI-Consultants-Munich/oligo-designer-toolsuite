@@ -2,17 +2,15 @@
 # imports
 ############################################
 
-import warnings
+from typing import Union
 
-from typing import Union, List
-
-from seqfold import dg
 from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq, gc_fraction
+from seqfold import dg
 
-from ._oligo_database import OligoDatabase
-from .._constants import _TYPES_SEQ
-from ..utils import check_if_key_exists
+from oligo_designer_toolsuite._constants import _TYPES_SEQ
+from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.utils import check_if_key_exists
 
 ############################################
 # Attrubite Calculation Class
@@ -118,6 +116,7 @@ class OligoAttributes:
         """
         # number transcripts is the number of transcripts of a genomic region
         # hence, all values have to be the same for each transcript coming from the same oligo
+        # since only oligos from the same genomic region are merged into one entry
         number_transcripts = int([item for sublist in number_transcripts for item in sublist][0])
         num_targeted_transcripts = len(
             set(

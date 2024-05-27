@@ -8,7 +8,9 @@ from itertools import chain
 
 from effidict import LRUDict
 
-from .._constants import SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
+
+from ._checkers import check_if_list_of_lists
 
 ############################################
 # Collection of utility functions
@@ -115,33 +117,37 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
     :rtype: dict
     """
 
-    def _is_list_of_lists(item):
-        """Check if the given item is a list of lists.
-
-        :param item: The item to check.
-        :type item: Any
-        :return: True if the item is a list containing only lists, False otherwise.
-        :rtype: bool
-        """
-        return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
-
     oligo_info = defaultdict(list)
 
     for d in (oligo_info1, oligo_info2):
         for key, values in d.items():
             if key not in oligo_info:
-                if _is_list_of_lists(values):
-                    oligo_info[key] = values
-                else:
-                    oligo_info[key] = [values]
+                # if check_if_list_of_lists(values):
+                oligo_info[key] = values
+                # else:
+                #     oligo_info[key] = [values]
             else:
-                if _is_list_of_lists(values):
-                    oligo_info[key].extend(values)
-                else:
-                    oligo_info[key].extend([values])
+                # if check_if_list_of_lists(values):
+                oligo_info[key].extend(values)
+                # else:
+                #     oligo_info[key].extend([values])
 
     oligo_info = dict(oligo_info)
 
+    return oligo_info
+
+
+def format_oligo_info(oligo_info: dict):
+    """Format the entries of an oligo_info dictionary to be list of lists.
+
+    :param oligo_info: Dictionary containing the features of the oligo
+    :type oligo_info: dict
+    :return: Formatted oligo_info dictionary.
+    :rtype: dict
+    """
+    for key, value in oligo_info.items():
+        if not check_if_list_of_lists(value):
+            oligo_info[key] = [value]
     return oligo_info
 
 
@@ -189,14 +195,3 @@ def check_if_region_in_database(
             if write_regions_with_insufficient_oligos:
                 with open(file_removed_regions, "a") as hanlde:
                     hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")
-
-
-def make_entries_list_of_list(oligo_info):
-    """Tranform the entries of a disctionary into a list of lists.
-
-    :param oligo_info: The dictionary to convert.
-    :type oligo_info: dict
-    :return: Dictionary tranformed.
-    :rtype: list
-    """
-    return {key: [value] for key, value in oligo_info.items()}

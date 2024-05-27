@@ -43,7 +43,14 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
 
 **Requirements:**
 
-This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. Therefore, first setup a conda environment, e.g.:
+
+```
+conda create -n odt python=3.10
+conda activate odt
+```
+
+It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
 
 ```
 conda config --add channels bioconda
@@ -56,7 +63,7 @@ Follow this instruction to install the required additional tools:
 
 - **Blast** (2.12 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
 
-		conda install "blast>=2.12"
+		conda install "blast>=2.15.0"
 
 - **BedTools** (2.30 or higher) can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via [Bioconda](http://bioconda.github.io/recipes/bedtools/README.html) installation of BedTools with:
 
