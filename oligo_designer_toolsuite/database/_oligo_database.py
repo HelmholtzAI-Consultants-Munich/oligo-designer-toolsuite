@@ -440,8 +440,6 @@ class OligoDatabase:
                                     .replace("[[", "[")
                                     .replace("]]", "]")
                                 )
-                                print(str(oligo_dict[oligo_id][attribute]))
-                                print(yaml_dict_oligo_entry[attribute])
                                 # oligo_attribute = check_if_list(oligo_dict[oligo_id][attribute])
                                 # if len(oligo_attribute) == 1:
                                 #     oligo_attribute = check_if_list(oligo_attribute[0])
