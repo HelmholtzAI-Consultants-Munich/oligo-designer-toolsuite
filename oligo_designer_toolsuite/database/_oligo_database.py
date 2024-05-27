@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import yaml
 import warnings
 from pathlib import Path
 from typing import List, Union, get_args
@@ -394,6 +395,24 @@ class OligoDatabase:
         filename: str = "oligos",
         region_ids: list[str] = None,
     ):
+        """
+        Write the top N oligosets to a YAML file with specified attributes.
+
+        This function writes the specified attributes of the top N oligosets from the database to a YAML file. The
+        oligosets are sorted based on their scores in ascending or descending order. If region IDs are specified,
+        only those regions are included in the output.
+
+        :param attributes: List of attributes to include for each oligo in the YAML file.
+        :type attributes: list[str]
+        :param top_n_sets: Number of top oligosets to include in the output.
+        :type top_n_sets: int
+        :param ascending: Whether to sort the oligosets in ascending order.
+        :type ascending: bool
+        :param filename: Name of the output YAML file, defaults to "oligos".
+        :type filename: str, optional
+        :param region_ids: List of region IDs to include in the output. If None, all regions are included.
+        :type region_ids: list[str], optional
+        """
         dir_output_components = self.dir_output.split(os.sep)
         dir_yaml = os.path.join(os.sep.join(dir_output_components[:-1]))
 
@@ -440,27 +459,6 @@ class OligoDatabase:
                                     .replace("[[", "[")
                                     .replace("]]", "]")
                                 )
-                                # oligo_attribute = check_if_list(oligo_dict[oligo_id][attribute])
-                                # if len(oligo_attribute) == 1:
-                                #     oligo_attribute = check_if_list(oligo_attribute[0])
-                                #     if len(oligo_attribute) == 1:
-                                #         oligo_attribute = oligo_attribute[0]
-                                #         yaml_dict_oligo_entry[attribute] = str(oligo_attribute)
-                                #     else:
-                                #         yaml_dict_oligo_entry[attribute] = ",".join(map(str, oligo_attribute))
-                                # else:
-                                #     oligo_attribute_entry_list = []
-                                #     for oligo_attribute_entry in oligo_attribute:
-                                #         oligo_attribute_entry = check_if_list(oligo_attribute[0])
-                                #         if len(oligo_attribute_entry) == 1:
-                                #             oligo_attribute_entry_list.append(oligo_attribute_entry[0])
-                                #         else:
-                                #             oligo_attribute_entry_list.append(
-                                #                 ",".join(map(str, oligo_attribute_entry))
-                                #             )
-                                #     yaml_dict_oligo_entry[attribute] = ";".join(
-                                #         map(str, oligo_attribute_entry_list)
-                                #     )
 
                         oligo_id_yaml = f"{region_id}_oligo{oligo_idx + 1}"
                         yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
