@@ -1,5 +1,5 @@
 #######################
-### USER PARAMETERS ###
+### BASIC PARAMETERS ###
 #######################
 
 ### General parameters
@@ -8,7 +8,7 @@ dir_output: output_oligo_seq_probe_designer # name of the directory where the ou
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
 
 ### Parameters for oligo sequences generation
-file_regions: data/genes/custom_2.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 files_fasta_oligo_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
@@ -47,7 +47,7 @@ distance_between_oligos: 0 # how much overlap should be allowed between oligos, 
 n_sets: 100 # Maximum number of sets to report
 
 ############################
-### DEVELOPER PARAMETERS ###
+### ADVANCED PARAMETERS ###
 ############################
 
 ### Parameters for the specificity filters
@@ -80,7 +80,7 @@ hybridization_probability_bowtie_hit_parameters: # No hit parameters available c
 ### Parameters for the Oligo set selection
 max_graph_size: 5000
 
-### Parameters for Melting Temperature 
+### Parameters for Melting Temperature
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:
@@ -92,14 +92,14 @@ Tm_parameters:
   tmm_table: DNA_TMM1
   imm_table: DNA_IMM1
   de_table: DNA_DE1
-  dnac1: 50 #[nM]   
+  dnac1: 50 #[nM]
   dnac2: 0
   selfcomp: false
   dNTPs: 0
   saltcorr: 7
   Na: 1000 #[mM] #1M from probeArray paper
-  K: 0 #[mM] 
-  Tris: 0 #[mM] 
+  K: 0 #[mM]
+  Tris: 0 #[mM]
   Mg: 0 #[mM]
 
 Tm_chem_correction_parameters:

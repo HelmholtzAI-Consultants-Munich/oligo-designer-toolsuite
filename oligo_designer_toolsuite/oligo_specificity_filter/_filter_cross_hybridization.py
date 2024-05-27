@@ -1,5 +1,5 @@
 ############################################
-# imports
+# Imports
 ############################################
 
 import os
@@ -27,11 +27,11 @@ class CrossHybridizationFilter(SpecificityFilterBase):
     :type policy: FilterPolicyBase
     :param alignment_method: The alignment specificity filter used to identify potential cross-hybridization events.
     :type alignment_method: AlignmentSpecificityFilter
-    :param database_name_reference: Subdirectory path for the reference database, i.e. <dir_output>/<database_name_reference>, defaults to "db_reference".
+    :param database_name_reference: Subdirectory path for the reference database, i.e., <dir_output>/<database_name_reference>, defaults to "db_reference".
     :type database_name_reference: str, optional
-    :param filter_name: Subdirectory path for the output, i.e. <dir_output>/<filter_name>, defaults to "crosshybridization_filter".
+    :param filter_name: Subdirectory path for the output, i.e., <dir_output>/<filter_name>, defaults to "crosshybridization_filter".
     :type filter_name: str, optional
-    :param dir_output: Directory for saving intermediate files, defaults to "output"
+    :param dir_output: Directory for saving intermediate files, defaults to "output".
     :type dir_output: str, optional
     """
 
@@ -63,10 +63,10 @@ class CrossHybridizationFilter(SpecificityFilterBase):
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :param database: The database of oligonucleotides to be filtered.
-        :type database: OligoDatabase
+        :param oligo_database: The database of oligonucleotides to be filtered.
+        :type oligo_database: OligoDatabase
         :param reference_database: The reference database to compare against for specificity.
-        :type reference_database: ReferenceDatabase
+        :type reference_database: ReferenceDatabase, optional
         :param n_jobs: The number of parallel jobs to run.
         :type n_jobs: int
         :return: The oligo database with cross-hybridization minimized according to the policy.

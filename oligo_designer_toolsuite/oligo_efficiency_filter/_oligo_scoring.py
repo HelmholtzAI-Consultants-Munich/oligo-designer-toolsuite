@@ -5,7 +5,6 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
-from Bio.SeqUtils import Seq
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoAttributes
@@ -17,7 +16,7 @@ from oligo_designer_toolsuite.database import OligoAttributes
 
 class OligoScoringBase(ABC):
     """Abstract base class for scoring oligonucleotides based on specified criteria.
-    It provides a framework for scoring oligos, with an abstract method `scoring_function` that must be implemented in subclasses.
+    It provides a framework for scoring oligos, with an abstract method `get_score` that must be implemented in subclasses.
     """
 
     def apply(self, oligos: dict, sequence_type: _TYPES_SEQ):
@@ -35,13 +34,13 @@ class OligoScoringBase(ABC):
         oligos_ids = list(oligos.keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)
         for oligo_id in oligos_ids:
-            score = round(self.scoring_function(oligos[oligo_id], sequence_type), 4)
+            score = round(self.get_score(oligos[oligo_id], sequence_type), 4)
             oligos[oligo_id]["oligo_score"] = score
             oligos_scores[oligo_id] = score
         return oligos, oligos_scores
 
     @abstractmethod
-    def scoring_function(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
         """Abstract method to compute the score of a given oligonucleotide sequence.
         This method needs to be implemented by all subclasses to define specific scoring logic.
 
@@ -70,7 +69,7 @@ class GCOligoScoring(OligoScoringBase):
         """Constructor for the GCOligoScoring class."""
         self.GC_opt = GC_content_opt
 
-    def scoring_function(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
         """Calculates the GC content score for a given oligonucleotide sequence based
         on its deviation from the optimal GC content.
         Score: the lower the better.
@@ -90,7 +89,9 @@ class GCOligoScoring(OligoScoringBase):
 class WeightedTmGCOligoScoring(OligoScoringBase):
     """Scoring class that calculates oligo scores based on their melting temperature (Tm) and GC content (GC).
 
-    $score = w_{Tm}\dfrac{|Tm_{opt} - Tm_{oligo}|}{Tm_{max} - Tm_{min}} + w_{GC}\dfrac{|GC_{opt} - GC_{oligo}|}{GC_{max} - GC_{min}}$.
+    $score =
+    w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] +
+    w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}]$.
 
     :param Tm_min: Minimum acceptable melting temperature.
     :type Tm_min: float
@@ -144,7 +145,7 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         self.GC_weight = GC_weight
         self._generate_scoring_functions()
 
-    def scoring_function(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
         """Calculates the oligo score based on Tm and GC content deviations from their optimal values.
         An error term is added to the GC and Tm scores to normalize both properties and make them comparable for the scoring.
         Score: the lower the better.
@@ -201,7 +202,10 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
     """Scoring class that calculates oligo scores based on their melting temperature (Tm), GC content (GC) and isoform consensus (IC).
     The isoform consensus indicated the percentage of the total number of isoforms of the genomic region that are covered by the oligo.
 
-    $score = w_{Tm}\dfrac{|Tm_{opt} - Tm_{oligo}|}{Tm_{max} - Tm_{min}} + w_{GC}\dfrac{|GC_{opt} - GC_{oligo}|}{GC_{max} - GC_{min}} + w_{IC}IC$.
+    $score =
+    w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] +
+    w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}] +
+    w_{IC}IC$.
 
     :param Tm_min: Minimum acceptable melting temperature.
     :type Tm_min: float
@@ -259,7 +263,7 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         self.GC_weight = GC_weight
         self._generate_scoring_functions()
 
-    def scoring_function(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
         """Calculates the oligo score based on Tm and GC content deviations from their optimal values and the isoform consensus.
         An error term is added to the GC and Tm scores to normalize both properties and make them comparable for the scoring.
         Score: the lower the better.

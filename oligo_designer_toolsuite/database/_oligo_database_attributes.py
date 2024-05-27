@@ -4,13 +4,13 @@
 
 from typing import Union
 
-from seqfold import dg
 from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq, gc_fraction
+from seqfold import dg
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
-from ..utils._checkers import check_if_key_exists
+from oligo_designer_toolsuite.utils import check_if_key_exists
 
 ############################################
 # Attrubite Calculation Class
@@ -728,14 +728,16 @@ class OligoAttributes:
         for region_id, database_region in oligo_database.database.items():
             for oligo_id, oligo_attributes in database_region.items():
                 if ("ligation_site" in oligo_attributes) and (oligo_attributes["ligation_site"]):
-                    detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right = (
-                        self._calc_detect_oligo(
-                            sequence=oligo_attributes["oligo"],
-                            ligation_site=oligo_attributes["ligation_site"],
-                            detect_oligo_length_min=detect_oligo_length_min,
-                            detect_oligo_length_max=detect_oligo_length_max,
-                            min_thymines=min_thymines,
-                        )
+                    (
+                        detect_oligo_even,
+                        detect_oligo_long_left,
+                        detect_oligo_long_right,
+                    ) = self._calc_detect_oligo(
+                        sequence=oligo_attributes["oligo"],
+                        ligation_site=oligo_attributes["ligation_site"],
+                        detect_oligo_length_min=detect_oligo_length_min,
+                        detect_oligo_length_max=detect_oligo_length_max,
+                        min_thymines=min_thymines,
                     )
                 else:
                     detect_oligo_even = detect_oligo_long_left = detect_oligo_long_right = None

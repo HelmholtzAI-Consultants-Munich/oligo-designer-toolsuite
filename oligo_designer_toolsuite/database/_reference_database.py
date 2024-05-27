@@ -5,11 +5,10 @@
 import os
 import warnings
 from pathlib import Path
+
 from Bio import SeqIO
 
-from oligo_designer_toolsuite.utils import FastaParser
-from ..utils._checkers import check_if_list
-
+from oligo_designer_toolsuite.utils import FastaParser, check_if_list
 
 ############################################
 # Reference Database Class

@@ -4,12 +4,11 @@
 
 import os
 import warnings
-import numpy as np
-import pandas as pd
-
 from abc import abstractmethod
 from typing import List, Union
 
+import numpy as np
+import pandas as pd
 from Bio import SeqIO
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
@@ -362,7 +361,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             references_padded.append(reference)
         return references_padded
 
-    def _add_alignement_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
+    def _add_alignment_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
         """Adjust the sequences of the oligos to add the gaps introduced by the alignement search.
 
         :param table_hits: Dataframe containing the search results.
@@ -419,20 +418,26 @@ class BlastNSeedregionFilterBase(BlastNFilter):
 
     def __init__(
         self,
-        search_parameters: dict = {},
-        hit_parameters: dict = {},
-        names_search_output: list = [
-            "query",
-            "reference",
-            "alignment_length",
-            "query_start",
-            "query_end",
-            "query_length",
-        ],
+        search_parameters: dict = None,
+        hit_parameters: dict = None,
+        names_search_output: list = None,
         filter_name: str = "blast_filter",
         dir_output: str = "output",
     ):
         """Constructor for the BlastNSeedregionFilterBase class."""
+        if search_parameters is None:
+            search_parameters = {}
+        if hit_parameters is None:
+            hit_parameters = {}
+        if names_search_output is None:
+            names_search_output = [
+                "query",
+                "reference",
+                "alignment_length",
+                "query_start",
+                "query_end",
+                "query_length",
+            ]
         super().__init__(search_parameters, hit_parameters, names_search_output, filter_name, dir_output)
 
     @abstractmethod
@@ -523,20 +528,26 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         self,
         seedregion_start: Union[int, float],
         seedregion_end: Union[int, float],
-        search_parameters: dict = {},
-        hit_parameters: dict = {},
-        names_search_output: list = [
-            "query",
-            "reference",
-            "alignment_length",
-            "query_start",
-            "query_end",
-            "query_length",
-        ],
+        search_parameters: dict = None,
+        hit_parameters: dict = None,
+        names_search_output: list = None,
         filter_name: str = "blast_filter",
         dir_output: str = "output",
     ):
         """Constructor for the BlastNSeedregionFilter class."""
+        if search_parameters is None:
+            search_parameters = {}
+        if hit_parameters is None:
+            hit_parameters = {}
+        if names_search_output is None:
+            names_search_output = [
+                "query",
+                "reference",
+                "alignment_length",
+                "query_start",
+                "query_end",
+                "query_length",
+            ]
         super().__init__(search_parameters, hit_parameters, names_search_output, filter_name, dir_output)
 
         self.seedregion_start = seedregion_start

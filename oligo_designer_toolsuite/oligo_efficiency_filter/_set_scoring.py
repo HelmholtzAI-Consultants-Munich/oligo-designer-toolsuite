@@ -35,15 +35,19 @@ class SetScoringBase(ABC):
 
 
 class LowestSetScoring(SetScoringBase):
-    """Implements the SetScoringBase to score a set of oligonucletides by it's lowest oligo score (dependent on the
+    """Implements the SetScoringBase to score a set of oligonucleotides by its lowest oligo score (dependent on the
     meaning of the score). In case of ties, the sum of all oligo scores in the set is provided as well.
 
-    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depens on the meaning of the score.
+    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
     :type ascending: bool
     """
 
-    def __init__(self, ascending: bool) -> None:
-        """Constructor for the LowestSetScoring class."""
+    def __init__(self, ascending: bool = True) -> None:
+        """
+        Constructor for the LowestSetScoring class.
+        :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
+        :type ascending: bool
+        """
         self.ascending = ascending
 
     def apply(self, oligo_set: pd.Series, n: int):
@@ -76,7 +80,7 @@ class AverageSetScoring(SetScoringBase):
     """Implements the SetScoringBase to score a set of oligonucletides by the average of all oligo scores in the set.
     In case of ties, lowest oligo score (dependent on the meaning of the score) of the set is provided as well.
 
-    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depens on the meaning of the score.
+    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
     :type ascending: bool
     """
 

@@ -2,54 +2,54 @@
 # imports
 ############################################
 
-import os
-import yaml
-import inspect
 import logging
+import os
 import warnings
-import shutil
-
-from pathlib import Path
 from datetime import datetime
-
+from pathlib import Path
 from typing import List
 
+import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.pipelines._utils import (
-    log_parameters,
-    base_parser,
-    get_oligo_database_info,
-    generation_step,
-    filtering_step,
+from oligo_designer_toolsuite.database import (
+    OligoAttributes,
+    OligoDatabase,
+    ReferenceDatabase,
 )
-from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase, OligoAttributes
+from oligo_designer_toolsuite.oligo_efficiency_filter import (
+    AverageSetScoring,
+    WeightedTmGCOligoScoring,
+)
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
+    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
     SoftMaskedSequenceFilter,
-    HomodimerFilter,
-)
-from oligo_designer_toolsuite.oligo_specificity_filter import (
-    ExactMatchFilter,
-    BlastNFilter,
-    BowtieFilter,
-    CrossHybridizationFilter,
-    HybridizationProbabilityFilter,
-    RemoveByLargerRegionPolicy,
-    SpecificityFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
     OligosetGeneratorIndependentSet,
     heuristic_selection_independent_set,
 )
-from oligo_designer_toolsuite.oligo_efficiency_filter import WeightedTmGCOligoScoring, AverageSetScoring
-
+from oligo_designer_toolsuite.oligo_specificity_filter import (
+    BlastNFilter,
+    BowtieFilter,
+    CrossHybridizationFilter,
+    ExactMatchFilter,
+    HybridizationProbabilityFilter,
+    RemoveByLargerRegionPolicy,
+    SpecificityFilter,
+)
+from oligo_designer_toolsuite.pipelines._utils import (
+    base_parser,
+    filtering_step,
+    generation_step,
+)
+from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
 # Oligo-seq Designer Functions
@@ -329,20 +329,22 @@ class OligoSeqProbeDesigner:
         :rtype: (OligoDatabase, str)
         """
 
-        def _get_alignment_method(alignment_method, search_parameters, hit_parameters, filter_name_specification :str = ""):
+        def _get_alignment_method(
+            alignment_method, search_parameters, hit_parameters, filter_name_specification: str = ""
+        ):
             if alignment_method == "blastn":
                 return BlastNFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
-                    filter_name="blast_" + filter_name_specification
+                    filter_name="blast_" + filter_name_specification,
                 )
             elif alignment_method == "bowtie":
                 return BowtieFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
-                    filter_name="bowtie_" + filter_name_specification
+                    filter_name="bowtie_" + filter_name_specification,
                 )
             else:
                 raise ValueError(f"The alignment method {alignment_method} is not supported.")
@@ -372,7 +374,7 @@ class OligoSeqProbeDesigner:
             alignment_method=cross_hybridization_alignment_method,
             search_parameters=cross_hybridization_search_parameters,
             hit_parameters=cross_hybridization_hit_parameters,
-            filter_name_specification="cross_hybr"
+            filter_name_specification="cross_hybr",
         )
         cross_hybridization_policy = RemoveByLargerRegionPolicy()
         cross_hybridization = CrossHybridizationFilter(
@@ -386,7 +388,7 @@ class OligoSeqProbeDesigner:
             alignment_method=hybridization_probability_alignment_method,
             search_parameters=hybridization_probability_search_parameters,
             hit_parameters=hybridization_probability_hit_parameters,
-            filter_name_specification="hybr_prob"
+            filter_name_specification="hybr_prob",
         )
         hybridization_probability = HybridizationProbabilityFilter(
             alignment_method=hybridization_probability_aligner,
@@ -475,6 +477,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database
 
+    @filtering_step(step_name="Oligo Selection")
     def create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
@@ -529,12 +532,12 @@ class OligoSeqProbeDesigner:
         :rtype: tuple(OligoDatabase, str, str)
         """
         ##### log parameters #####
-        logging.info("Parameters Oligo Selection:")
-        args, _, _, values = inspect.getargvalues(inspect.currentframe())
-        parameters = {i: values[i] for i in args}
-        log_parameters(parameters)
+        # logging.info("Parameters Oligo Selection:")
+        # args, _, _, values = inspect.getargvalues(inspect.currentframe())
+        # parameters = {i: values[i] for i in args}
+        # log_parameters(parameters)
 
-        num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
+        # num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
         oligos_scoring = WeightedTmGCOligoScoring(
             Tm_min=Tm_min,
@@ -552,7 +555,7 @@ class OligoSeqProbeDesigner:
             min_oligoset_size=min_oligoset_size,
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
-            heurustic_selection=heuristic_selection_independent_set,
+            heuristic_selection=heuristic_selection_independent_set,
             max_oligos=max_oligos,
             distance_between_oligos=distance_between_oligos,
         )
@@ -572,10 +575,10 @@ class OligoSeqProbeDesigner:
             file_oligosets = ""
 
         ##### loggig database information #####
-        num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
-        logging.info(
-            f"Step - Filter Oligos by Sequence Efficiency: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
-        )
+        # num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
+        # logging.info(
+        #     f"Step - Filter Oligos by Sequence Efficiency: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
+        # )
 
         return oligo_database, file_database, file_oligosets
 
@@ -623,10 +626,10 @@ def main():
 
     ##### filter oligos by property #####
     oligo_database, file_database = pipeline.filter_by_property(
-        oligo_database=oligo_database,
-        GC_content_min=config["GC_content_min"],
-        GC_content_max=config["GC_content_max"],
-        Tm_min=config["Tm_min"],
+        oligo_database,
+        config["GC_content_min"],
+        config["GC_content_max"],
+        config["Tm_min"],
         Tm_max=config["Tm_max"],
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],

@@ -3,16 +3,16 @@
 ############################################
 
 import unittest
-from pandas import Series
 
 from Bio.SeqUtils import MeltingTemp as mt
+from pandas import Series
 
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
-    LowestSetScoring,
     GCOligoScoring,
-    WeightedTmGCOligoScoring,
+    LowestSetScoring,
     WeightedIsoformTmGCOligoScoring,
+    WeightedTmGCOligoScoring,
 )
 
 ############################################
@@ -45,7 +45,6 @@ TM_PARAMETERS = {
 
 
 class TestOligoScoring(unittest.TestCase):
-
     def setUp(self):
         self.score_gc = GCOligoScoring(GC_content_opt=43.75)
         self.score_weighted_gc_tm = WeightedTmGCOligoScoring(
@@ -78,26 +77,25 @@ class TestOligoScoring(unittest.TestCase):
         self.sequence_type = "oligo"
 
     def test_GC_score(self):
-        oligo_score = self.score_gc.scoring_function(
+        oligo_score = self.score_gc.get_score(
             oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
         )
         assert oligo_score == 0, "GC score failed!"
 
     def test_weighted_GC_Tm_score(self):
-        oligo_score = self.score_weighted_gc_tm.scoring_function(
+        oligo_score = self.score_weighted_gc_tm.get_score(
             oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
         )
         assert abs(oligo_score - 0.74666) < 1e-5, "Weighted GC-Tm score failed!"
 
     def test_weighted_isoform_GC_Tm_score(self):
-        oligo_score = self.score_weighted_isoform_gc_tm.scoring_function(
+        oligo_score = self.score_weighted_isoform_gc_tm.get_score(
             oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
         )
         assert abs(oligo_score - 1.74666) < 1e-5, "Weighted GC-Tm score failed!"
 
 
 class TestSetScoring(unittest.TestCase):
-
     def setUp(self):
         self.score_max_sum = LowestSetScoring()
         self.score_ave_max = AverageSetScoring()
