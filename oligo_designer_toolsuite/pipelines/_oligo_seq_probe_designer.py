@@ -44,7 +44,11 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByLargerRegionPolicy,
     SpecificityFilter,
 )
-from oligo_designer_toolsuite.pipelines._utils import base_parser
+from oligo_designer_toolsuite.pipelines._utils import (
+    base_parser,
+    filtering_step,
+    generation_step,
+)
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
@@ -622,10 +626,10 @@ def main():
 
     ##### filter oligos by property #####
     oligo_database, file_database = pipeline.filter_by_property(
-        oligo_database=oligo_database,
-        GC_content_min=config["GC_content_min"],
-        GC_content_max=config["GC_content_max"],
-        Tm_min=config["Tm_min"],
+        oligo_database,
+        config["GC_content_min"],
+        config["GC_content_max"],
+        config["Tm_min"],
         Tm_max=config["Tm_max"],
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],

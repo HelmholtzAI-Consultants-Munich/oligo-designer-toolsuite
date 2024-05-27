@@ -2,11 +2,10 @@
 # imports
 ############################################
 
-import logging
 import inspect
+import logging
+import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-
-from oligo_designer_toolsuite.database import OligoDatabase
 
 ############################################
 # Utils functions
@@ -24,7 +23,7 @@ def base_parser():
     :rtype: dict
     """
     parser = ArgumentParser(
-        prog="Genomic Region generator",
+        prog="Genomic Region Generator",
         usage="genomic_region_generation [options]",
         description=__doc__,
         formatter_class=RawDescriptionHelpFormatter,
@@ -38,19 +37,21 @@ def base_parser():
         metavar="",
     )
     args = parser.parse_args()
-    args = vars(args)
-    return args
+    return vars(args)
 
 
-def log_parameters(parameters):
-    """Log function parameters.
+def log_parameters_and_get_db(func, args, kwargs):
+    """Log function parameters."""
+    sig = inspect.signature(func)
+    bound_args = sig.bind(*args, **kwargs)
+    bound_args.apply_defaults()
 
-    :param parameters: Dict with parameter name : parameter value pairs
-    :type parameters: dict
-    """
-    for key, value in parameters.items():
-        if key != "self":
-            logging.info(f"{key} = {value}")
+    logging.info("Function: %s", func.__name__)
+    for name, value in bound_args.arguments.items():
+        if name != "self":
+            logging.info("Parameter: %s = %s", name, value)
+
+    return bound_args.arguments.get("oligo_database")
 
 
 def get_oligo_database_info(oligo_database: dict):
@@ -63,10 +64,7 @@ def get_oligo_database_info(oligo_database: dict):
     """
     genes = oligo_database.keys()
     num_genes = len(genes)
-    num_oligos = 0
-    for gene in genes:
-        num_oligos += len(oligo_database[gene].keys())
-
+    num_oligos = sum(len(oligo_database[gene].keys()) for gene in genes)
     return num_genes, num_oligos
 
 
@@ -91,61 +89,57 @@ def get_oligo_length_min_max_from_database(oligo_database: dict):
 
     return oligo_length_min, oligo_length_max
 
+
 def generation_step(step_name: str):
-    """Decorator function to log the input parameter of a general generative step (where an oligo database is created) of any pipeline and the information of the database generated. 
+    """Decorator function to log the input parameter of a general generative step (where an oligo database is created) of any pipeline and the information of the database generated.
     This decorator requires that the first returned value of the function is the oligo database.
 
     :param step_name: Name identifying the step.
     :type step_name: str.
     """
+
     def decorator(function):
         def wrapper(*args, **kwargs):
-            ##### log parameters #####
             logging.info(f"Parameters {step_name}:")
-            arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
-            parameters = {i: values[i] for i in arguments}
-            parameters.update(kwargs)
-            log_parameters(parameters)
+            log_parameters_and_get_db(function, args, kwargs)
 
-            #### call the function
             oligo_database, *returned_values = function(*args, **kwargs)
 
-            ##### loggig database information #####
             num_genes, num_oligos = get_oligo_database_info(oligo_database.database)
-            logging.info(f"Step - Generate oligos: the database contains {num_oligos} oligos from {num_genes} genes.")
+            logging.info(f"Step - {step_name}: database contains {num_oligos} oligos from {num_genes} genes.")
 
             return oligo_database, *returned_values
+
         return wrapper
+
     return decorator
+
 
 def filtering_step(step_name):
-    """Decorator function to log the input parameter of a general filtering step (where an oligo database is filtered) of any pipeline and the information of the changes applied to the database. 
+    """Decorator function to log the input parameter of a general filtering step (where an oligo database is filtered) of any pipeline and the information of the changes applied to the database.
     This decorator requires that the first returned value of the function is the oligo database.
 
     :param step_name: Name identifying the step.
     :type step_name: str.
     """
+
     def decorator(function):
         def wrapper(*args, **kwargs):
-
-            ##### log parameters #####
-            oligo_database = kwargs["oligo_database"]
             logging.info(f"Parameters {step_name}:")
-            arguments, _, _, values = inspect.getargvalues(inspect.currentframe())
-            parameters = {i: values[i] for i in arguments}
-            parameters.update(kwargs)
-            log_parameters(parameters)
+            oligo_database = log_parameters_and_get_db(function, args, kwargs)
+
             num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
 
-            #### call the function
             oligo_database, *returned_values = function(*args, **kwargs)
 
-            ##### loggig database information #####
             num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
             logging.info(
-                f"Step - Filter Oligos by {step_name}: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
+                f"Step - {step_name}: database contains {num_oligos_after} oligos from {num_genes_after} genes, "
+                f"{num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes removed."
             )
+
             return oligo_database, *returned_values
+
         return wrapper
+
     return decorator
-        
