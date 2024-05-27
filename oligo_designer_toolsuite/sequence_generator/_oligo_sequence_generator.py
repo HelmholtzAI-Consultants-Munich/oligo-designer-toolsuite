@@ -56,7 +56,7 @@ class OligoSequenceGenerator:
         length_sequences: int,
         num_sequences: int,
         name_sequences: str = "randomsequence",
-        base_alphabet_with_probability: list[float] = {
+        base_alphabet_with_probability: dict = {
             "A": 0.25,
             "C": 0.25,
             "G": 0.25,
@@ -99,24 +99,19 @@ class OligoSequenceGenerator:
             )
             return sequence
 
-        # make sure to have n unique sequences
-        sequences_list = []
-        while len(sequences_list) < num_sequences:
-            num_missing_sequences = num_sequences - len(sequences_list)
-            missing_sequences = list(
-                set(
-                    [
-                        get_sequence_random(length_sequences, base_alphabet_with_probability)
-                        for i in range(num_missing_sequences)
-                    ]
-                )
-            )
-            sequences_list = list(set(sequences_list + missing_sequences))
+        sequences_set = set()
+        while len(sequences_set) < num_sequences:
+            num_missing_sequences = num_sequences - len(sequences_set)
+            new_sequences = {
+                get_sequence_random(length_sequences, base_alphabet_with_probability)
+                for _ in range(num_missing_sequences)
+            }
+            sequences_set.update(new_sequences)
 
         file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
 
         with open(file_fasta_out, "w") as handle_fasta:
-            for seq in sequences_list:
+            for seq in sequences_set:
                 handle_fasta.write(f">{name_sequences}::regiontype=random_sequence\n{seq}\n")
         return file_fasta_out
 
@@ -167,25 +162,18 @@ class OligoSequenceGenerator:
             list_of_coordinates = []
             # if the fasta header DOES NOT contain coordinates information
             if chromosome is None:
-                list_of_coordinates = [None for i in range(len(seq))]
+                list_of_coordinates = [None for i in range(len(entry_sequence))]
             # if the fasta header DOES contain coordinates information
             else:
                 # coordinates in fasta file use 1-base indixing, which go from 1 (for base 1) to n (for base n)
                 # range produces values until end-1 (e.g. range(10) goes until 9) -> add +1
                 # the start and end coordinates can be a list for regions spanning split sequences (e.g. exon junctions, UTRs)
-                for i in range(len(coordinates["start"])):
-                    list_of_coordinates.extend(
-                        list(
-                            range(
-                                coordinates["start"][i],
-                                coordinates["end"][i] + 1,
-                            )
-                        )
-                    )
-
+                for start, end in zip(coordinates["start"], coordinates["end"]):
+                    list_of_coordinates.extend(range(start, end + 1))
             # sort reverse on minus strand becaus the sequence is translated into the reverse complement by fasta -strand option
             if strand == "-":
                 list_of_coordinates.reverse()
+
             file_fasta_region = os.path.join(self.dir_output, f"{region}_{random.randint(0, 1e5)}.fna")
             with open(file_fasta_region, "w") as handle_fasta:
                 for sequence_length in range(length_interval_sequences[0], length_interval_sequences[1] + 1):
