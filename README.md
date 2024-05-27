@@ -43,7 +43,7 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
 
 **Requirements:**
 
-This packages was tested for ```Python 3.9 - 3.10``` on ubuntu. Therefore, first setup a conda environment, e.g.:
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. Therefore, first setup a conda environment, e.g.:
 
 ```
 conda create -n odt python=3.10
