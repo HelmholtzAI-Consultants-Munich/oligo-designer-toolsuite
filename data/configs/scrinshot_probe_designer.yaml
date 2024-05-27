@@ -1,5 +1,5 @@
 #######################
-### USER PARAMETERS ###
+### BASIC PARAMETERS ###
 #######################
 
 ### General parameters
@@ -8,7 +8,7 @@ dir_output: output_scrinshot_probe_designer # name of the directory where the ou
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
 
 ### Parameters for probe sequences generation
-file_regions: data/genes/custom_2.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 files_fasta_probe_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
@@ -29,7 +29,7 @@ homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolym
 # padlock arms
 arm_Tm_dif_max: 2 # maximum melting temperature difference of both arms (difference shouldn't be higher than 5! But range is not super important, the lower the better)
 arm_length_min: 10 # minimum length of each arm
-arm_Tm_min: 50 # minimum melting temperature of each arm 
+arm_Tm_min: 50 # minimum melting temperature of each arm
 arm_Tm_max: 60 # maximum melting temperature of each arm
 
 ### Parameters for the specificity filters
@@ -60,7 +60,7 @@ detect_oligo_Tm_opt: 56 # optimal melting temperature of detection probe
 
 
 ############################
-### DEVELOPER PARAMETERS ###
+### ADVANCED PARAMETERS ###
 ############################
 
 ### Parameters for the specificity filters
