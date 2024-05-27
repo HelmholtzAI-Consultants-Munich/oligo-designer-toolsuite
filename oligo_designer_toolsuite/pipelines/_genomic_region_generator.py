@@ -12,7 +12,7 @@ import yaml
 
 from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
-    log_parameters_and_get_db,
+    base_log_parameters,
 )
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
@@ -94,7 +94,7 @@ class GenomicRegionGenerator:
         logging.info("Parameters Load Annotations:")
         args, _, _, values = inspect.getargvalues(inspect.currentframe())
         parameters = {i: values[i] for i in args}
-        log_parameters_and_get_db(parameters)
+        base_log_parameters(parameters)
 
         ##### loading annotations from different sources #####
         if source == "ncbi":
