@@ -27,7 +27,7 @@ class Barcode():
         :param n_channels: Total number fo channels
         :type n_channels: int
         :return: Binary barcode.
-        :rtype: _type_
+        :rtype: np.Array
         """
         assert n_pseudocolors > max(self.pseudocolors), f"The number of pseudocolor is {n_pseudocolors}, while the barcode contains {max(self.pseudocolors)} pseudocolors."
         assert n_channels > self.channel, f"The number of channles is {n_channels}, while the barcode contains {self.channel} channels."
@@ -37,17 +37,17 @@ class Barcode():
             barcode[i*n_pseudocolors*n_channels + n_channels*pseudocolor + self.channel] = 1
         return barcode
 
-def generate_codebook_2(n_regions: int, n_barcode_rounds: int = 4, n_pseudocolors: int = 20, n_channels: int = 3):
+def generate_codebook(n_regions: int, n_barcode_rounds: int = 4, n_pseudocolors: int = 20, n_channels: int = 3):
     """This function generates the codebook containig a collection of barcodes originated form the given barcode rounds, pseudocolors and channels.
-    Specifically, each barcode is geenrated such that each readout probe emcoding for one region is associated to the same channel.
+    Specifically, each barcode is generated such that all the readout probes encoding for one region is associated to the same channel.
     
     :param n_regions: Number of regions that need to be assigned to a barcode.
     :type n_regions: int
     :param n_barcode_rounds: Number of barcode runs, ,defaults to 4.
     :type n_barcode_rounds: int, optional
-    :param n_pseudocolors: Number of barcode runs, ,defaults to 4.
+    :param n_pseudocolors: Number of pseudocolors, ,defaults to 4.
     :type n_pseudocolors: int, optional
-    :param n_channels: Number of barcode runs, ,defaults to 4.
+    :param n_channels: Number of channels, defaults to 4.
     :type n_channels: int, optional
     :return: Collection of all the valid barcodes generated
     :rtype: list
@@ -72,10 +72,10 @@ def create_readout_probes_table(readout_probes : OligoDatabase, channels_ids: li
     :type channels_ids: list
     :param n_barcode_rounds: Number of barcode runs, defaults to 4
     :type n_barcode_rounds: int, optional
-    :param n_pseudocolors: _description_, defaults to 20
+    :param n_pseudocolors: Number of pseudocolors, defaults to 20
     :type n_pseudocolors: int, optional
-    :return: _description_
-    :rtype: _type_
+    :return: table containig the information for each readout probe.
+    :rtype: pd.DataFrame
     """
     n_channels = len(channels_ids)
     n_bits = n_barcode_rounds*n_pseudocolors*n_channels
