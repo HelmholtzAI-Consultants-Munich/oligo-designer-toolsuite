@@ -314,33 +314,6 @@ class ScrinshotProbeDesigner:
 
         return oligo_database, file_database
 
-    def compute_probe_attributes(
-        self,
-        oligo_database: OligoDatabase,
-        Tm_parameters_probe: dict,
-        Tm_chem_correction_param_probe: dict,
-    ):
-        oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
-            oligo_database=oligo_database
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_GC_content(
-            oligo_database=oligo_database, sequence_type="oligo"
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_TmNN(
-            oligo_database=oligo_database,
-            sequence_type="oligo",
-            Tm_parameters=Tm_parameters_probe,
-            Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_num_targeted_transcripts(
-            oligo_database=oligo_database
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
-            oligo_database=oligo_database
-        )
-
-        return oligo_database
-
     @filtering_step(step_name="Set Selection")
     def create_probe_sets(
         self,
@@ -401,6 +374,33 @@ class ScrinshotProbeDesigner:
             file_probesets = ""
 
         return oligo_database, file_database, file_probesets
+
+    def compute_probe_attributes(
+        self,
+        oligo_database: OligoDatabase,
+        Tm_parameters_probe: dict,
+        Tm_chem_correction_param_probe: dict,
+    ):
+        oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_GC_content(
+            oligo_database=oligo_database, sequence_type="oligo"
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_TmNN(
+            oligo_database=oligo_database,
+            sequence_type="oligo",
+            Tm_parameters=Tm_parameters_probe,
+            Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_num_targeted_transcripts(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+
+        return oligo_database
 
     def design_final_padlock_sequence(
         self,
@@ -753,7 +753,6 @@ def main():
 
     ##### create final padlock probe sequences #####
     # compute all required attributes
-    logging.info("Computing Oligo Attributes")
     probe_database = pipeline.compute_probe_attributes(
         oligo_database=probe_database,
         Tm_parameters_probe=Tm_parameters_probe,
