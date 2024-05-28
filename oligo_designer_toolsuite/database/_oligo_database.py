@@ -234,7 +234,10 @@ class OligoDatabase:
 
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
-            region_sequences = {}
+            region_sequences = LRUDict(
+                max_in_memory=self.lru_db_max_in_memory,
+                storage_path=self._dir_cache_files,
+            )
             for entry in fasta_sequences:
                 region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
                 oligo_info = coordinates | additional_info
