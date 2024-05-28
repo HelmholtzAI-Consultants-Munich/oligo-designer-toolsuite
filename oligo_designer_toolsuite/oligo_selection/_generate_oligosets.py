@@ -271,7 +271,7 @@ class OligosetGeneratorIndependentSet:
             database_region, oligos_scores, heuristic_set = self.heuristic_selection(
                 database_region, oligos_scores, overlapping_matrix, n, self.ascending
             )
-            heuristic_oligoset = self.set_scoring.apply(
+            heuristic_oligoset, heuristic_scores = self.set_scoring.apply(
                 heuristic_set, n
             )  # make it a list as for all the other cliques for future use
             # recompute the cliques
@@ -288,8 +288,8 @@ class OligosetGeneratorIndependentSet:
 
         if heuristic_oligoset:
             oligosets = [
-                heuristic_oligoset
-            ]  # add the heurustuc best set, if is in the best n-sets then it will be kept
+                list(heuristic_oligoset) + list(heuristic_scores.values())
+            ]  # add the heuristic best set, if is in the best n-sets then it will be kept
         else:
             oligosets = []  # initialize the list of sets
 
@@ -301,16 +301,16 @@ class OligosetGeneratorIndependentSet:
             if len(clique) >= n:
                 # Get oligo_ids of clique, maybe create a function
                 clique_oligos = oligos_scores.loc[clique]
-                oligoset = self.set_scoring.apply(clique_oligos, n)
-                oligosets.append(oligoset)
+                oligoset, oligoset_scores = self.set_scoring.apply(clique_oligos, n)
+                oligosets.append(list(oligoset) + list(oligoset_scores.values()))
 
         # put the sets in a dataframe
         if len(oligosets) > 0:
             oligosets = pd.DataFrame(
-                columns=[f"oligo_{i}" for i in range(n)]
-                + [f"set_score_{i}" for i in range(len(oligosets[0]) - n)],
+                columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
                 data=oligosets,
             )
+        print(oligosets.columns)
         # Sort oligosets by score
         oligosets.drop_duplicates(inplace=True, subset=oligosets.columns[:-1])
         oligosets.sort_values(list(oligosets.columns[n:]), ascending=self.ascending, inplace=True)

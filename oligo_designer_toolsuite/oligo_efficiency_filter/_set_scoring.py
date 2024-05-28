@@ -29,8 +29,8 @@ class SetScoringBase(ABC):
         :type oligo_set: pd.Series
         :param n: The number of top oligonucleotides to select from the set.
         :type n: int
-        :return: List of tuples with selected oligonucleotide IDs and their respective scores.
-        :rtype: list
+        :return: List of selected oligonucleotide IDs and a dict with their respective scores.
+        :rtype: tuple(list, dict)
         """
 
 
@@ -56,7 +56,7 @@ class LowestSetScoring(SetScoringBase):
         :param n: Number of oligonucleotides to select.
         :type n: int
         :return: List containing the IDs of the selected oligonucleotides, followed by the maximum/minimum oligo score and the sum of oligo scores in the set.
-        :rtype: list
+        :rtype: tuple(list, dict)
         """
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 
@@ -68,8 +68,11 @@ class LowestSetScoring(SetScoringBase):
 
         set_score_sum = best_n_oligos.sum()
         oligoset = best_n_oligos.index.tolist()
-        oligoset += [round(set_score_lowest, 4), round(set_score_sum, 4)]
-        return oligoset
+        # oligoset += [round(set_score_lowest, 4), round(set_score_sum, 4)]
+        return oligoset, {
+            "set_score_lowest": round(set_score_lowest, 4),
+            "set_score_sum": round(set_score_sum, 4),
+        }
 
 
 class AverageSetScoring(SetScoringBase):
@@ -94,7 +97,7 @@ class AverageSetScoring(SetScoringBase):
         :param n: Number of oligonucleotides to select.
         :type n: int
         :return: List containing the IDs of the selected oligonucleotides, followed by the average oligo score and the sum of oligo scores in the set.
-        :rtype: list
+        :rtype: tuple(list, dict)
         """
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 
@@ -106,5 +109,8 @@ class AverageSetScoring(SetScoringBase):
         set_score_avg = best_n_oligos.mean()
 
         oligoset = best_n_oligos.index.tolist()
-        oligoset += [round(set_score_avg, 4), round(set_score_lowest, 4)]
-        return oligoset
+        # oligoset += [round(set_score_avg, 4), round(set_score_lowest, 4)]
+        return oligoset, {
+            "set_score_average": round(set_score_avg, 4),
+            "set_score_lowest": round(set_score_lowest, 4),
+        }

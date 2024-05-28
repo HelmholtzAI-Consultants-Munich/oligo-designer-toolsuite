@@ -2,51 +2,55 @@
 # imports
 ############################################
 
-import os
-import yaml
-import shutil
-import random
 import itertools
 import logging
+import os
+import random
+import shutil
 import warnings
-
-from pathlib import Path
 from datetime import datetime
-
+from pathlib import Path
 from typing import List
 
+import yaml
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
-    generation_step,
-    filtering_step,
+from oligo_designer_toolsuite.database import (
+    OligoAttributes,
+    OligoDatabase,
+    ReferenceDatabase,
 )
-from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase, OligoAttributes
+from oligo_designer_toolsuite.oligo_efficiency_filter import (
+    LowestSetScoring,
+    WeightedIsoformTmGCOligoScoring,
+)
 from oligo_designer_toolsuite.oligo_property_filter import (
+    DetectionOligoFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SoftMaskedSequenceFilter,
-    DetectionOligoFilter,
-)
-from oligo_designer_toolsuite.oligo_specificity_filter import (
-    ExactMatchFilter,
-    BlastNFilter,
-    BlastNSeedregionLigationsiteFilter,
-    CrossHybridizationFilter,
-    RemoveByLargerRegionPolicy,
-    SpecificityFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
     OligosetGeneratorIndependentSet,
     heuristic_selection_independent_set,
 )
-from oligo_designer_toolsuite.oligo_efficiency_filter import WeightedIsoformTmGCOligoScoring, LowestSetScoring
-
+from oligo_designer_toolsuite.oligo_specificity_filter import (
+    BlastNFilter,
+    BlastNSeedregionLigationsiteFilter,
+    CrossHybridizationFilter,
+    ExactMatchFilter,
+    RemoveByLargerRegionPolicy,
+    SpecificityFilter,
+)
+from oligo_designer_toolsuite.pipelines._utils import (
+    base_parser,
+    filtering_step,
+    generation_step,
+)
+from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
 # Oligo-seq Designer Functions
@@ -54,7 +58,6 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import WeightedIsoformTmGC
 
 
 class ScrinshotProbeDesigner:
-
     def __init__(
         self, file_regions: list, write_intermediate_steps: bool, dir_output: str, n_jobs: int
     ) -> None:
@@ -378,7 +381,7 @@ class ScrinshotProbeDesigner:
             min_oligoset_size=probeset_size_min,
             oligos_scoring=probes_scoring,
             set_scoring=set_scoring,
-            heurustic_selection=heuristic_selection_independent_set,
+            heuristic_selection=heuristic_selection_independent_set,
             max_oligos=max_graph_size,
             distance_between_oligos=distance_between_probes,
         )
@@ -520,14 +523,16 @@ class ScrinshotProbeDesigner:
 
                 return oligo
 
-            detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right = (
-                self.probe_attributes_calculator._calc_detect_oligo(
-                    sequence=probe_attributes["oligo"],
-                    ligation_site=probe_attributes["ligation_site"],
-                    detect_oligo_length_min=detect_oligo_length_min,
-                    detect_oligo_length_max=detect_oligo_length_max,
-                    min_thymines=min_thymines,
-                )
+            (
+                detect_oligo_even,
+                detect_oligo_long_left,
+                detect_oligo_long_right,
+            ) = self.probe_attributes_calculator._calc_detect_oligo(
+                sequence=probe_attributes["oligo"],
+                ligation_site=probe_attributes["ligation_site"],
+                detect_oligo_length_min=detect_oligo_length_min,
+                detect_oligo_length_max=detect_oligo_length_max,
+                min_thymines=min_thymines,
             )
 
             # Search for best oligos
