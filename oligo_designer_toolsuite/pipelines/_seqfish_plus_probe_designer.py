@@ -6,60 +6,69 @@ import pandas as pd
 from oligo_designer_toolsuite.database import OligoDatabase
 
 class Barcode():
-    """Class to generate channel-wise barcodes, i.e. barcodes where each pseudocolor belongs to the same channel
-    
+    """Class to generate channel-wise barcodes, i.e. barcodes where each pseudocolor belongs to the same channel.
+    To allow for error corrections an additional barcode round is added and the barcodes are generated to be robust against a sigle deletion.
+    For example for a barcode with (i,j,k) pseudocolors, to the additional barcode round we will assig the `(i+j+k) mod n_pseudocolors` pseoudocolor.
+
     :param pseudocolors: List of the pseoudocolors contained in the barcode.
     :type pseudocolors: list
     :param channel: channel to wich the barcode belongs to.
     :type channel: int
+    :param n_pseudocolors: Total number of pseudocolors.
+    :type n_pseudocolors: int
+    :param n_channels: Total number fo channels
+    :type n_channels: int
     """
-    def __init__(self, pseudocolors: list, channel: int):
-        """_summary_
+    def __init__(self, pseudocolors: list, channel: int, n_pseudocolors: int, n_channels: int):
+        """init method
         """
-        self.pseudocolors = pseudocolors
+        self.pseudocolors = pseudocolors + [sum(pseudocolors)%n_pseudocolors]
+        print("next")
+        print(self.pseudocolors)
+        self.n_pseudocolors = n_pseudocolors
+        self.n_channels = n_channels
         self.channel = channel
 
-    def to_binary(self, n_pseudocolors: int, n_channels: int):
-        """The method trannforms the barcode in a binary barcode.
+    def to_binary(self):
+        """The method tranforms the barcode in a binary barcode.
 
-        :param n_pseudocolors: Total number of pseudocolors.
-        :type n_pseudocolors: int
-        :param n_channels: Total number fo channels
-        :type n_channels: int
         :return: Binary barcode.
         :rtype: np.Array
         """
-        assert n_pseudocolors > max(self.pseudocolors), f"The number of pseudocolor is {n_pseudocolors}, while the barcode contains {max(self.pseudocolors)} pseudocolors."
-        assert n_channels > self.channel, f"The number of channles is {n_channels}, while the barcode contains {self.channel} channels."
+        assert self.n_pseudocolors > max(self.pseudocolors), f"The number of pseudocolor is {self.n_pseudocolors}, while the barcode contains {max(self.pseudocolors)} pseudocolors."
+        assert self.n_channels > self.channel, f"The number of channles is {self.n_channels}, while the barcode contains {self.channel} channels."
         n_barcode_rounds = len(self.pseudocolors)
-        barcode = np.zeros(n_channels*n_pseudocolors*n_barcode_rounds, dtype=np.int8)
+        barcode = np.zeros(self.n_channels*self.n_pseudocolors*n_barcode_rounds, dtype=np.int8)
         for i, pseudocolor in enumerate(self.pseudocolors):
-            barcode[i*n_pseudocolors*n_channels + n_channels*pseudocolor + self.channel] = 1
+            barcode[i*self.n_pseudocolors*self.n_channels + self.n_channels*pseudocolor + self.channel] = 1
         return barcode
 
 def generate_codebook(n_regions: int, n_barcode_rounds: int = 4, n_pseudocolors: int = 20, n_channels: int = 3):
     """This function generates the codebook containig a collection of barcodes originated form the given barcode rounds, pseudocolors and channels.
     Specifically, each barcode is generated such that all the readout probes encoding for one region is associated to the same channel.
+    To allow for error corrections the barcodes are generated to be robust against a sigle deletion. To do so, the pseudocolor assignoed to the last barcode round
+    is deterministically derived from the other pseoudocolors.
     
     :param n_regions: Number of regions that need to be assigned to a barcode.
     :type n_regions: int
-    :param n_barcode_rounds: Number of barcode runs, ,defaults to 4.
+    :param n_barcode_rounds: Number of barcode runs, defaults to 4.
     :type n_barcode_rounds: int, optional
-    :param n_pseudocolors: Number of pseudocolors, ,defaults to 4.
+    :param n_pseudocolors: Number of pseudocolors, defaults to 20.
     :type n_pseudocolors: int, optional
-    :param n_channels: Number of channels, defaults to 4.
+    :param n_channels: Number of channels, defaults to 3.
     :type n_channels: int, optional
     :return: Collection of all the valid barcodes generated
     :rtype: list
     """
     codebook = []
-    codebook_size = n_channels * (n_pseudocolors**n_barcode_rounds)
+    codebook_size = n_channels * (n_pseudocolors**(n_barcode_rounds - 1))
     if codebook_size < n_regions:
         raise ValueError(f"The number of valid barcodes ({codebook_size}) is lower than the number of regions ({n_regions}). Consider increasing the number of psudocolors or barcoding rounds.")
-    for pseudocolors in product(range(n_pseudocolors), repeat=n_barcode_rounds):
+    for pseudocolors in product(range(n_pseudocolors), repeat=n_barcode_rounds - 1):
+        pseudocolors = list(pseudocolors)
         for channel in range(n_channels):
-            barcode = Barcode(pseudocolors=pseudocolors, channel=channel)
-            codebook.append(barcode.to_binary(n_pseudocolors=n_pseudocolors, n_channels=n_channels))
+            barcode = Barcode(pseudocolors=pseudocolors, channel=channel, n_pseudocolors=n_pseudocolors, n_channels=n_channels)
+            codebook.append(barcode.to_binary())
     return codebook    
 
 
