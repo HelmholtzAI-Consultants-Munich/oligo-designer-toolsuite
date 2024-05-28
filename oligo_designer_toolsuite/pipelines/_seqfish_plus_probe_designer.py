@@ -88,6 +88,7 @@ def create_readout_probes_table(readout_probes : OligoDatabase, channels_ids: li
     """
     n_channels = len(channels_ids)
     n_bits = n_barcode_rounds*n_pseudocolors*n_channels
+    assert len(readout_probes.database) >= n_bits, f"There are less readout probes ({len(readout_probes.database)}) than bits ({n_bits})."
     table = pd.DataFrame(columns=["bit", "barcode_round", "pseudocolor", "channel", "readout_probe_id", "readout_probe_sequence"], index=list(range(n_bits)))
     barcode_round = 0
     pseudocolor = 0
