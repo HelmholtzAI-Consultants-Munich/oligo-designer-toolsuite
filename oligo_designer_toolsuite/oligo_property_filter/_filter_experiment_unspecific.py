@@ -29,8 +29,8 @@ class SoftMaskedSequenceFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         if any(c.islower() for c in sequence):
             return False
@@ -55,8 +55,8 @@ class HardMaskedSequenceFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         if self.mask in sequence:
             return False
@@ -90,8 +90,8 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         for s in self.prohibited_sequence:
             if s in sequence.upper():
@@ -123,8 +123,8 @@ class HomopolymericRunsFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked for homopolymeric runs.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         for homopolymeric_run in self.homopolymeric_runs:
             if homopolymeric_run in sequence.upper():
@@ -152,8 +152,8 @@ class FivePrimeSequenceFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked.
         :type sequence: str
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         if self.remove:
             if sequence.upper().startswith(self.five_prime_sequence):
@@ -185,8 +185,8 @@ class ThreePrimeSequenceFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked.
         :type sequence: str
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         if self.remove:
             if sequence.upper().endswith(self.three_prime_sequence):
@@ -220,9 +220,8 @@ class GCContentFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked for GC content.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
-                 the actual GC content if the condition is met.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         GC_content = OligoAttributes._calc_GC_content(sequence)
         if self.GC_content_min < GC_content < self.GC_content_max:
@@ -251,8 +250,8 @@ class GCClampFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and an empty dictionary.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         GC_counetr = 0
         for i in range(1, self.n_bases + 1):
@@ -312,9 +311,8 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
-                 the actual melting temperature if the condition is met.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         Tm = OligoAttributes._calc_TmNN(
             sequence,
@@ -347,9 +345,8 @@ class HomodimerFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked for homodimer formation potential.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
-                 the maximum self-complementary length if the condition is met.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         len_selfcomp = OligoAttributes._calc_length_selfcomplement(sequence)
         if len_selfcomp <= self.max_len_selfcomp:
@@ -379,9 +376,8 @@ class SecondaryStructureFilter(PropertyFilterBase):
 
         :param sequence: The DNA sequence to be checked for secondary structure stability.
         :type sequence: Seq
-        :return: A tuple indicating if the sequence passes the filter and a dictionary containing
-                 the actual ∆G value if the condition is met.
-        :rtype: (bool, dict)
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
         """
         DG_secondary_structure = OligoAttributes._calc_DG_secondary_structure(sequence, self.T)
         if DG_secondary_structure > self.thr_DG:

@@ -39,8 +39,6 @@ class OligosetGeneratorIndependentSet:
     :param heurustic_selection: A callable for heuristic selection of oligo sets, default is None.
     :type heurustic_selection: Callable, optional
     :param distance_between_oligos: Distance between neighboring oligos, e.g. -x: oligos overlap x bases; 0: oligos can be next to each other; +x: oligos are x bases apart
-    :param ascending: Determines if the scoring should sort in ascending order dependent on meaning of scores, defaults to True.
-    :type ascending: bool
     :param max_oligos: Maximum number of oligos to consider in the generation process, defaults to 5000.
     :type max_oligos: int
     """
@@ -53,7 +51,6 @@ class OligosetGeneratorIndependentSet:
         set_scoring: SetScoringBase,
         heuristic_selection: Callable = None,
         distance_between_oligos: int = 0,
-        ascending: bool = True,
         max_oligos: int = 5000,
     ) -> None:
         """Constructor for the OligosetGenerator class."""
@@ -64,7 +61,7 @@ class OligosetGeneratorIndependentSet:
         self.oligos_scoring = oligos_scoring
         self.set_scoring = set_scoring
         self.distance_between_oligos = distance_between_oligos
-        self.ascending = ascending
+        self.ascending = set_scoring.ascending
         self.max_oligos = max_oligos
 
     def apply(
@@ -274,7 +271,7 @@ class OligosetGeneratorIndependentSet:
             database_region, oligos_scores, heuristic_set = self.heuristic_selection(
                 database_region, oligos_scores, overlapping_matrix, n, self.ascending
             )
-            heuristic_oligoset = self.set_scoring.apply(
+            heuristic_oligoset, heuristic_scores = self.set_scoring.apply(
                 heuristic_set, n
             )  # make it a list as for all the other cliques for future use
             # recompute the cliques
@@ -291,8 +288,8 @@ class OligosetGeneratorIndependentSet:
 
         if heuristic_oligoset:
             oligosets = [
-                heuristic_oligoset
-            ]  # add the heurustuc best set, if is in the best n-sets then it will be kept
+                list(heuristic_oligoset) + list(heuristic_scores.values())
+            ]  # add the heuristic best set, if is in the best n-sets then it will be kept
         else:
             oligosets = []  # initialize the list of sets
 
@@ -304,14 +301,13 @@ class OligosetGeneratorIndependentSet:
             if len(clique) >= n:
                 # Get oligo_ids of clique, maybe create a function
                 clique_oligos = oligos_scores.loc[clique]
-                oligoset = self.set_scoring.apply(clique_oligos, n)
-                oligosets.append(oligoset)
+                oligoset, oligoset_scores = self.set_scoring.apply(clique_oligos, n)
+                oligosets.append(list(oligoset) + list(oligoset_scores.values()))
 
         # put the sets in a dataframe
         if len(oligosets) > 0:
             oligosets = pd.DataFrame(
-                columns=[f"oligo_{i}" for i in range(n)]
-                + [f"set_score_{i}" for i in range(len(oligosets[0]) - n)],
+                columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
                 data=oligosets,
             )
         # Sort oligosets by score

@@ -34,7 +34,7 @@ class OligoScoringBase(ABC):
         oligos_ids = list(oligos.keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)
         for oligo_id in oligos_ids:
-            score = self.get_score(oligos[oligo_id], sequence_type)
+            score = round(self.get_score(oligos[oligo_id], sequence_type), 4)
             oligos[oligo_id]["oligo_score"] = score
             oligos_scores[oligo_id] = score
         return oligos, oligos_scores

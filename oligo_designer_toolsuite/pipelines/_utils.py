@@ -40,6 +40,17 @@ def base_parser():
     return vars(args)
 
 
+def base_log_parameters(parameters):
+    """Log function parameters.
+
+    :param parameters: Dict with parameter name : parameter value pairs
+    :type parameters: dict
+    """
+    for key, value in parameters.items():
+        if key != "self":
+            logging.info(f"{key} = {value}")
+
+
 def log_parameters_and_get_db(func, args, kwargs):
     """Log function parameters."""
     sig = inspect.signature(func)

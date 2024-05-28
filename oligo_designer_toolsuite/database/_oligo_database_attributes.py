@@ -549,7 +549,6 @@ class OligoAttributes:
     def calculate_padlock_arms(
         self,
         oligo_database: OligoDatabase,
-        sequence_type: _TYPES_SEQ,
         arm_length_min: int,
         arm_Tm_dif_max: float,
         arm_Tm_min: float,
@@ -563,8 +562,6 @@ class OligoAttributes:
 
         :param oligo_database: Database of oligonucleotides.
         :type oligo_database: OligoDatabase
-        :param sequence_type: Type of sequence to analyze (e.g., 'oligo' or 'target').
-        :type sequence_type: _TYPES_SEQ
         :param arm_length_min: Minimum length for each arm of the padlock probe.
         :type arm_length_min: int
         :param arm_Tm_dif_max: Maximum allowable Tm difference between arms.
@@ -585,7 +582,7 @@ class OligoAttributes:
         for region_id, database_region in oligo_database.database.items():
             for oligo_id, oligo_attributes in database_region.items():
                 arm1_Tm, arm2_Tm, ligation_site = self._calc_padlock_arms(
-                    oligo_attributes[sequence_type],
+                    oligo_attributes["oligo"],
                     arm_length_min,
                     arm_Tm_dif_max,
                     arm_Tm_min,
@@ -597,5 +594,141 @@ class OligoAttributes:
                 oligo_attributes["arm1_Tm"] = arm1_Tm
                 oligo_attributes["arm2_Tm"] = arm2_Tm
                 oligo_attributes["ligation_site"] = ligation_site
+
+        return oligo_database
+
+    def _calc_detect_oligo(
+        self,
+        sequence: str,
+        ligation_site: int,
+        detect_oligo_length_min: int,
+        detect_oligo_length_max: int,
+        min_thymines: int,
+    ):
+        """Calculate detection oligo sequences based on specified constraints.
+
+        This function calculates potential detection oligo sequences around the ligation site, ensuring they meet
+        the specified length and thymine content constraints.
+
+        :param sequence: The oligo sequence to be evaluated.
+        :type sequence: str
+        :param ligation_site: The position of the ligation site in the sequence.
+        :type ligation_site: int
+        :param detect_oligo_length_min: The minimum length of the detection oligo.
+        :type detect_oligo_length_min: int
+        :param detect_oligo_length_max: The maximum length of the detection oligo.
+        :type detect_oligo_length_max: int
+        :param min_thymines: The minimum number of thymine bases required in the detection oligo.
+        :type min_thymines: int
+        :return: A tuple containing the even-length detection oligo, longer left detection oligo, and longer right detection oligo.
+        :rtype: tuple
+        """
+        # constraint: a difference of max 1 nt for the sequences left and right of the ligation site is allowed
+        # e.g. AAA|TTTT or AAAA|TTT hence, the detetcion oligo can only be as long as the shorter arm + 1 nt
+        detect_oligo_length = 2 * min(ligation_site, len(sequence) - ligation_site) + 1
+
+        # check if min and max constraints are fulfilled
+        if (detect_oligo_length_min > detect_oligo_length) or (detect_oligo_length_max == 0):
+            return None, None, None
+
+        detect_oligo_even = None
+        detect_oligo_long_left = None
+        detect_oligo_long_right = None
+
+        # Different scenarios
+        # 1. If the max length constraint is smaller than the length of the oligo
+        if detect_oligo_length_max < detect_oligo_length:
+            detect_oligo_length_max_half = detect_oligo_length_max // 2
+            detect_oligo_even = sequence[
+                ligation_site - detect_oligo_length_max_half : ligation_site + detect_oligo_length_max_half
+            ]
+            # 1.2 if the maximal length is odd -> return three different oligos: even, longer left, longer right
+            if detect_oligo_length_max % 2 == 1:
+                detect_oligo_long_left = sequence[
+                    ligation_site
+                    - detect_oligo_length_max_half
+                    - 1 : ligation_site
+                    + detect_oligo_length_max_half
+                ]
+                detect_oligo_long_right = sequence[
+                    ligation_site
+                    - detect_oligo_length_max_half : ligation_site
+                    + detect_oligo_length_max_half
+                    + 1
+                ]
+        # 2. If the max length constraint is greater than the length of the oligo
+        else:
+            if ligation_site == (len(sequence) - ligation_site):
+                detect_oligo = sequence
+            elif ligation_site > (len(sequence) - ligation_site):
+                start_pos = len(sequence) - 2 * min(ligation_site, len(sequence) - ligation_site) - 1
+                detect_oligo = sequence[start_pos:]
+            else:
+                end_pos = 2 * min(ligation_site, len(sequence) - ligation_site) + 1
+                detect_oligo = sequence[:end_pos]
+
+            # 2.1 if the length of the oligo is even (only when the ligation site is exactly
+            #     in the middle of an even length oligo) -> return only an even length oligo
+            if (len(detect_oligo) % 2) == 0:
+                detect_oligo_even = detect_oligo
+            # 2.2 if the length of the oligo is odd
+            else:
+                # 2.2.1 if the ligation site is closer to the left -> return two different oligos: even, long right
+                if (len(detect_oligo) - ligation_site) > ligation_site:
+                    detect_oligo_even = detect_oligo[:-1]
+                    detect_oligo_long_right = detect_oligo
+                # 2.2.2 if the ligation site is closter to the right -> return two different oligos: even, long left
+                else:
+                    detect_oligo_even = detect_oligo[1:]
+                    detect_oligo_long_left = detect_oligo
+
+        for oligo in (detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right):
+            if oligo and oligo.count("T") >= min_thymines:
+                return detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right
+
+        return None, None, None
+
+    def calculate_detect_oligo(
+        self,
+        oligo_database: OligoDatabase,
+        detect_oligo_length_min: int,
+        detect_oligo_length_max: int,
+        min_thymines: int,
+    ):
+        """Calculate and assign detection oligos for each oligo in the database.
+
+        This function iterates through the oligos in the database and calculates potential detection oligo sequences
+        based on specified length and thymine content constraints. The results are added to each oligo's attributes.
+
+        :param oligo_database: Database of oligonucleotides.
+        :type oligo_database: OligoDatabase
+        :param detect_oligo_length_min: The minimum length of the detection oligo.
+        :type detect_oligo_length_min: int
+        :param detect_oligo_length_max: The maximum length of the detection oligo.
+        :type detect_oligo_length_max: int
+        :param min_thymines: The minimum number of thymine bases required in the detection oligo.
+        :type min_thymines: int
+        :return: The updated oligo database with detection oligo sequences added to each oligo's attributes.
+        :rtype: OligoDatabase
+        """
+        for region_id, database_region in oligo_database.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                if ("ligation_site" in oligo_attributes) and (oligo_attributes["ligation_site"]):
+                    (
+                        detect_oligo_even,
+                        detect_oligo_long_left,
+                        detect_oligo_long_right,
+                    ) = self._calc_detect_oligo(
+                        sequence=oligo_attributes["oligo"],
+                        ligation_site=oligo_attributes["ligation_site"],
+                        detect_oligo_length_min=detect_oligo_length_min,
+                        detect_oligo_length_max=detect_oligo_length_max,
+                        min_thymines=min_thymines,
+                    )
+                else:
+                    detect_oligo_even = detect_oligo_long_left = detect_oligo_long_right = None
+                oligo_attributes["detect_oligo_even"] = detect_oligo_even
+                oligo_attributes["detect_oligo_long_left"] = detect_oligo_long_left
+                oligo_attributes["detect_oligo_long_right"] = detect_oligo_long_right
 
         return oligo_database

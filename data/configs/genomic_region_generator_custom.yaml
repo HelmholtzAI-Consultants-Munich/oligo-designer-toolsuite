@@ -15,8 +15,8 @@ source_params:
   annotation_release: 110 # optional: release number of provided annotation, leave empty if unknown
   genome_assembly: GRCh38 # optional: genome assembly of provided annotation, leave empty if unknown
 
-### Parameters for oligo sequences generation
-# List of genomic that should be generated, set the genomic regions you want to generate to True
+### Parameters for sequences generation
+# List of genomic regions that should be generated, set the genomic regions you want to generate to True
 genomic_regions:
   gene: false
   exon: true

@@ -16,7 +16,7 @@ def heuristic_selection_independent_set(
     oligos_scores: pd.Series,
     overlapping_matrix: pd.DataFrame,
     n_oligo: int,
-    ascending: bool = True,
+    ascending: bool,
     n_trials=100,
 ):
     """

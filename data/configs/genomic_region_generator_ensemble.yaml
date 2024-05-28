@@ -11,8 +11,8 @@ source_params:
   species: homo_sapiens # required: species name in ensemble download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
   annotation_release: current # required: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
 
-### Parameters for oligo sequences generation
-# List of genomic that should be generated, set the genomic regions you want to generate to True
+### Parameters for sequences generation
+# List of genomic regions that should be generated, set the genomic regions you want to generate to True
 genomic_regions:
   gene: false
   exon: true
