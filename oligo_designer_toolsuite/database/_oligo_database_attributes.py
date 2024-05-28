@@ -631,26 +631,19 @@ class OligoAttributes:
         if (detect_oligo_length_min > detect_oligo_length) or (detect_oligo_length_max == 0):
             return None, None, None
 
+        detect_oligo_even = None
+        detect_oligo_long_left = None
+        detect_oligo_long_right = None
+
         # Different scenarios
         # 1. If the max length constraint is smaller than the length of the oligo
         if detect_oligo_length_max < detect_oligo_length:
             detect_oligo_length_max_half = detect_oligo_length_max // 2
-            # 1.1 if the maximal length is even -> return only an even length oligo
-            if (detect_oligo_length_max % 2) == 0:
-                detect_oligo_even = sequence[
-                    ligation_site
-                    - detect_oligo_length_max_half : ligation_site
-                    + detect_oligo_length_max_half
-                ]
-                detect_oligo_long_left = None
-                detect_oligo_long_right = None
+            detect_oligo_even = sequence[
+                ligation_site - detect_oligo_length_max_half : ligation_site + detect_oligo_length_max_half
+            ]
             # 1.2 if the maximal length is odd -> return three different oligos: even, longer left, longer right
-            else:
-                detect_oligo_even = sequence[
-                    ligation_site
-                    - detect_oligo_length_max_half : ligation_site
-                    + detect_oligo_length_max_half
-                ]
+            if detect_oligo_length_max % 2 == 1:
                 detect_oligo_long_left = sequence[
                     ligation_site
                     - detect_oligo_length_max_half
@@ -678,29 +671,22 @@ class OligoAttributes:
             #     in the middle of an even length oligo) -> return only an even length oligo
             if (len(detect_oligo) % 2) == 0:
                 detect_oligo_even = detect_oligo
-                detect_oligo_long_left = None
-                detect_oligo_long_right = None
             # 2.2 if the length of the oligo is odd
             else:
                 # 2.2.1 if the ligation site is closer to the left -> return two different oligos: even, long right
                 if (len(detect_oligo) - ligation_site) > ligation_site:
                     detect_oligo_even = detect_oligo[:-1]
-                    detect_oligo_long_left = None
                     detect_oligo_long_right = detect_oligo
                 # 2.2.2 if the ligation site is closter to the right -> return two different oligos: even, long left
                 else:
                     detect_oligo_even = detect_oligo[1:]
                     detect_oligo_long_left = detect_oligo
-                    detect_oligo_long_right = None
 
-        if detect_oligo_even.count("T") >= min_thymines:
-            return detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right
-        elif (detect_oligo_long_left is not None) and (detect_oligo_long_left.count("T") >= min_thymines):
-            return detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right
-        elif (detect_oligo_long_right is not None) and (detect_oligo_long_right.count("T") >= min_thymines):
-            return detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right
-        else:
-            return None, None, None
+        for oligo in (detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right):
+            if oligo and oligo.count("T") >= min_thymines:
+                return detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right
+
+        return None, None, None
 
     def calculate_detect_oligo(
         self,
