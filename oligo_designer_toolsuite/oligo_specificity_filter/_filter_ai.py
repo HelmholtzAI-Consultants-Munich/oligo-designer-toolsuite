@@ -95,6 +95,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
             oligo_database=oligo_database,
             reference_database=reference_database,
             region_ids=region_ids,
+            consider_hits_from_input_region=False,
             n_jobs=n_jobs,
         )
         # filter the table hits
@@ -200,6 +201,6 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
                 "reference_sequence",
                 "reference_strand",
             ]
-            self.alignment_method.search_parameters[
-                "outfmt"
-            ] = "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
+            self.alignment_method.search_parameters["outfmt"] = (
+                "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
+            )
