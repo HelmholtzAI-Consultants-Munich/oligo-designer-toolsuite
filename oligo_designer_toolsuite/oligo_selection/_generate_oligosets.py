@@ -310,7 +310,6 @@ class OligosetGeneratorIndependentSet:
                 columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
                 data=oligosets,
             )
-        print(oligosets.columns)
         # Sort oligosets by score
         oligosets.drop_duplicates(inplace=True, subset=oligosets.columns[:-1])
         oligosets.sort_values(list(oligosets.columns[n:]), ascending=self.ascending, inplace=True)
