@@ -43,7 +43,7 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
 
 **Requirements:**
 
-This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. Therefore, first setup a conda environment, e.g.:
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. For stable installatio, we recommend to first setup a conda environment, e.g.:
 
 ```
 conda create -n odt python=3.10
@@ -55,13 +55,12 @@ It depends on the following additional tools **Blast**, **BedTools**, **Bowtie**
 ```
 conda config --add channels bioconda
 conda config --add channels conda-forge
-conda update conda
 conda update --all
 ```
 
 Follow this instruction to install the required additional tools:
 
-- **Blast** (2.12 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
+- **Blast** (2.15 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
 
 		conda install "blast>=2.15.0"
 
@@ -94,6 +93,8 @@ Installation from source:
 
 ```
 git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
+cd oligo-designer-toolsuite
+git switch pipelines
 ```
 
 - Installation as python package (run inside directory):
@@ -106,6 +107,54 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 		pip install -e .[dev]
 
 
+## Implemented Oligo Design Pipelines
+
+### Oligo-Seq Probe Design
+
+An oligo-seq probe is an oligo hybridization probe, which is optimized for probe-based targeted sequencing to measure RNA expression.
+
+#### Usage
+
+*Command-Line Call:*
+
+To create oligo-seq probes you can run the pipeline with 
+
+```
+oligo_seq_probe_designer -c data/configs/oligo_seq_probe_designer.yaml
+````
+
+where:
+
+- ```-c```: config file, which contains parameter settings, specific to oligo-seq probe design, *oligo_seq_probe_designer.yaml* contains default parameter settings
+
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+The logging file will have the format: ```log_oligo_seq_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
+
+### Scrinshot Probe Design
+
+A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. 
+The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is around 40nt.
+
+
+#### Usage
+
+*Command-Line Call:*
+
+To create scrinshot probes you can run the pipeline with 
+
+```
+scrinshot_probe_designer -c data/configs/scrinshot_probe_designer.yaml
+````
+
+where:
+
+- ```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *scrinshot_probe_designer.yaml* contains default parameter settings
+
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+The logging file will have the format: ```log_scrinshot_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
+
 
 ## Contributing
 
@@ -113,24 +162,54 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 
 ## How to cite
 
-If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
+If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
 
 ```
 @software{campi_2023_7823048,
-    author       = { Francesco Campi,
-                     Isra Mekki,
+    author       = { Isra Mekki,
+		     Francesco Campi,  
                      Louis Kümmerle,
+		     Chelsea Bright,
+		     Malte Lücken
                      Fabian Theis,
                      Marie Piraud,
                      Lisa Barros de Andrade e Sousa
                      },
     title        = {{Oligo Designer Toolsuite}},
-    month        = april,
     year         = 2023,
     publisher    = {Zenodo},
     version      = {v0.1.3},
     doi          = {10.5281/zenodo.7823048},
     url          = {https://doi.org/10.5281/zenodo.7823048}
+}
+```
+
+If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing the paper:
+
+```
+@article {Kuemmerle2022.08.16.504115,
+    author 	 = { Louis B. Kuemmerle,
+		     Malte D. Luecken,
+		     Alexandra B. Firsova
+		     Lisa Barros de Andrade e Sousa
+		     Lena Strasser
+		     Lukas Heumos
+		     Ilhem Isra Mekki
+		     Krishnaa T. Mahbubani
+		     Alexandros Sountoulidis
+		     Tamas Balassa
+		     Ferenc Kovacs
+		     Peter Horvath
+		     Marie Piraud
+		     Ali Ertürk
+		     Christos Samakovlis
+		     Fabian J. Theis},
+    title 	 = {{Probe set selection for targeted spatial transcriptomics}},
+    year 	 = {2022},
+    publisher 	 = {Cold Spring Harbor Laboratory},
+    journal 	 = {bioRxiv},
+    doi 	 = {10.1101/2022.08.16.504115},
+    URL 	 = {https://www.biorxiv.org/content/early/2022/08/17/2022.08.16.504115}
 }
 ```
 
