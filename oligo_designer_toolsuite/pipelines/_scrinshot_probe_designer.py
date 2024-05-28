@@ -523,16 +523,14 @@ class ScrinshotProbeDesigner:
 
                 return oligo
 
-            (
-                detect_oligo_even,
-                detect_oligo_long_left,
-                detect_oligo_long_right,
-            ) = self.probe_attributes_calculator._calc_detect_oligo(
-                sequence=probe_attributes["oligo"],
-                ligation_site=probe_attributes["ligation_site"],
-                detect_oligo_length_min=detect_oligo_length_min,
-                detect_oligo_length_max=detect_oligo_length_max,
-                min_thymines=min_thymines,
+            detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right = (
+                self.probe_attributes_calculator._calc_detect_oligo(
+                    sequence=probe_attributes["oligo"],
+                    ligation_site=probe_attributes["ligation_site"],
+                    detect_oligo_length_min=detect_oligo_length_min,
+                    detect_oligo_length_max=detect_oligo_length_max,
+                    min_thymines=min_thymines,
+                )
             )
 
             # Search for best oligos
@@ -697,7 +695,7 @@ def main():
     Tm_parameters_probe["imm_table"] = getattr(mt, Tm_parameters_probe["imm_table"])
     Tm_parameters_probe["de_table"] = getattr(mt, Tm_parameters_probe["de_table"])
 
-    oligo_database, file_database = pipeline.filter_by_property(
+    probe_database, file_database = pipeline.filter_by_property(
         oligo_database=probe_database,
         probe_GC_content_min=config["probe_GC_content_min"],
         probe_GC_content_max=config["probe_GC_content_max"],
@@ -732,14 +730,6 @@ def main():
         Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
     )
 
-    ##### compute all required attributes #####
-    logging.info("Computing Oligo Attributes")
-    probe_database = pipeline.compute_probe_attributes(
-        oligo_database=probe_database,
-        Tm_parameters_probe=Tm_parameters_probe,
-        Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
-    )
-
     ##### create probe sets #####
     probe_database, file_database, dir_probesets = pipeline.create_probe_sets(
         oligo_database=probe_database,
@@ -762,6 +752,14 @@ def main():
     )
 
     ##### create final padlock probe sequences #####
+    # compute all required attributes
+    logging.info("Computing Oligo Attributes")
+    probe_database = pipeline.compute_probe_attributes(
+        oligo_database=probe_database,
+        Tm_parameters_probe=Tm_parameters_probe,
+        Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
+    )
+
     # preprocess melting temperature params
     Tm_parameters_detection_oligo = config["Tm_parameters_detection_oligo"]
     Tm_parameters_detection_oligo["nn_table"] = getattr(mt, Tm_parameters_detection_oligo["nn_table"])
