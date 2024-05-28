@@ -2,19 +2,23 @@
 # imports
 ############################################
 
-import os
-import yaml
-import logging
 import inspect
-from pathlib import Path
+import logging
+import os
 from datetime import datetime
+from pathlib import Path
 
+import yaml
+
+from oligo_designer_toolsuite.pipelines._utils import (
+    base_parser,
+    base_log_parameters,
+)
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,
     NcbiGenomicRegionGenerator,
 )
-from oligo_designer_toolsuite.pipelines._utils import log_parameters, base_parser
 
 ############################################
 # Genomic Region Generator Functions
@@ -90,7 +94,7 @@ class GenomicRegionGenerator:
         logging.info("Parameters Load Annotations:")
         args, _, _, values = inspect.getargvalues(inspect.currentframe())
         parameters = {i: values[i] for i in args}
-        log_parameters(parameters)
+        base_log_parameters(parameters)
 
         ##### loading annotations from different sources #####
         if source == "ncbi":

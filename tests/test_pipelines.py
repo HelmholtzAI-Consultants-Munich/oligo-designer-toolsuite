@@ -3,14 +3,13 @@
 ############################################
 
 import os
-import sys
-import yaml
 import shutil
 import subprocess
+import sys
 import unittest
-
 from abc import abstractmethod
 
+import yaml
 
 ############################################
 # Setup
@@ -59,7 +58,6 @@ class PipelinesBase:
             capture_output=True,
             text=True,
         )
-        print(result)
 
         # Check the return code to ensure the script ran successfully
         self.assertEqual(result.returncode, 0)

@@ -3,17 +3,20 @@
 ############################################
 
 import gc
-import pandas as pd
-import networkx as nx
-
 from typing import Callable
+
+import networkx as nx
+import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 from scipy.sparse import lil_matrix
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.oligo_efficiency_filter import OligoScoringBase, SetScoringBase
+from oligo_designer_toolsuite.oligo_efficiency_filter import (
+    OligoScoringBase,
+    SetScoringBase,
+)
 
 ############################################
 # Oligo set Generation Classes
@@ -36,8 +39,6 @@ class OligosetGeneratorIndependentSet:
     :param heurustic_selection: A callable for heuristic selection of oligo sets, default is None.
     :type heurustic_selection: Callable, optional
     :param distance_between_oligos: Distance between neighboring oligos, e.g. -x: oligos overlap x bases; 0: oligos can be next to each other; +x: oligos are x bases apart
-    :param ascending: Determines if the scoring should sort in ascending order dependent on meaning of scores, defaults to True.
-    :type ascending: bool
     :param max_oligos: Maximum number of oligos to consider in the generation process, defaults to 5000.
     :type max_oligos: int
     """
@@ -48,28 +49,29 @@ class OligosetGeneratorIndependentSet:
         min_oligoset_size: int,
         oligos_scoring: OligoScoringBase,
         set_scoring: SetScoringBase,
-        heurustic_selection: Callable = None,
+        heuristic_selection: Callable = None,
         distance_between_oligos: int = 0,
-        ascending: bool = True,
         max_oligos: int = 5000,
     ) -> None:
         """Constructor for the OligosetGenerator class."""
 
         self.opt_oligoset_size = opt_oligoset_size
         self.min_oligoset_size = min_oligoset_size
-        self.heurustic_selection = heurustic_selection
+        self.heuristic_selection = heuristic_selection
         self.oligos_scoring = oligos_scoring
         self.set_scoring = set_scoring
         self.distance_between_oligos = distance_between_oligos
-        self.ascending = ascending
+        self.ascending = set_scoring.ascending
         self.max_oligos = max_oligos
 
     def apply(
         self, oligo_database: OligoDatabase, sequence_type: _TYPES_SEQ, n_sets: int = 50, n_jobs: int = 1
     ):
-        """Applies the oligo set generation process to an entire oligo database and returns updated database with selected best `n_sets` oligo sets.
-        Oligosets are stores in the class attruibute `oligosets`, which is a dictionary with regions names as keys oligoset dataframe as values.
-        The strucutre of the pandas.DataFrame is the following:
+        """
+        Applies the oligo set generation process to an entire oligo database and returns updated database with selected best `n_sets` oligo sets.
+        Oligosets are stored in the class attribute `oligosets`, which is a dictionary with region names as keys and oligoset dataframes as values.
+        The structure of the pandas.DataFrame is the following:
+
 
         +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
         | oligoset_id | oligo_0  | oligo_1  | oligo_2  |  ...  | oligo_n  | set_score_1 | set_score_2 |  ...  |
@@ -91,7 +93,7 @@ class OligosetGeneratorIndependentSet:
         """
         regions = list(oligo_database.database.keys())
         # get the oligo set for this region in parallel
-        with joblib_progress(description="Find Oligosets", total = len(regions)):
+        with joblib_progress(description="Find Oligosets", total=len(regions)):
             database_regions = Parallel(n_jobs=n_jobs)(  # there should be an explicit return
                 delayed(self._get_oligo_set_for_gene)(oligo_database.database[region], sequence_type, n_sets)
                 for region in regions
@@ -264,12 +266,12 @@ class OligosetGeneratorIndependentSet:
 
         # if we have an heuristic apply it
         heuristic_oligoset = None
-        if self.heurustic_selection is not None and n == self.opt_oligoset_size:
+        if self.heuristic_selection is not None and n == self.opt_oligoset_size:
             # apply the heuristic
-            database_region, oligos_scores, heuristic_set = self.heurustic_selection(
+            database_region, oligos_scores, heuristic_set = self.heuristic_selection(
                 database_region, oligos_scores, overlapping_matrix, n, self.ascending
             )
-            heuristic_oligoset = self.set_scoring.apply(
+            heuristic_oligoset, heuristic_scores = self.set_scoring.apply(
                 heuristic_set, n
             )  # make it a list as for all the other cliques for future use
             # recompute the cliques
@@ -286,8 +288,8 @@ class OligosetGeneratorIndependentSet:
 
         if heuristic_oligoset:
             oligosets = [
-                heuristic_oligoset
-            ]  # add the heurustuc best set, if is in the best n-sets then it will be kept
+                list(heuristic_oligoset) + list(heuristic_scores.values())
+            ]  # add the heuristic best set, if is in the best n-sets then it will be kept
         else:
             oligosets = []  # initialize the list of sets
 
@@ -299,14 +301,13 @@ class OligosetGeneratorIndependentSet:
             if len(clique) >= n:
                 # Get oligo_ids of clique, maybe create a function
                 clique_oligos = oligos_scores.loc[clique]
-                oligoset = self.set_scoring.apply(clique_oligos, n)
-                oligosets.append(oligoset)
+                oligoset, oligoset_scores = self.set_scoring.apply(clique_oligos, n)
+                oligosets.append(list(oligoset) + list(oligoset_scores.values()))
 
         # put the sets in a dataframe
         if len(oligosets) > 0:
             oligosets = pd.DataFrame(
-                columns=[f"oligo_{i}" for i in range(n)]
-                + [f"set_score_{i}" for i in range(len(oligosets[0]) - n)],
+                columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
                 data=oligosets,
             )
         # Sort oligosets by score

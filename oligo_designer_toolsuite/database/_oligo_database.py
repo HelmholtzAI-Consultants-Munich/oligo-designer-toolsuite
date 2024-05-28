@@ -15,14 +15,16 @@ from Bio.SeqRecord import SeqRecord
 from effidict import LRUDict
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
-from oligo_designer_toolsuite.utils import FastaParser
-from ..utils._checkers import check_if_key_exists, check_if_list, check_tsv_format
-from ..utils._database_processor import (
+from oligo_designer_toolsuite.utils import (
+    FastaParser,
+    check_if_key_exists,
+    check_if_list,
     check_if_region_in_database,
+    check_tsv_format,
     collapse_info_for_duplicated_sequences,
     filter_dabase_for_region,
-    merge_databases,
     format_oligo_info,
+    merge_databases,
 )
 
 ############################################
@@ -385,19 +387,86 @@ class OligoDatabase:
 
         return file_fasta
 
-    def write_oligosets(self, foldername_out: str = "sets_of_oligos"):
+    def write_oligosets_to_yaml(
+        self,
+        attributes: list[str],
+        top_n_sets: int,
+        ascending: bool,
+        filename: str = "oligos",
+        region_ids: list[str] = None,
+    ):
+        """
+        Write the top N oligosets to a YAML file with specified attributes.
+
+        This function writes the specified attributes of the top N oligosets from the database to a YAML file. The
+        oligosets are sorted based on their scores in ascending or descending order. If region IDs are specified,
+        only those regions are included in the output.
+
+        :param attributes: List of attributes to include for each oligo in the YAML file.
+        :type attributes: list[str]
+        :param top_n_sets: Number of top oligosets to include in the output.
+        :type top_n_sets: int
+        :param ascending: Whether to sort the oligosets in ascending order.
+        :type ascending: bool
+        :param filename: Name of the output YAML file, defaults to "oligos".
+        :type filename: str, optional
+        :param region_ids: List of region IDs to include in the output. If None, all regions are included.
+        :type region_ids: list[str], optional
+        """
+        file_yaml = os.path.join(os.path.dirname(self.dir_output), filename)
+
+        region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
+        yaml_dict = {region: {} for region in region_ids}
+
+        for region_id in region_ids:
+            oligosets_region = self.oligosets[region_id]
+            oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
+            oligosets_score_columns = [
+                col for col in oligosets_region.columns if col.startswith("set_score_")
+            ]
+
+            oligosets_region = oligosets_region.sort_values(by=oligosets_score_columns, ascending=ascending)
+            oligosets_region_oligos = oligosets_region.head(top_n_sets)[oligosets_oligo_columns]
+            oligosets_region_scores = oligosets_region.head(top_n_sets)[oligosets_score_columns]
+
+            for idx, oligoset in oligosets_region_oligos.iterrows():
+                oligoset_id = f"{region_id}_oligoset_{idx + 1}"
+                yaml_dict[region_id][oligoset_id] = {
+                    "region_id": region_id,
+                    "oligo_score": oligosets_region_scores.iloc[idx].to_dict(),
+                }
+
+                for oligo_idx, oligo_id in enumerate(oligoset):
+                    yaml_dict_oligo_entry = {"oligo_id": oligo_id}
+
+                    # iterate through all attributes that should be written
+                    for attribute in attributes:
+                        if attribute in self.database[region_id][oligo_id]:
+                            yaml_dict_oligo_entry[attribute] = (
+                                str(self.database[region_id][oligo_id][attribute])
+                                .replace("'", "")
+                                .replace("[[", "[")
+                                .replace("]]", "]")
+                            )
+
+                    oligo_id_yaml = f"{region_id}_oligo{oligo_idx + 1}"
+                    yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
+
+        with open(file_yaml, "w") as handle:
+            yaml.dump(yaml_dict, handle, default_flow_style=False, sort_keys=False)
+
+    def write_oligosets_to_table(self, foldername_out: str = "sets_of_oligos"):
         """Write oligo sets to individual TSV files.
 
         This function writes the oligo sets to individual TSV files, with each file representing the oligo sets
         for a specific region.
 
-        :param foldername_out: The name of the folder to store the oligo set files, defaults to "sets".
+        :param foldername_out: The name of the folder to store the oligo set files, defaults to "sets_of_oligos".
         :type foldername_out: str, optional
         :return: Path to the folder containing the generated oligo set files.
         :rtype: str
         """
-        dir_output_components = self.dir_output.split(os.sep)
-        dir_oligosets = os.path.join(os.sep.join(dir_output_components[:-1]), foldername_out)
+        dir_oligosets = os.path.join(os.path.dirname(self.dir_output), foldername_out)
         Path(dir_oligosets).mkdir(parents=True, exist_ok=True)
 
         for region_id in self.oligosets.keys():

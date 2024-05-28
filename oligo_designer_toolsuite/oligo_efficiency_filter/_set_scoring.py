@@ -17,7 +17,7 @@ class SetScoringBase(ABC):
     """
 
     @abstractmethod
-    def apply(self, oligo_set: pd.Series, n: int, ascending: bool = True):
+    def apply(self, oligo_set: pd.Series, n: int):
         """
         Extracts the top 'n' oligonucleotides from a provided pandas Series based on their scores.
         The method returns the IDs and scores of the selected oligonucleotides.
@@ -29,23 +29,25 @@ class SetScoringBase(ABC):
         :type oligo_set: pd.Series
         :param n: The number of top oligonucleotides to select from the set.
         :type n: int
-        :param ascending: Determines if the scores should be sorted in ascending order; default is True.
-        :type ascending: bool
-        :return: List of tuples with selected oligonucleotide IDs and their respective scores.
-        :rtype: list
+        :return: List of selected oligonucleotide IDs and a dict with their respective scores.
+        :rtype: tuple(list, dict)
         """
 
 
 class LowestSetScoring(SetScoringBase):
-    """Implements the SetScoringBase to score a set of oligonucletides by it's lowest oligo score (dependent on the
+    """Implements the SetScoringBase to score a set of oligonucleotides by its lowest oligo score (dependent on the
     meaning of the score). In case of ties, the sum of all oligo scores in the set is provided as well.
 
-    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depens on the meaning of the score.
+    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
     :type ascending: bool
     """
 
     def __init__(self, ascending: bool = True) -> None:
-        """Constructor for the LowestSetScoring class."""
+        """
+        Constructor for the LowestSetScoring class.
+        :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
+        :type ascending: bool
+        """
         self.ascending = ascending
 
     def apply(self, oligo_set: pd.Series, n: int):
@@ -57,10 +59,8 @@ class LowestSetScoring(SetScoringBase):
         :type oligo_set: pd.Series
         :param n: Number of oligonucleotides to select.
         :type n: int
-        :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depens on the meaning of the score.
-        :type ascending: bool
         :return: List containing the IDs of the selected oligonucleotides, followed by the maximum/minimum oligo score and the sum of oligo scores in the set.
-        :rtype: list
+        :rtype: tuple(list, dict)
         """
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 
@@ -72,19 +72,22 @@ class LowestSetScoring(SetScoringBase):
 
         set_score_sum = best_n_oligos.sum()
         oligoset = best_n_oligos.index.tolist()
-        oligoset += [set_score_lowest, set_score_sum]
-        return oligoset
+        # oligoset += [round(set_score_lowest, 4), round(set_score_sum, 4)]
+        return oligoset, {
+            "set_score_lowest": round(set_score_lowest, 4),
+            "set_score_sum": round(set_score_sum, 4),
+        }
 
 
 class AverageSetScoring(SetScoringBase):
     """Implements the SetScoringBase to score a set of oligonucletides by the average of all oligo scores in the set.
     In case of ties, lowest oligo score (dependent on the meaning of the score) of the set is provided as well.
 
-    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depens on the meaning of the score.
+    :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
     :type ascending: bool
     """
 
-    def __init__(self, ascending: bool = True) -> None:
+    def __init__(self, ascending: bool) -> None:
         """Constructor for the AverageSetScoring class."""
         self.ascending = ascending
 
@@ -98,7 +101,7 @@ class AverageSetScoring(SetScoringBase):
         :param n: Number of oligonucleotides to select.
         :type n: int
         :return: List containing the IDs of the selected oligonucleotides, followed by the average oligo score and the sum of oligo scores in the set.
-        :rtype: list
+        :rtype: tuple(list, dict)
         """
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 
@@ -110,5 +113,8 @@ class AverageSetScoring(SetScoringBase):
         set_score_avg = best_n_oligos.mean()
 
         oligoset = best_n_oligos.index.tolist()
-        oligoset += [set_score_avg, set_score_lowest]
-        return oligoset
+        # oligoset += [round(set_score_avg, 4), round(set_score_lowest, 4)]
+        return oligoset, {
+            "set_score_average": round(set_score_avg, 4),
+            "set_score_lowest": round(set_score_lowest, 4),
+        }

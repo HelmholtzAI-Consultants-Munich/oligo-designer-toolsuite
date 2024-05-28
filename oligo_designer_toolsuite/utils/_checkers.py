@@ -67,6 +67,7 @@ def check_if_list(obj):
         obj = [obj] if not isinstance(obj, list) else obj
     return obj
 
+
 def check_if_list_of_lists(item):
     """Check if the given item is a list of lists.
 
@@ -89,6 +90,3 @@ def check_tsv_format(file: str):
     with open(file, "r") as tsv:
         read_tsv = csv.reader(tsv, delimiter="\t")
         return any(read_tsv)
-    
-
-

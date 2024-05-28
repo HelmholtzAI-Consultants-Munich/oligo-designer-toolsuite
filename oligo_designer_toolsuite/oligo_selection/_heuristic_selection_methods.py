@@ -16,7 +16,7 @@ def heuristic_selection_independent_set(
     oligos_scores: pd.Series,
     overlapping_matrix: pd.DataFrame,
     n_oligo: int,
-    ascending: bool = True,
+    ascending: bool,
     n_trials=100,
 ):
     """
@@ -44,7 +44,7 @@ def heuristic_selection_independent_set(
     oligos_sorted = oligos_scores.sort_values(ascending=ascending)
     oligo_ids_sorted = oligos_sorted.index.tolist()
 
-    # overlapping matrix must have a consistent oreder
+    # overlapping matrix must have a consistent order
     mat_sorted = overlapping_matrix.loc[oligo_ids_sorted, oligo_ids_sorted].values
 
     # Represent overlap matrix as graph
@@ -76,7 +76,7 @@ def heuristic_selection_independent_set(
             if score < max_score:
                 max_score = score
                 best_idx_set = set_idxs
-    best_set = oligos_sorted.iloc[best_idx_set]  # adapt with the
+    best_set = oligos_sorted.iloc[best_idx_set]
 
     for oligo_id in oligos_scores.index:
         if oligos_scores[oligo_id] > max_score:

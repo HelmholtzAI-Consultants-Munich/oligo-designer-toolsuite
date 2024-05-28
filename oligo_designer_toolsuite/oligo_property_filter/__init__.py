@@ -15,11 +15,12 @@ Classes:
 - MeltingTemperatureNNFilter: Assesses sequences for their melting temperatures using nearest-neighbor models, ensuring they are within an optimal range.
 - HomodimerFilter: Evaluates sequences for potential homodimer formation that could interfere with assay performance.
 - SecondaryStructureFilter: Evaluates sequences for potential secondary structures that could interfere with assay performance.
-- PadlockArmsFilter: Specific to padlock probe design, it evaluates sequences for suitability based on arm length and melting temperature criteria, ensuring optimal probe performance.
+- PadlockArmsFilter: Specific to padlock probe design, it evaluates sequence suitability for padlock arm design based on arm length and melting temperature criteria.
+- DetectionOligoFilter: Specific to padlock probe design, it evaluates sequence suitability for detection oligo design based on detection oligo length and thymine content criteria.
 """
 
 from ._filter_base import PropertyFilterBase
-from ._filter_experiment_specific import PadlockArmsFilter
+from ._filter_experiment_specific import PadlockArmsFilter, DetectionOligoFilter
 from ._filter_experiment_unspecific import (
     FivePrimeSequenceFilter,
     GCClampFilter,
@@ -50,4 +51,5 @@ __all__ = [
     "HomodimerFilter",
     "SecondaryStructureFilter",
     "PadlockArmsFilter",
+    "DetectionOligoFilter",
 ]
