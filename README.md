@@ -162,7 +162,7 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 
 ## How to cite
 
-If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
+If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
 
 ```
 @software{campi_2023_7823048,
@@ -184,7 +184,7 @@ If the Ologo Designer Toolsuite is useful for your research, consider citing the
 }
 ```
 
-If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing the paper:
+If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
 
 ```
 @article {Kuemmerle2022.08.16.504115,
