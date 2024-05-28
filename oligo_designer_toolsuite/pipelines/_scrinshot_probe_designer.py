@@ -53,7 +53,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
-# Oligo-seq Designer Functions
+# SCRINSHOT Probe Designer Functions
 ############################################
 
 
@@ -660,7 +660,7 @@ class ScrinshotProbeDesigner:
 
 
 ############################################
-# Oligo-seq Designer Pipeline
+# SCRINSHOT Probe Designer Pipeline
 ############################################
 
 
