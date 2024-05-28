@@ -96,6 +96,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
             oligo_database=oligo_database,
             reference_database=reference_database,
             region_ids=region_ids,
+            consider_hits_from_input_region=False,
             n_jobs=n_jobs,
         )
         # filter the table hits
