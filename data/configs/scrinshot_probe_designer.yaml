@@ -5,7 +5,7 @@
 ### General parameters
 n_jobs: 4 # number of cores used to run the pipeline
 dir_output: output_scrinshot_probe_designer # name of the directory where the output files will be written
-write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
+write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
 
 ### Parameters for probe sequences generation
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used

@@ -106,7 +106,7 @@ class ScrinshotProbeDesigner:
         probe_length_min: int,
         probe_length_max: int,
         files_fasta_oligo_database: list[str],
-        probeset_size_min: int,
+        probes_per_gene_min: int,
     ):
         ##### creating the probe sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -120,7 +120,7 @@ class ScrinshotProbeDesigner:
 
         ##### creating the probe database #####
         oligo_database = OligoDatabase(
-            min_oligos_per_region=probeset_size_min,
+            min_oligos_per_region=probes_per_gene_min,
             write_regions_with_insufficient_oligos=True,
             database_name=self.subdir_db_probes,
             dir_output=self.dir_output,
@@ -686,23 +686,17 @@ def main():
         probe_length_max=config["probe_length_max"],
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
-        probeset_size_min=config["probeset_size_min"],
+        probes_per_gene_min=config["probeset_size_min"],
     )
 
-    ##### preprocess melting temperature params #####
+    ##### filter probes by property #####
+    # preprocess melting temperature params
     Tm_parameters_probe = config["Tm_parameters_probe"]
     Tm_parameters_probe["nn_table"] = getattr(mt, Tm_parameters_probe["nn_table"])
     Tm_parameters_probe["tmm_table"] = getattr(mt, Tm_parameters_probe["tmm_table"])
     Tm_parameters_probe["imm_table"] = getattr(mt, Tm_parameters_probe["imm_table"])
     Tm_parameters_probe["de_table"] = getattr(mt, Tm_parameters_probe["de_table"])
 
-    Tm_parameters_detection_oligo = config["Tm_parameters_detection_oligo"]
-    Tm_parameters_detection_oligo["nn_table"] = getattr(mt, Tm_parameters_detection_oligo["nn_table"])
-    Tm_parameters_detection_oligo["tmm_table"] = getattr(mt, Tm_parameters_detection_oligo["tmm_table"])
-    Tm_parameters_detection_oligo["imm_table"] = getattr(mt, Tm_parameters_detection_oligo["imm_table"])
-    Tm_parameters_detection_oligo["de_table"] = getattr(mt, Tm_parameters_detection_oligo["de_table"])
-
-    ##### filter probes by property #####
     oligo_database, file_database = pipeline.filter_by_property(
         oligo_database=probe_database,
         probe_GC_content_min=config["probe_GC_content_min"],
@@ -766,6 +760,14 @@ def main():
         n_sets=config["n_sets"],
         distance_between_probes=config["distance_between_probes"],
     )
+
+    ##### create final padlock probe sequences #####
+    # preprocess melting temperature params
+    Tm_parameters_detection_oligo = config["Tm_parameters_detection_oligo"]
+    Tm_parameters_detection_oligo["nn_table"] = getattr(mt, Tm_parameters_detection_oligo["nn_table"])
+    Tm_parameters_detection_oligo["tmm_table"] = getattr(mt, Tm_parameters_detection_oligo["tmm_table"])
+    Tm_parameters_detection_oligo["imm_table"] = getattr(mt, Tm_parameters_detection_oligo["imm_table"])
+    Tm_parameters_detection_oligo["de_table"] = getattr(mt, Tm_parameters_detection_oligo["de_table"])
 
     probe_database = pipeline.design_final_padlock_sequence(
         oligo_database=probe_database,

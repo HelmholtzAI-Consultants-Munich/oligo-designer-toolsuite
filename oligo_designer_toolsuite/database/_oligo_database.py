@@ -395,7 +395,25 @@ class OligoDatabase:
         filename: str = "oligos",
         region_ids: list[str] = None,
     ):
-        dir_yaml = os.path.join(os.path.dirname(self.dir_output), filename)
+        """
+        Write the top N oligosets to a YAML file with specified attributes.
+
+        This function writes the specified attributes of the top N oligosets from the database to a YAML file. The
+        oligosets are sorted based on their scores in ascending or descending order. If region IDs are specified,
+        only those regions are included in the output.
+
+        :param attributes: List of attributes to include for each oligo in the YAML file.
+        :type attributes: list[str]
+        :param top_n_sets: Number of top oligosets to include in the output.
+        :type top_n_sets: int
+        :param ascending: Whether to sort the oligosets in ascending order.
+        :type ascending: bool
+        :param filename: Name of the output YAML file, defaults to "oligos".
+        :type filename: str, optional
+        :param region_ids: List of region IDs to include in the output. If None, all regions are included.
+        :type region_ids: list[str], optional
+        """
+        file_yaml = os.path.join(os.path.dirname(self.dir_output), filename)
 
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
         yaml_dict = {region: {} for region in region_ids}
@@ -434,7 +452,7 @@ class OligoDatabase:
                     oligo_id_yaml = f"{region_id}_oligo{oligo_idx + 1}"
                     yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
 
-        with open(dir_yaml, "w") as handle:
+        with open(file_yaml, "w") as handle:
             yaml.dump(yaml_dict, handle, default_flow_style=False, sort_keys=False)
 
     def write_oligosets_to_table(self, foldername_out: str = "sets_of_oligos"):
@@ -448,8 +466,7 @@ class OligoDatabase:
         :return: Path to the folder containing the generated oligo set files.
         :rtype: str
         """
-        dir_output_components = self.dir_output.split(os.sep)
-        dir_oligosets = os.path.join(os.sep.join(dir_output_components[:-1]), foldername_out)
+        dir_oligosets = os.path.join(os.path.dirname(self.dir_output), foldername_out)
         Path(dir_oligosets).mkdir(parents=True, exist_ok=True)
 
         for region_id in self.oligosets.keys():
