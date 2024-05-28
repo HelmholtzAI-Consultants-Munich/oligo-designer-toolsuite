@@ -1,7 +1,10 @@
 from itertools import combinations
 
 import numpy as np
+import pandas as pd
 from scipy.spatial.distance import hamming
+
+from oligo_designer_toolsuite.database import OligoDatabase
 
 def make_barcode(raw_barcode: list, n_bits: int):
     """Creates the actual barcode from a list containing the indices of the "one" bits.
@@ -50,3 +53,17 @@ def generate_codebook(n_regions: int, n_bits: int = 16, min_hamming_dist: int = 
     if len(codebook) < n_regions:
         raise ValueError(f"The number of valid barcodes ({len(codebook)}) is lower than the number of regions({n_regions}). Consider increasing the number of bits.")
     return codebook
+
+
+def create_readout_probes_table(readout_probes: OligoDatabase, channels_ids: list, n_bits: int):
+    assert len(readout_probes.database) >= n_bits, f"There are less readout probes ({len(readout_probes.database)}) than bits ({n_bits})."
+    table = pd.DataFrame(columns=["bit", "channel", "readout_probe_id", "readout_probe_sequence"], index=list(range(n_bits)))
+    n_channels = len(channels_ids)
+    channel = 0
+    for i, (readout_probe_id, readout_probe_features) in enumerate(readout_probes.database.items()):
+        table.iloc[i] = [i, channels_ids[channel], readout_probe_id, readout_probe_features["oligo"]]
+        channel = (channel + 1) % n_channels
+        if i >= n_bits -1:
+            break
+
+    return table
