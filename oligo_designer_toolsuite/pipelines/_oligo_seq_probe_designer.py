@@ -154,7 +154,7 @@ class OligoSeqProbeDesigner:
             dir_output=self.dir_output,
         )
         oligo_database.load_sequences_from_fasta(
-            files_fasta=[oligo_fasta_file],
+            files_fasta=oligo_fasta_file,
             sequence_type="target",
             region_ids=self.gene_ids,
         )
@@ -181,7 +181,7 @@ class OligoSeqProbeDesigner:
         secondary_structures_T: float,
         secondary_structures_threshold_deltaG: float,
         homopolymeric_base_n: str,
-        homodimer_max_len_selfcomp: int,
+        max_len_selfcomp: int,
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
     ):
@@ -232,7 +232,7 @@ class OligoSeqProbeDesigner:
             base_n=homopolymeric_base_n,
         )
         homodimer = HomodimerFilter(
-            max_len_selfcomp=homodimer_max_len_selfcomp,
+            max_len_selfcomp=max_len_selfcomp,
         )
 
         filters = [
@@ -608,7 +608,7 @@ def main():
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
         homopolymeric_base_n=config["homopolymeric_base_n"],
-        homodimer_max_len_selfcomp=config["homodimer_max_len_selfcomp"],
+        max_len_selfcomp=config["max_len_selfcomp"],
         Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
     )
