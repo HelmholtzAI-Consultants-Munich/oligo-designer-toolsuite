@@ -11,7 +11,6 @@ from joblib import Parallel, delayed
 from oligo_designer_toolsuite.utils import FastaParser
 
 from ..utils._checkers import check_if_list
-from ..utils._sequence_parser import merge_fasta_files
 
 ############################################
 # Oligo Database Class
@@ -197,27 +196,47 @@ class OligoSequenceGenerator:
                         handle_fasta.write(f">{header}\n{seq}\n")
             return file_fasta_region
 
-        region_ids = check_if_list(region_ids)
         files_fasta_in = check_if_list(files_fasta_in)
 
-        file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
+        if region_ids:
+            region_ids = check_if_list(region_ids)
+        else:
+            region_ids = set()
+            for file_fasta in files_fasta_in:
+                self.fasta_parser.check_fasta_format(file_fasta)
+                region_ids.update(self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta))
+            region_ids = list(region_ids)
 
         # delete previous content
-        if os.path.isfile(file_fasta_out):
-            os.remove(file_fasta_out)
+        for region_id in region_ids:
+            file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
+            if os.path.isfile(file_fasta_region):
+                os.remove(file_fasta_region)
 
+        # create oligos and store all oligos of one region in seperate files
+        file_fasta_out = set()
         for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
-            files_fasta_region = Parallel(n_jobs=n_jobs)(
+            files_fasta_oligos = Parallel(n_jobs=n_jobs)(
                 delayed(get_sliding_window_sequence)(entry, length_interval_sequences)
                 for entry in fasta_sequences
             )
-            # merge the fasta files into one single file
-            merge_fasta_files(files_in=files_fasta_region, file_out=file_fasta_out, overwrite=False)
-            # remove the temporary fasta files
-            for file_fasta_region in files_fasta_region:
-                if os.path.isfile(file_fasta_region):
-                    os.remove(file_fasta_region)
+            for region_id in region_ids:
+                files_fasta_oligos_region = [
+                    file for file in files_fasta_oligos if os.path.basename(file).startswith(region_id)
+                ]
+                if len(files_fasta_oligos_region) > 0:
+                    file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
+                    file_fasta_out.add(file_fasta_region)
+                    # merge the fasta files into one single file per region
+                    self.fasta_parser.merge_fasta_files(
+                        files_in=files_fasta_oligos_region, file_out=file_fasta_region, overwrite=False
+                    )
 
-        return file_fasta_out
+            # remove the temporary fasta files
+            for file_fasta_oligos in files_fasta_oligos:
+                if os.path.isfile(file_fasta_oligos):
+                    os.remove(file_fasta_oligos)
+
+        return list(file_fasta_out)
