@@ -126,7 +126,7 @@ class ScrinshotProbeDesigner:
             dir_output=self.dir_output,
         )
         oligo_database.load_sequences_from_fasta(
-            files_fasta=[probe_fasta_file],
+            files_fasta=probe_fasta_file,
             sequence_type="target",
             region_ids=self.gene_ids,
         )
