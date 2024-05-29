@@ -15,6 +15,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     GCClampFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
+    HeterodimerFilter,
     HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
@@ -251,6 +252,7 @@ class TestSequenceStructureFilters(unittest.TestCase):
         )
         self.secondary_structure_filter = SecondaryStructureFilter(T=37, thr_DG=0)
         self.homodimer_filter = HomodimerFilter(max_len_selfcomp=6)
+        self.heterodimer_filter = HeterodimerFilter(max_len_complement=6)
 
     def test_Tm_filter_default(self):
         seq_remove = Seq("TGGCTTGGGCCTTTCCAAGCCCCCATTTGAGCT")
@@ -296,10 +298,22 @@ class TestSequenceStructureFilters(unittest.TestCase):
         res = self.homodimer_filter.apply(seq_remove)
         assert (
             res == False
-        ), f"error: A sequence ({seq_remove}) not fulfilling the condition with has been accepted!"
+        ), f"error: A sequence ({seq_remove}) not fulfilling the condition has been accepted!"
 
         seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
         res = self.homodimer_filter.apply(seq_keep)
+        assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
+
+    def test_heterodimer_filter(self):
+        seq_remove = Seq("TAACAATATATATTGTTA")
+        seq_complement = seq_remove.complement()
+        res = self.heterodimer_filter.apply(seq_remove, seq_complement)
+        assert (
+            res == False
+        ), f"error: A sequence ({seq_remove}) not fulfilling the condition with ({seq_complement}) has been accepted!"
+
+        seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
+        res = self.heterodimer_filter.apply(seq_keep, seq_complement)
         assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
 
 

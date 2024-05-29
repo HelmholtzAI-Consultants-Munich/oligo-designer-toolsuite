@@ -354,6 +354,37 @@ class HomodimerFilter(PropertyFilterBase):
         return False
 
 
+class HeterodimerFilter(PropertyFilterBase):
+    """A filter to evaluate the potential formation of heterodimers. A heterodimer is formed when two strands of DNA
+    bind to each other due to complementary sequences. This filter calculates the longest complementary
+    sequence between two DNA sequences and compares it against a maximum allowable length to prevent heterodimer
+    formation.
+
+    :param max_len_complement: The maximum length of complementary sequence allowed to avoid heterodimer formation.
+    :type max_len_complement: int
+    """
+
+    def __init__(self, max_len_complement: int):
+        """Constructor for the HeterodimerFilter class."""
+        super().__init__()
+        self.max_len_complement = max_len_complement
+
+    def apply(self, sequence1: Seq, sequence2: Seq):
+        """Applies the heterodimer filter to a pair of DNA sequences to evaluate their potential for heterodimer formation.
+
+        :param sequence1: The first DNA sequence to be checked for heterodimer formation potential.
+        :type sequence1: Seq
+        :param sequence2: The second DNA sequence to be checked for heterodimer formation potential.
+        :type sequence2: Seq
+        :return: True if the sequences meet the criteria, False otherwise.
+        :rtype: bool
+        """
+        len_complement = OligoAttributes._calc_length_complement(sequence1, sequence2)
+        if len_complement <= self.max_len_complement:
+            return True
+        return False
+
+
 class SecondaryStructureFilter(PropertyFilterBase):
     """A filter to evaluate the stability of secondary structures formed by a DNA sequence, based on free energy (∆G) at a given temperature.
     Secondary structures can contain for instance hairpins, stacks, bulges or interior loops.

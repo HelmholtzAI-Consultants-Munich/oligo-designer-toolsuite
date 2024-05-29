@@ -14,18 +14,20 @@ Classes:
 - GCClampFilter: Filters for sequences with a specific number of G or C nucleotides at one end, affecting primer binding and stability.
 - MeltingTemperatureNNFilter: Assesses sequences for their melting temperatures using nearest-neighbor models, ensuring they are within an optimal range.
 - HomodimerFilter: Evaluates sequences for potential homodimer formation that could interfere with assay performance.
+- HeterodimerFilter: Evaluates sequences for potential heterodimer formation that could interfere with assay performance.
 - SecondaryStructureFilter: Evaluates sequences for potential secondary structures that could interfere with assay performance.
 - PadlockArmsFilter: Specific to padlock probe design, it evaluates sequence suitability for padlock arm design based on arm length and melting temperature criteria.
 - DetectionOligoFilter: Specific to padlock probe design, it evaluates sequence suitability for detection oligo design based on detection oligo length and thymine content criteria.
 """
 
 from ._filter_base import PropertyFilterBase
-from ._filter_experiment_specific import PadlockArmsFilter, DetectionOligoFilter
+from ._filter_experiment_specific import DetectionOligoFilter, PadlockArmsFilter
 from ._filter_experiment_unspecific import (
     FivePrimeSequenceFilter,
     GCClampFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
+    HeterodimerFilter,
     HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
@@ -49,6 +51,7 @@ __all__ = [
     "GCClampFilter",
     "MeltingTemperatureNNFilter",
     "HomodimerFilter",
+    "HeterodimerFilter",
     "SecondaryStructureFilter",
     "PadlockArmsFilter",
     "DetectionOligoFilter",
