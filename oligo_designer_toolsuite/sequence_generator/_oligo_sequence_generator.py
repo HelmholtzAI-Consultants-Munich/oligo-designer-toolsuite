@@ -4,6 +4,8 @@
 
 import os
 import random
+import subprocess
+
 from pathlib import Path
 
 from joblib import Parallel, delayed
@@ -138,6 +140,13 @@ class OligoSequenceGenerator:
         :rtype: str
         """
 
+        def generate_unique_filename(region):
+            while True:
+                random_number = random.randint(1, 1000000)
+                file_fasta_region = os.path.join(self.dir_output, f"{region}_{random_number}.fna")
+                if not os.path.exists(file_fasta_region):
+                    return file_fasta_region
+
         def get_sliding_window_sequence(entry, length_interval_sequences):
             """Extract sliding window sequences from a given entry and write them to a FASTA file.
 
@@ -173,7 +182,7 @@ class OligoSequenceGenerator:
             if strand == "-":
                 list_of_coordinates.reverse()
 
-            file_fasta_region = os.path.join(self.dir_output, f"{region}_{random.randint(0, 1e5)}.fna")
+            file_fasta_region = generate_unique_filename(region=region)
             with open(file_fasta_region, "w") as handle_fasta:
                 for sequence_length in range(length_interval_sequences[0], length_interval_sequences[1] + 1):
                     # generate sequences with sliding window and write to fasta file (use lock to ensure that hat only one process can write to the file at any given time)
@@ -197,15 +206,17 @@ class OligoSequenceGenerator:
             return file_fasta_region
 
         files_fasta_in = check_if_list(files_fasta_in)
+        for file_fasta in files_fasta_in:
+            self.fasta_parser.check_fasta_format(file_fasta)
 
         if region_ids:
             region_ids = check_if_list(region_ids)
         else:
-            region_ids = set()
-            for file_fasta in files_fasta_in:
-                self.fasta_parser.check_fasta_format(file_fasta)
-                region_ids.update(self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta))
-            region_ids = list(region_ids)
+            region_ids = [
+                self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta) for file_fasta in files_fasta_in
+            ]
+            # make keys unique
+            region_ids = list(set(region_ids))
 
         # delete previous content
         for region_id in region_ids:
@@ -224,15 +235,18 @@ class OligoSequenceGenerator:
             )
             for region_id in region_ids:
                 files_fasta_oligos_region = [
-                    file for file in files_fasta_oligos if os.path.basename(file).startswith(region_id)
+                    file for file in files_fasta_oligos if os.path.basename(file).startswith(f"{region_id}_")
                 ]
                 if len(files_fasta_oligos_region) > 0:
                     file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
+                    file_fasta_region_tmp = os.path.join(self.dir_output, f"{region_id}_tmp.fna")
                     file_fasta_out.add(file_fasta_region)
-                    # merge the fasta files into one single file per region
                     self.fasta_parser.merge_fasta_files(
                         files_in=files_fasta_oligos_region, file_out=file_fasta_region, overwrite=False
                     )
+                    # merge the fasta files into one single file per region
+                    # cmd = "awk '/^>/{f=!d[$1];d[$1]=1}f' " + f"{file_fasta_region_tmp} > {file_fasta_region}"
+                    # process = subprocess.Popen(cmd, shell=True).wait()
 
             # remove the temporary fasta files
             for file_fasta_oligos in files_fasta_oligos:

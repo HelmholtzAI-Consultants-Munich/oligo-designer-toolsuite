@@ -229,36 +229,28 @@ class OligoDatabase:
 
         region_ids = check_if_list(region_ids)
         files_fasta = check_if_list(files_fasta)
+        import time
 
         files_loaded = 0
         for file in files_fasta:
+            t0 = time.time()
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
-            region_sequences = LRUDict(
-                max_in_memory=self.lru_db_max_in_memory,
-                storage_path=self._dir_cache_files,
-            )
+            region_sequences = {}
             for entry in fasta_sequences:
                 region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
                 oligo_info = coordinates | additional_info
                 oligo_info = format_oligo_info(oligo_info)
                 if region in region_sequences:
                     if entry.seq in region_sequences[region]:
-                        oligo_info_merged = collapse_info_for_duplicated_sequences(
+                        oligo_info = collapse_info_for_duplicated_sequences(
                             region_sequences[region][entry.seq], oligo_info
                         )
-                        region_sequences[region][str(entry.seq)] = oligo_info_merged
-                    else:
-                        region_sequences[region][str(entry.seq)] = oligo_info
+                    region_sequences[region][str(entry.seq)] = oligo_info
                 else:
                     region_sequences[region] = {str(entry.seq): oligo_info}
 
-            database_loaded = LRUDict(
-                max_in_memory=self.lru_db_max_in_memory,
-                storage_path=self._dir_cache_files,
-            )
-            for region in region_sequences.keys():
-                database_loaded[region] = {}
+            database_region = {region: {} for region in region_sequences.keys()}
             for region, value in region_sequences.items():
                 i = 1
                 for oligo_sequence, oligo_info in value.items():
@@ -268,16 +260,24 @@ class OligoDatabase:
                         sequence_type: oligo_sequence,
                         sequence_type_reverse_complement: oligo_sequence_reverse_complement,
                     } | oligo_info
-                    database_loaded[region][oligo_id] = oligo_seq_info
+                    database_region[region][oligo_id] = oligo_seq_info
                     i += 1
+
             if self.database:
-                self.database = merge_databases(
-                    self.database, database_loaded, self._dir_cache_files, self.lru_db_max_in_memory
-                )
+                # only merge if there are common keys
+                if len(set(self.database) & set(database_region)) > 0:
+                    self.database = merge_databases(
+                        self.database, database_region, self._dir_cache_files, self.lru_db_max_in_memory
+                    )
+                else:
+                    for region in database_region.keys():
+                        self.database[region] = database_region[region]
             else:
-                self.database = database_loaded
+                self.database = database_region
             files_loaded += 1
-            print(f"Total files to load: {len(files_fasta) - files_loaded}")
+            print(
+                f"Time to load {region} file: {time.time() - t0} sec. Remaining files {len(files_fasta) - files_loaded} "
+            )
 
         # add this step to log regions which are not available in database
         if region_ids:

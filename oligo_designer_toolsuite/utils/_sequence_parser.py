@@ -296,7 +296,6 @@ class FastaParser:
             :return: True if the file is in FASTA format, False otherwise.
             :rtype: bool
             """
-            # taken from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
             fasta = SeqIO.index(file, "fasta")
             return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
 
@@ -335,6 +334,7 @@ class FastaParser:
         :rtype: list[str]
         """
         region_ids = []
+        # use index instead of parse function for memory efficiency
         for idx in SeqIO.index(file_fasta_in, "fasta"):
             region, _, _ = self.parse_fasta_header(idx, parse_additional_info=False)
             region_ids.append(region)
@@ -361,6 +361,7 @@ class FastaParser:
         if region_ids_set:
             fasta_sequences = []
             found_regions = set()
+            # use index instead of parse function for memory efficiency
             seq_record = SeqIO.index(file_fasta_in, "fasta")
             for idx in seq_record:
                 region, _, _ = self.parse_fasta_header(idx, parse_additional_info=False)
