@@ -6,10 +6,10 @@
 n_jobs: 4 # number of cores used to run the pipeline
 dir_output: output_scrinshot_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
-db_max_in_memory: 40 # number of regions that should be stored in cache, if memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
+db_max_in_memory: 20 # number of regions that should be stored in cache. 20 is a good value for a 16GB RAm computer. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 
 ### Parameters for probe sequences generation
-file_regions:  # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 files_fasta_probe_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
