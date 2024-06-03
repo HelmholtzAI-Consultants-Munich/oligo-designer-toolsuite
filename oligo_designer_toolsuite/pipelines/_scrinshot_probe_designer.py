@@ -58,21 +58,8 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 
 class ScrinshotProbeDesigner:
-    def __init__(
-        self, file_regions: list, write_intermediate_steps: bool, dir_output: str, n_jobs: int
-    ) -> None:
+    def __init__(self, write_intermediate_steps: bool, dir_output: str, n_jobs: int) -> None:
         """Constructor for the ScrinshotProbeDesigner class."""
-        ##### read the genes file #####
-        if file_regions is None:
-            warnings.warn(
-                "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
-            )
-            self.gene_ids = None
-        else:
-            with open(file_regions) as handle:
-                lines = handle.readlines()
-                # ensure that the list contains unique gene ids
-                self.gene_ids = list(set([line.rstrip() for line in lines]))
 
         self.write_intermediate_steps = write_intermediate_steps
 
@@ -104,10 +91,11 @@ class ScrinshotProbeDesigner:
     @generation_step(step_name="Create Database")
     def create_probe_database(
         self,
+        gene_ids: list,
         probe_length_min: int,
         probe_length_max: int,
         files_fasta_oligo_database: list[str],
-        probes_per_gene_min: int,
+        min_probes_per_gene: int,
         db_max_in_memory: int,
     ):
         ##### creating the probe sequences #####
@@ -116,13 +104,13 @@ class ScrinshotProbeDesigner:
             filename_out="probe_sequences",
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(probe_length_min, probe_length_max),
-            region_ids=self.gene_ids,
+            region_ids=gene_ids,
             n_jobs=self.n_jobs,
         )
 
         ##### creating the probe database #####
         oligo_database = OligoDatabase(
-            min_oligos_per_region=probes_per_gene_min,
+            min_oligos_per_region=min_probes_per_gene,
             write_regions_with_insufficient_oligos=True,
             lru_db_max_in_memory=db_max_in_memory,
             database_name=self.subdir_db_probes,
@@ -131,7 +119,7 @@ class ScrinshotProbeDesigner:
         oligo_database.load_sequences_from_fasta(
             files_fasta=probe_fasta_file,
             sequence_type="target",
-            region_ids=self.gene_ids,
+            region_ids=gene_ids,
         )
 
         ##### save database #####
@@ -193,9 +181,9 @@ class ScrinshotProbeDesigner:
         filters = [
             hard_masked_sequences,
             soft_masked_sequences,
+            homopolymeric_runs,
             gc_content,
             melting_temperature,
-            homopolymeric_runs,
             detect_oligo_filter,
         ]
 
@@ -673,9 +661,20 @@ def main():
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    ##### read the genes file #####
+    if config["file_regions"] is None:
+        warnings.warn(
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
+        )
+        gene_ids = None
+    else:
+        with open(config["file_regions"]) as handle:
+            lines = handle.readlines()
+            # ensure that the list contains unique gene ids
+            gene_ids = list(set([line.rstrip() for line in lines]))
+
     ##### initialize probe designer pipeline #####
     pipeline = ScrinshotProbeDesigner(
-        file_regions=config["file_regions"],
         write_intermediate_steps=config["write_intermediate_steps"],
         dir_output=config["dir_output"],
         n_jobs=config["n_jobs"],
@@ -683,11 +682,12 @@ def main():
 
     ##### create probe database #####
     probe_database, file_database = pipeline.create_probe_database(
+        gene_ids=gene_ids,
         probe_length_min=config["probe_length_min"],
         probe_length_max=config["probe_length_max"],
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
-        probes_per_gene_min=config["probeset_size_min"],
+        min_probes_per_gene=config["probeset_size_min"],
         db_max_in_memory=config["db_max_in_memory"],
     )
 

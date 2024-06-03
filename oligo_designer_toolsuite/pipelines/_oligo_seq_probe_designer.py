@@ -86,7 +86,8 @@ class OligoSeqProbeDesigner:
         else:
             with open(file_regions) as handle:
                 lines = handle.readlines()
-                self.gene_ids = [line.rstrip() for line in lines]
+                # ensure that the list contains unique gene ids
+                self.gene_ids = list(set([line.rstrip() for line in lines]))
 
         self.write_intermediate_steps = write_intermediate_steps
 
@@ -120,6 +121,7 @@ class OligoSeqProbeDesigner:
         oligo_length_max: int,
         files_fasta_oligo_database: list[str],
         min_oligos_per_region: int,
+        db_max_in_memory: int,
     ):
         """
         Creates an oligo database using sequences generated through a sliding window approach, loading them from specified FASTA files.
@@ -150,6 +152,7 @@ class OligoSeqProbeDesigner:
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_oligos_per_region,
             write_regions_with_insufficient_oligos=True,
+            lru_db_max_in_memory=db_max_in_memory,
             database_name=self.subdir_db_oligos,
             dir_output=self.dir_output,
         )
@@ -238,11 +241,11 @@ class OligoSeqProbeDesigner:
         filters = [
             hard_masked_sequences,
             soft_masked_sequences,
+            homopolymeric_runs,
             gc_content,
+            homodimer,
             melting_temperature,
             secondary_sctructure,
-            homopolymeric_runs,
-            homodimer,
         ]
 
         # initialize the preoperty filter class
@@ -589,6 +592,7 @@ def main():
         files_fasta_oligo_database=config["files_fasta_oligo_database"],
         # we should have at least "min_oligoset_size" oligos per gene to create one set
         min_oligos_per_region=config["min_oligoset_size"],
+        db_max_in_memory=config["db_max_in_memory"],
     )
 
     ##### preprocess melting temperature params #####
