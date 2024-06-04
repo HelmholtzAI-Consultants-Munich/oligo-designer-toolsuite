@@ -7,8 +7,8 @@ import random
 import subprocess
 
 from pathlib import Path
-
 from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite.utils import FastaParser
 
@@ -229,28 +229,29 @@ class OligoSequenceGenerator:
         for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
-            files_fasta_oligos = Parallel(n_jobs=n_jobs)(
-                delayed(get_sliding_window_sequence)(entry, length_interval_sequences)
-                for entry in fasta_sequences
-            )
+            with joblib_progress(
+                description=f"Oligo Generation from {os.path.basename(file_fasta)}",
+                total=len(fasta_sequences),
+            ):
+                files_fasta_oligos = Parallel(n_jobs=n_jobs)(
+                    delayed(get_sliding_window_sequence)(entry, length_interval_sequences)
+                    for entry in fasta_sequences
+                )
             for region_id in region_ids:
                 files_fasta_oligos_region = [
                     file for file in files_fasta_oligos if os.path.basename(file).startswith(f"{region_id}_")
                 ]
                 if len(files_fasta_oligos_region) > 0:
                     file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
-                    file_fasta_region_tmp = os.path.join(self.dir_output, f"{region_id}_tmp.fna")
                     file_fasta_out.add(file_fasta_region)
+                    # merge the fasta files into one single file per region
                     self.fasta_parser.merge_fasta_files(
                         files_in=files_fasta_oligos_region, file_out=file_fasta_region, overwrite=False
                     )
-                    # merge the fasta files into one single file per region
-                    # cmd = "awk '/^>/{f=!d[$1];d[$1]=1}f' " + f"{file_fasta_region_tmp} > {file_fasta_region}"
-                    # process = subprocess.Popen(cmd, shell=True).wait()
 
             # remove the temporary fasta files
             for file_fasta_oligos in files_fasta_oligos:
                 if os.path.isfile(file_fasta_oligos):
                     os.remove(file_fasta_oligos)
 
-        return list(file_fasta_out)
+        return sorted(list(file_fasta_out))
