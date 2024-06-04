@@ -4,6 +4,7 @@
 
 import os
 import warnings
+import pickle
 from pathlib import Path
 from typing import List, Union, get_args
 
@@ -13,6 +14,8 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from effidict import LRUDict
+from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 from oligo_designer_toolsuite.utils import (
@@ -20,9 +23,7 @@ from oligo_designer_toolsuite.utils import (
     check_if_key_exists,
     check_if_list,
     check_if_region_in_database,
-    check_tsv_format,
     collapse_info_for_duplicated_sequences,
-    filter_dabase_for_region,
     format_oligo_info,
     merge_databases,
 )
@@ -63,6 +64,8 @@ class OligoDatabase:
     :type database_name: str, optional
     :param dir_output: Directory path for the output, defaults to "output".
     :type dir_output: str, optional
+    :param n_jobs: The number of parallel jobs to run. Default is 1.
+    :type n_jobs: int
     """
 
     def __init__(
@@ -72,11 +75,13 @@ class OligoDatabase:
         lru_db_max_in_memory: int = 100,
         database_name: str = "db_oligo",
         dir_output: str = "output",
+        n_jobs: int = 1,
     ):
         """Constructor for the OligoDatabase class."""
         self.min_oligos_per_region = min_oligos_per_region
         self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
         self.lru_db_max_in_memory = lru_db_max_in_memory
+        self.n_jobs = n_jobs
 
         self.database_name = database_name
         self.dir_output = os.path.abspath(os.path.join(dir_output, database_name))
@@ -111,7 +116,7 @@ class OligoDatabase:
 
     def load_database(
         self,
-        file_database: str,
+        dir_database: str,
         region_ids: Union[str, List[str]] = None,
         database_overwrite: bool = False,
     ) -> None:
@@ -142,55 +147,28 @@ class OligoDatabase:
         if database_overwrite:
             warnings.warn("Overwriting database!")
 
-        if os.path.exists(file_database):
-            if not check_tsv_format(file_database):
-                raise ValueError("Database has incorrect format!")
-        else:
-            raise ValueError("Database file does not exist!")
+        if not os.path.isdir(dir_database):
+            raise ValueError("Database directory does not exist!")
 
-        file_tsv_content = pd.read_table(file_database, sep="\t")
+        path = os.path.abspath(dir_database)
+        files_database_region = [entry.path for entry in os.scandir(path) if entry.is_file()]
+        for file_database_region in files_database_region:
+            region_id = os.path.basename(file_database_region)
+            with open(file_database_region, "rb") as file:
+                oligo_dict = pickle.load(file)
+            database_region = {region_id: oligo_dict}
 
-        file_tsv_content = file_tsv_content.apply(
-            lambda col: col.apply(lambda x: x if pd.notna(x) else [None])
-        )
-
-        # convert lists represented as string to proper list format in the table with the eval function
-        file_tsv_content = file_tsv_content.apply(
-            lambda col: col.apply(
-                lambda x: (
-                    eval(x)
-                    if isinstance(x, str) and x.startswith("[") and x.endswith("]")
-                    else ([int(x)] if isinstance(x, str) and x.isdigit() else x)
-                )
-            )
-        )
-
-        database_tmp1 = file_tsv_content.to_dict(orient="records")
-        database_tmp2 = LRUDict(
-            max_in_memory=self.lru_db_max_in_memory,
-            storage_path=self._dir_cache_files,
-        )
-        for entry in database_tmp1:
-            region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
-            if region_id not in database_tmp2:
-                database_tmp2[region_id] = {}
-            database_tmp2[region_id][oligo_id] = entry
-
-        if not database_overwrite and self.database:
-            database_tmp2 = merge_databases(
-                self.database, database_tmp2, self._dir_cache_files, self.lru_db_max_in_memory
-            )
-
-        if region_ids:
-            database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
-            check_if_region_in_database(
-                database_tmp2,
-                region_ids,
-                self.write_regions_with_insufficient_oligos,
-                self.file_removed_regions,
-            )
-
-        self.database = database_tmp2
+            if self.database:
+                # only merge if there are common keys
+                if len(set(self.database) & set(database_region)) > 0:
+                    self.database = merge_databases(
+                        self.database, database_region, self._dir_cache_files, self.lru_db_max_in_memory
+                    )
+                else:
+                    for region in database_region.keys():
+                        self.database[region] = database_region[region]
+            else:
+                self.database = database_region
 
     def load_sequences_from_fasta(
         self,
@@ -217,23 +195,8 @@ class OligoDatabase:
 
         :raises AssertionError: If the provided sequence type is not supported.
         """
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-        sequence_type_reverse_complement = options[0] if options[0] != sequence_type else options[1]
 
-        if database_overwrite:
-            warnings.warn("Overwriting database!")
-            self.database = {}
-
-        region_ids = check_if_list(region_ids)
-        files_fasta = check_if_list(files_fasta)
-        import time
-
-        files_loaded = 0
-        for file in files_fasta:
-            t0 = time.time()
+        def load(file):
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
             region_sequences = {}
@@ -263,20 +226,32 @@ class OligoDatabase:
                     database_region[region][oligo_id] = oligo_seq_info
                     i += 1
 
-            if self.database:
-                # only merge if there are common keys
-                if len(set(self.database) & set(database_region)) > 0:
-                    self.database = merge_databases(
-                        self.database, database_region, self._dir_cache_files, self.lru_db_max_in_memory
-                    )
-                else:
-                    for region in database_region.keys():
-                        self.database[region] = database_region[region]
+            # only merge if there are common keys
+            if len(set(self.database) & set(database_region)) > 0:
+                self.database = merge_databases(
+                    self.database, database_region, self._dir_cache_files, self.lru_db_max_in_memory
+                )
             else:
-                self.database = database_region
-            files_loaded += 1
-            print(
-                f"Time to load {region} file: {time.time() - t0} sec. Remaining files {len(files_fasta) - files_loaded} "
+                for region in database_region.keys():
+                    self.database[region] = database_region[region]
+
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+        sequence_type_reverse_complement = options[0] if options[0] != sequence_type else options[1]
+
+        if database_overwrite:
+            warnings.warn("Overwriting database!")
+            self.database = {}
+
+        region_ids = check_if_list(region_ids)
+        files_fasta = check_if_list(files_fasta)
+
+        # Load files aparllel into database
+        with joblib_progress(description="Database Loading", total=len(files_fasta)):
+            Parallel(n_jobs=self.n_jobs, backend="threading")(
+                delayed(load)(file_fasta) for file_fasta in files_fasta
             )
 
         # add this step to log regions which are not available in database
@@ -296,10 +271,50 @@ class OligoDatabase:
 
     def save_database(
         self,
-        filename: str = "db_oligo",
+        dir_database: str = "db_oligo",
         region_ids: list[str] = None,
     ):
         """Save the oligo database to YAML and TSV files.
+
+        This function saves the oligo database to a TSV (tab-separated values) file containing the
+        oligo database entries. The files are saved in the specified output directory with the provided
+        filenames. The order of the columns in the TSV file is:
+
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
+        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
+
+        Additional feat. includes additional information from the header of the fasta file and additional information
+        computed by the filtering classes.
+
+        :param region_ids: A list of region IDs to include in the saved database. If None, all regions are included.
+        :type region_ids: list[str], optional
+        :param dir_database: The base directory name for the output files, defaults to "db_oligo".
+        :type dir_database: str, optional
+        :return: Path to the output directory.
+        :rtype: tuple
+        """
+        if region_ids:
+            region_ids = check_if_list(region_ids)
+        else:
+            region_ids = self.database.keys()
+
+        dir_database = os.path.join(self.dir_output, dir_database)
+        Path(dir_database).mkdir(parents=True, exist_ok=True)
+
+        for region_id, oligo_dict in self.database.items():
+            file_database_region = os.path.join(dir_database, region_id + ".pckl")
+            with open(file_database_region, "wb") as file:
+                pickle.dump(oligo_dict, file)
+
+        return dir_database
+
+    def write_database_to_table(
+        self,
+        filename: str = "db_oligo",
+        region_ids: list[str] = None,
+    ):
+        """Write the oligo database to TSV files.
 
         This function saves the oligo database to a TSV (tab-separated values) file containing the
         oligo database entries. The files are saved in the specified output directory with the provided
