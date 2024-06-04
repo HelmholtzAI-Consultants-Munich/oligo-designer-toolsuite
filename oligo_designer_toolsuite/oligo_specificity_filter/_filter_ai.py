@@ -117,11 +117,11 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         # filter the oligo database
         for region_id, table_hits_region in zip(region_ids, table_hits):
             oligos_with_hits_region = table_hits_region["query"].unique()
-            database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region_id],
+            self._filter_hits_from_database(
+                oligo_database=oligo_database,
+                region_id=region_id,
                 oligos_with_hits=oligos_with_hits_region,
             )
-            oligo_database.database[region_id] = database_region_filtered
 
         os.remove(file_reference)
         os.remove(file_reference + ".fai")

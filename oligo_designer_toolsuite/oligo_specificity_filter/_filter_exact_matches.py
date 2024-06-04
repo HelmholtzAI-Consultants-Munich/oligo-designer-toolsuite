@@ -72,7 +72,7 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description="Exact Matches", total = len(region_ids)):
+        with joblib_progress(description="Exact Matches", total=len(region_ids)):
             table_hits = Parallel(n_jobs=n_jobs)(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
@@ -89,12 +89,12 @@ class ExactMatchFilter(SpecificityFilterBase):
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
         oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 
-        for region in region_ids:
-            database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region],
-                oligos_with_hits=oligos_with_hits[region],
+        for region_id in region_ids:
+            self._filter_hits_from_database(
+                oligo_database=oligo_database,
+                region_id=region_id,
+                oligos_with_hits=oligos_with_hits[region_id],
             )
-            oligo_database.database[region] = database_region_filtered
         return oligo_database
 
     def get_oligo_pair_hits(
@@ -136,7 +136,7 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description="Exact Matches", total = len(region_ids)):
+        with joblib_progress(description="Exact Matches", total=len(region_ids)):
             table_hits = Parallel(n_jobs=n_jobs)(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,

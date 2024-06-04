@@ -65,21 +65,22 @@ class SpecificityFilterBase(ABC):
         :type n_jobs: int
         """
 
-    def _filter_hits_from_database(self, database_region: dict, oligos_with_hits: list[str]):
+    def _filter_hits_from_database(
+        self, oligo_database: OligoDatabase, region_id: str, oligos_with_hits: list[str]
+    ):
         """Removes oligos identified with hits in the reference database from a given region of the oligo database.
 
-        :param database_region: A region of the oligo database to filter.
-        :type database_region: dict
+        :param oligo_database: The oligo database to which the filter will be applied.
+        :type oligo_database: OligoDatabase
         :param oligos_with_hits: A list of oligo IDs that have matches in the reference database and should be removed.
         :type oligos_with_hits: list[str]
         :return: The filtered region of the oligo database.
         :rtype: dict
         """
-        oligo_ids = list(database_region.keys())
+        oligo_ids = list(oligo_database.database[region_id].keys())
         for oligo_id in oligo_ids:
             if oligo_id in oligos_with_hits:
-                del database_region[oligo_id]
-        return database_region
+                del oligo_database.database[region_id][oligo_id]
 
 
 class AlignmentSpecificityFilter(SpecificityFilterBase):
@@ -137,11 +138,11 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         for region_id, table_hits_region in zip(region_ids, table_hits):
             oligos_with_hits_region = table_hits_region["query"].unique()
-            database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region_id],
+            self._filter_hits_from_database(
+                oligo_database=oligo_database,
+                region_id=region_id,
                 oligos_with_hits=oligos_with_hits_region,
             )
-            oligo_database.database[region_id] = database_region_filtered
 
         return oligo_database
 
@@ -217,7 +218,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         # Run search for each region in parallel
         with joblib_progress(description=self.filter_name, total=len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs)(
+            table_hits = Parallel(n_jobs=n_jobs, backend="threading")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
                     region_id=region_id,

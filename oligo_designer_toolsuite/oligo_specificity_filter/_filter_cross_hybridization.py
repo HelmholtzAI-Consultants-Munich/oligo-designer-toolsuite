@@ -72,7 +72,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         :return: The oligo database with cross-hybridization minimized according to the policy.
         :rtype: OligoDatabase
         """
-        regions = list(oligo_database.database.keys())
+        region_ids = list(oligo_database.database.keys())
 
         reference_database = self._create_reference_database(
             sequence_type=sequence_type, oligo_database=oligo_database
@@ -85,12 +85,12 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         )
         oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 
-        for region in regions:
-            database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region],
-                oligos_with_hits=oligos_with_hits[region],
+        for region_id in region_ids:
+            self._filter_hits_from_database(
+                oligo_database=oligo_database,
+                region_id=region_id,
+                oligos_with_hits=oligos_with_hits[region_id],
             )
-            oligo_database.database[region] = database_region_filtered
         return oligo_database
 
     def _create_reference_database(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase):
