@@ -164,7 +164,7 @@ class OligoSeqProbeDesigner:
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="1_db_initial")
+            file_database = oligo_database.save_database(dir_database="1_db_initial")
         else:
             file_database = ""
 
@@ -260,7 +260,7 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="2_db_property_filter")
+            file_database = oligo_database.save_database(dir_database="2_db_property_filter")
         else:
             file_database = ""
 
@@ -365,7 +365,7 @@ class OligoSeqProbeDesigner:
             dir_output=self.dir_output,
         )
 
-        filters = [exact_matches, cross_hybridization, hybridization_probability]
+        filters = [exact_matches, hybridization_probability, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
@@ -376,7 +376,7 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="3_db_specificty_filter")
+            file_database = oligo_database.save_database(dir_database="3_db_specificty_filter")
         else:
             file_database = ""
 
@@ -480,7 +480,7 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="4_db_oligosets")
+            file_database = oligo_database.save_database(dir_database="4_db_oligosets")
             file_oligosets = oligo_database.write_oligosets_to_table()
         else:
             file_database = ""

@@ -73,9 +73,8 @@ def get_oligo_database_info(oligo_database: dict):
     :return: Number of genes and oligos in the database.
     :rtype: int, int
     """
-    genes = oligo_database.keys()
-    num_genes = len(genes)
-    num_oligos = sum(len(oligo_database[gene].keys()) for gene in genes)
+    num_genes = len(oligo_database)
+    num_oligos = sum(len(oligos) for oligos in oligo_database.values())
     return num_genes, num_oligos
 
 

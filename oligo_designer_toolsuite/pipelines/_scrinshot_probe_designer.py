@@ -124,7 +124,7 @@ class ScrinshotProbeDesigner:
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="1_db_probes_initial")
+            file_database = oligo_database.save_database(dir_database="1_db_probes_initial")
         else:
             file_database = ""
 
@@ -199,7 +199,7 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="2_db_probes_property_filter")
+            file_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
         else:
             file_database = ""
 
@@ -276,7 +276,7 @@ class ScrinshotProbeDesigner:
                 dir_output=self.dir_output,
             )
 
-        filters = [exact_matches, cross_hybridization, specificity]
+        filters = [exact_matches, specificity, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
@@ -287,7 +287,7 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="3_db_probes_specificty_filter")
+            file_database = oligo_database.save_database(dir_database="3_db_probes_specificty_filter")
         else:
             file_database = ""
 
@@ -358,7 +358,7 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="4_db_probes_probesets")
+            file_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
             file_probesets = oligo_database.write_oligosets_to_table()
         else:
             file_database = ""
