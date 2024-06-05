@@ -2,10 +2,10 @@
 # imports
 ############################################
 
-import logging
 import os
-
 import pandas as pd
+
+from typing import List, Union
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
@@ -89,43 +89,68 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         :return: The filtered oligo database with sequences having significant hits removed.
         :rtype: OligoDatabase
         """
-        region_ids = list(oligo_database.database.keys())
-        table_hits = self.alignment_method._get_table_hits(
-            sequence_type=sequence_type,
-            oligo_database=oligo_database,
-            reference_database=reference_database,
-            region_ids=region_ids,
-            consider_hits_from_input_region=False,
-            n_jobs=n_jobs,
-        )
-        # filter the table hits
+        # When applying the filter we don't want to consider hits within the same region
+        consider_hits_from_input_region = False
+
+        # Create reference and index file for search
+        # Defined in advance to avoid writing the file multiple times
         file_reference = reference_database.write_database_to_fasta(
             filename=f"db_reference_{self.filter_name}"
-        )  # defined in advance to avoid writing the file multiple times
-        with joblib_progress(description="Hybridization Probability", total=len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs, prefer="threads")(
-                delayed(self._filter_table_hits)(
+        )
+        file_index = self.alignment_method._create_index(file_reference=file_reference, n_jobs=n_jobs)
+
+        # run search in parallel for each region
+        region_ids = list(oligo_database.database.keys())
+        with joblib_progress(description=self.filter_name, total=len(region_ids)):
+            Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
+                delayed(self._apply_region)(
                     sequence_type=sequence_type,
-                    table_hits=table_hits_region,
                     oligo_database=oligo_database,
                     file_reference=file_reference,
+                    file_index=file_index,
                     region_id=region_id,
+                    consider_hits_from_input_region=consider_hits_from_input_region,
                 )
-                for table_hits_region, region_id in zip(table_hits, region_ids)
-            )
-
-        # filter the oligo database
-        for region_id, table_hits_region in zip(region_ids, table_hits):
-            oligos_with_hits_region = table_hits_region["query"].unique()
-            self._filter_hits_from_database(
-                oligo_database=oligo_database,
-                region_id=region_id,
-                oligos_with_hits=oligos_with_hits_region,
+                for region_id in region_ids
             )
 
         os.remove(file_reference)
         os.remove(file_reference + ".fai")
+        self.alignment_method._remove_index(file_index)
+
         return oligo_database
+
+    def _apply_region(
+        self,
+        sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        file_reference: str,
+        file_index: str,
+        region_id: List[str],
+        consider_hits_from_input_region: bool,
+    ):
+        table_hits_region = self.alignment_method._run_filter(
+            sequence_type=sequence_type,
+            region_id=region_id,
+            oligo_database=oligo_database,
+            file_index=file_index,
+            consider_hits_from_input_region=consider_hits_from_input_region,
+        )
+
+        table_hits_region = self._filter_table_hits(
+            sequence_type=sequence_type,
+            table_hits=table_hits_region,
+            oligo_database=oligo_database,
+            file_reference=file_reference,
+            region_id=region_id,
+        )
+
+        oligos_with_hits_region = table_hits_region["query"].unique()
+        self._filter_hits_from_database(
+            oligo_database=oligo_database,
+            region_id=region_id,
+            oligos_with_hits=oligos_with_hits_region,
+        )
 
     def _filter_table_hits(
         self,
@@ -171,11 +196,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         )
 
         # filter the database, keep only the oligos above the threshold
-        len_1 = len(table_hits)
         table_hits = table_hits[predictions >= self.threshold]
-        logging.info(
-            f"In {region_id}: AI filter removed{len_1 - len(table_hits)} hits out of {len_1} total hits"
-        )
         return table_hits
 
     def overwrite_output_format(self):
