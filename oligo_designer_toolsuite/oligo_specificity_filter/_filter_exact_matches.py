@@ -2,10 +2,10 @@
 # imports
 ############################################
 
+from typing import List, get_args
+
 import iteration_utilities
 import pandas as pd
-
-from typing import List, get_args
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 

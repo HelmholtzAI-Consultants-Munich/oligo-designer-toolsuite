@@ -71,7 +71,7 @@ class TestExactMatchFilter(unittest.TestCase):
             database_name="db_oligo_exactmatch_filters_match",
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_database(FILE_DATABASE_OLIGOS_EXACT_MATCH)
+        self.oligo_database.load_from_tsv(FILE_DATABASE_OLIGOS_EXACT_MATCH)
 
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
@@ -128,7 +128,7 @@ class AlignmentFilterTestBase:
             database_name="db_oligo_alignment_filters_match",
             dir_output=self.tmp_path,
         )
-        self.oligo_database_match.load_database(database_file_match)
+        self.oligo_database_match.load_from_tsv(database_file_match)
 
         self.oligo_database_nomatch = OligoDatabase(
             min_oligos_per_region=2,
@@ -136,7 +136,7 @@ class AlignmentFilterTestBase:
             database_name="db_oligo_alignment_filters_nomatch",
             dir_output=self.tmp_path,
         )
-        self.oligo_database_nomatch.load_database(database_file_nomatch)
+        self.oligo_database_nomatch.load_from_tsv(database_file_nomatch)
 
         self.reference_database = ReferenceDatabase(
             database_name="db_reference_alignment_filters", dir_output=self.tmp_path
@@ -242,7 +242,7 @@ class TestCrossHybridizationFilter(unittest.TestCase):
                 database_name="db_oligo_crosshybridization_filters_solution_larger_region_{i}",
                 dir_output=self.tmp_path,
             )
-            solution.load_database(solution_file)
+            solution.load_from_tsv(solution_file)
             self.expected_oligos_larger_region.append(solution.database)
 
         self.expected_oligos_degree = []
@@ -253,7 +253,7 @@ class TestCrossHybridizationFilter(unittest.TestCase):
                 database_name="db_oligo_crosshybridization_filters_solution_degree_{i}",
                 dir_output=self.tmp_path,
             )
-            solution.load_database(solution_file)
+            solution.load_from_tsv(solution_file)
             self.expected_oligos_degree.append(solution.database)
 
     def tearDown(self):
@@ -266,7 +266,7 @@ class TestCrossHybridizationFilter(unittest.TestCase):
             database_name="db_oligo_crosshybridization_filters",
             dir_output=self.tmp_path,
         )
-        oligos.load_database(file_database)
+        oligos.load_from_tsv(file_database)
         return oligos
 
     def _apply_filter_and_assert(self, filter_instance, expected_oligos):
@@ -373,7 +373,7 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         )
         self.filter.model = DummyAPI()
         self.database = OligoDatabase(dir_output=self.tmp_path)
-        self.database.load_database(FILE_DATABASE_OLIGOS_AI)
+        self.database.load_from_tsv(FILE_DATABASE_OLIGOS_AI)
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
         self.reference_database.load_sequences_from_fasta(
             files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
@@ -573,7 +573,7 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         )
         self.filter.model = DummyAPI()
         self.database = OligoDatabase(dir_output=self.tmp_path)
-        self.database.load_database(FILE_DATABASE_OLIGOS_AI)
+        self.database.load_from_tsv(FILE_DATABASE_OLIGOS_AI)
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
         self.reference_database.load_sequences_from_fasta(
             files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True

@@ -4,11 +4,9 @@
 
 import os
 import random
-import subprocess
-
 from pathlib import Path
+
 from joblib import Parallel, delayed
-from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite.utils import FastaParser
 
@@ -215,6 +213,7 @@ class OligoSequenceGenerator:
             region_ids = [
                 self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta) for file_fasta in files_fasta_in
             ]
+            region_ids = [item for sublist in region_ids for item in sublist]
             # make keys unique
             region_ids = list(set(region_ids))
 

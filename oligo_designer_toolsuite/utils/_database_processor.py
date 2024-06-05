@@ -4,9 +4,8 @@
 
 import warnings
 from collections import defaultdict
-from itertools import chain
 
-from effidict import LRUDict
+from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 
@@ -40,7 +39,7 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
         :return: A modified database with oligo sequences as keys.
         :rtype: dict
         """
-        database_modified = LRUDict(
+        database_modified = LRUPickleDict(
             max_in_memory=max_in_memory,
             storage_path=dir_cache_files,
         )
@@ -77,7 +76,7 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
     # keys that are in both dicts
     regions_intersection = list(set(database1) & set(database2))
 
-    database_merged = LRUDict(
+    database_merged = LRUPickleDict(
         max_in_memory=max_in_memory,
         storage_path=dir_cache_files,
     )
@@ -91,7 +90,7 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
     database_merged = _add_database_content(database_merged, db1_sequences_as_keys)
     database_merged = _add_database_content(database_merged, db2_sequences_as_keys)
 
-    database_concat = LRUDict(
+    database_concat = LRUPickleDict(
         max_in_memory=max_in_memory,
         storage_path=dir_cache_files,
     )

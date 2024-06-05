@@ -3,8 +3,8 @@
 ############################################
 
 import os
-import warnings
 import pickle
+import warnings
 from pathlib import Path
 from typing import List, Union, get_args
 
@@ -13,7 +13,7 @@ import yaml
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from effidict import LRUDict
+from effidict import LRUPickleDict
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
@@ -23,7 +23,9 @@ from oligo_designer_toolsuite.utils import (
     check_if_key_exists,
     check_if_list,
     check_if_region_in_database,
+    check_tsv_format,
     collapse_info_for_duplicated_sequences,
+    filter_dabase_for_region,
     format_oligo_info,
     merge_databases,
 )
@@ -92,12 +94,12 @@ class OligoDatabase:
         self.fasta_parser = FastaParser()
 
         # Initialize databse object
-        self.database = LRUDict(
+        self.database = LRUPickleDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=self._dir_cache_files,
         )
 
-        self.oligosets = LRUDict(
+        self.oligosets = LRUPickleDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=self._dir_cache_files,
         )  # will be used later in the gereration of oligo sets
@@ -114,9 +116,9 @@ class OligoDatabase:
     # Load Functions
     ############################################
 
-    def load_database(
+    def load_from_tsv(
         self,
-        dir_database: str,
+        file_database: str,
         region_ids: Union[str, List[str]] = None,
         database_overwrite: bool = False,
     ) -> None:
@@ -133,8 +135,11 @@ class OligoDatabase:
 
         The database can be optionally filtered by specifying a list of region IDs.
 
-        :param dir_database: The base directory name for the output files.
-        :type dir_database: str
+        ⚠️ For big databases, it is not recommended to load the whole TSV file at once. Instead, the database should be
+        split into smaller files. The function will merge the databases if there are common keys (regions).
+
+        :param file_database: Path to the TSV file containing the oligo database.
+        :type file_database: str
         :param region_ids: List of region IDs to filter the database. Defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :param database_overwrite: If True, overwrite the existing database. Defaults to False.
@@ -143,8 +148,87 @@ class OligoDatabase:
         :raises ValueError: If the database file has an incorrect format or does not exist.
         """
 
+        region_ids = check_if_list(region_ids)
+
+        if os.path.exists(file_database):
+            if not check_tsv_format(file_database):
+                raise ValueError("Database has incorrect format!")
+        else:
+            raise ValueError("Database file does not exist!")
+
+        file_tsv_content = pd.read_table(file_database, sep="\t")
+
+        file_tsv_content = file_tsv_content.apply(
+            lambda col: col.apply(lambda x: x if pd.notna(x) else [None])
+        )
+
+        # convert lists represented as string to proper list format in the table with the eval function
+        file_tsv_content = file_tsv_content.apply(
+            lambda col: col.apply(
+                lambda x: (
+                    eval(x)
+                    if isinstance(x, str) and x.startswith("[") and x.endswith("]")
+                    else ([int(x)] if isinstance(x, str) and x.isdigit() else x)
+                )
+            )
+        )
+
+        database_tmp1 = file_tsv_content.to_dict(orient="records")
+        database_tmp2 = LRUPickleDict(
+            max_in_memory=self.lru_db_max_in_memory,
+            storage_path=self._dir_cache_files,
+        )
+        for entry in database_tmp1:
+            region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
+            if region_id not in database_tmp2:
+                database_tmp2[region_id] = {}
+            database_tmp2[region_id][oligo_id] = entry
+
+        if not database_overwrite and self.database:
+            database_tmp2 = merge_databases(
+                self.database, database_tmp2, self._dir_cache_files, self.lru_db_max_in_memory
+            )
+
+        if region_ids:
+            database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
+            check_if_region_in_database(
+                database_tmp2,
+                region_ids,
+                self.write_regions_with_insufficient_oligos,
+                self.file_removed_regions,
+            )
+
+        self.database = database_tmp2
+
+    def load_database(
+        self,
+        dir_database: str,
+        region_ids: Union[str, List[str]] = None,
+        database_overwrite: bool = False,
+    ) -> None:
+        """
+        Load a previously saved oligo database from a folder containing pickled files.
+
+        This function loads the oligo database from a folder containing pickled files. Each file in the folder
+        represents a region in the database. The file must contain a dictionary with oligo IDs as keys and
+        oligo sequences as values.
+
+        The database can be optionally filtered by specifying a list of region IDs.
+
+        :param dir_database: Path to the folder containing pickled files of the oligo database.
+        :type dir_database: str
+        :param region_ids: List of region IDs to filter the database. Defaults to None (all regions are loaded).
+        :type region_ids: Union[str, List[str]], optional
+        :param database_overwrite: If True, overwrite the existing database. Defaults to False.
+        :type database_overwrite: bool, optional
+
+        :raises ValueError: If the database file has an incorrect format or does not exist.
+        """
+
         def load(file):
-            region_id = os.path.basename(file)
+            # extract region ID from the file name and remove the extension
+            region_id = os.path.basename(file).split(".")[0]
+            print(f"Loading region {region_id} from {file}...")
             with open(file, "rb") as handle:
                 oligo_dict = pickle.load(handle)
 
@@ -159,12 +243,15 @@ class OligoDatabase:
 
         region_ids = check_if_list(region_ids)
 
+        if database_overwrite:
+            warnings.warn("Overwriting database!")
+
         if not os.path.isdir(dir_database):
             raise ValueError("Database directory does not exist!")
 
         if database_overwrite:
             warnings.warn("Overwriting database!")
-            self.database = LRUDict(
+            self.database = LRUPickleDict(
                 max_in_memory=self.lru_db_max_in_memory,
                 storage_path=self._dir_cache_files,
             )
@@ -264,7 +351,7 @@ class OligoDatabase:
 
         if database_overwrite:
             warnings.warn("Overwriting database!")
-            self.database = LRUDict(
+            self.database = LRUPickleDict(
                 max_in_memory=self.lru_db_max_in_memory,
                 storage_path=self._dir_cache_files,
             )

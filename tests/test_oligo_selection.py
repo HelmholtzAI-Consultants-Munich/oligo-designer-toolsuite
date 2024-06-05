@@ -115,7 +115,7 @@ class TestOligoScoring(unittest.TestCase):
             write_regions_with_insufficient_oligos=True,
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_database(FILE_DATABASE)
+        self.oligo_database.load_from_tsv(FILE_DATABASE)
 
         self.oligo_scoring = WeightedTmGCOligoScoring(
             Tm_min=52,

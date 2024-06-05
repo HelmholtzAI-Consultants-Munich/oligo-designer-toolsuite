@@ -4,7 +4,6 @@
 
 from typing import get_args
 
-from effidict import LRUDict
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 

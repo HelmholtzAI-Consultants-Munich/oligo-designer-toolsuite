@@ -4,8 +4,8 @@
 
 from abc import ABC, abstractmethod
 
-import pandas as pd
 import networkx as nx
+import pandas as pd
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -119,6 +119,7 @@ class RemoveByLargerRegionPolicy(FilterPolicyBase):
         graph = nx.from_edgelist(oligo_pair_hits)
         number_oligos_per_region = self._get_number_oligos_per_region(oligo_database=oligo_database)
         oligos_with_hits = {region: [] for region in oligo_database.database.keys()}
+        print(number_oligos_per_region.keys())
 
         while graph.number_of_edges() > 0:
             edge = list(graph.edges)[0]
