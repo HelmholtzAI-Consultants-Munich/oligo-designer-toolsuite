@@ -103,7 +103,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
             filename=f"db_reference_{self.filter_name}"
         )  # defined in advance to avoid writing the file multiple times
         with joblib_progress(description="Hybridization Probability", total=len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs)(
+            table_hits = Parallel(n_jobs=n_jobs, prefer="threads")(
                 delayed(self._filter_table_hits)(
                     sequence_type=sequence_type,
                     table_hits=table_hits_region,

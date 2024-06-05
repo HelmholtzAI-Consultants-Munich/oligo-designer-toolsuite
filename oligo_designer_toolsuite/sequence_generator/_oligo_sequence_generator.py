@@ -229,14 +229,10 @@ class OligoSequenceGenerator:
         for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
-            with joblib_progress(
-                description=f"Oligo Generation from {os.path.basename(file_fasta)}",
-                total=len(fasta_sequences),
-            ):
-                files_fasta_oligos = Parallel(n_jobs=n_jobs)(
-                    delayed(get_sliding_window_sequence)(entry, length_interval_sequences)
-                    for entry in fasta_sequences
-                )
+            files_fasta_oligos = Parallel(n_jobs=n_jobs)(
+                delayed(get_sliding_window_sequence)(entry, length_interval_sequences)
+                for entry in fasta_sequences
+            )
             for region_id in region_ids:
                 files_fasta_oligos_region = [
                     file for file in files_fasta_oligos if os.path.basename(file).startswith(f"{region_id}_")

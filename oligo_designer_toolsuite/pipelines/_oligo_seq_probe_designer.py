@@ -47,8 +47,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
-    filtering_step,
-    generation_step,
+    pipeline_step_basic,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
@@ -114,7 +113,7 @@ class OligoSeqProbeDesigner:
 
         self.n_jobs = n_jobs
 
-    @generation_step(step_name="Create Database")
+    @pipeline_step_basic(step_name="Create Database")
     def create_oligo_database(
         self,
         oligo_length_min: int,
@@ -173,7 +172,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Property Filters")
+    @pipeline_step_basic(step_name="Property Filters")
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
@@ -266,7 +265,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Specificty Filters")
+    @pipeline_step_basic(step_name="Specificty Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -397,7 +396,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Oligo Selection")
+    @pipeline_step_basic(step_name="Oligo Selection")
     def create_oligo_sets(
         self,
         oligo_database: OligoDatabase,

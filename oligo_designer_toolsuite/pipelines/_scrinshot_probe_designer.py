@@ -47,8 +47,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
-    filtering_step,
-    generation_step,
+    pipeline_step_basic,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
@@ -88,7 +87,7 @@ class ScrinshotProbeDesigner:
         )
         logging.captureWarnings(True)
 
-    @generation_step(step_name="Create Database")
+    @pipeline_step_basic(step_name="Create Database")
     def create_probe_database(
         self,
         gene_ids: list,
@@ -133,7 +132,7 @@ class ScrinshotProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Property Filters")
+    @pipeline_step_basic(step_name="Property Filters")
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
@@ -205,7 +204,7 @@ class ScrinshotProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Specificty Filters")
+    @pipeline_step_basic(step_name="Specificty Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -230,6 +229,20 @@ class ScrinshotProbeDesigner:
             files_fasta=files_fasta_reference_database, database_overwrite=False
         )
 
+        ##### exact match filter #####
+        # removing duplicated probes from the region with the most probes
+        # exectute seperately before specificity filter to compute ligation side for less oligos
+        exact_matches_policy = RemoveByLargerRegionPolicy()
+        exact_matches = ExactMatchFilter(policy=exact_matches_policy)
+        filters = [exact_matches]
+        specificity_filter = SpecificityFilter(filters=filters)
+        oligo_database = specificity_filter.apply(
+            sequence_type="oligo",
+            oligo_database=oligo_database,
+            reference_database=reference_database,
+            n_jobs=self.n_jobs,
+        )
+
         ##### calculate required probe attributes #####
         oligo_database = self.probe_attributes_calculator.calculate_padlock_arms(
             oligo_database=oligo_database,
@@ -242,10 +255,6 @@ class ScrinshotProbeDesigner:
         )
 
         ##### specificity filters #####
-        # removing duplicated probes from the region with the most probes
-        exact_matches_policy = RemoveByLargerRegionPolicy()
-        exact_matches = ExactMatchFilter(policy=exact_matches_policy)
-
         cross_hybridization_aligner = BlastNFilter(
             search_parameters=cross_hybridization_blastn_search_parameters,
             hit_parameters=cross_hybridization_blastn_hit_parameters,
@@ -276,7 +285,7 @@ class ScrinshotProbeDesigner:
                 dir_output=self.dir_output,
             )
 
-        filters = [exact_matches, specificity, cross_hybridization]
+        filters = [specificity, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
@@ -305,7 +314,7 @@ class ScrinshotProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Set Selection")
+    @pipeline_step_basic(step_name="Set Selection")
     def create_probe_sets(
         self,
         oligo_database: OligoDatabase,

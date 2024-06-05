@@ -54,7 +54,7 @@ class PropertyFilter:
 
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description="Property Filter", total=len(region_ids)):
-            Parallel(n_jobs=n_jobs, backend="threading")(
+            Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._filter_region)(sequence_type, region_id, oligo_database)
                 for region_id in region_ids
             )
