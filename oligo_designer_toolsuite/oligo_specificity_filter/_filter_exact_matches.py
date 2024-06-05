@@ -56,11 +56,6 @@ class ExactMatchFilter(SpecificityFilterBase):
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-
         # extract all the sequences
         sequences = oligo_database.get_sequence_list(sequence_type=sequence_type)
         search_results = self._get_duplicated_sequences(sequences)
