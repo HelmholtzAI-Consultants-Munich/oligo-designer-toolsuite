@@ -22,12 +22,14 @@ from oligo_designer_toolsuite.utils import (
     FastaParser,
     check_if_key_exists,
     check_if_list,
+    check_tsv_format,
     check_if_region_in_database,
     check_tsv_format,
     collapse_info_for_duplicated_sequences,
     filter_dabase_for_region,
     format_oligo_info,
     merge_databases,
+    filter_dabase_for_region,
 )
 
 ############################################
@@ -275,7 +277,7 @@ class OligoDatabase:
                 self.file_removed_regions,
             )
 
-    def load_sequences_from_fasta(
+    def load_database_from_fasta(
         self,
         files_fasta: list[str],
         sequence_type: _TYPES_SEQ,
@@ -370,6 +372,89 @@ class OligoDatabase:
                 self.write_regions_with_insufficient_oligos,
                 self.file_removed_regions,
             )
+
+    def load_database_from_table(
+        self,
+        file_database: str,
+        region_ids: Union[str, List[str]] = None,
+        database_overwrite: bool = False,
+    ) -> None:
+        """Load a previously saved oligo database from a TSV file.
+
+        This function loads the oligo database from a tab-separated values (TSV) file. The file must contain
+        columns such as 'region_id', 'oligo_id', 'sequence', and additional attributes, like information from the
+        fasta headers or information computed by the filtering classes.
+        The order of columns in the database file is:
+
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
+        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
+
+        The database can be optionally filtered by specifying a list of region IDs.
+
+        :param file_database: Path to the TSV file containing the oligo database.
+        :type file_database: str
+        :param region_ids: List of region IDs to filter the database. Defaults to None.
+        :type region_ids: Union[str, List[str]], optional
+        :param database_overwrite: If True, overwrite the existing database. Defaults to False.
+        :type database_overwrite: bool, optional
+
+        :raises ValueError: If the database file has an incorrect format or does not exist.
+        """
+        region_ids = check_if_list(region_ids)
+
+        if database_overwrite:
+            warnings.warn("Overwriting database!")
+
+        if os.path.exists(file_database):
+            if not check_tsv_format(file_database):
+                raise ValueError("Database has incorrect format!")
+        else:
+            raise ValueError("Database file does not exist!")
+
+        file_tsv_content = pd.read_table(file_database, sep="\t")
+
+        file_tsv_content = file_tsv_content.apply(
+            lambda col: col.apply(lambda x: x if pd.notna(x) else [None])
+        )
+
+        # convert lists represented as string to proper list format in the table with the eval function
+        file_tsv_content = file_tsv_content.apply(
+            lambda col: col.apply(
+                lambda x: (
+                    eval(x)
+                    if isinstance(x, str) and x.startswith("[") and x.endswith("]")
+                    else ([int(x)] if isinstance(x, str) and x.isdigit() else x)
+                )
+            )
+        )
+
+        database_tmp1 = file_tsv_content.to_dict(orient="records")
+        database_tmp2 = LRUDict(
+            max_in_memory=self.lru_db_max_in_memory,
+            storage_path=self._dir_cache_files,
+        )
+        for entry in database_tmp1:
+            region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
+            if region_id not in database_tmp2:
+                database_tmp2[region_id] = {}
+            database_tmp2[region_id][oligo_id] = entry
+
+        if not database_overwrite and self.database:
+            database_tmp2 = merge_databases(
+                self.database, database_tmp2, self._dir_cache_files, self.lru_db_max_in_memory
+            )
+
+        if region_ids:
+            database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
+            check_if_region_in_database(
+                database_tmp2,
+                region_ids,
+                self.write_regions_with_insufficient_oligos,
+                self.file_removed_regions,
+            )
+
+        self.database = database_tmp2
 
     ############################################
     # Save Functions

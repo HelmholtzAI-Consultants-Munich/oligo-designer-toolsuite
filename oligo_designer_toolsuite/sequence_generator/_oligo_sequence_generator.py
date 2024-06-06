@@ -110,8 +110,10 @@ class OligoSequenceGenerator:
         file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
 
         with open(file_fasta_out, "w") as handle_fasta:
-            for seq in sequences_set:
-                handle_fasta.write(f">{name_sequences}::regiontype=random_sequence\n{seq}\n")
+            for i, seq in enumerate(sequences_set):
+                handle_fasta.write(
+                    f">{name_sequences}::regiontype=random_sequence;region_id=random_sequence{i}\n{seq}\n"
+                )
         return file_fasta_out
 
     def create_sequences_sliding_window(
@@ -211,7 +213,9 @@ class OligoSequenceGenerator:
             region_ids = check_if_list(region_ids)
         else:
             region_ids = [
-                self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta) for file_fasta in files_fasta_in
+                region_id
+                for file_fasta in files_fasta_in
+                for region_id in self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta)
             ]
             region_ids = [item for sublist in region_ids for item in sublist]
             # make keys unique
