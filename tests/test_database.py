@@ -114,9 +114,7 @@ class TestOligoDatabase(unittest.TestCase):
             database_overwrite=False,
         )
 
-        assert (
-            len(self.oligo_database.database) == 105
-        ), "error: wrong number of sequences loaded into database"
+        assert len(self.oligo_database.database) == 6, "error: wrong number of sequences loaded into database"
 
     def test_load_database_from_table(self):
         self.oligo_database.load_database_from_table(

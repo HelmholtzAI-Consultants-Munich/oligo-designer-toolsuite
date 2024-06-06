@@ -292,7 +292,7 @@ class OligoAttributes:
         return seedregion_start, seedregion_end
 
     def calculate_seedregion_ligationsite(
-        self, oligo_database: OligoDatabase, seedregion_size: int, region_ids: Union[str, List[str]]
+        self, oligo_database: OligoDatabase, seedregion_size: int, region_ids: Union[str, List[str]] = None
     ):
         """Calculate the seed region around a specified ligation site for each oligonucleotide in the database.
 
