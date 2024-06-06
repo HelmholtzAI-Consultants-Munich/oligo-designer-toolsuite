@@ -399,7 +399,7 @@ class TestPropertyFilter(unittest.TestCase):
         oligos = OligoDatabase(
             min_oligos_per_region=2, write_regions_with_insufficient_oligos=True, dir_output=self.tmp_path
         )
-        oligos.load_sequences_from_fasta(
+        oligos.load_database_from_fasta(
             files_fasta=file_fasta,
             sequence_type="oligo",
             region_ids=["random_sequences1"],
