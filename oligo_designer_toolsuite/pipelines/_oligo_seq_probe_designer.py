@@ -2,9 +2,9 @@
 # imports
 ############################################
 
+import logging
 import os
 import shutil
-import logging
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -45,10 +45,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByLargerRegionPolicy,
     SpecificityFilter,
 )
-from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
-    pipeline_step_basic,
-)
+from oligo_designer_toolsuite.pipelines._utils import base_parser, pipeline_step_basic
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
@@ -265,7 +262,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database, file_database
 
-    @pipeline_step_basic(step_name="Specificty Filters")
+    @pipeline_step_basic(step_name="Specificity Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -375,7 +372,7 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="3_db_specificty_filter")
+            file_database = oligo_database.save_database(dir_database="3_db_specificity_filter")
         else:
             file_database = ""
 

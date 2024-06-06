@@ -45,10 +45,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByLargerRegionPolicy,
     SpecificityFilter,
 )
-from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
-    pipeline_step_basic,
-)
+from oligo_designer_toolsuite.pipelines._utils import base_parser, pipeline_step_basic
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
@@ -204,7 +201,7 @@ class ScrinshotProbeDesigner:
 
         return oligo_database, file_database
 
-    @pipeline_step_basic(step_name="Specificty Filters")
+    @pipeline_step_basic(step_name="Specificity Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -296,7 +293,7 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="3_db_probes_specificty_filter")
+            file_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
         else:
             file_database = ""
 
@@ -523,14 +520,16 @@ class ScrinshotProbeDesigner:
 
                 return oligo
 
-            detect_oligo_even, detect_oligo_long_left, detect_oligo_long_right = (
-                self.probe_attributes_calculator._calc_detect_oligo(
-                    sequence=probe_attributes["oligo"],
-                    ligation_site=probe_attributes["ligation_site"],
-                    detect_oligo_length_min=detect_oligo_length_min,
-                    detect_oligo_length_max=detect_oligo_length_max,
-                    min_thymines=min_thymines,
-                )
+            (
+                detect_oligo_even,
+                detect_oligo_long_left,
+                detect_oligo_long_right,
+            ) = self.probe_attributes_calculator._calc_detect_oligo(
+                sequence=probe_attributes["oligo"],
+                ligation_site=probe_attributes["ligation_site"],
+                detect_oligo_length_min=detect_oligo_length_min,
+                detect_oligo_length_max=detect_oligo_length_max,
+                min_thymines=min_thymines,
             )
 
             # Search for best oligos
@@ -630,7 +629,10 @@ class ScrinshotProbeDesigner:
             "exon_number",
         ]
         oligo_database.write_oligosets_to_yaml(
-            attributes=attributes, top_n_sets=top_n_sets, ascending=True, filename="padlock_probes.yml"
+            attributes=attributes,
+            top_n_sets=top_n_sets,
+            ascending=True,
+            filename="padlock_probes.yml",
         )
 
         # write a second file that only contains order information
@@ -643,7 +645,7 @@ class ScrinshotProbeDesigner:
             oligosets_score_columns = [col for col in oligosets_region.columns if col.startswith("score_")]
 
             oligosets_region.sort_values(oligosets_score_columns, ascending=True)
-            oligosets_region = oligosets_region.loc[range(top_n_sets), oligosets_oligo_columns]
+            oligosets_region = oligosets_region.head(top_n_sets)[oligosets_oligo_columns]
 
             # iterate through all oligo sets
             for _, oligoset in oligosets_region.iterrows():

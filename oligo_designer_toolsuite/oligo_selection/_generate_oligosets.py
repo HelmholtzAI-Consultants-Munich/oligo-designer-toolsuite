@@ -65,7 +65,11 @@ class OligosetGeneratorIndependentSet:
         self.max_oligos = max_oligos
 
     def apply(
-        self, oligo_database: OligoDatabase, sequence_type: _TYPES_SEQ, n_sets: int = 50, n_jobs: int = 1
+        self,
+        oligo_database: OligoDatabase,
+        sequence_type: _TYPES_SEQ,
+        n_sets: int = 50,
+        n_jobs: int = 1,
     ):
         """
         Applies the oligo set generation process to an entire oligo database and returns updated database with selected best `n_sets` oligo sets.
@@ -105,7 +109,11 @@ class OligosetGeneratorIndependentSet:
         return oligo_database
 
     def _get_oligo_set_for_gene(
-        self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ, n_sets: int
+        self,
+        oligo_database: OligoDatabase,
+        region_id: str,
+        sequence_type: _TYPES_SEQ,
+        n_sets: int,
     ):
         """Processes a single gene region from the oligo database to generate non-overlapping sets of
         oligos based on scoring and set selection criteria.
@@ -122,7 +130,9 @@ class OligosetGeneratorIndependentSet:
 
         # Score oligos and create a pd series
         oligo_database, oligos_scores = self.oligos_scoring.apply(
-            oligo_database=oligo_database, region_id=region_id, sequence_type=sequence_type
+            oligo_database=oligo_database,
+            region_id=region_id,
+            sequence_type=sequence_type,
         )
 
         # add a entry score to the oligos
@@ -142,8 +152,11 @@ class OligosetGeneratorIndependentSet:
         oligosets = self._get_non_overlapping_sets(overlapping_matrix, oligos_scores, n_sets)
 
         # Remove all oligos from database that are not part of oligosets
-        oligosets_oligo_columns = [col for col in oligosets.columns if col.startswith("oligo_")]
-        oligos_keep = set(oligosets[oligosets_oligo_columns].to_numpy().flatten())
+        oligos_keep = set()
+        if oligosets is not None:
+            oligosets_oligo_columns = [col for col in oligosets.columns if col.startswith("oligo_")]
+            oligos_keep = set(oligosets[oligosets_oligo_columns].to_numpy().flatten())
+
         oligo_ids = list(oligo_database.database[region_id].keys())
         for oligo_id in oligo_ids:
             if not oligo_id in oligos_keep:
@@ -236,8 +249,8 @@ class OligosetGeneratorIndependentSet:
         :type oligos_scores: pd.Series
         :param n_sets: Number of sets to return.
         :type n_sets: int
-        :return: A tuple containing the number of oligos per set, DataFrame of oligo sets, and updated database region.
-        :rtype: tuple
+        :return: A DataFrame containing the best non-overlapping oligo sets.
+        :rtype: pd.DataFrame
         """
         # Represent overlap matrix as graph
         G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
@@ -255,7 +268,7 @@ class OligosetGeneratorIndependentSet:
 
         if n_max < n:
             if n_max <= self.min_oligoset_size:  # in this case we don't need to compute the sets
-                return n_max, None, None
+                return None
             else:
                 n = n_max
 
@@ -305,11 +318,13 @@ class OligosetGeneratorIndependentSet:
                 columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
                 data=oligosets,
             )
-        # Sort oligosets by score
-        oligosets.drop_duplicates(inplace=True, subset=oligosets.columns[:-1])
-        oligosets.sort_values(list(oligosets.columns[n:]), ascending=self.ascending, inplace=True)
-        oligosets = oligosets.head(n_sets)
-        oligosets.reset_index(drop=True, inplace=True)
-        oligosets.insert(0, "oligoset_id", oligosets.index)
 
-        return oligosets
+            # Sort oligosets by score
+            oligosets.drop_duplicates(inplace=True, subset=oligosets.columns[:-1])
+            oligosets.sort_values(list(oligosets.columns[n:]), ascending=self.ascending, inplace=True)
+            oligosets = oligosets.head(n_sets)
+            oligosets.reset_index(drop=True, inplace=True)
+            oligosets.insert(0, "oligoset_id", oligosets.index)
+            return oligosets
+        else:
+            return None
