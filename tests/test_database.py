@@ -43,10 +43,8 @@ class TestReferenceDatabase(unittest.TestCase):
         self.fasta_parser = FastaParser()
 
         self.reference = ReferenceDatabase(database_name="test_reference_database", dir_output=self.tmp_path)
-        # self.reference.load_sequences_from_fasta(
-        #     files_fasta=[FILE_NCBI_EXONS, FILE_NCBI_EXONS], database_overwrite=True
-        # )
-        self.reference.load_sequences_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=False)
+        self.reference.load_sequences_from_fasta(files_fasta=[FILE_NCBI_EXONS], database_overwrite=False)
+        self.reference.load_sequences_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=True)
 
     def tearDown(self):
         try:
@@ -96,7 +94,6 @@ class TestOligoDatabase(unittest.TestCase):
             name_sequences="random_sequences1",
             base_alphabet_with_probability={"A": 0.1, "C": 0.3, "G": 0.4, "T": 0.2},
         )
-
         self.file_sliding_window = self.oligo_sequence_generator.create_sequences_sliding_window(
             filename_out="sliding_window_sequences",
             files_fasta_in=FILE_NCBI_EXONS,
@@ -124,18 +121,18 @@ class TestOligoDatabase(unittest.TestCase):
         assert len(self.oligo_database.database) > 0, "error: no sequences loaded into database"
 
     def test_save_load_database(self):
-        self.oligo_database.load_from_tsv(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
 
-        file_database = self.oligo_database.save_database(
+        dir_database = self.oligo_database.save_database(
             region_ids=["region_1", "region_2"], dir_database="database_region1_region2"
         )
 
-        self.oligo_database.load_from_tsv(file_database, database_overwrite=True)
+        self.oligo_database.load_database(dir_database, database_overwrite=True)
 
         assert len(self.oligo_database.database.keys()) == 2, "error: wrong number regions saved and loaded"
 
     def test_write_database_to_fasta(self):
-        self.oligo_database.load_from_tsv(
+        self.oligo_database.load_database_from_table(
             FILE_DATABASE_OLIGO_ATTRIBUTES, region_ids=["region_1", "region_2"], database_overwrite=True
         )
         file_fasta = self.oligo_database.write_database_to_fasta(filename="database_region1_region2")
@@ -149,13 +146,13 @@ class TestOligoDatabase(unittest.TestCase):
         pass
 
     def test_remove_regions_with_insufficient_oligos(self):
-        self.oligo_database.load_sequences_from_fasta(
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_sliding_window,
             sequence_type="target",
             region_ids=REGION_IDS,
             database_overwrite=True,
         )
-        self.oligo_database.load_sequences_from_fasta(
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             database_overwrite=False,
@@ -167,7 +164,7 @@ class TestOligoDatabase(unittest.TestCase):
         ), "error: wrong number of regions in database"
 
     def test_get_sequence_list(self):
-        self.oligo_database.load_sequences_from_fasta(
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             database_overwrite=True,
@@ -177,7 +174,7 @@ class TestOligoDatabase(unittest.TestCase):
         assert len(list_sequences) == 100, "error: wrong number of sequences in database"
 
     def test_get_sequence_oligoid_mapping(self):
-        self.oligo_database.load_from_tsv(
+        self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
@@ -187,7 +184,7 @@ class TestOligoDatabase(unittest.TestCase):
         assert len(mapping["CTCACTCGACTCTTACACAGTCATA"]) == 4, "error: wrong number of oligos for sequence"
 
     def test_get_oligo_attribute(self):
-        self.oligo_database.load_from_tsv(
+        self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
@@ -197,7 +194,7 @@ class TestOligoDatabase(unittest.TestCase):
         assert len(attribute["test_attribute"].unique()) == 2, "error: wrong attribute returned"
 
     def test_update_oligo_attribute(self):
-        self.oligo_database.load_from_tsv(
+        self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids="region_3",
             database_overwrite=True,
@@ -225,7 +222,7 @@ class TestOligoAttributes(unittest.TestCase):
             database_name="test_oligo_attributes",
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_from_tsv(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
 
         self.oligo_attributes = OligoAttributes()
 
