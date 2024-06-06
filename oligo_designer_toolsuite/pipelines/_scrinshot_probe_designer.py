@@ -97,7 +97,6 @@ class ScrinshotProbeDesigner:
         ##### creating the probe sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         probe_fasta_file = probe_sequences.create_sequences_sliding_window(
-            filename_out="probe_sequences",
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(probe_length_min, probe_length_max),
             region_ids=gene_ids,
@@ -222,7 +221,7 @@ class ScrinshotProbeDesigner:
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
-        reference_database.load_sequences_from_fasta(
+        reference_database.load_database_from_fasta(
             files_fasta=files_fasta_reference_database, database_overwrite=False
         )
 

@@ -62,7 +62,7 @@ class OligoDatabase:
     :type min_oligos_per_region: int, optional
     :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file (default is True).
     :type write_regions_with_insufficient_oligos: bool, optional
-    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 100.
+    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 10.
     :type lru_db_max_in_memory: int, optional
     :param database_name: Subdirectory path for the output, i.e. <dir_output>/<database_name>, defaults to "db_oligo".
     :type database_name: str, optional
@@ -76,7 +76,7 @@ class OligoDatabase:
         self,
         min_oligos_per_region: int = 0,
         write_regions_with_insufficient_oligos: bool = True,
-        lru_db_max_in_memory: int = 100,
+        lru_db_max_in_memory: int = 10,
         database_name: str = "db_oligo",
         dir_output: str = "output",
         n_jobs: int = 1,
@@ -119,105 +119,17 @@ class OligoDatabase:
     # Load Functions
     ############################################
 
-    def load_from_tsv(
-        self,
-        file_database: str,
-        region_ids: Union[str, List[str]] = None,
-        database_overwrite: bool = False,
-    ) -> None:
-        """Load a previously saved oligo database from a TSV file.
-
-        This function loads the oligo database from a tab-separated values (TSV) file. The file must contain
-        columns such as 'region_id', 'oligo_id', 'sequence', and additional attributes, like information from the
-        fasta headers or information computed by the filtering classes.
-        The order of columns in the database file is:
-
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
-
-        The database can be optionally filtered by specifying a list of region IDs.
-
-        ⚠️ For big databases, it is not recommended to load the whole TSV file at once. Instead, the database should be
-        split into smaller files. The function will merge the databases if there are common keys (regions).
-
-        :param file_database: Path to the TSV file containing the oligo database.
-        :type file_database: str
-        :param region_ids: List of region IDs to filter the database. Defaults to None.
-        :type region_ids: Union[str, List[str]], optional
-        :param database_overwrite: If True, overwrite the existing database. Defaults to False.
-        :type database_overwrite: bool, optional
-
-        :raises ValueError: If the database file has an incorrect format or does not exist.
-        """
-
-        region_ids = check_if_list(region_ids)
-
-        if os.path.exists(file_database):
-            if not check_tsv_format(file_database):
-                raise ValueError("Database has incorrect format!")
-        else:
-            raise ValueError("Database file does not exist!")
-
-        file_tsv_content = pd.read_table(file_database, sep="\t")
-
-        file_tsv_content = file_tsv_content.apply(
-            lambda col: col.apply(lambda x: x if pd.notna(x) else [None])
-        )
-
-        # convert lists represented as string to proper list format in the table with the eval function
-        file_tsv_content = file_tsv_content.apply(
-            lambda col: col.apply(
-                lambda x: (
-                    eval(x)
-                    if isinstance(x, str) and x.startswith("[") and x.endswith("]")
-                    else ([int(x)] if isinstance(x, str) and x.isdigit() else x)
-                )
-            )
-        )
-
-        database_tmp1 = file_tsv_content.to_dict(orient="records")
-        database_tmp2 = LRUPickleDict(
-            max_in_memory=self.lru_db_max_in_memory,
-            storage_path=self._dir_cache_files,
-        )
-        for entry in database_tmp1:
-            region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
-            if region_id not in database_tmp2:
-                database_tmp2[region_id] = {}
-            database_tmp2[region_id][oligo_id] = entry
-
-        if not database_overwrite and self.database:
-            database_tmp2 = merge_databases(
-                self.database,
-                database_tmp2,
-                self._dir_cache_files,
-                self.lru_db_max_in_memory,
-            )
-
-        if region_ids:
-            database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
-            check_if_region_in_database(
-                database_tmp2,
-                region_ids,
-                self.write_regions_with_insufficient_oligos,
-                self.file_removed_regions,
-            )
-
-        self.database = database_tmp2
-
     def load_database(
         self,
         dir_database: str,
         region_ids: Union[str, List[str]] = None,
         database_overwrite: bool = False,
     ) -> None:
-        """
-        Load a previously saved oligo database from a folder containing pickled files.
+        """Load a previously saved oligo database from a folder containing pickled files.
 
         This function loads the oligo database from a folder containing pickled files. Each file in the folder
         represents a region in the database. The file must contain a dictionary with oligo IDs as keys and
-        oligo sequences as values.
+        oligo sequences and additional metadata as values.
 
         The database can be optionally filtered by specifying a list of region IDs.
 
@@ -310,6 +222,15 @@ class OligoDatabase:
         """
 
         def load(file):
+            """Load sequences from a FASTA file into the oligo database.
+
+            This function reads sequences from a provided FASTA file, processes them to extract relevant information,
+            and stores them in the oligo database. If there are common keys between the existing database and the new
+            data, the databases are merged.
+
+            :param file: Path to the FASTA file to be loaded.
+            :type file: str
+            """
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
             region_sequences = {}
@@ -351,15 +272,18 @@ class OligoDatabase:
                 for region in database_region.keys():
                     self.database[region] = database_region[region]
 
+        # Check if sequence type is correct
         options = get_args(_TYPES_SEQ)
         assert (
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
         sequence_type_reverse_complement = options[0] if options[0] != sequence_type else options[1]
 
+        # check if region ids and fasta files are given as lists
         region_ids = check_if_list(region_ids)
         files_fasta = check_if_list(files_fasta)
 
+        # Clear database if it should be overwritten
         if database_overwrite:
             warnings.warn("Overwriting database!")
             self.database = LRUPickleDict(
@@ -388,7 +312,7 @@ class OligoDatabase:
         region_ids: Union[str, List[str]] = None,
         database_overwrite: bool = False,
     ) -> None:
-        """Load a previously saved oligo database from a TSV file.
+        """Load a previously written oligo database from a TSV file.
 
         This function loads the oligo database from a tab-separated values (TSV) file. The file must contain
         columns such as 'region_id', 'oligo_id', 'sequence', and additional attributes, like information from the
@@ -401,6 +325,9 @@ class OligoDatabase:
 
         The database can be optionally filtered by specifying a list of region IDs.
 
+        ⚠️ For big databases, it is not recommended to load the whole TSV file at once. Instead, the database should be
+        split into smaller files. The function will merge the databases if there are common keys (regions).
+
         :param file_database: Path to the TSV file containing the oligo database.
         :type file_database: str
         :param region_ids: List of region IDs to filter the database. Defaults to None.
@@ -410,17 +337,14 @@ class OligoDatabase:
 
         :raises ValueError: If the database file has an incorrect format or does not exist.
         """
-        region_ids = check_if_list(region_ids)
-
-        if database_overwrite:
-            warnings.warn("Overwriting database!")
-
+        # Check if file exists and has correct format
         if os.path.exists(file_database):
             if not check_tsv_format(file_database):
                 raise ValueError("Database has incorrect format!")
         else:
             raise ValueError("Database file does not exist!")
 
+        # Load file and process content
         file_tsv_content = pd.read_table(file_database, sep="\t")
 
         file_tsv_content = file_tsv_content.apply(
@@ -438,8 +362,9 @@ class OligoDatabase:
             )
         )
 
+        # Merge loaded database with existing one
         database_tmp1 = file_tsv_content.to_dict(orient="records")
-        database_tmp2 = LRUDict(
+        database_tmp2 = LRUPickleDict(
             max_in_memory=self.lru_db_max_in_memory,
             storage_path=self._dir_cache_files,
         )
@@ -454,6 +379,8 @@ class OligoDatabase:
                 self.database, database_tmp2, self._dir_cache_files, self.lru_db_max_in_memory
             )
 
+        # Filter for region ids
+        region_ids = check_if_list(region_ids)
         if region_ids:
             database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
             check_if_region_in_database(
@@ -474,25 +401,17 @@ class OligoDatabase:
         dir_database: str = "db_oligo",
         region_ids: list[str] = None,
     ):
-        """Save the oligo database to YAML and TSV files.
+        """Save the oligo database to files.
 
-        This function saves the oligo database to a TSV (tab-separated values) file containing the
-        oligo database entries. The files are saved in the specified output directory with the provided
-        filenames. The order of the columns in the TSV file is:
+        This function saves the oligo database to the specified directory. Each region's oligo data is saved as a
+        separate pickle file in the directory. Hence, one file per region is created.
 
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
-
-        Additional feat. includes additional information from the header of the fasta file and additional information
-        computed by the filtering classes.
-
-        :param region_ids: A list of region IDs to include in the saved database. If None, all regions are included.
-        :type region_ids: list[str], optional
-        :param dir_database: The base directory name for the output files, defaults to "db_oligo".
+        :param dir_database: Directory name where the database files will be saved, defaults to "db_oligo".
         :type dir_database: str, optional
-        :return: Path to the output directory.
-        :rtype: tuple
+        :param region_ids: A list of region IDs to save. If None, all regions will be saved.
+        :type region_ids: list[str], optional
+        :return: The directory where the database files are saved.
+        :rtype: str
         """
         if region_ids:
             region_ids = check_if_list(region_ids)
@@ -503,55 +422,12 @@ class OligoDatabase:
         Path(dir_database).mkdir(parents=True, exist_ok=True)
 
         for region_id, oligo_dict in self.database.items():
-            file_database_region = os.path.join(dir_database, region_id)
-            with open(file_database_region, "wb") as file:
-                pickle.dump(oligo_dict, file)
+            if region_id in region_ids:
+                file_database_region = os.path.join(dir_database, region_id)
+                with open(file_database_region, "wb") as file:
+                    pickle.dump(oligo_dict, file)
 
         return dir_database
-
-    def write_database_to_table(
-        self,
-        filename: str = "db_oligo",
-        region_ids: list[str] = None,
-    ):
-        """Write the oligo database to TSV files.
-
-        This function saves the oligo database to a TSV (tab-separated values) file containing the
-        oligo database entries. The files are saved in the specified output directory with the provided
-        filenames. The order of the columns in the TSV file is:
-
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
-        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
-        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
-
-        Additional feat. includes additional information from the header of the fasta file and additional information
-        computed by the filtering classes.
-
-        :param region_ids: A list of region IDs to include in the saved database. If None, all regions are included.
-        :type region_ids: list[str], optional
-        :param filename: The base filename for the output files (without extensions), defaults to "db_oligo".
-        :type filename: str, optional
-        :return: Paths to the saved YAML and TSV files.
-        :rtype: tuple
-        """
-        if region_ids:
-            region_ids = check_if_list(region_ids)
-        else:
-            region_ids = self.database.keys()
-
-        file_database = os.path.join(self.dir_output, filename + ".tsv")
-
-        for region_id, oligo_dict in self.database.items():
-            if region_id in region_ids:
-                file_tsv_content = []
-                for oligo_id, oligo_attributes in oligo_dict.items():
-                    entry = {"region_id": region_id, "oligo_id": oligo_id}
-                    entry.update(oligo_attributes)
-                    file_tsv_content.append(entry)
-                file_tsv_content = pd.DataFrame(data=file_tsv_content)
-                file_tsv_content.to_csv(file_database, sep="\t", index=False, mode="a")
-
-        return file_database
 
     def write_database_to_fasta(
         self,
@@ -576,11 +452,13 @@ class OligoDatabase:
         :return: Path to the generated FASTA file.
         :rtype: str
         """
+        # Check if sequence type is correct
         options = get_args(_TYPES_SEQ)
         assert (
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
+        # check if region ids are list
         if region_ids:
             region_ids = check_if_list(region_ids)
         else:
@@ -606,6 +484,52 @@ class OligoDatabase:
 
         return file_fasta
 
+    def write_database_to_table(
+        self,
+        filename: str = "db_oligo",
+        region_ids: list[str] = None,
+    ):
+        """Write the oligo database to TSV files.
+
+        This function saves the oligo database to a TSV (tab-separated values) file containing the
+        oligo database entries. The files are saved in the specified output directory with the provided
+        filenames. The order of the columns in the TSV file is:
+
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
+        | region_id | oligo_id | sequence | chromosome | start | end | strand | length | additional feat. |
+        +-----------+----------+----------+------------+-------+-----+--------+--------+------------------+
+
+        Additional feat. includes additional information from the header of the fasta file and additional information
+        computed by the filtering classes.
+
+        :param filename: The base filename for the output files (without extensions), defaults to "db_oligo".
+        :type filename: str, optional
+        :param region_ids: A list of region IDs to include in the saved database. If None, all regions are included.
+        :type region_ids: list[str], optional
+        :return: Paths to the saved TSV file.
+        :rtype: tuple
+        """
+        if region_ids:
+            region_ids = check_if_list(region_ids)
+        else:
+            region_ids = self.database.keys()
+
+        file_database = os.path.join(self.dir_output, filename + ".tsv")
+
+        first_entry = True
+        for region_id, oligo_dict in self.database.items():
+            if region_id in region_ids:
+                file_tsv_content = []
+                for oligo_id, oligo_attributes in oligo_dict.items():
+                    entry = {"region_id": region_id, "oligo_id": oligo_id}
+                    entry.update(oligo_attributes)
+                    file_tsv_content.append(entry)
+                file_tsv_content = pd.DataFrame(data=file_tsv_content)
+                file_tsv_content.to_csv(file_database, sep="\t", index=False, mode="a", header=first_entry)
+                first_entry = False
+
+        return file_database
+
     def write_oligosets_to_yaml(
         self,
         attributes: list[str],
@@ -614,8 +538,7 @@ class OligoDatabase:
         filename: str = "oligos",
         region_ids: list[str] = None,
     ):
-        """
-        Write the top N oligosets to a YAML file with specified attributes.
+        """Write the top N oligosets to a YAML file with specified attributes.
 
         This function writes the specified attributes of the top N oligosets from the database to a YAML file. The
         oligosets are sorted based on their scores in ascending or descending order. If region IDs are specified,
@@ -673,6 +596,8 @@ class OligoDatabase:
 
         with open(file_yaml, "w") as handle:
             yaml.dump(yaml_dict, handle, default_flow_style=False, sort_keys=False)
+
+        return file_yaml
 
     def write_oligosets_to_table(self, foldername_out: str = "sets_of_oligos"):
         """Write oligo sets to individual TSV files.
