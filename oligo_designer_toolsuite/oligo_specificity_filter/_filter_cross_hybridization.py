@@ -112,7 +112,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         reference_database = ReferenceDatabase(
             database_name=self.database_name_reference, dir_output=self.dir_output_reference
         )
-        reference_database.load_sequences_from_fasta(files_fasta=file_reference, database_overwrite=True)
+        reference_database.load_database_from_fasta(files_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)
 
