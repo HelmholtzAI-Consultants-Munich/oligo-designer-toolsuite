@@ -119,7 +119,6 @@ class RemoveByLargerRegionPolicy(FilterPolicyBase):
         graph = nx.from_edgelist(oligo_pair_hits)
         number_oligos_per_region = self._get_number_oligos_per_region(oligo_database=oligo_database)
         oligos_with_hits = {region: [] for region in oligo_database.database.keys()}
-        print(number_oligos_per_region.keys())
 
         while graph.number_of_edges() > 0:
             edge = list(graph.edges)[0]

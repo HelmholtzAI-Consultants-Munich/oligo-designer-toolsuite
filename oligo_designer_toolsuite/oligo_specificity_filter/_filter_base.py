@@ -270,6 +270,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         )
         table_hits = self._find_hits(
             oligo_database=oligo_database,
+            region_ids=region_id,
             search_results=search_results,
             consider_hits_from_input_region=consider_hits_from_input_region,
         )
@@ -329,6 +330,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
     def _find_hits(
         self,
         oligo_database: OligoDatabase,
+        region_ids: Union[str, List[str]],
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
     ):
@@ -336,6 +338,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         :param oligo_database: The oligonucleotide database.
         :type oligo_database: OligoDatabase
+        :param region_ids: The identifier for the region(s) within the database.
+        :type region_ids: Union[str, List[str]]
         :param search_results: DataFrame containing search results.
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
@@ -394,7 +398,10 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
     @abstractmethod
     def _add_alignment_gaps(
-        self, table_hits: pd.DataFrame, queries: List[Seq.Seq], references: List[Seq.Seq]
+        self,
+        table_hits: pd.DataFrame,
+        queries: List[Seq.Seq],
+        references: List[Seq.Seq],
     ):
         """Abstract method to add gaps to the references and queries sequences.
 

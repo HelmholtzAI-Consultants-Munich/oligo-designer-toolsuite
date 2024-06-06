@@ -107,7 +107,8 @@ class OligoDatabase:
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
             self.file_removed_regions = os.path.join(
-                self.dir_output, f"regions_with_insufficient_oligos_for_{self.database_name}.txt"
+                self.dir_output,
+                f"regions_with_insufficient_oligos_for_{self.database_name}.txt",
             )
             with open(self.file_removed_regions, "a") as handle:
                 handle.write(f"Region\tPipeline step\n")
@@ -186,7 +187,10 @@ class OligoDatabase:
 
         if not database_overwrite and self.database:
             database_tmp2 = merge_databases(
-                self.database, database_tmp2, self._dir_cache_files, self.lru_db_max_in_memory
+                self.database,
+                database_tmp2,
+                self._dir_cache_files,
+                self.lru_db_max_in_memory,
             )
 
         if region_ids:
@@ -228,7 +232,6 @@ class OligoDatabase:
         def load(file):
             # extract region ID from the file name and remove the extension
             region_id = os.path.basename(file).split(".")[0]
-            print(f"Loading region {region_id} from {file}...")
             with open(file, "rb") as handle:
                 oligo_dict = pickle.load(handle)
 
@@ -236,7 +239,10 @@ class OligoDatabase:
             if region_id in self.database.keys():
                 database_region = {region_id: oligo_dict}
                 self.database = merge_databases(
-                    self.database, database_region, self._dir_cache_files, self.lru_db_max_in_memory
+                    self.database,
+                    database_region,
+                    self._dir_cache_files,
+                    self.lru_db_max_in_memory,
                 )
             else:
                 self.database[region_id] = oligo_dict
@@ -334,7 +340,10 @@ class OligoDatabase:
             # only merge if there are common keys
             if len(set(self.database) & set(database_region)) > 0:
                 self.database = merge_databases(
-                    self.database, database_region, self._dir_cache_files, self.lru_db_max_in_memory
+                    self.database,
+                    database_region,
+                    self._dir_cache_files,
+                    self.lru_db_max_in_memory,
                 )
             else:
                 for region in database_region.keys():
@@ -697,14 +706,19 @@ class OligoDatabase:
         """
         if not check_if_key_exists(self.database, attribute):
             raise KeyError(f"The {attribute} attribute has not been computed!")
-        oligo_ids = [
-            oligo_id for region_id, oligo_dict in self.database.items() for oligo_id in oligo_dict.keys()
-        ]
-        attributes = [
-            oligo_attributes[attribute]
-            for region_id, oligo_dict in self.database.items()
-            for oligo_id, oligo_attributes in oligo_dict.items()
-        ]
+
+        oligo_ids = []
+        attributes = []
+
+        for region_id, oligo_dict in self.database.items():
+            for oligo_id, oligo_attributes in oligo_dict.items():
+                if attribute in oligo_attributes:
+                    oligo_ids.append(oligo_id)
+                    attributes.append(oligo_attributes[attribute])
+                else:
+                    oligo_ids.append(oligo_id)
+                    attributes.append(None)
+
         return pd.DataFrame({"oligo_id": oligo_ids, attribute: attributes})
 
     ############################################
