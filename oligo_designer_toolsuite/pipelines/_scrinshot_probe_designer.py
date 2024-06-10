@@ -59,7 +59,11 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 class ScrinshotProbeDesigner:
     def __init__(
-        self, file_regions: list, write_intermediate_steps: bool, dir_output: str, n_jobs: int
+        self,
+        file_regions: list,
+        write_intermediate_steps: bool,
+        dir_output: str,
+        n_jobs: int,
     ) -> None:
         """Constructor for the ScrinshotProbeDesigner class."""
         ##### read the genes file #####
@@ -300,17 +304,14 @@ class ScrinshotProbeDesigner:
         else:
             file_database = ""
 
-        dir = reference_database.dir_output
-        shutil.rmtree(dir) if os.path.exists(dir) else None
-
-        dir = cross_hybridization_aligner.dir_output
-        shutil.rmtree(dir) if os.path.exists(dir) else None
-
-        dir = cross_hybridization.dir_output
-        shutil.rmtree(dir) if os.path.exists(dir) else None
-
-        dir = specificity.dir_output
-        shutil.rmtree(dir) if os.path.exists(dir) else None
+        for directory in [
+            reference_database.dir_output,
+            cross_hybridization_aligner.dir_output,
+            cross_hybridization.dir_output,
+            specificity.dir_output,
+        ]:
+            if os.path.exists(directory):
+                shutil.rmtree(directory)
 
         return oligo_database, file_database
 
@@ -632,7 +633,10 @@ class ScrinshotProbeDesigner:
             "exon_number",
         ]
         oligo_database.write_oligosets_to_yaml(
-            attributes=attributes, top_n_sets=top_n_sets, ascending=True, filename="padlock_probes.yml"
+            attributes=attributes,
+            top_n_sets=top_n_sets,
+            ascending=True,
+            filename="padlock_probes.yml",
         )
 
         # write a second file that only contains order information

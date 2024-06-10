@@ -73,7 +73,11 @@ class OligoSeqProbeDesigner:
     """
 
     def __init__(
-        self, file_regions: list, write_intermediate_steps: bool, dir_output: str, n_jobs: int
+        self,
+        file_regions: list,
+        write_intermediate_steps: bool,
+        dir_output: str,
+        n_jobs: int,
     ) -> None:
         """Constructor for the OligoSeqProbeDesigner class."""
         ##### read the genes file #####
@@ -330,7 +334,10 @@ class OligoSeqProbeDesigner:
         """
 
         def _get_alignment_method(
-            alignment_method, search_parameters, hit_parameters, filter_name_specification: str = ""
+            alignment_method,
+            search_parameters,
+            hit_parameters,
+            filter_name_specification: str = "",
         ):
             if alignment_method == "blastn":
                 return BlastNFilter(
@@ -417,20 +424,15 @@ class OligoSeqProbeDesigner:
         #     f"Step - Filter Oligos by Sequence Specificity: the database contains {num_oligos_after} oligos from {num_genes_after} genes, while {num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes have been deleted in this step."
         # )
 
-        dir = reference_database.dir_output
-        os.rmdir(dir) if os.path.exists(dir) else None
-
-        dir = cross_hybridization_aligner.dir_output
-        os.rmdir(dir) if os.path.exists(dir) else None
-
-        dir = cross_hybridization.dir_output
-        os.rmdir(dir) if os.path.exists(dir) else None
-
-        dir = hybridization_probability_aligner.dir_output
-        os.rmdir(dir) if os.path.exists(dir) else None
-
-        dir = hybridization_probability.dir_output
-        os.rmdir(dir) if os.path.exists(dir) else None
+        for directory in [
+            reference_database.dir_output,
+            cross_hybridization_aligner.dir_output,
+            cross_hybridization.dir_output,
+            hybridization_probability_aligner.dir_output,
+            hybridization_probability.dir_output,
+        ]:
+            if os.path.exists(directory):
+                os.rmdir(directory)
 
         return oligo_database, file_database
 
@@ -472,7 +474,9 @@ class OligoSeqProbeDesigner:
             oligo_database=oligo_database, sequence_type="oligo"
         )
         oligo_database = oligo_attributes.calculate_DG_secondary_structure(
-            oligo_database=oligo_database, sequence_type="oligo", T=secondary_structures_T
+            oligo_database=oligo_database,
+            sequence_type="oligo",
+            T=secondary_structures_T,
         )
 
         return oligo_database
