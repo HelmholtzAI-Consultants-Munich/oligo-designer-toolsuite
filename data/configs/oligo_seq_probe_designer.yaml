@@ -28,7 +28,7 @@ homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolym
   T: 6
   C: 6
   G: 6
-homodimer_max_len_selfcomp: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
+max_len_selfcomp: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
 
 ### Parameters for the specificity filters
 files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest

@@ -24,11 +24,11 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
-    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
+    SelfComplementFilter,
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
@@ -193,7 +193,7 @@ class OligoSeqProbeDesigner:
         secondary_structures_T: float,
         secondary_structures_threshold_deltaG: float,
         homopolymeric_base_n: str,
-        homodimer_max_len_selfcomp: int,
+        max_len_selfcomp: int,
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
     ):
@@ -217,8 +217,8 @@ class OligoSeqProbeDesigner:
         :type secondary_structures_threshold_deltaG: float
         :param homopolymeric_base_n: Bases to check for homopolymeric runs.
         :type homopolymeric_base_n: str
-        :param homodimer_max_len_selfcomp: Maximum allowable length of self-complementary sequences for avoiding homodimers.
-        :type homodimer_max_len_selfcomp: int
+        :param max_len_selfcomp: Maximum allowable length of self-complementary sequences.
+        :type max_len_selfcomp: int
         :param Tm_parameters: Parameters for melting temperature calculation.
         :type Tm_parameters: dict
         :param Tm_chem_correction_parameters: Parameters for chemical correction of melting temperature.
@@ -251,8 +251,8 @@ class OligoSeqProbeDesigner:
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
-        homodimer = HomodimerFilter(
-            max_len_selfcomp=homodimer_max_len_selfcomp,
+        self_comp = SelfComplementFilter(
+            max_len_selfcomp=max_len_selfcomp,
         )
 
         filters = [
@@ -262,7 +262,7 @@ class OligoSeqProbeDesigner:
             melting_temperature,
             secondary_sctructure,
             homopolymeric_runs,
-            homodimer,
+            self_comp,
         ]
 
         # initialize the preoperty filter class
@@ -634,7 +634,7 @@ def main():
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
         homopolymeric_base_n=config["homopolymeric_base_n"],
-        homodimer_max_len_selfcomp=config["homodimer_max_len_selfcomp"],
+        max_len_selfcomp=config["max_len_selfcomp"],
         Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
     )
