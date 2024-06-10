@@ -25,11 +25,11 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
-    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
+    SelfComplementFilter,
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
@@ -205,8 +205,8 @@ class OligoSeqProbeDesigner:
         :type secondary_structures_threshold_deltaG: float
         :param homopolymeric_base_n: Bases to check for homopolymeric runs.
         :type homopolymeric_base_n: str
-        :param homodimer_max_len_selfcomp: Maximum allowable length of self-complementary sequences for avoiding homodimers.
-        :type homodimer_max_len_selfcomp: int
+        :param max_len_selfcomp: Maximum allowable length of self-complementary sequences.
+        :type max_len_selfcomp: int
         :param Tm_parameters: Parameters for melting temperature calculation.
         :type Tm_parameters: dict
         :param Tm_chem_correction_parameters: Parameters for chemical correction of melting temperature.
@@ -231,7 +231,8 @@ class OligoSeqProbeDesigner:
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
-        homodimer = HomodimerFilter(
+        self_comp = SelfComplementFilter(
+
             max_len_selfcomp=max_len_selfcomp,
         )
 
@@ -242,7 +243,7 @@ class OligoSeqProbeDesigner:
             melting_temperature,
             secondary_sctructure,
             homopolymeric_runs,
-            homodimer,
+            self_comp,
         ]
 
         # initialize the preoperty filter class

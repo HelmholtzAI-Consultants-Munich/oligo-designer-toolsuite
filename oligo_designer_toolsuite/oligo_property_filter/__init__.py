@@ -13,24 +13,26 @@ Classes:
 - GCContentFilter: Ensures sequences fall within a specified range of GC content, critical for stable hybridization and amplification.
 - GCClampFilter: Filters for sequences with a specific number of G or C nucleotides at one end, affecting primer binding and stability.
 - MeltingTemperatureNNFilter: Assesses sequences for their melting temperatures using nearest-neighbor models, ensuring they are within an optimal range.
-- HomodimerFilter: Evaluates sequences for potential homodimer formation that could interfere with assay performance.
+-SelfComplementFilter: Filters sequences based on their potential to form self-complementary structures, which can interfere with hybridization.
+- ComplementFilter: Filters sequences based on their potential to form complementary structures with other sequences, which can interfere with hybridization.
 - SecondaryStructureFilter: Evaluates sequences for potential secondary structures that could interfere with assay performance.
 - PadlockArmsFilter: Specific to padlock probe design, it evaluates sequence suitability for padlock arm design based on arm length and melting temperature criteria.
 - DetectionOligoFilter: Specific to padlock probe design, it evaluates sequence suitability for detection oligo design based on detection oligo length and thymine content criteria.
 """
 
 from ._filter_base import PropertyFilterBase
-from ._filter_experiment_specific import PadlockArmsFilter, DetectionOligoFilter
+from ._filter_experiment_specific import DetectionOligoFilter, PadlockArmsFilter
 from ._filter_experiment_unspecific import (
+    ComplementFilter,
     FivePrimeSequenceFilter,
     GCClampFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
-    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     ProhibitedSequenceFilter,
     SecondaryStructureFilter,
+    SelfComplementFilter,
     SoftMaskedSequenceFilter,
     ThreePrimeSequenceFilter,
 )
@@ -48,7 +50,8 @@ __all__ = [
     "GCContentFilter",
     "GCClampFilter",
     "MeltingTemperatureNNFilter",
-    "HomodimerFilter",
+    "SelfComplementFilter",
+    "ComplementFilter",
     "SecondaryStructureFilter",
     "PadlockArmsFilter",
     "DetectionOligoFilter",
