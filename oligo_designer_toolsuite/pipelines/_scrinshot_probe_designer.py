@@ -45,11 +45,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByLargerRegionPolicy,
     SpecificityFilter,
 )
-from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
-    filtering_step,
-    generation_step,
-)
+from oligo_designer_toolsuite.pipelines._utils import base_parser, pipeline_step_basic
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
@@ -66,16 +62,6 @@ class ScrinshotProbeDesigner:
         n_jobs: int,
     ) -> None:
         """Constructor for the ScrinshotProbeDesigner class."""
-        ##### read the genes file #####
-        if file_regions is None:
-            warnings.warn(
-                "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
-            )
-            self.gene_ids = None
-        else:
-            with open(file_regions) as handle:
-                lines = handle.readlines()
-                self.gene_ids = [line.rstrip() for line in lines]
 
         self.write_intermediate_steps = write_intermediate_steps
 
@@ -104,40 +90,42 @@ class ScrinshotProbeDesigner:
         )
         logging.captureWarnings(True)
 
-    @generation_step(step_name="Create Database")
+    @pipeline_step_basic(step_name="Create Database")
     def create_probe_database(
         self,
+        gene_ids: list,
         probe_length_min: int,
         probe_length_max: int,
         files_fasta_oligo_database: list[str],
-        probes_per_gene_min: int,
+        min_probes_per_gene: int,
+        db_max_in_memory: int,
     ):
         ##### creating the probe sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         probe_fasta_file = probe_sequences.create_sequences_sliding_window(
-            filename_out="probe_sequences",
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(probe_length_min, probe_length_max),
-            region_ids=self.gene_ids,
+            region_ids=gene_ids,
             n_jobs=self.n_jobs,
         )
 
         ##### creating the probe database #####
         oligo_database = OligoDatabase(
-            min_oligos_per_region=probes_per_gene_min,
+            min_oligos_per_region=min_probes_per_gene,
             write_regions_with_insufficient_oligos=True,
+            lru_db_max_in_memory=db_max_in_memory,
             database_name=self.subdir_db_probes,
             dir_output=self.dir_output,
         )
-        oligo_database.load_sequences_from_fasta(
-            files_fasta=[probe_fasta_file],
+        oligo_database.load_database_from_fasta(
+            files_fasta=probe_fasta_file,
             sequence_type="target",
-            region_ids=self.gene_ids,
+            region_ids=gene_ids,
         )
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="1_db_probes_initial")
+            file_database = oligo_database.save_database(dir_database="1_db_probes_initial")
         else:
             file_database = ""
 
@@ -146,7 +134,7 @@ class ScrinshotProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Property Filters")
+    @pipeline_step_basic(step_name="Property Filters")
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
@@ -194,9 +182,9 @@ class ScrinshotProbeDesigner:
         filters = [
             hard_masked_sequences,
             soft_masked_sequences,
+            homopolymeric_runs,
             gc_content,
             melting_temperature,
-            homopolymeric_runs,
             detect_oligo_filter,
         ]
 
@@ -212,13 +200,13 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="2_db_probes_property_filter")
+            file_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
         else:
             file_database = ""
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Specificty Filters")
+    @pipeline_step_basic(step_name="Specificity Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -239,8 +227,22 @@ class ScrinshotProbeDesigner:
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
-        reference_database.load_sequences_from_fasta(
+        reference_database.load_database_from_fasta(
             files_fasta=files_fasta_reference_database, database_overwrite=False
+        )
+
+        ##### exact match filter #####
+        # removing duplicated probes from the region with the most probes
+        # exectute seperately before specificity filter to compute ligation side for less oligos
+        exact_matches_policy = RemoveByLargerRegionPolicy()
+        exact_matches = ExactMatchFilter(policy=exact_matches_policy)
+        filters = [exact_matches]
+        specificity_filter = SpecificityFilter(filters=filters)
+        oligo_database = specificity_filter.apply(
+            sequence_type="oligo",
+            oligo_database=oligo_database,
+            reference_database=reference_database,
+            n_jobs=self.n_jobs,
         )
 
         ##### calculate required probe attributes #####
@@ -255,10 +257,6 @@ class ScrinshotProbeDesigner:
         )
 
         ##### specificity filters #####
-        # removing duplicated probes from the region with the most probes
-        exact_matches_policy = RemoveByLargerRegionPolicy()
-        exact_matches = ExactMatchFilter(policy=exact_matches_policy)
-
         cross_hybridization_aligner = BlastNFilter(
             search_parameters=cross_hybridization_blastn_search_parameters,
             hit_parameters=cross_hybridization_blastn_hit_parameters,
@@ -289,7 +287,7 @@ class ScrinshotProbeDesigner:
                 dir_output=self.dir_output,
             )
 
-        filters = [exact_matches, cross_hybridization, specificity]
+        filters = [specificity, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
@@ -300,7 +298,7 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="3_db_probes_specificty_filter")
+            file_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
         else:
             file_database = ""
 
@@ -315,34 +313,7 @@ class ScrinshotProbeDesigner:
 
         return oligo_database, file_database
 
-    def compute_probe_attributes(
-        self,
-        oligo_database: OligoDatabase,
-        Tm_parameters_probe: dict,
-        Tm_chem_correction_param_probe: dict,
-    ):
-        oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
-            oligo_database=oligo_database
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_GC_content(
-            oligo_database=oligo_database, sequence_type="oligo"
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_TmNN(
-            oligo_database=oligo_database,
-            sequence_type="oligo",
-            Tm_parameters=Tm_parameters_probe,
-            Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_num_targeted_transcripts(
-            oligo_database=oligo_database
-        )
-        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
-            oligo_database=oligo_database
-        )
-
-        return oligo_database
-
-    @filtering_step(step_name="Set Selection")
+    @pipeline_step_basic(step_name="Set Selection")
     def create_probe_sets(
         self,
         oligo_database: OligoDatabase,
@@ -395,13 +366,40 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="4_db_probes_probesets")
+            file_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
             file_probesets = oligo_database.write_oligosets_to_table()
         else:
             file_database = ""
             file_probesets = ""
 
         return oligo_database, file_database, file_probesets
+
+    def compute_probe_attributes(
+        self,
+        oligo_database: OligoDatabase,
+        Tm_parameters_probe: dict,
+        Tm_chem_correction_param_probe: dict,
+    ):
+        oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_GC_content(
+            oligo_database=oligo_database, sequence_type="oligo"
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_TmNN(
+            oligo_database=oligo_database,
+            sequence_type="oligo",
+            Tm_parameters=Tm_parameters_probe,
+            Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_num_targeted_transcripts(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+
+        return oligo_database
 
     def design_final_padlock_sequence(
         self,
@@ -649,7 +647,7 @@ class ScrinshotProbeDesigner:
             oligosets_score_columns = [col for col in oligosets_region.columns if col.startswith("score_")]
 
             oligosets_region.sort_values(oligosets_score_columns, ascending=True)
-            oligosets_region = oligosets_region.loc[range(top_n_sets), oligosets_oligo_columns]
+            oligosets_region = oligosets_region.head(top_n_sets)[oligosets_oligo_columns]
 
             # iterate through all oligo sets
             for _, oligoset in oligosets_region.iterrows():
@@ -676,9 +674,20 @@ def main():
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    ##### read the genes file #####
+    if config["file_regions"] is None:
+        warnings.warn(
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
+        )
+        gene_ids = None
+    else:
+        with open(config["file_regions"]) as handle:
+            lines = handle.readlines()
+            # ensure that the list contains unique gene ids
+            gene_ids = list(set([line.rstrip() for line in lines]))
+
     ##### initialize probe designer pipeline #####
     pipeline = ScrinshotProbeDesigner(
-        file_regions=config["file_regions"],
         write_intermediate_steps=config["write_intermediate_steps"],
         dir_output=config["dir_output"],
         n_jobs=config["n_jobs"],
@@ -686,11 +695,13 @@ def main():
 
     ##### create probe database #####
     probe_database, file_database = pipeline.create_probe_database(
+        gene_ids=gene_ids,
         probe_length_min=config["probe_length_min"],
         probe_length_max=config["probe_length_max"],
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
-        probes_per_gene_min=config["probeset_size_min"],
+        min_probes_per_gene=config["probeset_size_min"],
+        db_max_in_memory=config["db_max_in_memory"],
     )
 
     ##### filter probes by property #####
@@ -701,7 +712,7 @@ def main():
     Tm_parameters_probe["imm_table"] = getattr(mt, Tm_parameters_probe["imm_table"])
     Tm_parameters_probe["de_table"] = getattr(mt, Tm_parameters_probe["de_table"])
 
-    oligo_database, file_database = pipeline.filter_by_property(
+    probe_database, file_database = pipeline.filter_by_property(
         oligo_database=probe_database,
         probe_GC_content_min=config["probe_GC_content_min"],
         probe_GC_content_max=config["probe_GC_content_max"],
@@ -736,14 +747,6 @@ def main():
         Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
     )
 
-    ##### compute all required attributes #####
-    logging.info("Computing Oligo Attributes")
-    probe_database = pipeline.compute_probe_attributes(
-        oligo_database=probe_database,
-        Tm_parameters_probe=Tm_parameters_probe,
-        Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
-    )
-
     ##### create probe sets #####
     probe_database, file_database, dir_probesets = pipeline.create_probe_sets(
         oligo_database=probe_database,
@@ -766,6 +769,13 @@ def main():
     )
 
     ##### create final padlock probe sequences #####
+    # compute all required attributes
+    probe_database = pipeline.compute_probe_attributes(
+        oligo_database=probe_database,
+        Tm_parameters_probe=Tm_parameters_probe,
+        Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
+    )
+
     # preprocess melting temperature params
     Tm_parameters_detection_oligo = config["Tm_parameters_detection_oligo"]
     Tm_parameters_detection_oligo["nn_table"] = getattr(mt, Tm_parameters_detection_oligo["nn_table"])

@@ -1,11 +1,12 @@
 #######################
-### BASIC PARAMETERS ###
+### USER PARAMETERS ###
 #######################
 
 ### General parameters
 n_jobs: 4 # number of cores used to run the pipeline
 dir_output: output_scrinshot_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
+db_max_in_memory: 20 # number of regions that should be stored in cache. 20 is a good value for a 16GB RAm computer. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 
 ### Parameters for probe sequences generation
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
@@ -31,6 +32,10 @@ arm_Tm_dif_max: 2 # maximum melting temperature difference of both arms (differe
 arm_length_min: 10 # minimum length of each arm
 arm_Tm_min: 50 # minimum melting temperature of each arm
 arm_Tm_max: 60 # maximum melting temperature of each arm
+# detection oligos
+min_thymines: 2 # minimal number of Thymines in detection oligo.
+detect_oligo_length_min: 15 # minimum length of detection probe
+detect_oligo_length_max: 40 # maximum length of detection probe
 
 ### Parameters for the specificity filters
 files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
@@ -49,18 +54,14 @@ probeset_size_min: 3 # minimum size of probe sets (in case there exist no set of
 probeset_size_opt: 5 # optimal size of probe sets
 distance_between_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
 n_sets: 100 # maximum number of sets to generate
-top_n_sets: 3 #maximum number of sets to report in "padlock_probes_order.yaml"
 
-### Parameters for the padlock detection probe design
-min_thymines: 2 # minimal number of Thymines in detection oligo.
+### Parameters for creation of final probe sequence
 U_distance: 5 # preferred minimal distance between U(racils)
-detect_oligo_length_min: 15 # minimum length of detection probe
-detect_oligo_length_max: 40 # maximum length of detection probe
 detect_oligo_Tm_opt: 56 # optimal melting temperature of detection probe
-
+top_n_sets: 3 #maximum number of sets to report in padlock_probes.yaml and "padlock_probes_order.yaml"
 
 ############################
-### ADVANCED PARAMETERS ###
+### DEVELOPER PARAMETERS ###
 ############################
 
 ### Parameters for the specificity filters

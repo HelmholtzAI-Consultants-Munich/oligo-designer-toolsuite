@@ -144,3 +144,5 @@ tests/*.pickle
 oligo_designer_toolsuite/_version.py
 tests/notebooks/temp_path/*
 tests/notebooks/test_cross_hybridization_filter.ipynb
+
+./tmp_*

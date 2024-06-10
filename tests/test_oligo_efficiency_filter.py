@@ -97,15 +97,18 @@ class TestOligoScoring(unittest.TestCase):
 
 class TestSetScoring(unittest.TestCase):
     def setUp(self):
-        self.score_max_sum = LowestSetScoring()
-        self.score_ave_max = AverageSetScoring()
+        self.score_max_sum = LowestSetScoring(ascending=True)
+        self.score_ave_max = AverageSetScoring(ascending=True)
         self.oligo_set = Series(data=[0, 1, 8, 5, 2, 6, 7, 3])
         self.n_oligo_set = 5
 
     def test_max_sum(self):
         oligoset = self.score_max_sum.apply(self.oligo_set, self.n_oligo_set)
-        assert oligoset == [0, 1, 4, 7, 3, 5, 11], "Max scoring failed"
+        print(oligoset[1])
+        assert oligoset[0] == [0, 1, 4, 7, 3], "Max scoring failed"
+        assert oligoset[1] == {"set_score_lowest": 5, "set_score_sum": 11}, "Max scoring failed"
 
     def test_ave_max(self):
         oligoset = self.score_ave_max.apply(self.oligo_set, self.n_oligo_set)
-        assert oligoset == [0, 1, 4, 7, 3, 2.2, 5], "Average scoring failed"
+        assert oligoset[0] == [0, 1, 4, 7, 3], "Average scoring failed"
+        assert oligoset[1] == {"set_score_average": 2.2, "set_score_lowest": 5}, "Average scoring failed"

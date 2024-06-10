@@ -6,9 +6,13 @@ import os
 import shutil
 import unittest
 
-from oligo_designer_toolsuite.utils import FastaParser
-from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase, OligoAttributes
+from oligo_designer_toolsuite.database import (
+    OligoAttributes,
+    OligoDatabase,
+    ReferenceDatabase,
+)
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
+from oligo_designer_toolsuite.utils import FastaParser
 
 ############################################
 # setup
@@ -39,10 +43,8 @@ class TestReferenceDatabase(unittest.TestCase):
         self.fasta_parser = FastaParser()
 
         self.reference = ReferenceDatabase(database_name="test_reference_database", dir_output=self.tmp_path)
-        self.reference.load_sequences_from_fasta(
-            files_fasta=[FILE_NCBI_EXONS, FILE_NCBI_EXONS], database_overwrite=True
-        )
-        self.reference.load_sequences_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=False)
+        self.reference.load_database_from_fasta(files_fasta=[FILE_NCBI_EXONS], database_overwrite=False)
+        self.reference.load_database_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=True)
 
     def tearDown(self):
         try:
@@ -89,9 +91,7 @@ class TestOligoDatabase(unittest.TestCase):
             name_sequences="random_sequences1",
             base_alphabet_with_probability={"A": 0.1, "C": 0.3, "G": 0.4, "T": 0.2},
         )
-
         self.file_sliding_window = self.oligo_sequence_generator.create_sequences_sliding_window(
-            filename_out="sliding_window_sequences",
             files_fasta_in=FILE_NCBI_EXONS,
             length_interval_sequences=(30, 31),
             n_jobs=2,
@@ -100,35 +100,41 @@ class TestOligoDatabase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
 
-    def test_load_sequences_from_fasta(self):
-        self.oligo_database.load_sequences_from_fasta(
+    def test_load_database_from_fasta(self):
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             region_ids=["random_sequences1"],
             database_overwrite=True,
         )
-        self.oligo_database.load_sequences_from_fasta(
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_sliding_window,
             sequence_type="target",
             region_ids=REGION_IDS,
             database_overwrite=False,
         )
 
-        assert len(self.oligo_database.database) > 0, "error: no sequences loaded into database"
+        assert len(self.oligo_database.database) == 6, "error: wrong number of sequences loaded into database"
 
-    def test_save_load_database(self):
-        self.oligo_database.load_database(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
-
-        file_database = self.oligo_database.save_database(
-            region_ids=["region_1", "region_2"], filename="database_region1_region2"
+    def test_load_database_from_table(self):
+        self.oligo_database.load_database_from_table(
+            FILE_DATABASE_OLIGO_ATTRIBUTES, region_ids=["region_1", "region_2"], database_overwrite=True
         )
 
-        self.oligo_database.load_database(file_database, database_overwrite=True)
+        assert len(self.oligo_database.database) == 2, "error: wrong number of sequences loaded into database"
+
+    def test_save_load_database(self):
+        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+
+        dir_database = self.oligo_database.save_database(
+            region_ids=["region_1", "region_2"], dir_database="database_region1_region2"
+        )
+        self.oligo_database.load_database(dir_database, database_overwrite=True)
 
         assert len(self.oligo_database.database.keys()) == 2, "error: wrong number regions saved and loaded"
 
     def test_write_database_to_fasta(self):
-        self.oligo_database.load_database(
+        self.oligo_database.load_database_from_table(
             FILE_DATABASE_OLIGO_ATTRIBUTES, region_ids=["region_1", "region_2"], database_overwrite=True
         )
         file_fasta = self.oligo_database.write_database_to_fasta(filename="database_region1_region2")
@@ -137,18 +143,33 @@ class TestOligoDatabase(unittest.TestCase):
             self.fasta_parser.check_fasta_format(file_fasta) == True
         ), f"error: wrong file format for database in {file_fasta}"
 
+    def test_write_database_to_table(self):
+        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+
+        file_database = self.oligo_database.write_database_to_table(
+            filename="database_region1_region2", region_ids=["region_1", "region_2"]
+        )
+
+        self.oligo_database.load_database_from_table(file_database, database_overwrite=True)
+
+        assert len(self.oligo_database.database.keys()) == 2, "error: wrong number regions saved and loaded"
+
     # TODO: add test
-    def test_write_oligosets(self):
+    def test_write_oligosets_to_yaml(self):
+        pass
+
+    # TODO: add test
+    def test_write_oligosets_to_table(self):
         pass
 
     def test_remove_regions_with_insufficient_oligos(self):
-        self.oligo_database.load_sequences_from_fasta(
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_sliding_window,
             sequence_type="target",
             region_ids=REGION_IDS,
             database_overwrite=True,
         )
-        self.oligo_database.load_sequences_from_fasta(
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             database_overwrite=False,
@@ -160,7 +181,7 @@ class TestOligoDatabase(unittest.TestCase):
         ), "error: wrong number of regions in database"
 
     def test_get_sequence_list(self):
-        self.oligo_database.load_sequences_from_fasta(
+        self.oligo_database.load_database_from_fasta(
             files_fasta=self.file_random_seqs,
             sequence_type="oligo",
             database_overwrite=True,
@@ -170,7 +191,7 @@ class TestOligoDatabase(unittest.TestCase):
         assert len(list_sequences) == 100, "error: wrong number of sequences in database"
 
     def test_get_sequence_oligoid_mapping(self):
-        self.oligo_database.load_database(
+        self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
@@ -180,7 +201,7 @@ class TestOligoDatabase(unittest.TestCase):
         assert len(mapping["CTCACTCGACTCTTACACAGTCATA"]) == 4, "error: wrong number of oligos for sequence"
 
     def test_get_oligo_attribute(self):
-        self.oligo_database.load_database(
+        self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
@@ -190,7 +211,7 @@ class TestOligoDatabase(unittest.TestCase):
         assert len(attribute["test_attribute"].unique()) == 2, "error: wrong attribute returned"
 
     def test_update_oligo_attribute(self):
-        self.oligo_database.load_database(
+        self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids="region_3",
             database_overwrite=True,
@@ -218,7 +239,7 @@ class TestOligoAttributes(unittest.TestCase):
             database_name="test_oligo_attributes",
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_database(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
 
         self.oligo_attributes = OligoAttributes()
 
@@ -309,7 +330,6 @@ class TestOligoAttributes(unittest.TestCase):
     def test_calculate_padlock_arms(self):
         oligo_database = self.oligo_attributes.calculate_padlock_arms(
             self.oligo_database,
-            sequence_type="oligo",
             arm_length_min=3,
             arm_Tm_dif_max=15,
             arm_Tm_min=30,
@@ -320,3 +340,7 @@ class TestOligoAttributes(unittest.TestCase):
         assert (
             oligo_database.database["region_1"]["region_1::2"]["ligation_site"] == 14
         ), "error: wrong padlock arms calculated"
+
+    # TODO: add test
+    def test_calculate_detect_oligo(self):
+        pass
