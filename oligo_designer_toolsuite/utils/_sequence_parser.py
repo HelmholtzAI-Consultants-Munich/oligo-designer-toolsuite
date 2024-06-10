@@ -19,6 +19,8 @@ from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
 
+from ..utils._checkers import check_if_list
+
 ############################################
 # GFF Parser Class
 ############################################
@@ -295,9 +297,8 @@ class FastaParser:
             :rtype: bool
             """
             # taken from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
-            with open(file, "r") as handle:
-                fasta = SeqIO.parse(handle, "fasta")
-                return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
+            fasta = SeqIO.index(file, "fasta")
+            return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
 
         if os.path.exists(file):
             if not _check_fasta_content(file):
@@ -334,10 +335,9 @@ class FastaParser:
         :rtype: list[str]
         """
         region_ids = []
-        with open(file_fasta_in, "r") as handle:
-            for entry in SeqIO.parse(handle, "fasta"):
-                region, _, _ = self.parse_fasta_header(entry.id, parse_additional_info=False)
-                region_ids.append(region)
+        for idx in SeqIO.index(file_fasta_in, "fasta"):
+            region, _, _ = self.parse_fasta_header(idx, parse_additional_info=False)
+            region_ids.append(region)
 
         return list(set(region_ids))
 
@@ -358,17 +358,17 @@ class FastaParser:
         region_ids_set = set(region_ids) if region_ids else None
 
         # Open the file once and parse sequences accordingly
-        with open(file_fasta_in, "r") as handle:
-            if region_ids_set:
-                fasta_sequences = []
-                found_regions = set()
-                for entry in SeqIO.parse(handle, "fasta"):
-                    region = self.parse_fasta_header(entry.id, parse_additional_info=False)[0]
-                    found_regions.add(region)
-                    if region in region_ids_set:
-                        fasta_sequences.append(entry)
-            else:
-                fasta_sequences = list(SeqIO.parse(handle, "fasta"))
+        if region_ids_set:
+            fasta_sequences = []
+            found_regions = set()
+            seq_record = SeqIO.index(file_fasta_in, "fasta")
+            for idx in seq_record:
+                region, _, _ = self.parse_fasta_header(idx, parse_additional_info=False)
+                found_regions.add(region)
+                if region in region_ids_set:
+                    fasta_sequences.append(seq_record[idx])
+        else:
+            fasta_sequences = list(SeqIO.parse(file_fasta_in, "fasta"))
 
         # Check for missing regions after filtering, if necessary
         if region_ids_set and len(fasta_sequences) < len(region_ids):
@@ -447,21 +447,21 @@ class FastaParser:
 
         return region, additional_info, coordinates
 
+    def merge_fasta_files(self, files_in: list, file_out: str, overwrite: bool = False):
+        """Merge a list of fasta files on a sigle file. The overwrite flag allows to choose whether to overwrite the content of the outfile
+        or to append the content of the input files to the output file.
 
-def merge_fasta_files(files_in: list, file_out: str, overwrite: bool = False):
-    """Merge a list of fasta files on a sigle file. The overwrite flag allows to choose whether to overwrite the content of the outfile
-    or to append the content of the input files to the output file.
-
-    :param files_in: List of paths to the input files.
-    :type files_in: list
-    :param file_out: Path to the output file.
-    :type file_out: str
-    :param overwrite: Flag to indicate the the content of the out_file will be written or not, defaults to False
-    :type overwrite: bool, optional
-    """
-    out_file_mode = "w" if overwrite else "a"
-    with open(file_out, out_file_mode) as out:
-        for file_in in files_in:
-            if os.path.isfile(file_in):
-                with open(file_in, "r") as in_f:
-                    out.write(in_f.read())
+        :param files_in: List of paths to the input files.
+        :type files_in: list
+        :param file_out: Path to the output file.
+        :type file_out: str
+        :param overwrite: Flag to indicate the the content of the out_file will be written or not, defaults to False
+        :type overwrite: bool, optional
+        """
+        files_in = check_if_list(files_in)
+        file_out_mode = "w" if overwrite else "a"
+        with open(file_out, file_out_mode) as out:
+            for file_in in files_in:
+                if os.path.isfile(file_in):
+                    with open(file_in, "r") as in_f:
+                        out.write(in_f.read())

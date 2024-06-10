@@ -46,6 +46,9 @@ opt_oligoset_size: 5 # optimal size of oligo sets
 distance_between_oligos: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
 n_sets: 100 # Maximum number of sets to report
 
+### Parameters for generation of output
+top_n_sets: 3 # maximum number of sets to report in oligo_seq_probes.yaml
+
 ############################
 ### ADVANCED PARAMETERS ###
 ############################

@@ -230,11 +230,14 @@ class OligoDatabase:
         region_ids = check_if_list(region_ids)
         files_fasta = check_if_list(files_fasta)
 
+        files_loaded = 0
         for file in files_fasta:
-
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
-            region_sequences = {}
+            region_sequences = LRUDict(
+                max_in_memory=self.lru_db_max_in_memory,
+                storage_path=self._dir_cache_files,
+            )
             for entry in fasta_sequences:
                 region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
                 oligo_info = coordinates | additional_info
@@ -273,6 +276,8 @@ class OligoDatabase:
                 )
             else:
                 self.database = database_loaded
+            files_loaded += 1
+            print(f"Total files to load: {len(files_fasta) - files_loaded}")
 
         # add this step to log regions which are not available in database
         if region_ids:
@@ -320,17 +325,16 @@ class OligoDatabase:
             region_ids = self.database.keys()
 
         file_database = os.path.join(self.dir_output, filename + ".tsv")
-        file_tsv_content = []
 
         for region_id, oligo_dict in self.database.items():
             if region_id in region_ids:
+                file_tsv_content = []
                 for oligo_id, oligo_attributes in oligo_dict.items():
                     entry = {"region_id": region_id, "oligo_id": oligo_id}
                     entry.update(oligo_attributes)
                     file_tsv_content.append(entry)
-
-        file_tsv_content = pd.DataFrame(data=file_tsv_content)
-        file_tsv_content.to_csv(file_database, sep="\t", index=False)
+                file_tsv_content = pd.DataFrame(data=file_tsv_content)
+                file_tsv_content.to_csv(file_database, sep="\t", index=False, mode="a")
 
         return file_database
 

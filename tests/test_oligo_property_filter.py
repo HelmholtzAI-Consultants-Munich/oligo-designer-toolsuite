@@ -344,6 +344,10 @@ class TestExperimentSpecificFilters(unittest.TestCase):
             res == True
         ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [PadlockArmsFilter]"
 
+    def test_detection_oligo_filter(self):
+        # TODO: add test for this filter
+        pass
+
 
 class TestPropertyFilter(unittest.TestCase):
     """Test if melting temperature filters work, e.g. sequences having certain Tm or secondary structure probability should be removed."""
