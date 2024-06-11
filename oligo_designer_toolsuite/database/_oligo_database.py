@@ -468,17 +468,17 @@ class OligoDatabase:
         output_fasta = []
 
         with open(file_fasta, "w") as handle_fasta:
-            for region_id, oligo in self.database.items():
-                if region_id in region_ids:
-                    for oligo_id, oligo_attributes in oligo.items():
-                        description = sequence_type if save_description else ""
-                        seq_record = SeqRecord(
-                            Seq(oligo_attributes[sequence_type]),
-                            id=oligo_id,
-                            name=oligo_id.split(SEPARATOR_OLIGO_ID)[0],
-                            description=description,
-                        )
-                        output_fasta.append(seq_record)
+            for region_id in region_ids:
+                database_region = self.database[region_id]
+                for oligo_id, oligo_attributes in database_region.items():
+                    description = sequence_type if save_description else ""
+                    seq_record = SeqRecord(
+                        Seq(oligo_attributes[sequence_type]),
+                        id=oligo_id,
+                        name=oligo_id.split(SEPARATOR_OLIGO_ID)[0],
+                        description=description,
+                    )
+                    output_fasta.append(seq_record)
 
             SeqIO.write(output_fasta, handle_fasta, "fasta")
 
@@ -517,16 +517,16 @@ class OligoDatabase:
         file_database = os.path.join(self.dir_output, filename + ".tsv")
 
         first_entry = True
-        for region_id, oligo_dict in self.database.items():
-            if region_id in region_ids:
-                file_tsv_content = []
-                for oligo_id, oligo_attributes in oligo_dict.items():
-                    entry = {"region_id": region_id, "oligo_id": oligo_id}
-                    entry.update(oligo_attributes)
-                    file_tsv_content.append(entry)
-                file_tsv_content = pd.DataFrame(data=file_tsv_content)
-                file_tsv_content.to_csv(file_database, sep="\t", index=False, mode="a", header=first_entry)
-                first_entry = False
+        for region_id in region_ids:
+            database_region = self.database[region_id]
+            file_tsv_content = []
+            for oligo_id, oligo_attributes in database_region.items():
+                entry = {"region_id": region_id, "oligo_id": oligo_id}
+                entry.update(oligo_attributes)
+                file_tsv_content.append(entry)
+            file_tsv_content = pd.DataFrame(data=file_tsv_content)
+            file_tsv_content.to_csv(file_database, sep="\t", index=False, mode="a", header=first_entry)
+            first_entry = False
 
         return file_database
 
@@ -636,7 +636,7 @@ class OligoDatabase:
 
         for region in regions_to_remove:
             del self.database[region]
-            self.oligosets.pop(region, None)
+            del self.oligosets[region]
 
         if self.write_regions_with_insufficient_oligos and regions_to_remove:
             with open(self.file_removed_regions, "a") as handle:
@@ -702,7 +702,7 @@ class OligoDatabase:
 
         return sequence_oligoids_mapping
 
-    def get_oligo_attribute(self, attribute: str):
+    def get_oligo_attribute(self, attribute: str, region_ids: Union[str, List[str]] = None):
         """Retrieves a specified attribute for all oligos in the database and returns it as a pandas DataFrame.
         This method assumes the presence of an attribute across all oligo records in the database. If the
         attribute is not found, a KeyError is raised.
@@ -714,14 +714,21 @@ class OligoDatabase:
         :rtype: pd.DataFrame
         :raises KeyError: If the specified attribute has not been computed and added to the database.
         """
-        if not check_if_key_exists(self.database, attribute):
-            raise KeyError(f"The {attribute} attribute has not been computed!")
+        if region_ids is None:
+            region_ids = self.database.keys()
+        else:
+            region_ids = check_if_list(region_ids)
 
         oligo_ids = []
         attributes = []
 
-        for region_id, oligo_dict in self.database.items():
-            for oligo_id, oligo_attributes in oligo_dict.items():
+        for region_id in region_ids:
+            database_region = self.database[region_id]
+            if not check_if_key_exists(database_region, attribute):
+                warnings.warn(
+                    f"The {attribute} attribute has not been computed for {region_id}! Setting to None!"
+                )
+            for oligo_id, oligo_attributes in database_region.items():
                 if attribute in oligo_attributes:
                     oligo_ids.append(oligo_id)
                     attributes.append(oligo_attributes[attribute])
