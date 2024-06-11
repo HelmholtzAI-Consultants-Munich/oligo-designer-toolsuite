@@ -132,8 +132,13 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
             if key not in oligo_info:
                 oligo_info[key] = values
             else:
-                if oligo_info[key] != values:
-                    warnings.warn(f"Values for key {key} are different in the two oligo_info dictionaries.")
+                if key in ["oligo", "target"]:
+                    if oligo_info[key] != values:
+                        warnings.warn(
+                            f"Values for key {key} are different in the two oligo_info dictionaries."
+                        )
+                else:
+                    oligo_info[key].extend(values)
 
     oligo_info = dict(oligo_info)
 
