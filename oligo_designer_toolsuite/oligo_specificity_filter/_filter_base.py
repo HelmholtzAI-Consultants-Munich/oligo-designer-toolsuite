@@ -82,8 +82,6 @@ class SpecificityFilterBase(ABC):
             if oligo_id in oligos_with_hits:
                 del oligo_database.database[region_id][oligo_id]
 
-        oligo_database.remove_regions_with_insufficient_oligos("Specificity Filters")
-
 
 class AlignmentSpecificityFilter(SpecificityFilterBase):
     """A class that implements specificity filtering for oligonucleotides through alignments against a reference database.
@@ -210,7 +208,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description=self.filter_name, total=len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs, prefer="threads")(
+            table_hits = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
                     region_id=region_id,

@@ -68,7 +68,7 @@ class ExactMatchFilter(SpecificityFilterBase):
 
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description="Exact Matches", total=len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs, prefer="threads")(
+            table_hits = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
                     region_id=region_id,
@@ -132,7 +132,7 @@ class ExactMatchFilter(SpecificityFilterBase):
 
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description="Exact Matches", total=len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs, prefer="threads")(
+            table_hits = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
                     region_id=region_id,
