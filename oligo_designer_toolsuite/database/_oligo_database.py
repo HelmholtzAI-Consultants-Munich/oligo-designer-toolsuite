@@ -147,7 +147,9 @@ class OligoDatabase:
             # extract region ID from the file name and remove the extension
             region_id = os.path.basename(file).split(".")[0]
             with open(file, "rb") as handle:
-                oligo_dict = pickle.load(handle)
+                content = pickle.load(handle)
+                oligo_dict = content["oligodict"]
+                oligoset = content["oligoset"]
 
             # only merge if there are common keys
             if region_id in self.database.keys():
@@ -158,8 +160,10 @@ class OligoDatabase:
                     self._dir_cache_files,
                     self.lru_db_max_in_memory,
                 )
+                self.oligosets[region_id] = pd.concat([self.oligosets[region_id], oligoset])
             else:
                 self.database[region_id] = oligo_dict
+                self.oligosets[region_id] = oligoset
 
         region_ids = check_if_list(region_ids)
 
@@ -421,11 +425,12 @@ class OligoDatabase:
         dir_database = os.path.join(self.dir_output, dir_database)
         Path(dir_database).mkdir(parents=True, exist_ok=True)
 
-        for region_id, oligo_dict in self.database.items():
-            if region_id in region_ids:
-                file_database_region = os.path.join(dir_database, region_id)
-                with open(file_database_region, "wb") as file:
-                    pickle.dump(oligo_dict, file)
+        for region_id in region_ids:
+            database_region = self.database[region_id]
+            oligoset_region = self.oligosets[region_id]
+            file_database_region = os.path.join(dir_database, region_id)
+            with open(file_database_region, "wb") as file:
+                pickle.dump({"oligodict": database_region, "oligoset": oligoset_region}, file)
 
         return dir_database
 
@@ -630,12 +635,21 @@ class OligoDatabase:
         :param pipeline_step: Step in the pipeline that led to the removal of regions.
         :type pipeline_step: str
         """
+        region_ids = list(self.database.keys())
         regions_to_remove = [
-            region for region, oligos in self.database.items() if len(oligos) <= self.min_oligos_per_region
+            region_id
+            for region_id in region_ids
+            if len(self.database[region_id]) <= self.min_oligos_per_region
         ]
 
         for region in regions_to_remove:
+            # TODO: this is a workaround due to a bug fix in EffiDict which needs to be fixed
+            self.database[region] = None
             del self.database[region]
+            del self.database[region]
+
+            self.oligosets[region] = None
+            del self.oligosets[region]
             del self.oligosets[region]
 
         if self.write_regions_with_insufficient_oligos and regions_to_remove:
