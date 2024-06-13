@@ -104,7 +104,6 @@ class TestSetScoring(unittest.TestCase):
 
     def test_max_sum(self):
         oligoset = self.score_max_sum.apply(self.oligo_set, self.n_oligo_set)
-        print(oligoset[1])
         assert oligoset[0] == [0, 1, 4, 7, 3], "Max scoring failed"
         assert oligoset[1] == {"set_score_lowest": 5, "set_score_sum": 11}, "Max scoring failed"
 

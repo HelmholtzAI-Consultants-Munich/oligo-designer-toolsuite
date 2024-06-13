@@ -495,6 +495,7 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         search_results = self._add_seed_region_information(
             oligo_database=oligo_database, region_ids=region_ids, search_results=search_results
         )
+
         # if seedregion not given
         search_results.seedregion_start.fillna(0, inplace=True)
         search_results.seedregion_end.fillna(search_results.query_length, inplace=True)

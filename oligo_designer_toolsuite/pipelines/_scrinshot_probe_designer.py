@@ -574,7 +574,6 @@ class ScrinshotProbeDesigner:
         barcodes = _get_barcode(len(region_ids), barcode_length=4, seed=0, choices=["A", "C", "T", "G"])
 
         for region_idx, region_id in enumerate(region_ids):
-
             database_region = oligo_database.database[region_id]
             probesets_region = oligo_database.oligosets[region_id]
             probesets_probe_columns = [col for col in probesets_region.columns if col.startswith("oligo_")]
@@ -671,6 +670,21 @@ def main():
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    ##### process parameters #####
+    # preprocess melting temperature params
+    Tm_parameters_probe = config["Tm_parameters_probe"]
+    Tm_parameters_probe["nn_table"] = getattr(mt, Tm_parameters_probe["nn_table"])
+    Tm_parameters_probe["tmm_table"] = getattr(mt, Tm_parameters_probe["tmm_table"])
+    Tm_parameters_probe["imm_table"] = getattr(mt, Tm_parameters_probe["imm_table"])
+    Tm_parameters_probe["de_table"] = getattr(mt, Tm_parameters_probe["de_table"])
+
+    # preprocess melting temperature params
+    Tm_parameters_detection_oligo = config["Tm_parameters_detection_oligo"]
+    Tm_parameters_detection_oligo["nn_table"] = getattr(mt, Tm_parameters_detection_oligo["nn_table"])
+    Tm_parameters_detection_oligo["tmm_table"] = getattr(mt, Tm_parameters_detection_oligo["tmm_table"])
+    Tm_parameters_detection_oligo["imm_table"] = getattr(mt, Tm_parameters_detection_oligo["imm_table"])
+    Tm_parameters_detection_oligo["de_table"] = getattr(mt, Tm_parameters_detection_oligo["de_table"])
+
     ##### read the genes file #####
     if config["file_regions"] is None:
         warnings.warn(
@@ -702,13 +716,6 @@ def main():
     )
 
     ##### filter probes by property #####
-    # preprocess melting temperature params
-    Tm_parameters_probe = config["Tm_parameters_probe"]
-    Tm_parameters_probe["nn_table"] = getattr(mt, Tm_parameters_probe["nn_table"])
-    Tm_parameters_probe["tmm_table"] = getattr(mt, Tm_parameters_probe["tmm_table"])
-    Tm_parameters_probe["imm_table"] = getattr(mt, Tm_parameters_probe["imm_table"])
-    Tm_parameters_probe["de_table"] = getattr(mt, Tm_parameters_probe["de_table"])
-
     probe_database, file_database = pipeline.filter_by_property(
         oligo_database=probe_database,
         probe_GC_content_min=config["probe_GC_content_min"],
@@ -766,20 +773,6 @@ def main():
     )
 
     ##### create final padlock probe sequences #####
-    # compute all required attributes
-    probe_database = pipeline.compute_probe_attributes(
-        oligo_database=probe_database,
-        Tm_parameters_probe=Tm_parameters_probe,
-        Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
-    )
-
-    # preprocess melting temperature params
-    Tm_parameters_detection_oligo = config["Tm_parameters_detection_oligo"]
-    Tm_parameters_detection_oligo["nn_table"] = getattr(mt, Tm_parameters_detection_oligo["nn_table"])
-    Tm_parameters_detection_oligo["tmm_table"] = getattr(mt, Tm_parameters_detection_oligo["tmm_table"])
-    Tm_parameters_detection_oligo["imm_table"] = getattr(mt, Tm_parameters_detection_oligo["imm_table"])
-    Tm_parameters_detection_oligo["de_table"] = getattr(mt, Tm_parameters_detection_oligo["de_table"])
-
     probe_database = pipeline.design_final_padlock_sequence(
         oligo_database=probe_database,
         min_thymines=config["min_thymines"],
@@ -787,8 +780,16 @@ def main():
         detect_oligo_length_min=config["detect_oligo_length_min"],
         detect_oligo_length_max=config["detect_oligo_length_max"],
         detect_oligo_Tm_opt=config["detect_oligo_Tm_opt"],
-        Tm_parameters_detection_oligo=config["Tm_parameters_detection_oligo"],
+        Tm_parameters_detection_oligo=Tm_parameters_detection_oligo,
         Tm_chem_correction_param_detection_oligo=config["Tm_chem_correction_param_detection_oligo"],
+        Tm_parameters_probe=Tm_parameters_probe,
+        Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
+    )
+
+    ##### generate output #####
+    # compute all required attributes
+    probe_database = pipeline.compute_probe_attributes(
+        oligo_database=probe_database,
         Tm_parameters_probe=Tm_parameters_probe,
         Tm_chem_correction_param_probe=config["Tm_chem_correction_param_probe"],
     )
