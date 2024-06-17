@@ -6,8 +6,6 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-from oligo_designer_toolsuite.database import OligoDatabase
-
 ############################################
 # Heuristic Selection Methods
 ############################################
@@ -40,6 +38,7 @@ def heuristic_selection_independent_set(
     """
 
     # sort the oligos by their score
+    print("ASCENDING: ", ascending)
     oligos_sorted = oligos_scores.sort_values(ascending=ascending)
     oligo_ids_sorted = oligos_sorted.index.tolist()
 
