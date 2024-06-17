@@ -6,13 +6,14 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from oligo_designer_toolsuite.database import OligoDatabase
+
 ############################################
 # Heuristic Selection Methods
 ############################################
 
 
 def heuristic_selection_independent_set(
-    database_region: dict,
     oligos_scores: pd.Series,
     overlapping_matrix: pd.DataFrame,
     n_oligo: int,
@@ -24,8 +25,6 @@ def heuristic_selection_independent_set(
     selects the best non-overlapping oligos to form a set, evaluates their scores, and discards oligos unlikely
     to produce a better set than the best found set.
 
-    :param database_region: Dictionary containing oligos information for the region.
-    :type database_region: dict
     :param oligos_scores: Series containing scores of oligos.
     :type oligos_scores: pd.Series
     :param overlapping_matrix: Dataframe indicating overlap between oligos.
@@ -36,7 +35,7 @@ def heuristic_selection_independent_set(
     :type ascending: bool
     :param n_trials: Number of top scoring oligos to consider for set formation, defaults to 100.
     :type n_trials: int
-    :return: Updated database_region with oligos forming the best set, updated scores, and the best set found.
+    :return: Updated scores, and the best set found.
     :rtype: tuple(dict, pd.Series, pd.Series)
     """
 
@@ -80,7 +79,7 @@ def heuristic_selection_independent_set(
 
     for oligo_id in oligos_scores.index:
         if oligos_scores[oligo_id] > max_score:
-            # delete the oligo, both dictionary and dataframe are passed as a reference
-            del database_region[oligo_id]
+            # delete the oligo
             oligos_scores.drop(oligo_id, inplace=True)
-    return database_region, oligos_scores, best_set
+
+    return oligos_scores, best_set

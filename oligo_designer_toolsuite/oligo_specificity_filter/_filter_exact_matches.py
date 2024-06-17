@@ -2,10 +2,10 @@
 # imports
 ############################################
 
+from typing import List, get_args
+
 import iteration_utilities
 import pandas as pd
-
-from typing import List, get_args
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
@@ -56,11 +56,6 @@ class ExactMatchFilter(SpecificityFilterBase):
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-
         # extract all the sequences
         sequences = oligo_database.get_sequence_list(sequence_type=sequence_type)
         search_results = self._get_duplicated_sequences(sequences)
@@ -72,8 +67,8 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description="Exact Matches", total = len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs)(
+        with joblib_progress(description="Exact Matches", total=len(region_ids)):
+            table_hits = Parallel(n_jobs=n_jobs, prefer="threads")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
                     region_id=region_id,
@@ -89,12 +84,12 @@ class ExactMatchFilter(SpecificityFilterBase):
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
         oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 
-        for region in region_ids:
-            database_region_filtered = self._filter_hits_from_database(
-                database_region=oligo_database.database[region],
-                oligos_with_hits=oligos_with_hits[region],
+        for region_id in region_ids:
+            self._filter_hits_from_database(
+                oligo_database=oligo_database,
+                region_id=region_id,
+                oligos_with_hits=oligos_with_hits[region_id],
             )
-            oligo_database.database[region] = database_region_filtered
         return oligo_database
 
     def get_oligo_pair_hits(
@@ -136,8 +131,8 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description="Exact Matches", total = len(region_ids)):
-            table_hits = Parallel(n_jobs=n_jobs)(
+        with joblib_progress(description="Exact Matches", total=len(region_ids)):
+            table_hits = Parallel(n_jobs=n_jobs, prefer="threads")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
                     region_id=region_id,

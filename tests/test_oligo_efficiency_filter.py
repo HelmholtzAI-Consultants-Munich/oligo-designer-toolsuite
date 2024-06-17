@@ -11,9 +11,8 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
     GCOligoScoring,
     LowestSetScoring,
-    GCOligoScoring,
-    WeightedTmGCOligoScoring,
     WeightedIsoformTmGCOligoScoring,
+    WeightedTmGCOligoScoring,
 )
 
 ############################################
@@ -78,19 +77,19 @@ class TestOligoScoring(unittest.TestCase):
         self.sequence_type = "oligo"
 
     def test_GC_score(self):
-        oligo_score = self.score_gc.scoring_function(
+        oligo_score = self.score_gc.get_score(
             oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
         )
         assert oligo_score == 0, "GC score failed!"
 
     def test_weighted_GC_Tm_score(self):
-        oligo_score = self.score_weighted_gc_tm.scoring_function(
+        oligo_score = self.score_weighted_gc_tm.get_score(
             oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
         )
         assert abs(oligo_score - 0.74666) < 1e-5, "Weighted GC-Tm score failed!"
 
     def test_weighted_isoform_GC_Tm_score(self):
-        oligo_score = self.score_weighted_isoform_gc_tm.scoring_function(
+        oligo_score = self.score_weighted_isoform_gc_tm.get_score(
             oligo_attributes=self.oligo_attributes, sequence_type=self.sequence_type
         )
         assert abs(oligo_score - 1.74666) < 1e-5, "Weighted GC-Tm score failed!"
@@ -98,15 +97,18 @@ class TestOligoScoring(unittest.TestCase):
 
 class TestSetScoring(unittest.TestCase):
     def setUp(self):
-        self.score_max_sum = LowestSetScoring()
-        self.score_ave_max = AverageSetScoring()
+        self.score_max_sum = LowestSetScoring(ascending=True)
+        self.score_ave_max = AverageSetScoring(ascending=True)
         self.oligo_set = Series(data=[0, 1, 8, 5, 2, 6, 7, 3])
         self.n_oligo_set = 5
 
     def test_max_sum(self):
         oligoset = self.score_max_sum.apply(self.oligo_set, self.n_oligo_set)
-        assert oligoset == [0, 1, 4, 7, 3, 5, 11], "Max scoring failed"
+        print(oligoset[1])
+        assert oligoset[0] == [0, 1, 4, 7, 3], "Max scoring failed"
+        assert oligoset[1] == {"set_score_lowest": 5, "set_score_sum": 11}, "Max scoring failed"
 
     def test_ave_max(self):
         oligoset = self.score_ave_max.apply(self.oligo_set, self.n_oligo_set)
-        assert oligoset == [0, 1, 4, 7, 3, 2.2, 5], "Average scoring failed"
+        assert oligoset[0] == [0, 1, 4, 7, 3], "Average scoring failed"
+        assert oligoset[1] == {"set_score_average": 2.2, "set_score_lowest": 5}, "Average scoring failed"

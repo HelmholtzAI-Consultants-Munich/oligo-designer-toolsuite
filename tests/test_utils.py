@@ -6,13 +6,9 @@ import unittest
 import warnings
 
 import pandas as pd
-from effidict import LRUDict
+from effidict import LRUPickleDict
 
-from oligo_designer_toolsuite.utils import (
-    FastaParser,
-    GffParser,
-)
-
+from oligo_designer_toolsuite.utils import FastaParser, GffParser
 from oligo_designer_toolsuite.utils._checkers import (
     check_if_dna_sequence,
     check_if_key_exists,
@@ -139,12 +135,12 @@ class TestCheckers(unittest.TestCase):
 
     def test_check_if_key_exists_empty(self):
         """Test the check_if_key_exists function with an empty cache."""
-        empty_dict = LRUDict()
+        empty_dict = LRUPickleDict()
         assert not check_if_key_exists(empty_dict, "a"), "Failed: Should return False for empty dictionary"
 
     def test_check_if_key_exists_flat(self):
         """Test the check_if_key_exists function with a flat cache."""
-        flat_database = LRUDict()
+        flat_database = LRUPickleDict()
         flat_database.load_from_dict({"a": 1, "b": 2})
 
         assert check_if_key_exists(flat_database, "a"), "Failed: Key 'a' should exist in flat_database"
@@ -155,7 +151,7 @@ class TestCheckers(unittest.TestCase):
     def test_check_if_key_exists_nested(self):
         """Test the check_if_key_exists function with a nested cache."""
 
-        nested_database = LRUDict()
+        nested_database = LRUPickleDict()
         nested_database.load_from_dict({"a": {"b": {"c": 1}}, "d": 2, "e": {"f": {"g": {"h": 3}}}})
 
         assert check_if_key_exists(nested_database, "c"), "Failed: Key 'c' should exist in nested_database"

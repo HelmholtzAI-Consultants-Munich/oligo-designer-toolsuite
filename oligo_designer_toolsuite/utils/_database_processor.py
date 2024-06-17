@@ -4,9 +4,8 @@
 
 import warnings
 from collections import defaultdict
-from itertools import chain
 
-from effidict import LRUDict
+from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 
@@ -32,7 +31,7 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
     :rtype: dict
     """
 
-    def _get_sequence_as_key(database):
+    def _get_sequence_as_key(database, regions):
         """Modify the structure of the input database by using oligo sequences as keys.
 
         :param database: The input database with regions and associated oligo information.
@@ -40,14 +39,13 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
         :return: A modified database with oligo sequences as keys.
         :rtype: dict
         """
-        database_modified = LRUDict(
+        database_modified = LRUPickleDict(
             max_in_memory=max_in_memory,
             storage_path=dir_cache_files,
         )
-        for region in database.keys():
+        for region in regions:
             database_modified[region] = {}
-
-        for region, values in database.items():
+            values = database[region]
             for oligo_id, oligo_info in values.items():
                 oligo_sequence = oligo_info["oligo"]
                 oligo_info.pop("oligo")
@@ -75,35 +73,45 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
                     database_tmp[region][oligo_sequence] = oligo_info
         return database_tmp
 
-    database_concat = LRUDict(
+    # keys that are in both dicts
+    regions_intersection = list(set(database1) & set(database2))
+
+    database_merged = LRUPickleDict(
         max_in_memory=max_in_memory,
         storage_path=dir_cache_files,
     )
-    for region in chain(database1.keys(), database2.keys()):
-        database_concat[region] = {}
-
-    db1_sequences_as_keys = _get_sequence_as_key(database1)
-    db2_sequences_as_keys = _get_sequence_as_key(database2)
-
-    database_concat = _add_database_content(database_concat, db1_sequences_as_keys)
-    database_concat = _add_database_content(database_concat, db2_sequences_as_keys)
-
-    database_merged = LRUDict(
-        max_in_memory=max_in_memory,
-        storage_path=dir_cache_files,
-    )
-    for region in database_concat.keys():
+    for region in regions_intersection:
         database_merged[region] = {}
 
-    for region, value in database_concat.items():
+    # only loop over entries that have keys in both dicts
+    db1_sequences_as_keys = _get_sequence_as_key(database1, regions_intersection)
+    db2_sequences_as_keys = _get_sequence_as_key(database2, regions_intersection)
+
+    database_merged = _add_database_content(database_merged, db1_sequences_as_keys)
+    database_merged = _add_database_content(database_merged, db2_sequences_as_keys)
+
+    database_concat = LRUPickleDict(
+        max_in_memory=max_in_memory,
+        storage_path=dir_cache_files,
+    )
+    for region in regions_intersection:
+        database_concat[region] = {}
+
+    for region, value in database_merged.items():
         i = 1
         for oligo_sequence, oligo_info in value.items():
             oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
             oligo_seq_info = {"oligo": oligo_sequence} | oligo_info
-            database_merged[region][oligo_id] = oligo_seq_info
+            database_concat[region][oligo_id] = oligo_seq_info
             i += 1
 
-    return database_merged
+    # add entries with keys in only one dict
+    for region in set(database1) - set(database2):
+        database_concat[region] = database1[region]
+    for region in set(database2) - set(database1):
+        database_concat[region] = database2[region]
+
+    return database_concat
 
 
 def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
@@ -122,15 +130,10 @@ def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
     for d in (oligo_info1, oligo_info2):
         for key, values in d.items():
             if key not in oligo_info:
-                # if check_if_list_of_lists(values):
                 oligo_info[key] = values
-                # else:
-                #     oligo_info[key] = [values]
             else:
-                # if check_if_list_of_lists(values):
-                oligo_info[key].extend(values)
-                # else:
-                #     oligo_info[key].extend([values])
+                if oligo_info[key] != values:
+                    warnings.warn(f"Values for key {key} are different in the two oligo_info dictionaries.")
 
     oligo_info = dict(oligo_info)
 
