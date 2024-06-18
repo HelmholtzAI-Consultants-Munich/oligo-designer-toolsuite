@@ -16,7 +16,7 @@ from ._checkers import check_if_list_of_lists
 ############################################
 
 
-def merge_databases(database1, database2, dir_cache_files, max_in_memory):
+def merge_databases(database1, database2, dir_cache_files, lru_db_max_in_memory):
     """Merge two databases, combining their content while handling potential overlapping oligo sequences.
 
     :param database1: The first database.
@@ -40,16 +40,16 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
         :rtype: dict
         """
         database_modified = LRUPickleDict(
-            max_in_memory=max_in_memory,
+            max_in_memory=lru_db_max_in_memory,
             storage_path=dir_cache_files,
         )
         for region in regions:
             database_modified[region] = {}
-            values = database[region]
-            for oligo_id, oligo_info in values.items():
-                oligo_sequence = oligo_info["oligo"]
-                oligo_info.pop("oligo")
-                database_modified[region][oligo_sequence] = oligo_info
+            database_region = database[region]
+            for oligo_id, oligo_attributes in database_region.items():
+                oligo_sequence = oligo_attributes["oligo"]
+                oligo_attributes.pop("oligo")
+                database_modified[region][oligo_sequence] = oligo_attributes
         return database_modified
 
     def _add_database_content(database_tmp, database_in):
@@ -62,22 +62,22 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
         :return: The modified database with the added content.
         :rtype: dict
         """
-        for region, values in database_in.items():
-            for oligo_sequence, oligo_info in values.items():
+        for region, database_region in database_in.items():
+            for oligo_sequence, oligo_attributes in database_region.items():
                 if oligo_sequence in database_tmp[region]:
-                    oligo_info_merged = collapse_info_for_duplicated_sequences(
-                        database_tmp[region][oligo_sequence], oligo_info
+                    oligo_attributes_merged = collapse_attributes_for_duplicated_sequences(
+                        database_tmp[region][oligo_sequence], oligo_attributes
                     )
-                    database_tmp[region][oligo_sequence] = oligo_info_merged
+                    database_tmp[region][oligo_sequence] = oligo_attributes_merged
                 else:
-                    database_tmp[region][oligo_sequence] = oligo_info
+                    database_tmp[region][oligo_sequence] = oligo_attributes
         return database_tmp
 
     # keys that are in both dicts
     regions_intersection = list(set(database1) & set(database2))
 
     database_merged = LRUPickleDict(
-        max_in_memory=max_in_memory,
+        max_in_memory=lru_db_max_in_memory,
         storage_path=dir_cache_files,
     )
     for region in regions_intersection:
@@ -91,17 +91,17 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
     database_merged = _add_database_content(database_merged, db2_sequences_as_keys)
 
     database_concat = LRUPickleDict(
-        max_in_memory=max_in_memory,
+        max_in_memory=lru_db_max_in_memory,
         storage_path=dir_cache_files,
     )
     for region in regions_intersection:
         database_concat[region] = {}
 
-    for region, value in database_merged.items():
+    for region, database_merged_region in database_merged.items():
         i = 1
-        for oligo_sequence, oligo_info in value.items():
+        for oligo_sequence, oligo_attributes in database_merged_region.items():
             oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
-            oligo_seq_info = {"oligo": oligo_sequence} | oligo_info
+            oligo_seq_info = {"oligo": oligo_sequence} | oligo_attributes
             database_concat[region][oligo_id] = oligo_seq_info
             i += 1
 
@@ -114,49 +114,48 @@ def merge_databases(database1, database2, dir_cache_files, max_in_memory):
     return database_concat
 
 
-def collapse_info_for_duplicated_sequences(oligo_info1, oligo_info2):
+def collapse_attributes_for_duplicated_sequences(oligo_attributes1, oligo_attributes2):
     """Collapse information for duplicated sequences by combining information from two dictionaries.
 
-    :param oligo_info1: The first dictionary of information.
-    :type oligo_info1: dict
-    :param oligo_info2: The second dictionary of information.
-    :type oligo_info2: dict
-    :return: A dictionary containing combined information from the input dictionaries.
+    :param oligo_attributes1: The first dictionary of oligo attributes.
+    :type oligo_attributes1: dict
+    :param oligo_attributes2: The second dictionary of oligo attributes.
+    :type oligo_attributes2: dict
+    :return: A dictionary containing combined attributes from the input dictionaries.
     :rtype: dict
     """
 
-    oligo_info = defaultdict(list)
+    oligo_attributes = defaultdict(list)
 
-    for d in (oligo_info1, oligo_info2):
+    for d in (oligo_attributes1, oligo_attributes2):
         for key, values in d.items():
-            if key not in oligo_info:
-                oligo_info[key] = values
+            if key not in oligo_attributes:
+                oligo_attributes[key] = values
             else:
-                if key in ["oligo", "target"]:
-                    if oligo_info[key] != values:
-                        warnings.warn(
-                            f"Values for key {key} are different in the two oligo_info dictionaries."
-                        )
+                if key in ["oligo", "target"] and oligo_attributes[key] != values:
+                    warnings.warn(
+                        f"Values for key {key} are different in the two oligo_attributes dictionaries."
+                    )
                 else:
-                    oligo_info[key].extend(values)
+                    oligo_attributes[key].extend(values)
 
-    oligo_info = dict(oligo_info)
+    oligo_attributes = dict(oligo_attributes)
 
-    return oligo_info
+    return oligo_attributes
 
 
-def format_oligo_info(oligo_info: dict):
-    """Format the entries of an oligo_info dictionary to be list of lists.
+def format_oligo_attributes(oligo_attributes: dict):
+    """Format the entries of an oligo_attributes dictionary to be list of lists.
 
-    :param oligo_info: Dictionary containing the features of the oligo
-    :type oligo_info: dict
-    :return: Formatted oligo_info dictionary.
+    :param oligo_attributes: Dictionary containing the features of the oligo
+    :type oligoligo_attributeso_info: dict
+    :return: Formatted oligo_attributes dictionary.
     :rtype: dict
     """
-    for key, value in oligo_info.items():
+    for key, value in oligo_attributes.items():
         if not check_if_list_of_lists(value):
-            oligo_info[key] = [value]
-    return oligo_info
+            oligo_attributes[key] = [value]
+    return oligo_attributes
 
 
 def filter_dabase_for_region(database, region_ids):

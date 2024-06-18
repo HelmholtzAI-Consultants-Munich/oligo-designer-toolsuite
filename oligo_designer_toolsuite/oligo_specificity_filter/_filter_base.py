@@ -137,7 +137,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
 
         # run search in parallel for each region
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description=self.filter_name, total=len(region_ids)):
+        name = " ".join(string.capitalize() for string in self.filter_name.split("_"))
+        with joblib_progress(description=f"Specificity Filter: {name}", total=len(region_ids)):
             Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._apply_region)(
                     sequence_type=sequence_type,
@@ -207,7 +208,8 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         file_index = self._create_index(file_reference=file_reference, n_jobs=n_jobs)
 
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description=self.filter_name, total=len(region_ids)):
+        name = " ".join(string.capitalize() for string in self.filter_name.split("_"))
+        with joblib_progress(description=f"Specificity Filter: {name}", total=len(region_ids)):
             table_hits = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,

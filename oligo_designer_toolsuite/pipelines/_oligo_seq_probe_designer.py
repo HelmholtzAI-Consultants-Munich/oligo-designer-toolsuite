@@ -104,7 +104,7 @@ class OligoSeqProbeDesigner:
         logging.basicConfig(
             format="%(asctime)s [%(levelname)s] %(message)s",
             level=logging.NOTSET,
-            handlers=[logging.FileHandler(file_logger), logging.StreamHandler()],
+            handlers=[logging.FileHandler(file_logger)],
         )
         logging.captureWarnings(True)
 

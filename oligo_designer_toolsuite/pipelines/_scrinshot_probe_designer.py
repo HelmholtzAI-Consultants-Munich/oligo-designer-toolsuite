@@ -2,17 +2,18 @@
 # imports
 ############################################
 
-import itertools
-import logging
 import os
+import yaml
 import random
 import shutil
+import logging
 import warnings
-from datetime import datetime
-from pathlib import Path
-from typing import List
+import itertools
 
-import yaml
+from typing import List
+from pathlib import Path
+from datetime import datetime
+
 from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.database import (
@@ -80,7 +81,7 @@ class ScrinshotProbeDesigner:
         logging.basicConfig(
             format="%(asctime)s [%(levelname)s] %(message)s",
             level=logging.NOTSET,
-            handlers=[logging.FileHandler(file_logger), logging.StreamHandler()],
+            handlers=[logging.FileHandler(file_logger)],
         )
         logging.captureWarnings(True)
 
@@ -636,7 +637,7 @@ class ScrinshotProbeDesigner:
         # write a second file that only contains order information
         yaml_dict_order = {}
 
-        for region_id, oligo_dict in oligo_database.database.items():
+        for region_id, database_region in oligo_database.database.items():
             yaml_dict_order[region_id] = {}
             oligosets_region = oligo_database.oligosets[region_id]
             oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
@@ -649,8 +650,8 @@ class ScrinshotProbeDesigner:
             for _, oligoset in oligosets_region.iterrows():
                 for oligo_id in oligoset:
                     yaml_dict_order[region_id][oligo_id] = {
-                        "sequence_padlock_probe": oligo_dict[oligo_id]["sequence_padlock_probe"],
-                        "sequence_detection_oligo": oligo_dict[oligo_id]["sequence_detection_oligo"],
+                        "sequence_padlock_probe": database_region[oligo_id]["sequence_padlock_probe"],
+                        "sequence_detection_oligo": database_region[oligo_id]["sequence_detection_oligo"],
                     }
 
         with open(os.path.join(self.dir_output, "padlock_probes_order.yml"), "w") as outfile:

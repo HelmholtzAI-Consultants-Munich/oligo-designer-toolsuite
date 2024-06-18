@@ -25,9 +25,9 @@ from oligo_designer_toolsuite.utils import (
     check_tsv_format,
     check_if_region_in_database,
     check_tsv_format,
-    collapse_info_for_duplicated_sequences,
+    collapse_attributes_for_duplicated_sequences,
     filter_dabase_for_region,
-    format_oligo_info,
+    format_oligo_attributes,
     merge_databases,
     filter_dabase_for_region,
 )
@@ -84,14 +84,15 @@ class OligoDatabase:
         """Constructor for the OligoDatabase class."""
         self.min_oligos_per_region = min_oligos_per_region
         self.write_regions_with_insufficient_oligos = write_regions_with_insufficient_oligos
-        self.lru_db_max_in_memory = lru_db_max_in_memory
-        self.n_jobs = n_jobs
 
         self.database_name = database_name
         self.dir_output = os.path.abspath(os.path.join(dir_output, database_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self._dir_cache_files = os.path.join(self.dir_output, "cache_files")
+        self.lru_db_max_in_memory = lru_db_max_in_memory
+
+        self.n_jobs = n_jobs
 
         self.fasta_parser = FastaParser()
 
@@ -148,37 +149,34 @@ class OligoDatabase:
             region_id = os.path.basename(file).split(".")[0]
             with open(file, "rb") as handle:
                 content = pickle.load(handle)
-                oligo_dict = content["oligodict"]
-                oligoset = content["oligoset"]
+                database_region = content["database_region"]
+                oligoset_region = content["oligoset_region"]
 
             # only merge if there are common keys
             if region_id in self.database.keys():
-                database_region = {region_id: oligo_dict}
                 self.database = merge_databases(
-                    self.database,
-                    database_region,
-                    self._dir_cache_files,
-                    self.lru_db_max_in_memory,
+                    database1=self.database,
+                    database2={region_id: database_region},
+                    dir_cache_files=self._dir_cache_files,
+                    lru_db_max_in_memory=self.lru_db_max_in_memory,
                 )
-                self.oligosets[region_id] = pd.concat([self.oligosets[region_id], oligoset])
+                self.oligosets[region_id] = pd.concat([self.oligosets[region_id], oligoset_region])
             else:
-                self.database[region_id] = oligo_dict
-                self.oligosets[region_id] = oligoset
+                self.database[region_id] = database_region
+                self.oligosets[region_id] = oligoset_region
 
         region_ids = check_if_list(region_ids)
-
-        if database_overwrite:
-            warnings.warn("Overwriting database!")
 
         if not os.path.isdir(dir_database):
             raise ValueError("Database directory does not exist!")
 
         if database_overwrite:
-            warnings.warn("Overwriting database!")
             self.database = LRUPickleDict(
                 max_in_memory=self.lru_db_max_in_memory,
                 storage_path=self._dir_cache_files,
             )
+        else:
+            warnings.warn("Appending to existing database!")
 
         # retrieve all files in the directory
         path = os.path.abspath(dir_database)
@@ -193,10 +191,10 @@ class OligoDatabase:
         # add this step to log regions which are not available in database
         if region_ids:
             check_if_region_in_database(
-                self.database,
-                region_ids,
-                self.write_regions_with_insufficient_oligos,
-                self.file_removed_regions,
+                database=self.database,
+                region_ids=region_ids,
+                write_regions_with_insufficient_oligos=self.write_regions_with_insufficient_oligos,
+                file_removed_regions=self.file_removed_regions,
             )
 
     def load_database_from_fasta(
@@ -237,40 +235,41 @@ class OligoDatabase:
             """
             self.fasta_parser.check_fasta_format(file)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
-            region_sequences = {}
+            sequences = {}
             for entry in fasta_sequences:
                 region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
-                oligo_info = coordinates | additional_info
-                oligo_info = format_oligo_info(oligo_info)
-                if region in region_sequences:
-                    if entry.seq in region_sequences[region]:
-                        oligo_info = collapse_info_for_duplicated_sequences(
-                            region_sequences[region][entry.seq], oligo_info
+                oligo_attributes = coordinates | additional_info
+                oligo_attributes = format_oligo_attributes(oligo_attributes)
+                if region in sequences:
+                    if entry.seq in sequences[region]:
+                        oligo_attributes = collapse_attributes_for_duplicated_sequences(
+                            oligo_attributes1=sequences[region][entry.seq],
+                            oligo_attributes2=oligo_attributes,
                         )
-                    region_sequences[region][str(entry.seq)] = oligo_info
+                    sequences[region][str(entry.seq)] = oligo_attributes
                 else:
-                    region_sequences[region] = {str(entry.seq): oligo_info}
+                    sequences[region] = {str(entry.seq): oligo_attributes}
 
-            database_region = {region: {} for region in region_sequences.keys()}
-            for region, value in region_sequences.items():
+            database_region = {region: {} for region in sequences.keys()}
+            for region, sequences_region in sequences.items():
                 i = 1
-                for oligo_sequence, oligo_info in value.items():
+                for oligo_sequence, oligo_attributes in sequences_region.items():
                     oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
                     oligo_sequence_reverse_complement = str(Seq(oligo_sequence).reverse_complement())
                     oligo_seq_info = {
                         sequence_type: oligo_sequence,
                         sequence_type_reverse_complement: oligo_sequence_reverse_complement,
-                    } | oligo_info
+                    } | oligo_attributes
                     database_region[region][oligo_id] = oligo_seq_info
                     i += 1
 
             # only merge if there are common keys
             if len(set(self.database) & set(database_region)) > 0:
                 self.database = merge_databases(
-                    self.database,
-                    database_region,
-                    self._dir_cache_files,
-                    self.lru_db_max_in_memory,
+                    database1=self.database,
+                    database2=database_region,
+                    dir_cache_files=self._dir_cache_files,
+                    lru_db_max_in_memory=self.lru_db_max_in_memory,
                 )
             else:
                 for region in database_region.keys():
@@ -289,11 +288,12 @@ class OligoDatabase:
 
         # Clear database if it should be overwritten
         if database_overwrite:
-            warnings.warn("Overwriting database!")
             self.database = LRUPickleDict(
                 max_in_memory=self.lru_db_max_in_memory,
                 storage_path=self._dir_cache_files,
             )
+        else:
+            warnings.warn("Appending to existing database!")
 
         # Load files parallel into database
         with joblib_progress(description="Database Loading", total=len(files_fasta)):
@@ -304,10 +304,10 @@ class OligoDatabase:
         # add this step to log regions which are not available in database
         if region_ids:
             check_if_region_in_database(
-                self.database,
-                region_ids,
-                self.write_regions_with_insufficient_oligos,
-                self.file_removed_regions,
+                database=self.database,
+                region_ids=region_ids,
+                write_regions_with_insufficient_oligos=self.write_regions_with_insufficient_oligos,
+                file_removed_regions=self.file_removed_regions,
             )
 
     def load_database_from_table(
@@ -348,9 +348,17 @@ class OligoDatabase:
         else:
             raise ValueError("Database file does not exist!")
 
+        # Clear database if it should be overwritten
+        if database_overwrite:
+            self.database = LRUPickleDict(
+                max_in_memory=self.lru_db_max_in_memory,
+                storage_path=self._dir_cache_files,
+            )
+        else:
+            warnings.warn("Appending to existing database!")
+
         # Load file and process content
         file_tsv_content = pd.read_table(file_database, sep="\t")
-
         file_tsv_content = file_tsv_content.apply(
             lambda col: col.apply(lambda x: x if pd.notna(x) else [None])
         )
@@ -380,18 +388,21 @@ class OligoDatabase:
 
         if not database_overwrite and self.database:
             database_tmp2 = merge_databases(
-                self.database, database_tmp2, self._dir_cache_files, self.lru_db_max_in_memory
+                database1=self.database,
+                database2=database_tmp2,
+                dir_cache_files=self._dir_cache_files,
+                lru_db_max_in_memory=self.lru_db_max_in_memory,
             )
 
         # Filter for region ids
         region_ids = check_if_list(region_ids)
         if region_ids:
-            database_tmp2 = filter_dabase_for_region(database_tmp2, region_ids)
+            database_tmp2 = filter_dabase_for_region(database=database_tmp2, region_ids=region_ids)
             check_if_region_in_database(
-                database_tmp2,
-                region_ids,
-                self.write_regions_with_insufficient_oligos,
-                self.file_removed_regions,
+                database=database_tmp2,
+                region_ids=region_ids,
+                write_regions_with_insufficient_oligos=self.write_regions_with_insufficient_oligos,
+                file_removed_regions=self.file_removed_regions,
             )
 
         self.database = database_tmp2
@@ -428,9 +439,9 @@ class OligoDatabase:
         for region_id in region_ids:
             database_region = self.database[region_id]
             oligoset_region = self.oligosets[region_id]
-            file_database_region = os.path.join(dir_database, region_id)
-            with open(file_database_region, "wb") as file:
-                pickle.dump({"oligodict": database_region, "oligoset": oligoset_region}, file)
+            file_output = os.path.join(dir_database, region_id)
+            with open(file_output, "wb") as file:
+                pickle.dump({"database_region": database_region, "oligoset_region": oligoset_region}, file)
 
         return dir_database
 
@@ -514,6 +525,7 @@ class OligoDatabase:
         :return: Paths to the saved TSV file.
         :rtype: tuple
         """
+        # TODO: this should be split into write database (without brackets formatting) and save database (with brackets formatting that can be reloaded)
         if region_ids:
             region_ids = check_if_list(region_ids)
         else:
@@ -674,8 +686,8 @@ class OligoDatabase:
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
         sequences = [
             str(oligo_attributes[sequence_type])
-            for region_id, oligo_dict in self.database.items()
-            for oligo_id, oligo_attributes in oligo_dict.items()
+            for region_id, database_region in self.database.items()
+            for oligo_id, oligo_attributes in database_region.items()
         ]
 
         return sequences

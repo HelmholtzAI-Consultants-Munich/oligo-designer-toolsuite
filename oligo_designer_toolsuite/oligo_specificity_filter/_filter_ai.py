@@ -101,7 +101,8 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
 
         # run search in parallel for each region
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description=self.filter_name, total=len(region_ids)):
+        name = " ".join(string.capitalize() for string in self.filter_name.split("_"))
+        with joblib_progress(description=f"Specificity Filter: {name}", total=len(region_ids)):
             Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._apply_region)(
                     sequence_type=sequence_type,
