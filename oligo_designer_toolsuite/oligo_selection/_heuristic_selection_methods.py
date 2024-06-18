@@ -2,6 +2,7 @@
 # imports
 ############################################
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 
@@ -14,7 +15,6 @@ def heuristic_selection_independent_set(
     oligos_scores: pd.Series,
     overlapping_matrix: pd.DataFrame,
     n_oligo: int,
-    big_enough_clique: set,
     ascending: bool,
     n_trials=100,
 ):
@@ -29,8 +29,6 @@ def heuristic_selection_independent_set(
     :type overlapping_matrix: pd.DataFrame
     :param n_oligo: The number of oligos to select in each set.
     :type n_oligo: int
-    :param big_enough_clique: The set of oligos that form a clique of size n_oligo.
-    :type big_enough_clique: set
     :param ascending: Determines if scores should be sorted in ascending order, defaults to True.
     :type ascending: bool
     :param n_trials: Number of top scoring oligos to consider for set formation, defaults to 100.
@@ -47,19 +45,18 @@ def heuristic_selection_independent_set(
     mat_sorted = overlapping_matrix.loc[oligo_ids_sorted, oligo_ids_sorted].values
 
     # Represent overlap matrix as graph
-    # G = nx.convert_matrix.from_numpy_array(mat_sorted)
+    G = nx.convert_matrix.from_numpy_array(mat_sorted)
     # First check if there are no cliques with n oligos
-    # cliques = nx.algorithms.clique.find_cliques(G)
+    cliques = nx.algorithms.clique.find_cliques(G)
 
     # initialize best_idx_set with arbitrary set of non-overlapping oligos with minimum n_oligo oligos
-    # for clique in cliques:
-    #     if len(clique) >= n_oligo:
-    #         best_idx_set = clique[:n_oligo]
-    #         break
-    best_idx_set = list(big_enough_clique)[:n_oligo]
+    for clique in cliques:
+        if len(clique) >= n_oligo:
+            best_idx_set = clique[:n_oligo]
+            break
 
     # initialize max_score with score from set chosen above
-    max_score = np.max(oligos_sorted[best_idx_set])
+    max_score = np.max(oligos_sorted.values[best_idx_set])
 
     for first_idx in range(min(len(oligo_ids_sorted), n_trials)):
         # use the integer index because the matric is a np array
@@ -76,7 +73,7 @@ def heuristic_selection_independent_set(
             if score < max_score:
                 max_score = score
                 best_idx_set = set_idxs
-    best_set = oligos_sorted.loc[best_idx_set]
+    best_set = oligos_sorted.iloc[best_idx_set]
 
     for oligo_id in oligos_scores.index:
         if oligos_scores[oligo_id] > max_score:

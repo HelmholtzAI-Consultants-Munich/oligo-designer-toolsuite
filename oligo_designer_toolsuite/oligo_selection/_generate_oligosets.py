@@ -252,41 +252,17 @@ class OligosetGeneratorIndependentSet:
         :return: A DataFrame containing the best non-overlapping oligo sets.
         :rtype: pd.DataFrame
         """
-        n_attempts = 1000
-
-        def _find_cliques_of_size_n_and_more(G, n, max_attempts=n_attempts):
-            cliques = set()  # Using a set to avoid duplicate cliques
-            attempts = 0
-            big_enough_clique_found = False
-            prev_max_clique = None
-
-            while attempts < max_attempts and not big_enough_clique_found:
-                max_clique = nx.approximation.max_clique(G)
-
-                if max_clique == prev_max_clique:
-                    break
-
-                if len(max_clique) >= n:
-                    sub_cliques = list(nx.find_cliques(G.subgraph(max_clique)))
-                    for clique in sub_cliques:
-                        if len(clique) >= n:
-                            big_enough_clique_found = True
-                            cliques.add(tuple(sorted(clique)))  # Sort and convert to tuple for set uniqueness
-
-                prev_max_clique = max_clique
-                attempts += 1
-
-            return [list(clique) for clique in cliques]
-
         # Represent overlap matrix as graph
         G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
         G = nx.relabel_nodes(G, {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))})
 
         # First check if there are no cliques with n oligos
+        cliques = nx.algorithms.clique.find_cliques(G)
         n = self.opt_oligoset_size
-        for _ in range(n_attempts):
-            biggest_clique = nx.approximation.max_clique(G)
-            n_max = len(biggest_clique)
+        n_max = 0
+
+        for clique in cliques:
+            n_max = max(len(clique), n_max)
             if n_max >= n:
                 break
 
@@ -301,12 +277,21 @@ class OligosetGeneratorIndependentSet:
         if self.heuristic_selection is not None and n == self.opt_oligoset_size:
             # apply the heuristic
             oligos_scores, heuristic_set = self.heuristic_selection(
-                oligos_scores, overlapping_matrix, n, biggest_clique, self.ascending
+                oligos_scores, overlapping_matrix, n, self.ascending
             )
-            heuristic_oligoset, heuristic_scores = self.set_scoring.apply(heuristic_set, n)
+            heuristic_oligoset, heuristic_scores = self.set_scoring.apply(
+                heuristic_set, n
+            )  # make it a list as for all the other cliques for future use
+            # recompute the cliques
+            overlapping_matrix = overlapping_matrix.loc[oligos_scores.index, oligos_scores.index]
+            G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
+            G = nx.relabel_nodes(
+                G,
+                {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))},
+            )
 
         # recompute the cliques
-        cliques = _find_cliques_of_size_n_and_more(G, n)
+        cliques = nx.algorithms.clique.find_cliques(G)
 
         # Search the best set
         if heuristic_oligoset:
@@ -323,7 +308,7 @@ class OligosetGeneratorIndependentSet:
                 break
             if len(clique) >= n:
                 # Get oligo_ids of clique, maybe create a function
-                clique_oligos = oligos_scores.loc[list(clique)]
+                clique_oligos = oligos_scores.loc[clique]
                 oligoset, oligoset_scores = self.set_scoring.apply(clique_oligos, n)
                 oligosets.append(list(oligoset) + list(oligoset_scores.values()))
 
