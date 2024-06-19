@@ -175,8 +175,6 @@ class OligoDatabase:
                 max_in_memory=self.lru_db_max_in_memory,
                 storage_path=self._dir_cache_files,
             )
-        else:
-            warnings.warn("Appending to existing database!")
 
         # retrieve all files in the directory
         path = os.path.abspath(dir_database)
@@ -292,8 +290,6 @@ class OligoDatabase:
                 max_in_memory=self.lru_db_max_in_memory,
                 storage_path=self._dir_cache_files,
             )
-        else:
-            warnings.warn("Appending to existing database!")
 
         # Load files parallel into database
         with joblib_progress(description="Database Loading", total=len(files_fasta)):
@@ -354,8 +350,6 @@ class OligoDatabase:
                 max_in_memory=self.lru_db_max_in_memory,
                 storage_path=self._dir_cache_files,
             )
-        else:
-            warnings.warn("Appending to existing database!")
 
         # Load file and process content
         file_tsv_content = pd.read_table(file_database, sep="\t")
@@ -575,7 +569,7 @@ class OligoDatabase:
         file_yaml = os.path.join(os.path.dirname(self.dir_output), filename)
 
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
-        yaml_dict = {region: {} for region in region_ids}
+        yaml_dict = {region_id: {} for region_id in region_ids}
 
         for region_id in region_ids:
             oligosets_region = self.oligosets[region_id]
@@ -589,10 +583,9 @@ class OligoDatabase:
             oligosets_region_scores = oligosets_region.head(top_n_sets)[oligosets_score_columns]
 
             for idx, oligoset in oligosets_region_oligos.iterrows():
-                oligoset_id = f"{region_id}_oligoset_{idx + 1}"
+                oligoset_id = f"Oligoset {idx + 1}"
                 yaml_dict[region_id][oligoset_id] = {
-                    "region_id": region_id,
-                    "oligo_score": oligosets_region_scores.iloc[idx].to_dict(),
+                    "Oligoset Score": oligosets_region_scores.iloc[idx].to_dict(),
                 }
 
                 for oligo_idx, oligo_id in enumerate(oligoset):
@@ -608,7 +601,7 @@ class OligoDatabase:
                                 .replace("]]", "]")
                             )
 
-                    oligo_id_yaml = f"{region_id}_oligo{oligo_idx + 1}"
+                    oligo_id_yaml = f"Oligo {oligo_idx + 1}"
                     yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
 
         with open(file_yaml, "w") as handle:
