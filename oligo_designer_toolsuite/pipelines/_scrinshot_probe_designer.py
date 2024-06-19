@@ -13,6 +13,8 @@ import itertools
 from typing import List
 from pathlib import Path
 from datetime import datetime
+from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
 
 from Bio.SeqUtils import MeltingTemp as mt
 
@@ -570,11 +572,7 @@ class ScrinshotProbeDesigner:
 
             return probe_attributes
 
-        region_ids = list(oligo_database.database.keys())
-
-        barcodes = _get_barcode(len(region_ids), barcode_length=4, seed=0, choices=["A", "C", "T", "G"])
-
-        for region_idx, region_id in enumerate(region_ids):
+        def _assemble_sequence(oligo_database, region_id, region_idx, barcodes):
             database_region = oligo_database.database[region_id]
             probesets_region = oligo_database.oligosets[region_id]
             probesets_probe_columns = [col for col in probesets_region.columns if col.startswith("oligo_")]
@@ -592,6 +590,18 @@ class ScrinshotProbeDesigner:
                     probe_attributes = _get_detection_oligo(probe_attributes)
 
                     oligo_database.database[region_id][probe_id] = probe_attributes
+
+        region_ids = list(oligo_database.database.keys())
+
+        barcodes = _get_barcode(len(region_ids), barcode_length=4, seed=0, choices=["A", "C", "T", "G"])
+
+        with joblib_progress(description="Design Final Padlock Sequence", total=len(region_ids)):
+            Parallel(
+                n_jobs=self.n_jobs, prefer="threads", require="sharedmem"
+            )(  # there should be an explicit return
+                delayed(_assemble_sequence)(oligo_database, region_id, region_idx, barcodes)
+                for region_idx, region_id in enumerate(region_ids)
+            )
 
         return oligo_database
 
@@ -643,13 +653,16 @@ class ScrinshotProbeDesigner:
             oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
             oligosets_score_columns = [col for col in oligosets_region.columns if col.startswith("score_")]
 
-            oligosets_region.sort_values(oligosets_score_columns, ascending=True)
+            oligosets_region.sort_values(by=oligosets_score_columns, ascending=True)
             oligosets_region = oligosets_region.head(top_n_sets)[oligosets_oligo_columns]
+            oligosets_region.reset_index(inplace=True, drop=True)
 
             # iterate through all oligo sets
-            for _, oligoset in oligosets_region.iterrows():
+            for oligoset_idx, oligoset in oligosets_region.iterrows():
+                oligoset_id = f"oligoset_{oligoset_idx + 1}"
+                yaml_dict_order[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
-                    yaml_dict_order[region_id][oligo_id] = {
+                    yaml_dict_order[region_id][oligoset_id][oligo_id] = {
                         "sequence_padlock_probe": database_region[oligo_id]["sequence_padlock_probe"],
                         "sequence_detection_oligo": database_region[oligo_id]["sequence_detection_oligo"],
                     }
