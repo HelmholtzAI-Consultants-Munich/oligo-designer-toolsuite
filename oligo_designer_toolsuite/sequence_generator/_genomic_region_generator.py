@@ -507,7 +507,7 @@ class CustomGenomicRegionGenerator:
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
-            +"transcript_id="
+            "transcript_id="
             + annotation["transcript_id"].astype("str")
             + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}intron_number="
             + annotation["intron_number"].astype("str")

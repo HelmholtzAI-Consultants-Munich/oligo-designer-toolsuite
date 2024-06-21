@@ -9,7 +9,7 @@ import networkx as nx
 import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_matrix, csr_matrix
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -135,7 +135,7 @@ class OligosetGeneratorIndependentSet:
             sequence_type=sequence_type,
         )
 
-        # add a entry score to the oligos
+        # sort oligos by score
         oligos_scores.sort_values(ascending=self.ascending, inplace=True)
 
         # hard limit on the number of oligos
@@ -146,10 +146,14 @@ class OligosetGeneratorIndependentSet:
                 oligos_scores.drop(oligo_id, inplace=True)
 
         # create the overlapping matrix
-        overlapping_matrix = self._get_overlapping_matrix(oligo_database=oligo_database, region_id=region_id)
+        overlapping_matrix, overlapping_matrix_indices = self._get_overlapping_matrix(
+            oligo_database=oligo_database, region_id=region_id
+        )
 
         # create the set
-        oligosets = self._get_non_overlapping_sets(overlapping_matrix, oligos_scores, n_sets)
+        oligosets = self._get_non_overlapping_sets(
+            overlapping_matrix, overlapping_matrix_indices, oligos_scores, n_sets
+        )
 
         # Remove all oligos from database that are not part of oligosets
         oligos_keep = set()
@@ -185,13 +189,17 @@ class OligosetGeneratorIndependentSet:
         """
 
         def _get_overlap(seq1_intervals, seq2_intervals):
+            # Determine if two ligos overlap based on a distance value
             for a in seq1_intervals:
                 for b in seq2_intervals:
                     if min(a[1], b[1]) - max(a[0], b[0]) >= -self.distance_between_oligos:
                         return True
             return False
 
-        oligos_indices = list(oligo_database.database[region_id].keys())  # Keep track of the indices
+        # Keep track of the indices
+        overlapping_matrix_ids = list(oligo_database.database[region_id].keys())
+
+        # Get all intervals (start, end)
         intervals = [
             [
                 [start[0], end[0]]
@@ -200,40 +208,45 @@ class OligosetGeneratorIndependentSet:
                     oligo_database.database[region_id][oligo_id]["end"],
                 )
             ]
-            for oligo_id in oligos_indices
+            for oligo_id in overlapping_matrix_ids
         ]
 
-        # Create a sparse matrix
-        n_oligos = len(intervals)
+        # Create a sparse overlap matrix
+        n_oligos = len(overlapping_matrix_ids)
         overlapping_matrix = lil_matrix((n_oligos, n_oligos), dtype=int)
 
+        # Calculate only upper triangle matrix since the matrix is symmetric
         for i in range(n_oligos):
             for j in range(i + 1, n_oligos):
                 if _get_overlap(intervals[i], intervals[j]):
                     overlapping_matrix[i, j] = 1
 
+        # Fill values of lower triangle
         overlapping_matrix = overlapping_matrix.maximum(overlapping_matrix.transpose())
-        overlapping_matrix.setdiag(1)  # Set diagonal elements to 1
+        # Set diagonal elements to 1 as oligos always overlap with themselves
+        overlapping_matrix.setdiag(1)
 
         # Create a sparse matrix containing only ones
         ones_matrix = lil_matrix((n_oligos, n_oligos), dtype=int)
         ones_matrix[:, :] = 1
 
-        # Invert the matrix by subtracting the overlapping matrix from the ones matrix
+        # Invert theoverlap matrix by subtracting the overlapping matrix from the ones matrix
         overlapping_matrix = ones_matrix - overlapping_matrix
+        overlapping_matrix = overlapping_matrix.tocsr()
 
-        overlapping_matrix = pd.DataFrame(
-            data=overlapping_matrix.toarray(),
-            columns=oligos_indices,
-            index=oligos_indices,
-            dtype=int,
-        )
+        # overlapping_matrix = pd.DataFrame(
+        #    data=overlapping_matrix.toarray(),
+        #    columns=oligos_indices,
+        #    index=oligos_indices,
+        #    dtype=int,
+        # )
 
-        return overlapping_matrix
+        return overlapping_matrix, overlapping_matrix_ids
 
     def _get_non_overlapping_sets(
         self,
-        overlapping_matrix: pd.DataFrame,
+        overlapping_matrix: csr_matrix,
+        overlapping_matrix_ids: list,
         oligos_scores: pd.Series,
         n_sets: int,
     ):
@@ -253,69 +266,80 @@ class OligosetGeneratorIndependentSet:
         :rtype: pd.DataFrame
         """
         # Represent overlap matrix as graph
-        G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
-        G = nx.relabel_nodes(G, {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))})
+        G = nx.from_scipy_sparse_array(overlapping_matrix)
+        G = nx.relabel_nodes(G, {i: overlapping_matrix_ids[i] for i in range(len(overlapping_matrix_ids))})
 
         # First check if there are no cliques with n oligos
         cliques = nx.algorithms.clique.find_cliques(G)
         n = self.opt_oligoset_size
-        n_max = 0
+        clique_init = []
 
         for clique in cliques:
-            n_max = max(len(clique), n_max)
-            if n_max >= n:
+            if len(clique) > self.min_oligoset_size:
+                clique_init = clique
+            if len(clique) >= n:
                 break
 
-        if n_max < n:
-            if n_max <= self.min_oligoset_size:  # in this case we don't need to compute the sets
-                return None
-            else:
-                n = n_max
+        if not clique_init:
+            # if no clique with min_oligoset_size was found we don't need to compute the sets
+            return None
+
+        n = min(n, len(clique))
+        oligoset_init, oligoset_init_scores = self.set_scoring.apply(oligos_scores.loc[clique_init], n)
 
         # if we have an heuristic apply it
-        heuristic_oligoset = None
         if self.heuristic_selection is not None and n == self.opt_oligoset_size:
             # apply the heuristic
-            oligos_scores, heuristic_set = self.heuristic_selection(
-                oligos_scores, overlapping_matrix, n, self.ascending
+            clique_heuristic, oligos_scores = self.heuristic_selection(
+                oligoset_init=oligoset_init,
+                oligos_scores=oligos_scores,
+                overlapping_matrix=overlapping_matrix,
+                overlapping_matrix_ids=overlapping_matrix_ids,
+                n_oligo=n,
+                ascending=self.ascending,
             )
-            heuristic_oligoset, heuristic_scores = self.set_scoring.apply(
-                heuristic_set, n
-            )  # make it a list as for all the other cliques for future use
-            # recompute the cliques
-            overlapping_matrix = overlapping_matrix.loc[oligos_scores.index, oligos_scores.index]
-            G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
+            # overwrite initial oligoset
+            oligoset_init, oligoset_init_scores = self.set_scoring.apply(
+                oligos_scores.loc[clique_heuristic], n
+            )
+            # only keep oligos in overlap matrix that pass the heuristic
+            overlapping_matrix_indices = [
+                overlapping_matrix_ids.index(oligo_id) for oligo_id in oligos_scores.index
+            ]
+            overlapping_matrix = overlapping_matrix[overlapping_matrix_indices, :][
+                :, overlapping_matrix_indices
+            ]
+            overlapping_matrix_ids = [overlapping_matrix_ids[idx] for idx in overlapping_matrix_indices]
+
+            # recompute graph and cliques from reduced matrix
+            G = nx.from_scipy_sparse_array(overlapping_matrix)
             G = nx.relabel_nodes(
-                G,
-                {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))},
+                G, {i: overlapping_matrix_ids[i] for i in range(len(overlapping_matrix_ids))}
             )
 
-        # recompute the cliques
+        # need to recompute cliques to be able to reiterate through them from the start and find all sets
         cliques = nx.algorithms.clique.find_cliques(G)
 
-        # Search the best set
-        if heuristic_oligoset:
-            oligosets = [
-                list(heuristic_oligoset) + list(heuristic_scores.values())
-            ]  # add the heuristic best set, if is in the best n-sets then it will be kept
-        else:
-            oligosets = []  # initialize the list of sets
+        # Initialize oligoset results table
+        oligosets = [list(oligoset_init) + list(oligoset_init_scores.values())]
 
         # Note: Search could be further optimised by iteratively throwing out oligos with worse scores then current best set
         for count, clique in enumerate(cliques):
             # Limit the number of combinations we iterate through
-            if count > 100000:  # set a meaningful value
+            if count > 100000:
                 break
             if len(clique) >= n:
                 # Get oligo_ids of clique, maybe create a function
-                clique_oligos = oligos_scores.loc[clique]
-                oligoset, oligoset_scores = self.set_scoring.apply(clique_oligos, n)
+                oligoset, oligoset_scores = self.set_scoring.apply(oligos_scores.loc[clique], n)
                 oligosets.append(list(oligoset) + list(oligoset_scores.values()))
 
         # put the sets in a dataframe
         if len(oligosets) > 0:
+            oligosets_columns = [f"oligo_{i}" for i in range(n)] + [
+                score for score in oligoset_init_scores.keys()
+            ]
             oligosets = pd.DataFrame(
-                columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
+                columns=oligosets_columns,
                 data=oligosets,
             )
 

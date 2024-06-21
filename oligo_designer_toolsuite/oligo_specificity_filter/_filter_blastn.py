@@ -496,6 +496,10 @@ class BlastNSeedregionFilterBase(BlastNFilter):
             oligo_database=oligo_database, region_ids=region_ids, search_results=search_results
         )
 
+        # if seedregion not given
+        search_results.seedregion_start.fillna(0, inplace=True)
+        search_results.seedregion_end.fillna(search_results.query_length, inplace=True)
+
         if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
@@ -586,8 +590,8 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute("seedregion_start"),
-            right=oligo_database.get_oligo_attribute("seedregion_end"),
+            left=oligo_database.get_oligo_attribute("seedregion_start", region_ids),
+            right=oligo_database.get_oligo_attribute("seedregion_end", region_ids),
             on="oligo_id",
         )
         search_results = pd.merge(
@@ -658,8 +662,8 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute("seedregion_start"),
-            right=oligo_database.get_oligo_attribute("seedregion_end"),
+            left=oligo_database.get_oligo_attribute("seedregion_start", region_ids),
+            right=oligo_database.get_oligo_attribute("seedregion_end", region_ids),
             on="oligo_id",
         )
         search_results = pd.merge(

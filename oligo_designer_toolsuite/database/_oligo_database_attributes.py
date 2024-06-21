@@ -2,6 +2,7 @@
 # imports
 ############################################
 
+import warnings
 from typing import List, Union
 
 from Bio.SeqUtils import MeltingTemp as mt
@@ -309,9 +310,6 @@ class OligoAttributes:
         :rtype: OligoDatabase
         :raises KeyError: If the ligation site attribute is missing from any oligonucleotide in the database.
         """
-        if not check_if_key_exists(oligo_database.database, "ligation_site"):
-            raise KeyError("The ligation site has not been computed!")
-
         if region_ids is None:
             region_ids = oligo_database.database.keys()
         else:
@@ -319,6 +317,10 @@ class OligoAttributes:
 
         for region_id in region_ids:
             database_region = oligo_database.database[region_id]
+            if not check_if_key_exists(database_region, "ligation_site"):
+                warnings.warn(
+                    f"The ligation_site attribute has not been computed for {region_id}! Setting to None!"
+                )
             for oligo_id, oligo_attributes in database_region.items():
                 if ("ligation_site" in oligo_attributes) and (oligo_attributes["ligation_site"]):
                     # oligo and target have always same length
