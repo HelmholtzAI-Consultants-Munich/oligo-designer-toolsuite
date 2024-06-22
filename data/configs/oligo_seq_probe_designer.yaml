@@ -3,10 +3,9 @@
 #######################
 
 ### General parameters
-n_jobs: 2 # number of cores used to run the pipeline
+n_jobs: 4 # number of cores used to run the pipeline and number of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
-db_max_in_memory: 10 # number of regions that should be stored in cache. 10 is a good value for a 16GB RAM computer. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 
 ### Parameters for oligo sequences generation
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used

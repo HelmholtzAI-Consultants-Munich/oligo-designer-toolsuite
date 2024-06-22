@@ -95,7 +95,6 @@ class ScrinshotProbeDesigner:
         probe_length_max: int,
         files_fasta_oligo_database: list[str],
         min_probes_per_gene: int,
-        db_max_in_memory: int,
     ):
         ##### creating the probe sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -110,7 +109,7 @@ class ScrinshotProbeDesigner:
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_probes_per_gene,
             write_regions_with_insufficient_oligos=True,
-            lru_db_max_in_memory=db_max_in_memory,
+            lru_db_max_in_memory=self.n_jobs * 2 + 1,
             database_name=self.subdir_db_probes,
             dir_output=self.dir_output,
         )
@@ -726,7 +725,6 @@ def main():
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
         min_probes_per_gene=config["probeset_size_min"],
-        db_max_in_memory=config["db_max_in_memory"],
     )
 
     ##### filter probes by property #####
