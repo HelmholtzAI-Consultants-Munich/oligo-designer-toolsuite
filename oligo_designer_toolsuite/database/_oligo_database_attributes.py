@@ -479,8 +479,8 @@ class OligoAttributes:
 
         # TODO: does not cover case when self-complement is shifted by x nucleotides
         # iterate through sequences
-        for i in range(len(sequence)):
-            if sequence[i] != sequence_revcomp[i]:
+        for c1, c2 in zip(sequence, sequence_revcomp):
+            if c1 != c2:
                 len_selfcomp_sub = 0
             else:
                 len_selfcomp_sub += 1
@@ -516,6 +516,55 @@ class OligoAttributes:
             for oligo_id, oligo_attributes in database_region.items():
                 len_selfcomp = self._calc_length_selfcomplement(oligo_attributes[sequence_type])
                 oligo_attributes["length_selfcomplement"] = len_selfcomp
+
+        return oligo_database
+
+    @staticmethod
+    def _calc_length_complement(sequence1: str, sequence2: str):
+        """Calculate the length of the longest complementary sequence between two oligonucleotide sequences.
+
+        :param sequence1: The first DNA sequence to analyze for complementary sequences.
+        :type sequence1: str
+        :param sequence2: The second DNA sequence to analyze for complementary sequences.
+        :type sequence2: str
+        :return: The length of the longest complementary sequence found between the two DNA sequences.
+        :rtype: int
+        """
+        sequence2_comp = Seq(sequence2).complement()
+        # initialize counters
+        len_comp_sub = 0
+        len_comp = 0
+
+        # iterate through sequences
+        for c1, c2 in zip(sequence1, sequence2_comp):
+            if c1 != c2:
+                len_comp_sub = 0
+            else:
+                len_comp_sub += 1
+            len_comp = max(len_comp, len_comp_sub)
+        return len_comp
+
+    def calculate_length_complement(
+        self, oligo_database: OligoDatabase, sequence_type1: _TYPES_SEQ, sequence2: str, sequence2_name: str
+    ):
+        """Calculate the length of the longest complementary sequence between two oligonucleotides in the database,
+        dependent on the specified sequence types.
+
+        :param oligo_database: Database of oligonucleotides.
+        :type oligo_database: OligoDatabase
+        :param sequence_type1: Type of sequence to analyze (e.g., 'oligo' or 'target') for the first oligonucleotide.
+        :type sequence_type1: _TYPES_SEQ
+        :param sequence2: The second DNA sequence to analyze for complementary sequences.
+        :type sequence_type2: str
+        :param sequence2_name: Name of the second DNA sequence.
+        :type sequence2_name: str
+        :return: The database containing the new oligo attribute.
+        :rtype: OligoDatabase
+        """
+        for region_id, database_region in oligo_database.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                len_comp = self._calc_length_complement(oligo_attributes[sequence_type1], sequence2)
+                oligo_attributes["length_complement_" + sequence2_name] = len_comp
 
         return oligo_database
 
