@@ -62,7 +62,7 @@ class OligoDatabase:
     :type min_oligos_per_region: int, optional
     :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file (default is True).
     :type write_regions_with_insufficient_oligos: bool, optional
-    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 10.
+    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 1.
     :type lru_db_max_in_memory: int, optional
     :param database_name: Subdirectory path for the output, i.e. <dir_output>/<database_name>, defaults to "db_oligo".
     :type database_name: str, optional
