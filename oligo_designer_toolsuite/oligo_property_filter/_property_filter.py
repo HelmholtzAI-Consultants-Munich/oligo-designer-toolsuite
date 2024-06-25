@@ -4,7 +4,6 @@
 
 from typing import get_args
 
-from effidict import LRUDict
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
@@ -52,40 +51,33 @@ class PropertyFilter:
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
-        database = oligo_database.database
-        region_ids = list(database.keys())
-        with joblib_progress(description="Property Filter", total = len(region_ids)):
-            database_regions = Parallel(n_jobs=n_jobs)(
-                delayed(self._filter_region)(sequence_type, database[region]) for region in region_ids
+        region_ids = list(oligo_database.database.keys())
+        with joblib_progress(description="Property Filter", total=len(region_ids)):
+            Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
+                delayed(self._filter_region)(sequence_type, region_id, oligo_database)
+                for region_id in region_ids
             )
 
-        database = LRUDict(
-            max_in_memory=oligo_database.lru_db_max_in_memory,
-            storage_path=oligo_database._dir_cache_files,
-        )
-        for database_region, region_id in zip(database_regions, region_ids):
-            database[region_id] = database_region
-
-        oligo_database.database = database
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
         return oligo_database
 
-    def _filter_region(self, sequence_type: _TYPES_SEQ, database_region: dict):
+    def _filter_region(self, sequence_type: _TYPES_SEQ, region_id: str, oligo_database: OligoDatabase):
         """Applies filters to a specific region of the database.
 
         :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
         :param database_region: A region from the oligo database.
         :type database_region: dict
-        :return: The filtered region.
-        :rtype: dict
+        :return: None
+        :rtype: None
         """
-        oligo_ids = list(database_region.keys())
+        oligo_ids = list(oligo_database.database[region_id].keys())
         for oligo_id in oligo_ids:
-            fulfills_all_filter = self._filter_sequence(database_region[oligo_id][sequence_type])
+            fulfills_all_filter = self._filter_sequence(
+                oligo_database.database[region_id][oligo_id][sequence_type]
+            )
             if not fulfills_all_filter:
-                del database_region[oligo_id]
-        return database_region
+                del oligo_database.database[region_id][oligo_id]
 
     def _filter_sequence(self, sequence):
         """Applies filters to a single oligo sequence and returns the filtering outcome.

@@ -9,7 +9,7 @@ import networkx as nx
 import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
-from scipy.sparse import lil_matrix
+from scipy.sparse import csr_matrix, lil_matrix
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -65,7 +65,11 @@ class OligosetGeneratorIndependentSet:
         self.max_oligos = max_oligos
 
     def apply(
-        self, oligo_database: OligoDatabase, sequence_type: _TYPES_SEQ, n_sets: int = 50, n_jobs: int = 1
+        self,
+        oligo_database: OligoDatabase,
+        sequence_type: _TYPES_SEQ,
+        n_sets: int = 50,
+        n_jobs: int = 1,
     ):
         """
         Applies the oligo set generation process to an entire oligo database and returns updated database with selected best `n_sets` oligo sets.
@@ -91,79 +95,86 @@ class OligosetGeneratorIndependentSet:
         :return: The updated oligo database with selected oligo sets.
         :rtype: OligoDatabase
         """
-        regions = list(oligo_database.database.keys())
+        region_ids = list(oligo_database.database.keys())
         # get the oligo set for this region in parallel
-        with joblib_progress(description="Find Oligosets", total=len(regions)):
-            database_regions = Parallel(n_jobs=n_jobs)(  # there should be an explicit return
-                delayed(self._get_oligo_set_for_gene)(oligo_database.database[region], sequence_type, n_sets)
-                for region in regions
+        with joblib_progress(description="Find Oligosets", total=len(region_ids)):
+            Parallel(
+                n_jobs=n_jobs, prefer="threads", require="sharedmem"
+            )(  # there should be an explicit return
+                delayed(self._get_oligo_set_for_gene)(oligo_database, region_id, sequence_type, n_sets)
+                for region_id in region_ids
             )
-
-        # restore the database
-        for region, (database_region, oligosets_region) in zip(regions, database_regions):
-            if database_region is None:  # if no sets have been found
-                oligo_database.database[region] = {}  # oligoset is not generated
-            else:
-                oligo_database.oligosets[region] = oligosets_region
-                oligo_database.database[region] = database_region
 
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="oligoset generation")
         return oligo_database
 
-    def _get_oligo_set_for_gene(self, database_region: dict, sequence_type: _TYPES_SEQ, n_sets: int):
+    def _get_oligo_set_for_gene(
+        self,
+        oligo_database: OligoDatabase,
+        region_id: str,
+        sequence_type: _TYPES_SEQ,
+        n_sets: int,
+    ):
         """Processes a single gene region from the oligo database to generate non-overlapping sets of
         oligos based on scoring and set selection criteria.
 
-        :param database_region: A dictionary representing a specific gene region containing oligos and their attributes.
-        :type database_region: dict
+        :param oligo_database: The database of oligos to process.
+        :type oligo_database: OligoDatabase
+        :param region_id: The ID of the region to process.
+        :type region_id: str
         :param sequence_type: The type of sequences being used, must match one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
         :param n_sets: The number of oligo sets to attempt to generate for the region.
         :type n_sets: int
-        :return: A tuple containing the updated database region with selected oligos and a DataFrame of the oligo sets.
-        :rtype: tuple
+        :return: None
+        :rtype: None
         """
 
         # Score oligos and create a pd series
-        database_region, oligos_scores = self.oligos_scoring.apply(
-            oligos=database_region, sequence_type=sequence_type
+        oligo_database, oligos_scores = self.oligos_scoring.apply(
+            oligo_database=oligo_database,
+            region_id=region_id,
+            sequence_type=sequence_type,
         )
 
-        # add a entry score to the oligos
+        # sort oligos by score
         oligos_scores.sort_values(ascending=self.ascending, inplace=True)
 
         # hard limit on the number of oligos
         if len(oligos_scores) > self.max_oligos:
             # select the best oligos
             for oligo_id in oligos_scores.index[self.max_oligos :]:
-                del database_region[oligo_id]
+                del oligo_database.database[region_id][oligo_id]
                 oligos_scores.drop(oligo_id, inplace=True)
 
         # create the overlapping matrix
-        overlapping_matrix = self._get_overlapping_matrix(database_region)
+        overlapping_matrix, overlapping_matrix_indices = self._get_overlapping_matrix(
+            oligo_database=oligo_database, region_id=region_id
+        )
 
         # create the set
-        n, oligosets, database_region = self._get_non_overlapping_sets(
-            database_region, overlapping_matrix, oligos_scores, n_sets
+        oligosets = self._get_non_overlapping_sets(
+            overlapping_matrix, overlapping_matrix_indices, oligos_scores, n_sets
         )
+
+        # Remove all oligos from database that are not part of oligosets
+        oligos_keep = set()
+        if oligosets is not None:
+            oligosets_oligo_columns = [col for col in oligosets.columns if col.startswith("oligo_")]
+            oligos_keep = set(oligosets[oligosets_oligo_columns].to_numpy().flatten())
+
+        oligo_ids = list(oligo_database.database[region_id].keys())
+        for oligo_id in oligo_ids:
+            if not oligo_id in oligos_keep:
+                del oligo_database.database[region_id][oligo_id]
+
+        oligo_database.oligosets[region_id] = oligosets
 
         # delete the useless variable to free some memory(overlapping matrix)
         del overlapping_matrix  # free some memory
         gc.collect()
 
-        # write the set
-        if oligosets is None:  # value passed as a parameter
-            return None, None  # no more oligos are left for this region
-        else:
-            # update the dictionary adding the key sets for the oligos in a set and  delleting the oligos not included in any set
-            updated_database_region = {}
-            for _, row in oligosets.iterrows():
-                for i in range(1, n + 1):
-                    if row.iloc[i] not in updated_database_region:
-                        updated_database_region[row.iloc[i]] = database_region[row.iloc[i]]
-            return updated_database_region, oligosets
-
-    def _get_overlapping_matrix(self, database_region: dict):
+    def _get_overlapping_matrix(self, oligo_database: OligoDatabase, region_id: str):
         """
         Generates a matrix indicating the overlap between oligos in a given database region.
         The matrix is computed based on the start and end intervals of each oligo,
@@ -173,58 +184,73 @@ class OligosetGeneratorIndependentSet:
         as an adjacency matrix, and the sets of non-overlapping oligos are cliques of this graph.
 
 
-        :param database_region: Dictionary containing oligo IDs and their corresponding start and end intervals.
-        :type database_region: dict
+        :param oligo_database: The database of oligos to process.
+        :type oligo_database: OligoDatabase
         :return: A DataFrame where each cell [i, j] is 0 if oligos i and j overlap and 1 otherwise, with oligo IDs as indices and columns.
         :rtype: pd.DataFrame
         """
 
         def _get_overlap(seq1_intervals, seq2_intervals):
-            for a in seq1_intervals:
-                for b in seq2_intervals:
-                    if min(a[1], b[1]) - max(a[0], b[0]) >= -self.distance_between_oligos:
-                        return True
-            return False
+            # Determine if two ligos overlap based on a distance value
+            return any(
+                min(a[1], b[1]) - max(a[0], b[0]) >= -self.distance_between_oligos
+                for a in seq1_intervals
+                for b in seq2_intervals
+            )
 
-        oligos_indices = list(database_region.keys())  # Keep track of the indices
+        # Keep track of the indices
+        overlapping_matrix_ids = list(oligo_database.database[region_id].keys())
+
+        # Get all intervals (start, end)
         intervals = [
             [
                 [start[0], end[0]]
-                for start, end in zip(database_region[oligo_id]["start"], database_region[oligo_id]["end"])
+                for start, end in zip(
+                    oligo_database.database[region_id][oligo_id]["start"],
+                    oligo_database.database[region_id][oligo_id]["end"],
+                )
             ]
-            for oligo_id in oligos_indices
+            for oligo_id in overlapping_matrix_ids
         ]
 
-        # Create a sparse matrix
-        n_oligos = len(intervals)
+        # Create a sparse overlap matrix
+        n_oligos = len(overlapping_matrix_ids)
         overlapping_matrix = lil_matrix((n_oligos, n_oligos), dtype=int)
 
+        # Calculate only upper triangle matrix since the matrix is symmetric
         for i in range(n_oligos):
             for j in range(i + 1, n_oligos):
                 if _get_overlap(intervals[i], intervals[j]):
                     overlapping_matrix[i, j] = 1
 
+        # Fill values of lower triangle
         overlapping_matrix = overlapping_matrix.maximum(overlapping_matrix.transpose())
-        overlapping_matrix.setdiag(1)  # Set diagonal elements to 1
+        # Set diagonal elements to 1 as oligos always overlap with themselves
+        overlapping_matrix.setdiag(1)
 
         # Create a sparse matrix containing only ones
         ones_matrix = lil_matrix((n_oligos, n_oligos), dtype=int)
         ones_matrix[:, :] = 1
 
-        # Invert the matrix by subtracting the overlapping matrix from the ones matrix
+        # Invert theoverlap matrix by subtracting the overlapping matrix from the ones matrix
         overlapping_matrix = ones_matrix - overlapping_matrix
+        overlapping_matrix = overlapping_matrix.tocsr()
 
-        overlapping_matrix = pd.DataFrame(
-            data=overlapping_matrix.toarray(),
-            columns=oligos_indices,
-            index=oligos_indices,
-            dtype=int,
-        )
+        # overlapping_matrix = pd.DataFrame(
+        #    data=overlapping_matrix.toarray(),
+        #    columns=oligos_indices,
+        #    index=oligos_indices,
+        #    dtype=int,
+        # )
 
-        return overlapping_matrix
+        return overlapping_matrix, overlapping_matrix_ids
 
     def _get_non_overlapping_sets(
-        self, database_region: dict, overlapping_matrix: pd.DataFrame, oligos_scores: pd.Series, n_sets: int
+        self,
+        overlapping_matrix: csr_matrix,
+        overlapping_matrix_ids: list,
+        oligos_scores: pd.Series,
+        n_sets: int,
     ):
         """
         Generates a list of non-overlapping oligo sets from the given region based on the specified criteria.
@@ -232,89 +258,99 @@ class OligosetGeneratorIndependentSet:
         to determine the optimal ones. If the "heuristic_selection" parameter is set, this heuristic is used to find
         non-overlapping oligo sets.
 
-        :param database_region: Contains oligos data for a specific region.
-        :type database_region: dict
         :param overlapping_matrix: A DataFrame indicating overlap between oligos.
         :type overlapping_matrix: pd.DataFrame
         :param oligos_scores: Scores for each oligo used to rank them within their sets.
         :type oligos_scores: pd.Series
         :param n_sets: Number of sets to return.
         :type n_sets: int
-        :return: A tuple containing the number of oligos per set, DataFrame of oligo sets, and updated database region.
-        :rtype: tuple
+        :return: A DataFrame containing the best non-overlapping oligo sets.
+        :rtype: pd.DataFrame
         """
-
         # Represent overlap matrix as graph
-        G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
-        G = nx.relabel_nodes(G, {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))})
+        G = nx.from_scipy_sparse_array(overlapping_matrix)
+        G = nx.relabel_nodes(G, {i: overlapping_matrix_ids[i] for i in range(len(overlapping_matrix_ids))})
 
         # First check if there are no cliques with n oligos
         cliques = nx.algorithms.clique.find_cliques(G)
         n = self.opt_oligoset_size
-        n_max = 0
+        clique_init = []
 
         for clique in cliques:
-            n_max = max(len(clique), n_max)
-            if n_max >= n:
+            if len(clique) > self.min_oligoset_size:
+                clique_init = clique
+            if len(clique) >= n:
                 break
 
-        if n_max < n:
-            if n_max <= self.min_oligoset_size:  # in this case we don't need to compute the sets
-                return n_max, None, None
-            else:
-                n = n_max
+        if not clique_init:
+            # if no clique with min_oligoset_size was found we don't need to compute the sets
+            return None
+
+        n = min(n, len(clique))
+        oligoset_init, oligoset_init_scores = self.set_scoring.apply(oligos_scores.loc[clique_init], n)
 
         # if we have an heuristic apply it
-        heuristic_oligoset = None
         if self.heuristic_selection is not None and n == self.opt_oligoset_size:
             # apply the heuristic
-            database_region, oligos_scores, heuristic_set = self.heuristic_selection(
-                database_region, oligos_scores, overlapping_matrix, n, self.ascending
+            clique_heuristic, oligos_scores = self.heuristic_selection(
+                oligoset_init=oligoset_init,
+                oligos_scores=oligos_scores,
+                overlapping_matrix=overlapping_matrix,
+                overlapping_matrix_ids=overlapping_matrix_ids,
+                n_oligo=n,
+                ascending=self.ascending,
             )
-            heuristic_oligoset, heuristic_scores = self.set_scoring.apply(
-                heuristic_set, n
-            )  # make it a list as for all the other cliques for future use
-            # recompute the cliques
-            overlapping_matrix = overlapping_matrix.loc[oligos_scores.index, oligos_scores.index]
-            G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
+            # overwrite initial oligoset
+            oligoset_init, oligoset_init_scores = self.set_scoring.apply(
+                oligos_scores.loc[clique_heuristic], n
+            )
+            # only keep oligos in overlap matrix that pass the heuristic
+            overlapping_matrix_indices = [
+                overlapping_matrix_ids.index(oligo_id) for oligo_id in oligos_scores.index
+            ]
+            overlapping_matrix = overlapping_matrix[overlapping_matrix_indices, :][
+                :, overlapping_matrix_indices
+            ]
+            overlapping_matrix_ids = [overlapping_matrix_ids[idx] for idx in overlapping_matrix_indices]
+
+            # recompute graph and cliques from reduced matrix
+            G = nx.from_scipy_sparse_array(overlapping_matrix)
             G = nx.relabel_nodes(
-                G,
-                {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))},
+                G, {i: overlapping_matrix_ids[i] for i in range(len(overlapping_matrix_ids))}
             )
 
-        # recompute the cliques
+        # need to recompute cliques to be able to reiterate through them from the start and find all sets
         cliques = nx.algorithms.clique.find_cliques(G)
-        # Search the best set
 
-        if heuristic_oligoset:
-            oligosets = [
-                list(heuristic_oligoset) + list(heuristic_scores.values())
-            ]  # add the heuristic best set, if is in the best n-sets then it will be kept
-        else:
-            oligosets = []  # initialize the list of sets
+        # Initialize oligoset results table
+        oligosets = [list(oligoset_init) + list(oligoset_init_scores.values())]
 
         # Note: Search could be further optimised by iteratively throwing out oligos with worse scores then current best set
         for count, clique in enumerate(cliques):
             # Limit the number of combinations we iterate through
-            if count > 100000:  # set a meaningful value
+            if count > 100000:
                 break
             if len(clique) >= n:
                 # Get oligo_ids of clique, maybe create a function
-                clique_oligos = oligos_scores.loc[clique]
-                oligoset, oligoset_scores = self.set_scoring.apply(clique_oligos, n)
+                oligoset, oligoset_scores = self.set_scoring.apply(oligos_scores.loc[clique], n)
                 oligosets.append(list(oligoset) + list(oligoset_scores.values()))
 
         # put the sets in a dataframe
         if len(oligosets) > 0:
+            oligosets_columns = [f"oligo_{i}" for i in range(n)] + [
+                score for score in oligoset_init_scores.keys()
+            ]
             oligosets = pd.DataFrame(
-                columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
+                columns=oligosets_columns,
                 data=oligosets,
             )
-        # Sort oligosets by score
-        oligosets.drop_duplicates(inplace=True, subset=oligosets.columns[:-1])
-        oligosets.sort_values(list(oligosets.columns[n:]), ascending=self.ascending, inplace=True)
-        oligosets = oligosets.head(n_sets)
-        oligosets.reset_index(drop=True, inplace=True)
-        oligosets.insert(0, "oligoset_id", oligosets.index)
 
-        return n, oligosets, database_region
+            # Sort oligosets by score
+            oligosets.drop_duplicates(inplace=True, subset=oligosets.columns[:-1])
+            oligosets.sort_values(list(oligosets.columns[n:]), ascending=self.ascending, inplace=True)
+            oligosets = oligosets.head(n_sets)
+            oligosets.reset_index(drop=True, inplace=True)
+            oligosets.insert(0, "oligoset_id", oligosets.index)
+            return oligosets
+        else:
+            return None

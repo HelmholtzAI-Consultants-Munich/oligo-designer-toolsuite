@@ -46,7 +46,7 @@ class ReferenceDatabase:
 
         self.database = []
 
-    def load_sequences_from_fasta(self, files_fasta: list[str], database_overwrite: bool = False) -> None:
+    def load_database_from_fasta(self, files_fasta: list[str], database_overwrite: bool = False) -> None:
         """Load sequences from one or more FASTA files into the ReferenceDatabase object.
 
         This function reads sequences from FASTA file(s) and adds them to the ReferenceDatabase object.
@@ -59,7 +59,6 @@ class ReferenceDatabase:
         :type database_overwrite: bool, optional
         """
         if database_overwrite:
-            warnings.warn("Overwriting database!")
             self.database = []
 
         files_fasta = check_if_list(files_fasta)

@@ -16,10 +16,13 @@ import yaml
 ############################################
 
 SCRIPT_GENOMIC_REGION_GENERATOR = "oligo_designer_toolsuite/pipelines/_genomic_region_generator.py"
-CONFIG_GENOMIC_REGION_GENERATOR = "data/configs/genomic_region_generator_custom.yaml"
+CONFIG_GENOMIC_REGION_GENERATOR = "tests/data/configs/genomic_region_generator_custom.yaml"
 
 SCRIPT_OLIGO_SEQ_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_oligo_seq_probe_designer.py"
-CONFIG_OLIGO_SEQ_PROBE_DESIGNER = "data/configs/oligo_seq_probe_designer.yaml"
+CONFIG_OLIGO_SEQ_PROBE_DESIGNER = "tests/data/configs/oligo_seq_probe_designer.yaml"
+
+SCRIPT_SCRINSHOT_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_scrinshot_probe_designer.py"
+CONFIG_SCRINSHOT_PROBE_DESIGNER = "tests/data/configs/scrinshot_probe_designer.yaml"
 
 ############################################
 # Tests
@@ -87,3 +90,16 @@ class TestOligoSeqProbeDesigner(PipelinesBase, unittest.TestCase):
 
     def setup_cmd_parameters(self):
         return f"-c{os.path.abspath(CONFIG_OLIGO_SEQ_PROBE_DESIGNER)}"
+
+
+class TestScrinshotProbeDesigner(PipelinesBase, unittest.TestCase):
+    def setup_output_dir(self):
+        with open(CONFIG_SCRINSHOT_PROBE_DESIGNER, "r") as handle:
+            config = yaml.safe_load(handle)
+        return os.path.abspath(config["dir_output"])
+
+    def setup_script(self):
+        return os.path.abspath(SCRIPT_SCRINSHOT_PROBE_DESIGNER)
+
+    def setup_cmd_parameters(self):
+        return f"-c{os.path.abspath(CONFIG_SCRINSHOT_PROBE_DESIGNER)}"

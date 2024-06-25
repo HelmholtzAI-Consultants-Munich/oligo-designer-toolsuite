@@ -4,8 +4,8 @@
 
 from abc import ABC, abstractmethod
 
-import pandas as pd
 import networkx as nx
+import pandas as pd
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 from oligo_designer_toolsuite.database import OligoDatabase

@@ -296,7 +296,6 @@ class FastaParser:
             :return: True if the file is in FASTA format, False otherwise.
             :rtype: bool
             """
-            # taken from https://stackoverflow.com/questions/44293407/how-can-i-check-whether-a-given-file-is-fasta
             fasta = SeqIO.index(file, "fasta")
             return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
 
@@ -335,6 +334,7 @@ class FastaParser:
         :rtype: list[str]
         """
         region_ids = []
+        # use index instead of parse function for memory efficiency
         for idx in SeqIO.index(file_fasta_in, "fasta"):
             region, _, _ = self.parse_fasta_header(idx, parse_additional_info=False)
             region_ids.append(region)
@@ -361,24 +361,29 @@ class FastaParser:
         if region_ids_set:
             fasta_sequences = []
             found_regions = set()
+            # use index instead of parse function for memory efficiency
             seq_record = SeqIO.index(file_fasta_in, "fasta")
             for idx in seq_record:
-                region, _, _ = self.parse_fasta_header(idx, parse_additional_info=False)
-                found_regions.add(region)
+                region, _, _ = self.parse_fasta_header(
+                    idx, parse_coordinates=False, parse_additional_info=False
+                )
                 if region in region_ids_set:
+                    found_regions.add(region)
                     fasta_sequences.append(seq_record[idx])
+
+            # Check for missing regions after filtering, if necessary
+            if len(fasta_sequences) < len(region_ids):
+                missing_regions = region_ids_set - found_regions
+                if missing_regions:
+                    warnings.warn(f"Regions {missing_regions} were not found in the input FASTA file.")
         else:
             fasta_sequences = list(SeqIO.parse(file_fasta_in, "fasta"))
 
-        # Check for missing regions after filtering, if necessary
-        if region_ids_set and len(fasta_sequences) < len(region_ids):
-            missing_regions = region_ids_set - found_regions
-            if missing_regions:
-                warnings.warn(f"Regions {missing_regions} were not found in the input FASTA file.")
-
         return fasta_sequences
 
-    def parse_fasta_header(self, header: str, parse_additional_info: bool = True):
+    def parse_fasta_header(
+        self, header: str, parse_coordinates: bool = True, parse_additional_info: bool = True
+    ):
         """Parse information from a FASTA header.
 
         This function extracts region, additional information, and coordinates from a FASTA header.
@@ -410,17 +415,20 @@ class FastaParser:
             if not region:
                 region = header_entry
             elif self.is_coordinate(header_entry):
-                header_coordinates = header_entry.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST)
-                coordinates = {}
-                for header_coordinate in header_coordinates:
-                    coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
-                    coordinates.setdefault("start", []).append(
-                        int(header_coordinate.split(":")[1].split("-")[0])
-                    )
-                    coordinates.setdefault("end", []).append(
-                        int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
-                    )
-                    coordinates.setdefault("strand", []).append(header_coordinate.split("(")[1].split(")")[0])
+                if parse_coordinates:
+                    header_coordinates = header_entry.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST)
+                    coordinates = {}
+                    for header_coordinate in header_coordinates:
+                        coordinates.setdefault("chromosome", []).append(header_coordinate.split(":")[0])
+                        coordinates.setdefault("start", []).append(
+                            int(header_coordinate.split(":")[1].split("-")[0])
+                        )
+                        coordinates.setdefault("end", []).append(
+                            int(header_coordinate.split(":")[1].split("-")[1].split("(")[0])
+                        )
+                        coordinates.setdefault("strand", []).append(
+                            header_coordinate.split("(")[1].split(")")[0]
+                        )
             else:
                 info_list = header_entry
                 # the additional info field should be parsed, save information in dict
