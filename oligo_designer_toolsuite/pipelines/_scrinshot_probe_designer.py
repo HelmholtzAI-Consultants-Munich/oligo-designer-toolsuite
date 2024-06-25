@@ -2,21 +2,20 @@
 # imports
 ############################################
 
+import itertools
+import logging
 import os
-import yaml
 import random
 import shutil
-import logging
 import warnings
-import itertools
-
-from typing import List
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import List
+
+import yaml
+from Bio.SeqUtils import MeltingTemp as mt
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
-
-from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.database import (
     OligoAttributes,

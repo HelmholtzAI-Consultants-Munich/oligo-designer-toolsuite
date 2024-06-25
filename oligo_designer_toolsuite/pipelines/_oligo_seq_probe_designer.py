@@ -146,7 +146,7 @@ class OligoSeqProbeDesigner:
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_oligos_per_region,
             write_regions_with_insufficient_oligos=True,
-            lru_db_max_in_memory=self.n_jobs + 2,
+            lru_db_max_in_memory=self.n_jobs * 2 + 1,
             database_name=self.subdir_db_oligos,
             dir_output=self.dir_output,
         )
