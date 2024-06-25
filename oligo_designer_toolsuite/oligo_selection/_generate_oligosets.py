@@ -9,7 +9,7 @@ import networkx as nx
 import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
-from scipy.sparse import lil_matrix, csr_matrix
+from scipy.sparse import csr_matrix, lil_matrix
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -120,12 +120,14 @@ class OligosetGeneratorIndependentSet:
 
         :param oligo_database: The database of oligos to process.
         :type oligo_database: OligoDatabase
+        :param region_id: The ID of the region to process.
+        :type region_id: str
         :param sequence_type: The type of sequences being used, must match one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
         :param n_sets: The number of oligo sets to attempt to generate for the region.
         :type n_sets: int
-        :return: A tuple containing the updated database region with selected oligos and a DataFrame of the oligo sets.
-        :rtype: tuple
+        :return: None
+        :rtype: None
         """
 
         # Score oligos and create a pd series
@@ -190,11 +192,11 @@ class OligosetGeneratorIndependentSet:
 
         def _get_overlap(seq1_intervals, seq2_intervals):
             # Determine if two ligos overlap based on a distance value
-            for a in seq1_intervals:
-                for b in seq2_intervals:
-                    if min(a[1], b[1]) - max(a[0], b[0]) >= -self.distance_between_oligos:
-                        return True
-            return False
+            return any(
+                min(a[1], b[1]) - max(a[0], b[0]) >= -self.distance_between_oligos
+                for a in seq1_intervals
+                for b in seq2_intervals
+            )
 
         # Keep track of the indices
         overlapping_matrix_ids = list(oligo_database.database[region_id].keys())
