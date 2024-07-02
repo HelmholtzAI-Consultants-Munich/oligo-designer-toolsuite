@@ -374,14 +374,10 @@ class CustomGenomicRegionGenerator:
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
-            "gene_id="
-            + annotation["gene_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}transcript_id="
+            "transcript_id="
             + annotation["transcript_id"].astype("str")
             + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
             + annotation["exon_number"].astype("str")
-            + ",number_transcripts="
-            + annotation["transcript_count"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
 
@@ -400,7 +396,12 @@ class CustomGenomicRegionGenerator:
             + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"regiontype=exon{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + "gene_id="
+            + annotation["gene_id"].astype("str")
+            + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_transcripts="
+            + annotation["transcript_count"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )
@@ -506,9 +507,7 @@ class CustomGenomicRegionGenerator:
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
-            "gene_id="
-            + annotation["gene_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}transcript_id="
+            "transcript_id="
             + annotation["transcript_id"].astype("str")
             + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}intron_number="
             + annotation["intron_number"].astype("str")
@@ -530,6 +529,9 @@ class CustomGenomicRegionGenerator:
             + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"regiontype=intron{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + "gene_id="
+            + annotation["gene_id"].astype("str")
+            + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -565,12 +567,14 @@ class CustomGenomicRegionGenerator:
         annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "CDS")
 
+        # add transcript counts for each gene
+        number_transcripts = self._get_number_transcripts()
+        annotation = pd.merge(annotation, number_transcripts, on="gene_id", how="left")
+
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
-            "gene_id="
-            + annotation["gene_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}transcript_id="
+            "transcript_id="
             + annotation["transcript_id"].astype("str")
             + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
             + annotation["exon_number"].astype("str")
@@ -592,7 +596,12 @@ class CustomGenomicRegionGenerator:
             + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"regiontype=CDS{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + "gene_id="
+            + annotation["gene_id"].astype("str")
+            + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_transcripts="
+            + annotation["transcript_count"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )
@@ -903,14 +912,10 @@ class CustomGenomicRegionGenerator:
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
-            "gene_id="
-            + annotation["gene_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}transcript_id="
+            "transcript_id="
             + annotation["transcript_id"].astype("str")
             + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
             + annotation["exon_number"].astype("str")
-            + ",number_transcripts="
-            + annotation["transcript_count"].astype("str")
         )
         # generate regions -> taken from exon junction regions
         annotation["region"] = annotation["region_junction"]
@@ -932,7 +937,12 @@ class CustomGenomicRegionGenerator:
             + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"regiontype=exonexonjunction{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + "gene_id="
+            + annotation["gene_id"].astype("str")
+            + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_transcripts="
+            + annotation["transcript_count"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )

@@ -2,9 +2,9 @@
 # imports
 ############################################
 
+import logging
 import os
 import shutil
-import logging
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -25,11 +25,11 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
-    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
+    SelfComplementFilter,
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
@@ -45,11 +45,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByLargerRegionPolicy,
     SpecificityFilter,
 )
-from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
-    filtering_step,
-    generation_step,
-)
+from oligo_designer_toolsuite.pipelines._utils import base_parser, pipeline_step_basic
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
@@ -86,7 +82,8 @@ class OligoSeqProbeDesigner:
         else:
             with open(file_regions) as handle:
                 lines = handle.readlines()
-                self.gene_ids = [line.rstrip() for line in lines]
+                # ensure that the list contains unique gene ids
+                self.gene_ids = list(set([line.rstrip() for line in lines]))
 
         self.write_intermediate_steps = write_intermediate_steps
 
@@ -107,13 +104,13 @@ class OligoSeqProbeDesigner:
         logging.basicConfig(
             format="%(asctime)s [%(levelname)s] %(message)s",
             level=logging.NOTSET,
-            handlers=[logging.FileHandler(file_logger), logging.StreamHandler()],
+            handlers=[logging.FileHandler(file_logger)],
         )
         logging.captureWarnings(True)
 
         self.n_jobs = n_jobs
 
-    @generation_step(step_name="Create Database")
+    @pipeline_step_basic(step_name="Create Database")
     def create_oligo_database(
         self,
         oligo_length_min: int,
@@ -139,7 +136,6 @@ class OligoSeqProbeDesigner:
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
-            filename_out="oligo_sequences",
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(oligo_length_min, oligo_length_max),
             region_ids=self.gene_ids,
@@ -150,18 +146,19 @@ class OligoSeqProbeDesigner:
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_oligos_per_region,
             write_regions_with_insufficient_oligos=True,
+            lru_db_max_in_memory=self.n_jobs * 2 + 1,
             database_name=self.subdir_db_oligos,
             dir_output=self.dir_output,
         )
-        oligo_database.load_sequences_from_fasta(
-            files_fasta=[oligo_fasta_file],
+        oligo_database.load_database_from_fasta(
+            files_fasta=oligo_fasta_file,
             sequence_type="target",
             region_ids=self.gene_ids,
         )
 
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="1_db_initial")
+            file_database = oligo_database.save_database(dir_database="1_db_initial")
         else:
             file_database = ""
 
@@ -170,7 +167,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Property Filters")
+    @pipeline_step_basic(step_name="Property Filters")
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
@@ -181,7 +178,7 @@ class OligoSeqProbeDesigner:
         secondary_structures_T: float,
         secondary_structures_threshold_deltaG: float,
         homopolymeric_base_n: str,
-        homodimer_max_len_selfcomp: int,
+        max_len_selfcomp: int,
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
     ):
@@ -205,8 +202,8 @@ class OligoSeqProbeDesigner:
         :type secondary_structures_threshold_deltaG: float
         :param homopolymeric_base_n: Bases to check for homopolymeric runs.
         :type homopolymeric_base_n: str
-        :param homodimer_max_len_selfcomp: Maximum allowable length of self-complementary sequences for avoiding homodimers.
-        :type homodimer_max_len_selfcomp: int
+        :param max_len_selfcomp: Maximum allowable length of self-complementary sequences.
+        :type max_len_selfcomp: int
         :param Tm_parameters: Parameters for melting temperature calculation.
         :type Tm_parameters: dict
         :param Tm_chem_correction_parameters: Parameters for chemical correction of melting temperature.
@@ -231,18 +228,21 @@ class OligoSeqProbeDesigner:
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
-        homodimer = HomodimerFilter(
-            max_len_selfcomp=homodimer_max_len_selfcomp,
+        self_comp = SelfComplementFilter(
+
+            max_len_selfcomp=max_len_selfcomp,
         )
 
         filters = [
             hard_masked_sequences,
             soft_masked_sequences,
+            homopolymeric_runs,
             gc_content,
+            homodimer,
             melting_temperature,
             secondary_sctructure,
             homopolymeric_runs,
-            homodimer,
+            self_comp,
         ]
 
         # initialize the preoperty filter class
@@ -257,13 +257,13 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="2_db_property_filter")
+            file_database = oligo_database.save_database(dir_database="2_db_property_filter")
         else:
             file_database = ""
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Specificty Filters")
+    @pipeline_step_basic(step_name="Specificity Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -327,7 +327,7 @@ class OligoSeqProbeDesigner:
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
-        reference_database.load_sequences_from_fasta(
+        reference_database.load_database_from_fasta(
             files_fasta=files_fasta_reference_database, database_overwrite=False
         )
 
@@ -362,7 +362,7 @@ class OligoSeqProbeDesigner:
             dir_output=self.dir_output,
         )
 
-        filters = [exact_matches, cross_hybridization, hybridization_probability]
+        filters = [exact_matches, hybridization_probability, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
@@ -373,7 +373,7 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="3_db_specificty_filter")
+            file_database = oligo_database.save_database(dir_database="3_db_specificity_filter")
         else:
             file_database = ""
 
@@ -394,7 +394,7 @@ class OligoSeqProbeDesigner:
 
         return oligo_database, file_database
 
-    @filtering_step(step_name="Oligo Selection")
+    @pipeline_step_basic(step_name="Oligo Selection")
     def create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
@@ -477,7 +477,7 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(filename="4_db_oligosets")
+            file_database = oligo_database.save_database(dir_database="4_db_oligosets")
             file_oligosets = oligo_database.write_oligosets_to_table()
         else:
             file_database = ""
@@ -608,7 +608,7 @@ def main():
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
         homopolymeric_base_n=config["homopolymeric_base_n"],
-        homodimer_max_len_selfcomp=config["homodimer_max_len_selfcomp"],
+        max_len_selfcomp=config["max_len_selfcomp"],
         Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
     )

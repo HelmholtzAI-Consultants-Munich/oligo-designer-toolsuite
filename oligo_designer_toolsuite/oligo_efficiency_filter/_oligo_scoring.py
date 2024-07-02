@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
-from oligo_designer_toolsuite.database import OligoAttributes
+from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
 
 ############################################
 # Oligo Scoring Classes
@@ -19,7 +19,7 @@ class OligoScoringBase(ABC):
     It provides a framework for scoring oligos, with an abstract method `get_score` that must be implemented in subclasses.
     """
 
-    def apply(self, oligos: dict, sequence_type: _TYPES_SEQ):
+    def apply(self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ):
         """Scores all oligonucleotides in the provided dictionary using a defined scoring function,
         updating the dictionary with scores and also returning scores as a pandas.Series for efficient data manipulation.
 
@@ -31,13 +31,13 @@ class OligoScoringBase(ABC):
         :rtype: (dict, pandas.Series)
         """
 
-        oligos_ids = list(oligos.keys())
+        oligos_ids = list(oligo_database.database[region_id].keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)
         for oligo_id in oligos_ids:
-            score = round(self.get_score(oligos[oligo_id], sequence_type), 4)
-            oligos[oligo_id]["oligo_score"] = score
+            score = round(self.get_score(oligo_database.database[region_id][oligo_id], sequence_type), 4)
+            oligo_database.database[region_id][oligo_id]["oligo_score"] = score
             oligos_scores[oligo_id] = score
-        return oligos, oligos_scores
+        return oligo_database, oligos_scores
 
     @abstractmethod
     def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):

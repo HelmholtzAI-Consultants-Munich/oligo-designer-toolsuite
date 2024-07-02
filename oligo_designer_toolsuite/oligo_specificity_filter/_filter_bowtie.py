@@ -96,7 +96,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         filename_reference_index = os.path.basename(file_reference)
 
         cmd = (
-            "bowtie-build --quiet --offrate 4"
+            "bowtie-build --offrate 4"
             + " --threads "
             + str(n_jobs)
             + " -f "
@@ -104,7 +104,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             + " "
             + filename_reference_index
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
         return filename_reference_index
 
     def _run_search(
@@ -146,7 +146,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             cmd_parameters += f" {parameter} {value}"
 
         cmd = (
-            "bowtie --quiet"
+            "bowtie"
             + " -x "
             + file_index
             + " -f"  # fasta file is input
@@ -157,7 +157,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             + " "
             + file_bowtie_results
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
 
         # read the reuslts of the bowtie search
         bowtie_results = self._read_search_output(
@@ -175,6 +175,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
     def _find_hits(
         self,
         oligo_database: OligoDatabase,  # not used in this filter
+        region_ids: Union[str, List[str]],  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
     ):
@@ -183,6 +184,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         :param oligo_database: The oligonucleotide database.
         :type oligo_database: OligoDatabase
+        :param region_ids: The identifier for the region within the database to filter.
+        :type region_ids: Union[str, List[str]]
         :param search_results: The DataFrame containing results from a Bowtie search.
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
@@ -426,6 +429,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     def _find_hits(
         self,
         oligo_database: OligoDatabase,  # not used in this filter
+        region_ids: Union[str, List[str]],  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
     ):
@@ -434,6 +438,8 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
         :param oligo_database: The oligonucleotide database.
         :type oligo_database: OligoDatabase
+        :param region_ids: The identifier for the region within the database to filter.
+        :type region_ids: Union[str, List[str]]
         :param search_results: The DataFrame containing results from a Bowtie2 search.
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.

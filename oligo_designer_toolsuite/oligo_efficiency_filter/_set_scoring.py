@@ -42,7 +42,7 @@ class LowestSetScoring(SetScoringBase):
     :type ascending: bool
     """
 
-    def __init__(self, ascending: bool = True) -> None:
+    def __init__(self, ascending: bool) -> None:
         """
         Constructor for the LowestSetScoring class.
         :param ascending: If True, scores are sorted in ascending order; if False, in descending order. This depends on the meaning of the score.
@@ -72,7 +72,6 @@ class LowestSetScoring(SetScoringBase):
 
         set_score_sum = best_n_oligos.sum()
         oligoset = best_n_oligos.index.tolist()
-        # oligoset += [round(set_score_lowest, 4), round(set_score_sum, 4)]
         return oligoset, {
             "set_score_lowest": round(set_score_lowest, 4),
             "set_score_sum": round(set_score_sum, 4),
@@ -113,7 +112,6 @@ class AverageSetScoring(SetScoringBase):
         set_score_avg = best_n_oligos.mean()
 
         oligoset = best_n_oligos.index.tolist()
-        # oligoset += [round(set_score_avg, 4), round(set_score_lowest, 4)]
         return oligoset, {
             "set_score_average": round(set_score_avg, 4),
             "set_score_lowest": round(set_score_lowest, 4),
