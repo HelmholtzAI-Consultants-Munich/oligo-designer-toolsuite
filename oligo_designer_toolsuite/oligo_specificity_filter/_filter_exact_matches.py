@@ -28,12 +28,18 @@ class ExactMatchFilter(SpecificityFilterBase):
         If no policy is provided (i.e. policy = None) the RemoveAllPolicy() is applied. Defaults to None.
     """
 
-    def __init__(self, policy: FilterPolicyBase = None):
+    def __init__(
+        self,
+        policy: FilterPolicyBase = None,
+        filter_name: str = "exact_match_filter",
+    ):
         """Constructor for the ExactMatches class."""
         if policy:
             self.policy = policy
         else:
             self.policy = RemoveAllPolicy()
+
+        self.filter_name = filter_name
 
     def apply(
         self,
@@ -67,7 +73,8 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description="Specificity Filter: Exact Matches", total=len(region_ids)):
+        name = " ".join(string.capitalize() for string in self.filter_name.split("_"))
+        with joblib_progress(description=f"Specificity Filter: {name}", total=len(region_ids)):
             table_hits = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
@@ -131,7 +138,8 @@ class ExactMatchFilter(SpecificityFilterBase):
         )
 
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description="Specificity Filter: Exact Matches", total=len(region_ids)):
+        name = " ".join(string.capitalize() for string in self.filter_name.split("_"))
+        with joblib_progress(description=f"Specificity Filter: {name}", total=len(region_ids)):
             table_hits = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._run_filter)(
                     sequence_type=sequence_type,
