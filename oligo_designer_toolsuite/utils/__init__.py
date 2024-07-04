@@ -13,6 +13,7 @@ Functions for processing databases:
 - filter_dabase_for_region: Filters a genomic database for sequences overlapping a given region.
 - format_oligo_attributes: Format the entries of an oligo_attributes dictionary to be list of lists.
 - check_if_region_in_database: Checks if specified regions exist in the provided database.
+- flatten_attribute_list: Flatten a nested list of attributes into a single list.
 
 Functions for processing sequences:
 - get_sequence_from_annotation: Retrieves sequences based on genomic coordinates from a BED file.
@@ -40,6 +41,7 @@ from ._database_processor import (
     filter_dabase_for_region,
     format_oligo_attributes,
     merge_databases,
+    flatten_attribute_list,
 )
 from ._sequence_parser import FastaParser, GffParser
 from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
@@ -59,4 +61,5 @@ __all__ = [
     "get_complement_regions",
     "get_sequence_from_annotation",
     "merge_databases",
+    "flatten_attribute_list",
 ]

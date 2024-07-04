@@ -202,3 +202,27 @@ def check_if_region_in_database(
             if write_regions_with_insufficient_oligos:
                 with open(file_removed_regions, "a") as hanlde:
                     hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")
+
+
+def flatten_attribute_list(attribute):
+    """Flatten a nested list of attributes into a single list.
+
+    This function takes a nested list (i.e., a list containing other lists) and flattens it into a
+    single list containing all the elements of the nested lists.
+
+    :param attribute: A nested list of attributes to be flattened.
+    :type attribute: list
+    :return: A flattened list containing all the elements of the nested lists.
+    :rtype: list
+    """
+    result = []
+
+    def flatten_list(lst):
+        for item in lst:
+            if isinstance(item, list):
+                flatten_list(item)
+            else:
+                result.append(item)
+
+    flatten_list(attribute)
+    return result
