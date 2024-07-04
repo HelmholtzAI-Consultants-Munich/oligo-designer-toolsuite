@@ -181,7 +181,7 @@ class OligoDatabase:
         files_database = [entry.path for entry in os.scandir(path) if entry.is_file()]
 
         # Load files parallel into database
-        with joblib_progress(description="Database Loading", total=len(files_database)):
+        with joblib_progress(description=f"Database Loading (Files)", total=len(files_database)):
             Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
                 delayed(load)(file_database) for file_database in files_database
             )
@@ -292,7 +292,7 @@ class OligoDatabase:
             )
 
         # Load files parallel into database
-        with joblib_progress(description="Database Loading", total=len(files_fasta)):
+        with joblib_progress(description=f"Database Loading (Files)", total=len(files_fasta)):
             Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
                 delayed(load)(file_fasta) for file_fasta in files_fasta
             )
@@ -684,6 +684,37 @@ class OligoDatabase:
         ]
 
         return sequences
+
+    def get_oligoid_sequence_mapping(
+        self, sequence_type: _TYPES_SEQ = "oligo", sequence_to_upper: bool = False
+    ):
+        """Generate a mapping between oligonucleotide IDs and their corresponding sequences, with an option to convert sequences to uppercase.
+
+        Validates the sequence type against predefined options. If `sequence_to_upper` is True, converts all sequences to uppercase before mapping,
+        ensuring case-insensitive comparisons.
+
+        :param sequence_type: The type of sequence to use for the mapping, defaulting to "oligo".
+        :type sequence_type: _TYPES_SEQ
+        :param sequence_to_upper: Flag indicating whether to convert sequences to uppercase.
+        :type sequence_to_upper: bool
+        :return: A dictionary mapping oligonucleotide IDs to corresponding sequences.
+        :rtype: dict
+        """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+
+        oligoid_sequence_mapping = {}
+
+        for region_id, database_region in self.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                seq = oligo_attributes[sequence_type]
+                if sequence_to_upper:
+                    seq = seq.upper()
+                oligoid_sequence_mapping[oligo_id] = seq
+
+        return oligoid_sequence_mapping
 
     def get_sequence_oligoid_mapping(
         self, sequence_type: _TYPES_SEQ = "oligo", sequence_to_upper: bool = False
