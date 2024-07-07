@@ -181,7 +181,7 @@ class OligoDatabase:
         files_database = [entry.path for entry in os.scandir(path) if entry.is_file()]
 
         # Load files parallel into database
-        with joblib_progress(description=f"Database Loading (Files)", total=len(files_database)):
+        with joblib_progress(description=f"Database Loading", total=len(files_database)):
             Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
                 delayed(load)(file_database) for file_database in files_database
             )
@@ -292,7 +292,7 @@ class OligoDatabase:
             )
 
         # Load files parallel into database
-        with joblib_progress(description=f"Database Loading (Files)", total=len(files_fasta)):
+        with joblib_progress(description=f"Database Loading", total=len(files_fasta)):
             Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
                 delayed(load)(file_fasta) for file_fasta in files_fasta
             )
@@ -664,6 +664,20 @@ class OligoDatabase:
     ############################################
     # Getter Functions
     ############################################
+
+    def get_oligoid_list(self):
+        """Retrieve a list of all oligo IDs in the database.
+
+        This function iterates over the database regions and collects all oligo IDs into a single list.
+
+        :return: A list containing all oligo IDs in the database.
+        :rtype: list[str]
+        """
+        oligo_ids = [
+            oligo_id for database_region in self.database.values() for oligo_id in database_region.keys()
+        ]
+
+        return oligo_ids
 
     def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
         """Retrieve a list of sequences of the specified type (e.g., 'oligo' or 'target') from the oligo database.
