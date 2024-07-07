@@ -118,7 +118,9 @@ def pipeline_step_basic(step_name: str):
             oligo_database, *returned_values = function(*args, **kwargs)
 
             num_genes, num_oligos = get_oligo_database_info(oligo_database.database)
-            logging.info(f"Step - {step_name}: database contains {num_oligos} oligos from {num_genes} genes.")
+            logging.info(
+                f"Step - {step_name}: database contains {num_oligos} oligos from {num_genes} regions."
+            )
 
             return oligo_database, *returned_values
 
@@ -148,8 +150,8 @@ def pipeline_step_advanced(step_name: str):
 
             num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
             logging.info(
-                f"Step - {step_name}: database contains {num_oligos_after} oligos from {num_genes_after} genes, "
-                f"{num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} genes removed."
+                f"Step - {step_name}: database contains {num_oligos_after} oligos from {num_genes_after} regions, "
+                f"{num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} regions removed."
             )
 
             return oligo_database, *returned_values
