@@ -65,6 +65,7 @@ dev = ["pytest"]
 genomic_region_generator = "oligo_designer_toolsuite.pipelines._genomic_region_generator:main"
 oligo_seq_probe_designer = "oligo_designer_toolsuite.pipelines._oligo_seq_probe_designer:main"
 scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_designer:main"
+seqfish_plus_probe_designer = "oligo_designer_toolsuite.pipelines._seqfish_plus_probe_designer:main"
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
