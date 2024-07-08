@@ -501,8 +501,10 @@ class SeqFishPlusProbeDesigner:
         region_ids = list(oligo_database.database.keys())
 
         codebook, readout_probe_table = _generate_readout_probes(n_genes=len(oligo_database.database))
-        codebook = codebook.iloc[: len(region_ids)]
-        codebook.index = region_ids
+        # codebook = codebook.iloc[: len(region_ids)]
+        codebook.index = region_ids + [
+            f"unassigned_barcode_{i+1}" for i in range(len(codebook.index) - len(region_ids))
+        ]
 
         codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t")
         readout_probe_table.to_csv(os.path.join(self.dir_output, "readout_probes.tsv"), sep="\t")
@@ -526,6 +528,8 @@ class SeqFishPlusProbeDesigner:
         reverse_primer_sequence, forward_primer_sequence = _generate_primers(
             file_fasta_encoding_probes_database=file_fasta_encoding_probes_database
         )
+
+        os.remove(file_fasta_encoding_probes_database)
 
         oligo_database = _add_primer_sequences(
             oligo_database, reverse_primer_sequence, forward_primer_sequence
