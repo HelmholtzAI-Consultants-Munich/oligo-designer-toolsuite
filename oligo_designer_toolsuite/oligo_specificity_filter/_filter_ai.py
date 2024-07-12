@@ -55,7 +55,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         alignment_method: AlignmentSpecificityFilter,
         threshold: float,
         ai_filter_path: str = None,
-        filter_name: str = "ai_filter",
+        filter_name: str = "hybridization_probability_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the HybridizationProbabilityFilter class."""

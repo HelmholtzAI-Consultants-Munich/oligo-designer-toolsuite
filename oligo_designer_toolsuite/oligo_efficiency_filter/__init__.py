@@ -4,6 +4,7 @@ This module provides different evaluation strategies for oligonucleotides and th
 Classes:
 - OligoScoringBase: This abstract base class provides a template for implementing scoring mechanisms that evaluate the efficiency of oligonucleotides based on specific criteria.
 - GCOligoScoring: A class for scoring oligos considering the distance of the oligos GC content to an optimal user-defined GC content.
+- WeightedGCUtrScoring: A class for scoring oligos considering the distance of the oligos GC content to an optimal user-defined GC content and whether the sequence originates from untranslated regions (UTRs).
 - WeightedTmGCOligoScoring: A class for scoring oligos considering melting temperature (Tm), and GC content, with customizable weights for each factor.
 - WeightedIsoformTmGCOligoScoring: A class for scoring oligos considering isoform consensus, melting temperature (Tm), and GC content, with customizable weights for each factor.
 - SetScoringBase: An abstract base class designed for scoring sets of oligonucleotides, facilitating the selection of optimal oligo sets based on collective properties.
@@ -12,20 +13,18 @@ Classes:
 """
 
 from ._oligo_scoring import (
-    OligoScoringBase,
     GCOligoScoring,
-    WeightedTmGCOligoScoring,
+    OligoScoringBase,
+    WeightedGCUtrScoring,
     WeightedIsoformTmGCOligoScoring,
+    WeightedTmGCOligoScoring,
 )
-from ._set_scoring import (
-    SetScoringBase,
-    LowestSetScoring,
-    AverageSetScoring,
-)
+from ._set_scoring import AverageSetScoring, LowestSetScoring, SetScoringBase
 
 __all__ = [
     "OligoScoringBase",
     "GCOligoScoring",
+    "WeightedGCUtrScoring",
     "WeightedTmGCOligoScoring",
     "WeightedIsoformTmGCOligoScoring",
     "SetScoringBase",

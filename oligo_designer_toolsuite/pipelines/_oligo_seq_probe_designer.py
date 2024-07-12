@@ -25,11 +25,11 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 from oligo_designer_toolsuite.oligo_property_filter import (
     GCContentFilter,
     HardMaskedSequenceFilter,
-    HomodimerFilter,
     HomopolymericRunsFilter,
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
+    SelfComplementFilter,
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
@@ -77,19 +77,10 @@ class OligoSeqProbeDesigner:
         n_jobs: int,
     ) -> None:
         """Constructor for the OligoSeqProbeDesigner class."""
-        ##### read the genes file #####
-        if file_regions is None:
-            warnings.warn(
-                "No gene list file was provided! All genes from fasta file are used to generate the oligos. This chioce can use a lot of resources."
-            )
-            self.gene_ids = None
-        else:
-            with open(file_regions) as handle:
-                lines = handle.readlines()
-                # ensure that the list contains unique gene ids
-                self.gene_ids = list(set([line.rstrip() for line in lines]))
 
         self.write_intermediate_steps = write_intermediate_steps
+        self.n_jobs = n_jobs
+        self.oligo_attributes = OligoAttributes()
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -112,16 +103,14 @@ class OligoSeqProbeDesigner:
         )
         logging.captureWarnings(True)
 
-        self.n_jobs = n_jobs
-
     @pipeline_step_basic(step_name="Create Database")
     def create_oligo_database(
         self,
+        gene_ids: list,
         oligo_length_min: int,
         oligo_length_max: int,
         files_fasta_oligo_database: list[str],
         min_oligos_per_region: int,
-        db_max_in_memory: int,
     ):
         """
         Creates an oligo database using sequences generated through a sliding window approach, loading them from specified FASTA files.
@@ -143,7 +132,7 @@ class OligoSeqProbeDesigner:
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(oligo_length_min, oligo_length_max),
-            region_ids=self.gene_ids,
+            region_ids=gene_ids,
             n_jobs=self.n_jobs,
         )
 
@@ -151,14 +140,15 @@ class OligoSeqProbeDesigner:
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_oligos_per_region,
             write_regions_with_insufficient_oligos=True,
-            lru_db_max_in_memory=db_max_in_memory,
+            lru_db_max_in_memory=self.n_jobs * 2 + 2,
             database_name=self.subdir_db_oligos,
             dir_output=self.dir_output,
+            n_jobs=1,
         )
         oligo_database.load_database_from_fasta(
             files_fasta=oligo_fasta_file,
             sequence_type="target",
-            region_ids=self.gene_ids,
+            region_ids=gene_ids,
         )
 
         ##### save database #####
@@ -207,8 +197,8 @@ class OligoSeqProbeDesigner:
         :type secondary_structures_threshold_deltaG: float
         :param homopolymeric_base_n: Bases to check for homopolymeric runs.
         :type homopolymeric_base_n: str
-        :param homodimer_max_len_selfcomp: Maximum allowable length of self-complementary sequences for avoiding homodimers.
-        :type homodimer_max_len_selfcomp: int
+        :param max_len_selfcomp: Maximum allowable length of self-complementary sequences.
+        :type max_len_selfcomp: int
         :param Tm_parameters: Parameters for melting temperature calculation.
         :type Tm_parameters: dict
         :param Tm_chem_correction_parameters: Parameters for chemical correction of melting temperature.
@@ -233,7 +223,7 @@ class OligoSeqProbeDesigner:
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
-        homodimer = HomodimerFilter(
+        self_comp = SelfComplementFilter(
             max_len_selfcomp=max_len_selfcomp,
         )
 
@@ -245,6 +235,8 @@ class OligoSeqProbeDesigner:
             homodimer,
             melting_temperature,
             secondary_sctructure,
+            homopolymeric_runs,
+            self_comp,
         ]
 
         # initialize the preoperty filter class
@@ -338,8 +330,7 @@ class OligoSeqProbeDesigner:
 
         ##### specificity filters #####
         # removing duplicated oligos from the region with the most oligos
-        exact_matches_policy = RemoveByLargerRegionPolicy()
-        exact_matches = ExactMatchFilter(policy=exact_matches_policy)
+        exact_matches = ExactMatchFilter(policy=RemoveByLargerRegionPolicy(), filter_name="exact_match")
 
         cross_hybridization_aligner = _get_alignment_method(
             alignment_method=cross_hybridization_alignment_method,
@@ -347,9 +338,8 @@ class OligoSeqProbeDesigner:
             hit_parameters=cross_hybridization_hit_parameters,
             filter_name_specification="cross_hybridization",
         )
-        cross_hybridization_policy = RemoveByLargerRegionPolicy()
         cross_hybridization = CrossHybridizationFilter(
-            policy=cross_hybridization_policy,
+            policy=RemoveByLargerRegionPolicy(),
             alignment_method=cross_hybridization_aligner,
             database_name_reference=self.subdir_db_reference,
             dir_output=self.dir_output,
@@ -382,6 +372,7 @@ class OligoSeqProbeDesigner:
         else:
             file_database = ""
 
+        # remove all directories of intermediate steps
         for directory in [
             reference_database.dir_output,
             cross_hybridization_aligner.dir_output,
@@ -390,7 +381,7 @@ class OligoSeqProbeDesigner:
             hybridization_probability.dir_output,
         ]:
             if os.path.exists(directory):
-                os.rmdir(directory)
+                shutil.rmtree(directory)
 
         return oligo_database, file_database
 
@@ -506,23 +497,24 @@ class OligoSeqProbeDesigner:
         :return: Updated oligo database with new attributes.
         :rtype: OligoDatabase
         """
-        oligo_attributes = OligoAttributes()
-        oligo_database = oligo_attributes.calculate_oligo_length(oligo_database=oligo_database)
-        oligo_database = oligo_attributes.calculate_GC_content(
+        oligo_database = self.oligo_attributes.calculate_oligo_length(oligo_database=oligo_database)
+        oligo_database = self.oligo_attributes.calculate_GC_content(
             oligo_database=oligo_database, sequence_type="oligo"
         )
-        oligo_database = oligo_attributes.calculate_TmNN(
+        oligo_database = self.oligo_attributes.calculate_TmNN(
             oligo_database=oligo_database,
             sequence_type="oligo",
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
-        oligo_database = oligo_attributes.calculate_num_targeted_transcripts(oligo_database=oligo_database)
-        oligo_database = oligo_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
-        oligo_database = oligo_attributes.calculate_length_selfcomplement(
+        oligo_database = self.oligo_attributes.calculate_num_targeted_transcripts(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.oligo_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
+        oligo_database = self.oligo_attributes.calculate_length_selfcomplement(
             oligo_database=oligo_database, sequence_type="oligo"
         )
-        oligo_database = oligo_attributes.calculate_DG_secondary_structure(
+        oligo_database = self.oligo_attributes.calculate_DG_secondary_structure(
             oligo_database=oligo_database, sequence_type="oligo", T=secondary_structures_T
         )
 
@@ -577,23 +569,24 @@ class OligoSeqProbeDesigner:
         :return: Updated oligo database with new attributes.
         :rtype: OligoDatabase
         """
-        oligo_attributes = OligoAttributes()
-        oligo_database = oligo_attributes.calculate_oligo_length(oligo_database=oligo_database)
-        oligo_database = oligo_attributes.calculate_GC_content(
+        oligo_database = self.oligo_attributes.calculate_oligo_length(oligo_database=oligo_database)
+        oligo_database = self.oligo_attributes.calculate_GC_content(
             oligo_database=oligo_database, sequence_type="oligo"
         )
-        oligo_database = oligo_attributes.calculate_TmNN(
+        oligo_database = self.oligo_attributes.calculate_TmNN(
             oligo_database=oligo_database,
             sequence_type="oligo",
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
-        oligo_database = oligo_attributes.calculate_num_targeted_transcripts(oligo_database=oligo_database)
-        oligo_database = oligo_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
-        oligo_database = oligo_attributes.calculate_length_selfcomplement(
+        oligo_database = self.oligo_attributes.calculate_num_targeted_transcripts(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.oligo_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
+        oligo_database = self.oligo_attributes.calculate_length_selfcomplement(
             oligo_database=oligo_database, sequence_type="oligo"
         )
-        oligo_database = oligo_attributes.calculate_DG_secondary_structure(
+        oligo_database = self.oligo_attributes.calculate_DG_secondary_structure(
             oligo_database=oligo_database, sequence_type="oligo", T=secondary_structures_T
         )
 
@@ -645,6 +638,26 @@ def main():
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    ##### process parameters #####
+    # preprocess melting temperature params
+    Tm_parameters = config["Tm_parameters"]
+    Tm_parameters["nn_table"] = getattr(mt, Tm_parameters["nn_table"])
+    Tm_parameters["tmm_table"] = getattr(mt, Tm_parameters["tmm_table"])
+    Tm_parameters["imm_table"] = getattr(mt, Tm_parameters["imm_table"])
+    Tm_parameters["de_table"] = getattr(mt, Tm_parameters["de_table"])
+
+    ##### read the genes file #####
+    if config["file_regions"] is None:
+        warnings.warn(
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
+        )
+        gene_ids = None
+    else:
+        with open(config["file_regions"]) as handle:
+            lines = handle.readlines()
+            # ensure that the list contains unique gene ids
+            gene_ids = list(set([line.rstrip() for line in lines]))
+
     ##### initialize probe designer pipeline #####
     pipeline = OligoSeqProbeDesigner(
         file_regions=config["file_regions"],
@@ -655,20 +668,13 @@ def main():
 
     ##### create oligo database #####
     oligo_database, file_database = pipeline.create_oligo_database(
+        gene_ids=gene_ids,
         oligo_length_min=config["oligo_length_min"],
         oligo_length_max=config["oligo_length_max"],
         files_fasta_oligo_database=config["files_fasta_oligo_database"],
         # we should have at least "min_oligoset_size" oligos per gene to create one set
         min_oligos_per_region=config["min_oligoset_size"],
-        db_max_in_memory=config["db_max_in_memory"],
     )
-
-    ##### preprocess melting temperature params #####
-    Tm_parameters = config["Tm_parameters"]
-    Tm_parameters["nn_table"] = getattr(mt, Tm_parameters["nn_table"])
-    Tm_parameters["tmm_table"] = getattr(mt, Tm_parameters["tmm_table"])
-    Tm_parameters["imm_table"] = getattr(mt, Tm_parameters["imm_table"])
-    Tm_parameters["de_table"] = getattr(mt, Tm_parameters["de_table"])
 
     ##### filter oligos by property #####
     oligo_database, file_database = pipeline.filter_by_property(

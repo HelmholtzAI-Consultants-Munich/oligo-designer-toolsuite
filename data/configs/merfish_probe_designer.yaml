@@ -7,8 +7,8 @@ n_jobs: 4 # number of cores used to run the pipeline
 oligo_db_max_in_memory: 10 # maximum number of regions stored in memory (each region contains its oligos) the rest is offloaded to the disk
 dir_output: output_merfish_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
-readout_probe_designer: merfish_subconfig/readout_probe_designer.yaml # path to the readout probe designer config file
-primer_designer: merfish_subconfig/primer_designer.yaml # path to the primer designer config file
+readout_probe_designer: merfish_subconfigs/readout_probe_designer.yaml # path to the readout probe designer config file, relative to the location of this file
+primer_designer: merfish_subconfigs/primer_designer.yaml # path to the primer designer config file, relative to the location of this file
 
 ### Parameters for sequences generation
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
@@ -21,8 +21,6 @@ probe_length: 30 # length of oligos
 # Probe sequence
 probe_GC_content_min: 43 # minimum GC content of oligos
 probe_GC_content_max: 63 # maximum GC content of oligos
-probe_GC_clamp_n_bases: #TODO # The number of bases from the 3' end of the sequence to check for the presence of G or C.
-probe_GC_clamp_nGC: #TODO # The minimum number of G or C bases at the 3' end.
 probe_Tm_min: 66 # minimum melting temperature of oligos
 probe_Tm_max: 76 # maximum melting temperature of oligos
 probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base

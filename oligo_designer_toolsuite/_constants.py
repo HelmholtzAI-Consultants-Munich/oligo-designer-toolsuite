@@ -8,7 +8,7 @@ from typing import Literal
 # types
 ############################################
 
-_TYPES_SEQ = Literal["target", "oligo"]
+_TYPES_SEQ = Literal["target", "oligo", "sequence_encoding_probe"]
 
 ############################################
 # constants

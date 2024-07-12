@@ -60,7 +60,7 @@ class OligoDatabase:
     :type min_oligos_per_region: int, optional
     :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file (default is True).
     :type write_regions_with_insufficient_oligos: bool, optional
-    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 10.
+    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 1.
     :type lru_db_max_in_memory: int, optional
     :param database_name: Subdirectory path for the output, i.e. <dir_output>/<database_name>, defaults to "db_oligo".
     :type database_name: str, optional
@@ -179,7 +179,7 @@ class OligoDatabase:
         files_database = [entry.path for entry in os.scandir(path) if entry.is_file()]
 
         # Load files parallel into database
-        with joblib_progress(description="Database Loading", total=len(files_database)):
+        with joblib_progress(description=f"Database Loading", total=len(files_database)):
             Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
                 delayed(load)(file_database) for file_database in files_database
             )
@@ -290,7 +290,7 @@ class OligoDatabase:
             )
 
         # Load files parallel into database
-        with joblib_progress(description="Database Loading", total=len(files_fasta)):
+        with joblib_progress(description=f"Database Loading", total=len(files_fasta)):
             Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
                 delayed(load)(file_fasta) for file_fasta in files_fasta
             )
@@ -663,6 +663,20 @@ class OligoDatabase:
     # Getter Functions
     ############################################
 
+    def get_oligoid_list(self):
+        """Retrieve a list of all oligo IDs in the database.
+
+        This function iterates over the database regions and collects all oligo IDs into a single list.
+
+        :return: A list containing all oligo IDs in the database.
+        :rtype: list[str]
+        """
+        oligo_ids = [
+            oligo_id for database_region in self.database.values() for oligo_id in database_region.keys()
+        ]
+
+        return oligo_ids
+
     def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
         """Retrieve a list of sequences of the specified type (e.g., 'oligo' or 'target') from the oligo database.
 
@@ -682,6 +696,37 @@ class OligoDatabase:
         ]
 
         return sequences
+
+    def get_oligoid_sequence_mapping(
+        self, sequence_type: _TYPES_SEQ = "oligo", sequence_to_upper: bool = False
+    ):
+        """Generate a mapping between oligonucleotide IDs and their corresponding sequences, with an option to convert sequences to uppercase.
+
+        Validates the sequence type against predefined options. If `sequence_to_upper` is True, converts all sequences to uppercase before mapping,
+        ensuring case-insensitive comparisons.
+
+        :param sequence_type: The type of sequence to use for the mapping, defaulting to "oligo".
+        :type sequence_type: _TYPES_SEQ
+        :param sequence_to_upper: Flag indicating whether to convert sequences to uppercase.
+        :type sequence_to_upper: bool
+        :return: A dictionary mapping oligonucleotide IDs to corresponding sequences.
+        :rtype: dict
+        """
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+
+        oligoid_sequence_mapping = {}
+
+        for region_id, database_region in self.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                seq = oligo_attributes[sequence_type]
+                if sequence_to_upper:
+                    seq = seq.upper()
+                oligoid_sequence_mapping[oligo_id] = seq
+
+        return oligoid_sequence_mapping
 
     def get_sequence_oligoid_mapping(
         self, sequence_type: _TYPES_SEQ = "oligo", sequence_to_upper: bool = False

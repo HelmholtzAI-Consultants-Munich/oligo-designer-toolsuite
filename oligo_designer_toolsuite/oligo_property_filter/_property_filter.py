@@ -68,8 +68,8 @@ class PropertyFilter:
         :type sequence_type: _TYPES_SEQ
         :param database_region: A region from the oligo database.
         :type database_region: dict
-        :return: The filtered region.
-        :rtype: dict
+        :return: None
+        :rtype: None
         """
         oligo_ids = list(oligo_database.database[region_id].keys())
         for oligo_id in oligo_ids:
