@@ -99,6 +99,7 @@ class SeqFishPlusProbeDesigner:
         oligo_length_max: int,
         files_fasta_oligo_database: list[str],
         min_probes_per_gene: int,
+        isoform_consensus: float,
     ):
         ##### creating the oligo sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -122,6 +123,15 @@ class SeqFishPlusProbeDesigner:
             files_fasta=probe_fasta_file,
             sequence_type="target",
             region_ids=gene_ids,
+        )
+
+        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+        oligo_database.filter_oligo_attribute(
+            name_attribute="isoform_consensus",
+            thr_attribute=isoform_consensus,
+            keep_if_smaller_threshold=False,
         )
 
         ##### save database #####
@@ -1192,6 +1202,7 @@ def main():
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
         min_probes_per_gene=config["probeset_size_min"],
+        isoform_consensus=config["probe_isoform_consensus"],
     )
 
     ##### filter oligos by property #####
