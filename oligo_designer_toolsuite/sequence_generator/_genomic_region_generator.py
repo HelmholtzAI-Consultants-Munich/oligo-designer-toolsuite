@@ -607,7 +607,7 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"CDS_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(self.dir_output, f"cds_annotation_{self.FILE_INFO}.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -684,7 +684,7 @@ class CustomGenomicRegionGenerator:
                 UTR_right = UTR_right[UTR_right.end > cds_end]
                 UTR_right.type = UTR_right_type
                 UTR_right.start_1base[UTR_right.start_1base <= cds_end] = cds_end + 1
-                UTR_right.start_0base[UTR_right.start_1base <= cds_end] = cds_end
+                UTR_right.start_0base[(UTR_right.start_0base + 1) <= cds_end] = cds_end
                 utrs.append(UTR_right)
 
             utr_annotation = pd.concat(utrs, ignore_index=True)
@@ -731,14 +731,16 @@ class CustomGenomicRegionGenerator:
             + f"species={self.species}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"annotation_release={self.annotation_release}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
             + f"genome_assembly={self.genome_assembly}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
-            + f"regiontype={annotation['type']}{SEPARATOR_FASTA_HEADER_FIELDS_LIST}"
+            + f"regiontype="
+            + annotation["type"]
+            + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"UTR_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(self.dir_output, f"utr_annotation_{self.FILE_INFO}.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
