@@ -14,8 +14,8 @@ write_intermediate_steps: true # if true, writes the oligo sequences after each 
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the probe sequences, leave empty if all the genes are used
 #TODO: adapt files
 files_fasta_probe_database: # fasta file with sequences form which the probes should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  - data/genomic_regions/cds_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  - data/genomic_regions/utr_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 probe_length_min: 28 #min length of probe
 probe_length_max: 28 #max length of probe
 ## readout probe sequence
@@ -32,7 +32,7 @@ forward_primer_base_probabilities: # probabilities of each base for random prime
   C: 0.25
   G: 0.25
   T: 0.25
-reverse_primer_sequence: CCCTATAGTGAGTCGTATTA # reverse complement of 20 nt T7 promoter sequence
+reverse_primer_sequence: CCCTATAGTGAGTCGTATTA # defaults to reverse complement of 20 nt T7 promoter sequence, change if different sequence desired
 
 ### Parameters for the sequence property filers
 ### -----------------------------------------------
