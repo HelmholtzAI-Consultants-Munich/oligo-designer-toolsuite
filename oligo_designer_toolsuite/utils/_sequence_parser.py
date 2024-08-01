@@ -19,7 +19,7 @@ from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
 
-from ..utils._checkers import check_if_list
+from ._checkers_and_helpers import check_if_list
 
 ############################################
 # GFF Parser Class
