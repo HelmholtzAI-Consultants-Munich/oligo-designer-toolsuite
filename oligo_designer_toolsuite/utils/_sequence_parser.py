@@ -360,7 +360,6 @@ class FastaParser:
         # Open the file once and parse sequences accordingly
         if region_ids_set:
             fasta_sequences = []
-            found_regions = set()
             # use index instead of parse function for memory efficiency
             seq_record = SeqIO.index(file_fasta_in, "fasta")
             for idx in seq_record:
@@ -368,14 +367,8 @@ class FastaParser:
                     idx, parse_coordinates=False, parse_additional_info=False
                 )
                 if region in region_ids_set:
-                    found_regions.add(region)
                     fasta_sequences.append(seq_record[idx])
 
-            # Check for missing regions after filtering, if necessary
-            if len(fasta_sequences) < len(region_ids):
-                missing_regions = region_ids_set - found_regions
-                if missing_regions:
-                    warnings.warn(f"Regions {missing_regions} were not found in the input FASTA file.")
         else:
             fasta_sequences = list(SeqIO.parse(file_fasta_in, "fasta"))
 
