@@ -105,6 +105,7 @@ class OligoSeqProbeDesigner:
         gene_ids: list,
         oligo_length_min: int,
         oligo_length_max: int,
+        split_region: int,
         files_fasta_oligo_database: list[str],
         min_oligos_per_region: int,
     ):
@@ -128,6 +129,7 @@ class OligoSeqProbeDesigner:
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(oligo_length_min, oligo_length_max),
+            split_region=split_region,
             region_ids=gene_ids,
             n_jobs=self.n_jobs,
         )
@@ -169,7 +171,7 @@ class OligoSeqProbeDesigner:
         secondary_structures_T: float,
         secondary_structures_threshold_deltaG: float,
         homopolymeric_base_n: str,
-        max_len_selfcomp: int,
+        max_len_selfcomplement: int,
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
     ):
@@ -193,8 +195,8 @@ class OligoSeqProbeDesigner:
         :type secondary_structures_threshold_deltaG: float
         :param homopolymeric_base_n: Bases to check for homopolymeric runs.
         :type homopolymeric_base_n: str
-        :param max_len_selfcomp: Maximum allowable length of self-complementary sequences.
-        :type max_len_selfcomp: int
+        :param max_len_selfcomplement: Maximum allowable length of self-complementary sequences.
+        :type max_len_selfcomplement: int
         :param Tm_parameters: Parameters for melting temperature calculation.
         :type Tm_parameters: dict
         :param Tm_chem_correction_parameters: Parameters for chemical correction of melting temperature.
@@ -220,7 +222,7 @@ class OligoSeqProbeDesigner:
             base_n=homopolymeric_base_n,
         )
         self_comp = SelfComplementFilter(
-            max_len_selfcomp=max_len_selfcomp,
+            max_len_selfcomplement=max_len_selfcomplement,
         )
 
         filters = [
@@ -228,7 +230,6 @@ class OligoSeqProbeDesigner:
             soft_masked_sequences,
             homopolymeric_runs,
             gc_content,
-            homodimer,
             melting_temperature,
             secondary_sctructure,
             homopolymeric_runs,
@@ -592,6 +593,7 @@ def main():
         gene_ids=gene_ids,
         oligo_length_min=config["oligo_length_min"],
         oligo_length_max=config["oligo_length_max"],
+        split_region=config["split_region"],
         files_fasta_oligo_database=config["files_fasta_oligo_database"],
         # we should have at least "min_oligoset_size" oligos per gene to create one set
         min_oligos_per_region=config["min_oligoset_size"],
@@ -607,7 +609,7 @@ def main():
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
         homopolymeric_base_n=config["homopolymeric_base_n"],
-        max_len_selfcomp=config["max_len_selfcomp"],
+        max_len_selfcomplement=config["max_len_selfcomplement"],
         Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
     )
