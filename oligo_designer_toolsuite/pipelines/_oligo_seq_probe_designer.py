@@ -76,7 +76,7 @@ class OligoSeqProbeDesigner:
 
         self.write_intermediate_steps = write_intermediate_steps
         self.n_jobs = n_jobs
-        self.oligo_attributes = OligoAttributes()
+        self.oligo_attributes_calculator = OligoAttributes()
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -108,6 +108,7 @@ class OligoSeqProbeDesigner:
         split_region: int,
         files_fasta_oligo_database: list[str],
         min_oligos_per_region: int,
+        isoform_consensus: float,
     ):
         """
         Creates an oligo database using sequences generated through a sliding window approach, loading them from specified FASTA files.
@@ -147,6 +148,15 @@ class OligoSeqProbeDesigner:
             files_fasta=oligo_fasta_file,
             sequence_type="target",
             region_ids=gene_ids,
+        )
+
+        oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+        oligo_database.filter_oligo_attribute(
+            name_attribute="isoform_consensus",
+            thr_attribute=isoform_consensus,
+            keep_if_smaller_threshold=False,
         )
 
         ##### save database #####
@@ -231,9 +241,9 @@ class OligoSeqProbeDesigner:
             homopolymeric_runs,
             gc_content,
             melting_temperature,
+            self_comp,
             secondary_sctructure,
             homopolymeric_runs,
-            self_comp,
         ]
 
         # initialize the preoperty filter class
@@ -491,24 +501,28 @@ class OligoSeqProbeDesigner:
         :return: Updated oligo database with new attributes.
         :rtype: OligoDatabase
         """
-        oligo_database = self.oligo_attributes.calculate_oligo_length(oligo_database=oligo_database)
-        oligo_database = self.oligo_attributes.calculate_GC_content(
+        oligo_database = self.oligo_attributes_calculator.calculate_oligo_length(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_GC_content(
             oligo_database=oligo_database, sequence_type="oligo"
         )
-        oligo_database = self.oligo_attributes.calculate_TmNN(
+        oligo_database = self.oligo_attributes_calculator.calculate_TmNN(
             oligo_database=oligo_database,
             sequence_type="oligo",
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
-        oligo_database = self.oligo_attributes.calculate_num_targeted_transcripts(
+        oligo_database = self.oligo_attributes_calculator.calculate_num_targeted_transcripts(
             oligo_database=oligo_database
         )
-        oligo_database = self.oligo_attributes.calculate_isoform_consensus(oligo_database=oligo_database)
-        oligo_database = self.oligo_attributes.calculate_length_selfcomplement(
+        oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_length_selfcomplement(
             oligo_database=oligo_database, sequence_type="oligo"
         )
-        oligo_database = self.oligo_attributes.calculate_DG_secondary_structure(
+        oligo_database = self.oligo_attributes_calculator.calculate_DG_secondary_structure(
             oligo_database=oligo_database, sequence_type="oligo", T=secondary_structures_T
         )
 
@@ -597,6 +611,7 @@ def main():
         files_fasta_oligo_database=config["files_fasta_oligo_database"],
         # we should have at least "min_oligoset_size" oligos per gene to create one set
         min_oligos_per_region=config["min_oligoset_size"],
+        isoform_consensus=config["oligo_isoform_consensus"],
     )
 
     ##### filter oligos by property #####
