@@ -803,7 +803,7 @@ class OligoDatabase:
         return pd.DataFrame({"oligo_id": oligo_ids, attribute: attributes})
 
     ############################################
-    # Update Functions
+    # Manipulation Functions
     ############################################
 
     def update_oligo_attributes(self, new_oligo_attribute: dict):
@@ -821,3 +821,30 @@ class OligoDatabase:
         for region_id, database_region in self.database.items():
             for oligo_id, oligo_attributes in database_region.items():
                 oligo_attributes.update(new_oligo_attribute[oligo_id])
+
+    def filter_oligo_attribute(
+        self, name_attribute: str, thr_attribute: float, keep_if_smaller_threshold: bool
+    ):
+        """Filter oligos in the database based on a specific attribute and threshold.
+
+        This function iterates through the oligo database and removes oligos that do not meet the specified threshold
+        for the given attribute.
+
+        :param name_attribute: The name of the attribute to filter oligos by.
+        :type name_attribute: str
+        :param thr_attribute: The threshold value for the attribute.
+        :type thr_attribute: float
+        :param keep_if_smaller_threshold: If True, keep oligos with attribute values smaller than the threshold.
+                                        If False, keep oligos with attribute values larger than the threshold.
+        :type keep_if_smaller_threshold: bool
+        """
+        oligos_to_delete = []
+        for region_id, database_region in self.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                if (keep_if_smaller_threshold) and (oligo_attributes[name_attribute] > thr_attribute):
+                    oligos_to_delete.append((region_id, oligo_id))
+                elif (not keep_if_smaller_threshold) and (oligo_attributes[name_attribute] < thr_attribute):
+                    oligos_to_delete.append((region_id, oligo_id))
+
+        for region_id, oligo_id in oligos_to_delete:
+            del self.database[region_id][oligo_id]
