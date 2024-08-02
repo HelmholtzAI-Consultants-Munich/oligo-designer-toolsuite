@@ -705,6 +705,10 @@ class CustomGenomicRegionGenerator:
         if three_prime == False:
             annotation = annotation[annotation.type == "five_prime_UTR"]
 
+        # add transcript counts for each gene
+        number_transcripts = self._get_number_transcripts()
+        annotation = pd.merge(annotation, number_transcripts, on="gene_id", how="left")
+
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
