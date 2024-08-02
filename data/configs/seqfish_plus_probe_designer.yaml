@@ -18,6 +18,7 @@ files_fasta_probe_database: # fasta file with sequences form which the probes sh
   - data/genomic_regions/utr_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 probe_length_min: 28 #min length of probe
 probe_length_max: 28 #max length of probe
+probe_isoform_consensus: 100 #min isoform consesnsus for probes, i.e. how many transcripts of the total number of transcripts of a gene are covered by the probe, given in %
 ## readout probe sequence
 readout_probe_length: 15 # length of readout probes
 readout_probe_base_probabilities: # probabilities of each base for random readout probe sequence generation
