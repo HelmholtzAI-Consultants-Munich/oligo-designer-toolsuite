@@ -200,13 +200,13 @@ class TestOligoDatabase(unittest.TestCase):
         mapping = self.oligo_database.get_sequence_oligoid_mapping(sequence_type="oligo")
         assert len(mapping["CTCACTCGACTCTTACACAGTCATA"]) == 4, "error: wrong number of oligos for sequence"
 
-    def test_get_oligo_attribute(self):
+    def test_get_oligo_attribute_table(self):
         self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
         )
-        attribute = self.oligo_database.get_oligo_attribute(attribute="test_attribute")
+        attribute = self.oligo_database.get_oligo_attribute_table(attribute="test_attribute")
 
         assert len(attribute["test_attribute"].unique()) == 2, "error: wrong attribute returned"
 
@@ -224,7 +224,7 @@ class TestOligoDatabase(unittest.TestCase):
             "region_3::5": {"GC_content": 40},
         }
         self.oligo_database.update_oligo_attributes(new_attribute)
-        attribute = self.oligo_database.get_oligo_attribute(attribute="GC_content")
+        attribute = self.oligo_database.get_oligo_attribute_table(attribute="GC_content")
 
         assert len(attribute) == 5, "error: attribute not correctly updated"
 
