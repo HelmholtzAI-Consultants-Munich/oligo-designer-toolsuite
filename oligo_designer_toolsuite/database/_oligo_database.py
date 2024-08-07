@@ -30,6 +30,7 @@ from oligo_designer_toolsuite.utils import (
     format_oligo_attributes,
     merge_databases,
     filter_dabase_for_region,
+    flatten_attribute_list,
 )
 
 ############################################
@@ -58,9 +59,9 @@ class OligoDatabase:
 
     Moreover, the database can be saved and loaded to/from a tsv file.
 
-    :param min_oligos_per_region: Minimum number of oligos required per region (default is 0).
+    :param min_oligos_per_region: Minimum number of oligos required per region, defaults to 0.
     :type min_oligos_per_region: int, optional
-    :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file (default is True).
+    :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file, defaults to True.
     :type write_regions_with_insufficient_oligos: bool, optional
     :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 1.
     :type lru_db_max_in_memory: int, optional
@@ -68,7 +69,7 @@ class OligoDatabase:
     :type database_name: str, optional
     :param dir_output: Directory path for the output, defaults to "output".
     :type dir_output: str, optional
-    :param n_jobs: The number of parallel jobs to run. Default is 1.
+    :param n_jobs: The number of parallel jobs to run, defaults to 1.
     :type n_jobs: int
     """
 
@@ -378,7 +379,7 @@ class OligoDatabase:
             region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
             if region_id not in database_tmp2:
                 database_tmp2[region_id] = {}
-            database_tmp2[region_id][oligo_id] = entry
+            database_tmp2[region_id][oligo_id] = format_oligo_attributes(entry)
 
         if not database_overwrite and self.database:
             database_tmp2 = merge_databases(
@@ -422,10 +423,7 @@ class OligoDatabase:
         :return: The directory where the database files are saved.
         :rtype: str
         """
-        if region_ids:
-            region_ids = check_if_list(region_ids)
-        else:
-            region_ids = self.database.keys()
+        region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
 
         dir_database = os.path.join(self.dir_output, dir_database)
         Path(dir_database).mkdir(parents=True, exist_ok=True)
@@ -469,10 +467,7 @@ class OligoDatabase:
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
         # check if region ids are list
-        if region_ids:
-            region_ids = check_if_list(region_ids)
-        else:
-            region_ids = self.database.keys()
+        region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
 
         file_fasta = os.path.join(self.dir_output, f"{filename}.fna")
         output_fasta = []
@@ -519,11 +514,7 @@ class OligoDatabase:
         :return: Paths to the saved TSV file.
         :rtype: tuple
         """
-        # TODO: this should be split into write database (without brackets formatting) and save database (with brackets formatting that can be reloaded)
-        if region_ids:
-            region_ids = check_if_list(region_ids)
-        else:
-            region_ids = self.database.keys()
+        region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
 
         file_database = os.path.join(self.dir_output, filename + ".tsv")
 
@@ -766,41 +757,58 @@ class OligoDatabase:
 
         return sequence_oligoids_mapping
 
-    def get_oligo_attribute(self, attribute: str, region_ids: Union[str, List[str]] = None):
+    def get_oligo_attribute_table(
+        self, attribute: str, region_ids: Union[str, List[str]] = None, flatten: bool = True
+    ):
         """Retrieves a specified attribute for all oligos in the database and returns it as a pandas DataFrame.
         This method assumes the presence of an attribute across all oligo records in the database. If the
         attribute is not found, a KeyError is raised.
 
-        :param attribute: The name of the attribute to retrieve for each oligo.
+        :param attribute: The name of the attribute to retrieve values for.
         :type attribute: str
-        :return: A pandas DataFrame with two columns: 'oligo_id' and the specified 'attribute', where each row
-                corresponds to an oligo and its attribute value.
-        :rtype: pd.DataFrame
+        :param region_ids: The region IDs to consider. If None, considers all regions.
+        :type region_ids: Union[str, List[str]], optional
+        :param flatten: Whether to flatten the attribute values into value / list[values].
+        :type flatten: bool
+        :return: A DataFrame with 'oligo_id' and the corresponding 'attribute' columns.
+        :rtype: pandas.DataFrame
         :raises KeyError: If the specified attribute has not been computed and added to the database.
         """
-        if region_ids is None:
-            region_ids = self.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
 
         oligo_ids = []
         attributes = []
 
         for region_id in region_ids:
             database_region = self.database[region_id]
-            if not check_if_key_exists(database_region, attribute):
-                warnings.warn(
-                    f"The {attribute} attribute has not been computed for {region_id}! Setting to None!"
-                )
             for oligo_id, oligo_attributes in database_region.items():
-                if attribute in oligo_attributes:
-                    oligo_ids.append(oligo_id)
-                    attributes.append(oligo_attributes[attribute])
-                else:
-                    oligo_ids.append(oligo_id)
+                oligo_ids.append(oligo_id)
+                if attribute not in oligo_attributes:
                     attributes.append(None)
+                elif flatten:
+                    attributes.append(flatten_attribute_list(oligo_attributes[attribute]))
+                else:
+                    attributes.append(oligo_attributes[attribute])
 
         return pd.DataFrame({"oligo_id": oligo_ids, attribute: attributes})
+
+    def get_oligo_attribute_value(self, attribute: str, region_id: str, oligo_id: str, flatten: bool = True):
+
+        if not region_id in self.database:
+            raise ValueError(f"Region {region_id} does not exist.")
+
+        if not oligo_id in self.database[region_id]:
+            raise ValueError(f"Region {oligo_id} does not exist.")
+
+        oligo_attributes = self.database[region_id][oligo_id]
+        if attribute not in oligo_attributes:
+            attribute_value = None
+        elif flatten:
+            attribute_value = flatten_attribute_list(self.database[region_id][oligo_id][attribute])
+        else:
+            attribute_value = self.database[region_id][oligo_id][attribute]
+
+        return attribute_value
 
     ############################################
     # Manipulation Functions
@@ -820,9 +828,10 @@ class OligoDatabase:
         """
         for region_id, database_region in self.database.items():
             for oligo_id, oligo_attributes in database_region.items():
-                oligo_attributes.update(new_oligo_attribute[oligo_id])
+                if oligo_id in new_oligo_attribute:
+                    oligo_attributes.update(format_oligo_attributes(new_oligo_attribute[oligo_id]))
 
-    def filter_oligo_attribute(
+    def filter_oligo_attribute_by_threshold(
         self, name_attribute: str, thr_attribute: float, keep_if_smaller_threshold: bool
     ):
         """Filter oligos in the database based on a specific attribute and threshold.
@@ -841,10 +850,45 @@ class OligoDatabase:
         oligos_to_delete = []
         for region_id, database_region in self.database.items():
             for oligo_id, oligo_attributes in database_region.items():
-                if (keep_if_smaller_threshold) and (oligo_attributes[name_attribute] > thr_attribute):
-                    oligos_to_delete.append((region_id, oligo_id))
-                elif (not keep_if_smaller_threshold) and (oligo_attributes[name_attribute] < thr_attribute):
-                    oligos_to_delete.append((region_id, oligo_id))
+                if name_attribute in oligo_attributes:
+                    attribute_values = oligo_attributes[name_attribute]
+                    if not isinstance(attribute_values[0], list):
+                        attribute_values = [attribute_values]
+
+                    if keep_if_smaller_threshold:
+                        remove = all(item > thr_attribute for sublist in attribute_values for item in sublist)
+                    else:
+                        remove = all(item < thr_attribute for sublist in attribute_values for item in sublist)
+
+                    if remove:
+                        oligos_to_delete.append((region_id, oligo_id))
+
+        for region_id, oligo_id in oligos_to_delete:
+            del self.database[region_id][oligo_id]
+
+    def filter_oligo_attribute_by_category(
+        self, name_attribute: str, category_attribute: list[str], keep_if_equals_category: bool
+    ):
+        """ """
+        oligos_to_delete = []
+        for region_id, database_region in self.database.items():
+            for oligo_id, oligo_attributes in database_region.items():
+                if name_attribute in oligo_attributes:
+                    attribute_values = oligo_attributes[name_attribute]
+                    if not isinstance(attribute_values[0], list):
+                        attribute_values = [attribute_values]
+
+                    if keep_if_equals_category:
+                        remove = all(
+                            item not in category_attribute for sublist in attribute_values for item in sublist
+                        )
+                    else:
+                        remove = all(
+                            item in category_attribute for sublist in attribute_values for item in sublist
+                        )
+
+                    if remove:
+                        oligos_to_delete.append((region_id, oligo_id))
 
         for region_id, oligo_id in oligos_to_delete:
             del self.database[region_id][oligo_id]
