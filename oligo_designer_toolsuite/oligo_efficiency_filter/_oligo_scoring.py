@@ -24,14 +24,25 @@ class OligoScoringBase(ABC):
         """Scores all oligonucleotides in the provided dictionary using a defined scoring function,
         updating the dictionary with scores and also returning scores as a pandas.Series for efficient data manipulation.
 
-        :param oligo_database: Dictionary containing the oligonucleotides with their respective information.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequences being scored, which must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
         :return: Tuple containing the updated dictionary of oligonucleotides and a pandas.Series with the computed scores.
         :rtype: (dict, pandas.Series)
         """
+        """Scores all oligonucleotides in the provided database using a defined scoring function,
+        updating the database with scores and also returning scores as a pandas.Series for efficient data manipulation.
 
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
+        :type oligo_database: OligoDatabase
+        :param region_id: The identifier for the specific region to score oligonucleotides.
+        :type region_id: str
+        :param sequence_type: The type of sequences being scored, which must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :return: Tuple containing the updated dictionary of oligonucleotides and a pandas.Series with the computed scores.
+        :rtype: (dict, pandas.Series)
+        """
         oligos_ids = list(oligo_database.database[region_id].keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)
         for oligo_id in oligos_ids:
