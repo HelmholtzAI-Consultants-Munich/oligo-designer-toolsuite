@@ -11,7 +11,7 @@ from seqfold import dg
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.utils import check_if_list, flatten_attribute_list
+from oligo_designer_toolsuite.utils import check_if_list
 
 ############################################
 # Attrubite Calculation Class
@@ -44,7 +44,7 @@ class OligoAttributes:
     def calculate_oligo_length(self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None):
         """Calculate the length for each oligonucleotide in the database.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param region_ids: The region IDs for which to calculate the oligo length.
         :type region_ids: Union[str, List[str]]
@@ -77,7 +77,7 @@ class OligoAttributes:
         :return: The number of unique targeted transcripts.
         :rtype: int
         """
-        num_targeted_transcripts = len(set(transcript_id))
+        num_targeted_transcripts = len(set(check_if_list(transcript_id)))
 
         return num_targeted_transcripts
 
@@ -89,7 +89,7 @@ class OligoAttributes:
         If the necessary information for number of targeted transcripts calculation is not available,
         the 'num_targeted_transcripts' attribute is set to None.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param region_ids: The region IDs for which to calculate the number of targeted transcripts.
         :type region_ids: Union[str, List[str]]
@@ -138,11 +138,9 @@ class OligoAttributes:
         # number transcripts is the number of transcripts of a genomic region
         # hence, all values have to be the same for each transcript coming from the same oligo
         # since only oligos from the same genomic region are merged into one entry
-        number_transcripts = (
-            number_transcripts[0] if isinstance(number_transcripts, list) else number_transcripts
-        )
-        num_targeted_transcripts = len(set(transcript_id))
-        isoform_consensus = num_targeted_transcripts / int(number_transcripts) * 100
+        number_transcripts = int(check_if_list(number_transcripts)[0])
+        num_targeted_transcripts = len(set(check_if_list(transcript_id)))
+        isoform_consensus = num_targeted_transcripts / number_transcripts * 100
 
         return isoform_consensus
 
@@ -154,7 +152,7 @@ class OligoAttributes:
         If the necessary information for isoform consensus calculation is not available,
         the 'isoform_consensus' attribute is set to None.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param region_ids: The region IDs for which to calculate the isoform consensus.
         :type region_ids: Union[str, List[str]]
@@ -239,7 +237,7 @@ class OligoAttributes:
     ):
         """Calculate the seed region start and end positions for each oligonucleotide in the database.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param start: The start position of the seed region, either as an absolute position or a fraction of the sequence length.
         :type start: Union[int, float]
@@ -310,9 +308,9 @@ class OligoAttributes:
         If the necessary information for seed region calculation is not available,
         the 'seedregion_start' and 'seedregion_end' attributes are set to None.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
-        :param seedregion_size: The size of the seed region to calculate around the ligation site.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
+        :param seedregion_size: The size of the seed region to calculate around the ligation site.
         :type seedregion_size: int
         :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
         :type sequence_type: _TYPES_SEQ
@@ -369,7 +367,7 @@ class OligoAttributes:
     ):
         """Calculate the GC content for each oligonucleotide in the database, dependent on the specified sequence type.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
         :type sequence_type: _TYPES_SEQ
@@ -441,7 +439,7 @@ class OligoAttributes:
         """Calculate the melting temperature for each oligonucleotide in the database, dependent on the specified sequence type,
         using nearest-neighbor thermodynamics with optional salt and chemical corrections.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param Tm_parameters: Parameters for the nearest-neighbor Tm calculation.
         :type Tm_parameters: dict
@@ -536,7 +534,7 @@ class OligoAttributes:
         """Calculate the length of the longest self-complementary sequence for each oligonucleotide in the database,
         dependent on the specified sequence type.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
         :type sequence_type: _TYPES_SEQ
@@ -576,7 +574,7 @@ class OligoAttributes:
         """Calculate the length of the longest complementary sequence between two oligonucleotides in the database,
         dependent on the specified sequence types.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param comparison_sequence: The second DNA sequence to analyze for complementary sequences.
         :type comparison_sequence: str
@@ -628,7 +626,7 @@ class OligoAttributes:
         """Calculate the Gibbs free energy (ΔG) of the secondary structure formation at a given temperature (T)
         for each oligonucleotide in the database, dependent on the specified sequence type.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param T: Temperature in degrees Celsius for ΔG calculation.
         :type T: float
@@ -749,7 +747,7 @@ class OligoAttributes:
         """Calculate the optimal ligation site and melting temperatures for padlock probe arms for each
         oligonucleotide in the database, dependent on the specified sequence type.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param arm_length_min: Minimum length for each arm of the padlock probe.
         :type arm_length_min: int
@@ -904,7 +902,7 @@ class OligoAttributes:
         This function iterates through the oligos in the database and calculates potential detection oligo sequences
         based on specified length and thymine content constraints. The results are added to each oligo's attributes.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param detect_oligo_length_min: The minimum length of the detection oligo.
         :type detect_oligo_length_min: int

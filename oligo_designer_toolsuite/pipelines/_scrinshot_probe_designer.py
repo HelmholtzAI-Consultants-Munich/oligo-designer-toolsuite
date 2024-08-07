@@ -125,7 +125,7 @@ class ScrinshotProbeDesigner:
         oligo_database.filter_oligo_attribute_by_threshold(
             name_attribute="isoform_consensus",
             thr_attribute=isoform_consensus,
-            keep_if_smaller_threshold=False,
+            remove_if_smaller_threshold=True,
         )
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
 
@@ -594,10 +594,10 @@ class ScrinshotProbeDesigner:
 
                     new_probe_attributes[probe_id] = {
                         "barcode": barcode,
-                        "sequence_mRNA": oligo_database.get_oligo_attribute_value(
+                        "sequence_target": oligo_database.get_oligo_attribute_value(
                             attribute="target", region_id=region_id, oligo_id=probe_id, flatten=True
                         ),
-                        "sequence_mRNA_probe": oligo_database.get_oligo_attribute_value(
+                        "sequence_target_probe": oligo_database.get_oligo_attribute_value(
                             attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
                         ),
                     }
@@ -664,6 +664,14 @@ class ScrinshotProbeDesigner:
     def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int):
 
         attributes = [
+            "source",
+            "species",
+            "annotation_release",
+            "genome_assembly",
+            "regiontype",
+            "gene_id",
+            "transcript_id",
+            "exon_number",
             "chromosome",
             "start",
             "end",
@@ -676,22 +684,15 @@ class ScrinshotProbeDesigner:
             "barcode",
             "sequence_padlock_accessory2",
             "sequence_padlock_arm2",
-            "sequence_mRNA",
-            "sequence_mRNA_probe",
+            "sequence_target",
+            "sequence_target_probe",
             "length",
             "ligation_site",
             "Tm_arm1",
             "Tm_arm2",
             "Tm_diff_arms",
             "Tm_detection_oligo",
-            "source",
-            "species",
-            "annotation_release",
-            "genome_assembly",
-            "regiontype",
-            "gene_id",
-            "transcript_id",
-            "exon_number",
+            "isoform_consensus",
         ]
         oligo_database.write_oligosets_to_yaml(
             attributes=attributes,
@@ -703,7 +704,7 @@ class ScrinshotProbeDesigner:
         # write a second file that only contains order information
         yaml_dict_order = {}
 
-        for region_id, database_region in oligo_database.database.items():
+        for region_id in oligo_database.database.keys():
             yaml_dict_order[region_id] = {}
             oligosets_region = oligo_database.oligosets[region_id]
             oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
@@ -719,8 +720,18 @@ class ScrinshotProbeDesigner:
                 yaml_dict_order[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
                     yaml_dict_order[region_id][oligoset_id][oligo_id] = {
-                        "sequence_padlock_probe": database_region[oligo_id]["sequence_padlock_probe"],
-                        "sequence_detection_oligo": database_region[oligo_id]["sequence_detection_oligo"],
+                        "sequence_padlock_probe": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_padlock_probe",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_detection_oligo": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_detection_oligo",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
                     }
 
         with open(os.path.join(self.dir_output, "padlock_probes_order.yml"), "w") as outfile:

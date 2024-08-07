@@ -20,7 +20,6 @@ from joblib_progress import joblib_progress
 from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 from oligo_designer_toolsuite.utils import (
     FastaParser,
-    check_if_key_exists,
     check_if_list,
     check_tsv_format,
     check_if_region_in_database,
@@ -832,7 +831,7 @@ class OligoDatabase:
                     oligo_attributes.update(format_oligo_attributes(new_oligo_attribute[oligo_id]))
 
     def filter_oligo_attribute_by_threshold(
-        self, name_attribute: str, thr_attribute: float, keep_if_smaller_threshold: bool
+        self, name_attribute: str, thr_attribute: float, remove_if_smaller_threshold: bool
     ):
         """Filter oligos in the database based on a specific attribute and threshold.
 
@@ -843,22 +842,23 @@ class OligoDatabase:
         :type name_attribute: str
         :param thr_attribute: The threshold value for the attribute.
         :type thr_attribute: float
-        :param keep_if_smaller_threshold: If True, keep oligos with attribute values smaller than the threshold.
-                                        If False, keep oligos with attribute values larger than the threshold.
-        :type keep_if_smaller_threshold: bool
+        :param remove_if_smaller_threshold: If True, remove oligos with attribute values smaller than the threshold.
+                                        If False, remove oligos with attribute values larger than the threshold.
+        :type remove_if_smaller_threshold: bool
         """
         oligos_to_delete = []
-        for region_id, database_region in self.database.items():
-            for oligo_id, oligo_attributes in database_region.items():
-                if name_attribute in oligo_attributes:
-                    attribute_values = oligo_attributes[name_attribute]
-                    if not isinstance(attribute_values[0], list):
-                        attribute_values = [attribute_values]
-
-                    if keep_if_smaller_threshold:
-                        remove = all(item > thr_attribute for sublist in attribute_values for item in sublist)
+        for region_id in self.database.keys():
+            for oligo_id in self.database[region_id].keys():
+                attribute_values = check_if_list(
+                    self.get_oligo_attribute_value(
+                        attribute=name_attribute, region_id=region_id, oligo_id=oligo_id, flatten=True
+                    )
+                )
+                if attribute_values:
+                    if remove_if_smaller_threshold:
+                        remove = any(item < thr_attribute for item in attribute_values)
                     else:
-                        remove = all(item < thr_attribute for sublist in attribute_values for item in sublist)
+                        remove = all(item > thr_attribute for item in attribute_values)
 
                     if remove:
                         oligos_to_delete.append((region_id, oligo_id))
@@ -867,25 +867,23 @@ class OligoDatabase:
             del self.database[region_id][oligo_id]
 
     def filter_oligo_attribute_by_category(
-        self, name_attribute: str, category_attribute: list[str], keep_if_equals_category: bool
+        self, name_attribute: str, category_attribute: list[str], remove_if_equals_category: bool
     ):
         """ """
         oligos_to_delete = []
-        for region_id, database_region in self.database.items():
-            for oligo_id, oligo_attributes in database_region.items():
-                if name_attribute in oligo_attributes:
-                    attribute_values = oligo_attributes[name_attribute]
-                    if not isinstance(attribute_values[0], list):
-                        attribute_values = [attribute_values]
+        for region_id in self.database.keys():
+            for oligo_id in self.database[region_id].keys():
+                attribute_values = check_if_list(
+                    self.get_oligo_attribute_value(
+                        attribute=name_attribute, region_id=region_id, oligo_id=oligo_id, flatten=True
+                    )
+                )
+                if attribute_values:
 
-                    if keep_if_equals_category:
-                        remove = all(
-                            item not in category_attribute for sublist in attribute_values for item in sublist
-                        )
+                    if remove_if_equals_category:
+                        remove = any(item in category_attribute for item in attribute_values)
                     else:
-                        remove = all(
-                            item in category_attribute for sublist in attribute_values for item in sublist
-                        )
+                        remove = all(item not in category_attribute for item in attribute_values)
 
                     if remove:
                         oligos_to_delete.append((region_id, oligo_id))
