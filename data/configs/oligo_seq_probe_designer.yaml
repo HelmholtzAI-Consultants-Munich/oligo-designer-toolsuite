@@ -16,6 +16,10 @@ files_fasta_oligo_database: # fasta file with sequences form which the oligos sh
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 oligo_length_min: 26 #min length of oligos
 oligo_length_max: 30 #max length of oligos
+exons_targeted:
+  - "1"
+  - "2"
+  - "3"
 oligo_isoform_consensus: 0 #min isoform consesnsus for oligos, i.e. how many transcripts of the total number of transcripts of a gene are covered by the oligo, given in %
 split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
 

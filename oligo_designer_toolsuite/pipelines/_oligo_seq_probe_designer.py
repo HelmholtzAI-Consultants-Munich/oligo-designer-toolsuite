@@ -109,6 +109,7 @@ class OligoSeqProbeDesigner:
         files_fasta_oligo_database: list[str],
         min_oligos_per_region: int,
         isoform_consensus: float,
+        exons_targeted: list[str],
     ):
         """
         Creates an oligo database using sequences generated through a sliding window approach, loading them from specified FASTA files.
@@ -150,14 +151,21 @@ class OligoSeqProbeDesigner:
             region_ids=gene_ids,
         )
 
+        ##### pre-filter oligo database for certain attributes #####
         oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(
             oligo_database=oligo_database
         )
-        oligo_database.filter_oligo_attribute(
+        oligo_database.filter_oligo_attribute_by_threshold(
             name_attribute="isoform_consensus",
             thr_attribute=isoform_consensus,
             keep_if_smaller_threshold=False,
         )
+        oligo_database.filter_oligo_attribute_by_category(
+            name_attribute="exon_number",
+            category_attribute=exons_targeted,
+            keep_if_equals_category=True,
+        )
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
 
         ##### save database #####
         if self.write_intermediate_steps:
@@ -612,6 +620,7 @@ def main():
         # we should have at least "min_oligoset_size" oligos per gene to create one set
         min_oligos_per_region=config["min_oligoset_size"],
         isoform_consensus=config["oligo_isoform_consensus"],
+        exons_targeted=config["exons_targeted"],
     )
 
     ##### filter oligos by property #####
