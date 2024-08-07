@@ -6,8 +6,9 @@ import warnings
 from collections import defaultdict
 
 from effidict import LRUPickleDict
+from typing import get_args
 
-from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID, _TYPES_SEQ
 
 from ._checkers_and_helpers import check_if_list_of_lists
 
@@ -153,8 +154,12 @@ def format_oligo_attributes(oligo_attributes: dict):
     :rtype: dict
     """
     for key, value in oligo_attributes.items():
-        if not check_if_list_of_lists(value):
-            oligo_attributes[key] = [value]
+        if key not in get_args(_TYPES_SEQ):
+            if not check_if_list_of_lists(value):
+                if not isinstance(value, list):
+                    oligo_attributes[key] = [[value]]
+                else:
+                    oligo_attributes[key] = [value]
     return oligo_attributes
 
 
@@ -215,14 +220,11 @@ def flatten_attribute_list(attribute):
     :return: A flattened list containing all the elements of the nested lists.
     :rtype: list
     """
-    result = []
-
-    def flatten_list(lst):
-        for item in lst:
-            if isinstance(item, list):
-                flatten_list(item)
-            else:
-                result.append(item)
-
-    flatten_list(attribute)
-    return result
+    flattened_attribute_list = [
+        item
+        for sublist in (attribute if isinstance(attribute, list) else [attribute])
+        for item in (sublist if isinstance(sublist, list) else [sublist])
+    ]
+    if len(flattened_attribute_list) == 1:
+        return flattened_attribute_list[0]
+    return flattened_attribute_list

@@ -125,14 +125,16 @@ class SeqFishPlusProbeDesigner:
             region_ids=gene_ids,
         )
 
+        ##### pre-filter oligo database for certain attributes #####
         oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
             oligo_database=oligo_database
         )
-        oligo_database.filter_oligo_attribute(
+        oligo_database.filter_oligo_attribute_by_threshold(
             name_attribute="isoform_consensus",
             thr_attribute=isoform_consensus,
             keep_if_smaller_threshold=False,
         )
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
 
         ##### save database #####
         if self.write_intermediate_steps:
