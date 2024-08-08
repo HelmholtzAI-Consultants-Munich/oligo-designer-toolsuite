@@ -16,14 +16,15 @@ source_params:
   genome_assembly: GRCh38 # optional: genome assembly of provided annotation, leave empty if unknown
 
 ### Parameters for sequences generation
-# List of genomic regions that should be generated, set the genomic regions you want to generate to True
+# List of genomic regions that should be generated, set the genomic regions you want to generate to true
 genomic_regions:
   gene: false
+  intergenic: false
   exon: true
-  exon_exon_junction: true
+  exon_exon_junction: false
+  utr: false
   cds: false
   intron: false
-  utr: false
 
 # If exon_exon_junction is ste to true, specify the block size, i.e. +/- "block_size" bp around the junction
 # Hint: it does not make sense to set the block size larger than the maximum oligo length
