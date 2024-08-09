@@ -120,7 +120,7 @@ class OligoAttributes:
         return oligo_database
 
     @staticmethod
-    def _calc_isoform_consensus(transcript_id: list, number_transcripts: list):
+    def _calc_isoform_consensus(transcript_id: list, number_total_transcripts: list):
         """Calculate the isoform consensus percentage of a given oligonucleotide.
 
         This function calculates the isoform consensus based on the provided transcript information.
@@ -130,17 +130,17 @@ class OligoAttributes:
 
         :param transcript_id: Transcript IDs targeted by the oligonucleotide.
         :type transcript_id: list
-        :param number_transcripts: Total number of transcripts for the oligo region.
-        :type number_transcripts: list
+        :param number_total_transcripts: Total number of transcripts for the oligo region.
+        :type number_total_transcripts: list
         :return: The isoform consensus percentage.
         :rtype: float
         """
         # number transcripts is the number of transcripts of a genomic region
         # hence, all values have to be the same for each transcript coming from the same oligo
         # since only oligos from the same genomic region are merged into one entry
-        number_transcripts = int(check_if_list(number_transcripts)[0])
+        number_total_transcripts = int(check_if_list(number_total_transcripts)[0])
         num_targeted_transcripts = len(set(check_if_list(transcript_id)))
-        isoform_consensus = num_targeted_transcripts / number_transcripts * 100
+        isoform_consensus = round(num_targeted_transcripts / number_total_transcripts * 100, 2)
 
         return isoform_consensus
 
@@ -164,16 +164,16 @@ class OligoAttributes:
 
         for region_id in region_ids:
             for oligo_id in oligo_database.database[region_id].keys():
-                number_transcripts = oligo_database.get_oligo_attribute_value(
-                    attribute="number_transcripts", region_id=region_id, oligo_id=oligo_id, flatten=True
+                number_total_transcripts = oligo_database.get_oligo_attribute_value(
+                    attribute="number_total_transcripts", region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
                 transcript_id = oligo_database.get_oligo_attribute_value(
                     attribute="transcript_id", region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
 
-                if transcript_id and number_transcripts:
+                if transcript_id and number_total_transcripts:
                     isoform_consensus = self._calc_isoform_consensus(
-                        transcript_id=transcript_id, number_transcripts=number_transcripts
+                        transcript_id=transcript_id, number_total_transcripts=number_total_transcripts
                     )
                 else:
                     isoform_consensus = None
