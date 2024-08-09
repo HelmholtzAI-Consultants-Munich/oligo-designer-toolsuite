@@ -490,7 +490,9 @@ class OligoDatabase:
 
     def write_database_to_table(
         self,
-        filename: str = "db_oligo",
+        attributes: list[str],
+        flatten_attribute: bool = False,
+        filename: str = "oligo_database_table",
         region_ids: list[str] = None,
     ):
         """Write the oligo database to TSV files.
@@ -515,28 +517,49 @@ class OligoDatabase:
         """
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
 
-        file_database = os.path.join(self.dir_output, filename + ".tsv")
+        file_table = os.path.join(os.path.dirname(self.dir_output), f"{filename}.tsv")
 
         first_entry = True
         for region_id in region_ids:
-            database_region = self.database[region_id]
             file_tsv_content = []
-            for oligo_id, oligo_attributes in database_region.items():
+            for oligo_id in self.database[region_id].keys():
                 entry = {"region_id": region_id, "oligo_id": oligo_id}
-                entry.update(oligo_attributes)
+                for attribute in attributes:
+                    if attribute in self.database[region_id][oligo_id]:
+                        if flatten_attribute:
+                            oligo_attribute = flatten_attribute_list(
+                                attribute=self.database[region_id][oligo_id][attribute]
+                            )
+                            oligo_attribute = list(
+                                set(
+                                    oligo_attribute
+                                    if isinstance(oligo_attribute, list)
+                                    else [oligo_attribute]
+                                )
+                            )
+                            entry[attribute] = (
+                                str(oligo_attribute).replace("'", "").replace("[", "").replace("]", "")
+                            )
+                        else:
+                            entry[attribute] = (
+                                str(self.database[region_id][oligo_id][attribute])
+                                .replace("'", "")
+                                .replace("[[", "[")
+                                .replace("]]", "]")
+                            )
                 file_tsv_content.append(entry)
             file_tsv_content = pd.DataFrame(data=file_tsv_content)
-            file_tsv_content.to_csv(file_database, sep="\t", index=False, mode="a", header=first_entry)
+            file_tsv_content.to_csv(file_table, sep="\t", index=False, mode="a", header=first_entry)
             first_entry = False
 
-        return file_database
+        return file_table
 
     def write_oligosets_to_yaml(
         self,
         attributes: list[str],
         top_n_sets: int,
         ascending: bool,
-        filename: str = "oligos",
+        filename: str = "oligosets",
         region_ids: list[str] = None,
     ):
         """Write the top N oligosets to a YAML file with specified attributes.
@@ -556,7 +579,7 @@ class OligoDatabase:
         :param region_ids: List of region IDs to include in the output. If None, all regions are included.
         :type region_ids: list[str], optional
         """
-        file_yaml = os.path.join(os.path.dirname(self.dir_output), filename)
+        file_yaml = os.path.join(os.path.dirname(self.dir_output), f"{filename}.yml")
 
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
         yaml_dict = {region_id: {} for region_id in region_ids}
@@ -599,7 +622,7 @@ class OligoDatabase:
 
         return file_yaml
 
-    def write_oligosets_to_table(self, foldername_out: str = "sets_of_oligos"):
+    def write_oligosets_to_table(self, foldername_out: str = "oligosets"):
         """Write oligo sets to individual TSV files.
 
         This function writes the oligo sets to individual TSV files, with each file representing the oligo sets
@@ -614,7 +637,7 @@ class OligoDatabase:
         Path(dir_oligosets).mkdir(parents=True, exist_ok=True)
 
         for region_id in self.oligosets.keys():
-            file_oligosets = os.path.join(dir_oligosets, f"{region_id}_oligosets.tsv")
+            file_oligosets = os.path.join(dir_oligosets, f"oligosets_{region_id}.tsv")
             self.oligosets[region_id].to_csv(file_oligosets, sep="\t", index=False)
 
         return dir_oligosets

@@ -422,12 +422,16 @@ class OligoSeqProbeDesigner:
             "GC_content",
             "TmNN",
             "num_targeted_transcripts",
+            "number_total_transcripts",
             "isoform_consensus",
             "length_selfcomplement",
             "DG_secondary_structure",
         ]
         oligo_database.write_oligosets_to_yaml(
-            attributes=attributes, top_n_sets=top_n_sets, ascending=True, filename="oligo_seq_probes.yml"
+            attributes=attributes, top_n_sets=top_n_sets, ascending=True, filename="oligo_seq_probesets"
+        )
+        oligo_database.write_database_to_table(
+            attributes=attributes, flatten_attribute=True, filename="oligo_seq_probes"
         )
 
 
