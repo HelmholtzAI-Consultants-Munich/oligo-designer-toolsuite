@@ -112,7 +112,7 @@ class OligoSequenceGenerator:
         with open(file_fasta_out, "w") as handle_fasta:
             for i, seq in enumerate(sequences_set):
                 handle_fasta.write(
-                    f">{name_sequences}::regiontype=random_sequence;region_id=random_sequence{i}\n{seq}\n"
+                    f">{name_sequences}::regiontype=random_sequence;region_id={name_sequences}_{i}\n{seq}\n"
                 )
         return file_fasta_out
 

@@ -3,13 +3,12 @@
 #######################
 
 ### General parameters
-### -----------------------------------------------
-n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
+n_jobs: 2 # number of cores used to run the pipeline
 dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # writes the oligo sequences after each step of the pipeline
+db_max_in_memory: 10 # number of regions that should be stored in cache. 10 is a good value for a 16GB RAM computer. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 
 ### Parameters for oligo sequences generation
-### -----------------------------------------------
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
 files_fasta_oligo_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
@@ -18,8 +17,7 @@ oligo_length_min: 26 #min length of oligos
 oligo_length_max: 30 #max length of oligos
 
 ### Parameters for the property filers
-### -----------------------------------------------
-## oligo sequence
+# oligo sequence
 GC_content_min: 45 # minimum GC content of oligos
 GC_content_max: 65 # maximum GC content of oligos
 Tm_min: 50 # minimum melting temperature of oligos
@@ -34,7 +32,6 @@ homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolym
 max_len_selfcomp: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
 
 ### Parameters for the specificity filters
-### -----------------------------------------------
 files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
@@ -42,8 +39,7 @@ cross_hybridization_alignment_method: blastn # options: blastn, bowtie
 hybridization_probability_alignment_method: blastn # options: blastn, bowtie
 hybridization_probability_threshold: 0.001 #the lower the threshold the more stringent the filter
 
-### Parameters for set selection
-### -----------------------------------------------
+### Parameters for the Oligo set selection
 GC_content_opt: 55 # max and min values are defiend above
 Tm_opt: 60 # max and min values are defiend above
 min_oligoset_size: 3 # minimum size of oligo sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
@@ -51,8 +47,7 @@ opt_oligoset_size: 5 # optimal size of oligo sets
 distance_between_oligos: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
 n_sets: 100 # Maximum number of sets to report
 
-### Parameters for final sequence design
-### -----------------------------------------------
+### Parameters for generation of output
 top_n_sets: 3 # maximum number of sets to report in oligo_seq_probes.yaml
 
 ############################
@@ -60,7 +55,6 @@ top_n_sets: 3 # maximum number of sets to report in oligo_seq_probes.yaml
 ############################
 
 ### Parameters for the specificity filters
-### -----------------------------------------------
 # balstn
 cross_hybridization_blastn_search_parameters:
   perc_identity: 80
@@ -84,15 +78,13 @@ cross_hybridization_bowtie_hit_parameters: # No hit parameters available current
 
 hybridization_probability_bowtie_search_parameters:
   -v: 3
-  --nofw: "" # this parameter is fixed, if reference is whole genome, consider using both strands (remove this parameter)
+  --nofw: "" # this parameter is fixed, if reference is whole genome, consider using "both"
 hybridization_probability_bowtie_hit_parameters: # No hit parameters available currently
 
 ### Parameters for the Oligo set selection
-### -----------------------------------------------
 max_graph_size: 5000
 
 ### Parameters for Melting Temperature
-### -----------------------------------------------
 # The melting temperature is used in 2 different stages (property filters and padlock detection oligo design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 Tm_parameters:

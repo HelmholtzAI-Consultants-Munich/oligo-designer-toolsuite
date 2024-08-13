@@ -13,15 +13,16 @@ readout_sequence_probs:
   G: 50
   T: 25
 readout_length: 20
+initial_num_sequences: 100000 # number of random sequences generated in the first step
 
 ### Parameters for the property filers, i.e. properties that the sequences should fulfill
-readout_GC_content_min: 40 # minimum GC content of readout probes
-readout_GC_content_max: 50 # maximum GC content of readout probes
-readout_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
+GC_content_min: 40 # minimum GC content of readout probes
+GC_content_max: 50 # maximum GC content of readout probes
+homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
   G: 3
 
 ### Parameters for the specificity filters
-readout_files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
@@ -32,9 +33,11 @@ probeset_size: 16 # size of probe sets
 ### ADVANCED PARAMETERS ###
 ############################
 
+
+
 ### Parameters for the specificity filters
 # Specificity filter with BlastN
-specificity_blastn_search_parameters:
+blastn_search_parameters:
   perc_identity: 80
   strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   word_size: 7
@@ -42,7 +45,7 @@ specificity_blastn_search_parameters:
   soft_masking: "false"
   max_target_seqs: 10
   max_hsps: 13
-specificity_blastn_hit_parameters:
+blastn_hit_parameters:
   coverage: 55 # can be turned into min_alignment_length
   # min_alignment_length: 11
 
@@ -61,3 +64,13 @@ cross_hybridization_blastn_hit_parameters:
 
 ### Parameters for the Oligo set selection
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
+
+### Parameter for the codebook generation
+# defaults to the MDH4 standard
+n_bits: 16 # number of bits per barcode
+min_hamming_distance: 4 # minimum hamming distance between barcodes
+hamming_weight: 4 # number of bits set to 1 in the barcode
+channels_ids:
+  - Alexa488
+  - Cy3b
+  - Alexa647

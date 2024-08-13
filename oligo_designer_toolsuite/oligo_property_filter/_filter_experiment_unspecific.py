@@ -325,31 +325,63 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         return False
 
 
-class HomodimerFilter(PropertyFilterBase):
-    """A filter to evaluate the potential formation of homodimers. A homodimer is formed when two strands of DNA
-    bind to each other due to complementary sequences. This filter calculates the longest self-complementary
-    sequence within a given DNA sequence and compares it against a maximum allowable length to prevent homodimer
-    formation.
+class SelfComplementFilter(PropertyFilterBase):
+    """A filter to evaluate the potential formation of self-complementary sequences.
 
-    :param max_len_selfcomp: The maximum length of self-complementary sequence allowed to avoid homodimer formation.
-    :type max_len_selfcomp: int
+    This filter calculates the longest self-complementary sequence within a given DNA sequence
+    and compares it against a maximum allowable length.
+
+    :param max_len_selfcomplement: The maximum length of self-complementary sequence allowed.
+    :type max_len_selfcomplement: int
     """
 
-    def __init__(self, max_len_selfcomp: int):
-        """Constructor for the HomodimerFilter class."""
+    def __init__(self, max_len_selfcomplement: int):
+        """Constructor for the SelfComplementFilter class."""
         super().__init__()
-        self.max_len_selfcomp = max_len_selfcomp
+        self.max_len_selfcomplement = max_len_selfcomplement
 
     def apply(self, sequence: Seq):
-        """Applies the homodimer filter to a DNA sequence to evaluate its potential for homodimer formation.
+        """Applies the self complement filter to a DNA sequence.
 
-        :param sequence: The DNA sequence to be checked for homodimer formation potential.
+        :param sequence: The DNA sequence to be checked.
         :type sequence: Seq
         :return: True if the sequence meets the criteria, False otherwise.
         :rtype: bool
         """
-        len_selfcomp = OligoAttributes._calc_length_selfcomplement(sequence)
-        if len_selfcomp <= self.max_len_selfcomp:
+        len_selfcomp = OligoAttributes._calc_length_complement(sequence, sequence[::-1])
+        if len_selfcomp <= self.max_len_selfcomplement:
+            return True
+        return False
+
+
+class ComplementFilter(PropertyFilterBase):
+    """A filter to evaluate the potential formation of complementary sequences between two DNA sequences.
+
+    This filter calculates the longest complementary sequence between two DNA sequences and compares it against
+    a maximum allowable length.
+
+    :param comparison_sequence: The DNA sequence to check against.
+    :type comparison_sequence: Seq
+    :param max_len_complement: The maximum length of complementary sequence allowed.
+    :type max_len_complement: int
+    """
+
+    def __init__(self, comparison_sequence: Seq, max_len_complement: int):
+        """Constructor for the ComplementFilter class."""
+        super().__init__()
+        self.max_len_complement = max_len_complement
+        self.comparison_sequence = comparison_sequence
+
+    def apply(self, sequence: Seq):
+        """Applies the complement filter to a pair of DNA sequences.
+
+        :param sequence: The DNA sequence to be checked.
+        :type sequence: Seq
+        :return: True if the sequence meets the criteria, False otherwise.
+        :rtype: bool
+        """
+        len_complement = OligoAttributes._calc_length_complement(sequence, self.comparison_sequence)
+        if len_complement <= self.max_len_complement:
             return True
         return False
 
