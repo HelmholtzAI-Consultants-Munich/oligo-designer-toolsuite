@@ -36,6 +36,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    HomogeneousPropertyOligoSetGenerator,
     OligosetGeneratorIndependentSet,
     heuristic_selection_independent_set,
 )
@@ -614,7 +615,7 @@ class MerfishReadoutProbeDesigner:
 
         return oligo_database, file_database
 
-    @pipeline_step_basic(step_name="Property Filters")
+    @pipeline_step_basic(step_name="Readout Probes - Property Filters")
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
@@ -668,7 +669,7 @@ class MerfishReadoutProbeDesigner:
 
         return oligo_database, file_database
 
-    @pipeline_step_basic(step_name="Specificty Filters")
+    @pipeline_step_basic(step_name="Readout Probes - Specificty Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
@@ -749,6 +750,54 @@ class MerfishReadoutProbeDesigner:
 
         return oligo_database, file_database
 
+    @pipeline_step_basic(step_name="Readout Probes - Set Selection")
+    def create_readout_probe_sets(
+        self,
+        oligo_database: OligoDatabase,
+        n_sets: int,
+        set_size: int,
+        n_combinations: int,
+        homogeneous_properties_weights: dict,
+    ):
+        """
+        Creates readout probe sets from an oligo database using specified parameters for set size and homogeneous property weights.
+        It calculates TmNN and GC content for the oligos, generates the sets with homogeneous properties, and applies them to the database.
+
+        :param oligo_database: The oligo database object containing oligo sequences.
+        :type oligo_database: OligoDatabase
+        :param n_sets: Number of readout probe sets to generate.
+        :type n_sets: int
+        :param set_size: Size of each readout probe set.
+        :type set_size: int
+        :param n_combinations: Number of combinations to try.
+        :type n_combinations: int
+        :param homogeneous_properties_weights: Dictionary specifying the weights for homogeneous properties.
+        :type homogeneous_properties_weights: dict
+        :return: The updated oligo database with generated readout probe sets.
+        :rtype: OligoDatabase
+        """
+
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_TmNN(oligo_database, "oligo", Tm_parameters={})
+        oligo_database = oligo_attributes.calculate_GC_content(oligo_database, "oligo")
+
+        set_generator = HomogeneousPropertyOligoSetGenerator(
+            set_size=set_size, properties=homogeneous_properties_weights
+        )
+        oligo_database = set_generator.apply(
+            oligo_database, n_sets=n_sets, n_combinations=n_combinations, n_jobs=self.n_jobs
+        )
+
+        # write the intermediate result in a file
+        if self.write_intermediate_steps:
+            file_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
+            file_probesets = oligo_database.write_oligosets_to_table()
+        else:
+            file_database = ""
+            file_probesets = ""
+
+        return oligo_database, file_database, file_probesets
+
     def make_barcode(self, raw_barcode: list, n_bits: int):
         """Creates the actual barcode from a list containing the indices of the "one" bits.
         :param raw_barcode: list of the "one" bits in the barcode.
@@ -812,20 +861,20 @@ class MerfishReadoutProbeDesigner:
             sequence_type="oligo", sequence_to_upper=False
         )
         assert (
-            len(readout_probes.database) >= n_bits
-        ), f"There are less readout probes ({len(readout_probes.database)}) than bits ({n_bits})."
+            len(readout_probes) >= n_bits
+        ), f"There are less readout probes ({len(readout_probes)}) than bits ({n_bits})."
         table = pd.DataFrame(
             columns=["bit", "channel", "readout_probe_id", "readout_probe_sequence"],
             index=list(range(n_bits)),
         )
         n_channels = len(channels_ids)
         channel = 0
-        for i, (readout_probe_id, readout_probe_features) in enumerate(readout_probes.database.items()):
+        for i, (readout_probe_id, readout_probe_sequence) in enumerate(readout_probes.items()):
             table.iloc[i] = [
                 i,
                 channels_ids[channel],
                 readout_probe_id,
-                readout_probe_features["oligo"],
+                readout_probe_sequence,
             ]
             channel = (channel + 1) % n_channels
             if i >= n_bits - 1:
@@ -848,26 +897,28 @@ class MerfishReadoutProbeDesigner:
         cross_hybridization_blastn_search_parameters: dict,
         cross_hybridization_blastn_hit_parameters: dict,
         region_ids: List[str],
-        n_bits: int,
+        set_size: int,
+        n_sets: int,
+        n_combinations: int,
         min_hamming_dist: int,
         hamming_weight: int,
         channels_ids: list,
     ):
-        readout_probes, file_database = self.create_oligo_database(
+        readout_probes_database, file_database = self.create_oligo_database(
             oligo_length=oligo_length,
             readout_sequence_probs=readout_sequence_probs,
             initial_num_sequences=initial_num_sequences,
         )
 
-        readout_probes, file_database = self.filter_by_property(
-            oligo_database=readout_probes,
+        readout_probes_database, file_database = self.filter_by_property(
+            oligo_database=readout_probes_database,
             GC_content_min=GC_content_min,
             GC_content_max=GC_content_max,
             homopolymeric_base_n=homopolymeric_base_n,
         )
 
-        readout_probes, file_database = self.filter_by_specificity(
-            oligo_database=readout_probes,
+        readout_probes_database, file_database = self.filter_by_specificity(
+            oligo_database=readout_probes_database,
             files_fasta_reference_database=files_fasta_reference_database,
             blastn_search_parameters=blastn_search_parameters,
             blastn_hit_parameters=blastn_hit_parameters,
@@ -875,17 +926,25 @@ class MerfishReadoutProbeDesigner:
             cross_hybridization_blastn_hit_parameters=cross_hybridization_blastn_hit_parameters,
         )
 
+        readout_probes_database, file_database, file_probesets = self.create_readout_probe_sets(
+            oligo_database=readout_probes_database,
+            n_sets=n_sets,
+            set_size=set_size,
+            n_combinations=n_combinations,
+            homogeneous_properties_weights={},
+        )
+
         codebook = self.generate_codebook(
             n_regions=len(region_ids),
-            n_bits=n_bits,
+            n_bits=set_size,
             min_hamming_dist=min_hamming_dist,
             hamming_weight=hamming_weight,
         )
 
         readout_probe_table = self.create_readout_probes_table(
-            readout_probes=readout_probes,
+            readout_probes_database=readout_probes_database,
             channels_ids=channels_ids,
-            n_bits=n_bits,
+            n_bits=set_size,
         )
 
         codebook.index = region_ids + [
@@ -1269,7 +1328,9 @@ def main():
             ],
             # region_ids=list(oligo_database.database.keys()),
             region_ids=["AARS1", "DECR2", "PRR35"],
-            n_bits=config_readout["n_bits"],
+            set_size=config_readout["probeset_size"],
+            n_sets=config_readout["n_sets"],
+            n_combinations=config_readout["n_combinations"],
             min_hamming_dist=config_readout["min_hamming_distance"],
             hamming_weight=config_readout["hamming_weight"],
             channels_ids=config_readout["channels_ids"],
