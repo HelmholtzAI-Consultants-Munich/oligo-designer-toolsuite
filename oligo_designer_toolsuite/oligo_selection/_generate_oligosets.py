@@ -3,7 +3,10 @@
 ############################################
 
 import gc
-from typing import Callable
+import itertools
+import random
+from math import comb
+from typing import Callable, Dict, List, Tuple
 
 import networkx as nx
 import pandas as pd
@@ -120,12 +123,14 @@ class OligosetGeneratorIndependentSet:
 
         :param oligo_database: The database of oligos to process.
         :type oligo_database: OligoDatabase
+        :param region_id: The ID of the region to process.
+        :type region_id: str
         :param sequence_type: The type of sequences being used, must match one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
         :param n_sets: The number of oligo sets to attempt to generate for the region.
         :type n_sets: int
-        :return: A tuple containing the updated database region with selected oligos and a DataFrame of the oligo sets.
-        :rtype: tuple
+        :return: None
+        :rtype: None
         """
 
         # Score oligos and create a pd series
@@ -135,7 +140,7 @@ class OligosetGeneratorIndependentSet:
             sequence_type=sequence_type,
         )
 
-        # add a entry score to the oligos
+        # sort oligos by score
         oligos_scores.sort_values(ascending=self.ascending, inplace=True)
 
         # hard limit on the number of oligos
@@ -146,10 +151,14 @@ class OligosetGeneratorIndependentSet:
                 oligos_scores.drop(oligo_id, inplace=True)
 
         # create the overlapping matrix
-        overlapping_matrix = self._get_overlapping_matrix(oligo_database=oligo_database, region_id=region_id)
+        overlapping_matrix, overlapping_matrix_indices = self._get_overlapping_matrix(
+            oligo_database=oligo_database, region_id=region_id
+        )
 
         # create the set
-        oligosets = self._get_non_overlapping_sets(overlapping_matrix, oligos_scores, n_sets)
+        oligosets = self._get_non_overlapping_sets(
+            overlapping_matrix, overlapping_matrix_indices, oligos_scores, n_sets
+        )
 
         # Remove all oligos from database that are not part of oligosets
         oligos_keep = set()
@@ -185,13 +194,17 @@ class OligosetGeneratorIndependentSet:
         """
 
         def _get_overlap(seq1_intervals, seq2_intervals):
-            for a in seq1_intervals:
-                for b in seq2_intervals:
-                    if min(a[1], b[1]) - max(a[0], b[0]) >= -self.distance_between_oligos:
-                        return True
-            return False
+            # Determine if two ligos overlap based on a distance value
+            return any(
+                min(a[1], b[1]) - max(a[0], b[0]) >= -self.distance_between_oligos
+                for a in seq1_intervals
+                for b in seq2_intervals
+            )
 
-        oligos_indices = list(oligo_database.database[region_id].keys())  # Keep track of the indices
+        # Keep track of the indices
+        overlapping_matrix_ids = list(oligo_database.database[region_id].keys())
+
+        # Get all intervals (start, end)
         intervals = [
             [
                 [start[0], end[0]]
@@ -200,40 +213,45 @@ class OligosetGeneratorIndependentSet:
                     oligo_database.database[region_id][oligo_id]["end"],
                 )
             ]
-            for oligo_id in oligos_indices
+            for oligo_id in overlapping_matrix_ids
         ]
 
-        # Create a sparse matrix
-        n_oligos = len(intervals)
+        # Create a sparse overlap matrix
+        n_oligos = len(overlapping_matrix_ids)
         overlapping_matrix = lil_matrix((n_oligos, n_oligos), dtype=int)
 
+        # Calculate only upper triangle matrix since the matrix is symmetric
         for i in range(n_oligos):
             for j in range(i + 1, n_oligos):
                 if _get_overlap(intervals[i], intervals[j]):
                     overlapping_matrix[i, j] = 1
 
+        # Fill values of lower triangle
         overlapping_matrix = overlapping_matrix.maximum(overlapping_matrix.transpose())
-        overlapping_matrix.setdiag(1)  # Set diagonal elements to 1
+        # Set diagonal elements to 1 as oligos always overlap with themselves
+        overlapping_matrix.setdiag(1)
 
         # Create a sparse matrix containing only ones
         ones_matrix = lil_matrix((n_oligos, n_oligos), dtype=int)
         ones_matrix[:, :] = 1
 
-        # Invert the matrix by subtracting the overlapping matrix from the ones matrix
+        # Invert theoverlap matrix by subtracting the overlapping matrix from the ones matrix
         overlapping_matrix = ones_matrix - overlapping_matrix
+        overlapping_matrix = overlapping_matrix.tocsr()
 
-        overlapping_matrix = pd.DataFrame(
-            data=overlapping_matrix.toarray(),
-            columns=oligos_indices,
-            index=oligos_indices,
-            dtype=int,
-        )
+        # overlapping_matrix = pd.DataFrame(
+        #    data=overlapping_matrix.toarray(),
+        #    columns=oligos_indices,
+        #    index=oligos_indices,
+        #    dtype=int,
+        # )
 
-        return overlapping_matrix
+        return overlapping_matrix, overlapping_matrix_ids
 
     def _get_non_overlapping_sets_new(
         self,
-        overlapping_matrix: pd.DataFrame,
+        overlapping_matrix: csr_matrix,
+        overlapping_matrix_ids: list,
         oligos_scores: pd.Series,
         n_sets: int,
     ):
@@ -299,28 +317,31 @@ class OligosetGeneratorIndependentSet:
             return bron_kerbosch_with_pivot(G, set(), P, set(), n)
 
         # Represent overlap matrix as graph
-        G = nx.convert_matrix.from_numpy_array(overlapping_matrix.values)
-        G = nx.relabel_nodes(G, {i: overlapping_matrix.index[i] for i in range(len(oligos_scores.index))})
+        G = nx.from_scipy_sparse_array(overlapping_matrix)
+        G = nx.relabel_nodes(
+            G,
+            {i: overlapping_matrix_ids[i] for i in range(len(overlapping_matrix_ids))},
+        )
 
         # First check if there are no cliques with n oligos
         n = self.opt_oligoset_size
 
         biggest_clique = find_clique_of_size_n(G, n)
-        n_max = len(biggest_clique)
+        len(biggest_clique)
         # for _ in range(n_attempts):
         #     biggest_clique = nx.approximation.max_clique(G)
         #     n_max = len(biggest_clique)
         #     if n_max >= n:
         #         break
 
-        if n_max < n:
-            if n_max <= self.min_oligoset_size:  # in this case we don't need to compute the sets
-                return None
-            else:
-                n = n_max
+        if not clique_init:
+            # if no clique with min_oligoset_size was found we don't need to compute the sets
+            return None
+
+        n = min(n, len(clique))
+        oligoset_init, oligoset_init_scores = self.set_scoring.apply(oligos_scores.loc[clique_init], n)
 
         # if we have an heuristic apply it
-        heuristic_oligoset = None
         if self.heuristic_selection is not None and n == self.opt_oligoset_size:
             # apply the heuristic
             oligos_scores, heuristic_set = self.heuristic_selection(
@@ -331,18 +352,13 @@ class OligosetGeneratorIndependentSet:
         # recompute the cliques
         cliques = _find_cliques_of_size_n_and_more(G, n)
 
-        # Search the best set
-        if heuristic_oligoset:
-            oligosets = [
-                list(heuristic_oligoset) + list(heuristic_scores.values())
-            ]  # add the heuristic best set, if is in the best n-sets then it will be kept
-        else:
-            oligosets = []  # initialize the list of sets
+        # Initialize oligoset results table
+        oligosets = [list(oligoset_init) + list(oligoset_init_scores.values())]
 
         # Note: Search could be further optimised by iteratively throwing out oligos with worse scores then current best set
         for count, clique in enumerate(cliques):
             # Limit the number of combinations we iterate through
-            if count > 100000:  # set a meaningful value
+            if count > 100000:
                 break
             if len(clique) >= n:
                 # Get oligo_ids of clique, maybe create a function
@@ -352,8 +368,11 @@ class OligosetGeneratorIndependentSet:
 
         # put the sets in a dataframe
         if len(oligosets) > 0:
+            oligosets_columns = [f"oligo_{i}" for i in range(n)] + [
+                score for score in oligoset_init_scores.keys()
+            ]
             oligosets = pd.DataFrame(
-                columns=[f"oligo_{i}" for i in range(n)] + [score for score in oligoset_scores.keys()],
+                columns=oligosets_columns,
                 data=oligosets,
             )
 
@@ -476,3 +495,135 @@ class OligosetGeneratorIndependentSet:
             return oligosets
         else:
             return None
+
+
+class HomogeneousPropertyOligoSetGenerator:
+    """
+    A generator class for creating oligo sets that ensure homogeneity in specified properties.
+
+    This class generates sets of oligos by selecting combinations with the lowest weighted sum
+    of variances for specified properties, which ensures homogeneity within each set.
+
+    :param set_size: The size of each oligo set.
+    :type set_size: int
+    :param properties: A dictionary where the key is the property name and the value is the weight for that property.
+    :type properties: dict
+    """
+
+    def __init__(self, set_size: int, properties: Dict[str, float]) -> None:
+        """Constructor for the HomogeneousPropertyOligoSetGenerator class."""
+        self.set_size = set_size
+        self.properties = properties
+
+    def apply(
+        self, oligo_database: OligoDatabase, n_sets: int = 1, n_combinations: int = 1000, n_jobs: int = 1
+    ) -> OligoDatabase:
+        """
+        Applies the oligo set generation process to an entire oligo database and returns an updated database with selected best `n_sets` oligo sets.
+        Oligosets are stored in the class attribute `oligosets`, which is a dictionary with region names as keys and oligoset dataframes as values.
+        The structure of the pandas.DataFrame is the following:
+
+
+        +-------------+----------+----------+----------+-------+----------+-------------+
+        | oligoset_id | oligo_0  | oligo_1  | oligo_2  |  ...  | oligo_n  | set_score   |
+        +-------------+----------+----------+----------+-------+----------+-------------+
+        | 0           | AGRN_184 | AGRN_133 | AGRN_832 |  ...  | AGRN_706 | 0.3445      |
+        +-------------+----------+----------+-----+----+-------+----------+-------------+
+
+        :param oligo_database: The oligo database to generate sets from.
+        :type oligo_database: OligoDatabase
+        :param n_sets: Number of sets to generate for each region, defaults to 1.
+        :type n_sets: int, optional
+        :param n_combinations: Number of random combinations to generate, defaults to 1000.
+        :type n_combinations: int, optional
+        :param n_jobs: Number of parallel jobs to run, defaults to 1.
+        :type n_jobs: int, optional
+        :return: The updated oligo database with generated oligo sets.
+        :rtype: OligoDatabase
+        """
+
+        region_ids = list(oligo_database.database.keys())
+        with joblib_progress(description="Find Oligosets", total=len(region_ids)):
+            Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
+                delayed(self._get_oligo_sets_for_region)(oligo_database, region_id, n_sets, n_combinations)
+                for region_id in region_ids
+            )
+
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="oligoset generation")
+        return oligo_database
+
+    def _get_oligo_sets_for_region(
+        self, oligo_database: OligoDatabase, region_id: str, n_sets: int, n_combinations: int
+    ) -> None:
+        """
+        Generate oligo sets for a specific region.
+
+        This method generates all possible combinations of oligos for a given region and scores them based on
+        the specified properties. The top N sets with the lowest weighted sum of variances are selected.
+
+        :param oligo_database: The oligo database to generate sets from.
+        :type oligo_database: OligoDatabase
+        :param region_id: The ID of the region to generate oligo sets for.
+        :type region_id: str
+        :param n_sets: Number of sets to generate for the region.
+        :type n_sets: int
+        :param n_combinations: Number of random combinations to generate.
+        :type n_combinations: int
+        """
+
+        region_dict = oligo_database.database[region_id]
+        oligo_df = pd.DataFrame.from_dict(region_dict, orient="index")
+
+        # # check if all properties in self.properties are in oligo_df columns
+        for property in self.properties:
+            if property not in oligo_df.columns:
+                raise ValueError(
+                    f"Property '{property}' is not present in oligo database please calculate it first using oligo_designer_toolsuite.OligoAttributes()."
+                )
+
+        combinations = self._generate_random_combinations(oligo_df.index, self.set_size, n_combinations)
+
+        scored_combinations = [
+            self._score_combination(oligo_df, list(combination)) for combination in combinations
+        ]
+        sorted_combinations = sorted(scored_combinations, key=lambda x: x[1], reverse=False)
+        best_combinations = [combination for combination in sorted_combinations[:n_sets]]
+
+        rows = [[idx] + oligos + [score] for idx, (oligos, score) in enumerate(best_combinations)]
+        columns = ["oligoset_id"] + [f"oligo_{i}" for i in range(self.set_size)] + ["set_score"]
+
+        oligo_database.oligosets[region_id] = pd.DataFrame(rows, columns=columns)
+
+    def _score_combination(self, oligo_df: pd.DataFrame, combination: List[str]) -> Tuple[List[str], float]:
+        """
+        Score a combination of oligos based on the specified properties.
+
+        This method calculates the score for a combination of oligos by computing the weighted sum of the variances
+        of the specified properties. The lower the score, the more homogeneous the set is with respect to the
+        specified properties.
+
+        :param oligo_df: The DataFrame containing oligo information.
+        :type oligo_df: pd.DataFrame
+        :param combination: A list of oligo IDs representing a combination.
+        :type combination: list
+        :return: A tuple containing the combination and its score.
+        :rtype: tuple
+        """
+
+        oligo_set = oligo_df.loc[combination]
+        score = sum([oligo_set[property].var() * self.properties[property] for property in self.properties])
+        return combination, score
+
+    @staticmethod
+    def _generate_random_combinations(arr, combination_size, number_of_combinations):
+        total_combinations = comb(len(arr), combination_size)
+
+        if total_combinations <= number_of_combinations:
+            return list(itertools.combinations(arr, combination_size))
+
+        seen_combinations = set()
+        while len(seen_combinations) < number_of_combinations:
+            combination = tuple(sorted(random.sample(list(arr), combination_size)))
+            if combination not in seen_combinations:
+                seen_combinations.add(combination)
+        return list(seen_combinations)

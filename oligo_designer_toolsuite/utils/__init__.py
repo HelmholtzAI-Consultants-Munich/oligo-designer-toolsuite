@@ -11,8 +11,9 @@ Functions for processing databases:
 - collapse_info_for_duplicated_sequences: Collapses information for duplicated sequences
   in a genomic database.
 - filter_dabase_for_region: Filters a genomic database for sequences overlapping a given region.
-- format_oligo_info: Format the entries of an oligo_info dictionary to be list of lists.
+- format_oligo_attributes: Format the entries of an oligo_attributes dictionary to be list of lists.
 - check_if_region_in_database: Checks if specified regions exist in the provided database.
+- flatten_attribute_list: Flatten a nested list of attributes into a single list.
 
 Functions for processing sequences:
 - get_sequence_from_annotation: Retrieves sequences based on genomic coordinates from a BED file.
@@ -36,9 +37,10 @@ from ._checkers import (
 )
 from ._database_processor import (
     check_if_region_in_database,
-    collapse_info_for_duplicated_sequences,
+    collapse_attributes_for_duplicated_sequences,
     filter_dabase_for_region,
-    format_oligo_info,
+    flatten_attribute_list,
+    format_oligo_attributes,
     merge_databases,
 )
 from ._sequence_parser import FastaParser, GffParser
@@ -53,10 +55,11 @@ __all__ = [
     "check_if_list_of_lists",
     "check_tsv_format",
     "check_if_region_in_database",
-    "collapse_info_for_duplicated_sequences",
+    "collapse_attributes_for_duplicated_sequences",
     "filter_dabase_for_region",
-    "format_oligo_info",
+    "format_oligo_attributes",
     "get_complement_regions",
     "get_sequence_from_annotation",
     "merge_databases",
+    "flatten_attribute_list",
 ]

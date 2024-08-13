@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import subprocess
 import warnings
 from abc import abstractmethod
 from typing import List, Union
@@ -10,7 +11,6 @@ from typing import List, Union
 import numpy as np
 import pandas as pd
 from Bio import SeqIO
-from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
@@ -95,12 +95,16 @@ class BlastNFilter(AlignmentSpecificityFilter):
         """
         ## Create blast index
         filename_reference_index = os.path.basename(file_reference)
-        cmd = NcbimakeblastdbCommandline(
-            input_file=file_reference,
-            dbtype="nucl",
-            out=os.path.join(self.dir_output, filename_reference_index),
+
+        cmd = (
+            "makeblastdb -dbtype nucl"
+            + " -out "
+            + os.path.join(self.dir_output, filename_reference_index)
+            + " -in "
+            + file_reference
         )
-        out, err = cmd()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
+
         return filename_reference_index
 
     def _run_search(
@@ -136,13 +140,24 @@ class BlastNFilter(AlignmentSpecificityFilter):
         )
         file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_name}.txt")
 
-        cmd = NcbiblastnCommandline(
-            query=file_oligo_database,
-            out=file_blast_results,
-            db=os.path.join(self.dir_output, file_index),
-            **self.search_parameters,
+        cmd_parameters = ""
+        for parameter, value in self.search_parameters.items():
+            # add quotes if list of strings seperated by whitespace
+            value = f'"{value}"' if " " in str(value) else value
+            cmd_parameters += f" -{parameter} {value}"
+
+        cmd = (
+            "blastn"
+            + " -query "
+            + file_oligo_database
+            + " -out "
+            + file_blast_results
+            + " -db "
+            + os.path.join(self.dir_output, file_index)
+            + " "
+            + cmd_parameters
         )
-        out, err = cmd()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
 
         # read the reuslts of the blast seatch
         blast_results = self._read_search_output(
@@ -496,6 +511,10 @@ class BlastNSeedregionFilterBase(BlastNFilter):
             oligo_database=oligo_database, region_ids=region_ids, search_results=search_results
         )
 
+        # if seedregion not given
+        search_results.seedregion_start.fillna(0, inplace=True)
+        search_results.seedregion_end.fillna(search_results.query_length, inplace=True)
+
         if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
@@ -586,8 +605,8 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute("seedregion_start"),
-            right=oligo_database.get_oligo_attribute("seedregion_end"),
+            left=oligo_database.get_oligo_attribute("seedregion_start", region_ids),
+            right=oligo_database.get_oligo_attribute("seedregion_end", region_ids),
             on="oligo_id",
         )
         search_results = pd.merge(
@@ -658,8 +677,8 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute("seedregion_start"),
-            right=oligo_database.get_oligo_attribute("seedregion_end"),
+            left=oligo_database.get_oligo_attribute("seedregion_start", region_ids),
+            right=oligo_database.get_oligo_attribute("seedregion_end", region_ids),
             on="oligo_id",
         )
         search_results = pd.merge(

@@ -96,7 +96,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         filename_reference_index = os.path.basename(file_reference)
 
         cmd = (
-            "bowtie-build --quiet --offrate 4"
+            "bowtie-build --offrate 4"
             + " --threads "
             + str(n_jobs)
             + " -f "
@@ -104,7 +104,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             + " "
             + filename_reference_index
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
         return filename_reference_index
 
     def _run_search(
@@ -146,7 +146,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             cmd_parameters += f" {parameter} {value}"
 
         cmd = (
-            "bowtie --quiet"
+            "bowtie"
             + " -x "
             + file_index
             + " -f"  # fasta file is input
@@ -157,7 +157,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             + " "
             + file_bowtie_results
         )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
+        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
 
         # read the reuslts of the bowtie search
         bowtie_results = self._read_search_output(

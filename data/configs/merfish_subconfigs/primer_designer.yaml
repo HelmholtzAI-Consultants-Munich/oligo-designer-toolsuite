@@ -23,6 +23,8 @@ r_primer_sequence: TAATACGACTCACTATAGGG # T7 promoter sequence
 # Forward primer
 f_primer_GC_content_min: 50 # minimum GC content of forward primer
 f_primer_GC_content_max: 65 # maximum GC content of forward primer
+f_primer_GC_clamp_n_bases: 2 # The number of bases from the 3' end of the sequence to check for the presence of G or C.
+f_primer_GC_clamp_nGC: 1 # The minimum number of G or C bases at the 3' end.
 f_primer_Tm_min: 60 # minimum melting temperature of forward primer
 f_primer_Tm_max: 65 # maximum melting temperature of forward primer
 f_primer_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base

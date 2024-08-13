@@ -3,9 +3,9 @@
 ############################################
 
 import os
-import pandas as pd
+from typing import List
 
-from typing import List, Union
+import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
@@ -55,7 +55,7 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         alignment_method: AlignmentSpecificityFilter,
         threshold: float,
         ai_filter_path: str = None,
-        filter_name: str = "ai_filter",
+        filter_name: str = "hybridization_probability_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the HybridizationProbabilityFilter class."""
@@ -101,7 +101,8 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
 
         # run search in parallel for each region
         region_ids = list(oligo_database.database.keys())
-        with joblib_progress(description=self.filter_name, total=len(region_ids)):
+        name = " ".join(string.capitalize() for string in self.filter_name.split("_"))
+        with joblib_progress(description=f"Specificity Filter: {name}", total=len(region_ids)):
             Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._apply_region)(
                     sequence_type=sequence_type,
@@ -222,6 +223,6 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
                 "reference_sequence",
                 "reference_strand",
             ]
-            self.alignment_method.search_parameters["outfmt"] = (
-                "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
-            )
+            self.alignment_method.search_parameters[
+                "outfmt"
+            ] = "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"

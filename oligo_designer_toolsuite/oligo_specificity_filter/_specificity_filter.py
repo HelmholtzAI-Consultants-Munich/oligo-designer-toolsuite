@@ -58,6 +58,6 @@ class SpecificityFilter:
             oligo_database = specificity_filter.apply(
                 sequence_type, oligo_database, reference_database, n_jobs
             )
+            oligo_database.remove_regions_with_insufficient_oligos("Specificity Filters")
 
-        oligo_database.remove_regions_with_insufficient_oligos("Specificity Filters")
         return oligo_database

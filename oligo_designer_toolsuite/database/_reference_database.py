@@ -59,7 +59,6 @@ class ReferenceDatabase:
         :type database_overwrite: bool, optional
         """
         if database_overwrite:
-            warnings.warn("Overwriting database!")
             self.database = []
 
         files_fasta = check_if_list(files_fasta)

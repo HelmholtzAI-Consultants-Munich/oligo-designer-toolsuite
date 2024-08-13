@@ -2,9 +2,9 @@
 # imports
 ############################################
 
-import networkx as nx
 import numpy as np
 import pandas as pd
+from scipy.sparse import csr_matrix
 
 ############################################
 # Heuristic Selection Methods
@@ -12,11 +12,13 @@ import pandas as pd
 
 
 def heuristic_selection_independent_set(
+    oligoset_init: list,
     oligos_scores: pd.Series,
-    overlapping_matrix: pd.DataFrame,
+    overlapping_matrix: csr_matrix,
+    overlapping_matrix_ids: list,
     n_oligo: int,
     ascending: bool,
-    n_trials=100,
+    n_trials: int = 100,
 ):
     """
     This method empirically finds an optimal set of non-overlapping oligos based on their scores. It iteratively
@@ -37,48 +39,41 @@ def heuristic_selection_independent_set(
     :rtype: tuple(dict, pd.Series, pd.Series)
     """
 
-    # sort the oligos by their score
-    print("ASCENDING: ", ascending)
-    oligos_sorted = oligos_scores.sort_values(ascending=ascending)
-    oligo_ids_sorted = oligos_sorted.index.tolist()
+    # Sort the oligos by their score
+    oligo_ids_sorted = oligos_scores.sort_values(ascending=ascending).index.to_list()
 
-    # overlapping matrix must have a consistent order
-    mat_sorted = overlapping_matrix.loc[oligo_ids_sorted, oligo_ids_sorted].values
+    # Sort overlap matrix by oligo scores, i.e. best performing oligo at first entry
+    overlapping_matrix_indices = [overlapping_matrix_ids.index(oligo_id) for oligo_id in oligo_ids_sorted]
+    overlapping_matrix_sorted = overlapping_matrix[overlapping_matrix_indices, :][
+        :, overlapping_matrix_indices
+    ]
 
-    # Represent overlap matrix as graph
-    G = nx.convert_matrix.from_numpy_array(mat_sorted)
-    # First check if there are no cliques with n oligos
-    cliques = nx.algorithms.clique.find_cliques(G)
-
-    # initialize best_idx_set with arbitrary set of non-overlapping oligos with minimum n_oligo oligos
-    for clique in cliques:
-        if len(clique) >= n_oligo:
-            best_idx_set = clique[:n_oligo]
-            break
-
-    # initialize max_score with score from set chosen above
-    max_score = np.max(oligos_sorted.values[best_idx_set])
+    # Initialize max_score with score from initial oligoset
+    best_oligoset = oligoset_init
+    best_oligoset_max_score = oligos_scores.loc[oligoset_init].max()
 
     for first_idx in range(min(len(oligo_ids_sorted), n_trials)):
-        # use the integer index because the matric is a np array
-        set_idxs = np.array([first_idx])
+        # Use the integer index because the matrix is converted to np array
+        oligoset_idxs = np.array([first_idx])
         for _ in range(n_oligo - 1):
-            # find first oligo in sorted array that is not overlapping with any selected oligo
-            no_overlap = np.all(mat_sorted[set_idxs], axis=0)
+            # Find first oligo in sorted array that is not overlapping with any selected oligo
+            no_overlap = np.all(overlapping_matrix_sorted[oligoset_idxs].toarray(), axis=0)
+            # Ensure not to select already selected oligos
+            # no_overlap[oligoset_idxs] = False
+            # Add the first entry withou overlap to set, i.e. the next oligo with the best score
             if np.any(no_overlap):
-                set_idxs = np.append(set_idxs, np.where(no_overlap)[0][0])
+                oligoset_idxs = np.append(oligoset_idxs, np.where(no_overlap)[0][0])
             else:
                 break
-        if len(set_idxs) == n_oligo:
-            score = np.max(oligos_sorted.values[set_idxs])
-            if score < max_score:
-                max_score = score
-                best_idx_set = set_idxs
-    best_set = oligos_sorted.iloc[best_idx_set]
 
-    for oligo_id in oligos_scores.index:
-        if oligos_scores[oligo_id] > max_score:
-            # delete the oligo
-            oligos_scores.drop(oligo_id, inplace=True)
+        # If enough non overlapping oligos are found and score is lower than existing set, replace existing with new set
+        if len(oligoset_idxs) == n_oligo:
+            oligoset = [oligo_ids_sorted[idx] for idx in oligoset_idxs]
+            oligoset_max_score = oligos_scores.loc[oligoset].max()
+            if oligoset_max_score < best_oligoset_max_score:
+                best_oligoset_max_score = oligoset_max_score
+                best_oligoset = oligoset
 
-    return oligos_scores, best_set
+    oligos_scores = oligos_scores[oligos_scores <= best_oligoset_max_score]
+
+    return best_oligoset, oligos_scores

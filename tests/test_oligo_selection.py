@@ -7,6 +7,8 @@ import shutil
 import unittest
 
 import pandas as pd
+
+from scipy.sparse import csr_matrix
 from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -91,9 +93,16 @@ class TestOverlapMatrix(unittest.TestCase):
                 "A_1": {"start": [[20], [53]], "end": [[25], [58]]},
             }
         }
-        computed_matrix = self.oligoset_generator._get_overlapping_matrix(
+        computed_matrix, computed_matrix_ids = self.oligoset_generator._get_overlapping_matrix(
             oligo_database=oligo_database, region_id="region_1"
         )
+        computed_matrix = pd.DataFrame(
+            data=computed_matrix.toarray(),
+            columns=computed_matrix_ids,
+            index=computed_matrix_ids,
+            dtype=int,
+        )
+
         true_matrix = pd.DataFrame(data=[[0, 0], [0, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"])
         assert true_matrix.equals(
             computed_matrix
@@ -108,9 +117,16 @@ class TestOverlapMatrix(unittest.TestCase):
                 "A_1": {"start": [[20], [35]], "end": [[25], [40]]},
             }
         }
-        computed_matrix = self.oligoset_generator._get_overlapping_matrix(
+        computed_matrix, computed_matrix_ids = self.oligoset_generator._get_overlapping_matrix(
             oligo_database=oligo_database, region_id="region_1"
         )
+        computed_matrix = pd.DataFrame(
+            data=computed_matrix.toarray(),
+            columns=computed_matrix_ids,
+            index=computed_matrix_ids,
+            dtype=int,
+        )
+
         true_matrix = pd.DataFrame(data=[[0, 1], [1, 0]], columns=["A_0", "A_1"], index=["A_0", "A_1"])
         assert true_matrix.equals(
             computed_matrix
@@ -194,7 +210,7 @@ class TestOligoScoring(unittest.TestCase):
             [0, 0, 1, 0, 1],
             [0, 0, 1, 1, 0],
         ]
-        overlapping_matrix = pd.DataFrame(data=data, index=index, columns=index)
+        overlapping_matrix = csr_matrix(data)
         data = [[0, "A_0", "A_1", "A_2", 1.59, 2.36], [1, "A_4", "A_2", "A_3", 2.15, 4.93]]
         true_sets = pd.DataFrame(
             data=data,
@@ -207,10 +223,17 @@ class TestOligoScoring(unittest.TestCase):
                 "set_score_sum",
             ],
         )
+        print(oligo_scores)
+        print(overlapping_matrix.toarray())
         computed_sets = self.oligoset_generator._get_non_overlapping_sets(
-            overlapping_matrix, oligo_scores, 100
+            overlapping_matrix=overlapping_matrix,
+            overlapping_matrix_ids=index,
+            oligos_scores=oligo_scores,
+            n_sets=100,
         )
+        print(computed_sets)
         computed_sets["set_score_lowest"] = computed_sets["set_score_lowest"].round(2)
         computed_sets["set_score_sum"] = computed_sets["set_score_sum"].round(2)
+        print(computed_sets)
 
         assert true_sets.equals(computed_sets), "Sets are not computed correctly"
