@@ -3,8 +3,8 @@
 ############################################
 
 import os
-import warnings
 from pathlib import Path
+from typing import Union, List
 
 from Bio import SeqIO
 
@@ -16,27 +16,8 @@ from oligo_designer_toolsuite.utils import FastaParser, check_if_list
 
 
 class ReferenceDatabase:
-    """The ReferenceDatabase class provides functionality for managing a reference sequence database.
 
-    The header of each sequence must start with '>' and contain the following information:
-    region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
-    where the region_id is compulsory and the other fileds are opional.
-
-    Input Format (per sequence):
-    >region_id::additional information::chromosome:start-end(strand)
-    sequence
-
-    Example:
-    >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
-    AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
-
-    :param database_name: Subdirectory path for the output, i.e. <dir_output>/<database_name>, defaults to "db_reference".
-    :type database_name: str, optional
-    :param dir_output: Directory path for the output, defaults to "output".
-    :type dir_output: str, optional
-    """
-
-    def __init__(self, database_name: str = "db_reference", dir_output: str = "output"):
+    def __init__(self, database_name: str = "db_reference", dir_output: str = "output") -> None:
         """Constructor for the ReferenceDatabase class."""
         self.database_name = database_name
         self.dir_output = os.path.abspath(os.path.join(dir_output, database_name))
@@ -46,18 +27,8 @@ class ReferenceDatabase:
 
         self.database = []
 
-    def load_database_from_fasta(self, files_fasta: list[str], database_overwrite: bool = False) -> None:
-        """Load sequences from one or more FASTA files into the ReferenceDatabase object.
+    def load_database_from_fasta(self, files_fasta: Union[str, List[str]], database_overwrite: bool) -> None:
 
-        This function reads sequences from FASTA file(s) and adds them to the ReferenceDatabase object.
-        If 'database_overwrite' is True, it clears the existing database before loading new sequences;
-        otherwise, the new sequences are appended to the existing database.
-
-        :param files_fasta: Paths to the FASTA file(s) containing sequences.
-        :type files_fasta: list[str]
-        :param database_overwrite: Flag indicating whether to overwrite the existing database, defaults to False.
-        :type database_overwrite: bool, optional
-        """
         if database_overwrite:
             self.database = []
 
@@ -68,20 +39,7 @@ class ReferenceDatabase:
             self.database.extend(fasta_sequences)
 
     def write_database_to_fasta(self, filename: str) -> str:
-        """Write sequences from the database to a FASTA file.
 
-        This function writes the sequences from the database to a FASTA file. The file is saved in the specified
-        directory with the given filename.
-
-        :param filename: The name of the output FASTA file (without extension).
-        :type filename: str
-        :param dir_output: Directory path for the output.
-        :type dir_output: str
-        :return: Path to the generated FASTA file.
-        :rtype: str
-
-        :raises ValueError: If the database is empty.
-        """
         file_database = os.path.join(self.dir_output, f"{filename}.fna")
 
         if self.database:
@@ -93,30 +51,45 @@ class ReferenceDatabase:
 
         return file_database
 
-    def filter_database(self, region_ids: list[str] = None, remove_region: bool = True) -> None:
-        """Filters the database entries based on specified region IDs, either keeping or removing entries from those regions.
+    def filter_database_by_region(self, region_ids: Union[str, List[str]], keep_region: bool) -> None:
 
-        This method modifies the database in-place, selectively keeping or excluding entries based on their region ID. It's
-        essential to have the database loaded before invoking this function; otherwise, a ValueError is raised to indicate an
-        empty database.
-
-        :param region_ids: A list of region IDs to filter the database entries by. If None, no filtering is applied.
-        :type region_ids: list[str], optional
-        :param remove_region: A flag indicating whether to remove (True) or keep (False) the entries from the specified regions.
-        :type remove_region: bool
-        :raises ValueError: If the database is empty.
-        """
         region_ids = check_if_list(region_ids)
 
         if self.database:
             database_filtered = []
             for entry in self.database:
                 region, _, _ = self.fasta_parser.parse_fasta_header(entry.id, parse_additional_info=False)
-                if remove_region:
-                    if region not in region_ids:
+                if keep_region and (region in region_ids):
+                    database_filtered.append(entry)
+                elif not keep_region and (region not in region_ids):
+                    database_filtered.append(entry)
+            self.database = database_filtered
+        else:
+            raise ValueError(
+                "Can not filter. Database is empty! Call the method load_database_from_fasta() first."
+            )
+
+    def filter_database_by_attribute_category(
+        self, attribute_name: str, attribute_category: Union[str, List[str]], keep_if_equals_category: bool
+    ) -> None:
+
+        attribute_category = check_if_list(attribute_category)
+
+        if self.database:
+            database_filtered = []
+            for entry in self.database:
+                region_id, attributes, _ = self.fasta_parser.parse_fasta_header(
+                    entry.id, parse_additional_info=True
+                )
+                if attribute_name in attributes:
+                    attribute_values = check_if_list(attributes[attribute_name])
+                    if keep_if_equals_category and any(
+                        item in attribute_category for item in attribute_values
+                    ):
                         database_filtered.append(entry)
-                else:
-                    if region in region_ids:
+                    elif not keep_if_equals_category and all(
+                        item not in attribute_category for item in attribute_values
+                    ):
                         database_filtered.append(entry)
             self.database = database_filtered
         else:
