@@ -231,7 +231,7 @@ class OligosetGeneratorIndependentSet:
 
         return overlapping_matrix
 
-    def _get_non_overlapping_sets(
+    def _get_non_overlapping_sets_new(
         self,
         overlapping_matrix: pd.DataFrame,
         oligos_scores: pd.Series,
