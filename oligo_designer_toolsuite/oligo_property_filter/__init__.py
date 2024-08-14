@@ -13,7 +13,7 @@ Classes:
 - GCContentFilter: Ensures sequences fall within a specified range of GC content, critical for stable hybridization and amplification.
 - GCClampFilter: Filters for sequences with a specific number of G or C nucleotides at one end, affecting primer binding and stability.
 - MeltingTemperatureNNFilter: Assesses sequences for their melting temperatures using nearest-neighbor models, ensuring they are within an optimal range.
--SelfComplementFilter: Filters sequences based on their potential to form self-complementary structures, which can interfere with hybridization.
+- SelfComplementFilter: Filters sequences based on their potential to form self-complementary structures, which can interfere with hybridization.
 - ComplementFilter: Filters sequences based on their potential to form complementary structures with other sequences, which can interfere with hybridization.
 - SecondaryStructureFilter: Evaluates sequences for potential secondary structures that could interfere with assay performance.
 - PadlockArmsFilter: Specific to padlock probe design, it evaluates sequence suitability for padlock arm design based on arm length and melting temperature criteria.
