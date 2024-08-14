@@ -61,7 +61,7 @@ class WeightedGCUtrScoring(OligoScoringBase):
         GC_content_opt: float,
         GC_weight: float = 1,
         UTR_weight: float = 10,
-    ):
+    ) -> None:
         """Constructor for the WeightedGCUtrScoring class."""
         self.GC_content_opt = GC_content_opt
         self.GC_weight = GC_weight
