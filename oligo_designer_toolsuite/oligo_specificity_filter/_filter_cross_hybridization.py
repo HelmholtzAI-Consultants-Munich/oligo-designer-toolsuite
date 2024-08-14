@@ -19,22 +19,6 @@ from ._policies import FilterPolicyBase
 
 
 class CrossHybridizationFilter(SpecificityFilterBase):
-    """A class that implements a filter to minimize cross-hybridization within an oligonucleotide database by applying a specified policy.
-    This class integrates a cross-hybridization policy and a specificity filter to identify and mitigate potential
-    cross-hybridization events between oligonucleotides.
-
-    :param policy: The filter policy to apply for minimizing cross-hybridization.
-    :type policy: FilterPolicyBase
-    :param alignment_method: The alignment specificity filter used to identify potential cross-hybridization events.
-    :type alignment_method: AlignmentSpecificityFilter
-    :param database_name_reference: Subdirectory path for the reference database, i.e., <dir_output>/<database_name_reference>, defaults to "db_reference".
-    :type database_name_reference: str, optional
-    :param filter_name: Subdirectory path for the output, i.e., <dir_output>/<filter_name>, defaults to "crosshybridization_filter".
-    :type filter_name: str, optional
-    :param dir_output: Directory for saving intermediate files, defaults to "output".
-    :type dir_output: str, optional
-    """
-
     def __init__(
         self,
         policy: FilterPolicyBase,
@@ -42,7 +26,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         database_name_reference: str = "db_reference",
         filter_name: str = "crosshybridization_filter",
         dir_output: str = "output",
-    ):
+    ) -> None:
         """Constructor for the CrossHybridizationFilter class."""
         super().__init__(filter_name, dir_output)
 
@@ -54,24 +38,11 @@ class CrossHybridizationFilter(SpecificityFilterBase):
 
     def apply(
         self,
-        sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase = None,
+        reference_database: ReferenceDatabase,
+        sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
-    ):
-        """Applies the cross-hybridization filter to an oligonucleotide database.
-
-        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
-        :type sequence_type: _TYPES_SEQ
-        :param oligo_database: The database of oligonucleotides to be filtered.
-        :type oligo_database: OligoDatabase
-        :param reference_database: The reference database to compare against for specificity.
-        :type reference_database: ReferenceDatabase, optional
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
-        :return: The oligo database with cross-hybridization minimized according to the policy.
-        :rtype: OligoDatabase
-        """
+    ) -> OligoDatabase:
         region_ids = list(oligo_database.database.keys())
 
         reference_database = self._create_reference_database(
@@ -93,19 +64,12 @@ class CrossHybridizationFilter(SpecificityFilterBase):
             )
         return oligo_database
 
-    def _create_reference_database(self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase):
-        """Creates a reference database from the given oligo database. This involves writing the oligo database to a FASTA file
-        and loading it into a new ReferenceDatabase instance.
-
-        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
-        :type sequence_type: _TYPES_SEQ
-        :param oligo_database: The oligo database from which the reference database is created.
-        :type oligo_database: OligoDatabase
-        :return: A ReferenceDatabase instance populated with sequences from the oligo database.
-        :rtype: ReferenceDatabase
-        """
+    def _create_reference_database(
+        self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase
+    ) -> ReferenceDatabase:
         file_reference = oligo_database.write_database_to_fasta(
             filename=f"db_reference_{self.filter_name}",
+            save_description=False,
             region_ids=None,
             sequence_type=sequence_type,
         )
