@@ -11,7 +11,7 @@ import pandas as pd
 
 from ftplib import FTP, error_perm
 from pathlib import Path
-from typing import Literal, get_args
+from typing import Literal, get_args, Tuple
 
 from Bio import SeqIO
 
@@ -92,7 +92,7 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
     def download_files(
         self, file_type: _TYPES_FILE, sequence_nature: _TYPES_SEQ = "dna"
-    ) -> tuple[str, str, str]:
+    ) -> Tuple[str, str, str]:
         self._check_file_type(file_type)
         self._check_sequence_nature_type(sequence_nature)
 
@@ -103,7 +103,7 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
         return dowloaded_file, self.annotation_release, self.assembly_name
 
-    def _get_params(self, file_type: _TYPES_FILE, sequence_nature: _TYPES_SEQ) -> tuple[str, str]:
+    def _get_params(self, file_type: _TYPES_FILE, sequence_nature: _TYPES_SEQ) -> Tuple[str, str]:
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         if self.annotation_release == "current":
@@ -155,7 +155,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
             "fasta": self._map_chr_names_genome_sequence,
         }
 
-    def download_files(self, file_type: _TYPES_FILE) -> tuple[str, str, str]:
+    def download_files(self, file_type: _TYPES_FILE) -> Tuple[str, str, str]:
 
         self._check_file_type(file_type)
 
@@ -168,7 +168,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
 
         return dowloaded_file, self.annotation_release, self.assembly_name
 
-    def _get_params(self, file_type: _TYPES_FILE) -> tuple[str, str, str]:
+    def _get_params(self, file_type: _TYPES_FILE) -> Tuple[str, str, str]:
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         ftp_directory = "genomes/refseq/" + self.taxon + "/" + self.species + "/annotation_releases/"

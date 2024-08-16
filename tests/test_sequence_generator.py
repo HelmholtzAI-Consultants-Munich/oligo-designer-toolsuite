@@ -310,13 +310,8 @@ class TestOligoSequenceGenerator(unittest.TestCase):
 
     def test_create_sequences_sliding_window(self):
         file_fasta_exons = self.oligo_sequence_generator.create_sequences_sliding_window(
-            files_fasta_in=FILE_NCBI_EXONS, length_interval_sequences=(30, 31), region_ids="AARS1"
-        )
-
-        self.oligo_database.load_database_from_fasta(
-            files_fasta=file_fasta_exons,
-            database_overwrite=True,
-            sequence_type="oligo",
+            files_fasta_in=FILE_NCBI_EXONS,
+            length_interval_sequences=(30, 31),
             region_ids=[
                 "AARS1",
                 "DECR2",
@@ -324,6 +319,13 @@ class TestOligoSequenceGenerator(unittest.TestCase):
                 "RHBDF1",
                 "WASIR2",
             ],
+        )
+
+        self.oligo_database.load_database_from_fasta(
+            files_fasta=file_fasta_exons,
+            database_overwrite=True,
+            sequence_type="oligo",
+            region_ids="AARS1",
         )
 
         assert "AARS1" in self.oligo_database.database.keys(), "error: region missing"
