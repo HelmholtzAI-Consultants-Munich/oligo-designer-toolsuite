@@ -3,7 +3,7 @@
 ############################################
 
 import warnings
-from typing import List, Union
+from typing import List, Union, Tuple
 
 from Bio.SeqUtils import MeltingTemp as mt
 from Bio.SeqUtils import Seq, gc_fraction
@@ -120,7 +120,7 @@ class OligoAttributes:
         return oligo_database
 
     @staticmethod
-    def _calc_seedregion(sequence: str, start: Union[int, float], end: Union[int, float]) -> tuple[int, int]:
+    def _calc_seedregion(sequence: str, start: Union[int, float], end: Union[int, float]) -> Tuple[int, int]:
 
         length = len(sequence)
 
@@ -168,7 +168,7 @@ class OligoAttributes:
     @staticmethod
     def _calc_seedregion_ligationsite(
         sequence: str, ligation_site: int, seedregion_size: int
-    ) -> tuple[int, int]:
+    ) -> Tuple[int, int]:
         length = len(sequence)
 
         seedregion_start = int(max(0, ligation_site - (seedregion_size - 1)))
@@ -409,7 +409,7 @@ class OligoAttributes:
         Tm_parameters: dict,
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
-    ) -> tuple[float, float, int]:
+    ) -> Tuple[float, float, int]:
         len_sequence = len(sequence)
         ligation_site = len_sequence // 2
 
@@ -499,7 +499,7 @@ class OligoAttributes:
         detect_oligo_length_min: int,
         detect_oligo_length_max: int,
         min_thymines: int,
-    ) -> tuple[str, str, str]:
+    ) -> Tuple[str, str, str]:
         # constraint: a difference of max 1 nt for the sequences left and right of the ligation site is allowed
         # e.g. AAA|TTTT or AAAA|TTT hence, the detetcion oligo can only be as long as the shorter arm + 1 nt
         detect_oligo_length = 2 * min(ligation_site, len(sequence) - ligation_site) + 1

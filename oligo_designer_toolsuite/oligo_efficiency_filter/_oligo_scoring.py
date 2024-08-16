@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from typing import Tuple
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
 
@@ -18,7 +19,7 @@ class OligoScoringBase(ABC):
 
     def apply(
         self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ
-    ) -> tuple[OligoDatabase, pd.Series]:
+    ) -> Tuple[OligoDatabase, pd.Series]:
 
         oligos_ids = list(oligo_database.database[region_id].keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)

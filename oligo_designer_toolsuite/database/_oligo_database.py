@@ -25,10 +25,8 @@ from oligo_designer_toolsuite.utils import (
     check_if_region_in_database,
     check_tsv_format,
     collapse_attributes_for_duplicated_sequences,
-    filter_dabase_for_region,
     format_oligo_attributes,
     merge_databases,
-    filter_dabase_for_region,
     flatten_attribute_list,
 )
 
@@ -225,9 +223,10 @@ class OligoDatabase:
         )
         for entry in database_tmp1:
             region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
-            if region_id not in database_tmp2:
-                database_tmp2[region_id] = {}
-            database_tmp2[region_id][oligo_id] = format_oligo_attributes(entry)
+            if region_ids and region_id in region_ids:
+                if region_id not in database_tmp2:
+                    database_tmp2[region_id] = {}
+                database_tmp2[region_id][oligo_id] = format_oligo_attributes(entry)
 
         if not database_overwrite and self.database:
             database_tmp2 = merge_databases(
@@ -239,7 +238,6 @@ class OligoDatabase:
 
         # Filter for region ids
         if region_ids:
-            database_tmp2 = filter_dabase_for_region(database=database_tmp2, region_ids=region_ids)
             check_if_region_in_database(
                 database=database_tmp2,
                 region_ids=region_ids,
@@ -260,9 +258,10 @@ class OligoDatabase:
             # extract region ID from the file name and remove the extension
             with open(file, "rb") as handle:
                 content = pickle.load(handle)
-                region_id = content["region_id"]
-                database_region = content["database_region"]
-                oligoset_region = content["oligoset_region"]
+                if (not region_ids) or (region_ids and region_id in region_ids):
+                    region_id = content["region_id"]
+                    database_region = content["database_region"]
+                    oligoset_region = content["oligoset_region"]
 
             # only merge if there are common keys
             if region_id in self.database.keys():
@@ -640,6 +639,23 @@ class OligoDatabase:
                     del self.database[region_id]
                 elif not remove_region and (region_id not in region_ids):
                     del self.database[region_id]
+        else:
+            raise ValueError(
+                "Can not filter. Database is empty! Call the method load_database() or load_database_from_fasta() first."
+            )
+
+    def filter_database_by_oligo(self, remove_region: bool, oligo_ids: Union[str, List[str]]) -> None:
+
+        # Check formatting
+        oligo_ids = check_if_list(oligo_ids)
+        if self.database:
+            for region_id in self.database.keys():
+                oligo_ids_region = list(self.database[region_id].keys())
+                for oligo_id in oligo_ids_region:
+                    if remove_region and (oligo_id in oligo_ids):
+                        del self.database[region_id][oligo_id]
+                    elif not remove_region and (oligo_id not in oligo_ids):
+                        del self.database[region_id][oligo_id]
         else:
             raise ValueError(
                 "Can not filter. Database is empty! Call the method load_database() or load_database_from_fasta() first."

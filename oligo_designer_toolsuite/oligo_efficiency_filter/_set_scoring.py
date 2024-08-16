@@ -2,9 +2,10 @@
 # imports
 ############################################
 
-from abc import ABC, abstractmethod
-
 import pandas as pd
+
+from abc import ABC, abstractmethod
+from typing import Tuple
 
 ############################################
 # Set Scoring Classes
@@ -15,7 +16,7 @@ class SetScoringBase(ABC):
     """ """
 
     @abstractmethod
-    def apply(self, oligo_set: pd.Series, n: int) -> tuple[list, dict]:
+    def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
         """ """
 
 
@@ -28,7 +29,7 @@ class LowestSetScoring(SetScoringBase):
         """
         self.ascending = ascending
 
-    def apply(self, oligo_set: pd.Series, n: int) -> tuple[list, dict]:
+    def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
 
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 
@@ -52,7 +53,7 @@ class AverageSetScoring(SetScoringBase):
         """Constructor for the AverageSetScoring class."""
         self.ascending = ascending
 
-    def apply(self, oligo_set: pd.Series, n: int) -> tuple[list, dict]:
+    def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
 
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 

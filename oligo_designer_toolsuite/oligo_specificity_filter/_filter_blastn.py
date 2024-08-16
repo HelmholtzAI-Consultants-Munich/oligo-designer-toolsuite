@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from abc import abstractmethod
-from typing import List, Union
+from typing import List, Union, Tuple
 from Bio import SeqIO
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
@@ -274,7 +274,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
     def _add_alignment_gaps(
         self, table_hits: pd.DataFrame, queries: list, references: list
-    ) -> tuple[list, list]:
+    ) -> Tuple[list, list]:
         def add_gaps(seq, gaps):
             for gap in gaps:
                 seq = seq[:gap] + "-" + seq[gap:]

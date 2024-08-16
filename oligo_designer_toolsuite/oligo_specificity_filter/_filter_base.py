@@ -6,7 +6,7 @@ import os
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import pandas as pd
 from Bio import Seq
@@ -258,5 +258,5 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         table_hits: pd.DataFrame,
         queries: list,
         references: list,
-    ) -> tuple[list, list]:
+    ) -> Tuple[list, list]:
         """ """
