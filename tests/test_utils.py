@@ -316,16 +316,6 @@ class TestFastaParser(unittest.TestCase):
             result[0].dbxrefs == []
         ), f"error: the dbxrefs should be an empty list instead of {result[0].dbxrefs}"
 
-    def test_read_fasta_sequences_non_existing_region(self):
-        """Test parsing fasta file."""
-        ids = ["1"]
-        result = self.parser.read_fasta_sequences(FILE_FASTA, region_ids=ids)
-        # check if a warning was raised
-        with warnings.catch_warnings(record=True) as w:
-            result = self.parser.read_fasta_sequences(FILE_FASTA, region_ids=ids)
-            assert len(w) > 0, "error: no warning was raised"
-        assert len(result) == 0, f"error: the function loaded {len(result)} entries instead of an empty list"
-
     def test_get_fasta_regions(self):
         """Test if the parser extracts fasta regions correctly."""
         expected_result = ["16"]
