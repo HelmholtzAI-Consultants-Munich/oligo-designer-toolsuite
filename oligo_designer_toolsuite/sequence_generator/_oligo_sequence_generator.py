@@ -5,9 +5,8 @@
 import os
 import random
 from pathlib import Path
-
 from joblib import Parallel, delayed
-
+from Bio.SeqRecord import SeqRecord
 from oligo_designer_toolsuite.utils import FastaParser
 
 from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename
@@ -18,31 +17,11 @@ from ..utils._checkers_and_helpers import check_if_list, generate_unique_filenam
 
 
 class OligoSequenceGenerator:
-    """A class for generating oligo sequences.
-
-    This class provides functionality for generating oligo sequences and managing output directories.
-
-    The generated sequences are saved as fasta file with region id, additional information and coordinates in header.
-    The header of each sequence must start with '>' and contain the following information:
-    region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
-    where the region_id is compulsory and the other fields are optional.
-
-    Input Format (per sequence):
-    >region_id::additional information::chromosome:start-end(strand)
-    sequence
-
-    Example:
-    >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
-    AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
-
-    :param dir_output: The directory path for output files.
-    :type dir_output: str
-    """
 
     def __init__(
         self,
         dir_output: str = "output",
-    ):
+    ) -> None:
         """Constructor for the OligoSequenceGenerator class."""
         self.dir_output = os.path.abspath(os.path.join(dir_output, "annotation"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
@@ -61,33 +40,10 @@ class OligoSequenceGenerator:
             "G": 0.25,
             "T": 0.25,
         },
-    ):
-        """Create a FASTA file containing random DNA sequences.
+    ) -> str:
 
-        :param filename_out: The name of the output FASTA file.
-        :type filename_out: str
-        :param length_sequences: The length of each random DNA sequence.
-        :type length_sequences: int
-        :param num_sequences: The number of random DNA sequences to generate.
-        :type num_sequences: int
-        :param name_sequences: The prefix for sequence names in the output FASTA file.
-        :type name_sequences: str, optional
-        :param base_alphabet_with_probability: A dictionary mapping DNA bases to their probabilities.
-        :type base_alphabet_with_probability: dict, optional
-        :return: The path to the generated FASTA file.
-        :rtype: str
-        """
+        def get_sequence_random(sequence_length: int, base_alphabet_with_probability: dict) -> str:
 
-        def get_sequence_random(sequence_length, base_alphabet_with_probability):
-            """Generate a random DNA sequence of a given length based on a specified base alphabet with probabilities.
-
-            :param sequence_length: The length of the generated DNA sequence.
-            :type sequence_length: int
-            :param base_alphabet_with_probability: A dictionary mapping DNA bases to their probabilities.
-            :type base_alphabet_with_probability: dict
-            :return: The generated random DNA sequence.
-            :rtype: str
-            """
             bases = list(base_alphabet_with_probability.keys())
             sequence = "".join(
                 random.choices(
@@ -123,40 +79,10 @@ class OligoSequenceGenerator:
         split_region: int = 0,
         region_ids: list[str] = None,
         n_jobs: int = 1,
-    ):
-        """Generate sequences with sliding windows from input FASTA file(s) and write them to output FASTA file(s).
-
-        This function processes input fasta files to generate oligonucleotide sequences using a sliding window technique.
-        It creates overlapping sequences of specified length intervals from the given regions, and stores them in separate
-        fasta files for each region.
-
-        :param files_fasta_in: List of input FASTA files.
-        :type files_fasta_in: list[str]
-        :param length_interval_sequences: A tuple representing the interval of sliding window lengths to generate.
-        :type length_interval_sequences: tuple
-        :param split_region: Minimum number of bases covering the junction of a split sequence, i.e. the oligo should contain at least x bases upstream/downstream of the junction, defaults to 0.
-        :type split_region: int, optional
-        :param region_ids: List of region IDs to consider. If None, all regions are considered.
-        :type region_ids: list[str], optional
-        :param n_jobs: The number of jobs to use for parallel processing.
-        :type n_jobs: int
-        :return: The path to the generated output FASTA file(s).
-        :rtype: list[str]
-        """
-
-        def get_sliding_window_sequence(entry, length_interval_sequences, split_region):
-            """Extract sliding window sequences from a given entry and write them to a FASTA file.
-
-            :param entry: Bio.SeqRecord.SeqRecord object representing the sequence entry.
-            :type entry: Bio.SeqRecord.SeqRecord
-            :param length_interval_sequences: The max and min length of each sliding window sequence.
-            :type length_interval_sequences: List[int]
-            :param split_region: Minimum number of bases covering the junction of a split sequence, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
-            :type split_region: int
-            :param handle_fasta: The file handle for writing the output FASTA file.
-            :type handle_fasta: _io.TextIOWrapper
-            """
-
+    ) -> list:
+        def get_sliding_window_sequence(
+            entry: SeqRecord, length_interval_sequences: tuple, split_region: int
+        ) -> str:
             entry_sequence = entry.seq
             region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(
                 header=entry.id, parse_additional_info=False
@@ -191,7 +117,9 @@ class OligoSequenceGenerator:
             if strand == "-":
                 list_of_coordinates.reverse()
 
-            file_fasta_region = generate_unique_filename(base_name=region, extension="fna")
+            file_fasta_region = generate_unique_filename(
+                dir_output=self.dir_output, base_name=region, extension="fna"
+            )
             with open(file_fasta_region, "w") as handle_fasta:
                 for sequence_length in range(length_interval_sequences[0], length_interval_sequences[1] + 1):
                     # generate sequences with sliding window and write to fasta file (use lock to ensure that hat only one process can write to the file at any given time)
