@@ -2,7 +2,9 @@
 # imports
 ############################################
 
+import os
 import csv
+import yaml
 import time
 import uuid
 import warnings
@@ -12,17 +14,18 @@ import warnings
 ############################################
 
 
-def check_if_dna_sequence(seq: str, valid_characters=["A", "C", "T", "G"]):
-    """Verifies if a given sequence consists solely of valid DNA nucleotide characters (A, C, T, G).
-    This function is case-insensitive and validates the entire sequence against a set of allowed characters.
+class CustomYamlDumper(yaml.SafeDumper):
+    def increase_indent(self, flow=False):
+        return super(CustomYamlDumper, self).increase_indent(flow, False)
 
-    :param seq: The DNA sequence to validate.
-    :type seq: str
-    :param valid_characters: A list of characters representing valid nucleotides. Defaults to ["A", "C", "T", "G"].
-    :type valid_characters: list
-    :return: True if the sequence is valid DNA, False otherwise.
-    :rtype: bool
-    """
+    def represent_list(self, data):
+        return self.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
+
+    def represent_dict(self, data):
+        return self.represent_mapping("tag:yaml.org,2002:map", data, flow_style=False)
+
+
+def check_if_dna_sequence(seq: str, valid_characters: list = ["A", "C", "T", "G"]) -> bool:
     if any(len(char) > 1 for char in valid_characters):
         raise ValueError("Valid characters must be single characters.")
 
@@ -35,16 +38,7 @@ def check_if_dna_sequence(seq: str, valid_characters=["A", "C", "T", "G"]):
     return all(char.upper() in valid_characters_upper for char in seq)
 
 
-def check_if_key_exists(nested_dict: dict, key: str):
-    """Recursively check if a given key exists in a nested dictionary. The function searches through all levels of the nested dictionary to find the key.
-
-    :param nested_dict: The nested dictionary to search for the key.
-    :type nested_dict: dict
-    :param key: The key to search for within the nested dictionary.
-    :type key: str
-    :return: True if the key is found anywhere within the nested dictionary, False otherwise.
-    :rtype: bool
-    """
+def check_if_key_exists(nested_dict: dict, key: str) -> bool:
     try:
         if key in nested_dict.keys():
             return True
@@ -56,55 +50,35 @@ def check_if_key_exists(nested_dict: dict, key: str):
         return False
 
 
-def check_if_list(obj):
-    """
-    Check if the input is a list, otherwise ensure that the input is converted to a list.
-
-    :param obj: The input object.
-    :type obj: Any
-    :return: A list containing the input object or the input object itself if it's already a list.
-    :rtype: list
-    """
+def check_if_list(obj: any) -> list:
     if obj:
         obj = [obj] if not isinstance(obj, list) else obj
     return obj
 
 
-def check_if_list_of_lists(item):
-    """Check if the given item is a list of lists.
+def check_if_list_of_lists(item: any) -> list:
+    if isinstance(item, list):
+        # Check if it's a list of lists
+        if all(isinstance(subitem, list) for subitem in item):
+            # Already a list of lists
+            return item
+        else:
+            # Convert the single list into a list of lists
+            return [item]
+    else:
+        # Wrap the non-list item in a list of lists
+        return [[item]]
 
-    :param item: The item to check.
-    :type item: Any
-    :return: True if the item is a list containing only lists, False otherwise.
-    :rtype: bool
-    """
-    return isinstance(item, list) and all(isinstance(subitem, list) for subitem in item)
 
-
-def check_tsv_format(file: str):
-    """Check if a given TSV file has any content.
-
-    :param file: The path to the TSV file.
-    :type file: str
-    :return: True if the TSV file has content, False otherwise.
-    :rtype: bool
-    """
+def check_tsv_format(file: str) -> list:
     with open(file, "r") as tsv:
         read_tsv = csv.reader(tsv, delimiter="\t")
         return any(read_tsv)
 
 
-def generate_unique_filename(base_name: str, extension: str = "") -> str:
-    """Generate a unique filename using a base name, current timestamp, and a UUID.
-
-    :param base_name: The base name for the file.
-    :type base_name: str
-    :param extension: The file extension, e.g., ".txt". (default is an empty string)
-    :type extension: str
-    :return: A unique filename.
-    :rtype: str
-    """
+def generate_unique_filename(dir_output: str, base_name: str, extension: str = "") -> str:
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     unique_id = uuid.uuid4().hex
     filename = f"{base_name}_{timestamp}_{unique_id}.{extension}"
+    filename = os.path.join(dir_output, filename)
     return filename
