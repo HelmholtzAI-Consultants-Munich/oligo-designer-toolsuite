@@ -26,14 +26,6 @@ from oligo_designer_toolsuite.sequence_generator import (
 
 
 class GenomicRegionGenerator:
-    """
-    This class initializes and manages the process of genomic region generation, ensuring all outputs and logs are systematically stored.
-    This class sets up an output directory for storing results and configures a logging system to record runtime information.
-
-    :param dir_output: Directory path where all output files and logs will be stored.
-    :type dir_output: str
-    """
-
     def __init__(self, dir_output: str) -> None:
         """Constructor for the GenomicRegionGenerator class."""
         # create the output folder
@@ -58,38 +50,7 @@ class GenomicRegionGenerator:
         self,
         source: str,
         source_params: dict,
-    ):
-        """
-        Loads genomic annotations from specified sources including NCBI, Ensembl, or custom databases based on user-specified parameters.
-
-        This method configures a region generator object for fetching and processing genomic annotations, handling various sources through specific generator configurations.
-        It logs the key operational parameters and selected sources, raising a ValueError if the source is unsupported.
-
-        If "ncbi" is choosen the source_params need to contain the keys:
-        - "taxon": taxon of the species, valid taxa are: archaea, bacteria, fungi, invertebrate, mitochondrion, plant, plasmid, plastid, protozoa, vertebrate_mammalian, vertebrate_other, viral
-        - "species": species name in NCBI download format, e.g. 'Homo_sapiens' for human; see [here](https://ftp.ncbi.nlm.nih.gov/genomes/refseq/) for available species name
-        - "annotation_release": release number (e.g. 109 or 109.20211119 for ncbi) of annotation or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/
-
-        If "ensembl" is choosen the source_params need to contain the keys:
-        - "species": species name in ensembl download format, e.g. 'homo_sapiens' for human; see http://ftp.ensembl.org/pub/release-108/gtf/ for available species names
-        - "annotation_release": release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
-
-        If "custom" is choosen the source_params need to contain the keys:
-        - "file_annotation": GTF file with gene annotation
-        - "file_sequence": FASTA file with genome sequence
-        - "files_source": original source of the genomic files -> optional, i.e. can be assigned None
-        - "species": species of provided annotation, leave empty if unknown -> optional, i.e. can be assigned None
-        - "annotation_release": release number of provided annotation, leave empty if unknown -> optional, i.e. can be assigned None
-        - "genome_assembly": genome assembly of provided annotation, leave empty if unknown -> optional, i.e. can be assigned None
-
-
-        :param source: Identifier for the annotation source ('ncbi', 'ensembl', or 'custom').
-        :type source: str
-        :param source_params: Dictionary containing parameters required for the specified source, like 'taxon', 'species', and 'annotation_release'.
-        :type source_params: dict
-        :return: Configured region generator object that corresponds to the selected source.
-        :rtype: {NcbiGenomicRegionGenerator, EnsemblGenomicRegionGenerator, CustomGenomicRegionGenerator}
-        """
+    ) -> CustomGenomicRegionGenerator:
         ##### log parameters #####
         logging.info("Parameters Load Annotations:")
         args, _, _, values = inspect.getargvalues(inspect.currentframe())
@@ -140,47 +101,32 @@ class GenomicRegionGenerator:
         region_generator: CustomGenomicRegionGenerator,
         genomic_regions: dict,
         block_size: int,
-    ):
-        """
-        Generates genomic regions from sequences based on specified criteria and stores the results in FASTA format.
-        This method iterates over a dictionary of genomic regions, checks each region's eligibility based on a provided flag,
-        and uses the specified region generator to fetch sequences for eligible regions. The sequences are then stored in FASTA files.
-
-        :param region_generator: An instance of CustomGenomicRegionGenerator used to fetch genomic sequences.
-        :type region_generator: CustomGenomicRegionGenerator
-        :param genomic_regions: A dictionary mapping genomic region types to boolean flags indicating whether to process each region.
-        :type genomic_regions: dict
-        :param block_size: Used in fetching sequences for regions requiring segmented processing, such as exon junctions.
-        :type block_size: int
-        :return: A list of paths to the generated FASTA files for each processed genomic region.
-        :rtype: list[str]
-        """
-
-        fasta_files = []
+    ) -> list:
+        files_fasta = []
         # loop not parallizeable due to file access restrictions
         for genomic_region, flag in genomic_regions.items():
             if flag:
                 if genomic_region == "gene":
-                    fasta_file = region_generator.get_sequence_gene()
+                    file_fasta = region_generator.get_sequence_gene()
                 elif genomic_region == "intergenic":
-                    fasta_file = region_generator.get_sequence_intergenic()
+                    file_fasta = region_generator.get_sequence_intergenic()
                 elif genomic_region == "exon":
-                    fasta_file = region_generator.get_sequence_exon()
+                    file_fasta = region_generator.get_sequence_exon()
                 elif genomic_region == "intron":
-                    fasta_file = region_generator.get_sequence_intron()
+                    file_fasta = region_generator.get_sequence_intron()
                 elif genomic_region == "cds":
-                    fasta_file = region_generator.get_sequence_CDS()
+                    file_fasta = region_generator.get_sequence_CDS()
                 elif genomic_region == "utr":
-                    fasta_file = region_generator.get_sequence_UTR()
+                    file_fasta = region_generator.get_sequence_UTR()
                 elif genomic_region == "exon_exon_junction":
-                    fasta_file = region_generator.get_sequence_exon_exon_junction(block_size=block_size)
+                    file_fasta = region_generator.get_sequence_exon_exon_junction(block_size=block_size)
                 else:
                     raise Exception(f"Region generator: {genomic_region} is not implemented.")
 
-                fasta_files.append(fasta_file)
-                logging.info(f"The genomic region '{genomic_region}' was stored in :{fasta_file}.")
+                files_fasta.append(file_fasta)
+                logging.info(f"The genomic region '{genomic_region}' was stored in :{file_fasta}.")
 
-        return fasta_files
+        return files_fasta
 
 
 ############################################
@@ -189,11 +135,7 @@ class GenomicRegionGenerator:
 
 
 def main():
-    """Main function to load sequence and annotation files from various sources and generate genomic regions of interest.
-    Configurations are loaded from a YAML file specified at runtime. This function orchestrates the creation of genomic
-    regions based on annotations from NCBI, Ensembl, or custom data sources. It handles the generation, logging,
-    and storage of the regions.
-    """
+    print("--------------START PIPELINE--------------")
     args = base_parser()
 
     # read the config file
@@ -208,11 +150,13 @@ def main():
         source_params=config["source_params"],
     )
 
-    fasta_files = pipeline.generate_genomic_regions(
+    files_fasta = pipeline.generate_genomic_regions(
         region_generator=region_generator,
         genomic_regions=config["genomic_regions"],
         block_size=config["exon_exon_junction_block_size"],
     )
+
+    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":
