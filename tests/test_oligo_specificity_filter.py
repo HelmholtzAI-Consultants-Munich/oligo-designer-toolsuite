@@ -155,13 +155,23 @@ class AlignmentFilterTestBase:
     def test_filter_match(self):
         sequence_type = "target"
 
-        res = self.filter.apply(self.oligo_database_match, self.reference_database, sequence_type, 2)
+        res = self.filter.apply(
+            sequence_type=sequence_type,
+            oligo_database=self.oligo_database_match,
+            reference_database=self.reference_database,
+            n_jobs=2,
+        )
 
         assert "WASH7P::1" not in res.database["WASH7P"].keys(), "A matching oligo has not been filtered!"
 
     def test_filter_nomatch(self):
         sequence_type = "target"
-        res = self.filter.apply(self.oligo_database_nomatch, self.reference_database, sequence_type, 2)
+        res = self.filter.apply(
+            sequence_type=sequence_type,
+            oligo_database=self.oligo_database_nomatch,
+            reference_database=self.reference_database,
+            n_jobs=2,
+        )
 
         assert "AGRN::1" in res.database["AGRN"].keys(), "A non matching oligo has been filtered by Blast!"
 
