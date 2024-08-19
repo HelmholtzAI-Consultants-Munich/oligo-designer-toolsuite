@@ -223,7 +223,7 @@ class OligoDatabase:
         )
         for entry in database_tmp1:
             region_id, oligo_id = entry.pop("region_id"), entry.pop("oligo_id")
-            if region_ids and region_id in region_ids:
+            if (not region_ids) or (region_ids and region_id in region_ids):
                 if region_id not in database_tmp2:
                     database_tmp2[region_id] = {}
                 database_tmp2[region_id][oligo_id] = format_oligo_attributes(entry)
