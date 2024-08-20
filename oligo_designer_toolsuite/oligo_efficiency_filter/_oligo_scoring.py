@@ -16,11 +16,31 @@ from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
 
 
 class OligoScoringBase(ABC):
+    """
+    Abstract base class for scoring oligonucleotides based on various criteria.
+
+    This class provides a framework for developing specific scoring strategies for oligos.
+    It defines the basic structure for scoring oligonucleotides by requiring the implementation
+    of the `get_score` method in subclasses. The `apply` method is provided to score all oligos
+    in a specified region and update the database with the calculated scores.
+    """
 
     def apply(
         self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ
     ) -> Tuple[OligoDatabase, pd.Series]:
+        """
+        Applies the scoring function to all oligos within a specified region of the oligo database, updating the
+        database with the calculated scores and returning the updated database along with a pandas Series of scores.
 
+        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for score calculation .
+        :type sequence_type: _TYPES_SEQ
+        :return: A tuple containing the updated oligo database and a pandas Series with oligo scores.
+        :rtype: Tuple[OligoDatabase, pd.Series]
+        """
         oligos_ids = list(oligo_database.database[region_id].keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)
         for oligo_id in oligos_ids:
@@ -33,10 +53,38 @@ class OligoScoringBase(ABC):
     def get_score(
         self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
     ) -> float:
-        """ """
+        """
+        Abstract method to compute the score of a specific oligonucleotide sequence. This method should be
+        implemented by subclasses to define the specific scoring logic.
+
+        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param region_id: Oligo ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for score calculation .
+        :type sequence_type: _TYPES_SEQ
+        :return: The computed score of the nucleotide.
+        :rtype: float
+        """
 
 
 class GCOligoScoring(OligoScoringBase):
+    """
+    A class for scoring oligonucleotides based on their GC content.
+
+    $score = |GC_{opt} - GC_{oligo}|$.
+
+    The `GCOligoScoring` class calculates the score for an oligo by evaluating the difference between
+    its actual GC content and a predefined optimal GC content. The smaller the difference,
+    the better the score. This scoring method helps in selecting oligos with GC content
+    closer to the desired optimal value, which is critical for various applications such as
+    PCR primer design and hybridization efficiency.
+
+    :param GC_content_opt: The optimal GC content value used as the target for scoring.
+    :type GC_content_opt: float
+    """
 
     def __init__(
         self,
@@ -48,6 +96,20 @@ class GCOligoScoring(OligoScoringBase):
     def get_score(
         self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
     ) -> float:
+        """
+        Calculates the GC content score for a specific nucleotide based on the optimal GC content.
+
+        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param region_id: Oligo ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for score calculation .
+        :type sequence_type: _TYPES_SEQ
+        :return: The absolute difference between the optimal GC content and the GC content of the nucleotide sequence.
+        :rtype: float
+        """
         sequence = oligo_database.get_oligo_attribute_value(
             attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
         )
@@ -56,6 +118,23 @@ class GCOligoScoring(OligoScoringBase):
 
 
 class WeightedGCUtrScoring(OligoScoringBase):
+    """
+    A class used to score oligonucleotides based on their GC content and whether they originate from UTR regions.
+
+    $score = w_{GC}|GC_{opt} - GC_{oligo}| + w_{UTR}I_{UTR}$.
+
+    The `WeightedGCUtrScoring` class calculates the score of a nucleotide by evaluating its GC content
+    in relation to a specified optimal value and by applying an additional weight if the sequence is from
+    untranslated regions (UTRs). This allows for a more nuanced scoring based on both sequence composition
+    and origin.
+
+    :param GC_content_opt: The optimal GC content value used as the target for scoring.
+    :type GC_content_opt: float
+    :param GC_weight: The weight applied to the GC content difference in the scoring calculation.
+    :type GC_weight: float
+    :param UTR_weight: The weight applied if the sequence originates from a UTR.
+    :type UTR_weight: float
+    """
 
     def __init__(
         self,
@@ -71,7 +150,21 @@ class WeightedGCUtrScoring(OligoScoringBase):
     def get_score(
         self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
     ) -> float:
+        """
+        Calculates the weighted score for a given nucleotide based on its GC content and whether it originates
+        from a UTR (Untranslated Region).
 
+        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param region_id: Oligo ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for score calculation .
+        :type sequence_type: _TYPES_SEQ
+        :return: The calculated score based on the weighted difference from optimal GC content and UTR consideration.
+        :rtype: float
+        """
         sequence = oligo_database.get_oligo_attribute_value(
             attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
         )
@@ -93,6 +186,47 @@ class WeightedGCUtrScoring(OligoScoringBase):
 
 
 class WeightedTmGCOligoScoring(OligoScoringBase):
+    """
+    A class used to score oligonucleotides based on their melting temperature (Tm) and GC content.
+
+    $score =
+    w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] +
+    w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}]$.
+
+    The `WeightedTmGCOligoScoring` class evaluates nucleotides by calculating a weighted score that considers both
+    the deviation of the oligo's melting temperature from an optimal value and the deviation of its GC content from a desired
+    percentage. By combining these two factors with user-defined weights, this class provides a comprehensive score that
+    reflects both the thermal stability and nucleotide composition of the oligo.
+
+    :param Tm_min: The minimum acceptable melting temperature.
+    :type Tm_min: float
+    :param Tm_opt: The optimal melting temperature for scoring.
+    :type Tm_opt: float
+    :param Tm_max: The maximum acceptable melting temperature.
+    :type Tm_max: float
+    :param GC_content_min: The minimum acceptable GC content percentage.
+    :type GC_content_min: float
+    :param GC_content_opt: The optimal GC content percentage for scoring.
+    :type GC_content_opt: float
+    :param GC_content_max: The maximum acceptable GC content percentage.
+    :type GC_content_max: float
+    :param Tm_parameters: Parameters for calculating the melting temperature.
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+    :type Tm_parameters: dict
+    :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation (optional).
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+    :type Tm_salt_correction_parameters: dict, optional
+    :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation (optional).
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+    :type Tm_chem_correction_parameters: dict, optional
+    :param Tm_weight: The weight assigned to the Tm scoring component.
+    :type Tm_weight: float
+    :param GC_weight: The weight assigned to the GC content scoring component.
+    :type GC_weight: float
+    """
 
     def __init__(
         self,
@@ -125,6 +259,21 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
     def get_score(
         self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
     ) -> float:
+        """
+        Computes the score of a nucleotide based on the weighted difference from optimal melting temperature (Tm)
+        and GC content, using specified parameters for the calculation.
+
+        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param region_id: Oligo ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for score calculation .
+        :type sequence_type: _TYPES_SEQ
+        :return: The calculated score based on the weighted difference from optimal GC content and Tm.
+        :rtype: float
+        """
         sequence = oligo_database.get_oligo_attribute_value(
             attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
         )
@@ -158,6 +307,49 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
 
 
 class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
+    """
+    A class for scoring oligonucleotides based on melting temperature (Tm), GC content, and isoform consensus.
+
+    $score =
+    w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] +
+    w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}] +
+    w_{IC}IC$.
+
+    This class extends `WeightedTmGCOligoScoring` by incorporating isoform targeting efficiency into the scoring criteria.
+    It calculates a composite score using weights assigned to Tm, GC content, and isoform consensus, helping in the selection
+    of oligos with optimal thermal stability, nucleotide composition, and isoform specificity.
+
+    :param Tm_min: Minimum acceptable melting temperature.
+    :type Tm_min: float
+    :param Tm_opt: Optimal melting temperature.
+    :type Tm_opt: float
+    :param Tm_max: Maximum acceptable melting temperature.
+    :type Tm_max: float
+    :param GC_content_min: Minimum acceptable GC content.
+    :type GC_content_min: float
+    :param GC_content_opt: Optimal GC content.
+    :type GC_content_opt: float
+    :param GC_content_max: Maximum acceptable GC content.
+    :type GC_content_max: float
+    :param Tm_parameters: Parameters for calculating the melting temperature.
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+    :type Tm_parameters: dict
+    :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation (optional).
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+    :type Tm_salt_correction_parameters: dict, optional
+    :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation (optional).
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+    :type Tm_chem_correction_parameters: dict, optional
+    :param isoform_weight: Weight given to the isoform consensus in the scoring.
+    :type isoform_weight: float
+    :param Tm_weight: Weight given to the melting temperature in the scoring.
+    :type Tm_weight: float
+    :param GC_weight: Weight given to the GC content in the scoring.
+    :type GC_weight: float
+    """
 
     def __init__(
         self,
@@ -192,7 +384,22 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
     def get_score(
         self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
     ) -> float:
+        """
+        Calculates the score of a nucleotide based on its melting temperature (Tm), GC content,
+        and isoform consensus, using specified weights for each factor. The score is derived by combining
+        the weighted errors in Tm and GC content with the isoform consensus, where a lower score is preferable.
 
+        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param region_id: Oligo ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for score calculation .
+        :type sequence_type: _TYPES_SEQ
+        :return: The calculated score based on the Tm, GC content, and isoform consensus.
+        :rtype: float
+        """
         sequence = oligo_database.get_oligo_attribute_value(
             attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
         )
