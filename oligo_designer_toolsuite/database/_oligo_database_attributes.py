@@ -2,7 +2,6 @@
 # imports
 ############################################
 
-import warnings
 from typing import List, Union, Tuple
 
 from Bio.SeqUtils import MeltingTemp as mt
