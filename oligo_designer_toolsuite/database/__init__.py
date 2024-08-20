@@ -1,5 +1,5 @@
 """
-This module provides two key classes for managing oligonucleotide-related databases.
+This module provides key classes for managing and processing oligonucleotide-related databases.
 
 Classes:
 - OligoDatabase: The OligoDatabase class facilitates the management of oligonucleotide databases.

@@ -19,6 +19,12 @@ from oligo_designer_toolsuite.utils import check_if_list, flatten_attribute_list
 
 
 class OligoAttributes:
+    """
+    The OligoAttributes class provides a comprehensive set of methods to calculate and update various attributes of oligonucleotides within a given oligo database.
+
+    This class includes functionalities for determining oligo length, GC content, melting temperature (Tm), secondary structure stability (ΔG), isoform consensus, and more.
+    These calculations are essential for the design and evaluation of oligos forcertain experimental specifications.
+    """
 
     def __init__(self) -> None:
         """Constructor for the OligoAttributes class."""
@@ -81,6 +87,9 @@ class OligoAttributes:
     ) -> OligoDatabase:
         """Calculate and update the number of targeted transcripts for each oligonucleotide for the specified regions of the oligo database.
 
+        If the required information for `_calc_num_targeted_transcripts` is not available,
+        the 'num_targeted_transcripts' attribute is set to None.
+
         :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
@@ -113,7 +122,8 @@ class OligoAttributes:
     @staticmethod
     def _calc_isoform_consensus(transcript_id: list, number_total_transcripts: list) -> float:
         """Calculate the isoform consensus for an oligonucleotide, representing the percentage of transcripts
-        targeted by the oligo out of the total number of transcripts in a region.
+        targeted by the oligo out of the total number of transcripts in a region. The maximum value for the
+        isoform consensus is 100%, which means that the oligo targets all isoforms (transcripts) of the region.
 
         :param transcript_id: List of transcript IDs associated with the oligonucleotide.
         :type transcript_id: list
@@ -135,6 +145,9 @@ class OligoAttributes:
         self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None
     ) -> OligoDatabase:
         """Calculate and update the isoform consensus for each oligonucleotide for the specified regions of the oligo database.
+
+        If the required information for `_calc_isoform_consensus` is not available,
+        the 'isoform_consensus' attribute is set to None.
 
         :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
@@ -172,6 +185,19 @@ class OligoAttributes:
     @staticmethod
     def _calc_seedregion(sequence: str, start: Union[int, float], end: Union[int, float]) -> Tuple[int, int]:
         """Calculate the seed region of a nucleotide sequence based on the provided start and end positions.
+
+        The seed region is calculated based on start and end parameters. The start and end can be specified as absolute
+        positions (int) or as a percentage of the oligo's length (float).
+
+        For example:
+        start = 4
+        end = 6
+            will set the relative start and end positions wrt the oligo sequence of the seed region to 4 and 6, respectively.
+
+        start = 0.4
+        end = 0.6
+            will set the relative start and end positions wrt the oligo sequence of the seed region to 4 and 6, respectively,
+            only if the oligo length = 10.
 
         :param sequence: The nucleotide sequence.
         :type sequence: str
@@ -244,6 +270,7 @@ class OligoAttributes:
         sequence: str, ligation_site: int, seedregion_size: int
     ) -> Tuple[int, int]:
         """Calculate the start and end positions of the seed region around a ligation site for a nucleotide sequence.
+        The seed region is defined symmetrically around the ligation site, considering the provided `seedregion_size`.
 
         :param sequence: The nucleotide sequence.
         :type sequence: str
@@ -272,7 +299,9 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the seed region around the ligation site for each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the seed region around the ligation site for each oligonucleotide for the
+        specified regions of the oligo database. If the required information for `_calc_seedregion_ligationsite`
+        is not available, the 'seedregion_start' and 'seedregion_end' attributes are set to None.
 
         :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
@@ -368,10 +397,16 @@ class OligoAttributes:
         :param sequence: The nucleotide sequence.
         :type sequence: str
         :param Tm_parameters: Parameters for the nearest-neighbor Tm calculation.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
         :type Tm_parameters: dict
         :param Tm_salt_correction_parameters: Optional parameters for salt correction.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
         :type Tm_salt_correction_parameters: dict, optional
         :param Tm_chem_correction_parameters: Optional parameters for chemical correction.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
         :type Tm_chem_correction_parameters: dict, optional
         :return: The calculated melting temperature (Tm) in degrees Celsius, rounded to two decimal places.
         :rtype: float
@@ -398,10 +433,16 @@ class OligoAttributes:
         :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param Tm_parameters: Parameters for the nearest-neighbor Tm calculation.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
         :type Tm_parameters: dict
         :param Tm_salt_correction_parameters: Optional parameters for salt correction.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
         :type Tm_salt_correction_parameters: dict, optional
         :param Tm_chem_correction_parameters: Optional parameters for chemical correction.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
         :type Tm_chem_correction_parameters: dict, optional
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
         :type sequence_type: _TYPES_SEQ, optional
@@ -614,7 +655,9 @@ class OligoAttributes:
         """Calculate the melting temperatures (Tm) of padlock probe arms and determine the ligation site.
 
         This function evaluates potential padlock probe arms in a given sequence by calculating their melting temperatures (Tm)
-        and finding the optimal ligation site that satisfies the specified Tm conditions.
+        and finding the optimal ligation site that satisfies the specified Tm conditions. It iteratively adjusts the ligation site
+        to find arm lengths and Tm values that meet the criteria of minimum arm length and Tm differences within the specified maximum.
+        The process stops once suitable arms are found or if no configuration meets the criteria.
 
         :param sequence: The nucleotide sequence.
         :type sequence: str

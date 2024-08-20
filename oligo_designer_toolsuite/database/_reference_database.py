@@ -16,6 +16,15 @@ from oligo_designer_toolsuite.utils import FastaParser, check_if_list
 
 
 class ReferenceDatabase:
+    """
+    The `ReferenceDatabase` class manages a reference sequence database used for oligonucleotide design.
+    It handles the initialization, storage, and management of sequence data in a specified output directory.
+
+    :param database_name: The name of the reference database, default is "db_reference".
+    :type database_name: str
+    :param dir_output: The directory where the database will be stored, default is "output".
+    :type dir_output: str
+    """
 
     def __init__(self, database_name: str = "db_reference", dir_output: str = "output") -> None:
         """Constructor for the ReferenceDatabase class."""
@@ -28,7 +37,28 @@ class ReferenceDatabase:
         self.database = []
 
     def load_database_from_fasta(self, files_fasta: Union[str, List[str]], database_overwrite: bool) -> None:
+        """
+        Loads a list of sequences from one or more FASTA file(s) into the database.
+        If the `database_overwrite` flag is set to True, the existing database will be cleared before loading the new sequences.
 
+        The header of each sequence must start with '>' and contain the following information:
+        region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
+        where the region_id is compulsory and the other fileds are opional.
+
+        Input Format (per sequence):
+        >region_id::additional information::chromosome:start-end(strand)
+        sequence
+
+        Example:
+        >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
+        AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
+
+
+        :param files_fasta: A single FASTA file or a list of FASTA files to be loaded into the database.
+        :type files_fasta: Union[str, List[str]]
+        :param database_overwrite: If True, the existing database content will be cleared before loading the new sequences.
+        :type database_overwrite: bool
+        """
         if database_overwrite:
             self.database = []
 
@@ -39,7 +69,15 @@ class ReferenceDatabase:
             self.database.extend(fasta_sequences)
 
     def write_database_to_fasta(self, filename: str) -> str:
+        """
+        Writes the current database sequences to a FASTA file with the specified filename.
+        If the database is empty, an error is raised.
 
+        :param filename: The name of the output FASTA file (without extension) to save the database sequences.
+        :type filename: str
+        :return: The path to the written FASTA file.
+        :rtype: str
+        """
         file_database = os.path.join(self.dir_output, f"{filename}.fna")
 
         if self.database:
@@ -52,7 +90,15 @@ class ReferenceDatabase:
         return file_database
 
     def filter_database_by_region(self, region_ids: Union[str, List[str]], keep_region: bool) -> None:
+        """
+        Filters the database to include or exclude regions based on the provided list of region IDs.
+        The regions to keep or remove are determined by the `keep_region` flag.
 
+        :param region_ids: A single region ID or a list of region IDs to filter by.
+        :type region_ids: Union[str, List[str]]
+        :param keep_region: If True, only the specified regions will be kept in the database. If False, the specified regions will be removed from the database.
+        :type keep_region: bool
+        """
         region_ids = check_if_list(region_ids)
 
         if self.database:
@@ -72,7 +118,17 @@ class ReferenceDatabase:
     def filter_database_by_attribute_category(
         self, attribute_name: str, attribute_category: Union[str, List[str]], keep_if_equals_category: bool
     ) -> None:
+        """
+        Filters the database based on a specific attribute's category.
+        Sequences are either kept or removed based on whether their attribute values match the specified category.
 
+        :param attribute_name: The name of the attribute to filter by.
+        :type attribute_name: str
+        :param attribute_category: A single category or a list of categories to filter by.
+        :type attribute_category: Union[str, List[str]]
+        :param keep_if_equals_category: If True, sequences with matching categories are kept. If False, sequences with matching categories are removed.
+        :type keep_if_equals_category: bool
+        """
         attribute_category = check_if_list(attribute_category)
 
         if self.database:
