@@ -1,5 +1,5 @@
 """
-This module provides different oligo filters that assess sequence properties of oligonucelotides critical for successful applications.
+This module provides a comprehensive set of filters designed to evaluate the sequence properties of oligonucleotides, ensuring their suitability for various applications.
 
 Classes:
 - PropertyFilterBase: An abstract base class for creating filters that assess various properties of oligonucleotides.
