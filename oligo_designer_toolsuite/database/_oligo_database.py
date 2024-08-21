@@ -148,7 +148,17 @@ class OligoDatabase:
         """
 
         def _load_fasta_file(file: str) -> None:
+            """
+            Load a FASTA file and integrate its sequences into the existing database.
 
+            This function checks the format of a provided FASTA file and, if valid, reads the sequences.
+            It then processes each sequence to extract regions, additional information, and coordinates from the headers.
+            The sequences are stored in a structured database, ensuring that any duplicated sequences within the same region are appropriately merged.
+
+            :param file: The path to the FASTA file to be loaded.
+            :type file: str
+            :return: None
+            """
             if self.fasta_parser.check_fasta_format(file):
                 fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
 
@@ -335,6 +345,17 @@ class OligoDatabase:
         """
 
         def _load_database_file(file: str) -> None:
+            """
+            Loads a database file and integrates its content into the existing database and oligosets.
+
+            This function opens a pickled database file, extracts the region ID, and the associated database and oligoset regions.
+            If the region ID is already present in the current database, it merges the new data with the existing one.
+            Otherwise, it adds the new region data to the database and oligosets.
+
+            :param file: The path to the database file to be loaded.
+            :type file: str
+            :return: None
+            """
             # extract region ID from the file name and remove the extension
             with open(file, "rb") as handle:
                 content = pickle.load(handle)

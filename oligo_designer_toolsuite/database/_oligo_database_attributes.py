@@ -239,7 +239,7 @@ class OligoAttributes:
         :param end: The end position of the seed region. Can be an integer (exact position) or a float (fraction of the sequence length).
         :type end: Union[int, float]
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -307,7 +307,7 @@ class OligoAttributes:
         :param seedregion_size: The size of the seed region to be calculated around the ligation site.
         :type seedregion_size: int
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -362,7 +362,7 @@ class OligoAttributes:
         :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -444,7 +444,7 @@ class OligoAttributes:
             see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
         :type Tm_chem_correction_parameters: dict, optional
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -483,7 +483,20 @@ class OligoAttributes:
         :rtype: int
         """
 
-        def _calculate_max_overlap(seq1, seq2):
+        def _calculate_max_overlap(seq1: str, seq2: str) -> int:
+            """
+            Calculate the maximum overlap between two sequences.
+
+            This function compares two sequences and determines the maximum length of consecutive matching characters between them.
+            It iterates over the characters of both sequences and tracks the length of overlapping substrings. The longest such overlap is returned.
+
+            :param seq1: The first sequence to compare.
+            :type seq1: str
+            :param seq2: The second sequence to compare.
+            :type seq2: str
+            :return: The length of the maximum overlap between the two sequences.
+            :rtype: int
+            """
             len_overlap_sub = 0
             len_overlap = 0
             for c1, c2 in zip(seq1, seq2):
@@ -529,7 +542,7 @@ class OligoAttributes:
         :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -569,7 +582,7 @@ class OligoAttributes:
         :param comparison_sequence: The sequence to compare against for complementary overlap.
         :type comparison_sequence: str
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -618,7 +631,7 @@ class OligoAttributes:
         :param T: The temperature in degrees Celsius at which to calculate the ΔG.
         :type T: float
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -753,7 +766,7 @@ class OligoAttributes:
         :param Tm_chem_correction_parameters: Optional parameters for chemical correction.
         :type Tm_chem_correction_parameters: dict, optional
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
@@ -894,7 +907,7 @@ class OligoAttributes:
         :param min_thymines: The minimum number of thymine bases required in the detection oligo.
         :type min_thymines: int
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
-        :type sequence_type: _TYPES_SEQ, optional
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated oligo database with the calculated attribute.
