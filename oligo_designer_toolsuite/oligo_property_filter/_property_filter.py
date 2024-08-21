@@ -46,7 +46,7 @@ class PropertyFilter:
         :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used for filter calculations.
-        :type sequence_type: _TYPES_SEQ
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of jobs to run in parallel, default is 1.
         :type n_jobs: int
         :return: The filtered oligo database.
@@ -70,7 +70,20 @@ class PropertyFilter:
     def _filter_region(
         self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ
     ) -> None:
+        """
+        Filters a specific region in the oligo database based on sequence properties.
 
+        This method iterates through the oligonucleotides in a given region of the database,
+        applying a series of filters to determine whether each sequence meets specified criteria.
+        If a sequence does not fulfill all filter conditions, it is removed from the database.
+
+        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        """
         oligo_ids = list(oligo_database.database[region_id].keys())
         for oligo_id in oligo_ids:
             fulfills_all_filter = self._filter_sequence(
@@ -80,7 +93,19 @@ class PropertyFilter:
                 del oligo_database.database[region_id][oligo_id]
 
     def _filter_sequence(self, sequence: Seq) -> bool:
+        """
+        Applies a series of filters to a sequence and checks if it meets all criteria.
 
+        This method iterates through a list of filters, applying each one to the provided sequence.
+        If the sequence fails any filter, the method returns `False` immediately,
+        indicating that the sequence does not meet the criteria.
+        If the sequence passes all filters, it returns `True`.
+
+        :param sequence: The nucleotide sequence.
+        :type sequence: str
+        :return: `True` if the sequence meets all filter criteria, `False` otherwise.
+        :rtype: bool
+        """
         for filter in self.filters:
             fulfills_filter = filter.apply(sequence)
             if not fulfills_filter:  # stop at the first false we obtain
