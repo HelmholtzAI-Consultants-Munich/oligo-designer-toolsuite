@@ -37,7 +37,7 @@ class OligoScoringBase(ABC):
         :param region_id: Region ID to process.
         :type region_id: str
         :param sequence_type: The type of sequence to be used for score calculation .
-        :type sequence_type: _TYPES_SEQ
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: A tuple containing the updated oligo database and a pandas Series with oligo scores.
         :rtype: Tuple[OligoDatabase, pd.Series]
         """
@@ -64,7 +64,7 @@ class OligoScoringBase(ABC):
         :param region_id: Oligo ID to process.
         :type region_id: str
         :param sequence_type: The type of sequence to be used for score calculation .
-        :type sequence_type: _TYPES_SEQ
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The computed score of the nucleotide.
         :rtype: float
         """
@@ -106,7 +106,7 @@ class GCOligoScoring(OligoScoringBase):
         :param region_id: Oligo ID to process.
         :type region_id: str
         :param sequence_type: The type of sequence to be used for score calculation .
-        :type sequence_type: _TYPES_SEQ
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The absolute difference between the optimal GC content and the GC content of the nucleotide sequence.
         :rtype: float
         """
@@ -161,7 +161,7 @@ class WeightedGCUtrScoring(OligoScoringBase):
         :param region_id: Oligo ID to process.
         :type region_id: str
         :param sequence_type: The type of sequence to be used for score calculation .
-        :type sequence_type: _TYPES_SEQ
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the weighted difference from optimal GC content and UTR consideration.
         :rtype: float
         """
@@ -270,7 +270,7 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         :param region_id: Oligo ID to process.
         :type region_id: str
         :param sequence_type: The type of sequence to be used for score calculation .
-        :type sequence_type: _TYPES_SEQ
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the weighted difference from optimal GC content and Tm.
         :rtype: float
         """
@@ -291,12 +291,36 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         return score
 
     def _generate_scoring_functions(self) -> None:
+        """
+        Generates scoring functions for Tm and GC content errors.
+
+        This method creates error functions for melting temperature (Tm) and GC content by using the minimum, optimal, and maximum values provided.
+        These error functions are later used to score oligonucleotides based on their deviation from the optimal values.
+
+        :return: None
+        """
         self.Tm_error = self._generate_error_function(self.Tm_min, self.Tm_opt, self.Tm_max)
         self.GC_error = self._generate_error_function(
             self.GC_content_min, self.GC_content_opt, self.GC_content_max
         )
 
     def _generate_error_function(self, min_val: float, opt_val: float, max_val: float):
+        """
+        Generates an error function for scoring based on deviation from optimal values.
+
+        This method creates a scoring function that calculates the relative error for a given difference (`dif`) from an optimal value.
+        The function scales the error based on the proximity of the difference to either the minimum or maximum thresholds,
+        depending on whether the deviation is positive or negative.
+
+        :param min_val: The minimum acceptable value.
+        :type min_val: float
+        :param opt_val: The optimal value.
+        :type opt_val: float
+        :param max_val: The maximum acceptable value.
+        :type max_val: float
+        :return: A function that calculates the relative error based on the input difference.
+        :rtype: function
+        """
 
         dif_max = max_val - opt_val
         dif_min = opt_val - min_val
@@ -396,7 +420,7 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         :param region_id: Oligo ID to process.
         :type region_id: str
         :param sequence_type: The type of sequence to be used for score calculation .
-        :type sequence_type: _TYPES_SEQ
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the Tm, GC content, and isoform consensus.
         :rtype: float
         """
