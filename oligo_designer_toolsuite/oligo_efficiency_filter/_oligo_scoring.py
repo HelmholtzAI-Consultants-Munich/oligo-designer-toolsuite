@@ -29,16 +29,16 @@ class OligoScoringBase(ABC):
         self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ
     ) -> Tuple[OligoDatabase, pd.Series]:
         """
-        Applies the scoring function to all oligos within a specified region of the oligo database, updating the
+        Applies the scoring function to all oligos within a specified region of the OligoDatabase, updating the
         database with the calculated scores and returning the updated database along with a pandas Series of scores.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
-        :param sequence_type: The type of sequence to be used for score calculation .
+        :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :return: A tuple containing the updated oligo database and a pandas Series with oligo scores.
+        :return: A tuple containing the updated OligoDatabase and a pandas Series with oligo scores.
         :rtype: Tuple[OligoDatabase, pd.Series]
         """
         oligos_ids = list(oligo_database.database[region_id].keys())
@@ -57,13 +57,13 @@ class OligoScoringBase(ABC):
         Abstract method to compute the score of a specific oligonucleotide sequence. This method should be
         implemented by subclasses to define the specific scoring logic.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
         :param region_id: Oligo ID to process.
         :type region_id: str
-        :param sequence_type: The type of sequence to be used for score calculation .
+        :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The computed score of the nucleotide.
         :rtype: float
@@ -99,13 +99,13 @@ class GCOligoScoring(OligoScoringBase):
         """
         Calculates the GC content score for a specific nucleotide based on the optimal GC content.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
         :param region_id: Oligo ID to process.
         :type region_id: str
-        :param sequence_type: The type of sequence to be used for score calculation .
+        :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The absolute difference between the optimal GC content and the GC content of the nucleotide sequence.
         :rtype: float
@@ -154,13 +154,13 @@ class WeightedGCUtrScoring(OligoScoringBase):
         Calculates the weighted score for a given nucleotide based on its GC content and whether it originates
         from a UTR (Untranslated Region).
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
         :param region_id: Oligo ID to process.
         :type region_id: str
-        :param sequence_type: The type of sequence to be used for score calculation .
+        :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the weighted difference from optimal GC content and UTR consideration.
         :rtype: float
@@ -263,13 +263,13 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         Computes the score of a nucleotide based on the weighted difference from optimal melting temperature (Tm)
         and GC content, using specified parameters for the calculation.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
         :param region_id: Oligo ID to process.
         :type region_id: str
-        :param sequence_type: The type of sequence to be used for score calculation .
+        :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the weighted difference from optimal GC content and Tm.
         :rtype: float
@@ -413,13 +413,13 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         and isoform consensus, using specified weights for each factor. The score is derived by combining
         the weighted errors in Tm and GC content with the isoform consensus, where a lower score is preferable.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
         :param region_id: Oligo ID to process.
         :type region_id: str
-        :param sequence_type: The type of sequence to be used for score calculation .
+        :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the Tm, GC content, and isoform consensus.
         :rtype: float
