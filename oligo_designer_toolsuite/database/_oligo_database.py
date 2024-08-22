@@ -120,7 +120,7 @@ class OligoDatabase:
         """
         Loads oligonucleotide data from one or more FASTA files into the database, optionally overwriting the existing database.
 
-        This function reads sequences from FASTA file(s) and adds them to the oligo database, either as 'oligo' or
+        This function reads sequences from FASTA file(s) and adds them to the OligoDatabase, either as 'oligo' or
         'target' sequence and computes the reverse compliment sequence for the other sequence type. It parses the
         headers of the FASTA entries to extract oligo ttribute information, and assigns unique IDs to the oligos within
         each region.
@@ -245,7 +245,7 @@ class OligoDatabase:
         """
         Loads oligonucleotide data from a tab-delimited table (TSV) file into the database, optionally overwriting the existing database.
 
-        This function loads the oligo database from a tab-separated values (TSV) file. The file must contain
+        This function loads the OligoDatabase from a tab-separated values (TSV) file. The file must contain
         columns such as 'region_id', 'oligo_id' and optionally the oligo or target sequence as well as oligo attributes.
         The database can be optionally filtered by specifying a list of region IDs.
 
@@ -881,7 +881,7 @@ class OligoDatabase:
 
     def filter_database_by_region(self, remove_region: bool, region_ids: Union[str, List[str]]) -> None:
         """
-        Filters the oligo database based on the specified region IDs. Depending on the `remove_region` flag,
+        Filters the OligoDatabase based on the specified region IDs. Depending on the `remove_region` flag,
         this function either removes the specified regions from the database or retains only the specified regions
         and removes the others.
 
@@ -905,7 +905,7 @@ class OligoDatabase:
 
     def filter_database_by_oligo(self, remove_region: bool, oligo_ids: Union[str, List[str]]) -> None:
         """
-        Filters the oligo database based on the specified oligo IDs. Depending on the `remove_region` flag,
+        Filters the OligoDatabase based on the specified oligo IDs. Depending on the `remove_region` flag,
         this function either removes the specified oligos from the database or retains only the specified oligos
         and removes the others.
 
@@ -933,7 +933,7 @@ class OligoDatabase:
         self, attribute_name: str, attribute_thr: float, remove_if_smaller_threshold: bool
     ) -> None:
         """
-        Filters the oligo database based on the specified attribute threshold. The function iterates through all
+        Filters the OligoDatabase based on the specified attribute threshold. The function iterates through all
         oligos in the database and removes those that do not meet the given threshold criteria.
 
         :param attribute_name: The name of the attribute to be evaluated.
@@ -967,7 +967,7 @@ class OligoDatabase:
         self, attribute_name: str, attribute_category: Union[str, List[str]], remove_if_equals_category: bool
     ) -> None:
         """
-        Filters the oligo database by the specified attribute category. The function removes oligos based on whether
+        Filters the OligoDatabase by the specified attribute category. The function removes oligos based on whether
         their attribute values match or do not match the given category/categories.
 
         :param attribute_name: The name of the attribute to evaluate.

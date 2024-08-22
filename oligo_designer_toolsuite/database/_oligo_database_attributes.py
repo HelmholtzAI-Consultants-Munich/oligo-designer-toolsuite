@@ -19,7 +19,7 @@ from oligo_designer_toolsuite.utils import check_if_list, flatten_attribute_list
 
 class OligoAttributes:
     """
-    The OligoAttributes class provides a comprehensive set of methods to calculate and update various attributes of oligonucleotides within a given oligo database.
+    The OligoAttributes class provides a comprehensive set of methods to calculate and update various attributes of oligonucleotides within a given OligoDatabase.
 
     This class includes functionalities for determining oligo length, GC content, melting temperature (Tm), secondary structure stability (ΔG), isoform consensus, and more.
     These calculations are essential for the design and evaluation of oligos forcertain experimental specifications.
@@ -42,13 +42,13 @@ class OligoAttributes:
     def calculate_oligo_length(
         self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None
     ) -> OligoDatabase:
-        """Calculate and update the length of oligonucleotides for the specified regions of the oligo database.
+        """Calculate and update the length of oligonucleotides for the specified regions of the OligoDatabase.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
 
@@ -84,16 +84,16 @@ class OligoAttributes:
     def calculate_num_targeted_transcripts(
         self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None
     ) -> OligoDatabase:
-        """Calculate and update the number of targeted transcripts for each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the number of targeted transcripts for each oligonucleotide for the specified regions of the OligoDatabase.
 
         If the required information for `_calc_num_targeted_transcripts` is not available,
         the 'num_targeted_transcripts' attribute is set to None.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -143,16 +143,16 @@ class OligoAttributes:
     def calculate_isoform_consensus(
         self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None
     ) -> OligoDatabase:
-        """Calculate and update the isoform consensus for each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the isoform consensus for each oligonucleotide for the specified regions of the OligoDatabase.
 
         If the required information for `_calc_isoform_consensus` is not available,
         the 'isoform_consensus' attribute is set to None.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -230,9 +230,9 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the seed region for each oligonucleotide for the specified regions of the oligo database based on the given start and end positions.
+        """Calculate and update the seed region for each oligonucleotide for the specified regions of the OligoDatabase based on the given start and end positions.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param start: The start position of the seed region. Can be an integer (exact position) or a float (fraction of the sequence length).
         :type start: Union[int, float]
@@ -242,7 +242,7 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -299,10 +299,10 @@ class OligoAttributes:
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
         """Calculate and update the seed region around the ligation site for each oligonucleotide for the
-        specified regions of the oligo database. If the required information for `_calc_seedregion_ligationsite`
+        specified regions of the OligoDatabase. If the required information for `_calc_seedregion_ligationsite`
         is not available, the 'seedregion_start' and 'seedregion_end' attributes are set to None.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param seedregion_size: The size of the seed region to be calculated around the ligation site.
         :type seedregion_size: int
@@ -310,7 +310,7 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -357,15 +357,15 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the GC content for each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the GC content for each oligonucleotide for the specified regions of the OligoDatabase.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -427,9 +427,9 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the melting temperature (Tm) for each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the melting temperature (Tm) for each oligonucleotide for the specified regions of the OligoDatabase.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param Tm_parameters: Parameters for the nearest-neighbor Tm calculation.
             For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
@@ -447,7 +447,7 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -537,15 +537,15 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the length of the maximum self-complementary region for each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the length of the maximum self-complementary region for each oligonucleotide for the specified regions of the OligoDatabase.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -575,9 +575,9 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the length of the complementary overlap between a specified comparison sequence and each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the length of the complementary overlap between a specified comparison sequence and each oligonucleotide for the specified regions of the OligoDatabase.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param comparison_sequence: The sequence to compare against for complementary overlap.
         :type comparison_sequence: str
@@ -585,7 +585,7 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -624,9 +624,9 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the Gibbs free energy (ΔG) for secondary structure formation at a specified temperature for each oligonucleotide for the specified regions of the oligo database.
+        """Calculate and update the Gibbs free energy (ΔG) for secondary structure formation at a specified temperature for each oligonucleotide for the specified regions of the OligoDatabase.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param T: The temperature in degrees Celsius at which to calculate the ΔG.
         :type T: float
@@ -634,7 +634,7 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -746,10 +746,10 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the melting temperatures (Tm) of the padlock probe arms for each oligonucleotide for the specified regions of the oligo database,
+        """Calculate and update the melting temperatures (Tm) of the padlock probe arms for each oligonucleotide for the specified regions of the OligoDatabase,
         and identify the optimal ligation site based on specified Tm constraints.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param arm_length_min: The minimum length of each arm of the padlock probe.
         :type arm_length_min: int
@@ -769,7 +769,7 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
@@ -896,9 +896,9 @@ class OligoAttributes:
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the detection oligo sequences for each oligonucleotide for the specified regions of the oligo database, based on ligation site position and length constraints.
+        """Calculate and update the detection oligo sequences for each oligonucleotide for the specified regions of the OligoDatabase, based on ligation site position and length constraints.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param detect_oligo_length_min: The minimum allowable length for the detection oligo.
         :type detect_oligo_length_min: int
@@ -910,7 +910,7 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
         :type region_ids: Union[str, List[str]], optional
-        :return: The updated oligo database with the calculated attribute.
+        :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
         region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
