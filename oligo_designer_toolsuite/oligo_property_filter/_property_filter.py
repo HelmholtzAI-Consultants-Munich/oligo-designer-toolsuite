@@ -19,9 +19,9 @@ from oligo_designer_toolsuite.oligo_property_filter import PropertyFilterBase
 
 class PropertyFilter:
     """
-    A class for applying multiple property filters to sequences in an oligo database.
+    A class for applying multiple property filters to sequences in an OligoDatabase.
 
-    The `PropertyFilter` class allows you to apply a list of sequence filters (subclasses of `PropertyFilterBase`) to an oligo database.
+    The `PropertyFilter` class allows you to apply a list of sequence filters (subclasses of `PropertyFilterBase`) to an OligoDatabase.
     The filters are applied in parallel across all regions of the database, and sequences that do not meet all filter criteria are removed.
 
     :param filters: A list of property filters to apply to sequences.
@@ -39,17 +39,17 @@ class PropertyFilter:
         self, oligo_database: OligoDatabase, sequence_type: _TYPES_SEQ, n_jobs: int = 1
     ) -> OligoDatabase:
         """
-        Apply the property filters to all sequences in the oligo database and filter
-        sequences in the oligo database based on the specified property filters.
+        Apply the property filters to all sequences in the OligoDatabase and filter
+        sequences in the OligoDatabase based on the specified property filters.
         Sequences that do not meet the criteria of all filters are removed.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used for filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of jobs to run in parallel, default is 1.
         :type n_jobs: int
-        :return: The filtered oligo database.
+        :return: The filtered OligoDatabase.
         :rtype: OligoDatabase
         """
         options = get_args(_TYPES_SEQ)
@@ -71,13 +71,13 @@ class PropertyFilter:
         self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ
     ) -> None:
         """
-        Filters a specific region in the oligo database based on sequence properties.
+        Filters a specific region in the OligoDatabase based on sequence properties.
 
         This method iterates through the oligonucleotides in a given region of the database,
         applying a series of filters to determine whether each sequence meets specified criteria.
         If a sequence does not fulfill all filter conditions, it is removed from the database.
 
-        :param oligo_database: The Oligo Database containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
