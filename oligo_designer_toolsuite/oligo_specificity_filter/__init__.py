@@ -1,22 +1,22 @@
 """
-This module provides different oligo filters that assess the off-target and crosshybridization potential of oligo sequences and filter out sequences that have potential off-target regions.
+This module provides a comprehensive set of filters designed to assess and mitigate the off-target and cross-hybridization potential of oligonucleotide sequences, ensuring high specificity and low off-target effects.
 
 Classes:
-- SpecificityFilterBase: A base class for creating filters that assess the specificity of oligo sequences against target regions.
-- AlignmentSpecificityFilter: Extends SpecificityFilterBase to use sequence alignment tools for specificity checking.
-- ExactMatchFilter: Filters oligo sequences by detecting exact matches among other oligo sequences.
-- BlastNFilter: Utilizes BLASTN for identifying and filtering sequences with potential off-target effects.
-- BlastNSeedregionFilter: A BlastNFilter that focuses on the seed regions of oligo sequences for specificity filtering.
-- BlastNSeedregionLigationsiteFilter: Targets the ligation site's seed regions for more precise BLASTN-based specificity filtering.
-- BowtieFilter: Employs Bowtie for alignment-based specificity filtering of oligo sequences.
-- Bowtie2Filter: Leverages Bowtie2, an advanced version of Bowtie, for enhanced specificity filtering.
-- CrossHybridizationFilter: Applies policies to reduce cross-hybridization within oligo databases.
-- HybridizationProbabilityFilter: Refines alignment-based filters with increased sensitivity to reduce the number of filtered oligos.
-- FilterPolicyBase: A base class for filtering policies.
-- RemoveAllPolicy: A policy that removes all oligonucleotides that potentially hybridize.
-- RemoveByDegreePolicy: A policy for removing oligos based on their connectivity degree in cross-hybridization analysis.
-- RemoveByLargerRegionPolicy: Eliminates oligos from regions with higher number of assigned oligos to manage cross-hybridization.
-- SpecificityFilter: Integrates various specificity filters and policies to optimize oligo sequence design.
+- SpecificityFilterBase: Abstract base class for creating oligo specificity filters.
+- AlignmentSpecificityFilter: Extends SpecificityFilterBase, utilizing sequence alignment tools like BLAST and Bowtie for specificity checks.
+- ExactMatchFilter: Filters out oligos with exact matches to others within a database.
+- BlastNFilter: Uses BLASTN for filtering sequences with potential off-target regions.
+- BlastNSeedregionFilter: Focuses on seed regions during BLASTN-based specificity filtering.
+- BlastNSeedregionLigationsiteFilter: Focuses on seed regions around ligation sites during BLASTN-based specificity filtering.
+- BowtieFilter: Uses Bowtie for filtering sequences with potential off-target regions.
+- Bowtie2Filter: Uses Bowtie2 for filtering sequences with potential off-target regions.
+- CrossHybridizationFilter: Reduces cross-hybridization within oligo databases.
+- HybridizationProbabilityFilter: Enhances specificity filters with AI-driven hybridization probability models.
+- FilterPolicyBase: Base class for implementing filtering policies to manage cross-hybridization.
+- RemoveAllPolicy: Removes all oligos that exhibit potential hybridization with off-target sequences.
+- RemoveByDegreePolicy: Removes oligos based on their degree of connectivity in hybridization analysis.
+- RemoveByLargerRegionPolicy: Eliminates oligos from regions with a higher oligo count to manage hybridization effectively.
+- SpecificityFilter: Integrates multiple specificity filters and policies, offering a comprehensive tool for optimizing oligo sequence design.
 """
 
 from ._filter_base import SpecificityFilterBase, AlignmentSpecificityFilter
