@@ -33,8 +33,8 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    GraphBasedSelectionPolicy,
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -223,16 +223,14 @@ class OligoSeqProbeDesigner:
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
-        self_comp = SelfComplementFilter(
-            max_len_selfcomp=max_len_selfcomp,
-        )
+        self_comp = SelfComplementFilter(max_len_selfcomplement=max_len_selfcomp)
 
         filters = [
             hard_masked_sequences,
             soft_masked_sequences,
             homopolymeric_runs,
             gc_content,
-            homodimer,
+            self_comp,
             melting_temperature,
             secondary_sctructure,
             homopolymeric_runs,
@@ -450,19 +448,27 @@ class OligoSeqProbeDesigner:
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
         set_scoring = AverageSetScoring(ascending=True)
+
+        selection_policy = GraphBasedSelectionPolicy(
+            set_size_opt=opt_oligoset_size,
+            set_size_min=min_oligoset_size,
+            n_sets=n_sets,
+            ascending=True,
+            set_scoring=set_scoring,
+        )
         oligoset_generator = OligosetGeneratorIndependentSet(
             opt_oligoset_size=opt_oligoset_size,
             min_oligoset_size=min_oligoset_size,
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
+            heuristic_selection=selection_policy,
             max_oligos=max_oligos,
             distance_between_oligos=distance_between_oligos,
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            n_sets=n_sets,
+            pre_filter=False,
             n_jobs=self.n_jobs,
         )
 

@@ -13,10 +13,16 @@ from ._generate_oligosets import (
     HomogeneousPropertyOligoSetGenerator,
     OligosetGeneratorIndependentSet,
 )
-from ._heuristic_selection_methods import heuristic_selection_independent_set
+from ._heuristic_selection_methods import (
+    GraphBasedSelectionPolicy,
+    GreedySelectionPolicy,
+    OligoSelectionPolicy,
+)
 
 __all__ = [
     "OligosetGeneratorIndependentSet",
     "HomogeneousPropertyOligoSetGenerator",
-    "heuristic_selection_independent_set",
+    "OligoSelectionPolicy",
+    "GreedySelectionPolicy",
+    "GraphBasedSelectionPolicy",
 ]

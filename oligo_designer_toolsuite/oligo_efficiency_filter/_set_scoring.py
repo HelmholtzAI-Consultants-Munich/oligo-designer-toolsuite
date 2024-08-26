@@ -73,7 +73,7 @@ class LowestSetScoring(SetScoringBase):
         set_score_sum = best_n_oligos.sum()
         oligoset = best_n_oligos.index.tolist()
         return oligoset, {
-            "set_score_lowest": round(set_score_lowest, 4),
+            "set_score_worst": round(set_score_lowest, 4),
             "set_score_sum": round(set_score_sum, 4),
         }
 
