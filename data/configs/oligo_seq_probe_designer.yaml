@@ -31,7 +31,7 @@ GC_content_max: 65 # maximum GC content of oligos
 Tm_min: 50 # minimum melting temperature of oligos
 Tm_max: 70 # maximum melting temperature of oligos
 secondary_structures_T: 37 # temperature to compute the secondary structure free energy
-secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy
+secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
   A: 6
   T: 6

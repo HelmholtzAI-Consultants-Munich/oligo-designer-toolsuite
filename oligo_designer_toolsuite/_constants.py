@@ -9,6 +9,8 @@ from typing import Literal
 ############################################
 
 _TYPES_SEQ = Literal["target", "oligo", "sequence_encoding_probe"]
+_TYPES_FILE = Literal["gff", "gtf", "fasta"]
+_TYPES_FILE_SEQ = Literal["dna", "ncrna"]
 
 ############################################
 # constants
