@@ -140,7 +140,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :type file_index: str
         :param sequence_type: The type of sequence to be used for the filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the BLAST search results.
         :rtype: pd.DataFrame

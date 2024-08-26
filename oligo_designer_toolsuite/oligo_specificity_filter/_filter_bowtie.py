@@ -40,8 +40,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
     --norc: only report hits on the plus strand
     --nofw: only report hits on the minus strand
     -v <int>: Report alignments with at most <int> mismatches.
-    -n <int>: Maximum number of mismatches permitted in the “seed”, i.e., the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2, or 3 and the default is 2.
-    -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. Bowtie is faster for larger values of -l.
+    -n <int>: Maximum number of mismatches permitted in the “seed”, i.e., the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2, or 3 and the defaults to 2.
+    -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the defaults to 28. Bowtie is faster for larger values of -l.
     All available Bowtie search parameters are listed on the Bowtie webpage.
 
     The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available
@@ -132,7 +132,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :type file_index: str
         :param sequence_type: The type of sequence to be used for the filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the Bowtie search results.
         :rtype: pd.DataFrame
@@ -412,7 +412,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         :type file_index: str
         :param sequence_type: The type of sequence to be used for the filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the Bowtie2 search results.
         :rtype: pd.DataFrame

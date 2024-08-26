@@ -189,7 +189,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type file_index: str
         :param region_id: Region ID to process.
         :type region_id: str
-        :param consider_hits_from_input_region: Whether to consider hits from the same region, default is False.
+        :param consider_hits_from_input_region: Whether to consider hits from the same region, defaults to False.
         :type consider_hits_from_input_region: bool
         """
         table_hits_region = self._run_filter(
@@ -328,7 +328,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type file_index: str
         :param sequence_type: The type of sequence to be used for the filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame containing the search results.
         :rtype: pd.DataFrame
@@ -383,7 +383,7 @@ class AlignmentSpecificityFilter(SpecificityFilterBase):
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Flag to consider or ignore hits from the same region.
         :type consider_hits_from_input_region: bool
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame with the identified significant hits.
         :rtype: pd.DataFrame
