@@ -13,6 +13,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 import yaml
+from Bio.Seq import Seq
 from Bio.SeqUtils import MeltingTemp as mt
 from scipy.spatial.distance import hamming
 
@@ -26,6 +27,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     WeightedIsoformTmGCOligoScoring,
 )
 from oligo_designer_toolsuite.oligo_property_filter import (
+    ComplementFilter,
     GCClampFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
@@ -33,12 +35,13 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     MeltingTemperatureNNFilter,
     PropertyFilter,
     SecondaryStructureFilter,
+    SelfComplementFilter,
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    GreedySelectionPolicy,
     HomogeneousPropertyOligoSetGenerator,
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -378,19 +381,30 @@ class MerfishProbeDesigner:
             GC_weight=probe_GC_weight,
         )
         set_scoring = LowestSetScoring(ascending=True)
+        selection_policy = GreedySelectionPolicy(
+            set_size_opt=probeset_size_opt,
+            set_size_min=probeset_size_min,
+            n_sets=n_sets,
+            ascending=True,
+            set_scoring=set_scoring,
+            score_criteria="set_score_worst",
+            penalty=0.01,
+        )
+
         probeset_generator = OligosetGeneratorIndependentSet(
             opt_oligoset_size=probeset_size_opt,
             min_oligoset_size=probeset_size_min,
             oligos_scoring=probes_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
+            heuristic_selection=selection_policy,
             max_oligos=max_graph_size,
             distance_between_oligos=distance_between_probes,
         )
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            n_sets=n_sets,
+            pre_filter=True,
+            n_attempts=100,
             n_jobs=self.n_jobs,
         )
 
@@ -402,7 +416,12 @@ class MerfishProbeDesigner:
             file_database = ""
             file_probesets = ""
 
-        return oligo_database, file_database, file_probesets
+        # save the oligo database as fasta for the primer design
+        file_fasta_encoding_probes = oligo_database.write_database_to_fasta(
+            "encoding_probes", sequence_type="oligo"
+        )
+
+        return oligo_database, file_database, file_probesets, file_fasta_encoding_probes
 
     def design_final_probe_sequences(
         self,
@@ -998,14 +1017,24 @@ class MerfishPrimerDesigner:
         tm_max: int,
         tm_parameters: dict,
         homopolymeric_base_n: int,
+        three_prime_sequence: str,
+        T_secondary_structure: int,
+        delta_g_secondary_structure: int,
+        max_len_selfcomplement: int,
+        max_len_complement: int,
         files_fasta_reference_database_transcriptome: List[str],
         blastn_search_parameters_transcriptome: dict,
         blastn_hit_parameters_transcriptome: dict,
         files_fasta_reference_database_encoding_probe: List[str],
         blastn_search_parameters_encoding_probe: dict,
         blastn_hit_parameters_encoding_probe: dict,
-        tm_reverse_primer: int,
+        reverse_primer_sequence: str,
     ):
+
+        tm_reverse_primer = OligoAttributes()._calc_TmNN(
+            sequence=reverse_primer_sequence,
+            Tm_parameters=tm_parameters,
+        )
 
         while True:
             oligo_database, file_database = self.create_oligo_database(
@@ -1024,6 +1053,12 @@ class MerfishPrimerDesigner:
                 Tm_max=tm_max,
                 Tm_parameters=tm_parameters,
                 homopolymeric_base_n=homopolymeric_base_n,
+                three_prime_sequence=three_prime_sequence,
+                T_secondary_structure=T_secondary_structure,
+                delta_g_secondary_structure=delta_g_secondary_structure,
+                max_len_selfcomplement=max_len_selfcomplement,
+                max_len_complement=max_len_complement,
+                reverse_primer_sequence=reverse_primer_sequence,
             )
 
             oligo_database, file_database = self.filter_by_specificity(
@@ -1035,7 +1070,11 @@ class MerfishPrimerDesigner:
                 blastn_search_parameters_encoding_probe=blastn_search_parameters_encoding_probe,
                 blastn_hit_parameters_encoding_probe=blastn_hit_parameters_encoding_probe,
             )
+
             if len(oligo_database.database) > 0:
+                oligo_database = self.oligo_attributes_calculator.calculate_TmNN(
+                    oligo_database, "oligo", Tm_parameters=tm_parameters
+                )
                 first_region = next(oligo_database.database.values())
                 first_oligo = list(first_region.values())[0]
                 best_oligo = first_oligo
@@ -1069,7 +1108,7 @@ class MerfishPrimerDesigner:
         ##### creating the primer database #####
         oligo_database = OligoDatabase(
             min_oligos_per_region=0,
-            write_regions_with_insufficient_oligos=False,
+            write_regions_with_insufficient_oligos=True,
             lru_db_max_in_memory=self.n_jobs * 2 + 2,
             database_name=self.subdir_db_primers,
             dir_output=self.dir_output,
@@ -1086,8 +1125,8 @@ class MerfishPrimerDesigner:
         else:
             file_database = ""
 
-        dir = forward_primer_sequences.dir_output
-        shutil.rmtree(dir) if os.path.exists(dir) else None
+        # dir = forward_primer_sequences.dir_output
+        # shutil.rmtree(dir) if os.path.exists(dir) else None
 
         return oligo_database, file_database
 
@@ -1103,6 +1142,12 @@ class MerfishPrimerDesigner:
         Tm_max: int,
         Tm_parameters: dict,
         homopolymeric_base_n: int,
+        three_prime_sequence: str,
+        T_secondary_structure: int,
+        delta_g_secondary_structure: int,
+        max_len_selfcomplement: int,
+        max_len_complement: int,
+        reverse_primer_sequence: str,
     ):
 
         gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
@@ -1115,12 +1160,19 @@ class MerfishPrimerDesigner:
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
-
+        secondary_structures = SecondaryStructureFilter(
+            T=T_secondary_structure, thr_DG=delta_g_secondary_structure
+        )
+        self_complement = SelfComplementFilter(max_len_selfcomplement)
+        complement = ComplementFilter(Seq(reverse_primer_sequence), max_len_complement)
         filters = [
             gc_content,
             gc_clamp,
             melting_temperature,
             homopolymeric_runs,
+            secondary_structures,
+            self_complement,
+            complement,
         ]
 
         property_filter = PropertyFilter(filters=filters)
@@ -1231,7 +1283,7 @@ def main():
             oligo_length=config["probe_length"],
             files_fasta_oligo_database=config["files_fasta_probe_database"],
             # we should have at least "min_oligoset_size" oligos per gene to create one set
-            min_oligos_per_region=config["probeset_size"],
+            min_oligos_per_region=config["probeset_size_min"],
         )
 
         # preprocess the Tm parameters
@@ -1274,7 +1326,7 @@ def main():
         )
 
         # create the probe sets
-        oligo_database, file_database, dir_oligosets = pipeline.create_probe_sets(
+        oligo_database, file_database, dir_oligosets, file_fasta_encoding_probes = pipeline.create_probe_sets(
             oligo_database=oligo_database,
             probe_isoform_weight=config["probe_isoform_weight"],
             probe_Tm_weight=config["probe_Tm_weight"],
@@ -1286,12 +1338,13 @@ def main():
             probe_GC_content_min=config["probe_GC_content_min"],
             probe_GC_content_opt=config["probe_GC_content_opt"],
             probe_GC_content_max=config["probe_GC_content_max"],
-            probeset_size_opt=config["probeset_size"],
-            probeset_size_min=config["probeset_size"],
+            probeset_size_opt=config["probeset_size_opt"],
+            probeset_size_min=config["probeset_size_min"],
             max_graph_size=config["max_graph_size"],
             n_sets=config["n_sets"],
             distance_between_probes=config["distance_between_probes"],
         )
+        return file_fasta_encoding_probes
 
     #### Readout probes pipeline ####
     def run_readout_probes_pipeline(config):
@@ -1337,7 +1390,7 @@ def main():
         )
 
     #### Primer pipeline ####
-    def run_primer_pipeline(config):
+    def run_primer_pipeline(config, file_fasta_encoding_probes):
         # read config file
         primer_config_file = config["primer_designer"]
         # make primer_config_file an absolute path wrt the config file
@@ -1351,37 +1404,43 @@ def main():
             n_jobs=config_primer["n_jobs"],
         )
 
+        # preprocess the Tm parameters
+        primer_Tm_parameters = config_primer["Tm_parameters_primer"]
+        primer_Tm_parameters["nn_table"] = getattr(mt, primer_Tm_parameters["nn_table"])
+        primer_Tm_parameters["tmm_table"] = getattr(mt, primer_Tm_parameters["tmm_table"])
+        primer_Tm_parameters["imm_table"] = getattr(mt, primer_Tm_parameters["imm_table"])
+        primer_Tm_parameters["de_table"] = getattr(mt, primer_Tm_parameters["de_table"])
+
         # get the reverse primer
         reverse_primer = config_primer["reverse_primer_sequence"]
-        tm_reverse_primer = OligoAttributes()._calc_TmNN(
-            sequence=reverse_primer,
-            Tm_parameters=config_primer["tm_parameters"],
-        )
 
         # get the forward primer
         forward_primer = pipeline_primer.get_forward_primer(
-            oligo_length=config_primer["oligo_length"],
-            oligo_base_probabilities=config_primer["oligo_base_probabilities"],
+            oligo_length=config_primer["f_primer_length"],
+            oligo_base_probabilities=config_primer["f_primer_sequence_probs"],
             initial_num_sequences=config_primer["initial_num_sequences"],
-            gc_content_min=config_primer["gc_content_min"],
-            gc_content_max=config_primer["gc_content_max"],
-            gc_clamp_n_bases=config_primer["gc_clamp_n_bases"],
-            gc_clamp_nGC=config_primer["gc_clamp_nGC"],
-            tm_min=config_primer["tm_min"],
-            tm_max=config_primer["tm_max"],
-            tm_parameters=config_primer["tm_parameters"],
-            homopolymeric_base_n=config_primer["homopolymeric_base_n"],
+            gc_content_min=config_primer["f_primer_GC_content_min"],
+            gc_content_max=config_primer["f_primer_GC_content_max"],
+            gc_clamp_n_bases=config_primer["f_primer_GC_clamp_n_bases"],
+            gc_clamp_nGC=config_primer["f_primer_GC_clamp_nGC"],
+            tm_min=config_primer["f_primer_Tm_min"],
+            tm_max=config_primer["f_primer_Tm_max"],
+            tm_parameters=primer_Tm_parameters,
+            homopolymeric_base_n=config_primer["f_primer_homopolymeric_base_n"],
+            three_prime_sequence=config_primer["f_primer_3_prime_sequence"],
+            T_secondary_structure=config_primer["f_primer_T_secondary_structure"],
+            delta_g_secondary_structure=config_primer["f_primer_deltaG_secondary_structure"],
+            max_len_selfcomplement=config_primer["f_primer_max_len_selfcomplement"],
+            max_len_complement=config_primer["f_primer_max_len_complement"],
             files_fasta_reference_database_transcriptome=config_primer[
                 "files_fasta_reference_database_transcriptome"
             ],
             blastn_search_parameters_transcriptome=config_primer["blastn_search_parameters_transcriptome"],
             blastn_hit_parameters_transcriptome=config_primer["blastn_hit_parameters_transcriptome"],
-            files_fasta_reference_database_encoding_probe=config_primer[
-                "files_fasta_reference_database_encoding_probe"
-            ],
+            files_fasta_reference_database_encoding_probe=file_fasta_encoding_probes,
             blastn_search_parameters_encoding_probe=config_primer["blastn_search_parameters_encoding_probe"],
             blastn_hit_parameters_encoding_probe=config_primer["blastn_hit_parameters_encoding_probe"],
-            tm_reverse_primer=tm_reverse_primer,
+            reverse_primer_sequence=reverse_primer,
         )
 
     #### Assembling the final output ####
@@ -1396,9 +1455,11 @@ def main():
     # pipeline.generate_output(oligo_database=oligo_database, top_n_sets=config["n_sets"])
 
     #### Final output ####
-    run_readout_probes_pipeline(config)
+    # file_fasta_encoding_probes = run_target_probe_pipeline(config)
+    # run_readout_probes_pipeline(config)
+    file_fasta_encoding_probes = "/Users/isra.mekki/Projects/odt/oligo-designer-toolsuite/output_merfish_probe_designer/db_probes/encoding_probes.fna"
+    run_primer_pipeline(config, file_fasta_encoding_probes)
 
-    logging.info(f"Oligo sets were saved in {dir_oligosets}")
     logging.info("##### End of the pipeline. #####")
 
 

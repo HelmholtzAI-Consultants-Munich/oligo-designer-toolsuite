@@ -45,7 +45,8 @@ probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency sco
 probe_Tm_opt: 72 # max and min values are defiend above
 probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
 
-probeset_size: 50 # size of probe sets
+probeset_size_opt: 50 # optimal size of probe sets
+probeset_size_min: 50 # minimal size of probe sets
 distance_between_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
 n_sets: 100 # maximum number of sets to generate
 top_n_sets: 3 #maximum number of sets to report in "merfish_probes_order.yaml"
