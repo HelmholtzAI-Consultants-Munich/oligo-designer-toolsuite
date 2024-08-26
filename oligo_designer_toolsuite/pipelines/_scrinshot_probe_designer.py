@@ -36,8 +36,8 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    GraphBasedSelectionPolicy,
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -348,18 +348,27 @@ class ScrinshotProbeDesigner:
             GC_weight=probe_GC_weight,
         )
         set_scoring = LowestSetScoring(ascending=True)
+
+        selection_policy = GraphBasedSelectionPolicy(
+            set_size_opt=probeset_size_opt,
+            set_size_min=probeset_size_min,
+            n_sets=n_sets,
+            ascending=True,
+            set_scoring=set_scoring,
+        )
         probeset_generator = OligosetGeneratorIndependentSet(
             opt_oligoset_size=probeset_size_opt,
             min_oligoset_size=probeset_size_min,
             oligos_scoring=probes_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
+            heuristic_selection=selection_policy,
             max_oligos=max_graph_size,
             distance_between_oligos=distance_between_probes,
         )
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
+            pre_filter=False,
             n_sets=n_sets,
             n_jobs=self.n_jobs,
         )

@@ -41,8 +41,8 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    GreedySelectionPolicy,
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -267,19 +267,30 @@ class SeqFishPlusProbeDesigner:
             GC_content_opt=GC_content_opt, GC_weight=GC_weight, UTR_weight=UTR_weight
         )
         set_scoring = LowestSetScoring(ascending=True)
+
+        selection_policy = GreedySelectionPolicy(
+            set_size_opt=set_size_opt,
+            set_size_min=set_size_min,
+            n_sets=n_sets,
+            ascending=True,
+            set_scoring=set_scoring,
+            score_criteria="set_score_worst",
+            penalty=0.01,
+        )
         probeset_generator = OligosetGeneratorIndependentSet(
             opt_oligoset_size=set_size_opt,
             min_oligoset_size=set_size_min,
             oligos_scoring=probes_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
+            heuristic_selection=selection_policy,
             max_oligos=max_graph_size,
             distance_between_oligos=distance_between_oligos,
         )
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            n_sets=n_sets,
+            pre_filter=True,
+            n_attempts=100,
             n_jobs=self.n_jobs,
         )
 
