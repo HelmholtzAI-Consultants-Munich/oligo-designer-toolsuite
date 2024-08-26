@@ -20,9 +20,9 @@ class ReferenceDatabase:
     The `ReferenceDatabase` class manages a reference sequence database used for oligonucleotide design.
     It handles the initialization, storage, and management of sequence data in a specified output directory.
 
-    :param database_name: The name of the ReferenceDatabase, default is "db_reference".
+    :param database_name: The name of the ReferenceDatabase, defaults to "db_reference".
     :type database_name: str
-    :param dir_output: The directory where the database will be stored, default is "output".
+    :param dir_output: The directory where the database will be stored, defaults to "output".
     :type dir_output: str
     """
 

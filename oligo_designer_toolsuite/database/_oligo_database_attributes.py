@@ -46,7 +46,7 @@ class OligoAttributes:
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -91,7 +91,7 @@ class OligoAttributes:
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -150,7 +150,7 @@ class OligoAttributes:
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -238,9 +238,9 @@ class OligoAttributes:
         :type start: Union[int, float]
         :param end: The end position of the seed region. Can be an integer (exact position) or a float (fraction of the sequence length).
         :type end: Union[int, float]
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -306,9 +306,9 @@ class OligoAttributes:
         :type oligo_database: OligoDatabase
         :param seedregion_size: The size of the seed region to be calculated around the ligation site.
         :type seedregion_size: int
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -361,9 +361,9 @@ class OligoAttributes:
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -443,9 +443,9 @@ class OligoAttributes:
             For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
             see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
         :type Tm_chem_correction_parameters: dict, optional
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -541,9 +541,9 @@ class OligoAttributes:
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -581,9 +581,9 @@ class OligoAttributes:
         :type oligo_database: OligoDatabase
         :param comparison_sequence: The sequence to compare against for complementary overlap.
         :type comparison_sequence: str
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -630,9 +630,9 @@ class OligoAttributes:
         :type oligo_database: OligoDatabase
         :param T: The temperature in degrees Celsius at which to calculate the ΔG.
         :type T: float
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -765,9 +765,9 @@ class OligoAttributes:
         :type Tm_salt_correction_parameters: dict, optional
         :param Tm_chem_correction_parameters: Optional parameters for chemical correction.
         :type Tm_chem_correction_parameters: dict, optional
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
@@ -906,9 +906,9 @@ class OligoAttributes:
         :type detect_oligo_length_max: int
         :param min_thymines: The minimum number of thymine bases required in the detection oligo.
         :type min_thymines: int
-        :param sequence_type: The type of sequence to be used for attribute calculation, default is "oligo".
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, default is None.
+        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase

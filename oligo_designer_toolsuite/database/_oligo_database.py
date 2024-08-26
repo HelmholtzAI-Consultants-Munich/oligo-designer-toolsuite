@@ -143,7 +143,7 @@ class OligoDatabase:
         :type database_overwrite: bool
         :param sequence_type: The type of sequence being loaded, must be one of the predefined sequence types, i.e. "oligo" or "target".
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, default is None.
+        :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         """
 
@@ -256,7 +256,7 @@ class OligoDatabase:
         :type file_database: str
         :param database_overwrite: If True, the existing database will be overwritten.
         :type database_overwrite: bool
-        :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, default is None.
+        :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         """
         # Check formatting
@@ -340,7 +340,7 @@ class OligoDatabase:
         :type dir_database: str
         :param database_overwrite: If True, the existing database will be overwritten.
         :type database_overwrite: bool
-        :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, default is None.
+        :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         """
 
@@ -422,7 +422,7 @@ class OligoDatabase:
 
         :param dir_database: Directory path where the database files should be saved. Default is "db_oligo".
         :type dir_database: str
-        :param region_ids: List of region IDs to save. If None, all regions in the database are saved, default is None.
+        :param region_ids: List of region IDs to save. If None, all regions in the database are saved, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The directory path where the database was saved.
         :rtype: str
@@ -463,9 +463,9 @@ class OligoDatabase:
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param save_description: Whether to include the sequence attributes in the sequence header.
         :type save_description: bool
-        :param filename: The base name of the output FASTA file, default is "db_oligo".
+        :param filename: The base name of the output FASTA file, defaults to "db_oligo".
         :type filename: str
-        :param region_ids: List of region IDs to write. If None, all regions in the database are written, default is None.
+        :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The path to the saved FASTA file.
         :rtype: str
@@ -515,9 +515,9 @@ class OligoDatabase:
         :type attributes: Union[str, List[str]]
         :param flatten_attribute: Whether to flatten list attributes to a unique set of values in the table.
         :type flatten_attribute: bool
-        :param filename: The base name of the output TSV file, default is "oligo_database_table".
+        :param filename: The base name of the output TSV file, defaults to "oligo_database_table".
         :type filename: str
-        :param region_ids: List of region IDs to write. If None, all regions in the database are written, default is None.
+        :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The path to the saved TSV file.
         :rtype: str
@@ -576,9 +576,9 @@ class OligoDatabase:
         :param ascending: If True, sort oligosets by score in ascending order (the smaller the score the better the oligo set);
             otherwise, in descending order (the higher the score the better the oligo set).
         :type ascending: bool
-        :param filename: Base name for the output YAML file, default is "oligosets".
+        :param filename: Base name for the output YAML file, defaults to "oligosets".
         :type filename: str
-        :param region_ids: List of region IDs to write. If None, all regions in the database are written, default is None.
+        :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: Path to the saved YAML file.
         :rtype: str
@@ -631,9 +631,9 @@ class OligoDatabase:
         """
         Writes the current oligosets for each specified region to a tab-separated value (TSV) file, saved in the specified folder.
 
-        :param dir_output: Name of the output folder where the oligoset TSV files will be saved, default is "oligosets".
+        :param dir_output: Name of the output folder where the oligoset TSV files will be saved, defaults to "oligosets".
         :type dir_output: str
-        :param region_ids: List of region IDs to write. If None, all regions in the database are written, default is None.
+        :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: Path to the directory where the oligoset TSV files were saved.
         :rtype: str
@@ -728,7 +728,7 @@ class OligoDatabase:
 
         :param sequence_type: The type of sequence to map, must be one of the predefined sequence types, i.e. "oligo" or "target".
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param sequence_to_upper: Whether to convert sequences to uppercase, default is False.
+        :param sequence_to_upper: Whether to convert sequences to uppercase, defaults to False.
         :type sequence_to_upper: bool
         :return: A dictionary mapping oligo IDs to their corresponding sequences.
         :rtype: dict
@@ -757,7 +757,7 @@ class OligoDatabase:
 
         :param sequence_type: The type of sequence to map, must be one of the predefined sequence types, i.e. "oligo" or "target".
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param sequence_to_upper: Whether to convert sequences to uppercase, default is False.
+        :param sequence_to_upper: Whether to convert sequences to uppercase, defaults to False.
         :type sequence_to_upper: bool
         :return: A dictionary mapping sequences to their corresponding oligo IDs.
         :rtype: dict
@@ -794,7 +794,7 @@ class OligoDatabase:
         :type attribute: str
         :param flatten: Whether to flatten list attributes to a unique set of values in the table.
         :type flatten: bool
-        :param region_ids: List of region IDs to retrieve. If None, all regions in the database are retrieved, default is None.
+        :param region_ids: List of region IDs to retrieve. If None, all regions in the database are retrieved, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: A DataFrame with oligo IDs and the corresponding attribute values.
         :rtype: pd.DataFrame
