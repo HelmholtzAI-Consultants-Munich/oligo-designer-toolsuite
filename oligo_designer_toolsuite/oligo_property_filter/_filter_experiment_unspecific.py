@@ -50,10 +50,10 @@ class HardMaskedSequenceFilter(PropertyFilterBase):
     A filter class to check for the presence of hard-masked sequences.
 
     The `HardMaskedSequenceFilter` class is designed to identify sequences that contain specific hard-masked regions,
-    represented by a designated character (default is "N"). This class can be used to filter out sequences that contain
+    represented by a designated character (defaults to "N"). This class can be used to filter out sequences that contain
     such masked regions, ensuring only sequences without the specified mask are passed.
 
-    :param mask: The character used to represent hard-masked regions in sequences, default is "N".
+    :param mask: The character used to represent hard-masked regions in sequences, defaults to "N".
     :type mask: str
     """
 

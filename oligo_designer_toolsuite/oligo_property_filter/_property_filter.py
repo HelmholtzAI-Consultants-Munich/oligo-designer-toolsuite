@@ -47,7 +47,7 @@ class PropertyFilter:
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used for filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param n_jobs: The number of jobs to run in parallel, default is 1.
+        :param n_jobs: The number of jobs to run in parallel, defaults to 1.
         :type n_jobs: int
         :return: The filtered OligoDatabase.
         :rtype: OligoDatabase
