@@ -458,34 +458,54 @@ class OligoAttributes:
         return oligo_database
 
     @staticmethod
-    def _calc_length_selfcomplement(sequence: str):
-        """Calculate the length of the longest self-complementary sequence of a given oligonucleotide sequence.
+    def _calc_length_complement(sequence1: str, sequence2: str):
+        """Calculate the length of the longest complementary region between two sequences.
 
-        :param sequence: The DNA sequence to analyze for self-complementary sequences.
-        :type sequence: str
-        :return: The length of the longest self-complementary sequence found in the DNA sequence.
+        This function compares two sequences and determines the length of the longest complementary region,
+        considering all possible alignments. Sequence2 is complemented before comparison to simulate binding.
+
+        :param sequence1: The first DNA sequence.
+        :type sequence1: str
+        :param sequence2: The second DNA sequence.
+        :type sequence2: str
+        :return: The length of the longest complementary region.
         :rtype: int
         """
-        # we want to check if the reverse of our sequence is complementary to itself, e.g.
-        # 5' - TAA CAA TAT ATA TTG TTA - 3' and it's reverse
-        # 3' - ATT GTT ATA TAT AAC AAT - 5' are complementary to each other
-        # but since we are comparing strings, we take the reverse complement,
-        # which should be the exact same sequence in this case
-        sequence_revcomp = Seq(sequence).reverse_complement()
 
-        # initialize counters
-        len_selfcomp_sub = 0
-        len_selfcomp = 0
+        def _calculate_max_overlap(seq1, seq2):
+            len_overlap_sub = 0
+            len_overlap = 0
+            for c1, c2 in zip(seq1, seq2):
+                if c1 != c2:
+                    len_overlap_sub = 0
+                else:
+                    len_overlap_sub += 1
+                len_overlap = max(len_overlap, len_overlap_sub)
+            return len_overlap
 
-        # TODO: does not cover case when self-complement is shifted by x nucleotides
-        # iterate through sequences
-        for c1, c2 in zip(sequence, sequence_revcomp):
-            if c1 != c2:
-                len_selfcomp_sub = 0
+        # since we are comparing strings, we take the complement of sequence 2,
+        # which should be the exact same sequence as sequence 1 if they bind
+        sequence2 = Seq(sequence2).complement()
+
+        # Initialize max_len_overlap with overlap without shift
+        max_len_overlap = _calculate_max_overlap(sequence1, sequence2)
+        max_shift = max(len(sequence1), len(sequence2)) - max_len_overlap
+
+        # Check all possible shifts
+        for shift in range(-max_shift, max_shift + 1):
+            if shift < 0:
+                # Shift sequence2 to the left
+                shifted_seq2 = sequence2[-shift:]
+                shifted_seq1 = sequence1[: len(shifted_seq2)]
             else:
-                len_selfcomp_sub += 1
-            len_selfcomp = max(len_selfcomp, len_selfcomp_sub)
-        return len_selfcomp
+                # Shift sequence2 to the right
+                shifted_seq2 = sequence2[:-shift] if shift != 0 else sequence2
+                shifted_seq1 = sequence1[shift:]
+
+            len_comp = _calculate_max_overlap(shifted_seq1, shifted_seq2)
+            max_len_overlap = max(max_len_overlap, len_comp)
+
+        return max_len_overlap
 
     def calculate_length_selfcomplement(
         self,
@@ -514,38 +534,23 @@ class OligoAttributes:
         for region_id in region_ids:
             database_region = oligo_database.database[region_id]
             for oligo_id, oligo_attributes in database_region.items():
-                len_selfcomp = self._calc_length_selfcomplement(oligo_attributes[sequence_type])
-                oligo_attributes["length_selfcomplement"] = len_selfcomp
+                # we want to check if the reverse of our sequence is complementary to itself, e.g.
+                # 5' - TAA CAA TAT ATA TTG TTA - 3' and it's reverse
+                # 3' - ATT GTT ATA TAT AAC AAT - 5' are complementary to each other
+                sequence = oligo_attributes[sequence_type]
+                sequence_rev = sequence[::-1]
+                len_overlap = self._calc_length_complement(sequence, sequence_rev)
+                oligo_attributes["length_selfcomplement"] = len_overlap
 
         return oligo_database
 
-    @staticmethod
-    def _calc_length_complement(sequence1: str, sequence2: str):
-        """Calculate the length of the longest complementary sequence between two oligonucleotide sequences.
-
-        :param sequence1: The first DNA sequence to analyze for complementary sequences.
-        :type sequence1: str
-        :param sequence2: The second DNA sequence to analyze for complementary sequences.
-        :type sequence2: str
-        :return: The length of the longest complementary sequence found between the two DNA sequences.
-        :rtype: int
-        """
-        sequence2_comp = Seq(sequence2).complement()
-        # initialize counters
-        len_comp_sub = 0
-        len_comp = 0
-
-        # iterate through sequences
-        for c1, c2 in zip(sequence1, sequence2_comp):
-            if c1 != c2:
-                len_comp_sub = 0
-            else:
-                len_comp_sub += 1
-            len_comp = max(len_comp, len_comp_sub)
-        return len_comp
-
     def calculate_length_complement(
-        self, oligo_database: OligoDatabase, sequence_type1: _TYPES_SEQ, sequence2: str, sequence2_name: str
+        self,
+        oligo_database: OligoDatabase,
+        sequence_type: _TYPES_SEQ,
+        comparison_sequence: str,
+        comparison_sequence_name: str,
+        region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the length of the longest complementary sequence between two oligonucleotides in the database,
         dependent on the specified sequence types.
@@ -554,17 +559,24 @@ class OligoAttributes:
         :type oligo_database: OligoDatabase
         :param sequence_type1: Type of sequence to analyze (e.g., 'oligo' or 'target') for the first oligonucleotide.
         :type sequence_type1: _TYPES_SEQ
-        :param sequence2: The second DNA sequence to analyze for complementary sequences.
-        :type sequence_type2: str
-        :param sequence2_name: Name of the second DNA sequence.
-        :type sequence2_name: str
+        :param comparison_sequence: The second DNA sequence to analyze for complementary sequences.
+        :type comparison_sequence: str
+        :param comparison_sequence_name: Name of the second DNA sequence.
+        :type comparison_sequence_name: str
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
+        if region_ids is None:
+            region_ids = oligo_database.database.keys()
+        else:
+            region_ids = check_if_list(region_ids)
+
         for region_id, database_region in oligo_database.database.items():
             for oligo_id, oligo_attributes in database_region.items():
-                len_comp = self._calc_length_complement(oligo_attributes[sequence_type1], sequence2)
-                oligo_attributes["length_complement_" + sequence2_name] = len_comp
+                len_overlap = self._calc_length_complement(
+                    oligo_attributes[sequence_type], comparison_sequence
+                )
+                oligo_attributes["length_complement_" + comparison_sequence_name] = len_overlap
 
         return oligo_database
 
