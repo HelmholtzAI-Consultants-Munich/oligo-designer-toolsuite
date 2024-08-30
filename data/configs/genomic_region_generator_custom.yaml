@@ -23,6 +23,7 @@ genomic_regions:
   exon_exon_junction: true
   cds: false
   intron: false
+  utr: false
 
 # If exon_exon_junction is ste to true, specify the block size, i.e. +/- "block_size" bp around the junction
 # Hint: it does not make sense to set the block size larger than the maximum oligo length

@@ -123,10 +123,8 @@ class OligoSequenceGenerator:
         region_ids: list[str] = None,
         n_jobs: int = 1,
     ):
-        """Generate sequences with sliding windows from input FASTA files and write them to an output FASTA file.
+        """Generate sequences with sliding windows from input FASTA files and write them to an output FASTA file(s).
 
-        :param filename_out: The name of the output FASTA file.
-        :type filename_out: str
         :param files_fasta_in: List of input FASTA files.
         :type files_fasta_in: list[str]
         :param length_interval_sequences: A tuple representing the interval of sliding window lengths to generate.
@@ -135,8 +133,8 @@ class OligoSequenceGenerator:
         :type region_ids: list[str], optional
         :param n_jobs: The number of jobs to use for parallel processing.
         :type n_jobs: int
-        :return: The path to the generated output FASTA file.
-        :rtype: str
+        :return: The path to the generated output FASTA file(s).
+        :rtype: list[str]
         """
 
         def generate_unique_filename(region):
