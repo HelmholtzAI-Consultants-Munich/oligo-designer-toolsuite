@@ -125,14 +125,16 @@ class SeqFishPlusProbeDesigner:
             region_ids=gene_ids,
         )
 
+        ##### pre-filter oligo database for certain attributes #####
         oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
             oligo_database=oligo_database
         )
-        oligo_database.filter_oligo_attribute(
+        oligo_database.filter_oligo_attribute_by_threshold(
             name_attribute="isoform_consensus",
             thr_attribute=isoform_consensus,
-            keep_if_smaller_threshold=False,
+            remove_if_smaller_threshold=True,
         )
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
 
         ##### save database #####
         if self.write_intermediate_steps:
@@ -392,26 +394,41 @@ class SeqFishPlusProbeDesigner:
             bits = barcode[barcode == 1].index
             readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
 
-            database_region = oligo_database.database[region_id]
-            for probe_id, probe_attributes in database_region.items():
-                probe_attributes["barcode"] = barcode
-                probe_attributes["sequence_target"] = probe_attributes["target"]
-                probe_attributes["sequence_target_probe"] = probe_attributes["oligo"]
+            new_probe_attributes_encoding_probe = {}
 
-                for i, readout_probe_sequence in enumerate(readout_probe_sequences):
-                    probe_attributes[f"sequence_readout_probe_{i+1}"] = readout_probe_sequence
+            for probe_id in oligo_database.database[region_id].keys():
 
-                probe_attributes["sequence_encoding_probe"] = (
-                    str(Seq(probe_attributes["sequence_readout_probe_1"]).reverse_complement())
-                    + str(Seq(probe_attributes["sequence_readout_probe_2"]).reverse_complement())
-                    + "T"
-                    + probe_attributes["oligo"]
-                    + "T"
-                    + str(Seq(probe_attributes["sequence_readout_probe_3"]).reverse_complement())
-                    + str(Seq(probe_attributes["sequence_readout_probe_4"]).reverse_complement())
-                )
+                sequence_readout_probe_1 = readout_probe_sequences[0]
+                sequence_readout_probe_2 = readout_probe_sequences[1]
+                sequence_readout_probe_3 = readout_probe_sequences[2]
+                sequence_readout_probe_4 = readout_probe_sequences[3]
 
-                oligo_database.database[region_id][probe_id] = probe_attributes
+                new_probe_attributes_encoding_probe[probe_id] = {
+                    "barcode": barcode,
+                    "sequence_target": oligo_database.get_oligo_attribute_value(
+                        attribute="target", region_id=region_id, oligo_id=probe_id, flatten=True
+                    ),
+                    "sequence_target_probe": oligo_database.get_oligo_attribute_value(
+                        attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
+                    ),
+                    "sequence_readout_probe_1": sequence_readout_probe_1,
+                    "sequence_readout_probe_2": sequence_readout_probe_2,
+                    "sequence_readout_probe_3": sequence_readout_probe_3,
+                    "sequence_readout_probe_4": sequence_readout_probe_4,
+                    "sequence_encoding_probe": (
+                        str(Seq(sequence_readout_probe_1).reverse_complement())
+                        + str(Seq(sequence_readout_probe_2).reverse_complement())
+                        + "T"
+                        + oligo_database.get_oligo_attribute_value(
+                            attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
+                        )
+                        + "T"
+                        + str(Seq(sequence_readout_probe_3).reverse_complement())
+                        + str(Seq(sequence_readout_probe_4).reverse_complement())
+                    ),
+                }
+
+            oligo_database.update_oligo_attributes(new_probe_attributes_encoding_probe)
 
         def _generate_primers(file_fasta_encoding_probes_database):
 
@@ -487,25 +504,27 @@ class SeqFishPlusProbeDesigner:
 
             return reverse_primer_sequence, forward_primer_sequence
 
-        def _add_primer_sequences(oligo_database, reverse_primer_sequence, forward_primer_sequence):
-            probe_ids = oligo_database.get_oligoid_list()
-            primer_attribute = {
-                probe_id: {
-                    "sequence_reverse_primer": reverse_primer_sequence,
-                    "sequence_forward_primer": forward_primer_sequence,
-                }
-                for probe_id in probe_ids
-            }
-            oligo_database.update_oligo_attributes(primer_attribute)
+        def _add_primer_sequences(oligo_database, sequence_reverse_primer, sequence_forward_primer):
 
-            for region_id, database_region in oligo_database.database.items():
-                for probe_id, probe_attributes in database_region.items():
-                    oligo_database.database[region_id][probe_id]["sequence_seqfish_plus_probe"] = (
-                        probe_attributes["sequence_forward_primer"]
+            new_probe_attributes_primer = {}
+
+            for region_id in oligo_database.database.keys():
+                for probe_id in oligo_database.database[region_id].keys():
+                    new_probe_attributes_primer[probe_id] = {
+                        "sequence_reverse_primer": sequence_reverse_primer,
+                        "sequence_forward_primer": sequence_forward_primer,
+                        "sequence_seqfish_plus_probe": forward_primer_sequence
                         + "T"
-                        + probe_attributes["sequence_encoding_probe"]
-                        + probe_attributes["sequence_reverse_primer"]
-                    )
+                        + oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_encoding_probe",
+                            region_id=region_id,
+                            oligo_id=probe_id,
+                            flatten=True,
+                        )
+                        + reverse_primer_sequence,
+                    }
+
+            oligo_database.update_oligo_attributes(new_probe_attributes_primer)
             return oligo_database
 
         region_ids = list(oligo_database.database.keys())
@@ -573,6 +592,14 @@ class SeqFishPlusProbeDesigner:
     def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int):
 
         attributes = [
+            "source",
+            "species",
+            "annotation_release",
+            "genome_assembly",
+            "regiontype",
+            "gene_id",
+            "transcript_id",
+            "exon_number",
             "chromosome",
             "start",
             "end",
@@ -591,14 +618,7 @@ class SeqFishPlusProbeDesigner:
             "GC_content",
             "isoform_consensus",
             "DG_secondary_structure",
-            "source",
-            "species",
-            "annotation_release",
-            "genome_assembly",
-            "regiontype",
-            "gene_id",
-            "transcript_id",
-            "exon_number",
+            "isoform_consensus",
         ]
         oligo_database.write_oligosets_to_yaml(
             attributes=attributes,
@@ -610,7 +630,7 @@ class SeqFishPlusProbeDesigner:
         # write a second file that only contains order information
         yaml_dict_order = {}
 
-        for region_id, database_region in oligo_database.database.items():
+        for region_id in oligo_database.database.keys():
             yaml_dict_order[region_id] = {}
             oligosets_region = oligo_database.oligosets[region_id]
             oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
@@ -626,13 +646,36 @@ class SeqFishPlusProbeDesigner:
                 yaml_dict_order[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
                     yaml_dict_order[region_id][oligoset_id][oligo_id] = {
-                        "sequence_seqfish_plus_probe": database_region[oligo_id][
-                            "sequence_seqfish_plus_probe"
-                        ],
-                        "sequence_readout_probe_1": database_region[oligo_id]["sequence_readout_probe_1"],
-                        "sequence_readout_probe_2": database_region[oligo_id]["sequence_readout_probe_2"],
-                        "sequence_readout_probe_3": database_region[oligo_id]["sequence_readout_probe_3"],
-                        "sequence_readout_probe_4": database_region[oligo_id]["sequence_readout_probe_4"],
+                        "sequence_seqfish_plus_probe": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_seqfish_plus_probe",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_1": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_1",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_2": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_2",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_3": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_3",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_4": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_4",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
                     }
 
         with open(os.path.join(self.dir_output, "padlock_probes_order.yml"), "w") as outfile:

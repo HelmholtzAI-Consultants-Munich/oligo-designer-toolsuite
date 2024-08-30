@@ -81,19 +81,19 @@ class CustomGenomicRegionGenerator:
         dir_output: str = "output",
     ):
         """Constructor for the CustomGenomicRegionGenerator class."""
-        if files_source is None:
+        if not files_source:
             files_source = "custom"
             warnings.warn(f"No source defined. Using default source {files_source}!")
 
-        if species is None:
+        if not species:
             species = "unknown"
             warnings.warn(f"No species defined. Using default species {species}!")
 
-        if annotation_release is None:
+        if not annotation_release:
             annotation_release = "unknown"
             warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
 
-        if genome_assembly is None:
+        if not genome_assembly:
             genome_assembly = "unknown"
             warnings.warn(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
 
@@ -205,7 +205,27 @@ class CustomGenomicRegionGenerator:
         :rtype: str
         """
 
-        def _compute_intergenic_annotation(annotation):
+        def _get_chromosome_length():
+            """Get the length of each chromosome and save it to a file.
+
+            This function reads the sequence file in FASTA format to determine the length of each chromosome.
+            The chromosome lengths are stored in a dictionary and written to the specified file.
+
+            :return file_chromosome_length: Path to the file to store chromosome lengths.
+            :rtype: str
+            """
+            dict_chromosome_length = {}
+            for rec in SeqIO.parse(self.sequence_file, "fasta"):
+                dict_chromosome_length[rec.id] = len(rec.seq)
+
+            file_chromosome_length = os.path.join(self.dir_output, "annotation.genome")
+            with open(file_chromosome_length, "w") as handle:
+                for key, value in sorted(dict_chromosome_length.items()):
+                    handle.write(f"{key}\t{value}\n")
+
+            return file_chromosome_length
+
+        def _compute_intergenic_annotation(annotation, file_chromosome_length):
             """Compute intergenic annotations from gene annotations.
 
             This function takes a DataFrame of gene annotations and computes intergenic annotations.
@@ -230,16 +250,20 @@ class CustomGenomicRegionGenerator:
                 gene_annotation_minusstrand = gene_annotation[gene_annotation.strand == "-"]
 
                 intergenic_annotation.append(
-                    _compute_intergenic_annotation_strand(gene_annotation_plusstrand, "+")
+                    _compute_intergenic_annotation_strand(
+                        seqid, gene_annotation_plusstrand, "+", file_chromosome_length
+                    )
                 )
                 intergenic_annotation.append(
-                    _compute_intergenic_annotation_strand(gene_annotation_minusstrand, "-")
+                    _compute_intergenic_annotation_strand(
+                        seqid, gene_annotation_minusstrand, "-", file_chromosome_length
+                    )
                 )
 
             intergenic_annotation = pd.concat(intergenic_annotation, ignore_index=True)
             return intergenic_annotation
 
-        def _compute_intergenic_annotation_strand(gene_annotatio, strand):
+        def _compute_intergenic_annotation_strand(seqid, gene_annotatio, strand, file_chromosome_length):
             """Compute intergenic annotations for a specific strand.
 
             This function takes a DataFrame of gene annotations for a specific strand and computes intergenic annotations.
@@ -254,67 +278,63 @@ class CustomGenomicRegionGenerator:
             :return: DataFrame containing intergenic annotations for the specified strand.
             :rtype: pd.DataFrame
             """
-            # define files
-            file_bed_in = os.path.join(self.dir_output, "annotation_in.bed")
-            file_chromosome_length = os.path.join(self.dir_output, "annotation.genome")
-            file_bed_out = os.path.join(self.dir_output, "annotation_out.bed")
-
-            # save the annotation as bed file
-            gene_annotatio = gene_annotatio.sort_values(by="start")
-            gene_annotatio.to_csv(file_bed_in, sep="\t", header=False, index=False)
-
-            # save chromosome sizes as genome file
-            _get_chromosome_length(file_chromosome_length)
-
-            # get complementary regions
-            get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out)
-
-            # load intergenic regions
-            intergenic_annotation = pd.read_csv(file_bed_out, sep="\t", comment="t", header=None)
-            intergenic_annotation.columns = ["seqid", "start_0base", "end"]
-            intergenic_annotation["start_1base"] = intergenic_annotation["start_0base"] + 1
-            if strand == "+":
-                intergenic_annotation["region_id"] = "InterRegPlus" + intergenic_annotation.index.astype(
-                    "str"
+            # case 1: no annotated genes on the respective chromosome and strand
+            if gene_annotatio.empty:
+                chromosome_length = pd.read_csv(
+                    file_chromosome_length, sep="\t", comment="t", header=0, names=["seqid", "length"]
                 )
-            if strand == "-":
-                intergenic_annotation["region_id"] = "InterRegMinus" + intergenic_annotation.index[
-                    ::-1
-                ].astype("str")
-            intergenic_annotation["score"] = "."
-            intergenic_annotation["strand"] = strand
+                intergenic_annotation = pd.DataFrame(
+                    {
+                        "seqid": seqid,
+                        "start_0base": 0,
+                        "end": chromosome_length.length[chromosome_length.seqid == seqid],
+                        "start_1base": 1,
+                        "region_id": "InterRegPlus" + str(seqid) + "_1",
+                        "score": ".",
+                        "strand": strand,
+                    }
+                )
+            # case 2: annotated genes on the respective chromosome and strand
+            else:
+                # define files
+                file_bed_in = os.path.join(self.dir_output, "annotation_in.bed")
+                file_bed_out = os.path.join(self.dir_output, "annotation_out.bed")
 
-            os.remove(file_bed_in)
-            os.remove(file_chromosome_length)
-            os.remove(file_bed_out)
+                # save the annotation as bed file
+                gene_annotatio = gene_annotatio.sort_values(by="start")
+                gene_annotatio.to_csv(file_bed_in, sep="\t", header=False, index=False)
+
+                # get complementary regions
+                get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out)
+
+                # load intergenic regions
+                intergenic_annotation = pd.read_csv(
+                    file_bed_out, sep="\t", comment="t", header=0, names=["seqid", "start_0base", "end"]
+                )
+                intergenic_annotation["start_1base"] = intergenic_annotation["start_0base"] + 1
+                if strand == "+":
+                    intergenic_annotation["region_id"] = (
+                        "InterRegPlus" + str(seqid) + "_" + intergenic_annotation.index.astype("str")
+                    )
+                if strand == "-":
+                    intergenic_annotation["region_id"] = (
+                        "InterRegMinus" + str(seqid) + "_" + intergenic_annotation.index[::-1].astype("str")
+                    )
+                intergenic_annotation["score"] = "."
+                intergenic_annotation["strand"] = strand
+
+                os.remove(file_bed_in)
+                os.remove(file_bed_out)
 
             return intergenic_annotation
 
-        def _get_chromosome_length(file_chromosome_length):
-            """Get the length of each chromosome and save it to a file.
-
-            This function reads the sequence file in FASTA format to determine the length of each chromosome.
-            The chromosome lengths are stored in a dictionary and written to the specified file.
-
-            :param file_chromosome_length: Path to the file to store chromosome lengths.
-            :type file_chromosome_length: str
-            :return: Dictionary containing chromosome IDs and their respective lengths.
-            :rtype: Dict[str, int]
-            """
-            dict_chromosome_length = {}
-            for rec in SeqIO.parse(self.sequence_file, "fasta"):
-                dict_chromosome_length[rec.id] = len(rec.seq)
-
-            with open(file_chromosome_length, "w") as handle:
-                for key, value in sorted(dict_chromosome_length.items()):
-                    handle.write(f"{key}\t{value}\n")
-
-            return dict_chromosome_length
+        # save chromosome sizes as genome file
+        file_chromosome_length = _get_chromosome_length()
 
         # get gene annotation entries
         annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "gene")
-        annotation = _compute_intergenic_annotation(annotation)
+        annotation = _compute_intergenic_annotation(annotation, file_chromosome_length)
 
         # generate region_id
         annotation["add_inf"] = (
@@ -342,6 +362,7 @@ class CustomGenomicRegionGenerator:
         file_fasta = os.path.join(self.dir_output, f"intergenic_annotation_{self.FILE_INFO}.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
+        os.remove(file_chromosome_length)
         del annotation
 
         return file_fasta
@@ -368,8 +389,8 @@ class CustomGenomicRegionGenerator:
         annotation = self._get_annotation_region_of_interest(annotation, "exon")
 
         # add transcript counts for each gene
-        number_transcripts = self._get_number_transcripts()
-        annotation = pd.merge(annotation, number_transcripts, on="gene_id", how="left")
+        number_total_transcripts = self._get_number_total_transcripts()
+        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
@@ -400,7 +421,7 @@ class CustomGenomicRegionGenerator:
             + annotation["gene_id"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_transcripts="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
             + annotation["transcript_count"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -568,8 +589,8 @@ class CustomGenomicRegionGenerator:
         annotation = self._get_annotation_region_of_interest(annotation, "CDS")
 
         # add transcript counts for each gene
-        number_transcripts = self._get_number_transcripts()
-        annotation = pd.merge(annotation, number_transcripts, on="gene_id", how="left")
+        number_total_transcripts = self._get_number_total_transcripts()
+        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
@@ -600,7 +621,7 @@ class CustomGenomicRegionGenerator:
             + annotation["gene_id"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_transcripts="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
             + annotation["transcript_count"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -704,6 +725,10 @@ class CustomGenomicRegionGenerator:
             annotation = annotation[annotation.type == "three_prime_UTR"]
         if three_prime == False:
             annotation = annotation[annotation.type == "five_prime_UTR"]
+
+        # add transcript counts for each gene
+        number_total_transcripts = self._get_number_total_transcripts()
+        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
@@ -908,8 +933,8 @@ class CustomGenomicRegionGenerator:
         annotation = _compute_exon_exon_junction_annotation(annotation, block_size)
 
         # add transcript counts for each gene
-        number_transcripts = self._get_number_transcripts()
-        annotation = pd.merge(annotation, number_transcripts, on="gene_id", how="left")
+        number_total_transcripts = self._get_number_total_transcripts()
+        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
@@ -943,7 +968,7 @@ class CustomGenomicRegionGenerator:
             + annotation["gene_id"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_transcripts="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
             + annotation["transcript_count"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
@@ -1124,7 +1149,7 @@ class CustomGenomicRegionGenerator:
         )
         os.remove(file_bed)
 
-    def _get_number_transcripts(self):
+    def _get_number_total_transcripts(self):
         """Get the number of transcripts associated with each gene.
 
         This function loads the annotation, extracts transcripts, and counts the number of transcripts
@@ -1137,12 +1162,12 @@ class CustomGenomicRegionGenerator:
         """
         annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "transcript")
-        number_transcripts = annotation["gene_id"].value_counts()
+        number_total_transcripts = annotation["gene_id"].value_counts()
 
-        number_transcripts = number_transcripts.reset_index()
-        number_transcripts.columns = ["gene_id", "transcript_count"]
+        number_total_transcripts = number_total_transcripts.reset_index()
+        number_total_transcripts.columns = ["gene_id", "transcript_count"]
 
-        return number_transcripts
+        return number_total_transcripts
 
 
 class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):

@@ -596,8 +596,8 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         :return: Updated BLAST results with seed region information.
         :rtype: pd.DataFrame
         """
-        oligo_attributes = OligoAttributes()
-        oligo_database = oligo_attributes.calculate_seedregion(
+        oligo_attributes_calculator = OligoAttributes()
+        oligo_database = oligo_attributes_calculator.calculate_seedregion(
             oligo_database=oligo_database,
             region_ids=region_ids,
             start=self.seedregion_start,
@@ -605,8 +605,8 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute("seedregion_start", region_ids),
-            right=oligo_database.get_oligo_attribute("seedregion_end", region_ids),
+            left=oligo_database.get_oligo_attribute_table("seedregion_start", region_ids),
+            right=oligo_database.get_oligo_attribute_table("seedregion_end", region_ids),
             on="oligo_id",
         )
         search_results = pd.merge(
@@ -671,14 +671,14 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         :return: Updated BLAST results with seed region information around the ligation site.
         :rtype: pd.DataFrame
         """
-        oligo_attributes = OligoAttributes()
-        oligo_database = oligo_attributes.calculate_seedregion_ligationsite(
+        oligo_attributes_calculator = OligoAttributes()
+        oligo_database = oligo_attributes_calculator.calculate_seedregion_ligationsite(
             oligo_database=oligo_database, region_ids=region_ids, seedregion_size=self.seedregion_size
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute("seedregion_start", region_ids),
-            right=oligo_database.get_oligo_attribute("seedregion_end", region_ids),
+            left=oligo_database.get_oligo_attribute_table("seedregion_start", region_ids),
+            right=oligo_database.get_oligo_attribute_table("seedregion_end", region_ids),
             on="oligo_id",
         )
         search_results = pd.merge(

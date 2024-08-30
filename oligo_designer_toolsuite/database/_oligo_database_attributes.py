@@ -11,7 +11,7 @@ from seqfold import dg
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.utils import check_if_key_exists, check_if_list
+from oligo_designer_toolsuite.utils import check_if_list
 
 ############################################
 # Attrubite Calculation Class
@@ -44,29 +44,32 @@ class OligoAttributes:
     def calculate_oligo_length(self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None):
         """Calculate the length for each oligonucleotide in the database.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param region_ids: The region IDs for which to calculate the oligo length.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
+            for oligo_id in oligo_database.database[region_id].keys():
                 # oligo and target have always same length
-                length = self._calc_oligo_length(oligo_attributes["oligo"])
-                oligo_attributes["length"] = length
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute="oligo", region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+                length = self._calc_oligo_length(sequence=sequence)
+                new_oligo_attribute[oligo_id] = {
+                    "length": length,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
     @staticmethod
-    def _calc_num_targeted_transcripts(transcript_ids: list):
+    def _calc_num_targeted_transcripts(transcript_id: list):
         """Calculate the number of unique transcripts targeted by a given oligonucleotide.
 
         :param transcript_ids: List of transcript IDs targeted by the oligonucleotide.
@@ -74,13 +77,7 @@ class OligoAttributes:
         :return: The number of unique targeted transcripts.
         :rtype: int
         """
-        num_targeted_transcripts = len(
-            set(
-                item
-                for sublist in (transcript_ids if isinstance(transcript_ids[0], list) else [transcript_ids])
-                for item in sublist
-            )
-        )
+        num_targeted_transcripts = len(set(check_if_list(transcript_id)))
 
         return num_targeted_transcripts
 
@@ -92,33 +89,38 @@ class OligoAttributes:
         If the necessary information for number of targeted transcripts calculation is not available,
         the 'num_targeted_transcripts' attribute is set to None.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param region_ids: The region IDs for which to calculate the number of targeted transcripts.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                if ("transcript_id" in oligo_attributes) and (oligo_attributes["transcript_id"]):
+            for oligo_id in oligo_database.database[region_id].keys():
+                transcript_id = oligo_database.get_oligo_attribute_value(
+                    attribute="transcript_id", region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+
+                if transcript_id:
                     num_targeted_transcripts = self._calc_num_targeted_transcripts(
-                        oligo_attributes["transcript_id"]
+                        transcript_id=transcript_id
                     )
                 else:
                     num_targeted_transcripts = None
-                oligo_attributes["num_targeted_transcripts"] = num_targeted_transcripts
+
+                new_oligo_attribute[oligo_id] = {
+                    "num_targeted_transcripts": num_targeted_transcripts,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
     @staticmethod
-    def _calc_isoform_consensus(transcript_ids: list, number_transcripts: list):
+    def _calc_isoform_consensus(transcript_id: list, number_total_transcripts: list):
         """Calculate the isoform consensus percentage of a given oligonucleotide.
 
         This function calculates the isoform consensus based on the provided transcript information.
@@ -128,23 +130,17 @@ class OligoAttributes:
 
         :param transcript_id: Transcript IDs targeted by the oligonucleotide.
         :type transcript_id: list
-        :param number_transcripts: Total number of transcripts for the oligo region.
-        :type number_transcripts: list
+        :param number_total_transcripts: Total number of transcripts for the oligo region.
+        :type number_total_transcripts: list
         :return: The isoform consensus percentage.
         :rtype: float
         """
         # number transcripts is the number of transcripts of a genomic region
         # hence, all values have to be the same for each transcript coming from the same oligo
         # since only oligos from the same genomic region are merged into one entry
-        number_transcripts = int([item for sublist in number_transcripts for item in sublist][0])
-        num_targeted_transcripts = len(
-            set(
-                item
-                for sublist in (transcript_ids if isinstance(transcript_ids[0], list) else [transcript_ids])
-                for item in sublist
-            )
-        )
-        isoform_consensus = num_targeted_transcripts / number_transcripts * 100
+        number_total_transcripts = int(check_if_list(number_total_transcripts)[0])
+        num_targeted_transcripts = len(set(check_if_list(transcript_id)))
+        isoform_consensus = round(num_targeted_transcripts / number_total_transcripts * 100, 2)
 
         return isoform_consensus
 
@@ -156,33 +152,36 @@ class OligoAttributes:
         If the necessary information for isoform consensus calculation is not available,
         the 'isoform_consensus' attribute is set to None.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param region_ids: The region IDs for which to calculate the isoform consensus.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                if (
-                    ("transcript_id" in oligo_attributes)
-                    and (oligo_attributes["transcript_id"])
-                    and ("number_transcripts" in oligo_attributes)
-                    and (oligo_attributes["number_transcripts"])
-                ):
+            for oligo_id in oligo_database.database[region_id].keys():
+                number_total_transcripts = oligo_database.get_oligo_attribute_value(
+                    attribute="number_total_transcripts", region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+                transcript_id = oligo_database.get_oligo_attribute_value(
+                    attribute="transcript_id", region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+
+                if transcript_id and number_total_transcripts:
                     isoform_consensus = self._calc_isoform_consensus(
-                        oligo_attributes["transcript_id"], oligo_attributes["number_transcripts"]
+                        transcript_id=transcript_id, number_total_transcripts=number_total_transcripts
                     )
                 else:
                     isoform_consensus = None
-                oligo_attributes["isoform_consensus"] = isoform_consensus
+
+                new_oligo_attribute[oligo_id] = {
+                    "isoform_consensus": isoform_consensus,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -233,35 +232,40 @@ class OligoAttributes:
         oligo_database: OligoDatabase,
         start: Union[int, float],
         end: Union[int, float],
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the seed region start and end positions for each oligonucleotide in the database.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param start: The start position of the seed region, either as an absolute position or a fraction of the sequence length.
         :type start: Union[int, float]
         :param end: The end position of the seed region, either as an absolute position or a fraction of the sequence length.
         :type end: Union[int, float]
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the seed region.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                # oligo and target have always same length
-                seedregion_start, seedregion_end = self._calc_seedregion(
-                    oligo_attributes["oligo"], start, end
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-                oligo_attributes["seedregion_start"] = seedregion_start
-                oligo_attributes["seedregion_end"] = seedregion_end
+                seedregion_start, seedregion_end = self._calc_seedregion(
+                    sequence=sequence, start=start, end=end
+                )
+                new_oligo_attribute[oligo_id] = {
+                    "seedregion_start": seedregion_start,
+                    "seedregion_end": seedregion_end,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -293,45 +297,53 @@ class OligoAttributes:
         return seedregion_start, seedregion_end
 
     def calculate_seedregion_ligationsite(
-        self, oligo_database: OligoDatabase, seedregion_size: int, region_ids: Union[str, List[str]] = None
+        self,
+        oligo_database: OligoDatabase,
+        seedregion_size: int,
+        sequence_type: _TYPES_SEQ = "oligo",
+        region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the seed region around a specified ligation site for each oligonucleotide in the database.
 
         If the necessary information for seed region calculation is not available,
         the 'seedregion_start' and 'seedregion_end' attributes are set to None.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
-        :param seedregion_size: The size of the seed region to calculate around the ligation site.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
+        :param seedregion_size: The size of the seed region to calculate around the ligation site.
         :type seedregion_size: int
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the seed region.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         :raises KeyError: If the ligation site attribute is missing from any oligonucleotide in the database.
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            if not check_if_key_exists(database_region, "ligation_site"):
-                warnings.warn(
-                    f"The ligation_site attribute has not been computed for {region_id}! Setting to None!"
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-            for oligo_id, oligo_attributes in database_region.items():
-                if ("ligation_site" in oligo_attributes) and (oligo_attributes["ligation_site"]):
+                ligation_site = oligo_database.get_oligo_attribute_value(
+                    attribute="ligation_site", region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+                if ligation_site:
                     # oligo and target have always same length
                     seedregion_start, seedregion_end = self._calc_seedregion_ligationsite(
-                        oligo_attributes["oligo"], oligo_attributes["ligation_site"], seedregion_size
+                        sequence=sequence, ligation_site=ligation_site, seedregion_size=seedregion_size
                     )
                 else:
                     seedregion_start = seedregion_end = None
 
-                oligo_attributes["seedregion_start"] = seedregion_start
-                oligo_attributes["seedregion_end"] = seedregion_end
+                new_oligo_attribute[oligo_id] = {
+                    "seedregion_start": seedregion_start,
+                    "seedregion_end": seedregion_end,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -350,30 +362,33 @@ class OligoAttributes:
     def calculate_GC_content(
         self,
         oligo_database: OligoDatabase,
-        sequence_type: _TYPES_SEQ,
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the GC content for each oligonucleotide in the database, dependent on the specified sequence type.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
-        :param sequence_type: The type of sequence to consider for GC content calculation (e.g., 'oligo' or 'target').
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
         :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the GC content.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                GC_content = self._calc_GC_content(oligo_attributes[sequence_type])
-                oligo_attributes["GC_content"] = GC_content
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+                GC_content = self._calc_GC_content(sequence=sequence)
+                new_oligo_attribute[oligo_id] = {
+                    "GC_content": GC_content,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -415,45 +430,48 @@ class OligoAttributes:
     def calculate_TmNN(
         self,
         oligo_database: OligoDatabase,
-        sequence_type: _TYPES_SEQ,
         Tm_parameters: dict,
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the melting temperature for each oligonucleotide in the database, dependent on the specified sequence type,
         using nearest-neighbor thermodynamics with optional salt and chemical corrections.
 
-        :param oligo_database: The database containing oligonucleotide sequences and attributes.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
-        :param sequence_type: The type of sequence to consider for Tm calculation (e.g., 'oligo' or 'target').
-        :type sequence_type: _TYPES_SEQ
         :param Tm_parameters: Parameters for the nearest-neighbor Tm calculation.
         :type Tm_parameters: dict
         :param Tm_salt_correction_parameters: Optional parameters for salt correction.
         :type Tm_salt_correction_parameters: dict, optional
         :param Tm_chem_correction_parameters: Optional parameters for chemical correction.
         :type Tm_chem_correction_parameters: dict, optional
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the Tm.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                TmNN = self._calc_TmNN(
-                    oligo_attributes[sequence_type],
-                    Tm_parameters,
-                    Tm_salt_correction_parameters,
-                    Tm_chem_correction_parameters,
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-                oligo_attributes["TmNN"] = TmNN
+                TmNN = self._calc_TmNN(
+                    sequence=sequence,
+                    Tm_parameters=Tm_parameters,
+                    Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+                    Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+                )
+                new_oligo_attribute[oligo_id] = {
+                    "TmNN": TmNN,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -510,73 +528,76 @@ class OligoAttributes:
     def calculate_length_selfcomplement(
         self,
         oligo_database: OligoDatabase,
-        sequence_type: _TYPES_SEQ,
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the length of the longest self-complementary sequence for each oligonucleotide in the database,
         dependent on the specified sequence type.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
-        :param sequence_type: Type of sequence to analyze (e.g., 'oligo' or 'target').
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
         :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the length of the longest self-complementary sequence.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
+            for oligo_id in oligo_database.database[region_id].keys():
                 # we want to check if the reverse of our sequence is complementary to itself, e.g.
                 # 5' - TAA CAA TAT ATA TTG TTA - 3' and it's reverse
                 # 3' - ATT GTT ATA TAT AAC AAT - 5' are complementary to each other
-                sequence = oligo_attributes[sequence_type]
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
                 sequence_rev = sequence[::-1]
-                len_overlap = self._calc_length_complement(sequence, sequence_rev)
-                oligo_attributes["length_selfcomplement"] = len_overlap
+                len_overlap = self._calc_length_complement(sequence1=sequence, sequence2=sequence_rev)
+                new_oligo_attribute[oligo_id] = {
+                    "length_selfcomplement": len_overlap,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
     def calculate_length_complement(
         self,
         oligo_database: OligoDatabase,
-        sequence_type: _TYPES_SEQ,
         comparison_sequence: str,
         comparison_sequence_name: str,
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the length of the longest complementary sequence between two oligonucleotides in the database,
         dependent on the specified sequence types.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
-        :param sequence_type1: Type of sequence to analyze (e.g., 'oligo' or 'target') for the first oligonucleotide.
-        :type sequence_type1: _TYPES_SEQ
         :param comparison_sequence: The second DNA sequence to analyze for complementary sequences.
         :type comparison_sequence: str
         :param comparison_sequence_name: Name of the second DNA sequence.
         :type comparison_sequence_name: str
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
-        for region_id, database_region in oligo_database.database.items():
-            for oligo_id, oligo_attributes in database_region.items():
-                len_overlap = self._calc_length_complement(
-                    oligo_attributes[sequence_type], comparison_sequence
+        for region_id in region_ids:
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-                oligo_attributes["length_complement_" + comparison_sequence_name] = len_overlap
+                len_overlap = self._calc_length_complement(sequence1=sequence, sequence2=comparison_sequence)
+                new_oligo_attribute[oligo_id] = {
+                    f"length_complement_{comparison_sequence_name}": len_overlap,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -598,34 +619,37 @@ class OligoAttributes:
     def calculate_DG_secondary_structure(
         self,
         oligo_database: OligoDatabase,
-        sequence_type: _TYPES_SEQ,
         T: float,
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the Gibbs free energy (ΔG) of the secondary structure formation at a given temperature (T)
         for each oligonucleotide in the database, dependent on the specified sequence type.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
-        :param sequence_type: Type of sequence (e.g., 'oligo' or 'target').
-        :type sequence_type: _TYPES_SEQ
         :param T: Temperature in degrees Celsius for ΔG calculation.
         :type T: float
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the deltaG of secondary structure formation.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                DG_secondary_structure = self._calc_DG_secondary_structure(oligo_attributes[sequence_type], T)
-                oligo_attributes["DG_secondary_structure"] = DG_secondary_structure
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+                DG_secondary_structure = self._calc_DG_secondary_structure(sequence=sequence, T=T)
+                new_oligo_attribute[oligo_id] = {
+                    "DG_secondary_structure": DG_secondary_structure,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -717,12 +741,13 @@ class OligoAttributes:
         Tm_parameters: dict,
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate the optimal ligation site and melting temperatures for padlock probe arms for each
         oligonucleotide in the database, dependent on the specified sequence type.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param arm_length_min: Minimum length for each arm of the padlock probe.
         :type arm_length_min: int
@@ -738,32 +763,37 @@ class OligoAttributes:
         :type Tm_salt_correction_parameters: dict, optional
         :param Tm_chem_correction_parameters: Optional parameters for chemical correction in Tm calculation.
         :type Tm_chem_correction_parameters: dict, optional
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the padlock arms.
         :type region_ids: Union[str, List[str]]
         :return: The database containing the new oligo attribute.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                arm1_Tm, arm2_Tm, ligation_site = self._calc_padlock_arms(
-                    oligo_attributes["oligo"],
-                    arm_length_min,
-                    arm_Tm_dif_max,
-                    arm_Tm_min,
-                    arm_Tm_max,
-                    Tm_parameters,
-                    Tm_salt_correction_parameters,
-                    Tm_chem_correction_parameters,
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-                oligo_attributes["arm1_Tm"] = arm1_Tm
-                oligo_attributes["arm2_Tm"] = arm2_Tm
-                oligo_attributes["ligation_site"] = ligation_site
+                arm1_Tm, arm2_Tm, ligation_site = self._calc_padlock_arms(
+                    sequence=sequence,
+                    arm_length_min=arm_length_min,
+                    arm_Tm_dif_max=arm_Tm_dif_max,
+                    arm_Tm_min=arm_Tm_min,
+                    arm_Tm_max=arm_Tm_max,
+                    Tm_parameters=Tm_parameters,
+                    Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+                    Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+                )
+                new_oligo_attribute[oligo_id] = {
+                    "arm1_Tm": arm1_Tm,
+                    "arm2_Tm": arm2_Tm,
+                    "ligation_site": ligation_site,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
 
@@ -864,6 +894,7 @@ class OligoAttributes:
         detect_oligo_length_min: int,
         detect_oligo_length_max: int,
         min_thymines: int,
+        sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ):
         """Calculate and assign detection oligos for each oligo in the database.
@@ -871,7 +902,7 @@ class OligoAttributes:
         This function iterates through the oligos in the database and calculates potential detection oligo sequences
         based on specified length and thymine content constraints. The results are added to each oligo's attributes.
 
-        :param oligo_database: Database of oligonucleotides.
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
         :type oligo_database: OligoDatabase
         :param detect_oligo_length_min: The minimum length of the detection oligo.
         :type detect_oligo_length_min: int
@@ -879,35 +910,45 @@ class OligoAttributes:
         :type detect_oligo_length_max: int
         :param min_thymines: The minimum number of thymine bases required in the detection oligo.
         :type min_thymines: int
+        :param sequence_type: The type of sequence to consider (e.g., 'oligo' or 'target'), defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ
         :param region_ids: The region IDs for which to calculate the detection oligo.
         :type region_ids: Union[str, List[str]]
         :return: The updated oligo database with detection oligo sequences added to each oligo's attributes.
         :rtype: OligoDatabase
         """
-        if region_ids is None:
-            region_ids = oligo_database.database.keys()
-        else:
-            region_ids = check_if_list(region_ids)
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
 
         for region_id in region_ids:
-            database_region = oligo_database.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                if ("ligation_site" in oligo_attributes) and (oligo_attributes["ligation_site"]):
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+                ligation_site = oligo_database.get_oligo_attribute_value(
+                    attribute="ligation_site", region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+
+                if ligation_site:
                     (
                         detect_oligo_even,
                         detect_oligo_long_left,
                         detect_oligo_long_right,
                     ) = self._calc_detect_oligo(
-                        sequence=oligo_attributes["oligo"],
-                        ligation_site=oligo_attributes["ligation_site"],
+                        sequence=sequence,
+                        ligation_site=ligation_site,
                         detect_oligo_length_min=detect_oligo_length_min,
                         detect_oligo_length_max=detect_oligo_length_max,
                         min_thymines=min_thymines,
                     )
                 else:
                     detect_oligo_even = detect_oligo_long_left = detect_oligo_long_right = None
-                oligo_attributes["detect_oligo_even"] = detect_oligo_even
-                oligo_attributes["detect_oligo_long_left"] = detect_oligo_long_left
-                oligo_attributes["detect_oligo_long_right"] = detect_oligo_long_right
+
+                new_oligo_attribute[oligo_id] = {
+                    "detect_oligo_even": detect_oligo_even,
+                    "detect_oligo_long_left": detect_oligo_long_left,
+                    "detect_oligo_long_right": detect_oligo_long_right,
+                }
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database

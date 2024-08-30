@@ -24,24 +24,37 @@ class OligoScoringBase(ABC):
         """Scores all oligonucleotides in the provided dictionary using a defined scoring function,
         updating the dictionary with scores and also returning scores as a pandas.Series for efficient data manipulation.
 
-        :param oligos: Dictionary containing the oligonucleotides with their respective information.
-        :type oligos: dict
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
+        :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequences being scored, which must be one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
         :return: Tuple containing the updated dictionary of oligonucleotides and a pandas.Series with the computed scores.
         :rtype: (dict, pandas.Series)
         """
+        """Scores all oligonucleotides in the provided database using a defined scoring function,
+        updating the database with scores and also returning scores as a pandas.Series for efficient data manipulation.
 
+        :param oligo_database: OligoDatabase containing the oligonucleotides with their respective information (e.g. oligo sequence and oligo attributes).
+        :type oligo_database: OligoDatabase
+        :param region_id: The identifier for the specific region to score oligonucleotides.
+        :type region_id: str
+        :param sequence_type: The type of sequences being scored, which must be one of the predefined sequence types.
+        :type sequence_type: _TYPES_SEQ
+        :return: Tuple containing the updated dictionary of oligonucleotides and a pandas.Series with the computed scores.
+        :rtype: (dict, pandas.Series)
+        """
         oligos_ids = list(oligo_database.database[region_id].keys())
         oligos_scores = pd.Series(index=oligos_ids, dtype=float)
         for oligo_id in oligos_ids:
-            score = round(self.get_score(oligo_database.database[region_id][oligo_id], sequence_type), 4)
+            score = round(self.get_score(oligo_database, region_id, oligo_id, sequence_type), 4)
             oligo_database.database[region_id][oligo_id]["oligo_score"] = score
             oligos_scores[oligo_id] = score
         return oligo_database, oligos_scores
 
     @abstractmethod
-    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(
+        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
+    ):
         """Abstract method to compute the score of a given oligonucleotide sequence.
         This method needs to be implemented by all subclasses to define specific scoring logic.
 
@@ -70,7 +83,9 @@ class GCOligoScoring(OligoScoringBase):
         """Constructor for the GCOligoScoring class."""
         self.GC_content_opt = GC_content_opt
 
-    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(
+        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
+    ):
         """Calculates the GC content score for a given oligonucleotide sequence based
         on its deviation from the optimal GC content.
         Score: the lower the better.
@@ -82,7 +97,9 @@ class GCOligoScoring(OligoScoringBase):
         :return: The calculated score based on Tm and GC content.
         :rtype: float
         """
-        sequence = oligo_attributes[sequence_type]
+        sequence = oligo_database.get_oligo_attribute_value(
+            attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
         GC_content_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
         return abs(self.GC_content_opt - GC_content_oligo)
 
@@ -114,7 +131,9 @@ class WeightedGCUtrScoring(OligoScoringBase):
         self.GC_weight = GC_weight
         self.UTR_weight = UTR_weight
 
-    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(
+        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
+    ):
         """Calculates the GC content score for a given oligonucleotide sequence based
         on its deviation from the optimal GC content and whether it originates from the UTR.
         Score: the lower the better.
@@ -126,14 +145,16 @@ class WeightedGCUtrScoring(OligoScoringBase):
         :return: Calculated score for the oligo.
         :rtype: float
         """
-        sequence = oligo_attributes[sequence_type]
+        sequence = oligo_database.get_oligo_attribute_value(
+            attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
         GC_content_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
 
-        if "regiontype" in oligo_attributes:
-            flattened_regiontype = flatten_attribute_list(oligo_attributes["regiontype"])
-            sequence_originates_from_UTR = (
-                "three_prime_UTR" in flattened_regiontype or "five_prime_UTR" in flattened_regiontype
-            )
+        regiontype = oligo_database.get_oligo_attribute_value(
+            attribute="regiontype", region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
+        if regiontype:
+            sequence_originates_from_UTR = "three_prime_UTR" in regiontype or "five_prime_UTR" in regiontype
         else:
             sequence_originates_from_UTR = False
 
@@ -203,7 +224,9 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         self.GC_weight = GC_weight
         self._generate_scoring_functions()
 
-    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(
+        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
+    ):
         """Calculates the oligo score based on Tm and GC content deviations from their optimal values.
         An error term is added to the GC and Tm scores to normalize both properties and make them comparable for the scoring.
         Score: the lower the better.
@@ -215,7 +238,9 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         :return: The calculated score based on Tm and GC content.
         :rtype: float
         """
-        sequence = oligo_attributes[sequence_type]
+        sequence = oligo_database.get_oligo_attribute_value(
+            attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
         Tm_oligo = OligoAttributes._calc_TmNN(
             sequence=sequence,
             Tm_parameters=self.Tm_parameters,
@@ -321,7 +346,9 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         self.GC_weight = GC_weight
         self._generate_scoring_functions()
 
-    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
+    def get_score(
+        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
+    ):
         """Calculates the oligo score based on Tm and GC content deviations from their optimal values and the isoform consensus.
         An error term is added to the GC and Tm scores to normalize both properties and make them comparable for the scoring.
         Score: the lower the better.
@@ -333,20 +360,20 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         :return: The calculated score based on Tm and GC content.
         :rtype: float
         """
-        sequence = oligo_attributes[sequence_type]
-        if (
-            ("transcript_id" in oligo_attributes)
-            and (oligo_attributes["transcript_id"])
-            and ("number_transcripts" in oligo_attributes)
-            and (oligo_attributes["number_transcripts"])
-        ):
+        sequence = oligo_database.get_oligo_attribute_value(
+            attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
+        transcript_id = oligo_database.get_oligo_attribute_value(
+            attribute="transcript_id", region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
+        number_transcripts = oligo_database.get_oligo_attribute_value(
+            attribute="number_transcripts", region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
+        if transcript_id and number_transcripts:
             # isoform consensus is given in % (0-100), hence we have to devide by 100
             # we use 1 - isoform consensus as score because here the lower the score the better
             isoform_consensus = 1 - (
-                OligoAttributes._calc_isoform_consensus(
-                    oligo_attributes["transcript_id"], oligo_attributes["number_transcripts"]
-                )
-                / 100
+                OligoAttributes._calc_isoform_consensus(transcript_id, number_transcripts) / 100
             )
         else:
             # if information on available, don't consider isoform consensus in scoring
