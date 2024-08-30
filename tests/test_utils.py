@@ -9,7 +9,7 @@ import pandas as pd
 from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite.utils import FastaParser, GffParser
-from oligo_designer_toolsuite.utils._checkers import (
+from oligo_designer_toolsuite.utils._checkers_and_helpers import (
     check_if_dna_sequence,
     check_if_key_exists,
     check_if_list,

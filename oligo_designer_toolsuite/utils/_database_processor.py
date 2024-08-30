@@ -9,7 +9,7 @@ from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 
-from ._checkers import check_if_list_of_lists
+from ._checkers_and_helpers import check_if_list_of_lists
 
 ############################################
 # Collection of utility functions

@@ -28,7 +28,7 @@ Functions for checking formats:
 
 """
 
-from ._checkers import (
+from ._checkers_and_helpers import (
     check_if_dna_sequence,
     check_if_key_exists,
     check_if_list,

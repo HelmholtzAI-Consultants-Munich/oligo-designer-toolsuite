@@ -17,6 +17,7 @@ files_fasta_oligo_database: # fasta file with sequences form which the oligos sh
 oligo_length_min: 26 #min length of oligos
 oligo_length_max: 30 #max length of oligos
 oligo_isoform_consensus: 0 #min isoform consesnsus for oligos, i.e. how many transcripts of the total number of transcripts of a gene are covered by the oligo, given in %
+split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
 
 ### Parameters for the property filers
 ### -----------------------------------------------

@@ -3,6 +3,8 @@
 ############################################
 
 import csv
+import time
+import uuid
 import warnings
 
 ############################################
@@ -90,3 +92,19 @@ def check_tsv_format(file: str):
     with open(file, "r") as tsv:
         read_tsv = csv.reader(tsv, delimiter="\t")
         return any(read_tsv)
+
+
+def generate_unique_filename(base_name: str, extension: str = "") -> str:
+    """Generate a unique filename using a base name, current timestamp, and a UUID.
+
+    :param base_name: The base name for the file.
+    :type base_name: str
+    :param extension: The file extension, e.g., ".txt". (default is an empty string)
+    :type extension: str
+    :return: A unique filename.
+    :rtype: str
+    """
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    unique_id = uuid.uuid4().hex
+    filename = f"{base_name}_{timestamp}_{unique_id}.{extension}"
+    return filename

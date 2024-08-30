@@ -105,6 +105,7 @@ class OligoSeqProbeDesigner:
         gene_ids: list,
         oligo_length_min: int,
         oligo_length_max: int,
+        split_region: int,
         files_fasta_oligo_database: list[str],
         min_oligos_per_region: int,
         isoform_consensus: float,
@@ -129,6 +130,7 @@ class OligoSeqProbeDesigner:
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(oligo_length_min, oligo_length_max),
+            split_region=split_region,
             region_ids=gene_ids,
             n_jobs=self.n_jobs,
         )
@@ -605,6 +607,7 @@ def main():
         gene_ids=gene_ids,
         oligo_length_min=config["oligo_length_min"],
         oligo_length_max=config["oligo_length_max"],
+        split_region=config["split_region"],
         files_fasta_oligo_database=config["files_fasta_oligo_database"],
         # we should have at least "min_oligoset_size" oligos per gene to create one set
         min_oligos_per_region=config["min_oligoset_size"],

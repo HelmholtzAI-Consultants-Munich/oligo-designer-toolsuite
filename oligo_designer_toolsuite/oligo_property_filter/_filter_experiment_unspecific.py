@@ -9,7 +9,7 @@ from Bio.SeqUtils import Seq
 from oligo_designer_toolsuite.database import OligoAttributes
 from oligo_designer_toolsuite.oligo_property_filter import PropertyFilterBase
 
-from ..utils._checkers import check_if_dna_sequence
+from ..utils._checkers_and_helpers import check_if_dna_sequence
 
 ############################################
 # Oligo Property Filter Classes

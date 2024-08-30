@@ -14,7 +14,7 @@ from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
 
-from ..utils._checkers import check_if_list
+from ..utils._checkers_and_helpers import check_if_list
 from ..utils._sequence_processor import get_sequence_from_annotation
 
 ############################################
