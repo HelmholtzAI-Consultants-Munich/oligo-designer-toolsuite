@@ -9,12 +9,14 @@ import unittest
 from pathlib import Path
 from abc import abstractmethod
 
+from oligo_designer_toolsuite.database import OligoDatabase, OligoAttributes
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
     FtpLoaderEnsembl,
     FtpLoaderNCBI,
+    OligoSequenceGenerator,
 )
-from oligo_designer_toolsuite.utils import FastaParser
+from oligo_designer_toolsuite.utils import FastaParser, check_if_dna_sequence
 
 ############################################
 # Setup
@@ -39,6 +41,8 @@ METADATA_ENSEMBL = {
     "annotation_release": "108",
     "genome_assembly": "GRCh38",
 }
+
+FILE_NCBI_EXONS = "tests/data/genomic_regions/sequences_ncbi_exons.fna"
 
 ############################################
 # Tests
@@ -72,14 +76,13 @@ class TestFTPLoaderNCBICurrent(FTPLoaderDownloadBase, unittest.TestCase):
         return FtpLoaderNCBI(self.tmp_path, taxon, species, annotation_release)
 
 
-# returns error: ftplib.error_perm: 550 Failed to change directory.
-# class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
-#     def setup_ftp_loader(self):
-#         # Parameters
-#         species = "homo_sapiens"
-#         annotation_release = "current"
+class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
+    def setup_ftp_loader(self):
+        # Parameters
+        species = "homo_sapiens"
+        annotation_release = "current"
 
-#         return FtpLoaderEnsembl(self.tmp_path, species, annotation_release)
+        return FtpLoaderEnsembl(self.tmp_path, species, annotation_release)
 
 
 class FTPLoaderFilesBase:
@@ -146,7 +149,7 @@ class TestFTPLoaderNCBIOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
         return "GCF_000001405.40_GRCh38.p14_genomic.fna"
 
 
-class TestFTPLoaderEnsembl(FTPLoaderFilesBase, unittest.TestCase):
+class TestFTPLoaderEnsemblOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
     def setup_ftp_loader(self):
         # Parameters
         species = "homo_sapiens"
@@ -255,3 +258,87 @@ class TestGenomicRegionGeneratorEnsembl(GenomicRegionGeneratorBase, unittest.Tes
             genome_assembly=METADATA_ENSEMBL["genome_assembly"],
             dir_output=self.tmp_path,
         )
+
+
+class TestOligoSequenceGenerator(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_sequence_generator")
+
+        self.oligo_database = OligoDatabase()
+        self.oligo_attributes = OligoAttributes()
+        self.oligo_sequence_generator = OligoSequenceGenerator(dir_output=self.tmp_path)
+        self.fasta_parser = FastaParser()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
+
+    def test_create_sequences_random(self):
+        file_fasta_random_seqs1 = self.oligo_sequence_generator.create_sequences_random(
+            filename_out="random_sequences1",
+            length_sequences=30,
+            num_sequences=100,
+            name_sequences="random_sequences1",
+            base_alphabet_with_probability={"A": 0.1, "C": 0.3, "G": 0.4, "T": 0.2},
+        )
+        assert (
+            self.fasta_parser.check_fasta_format(file_fasta_random_seqs1) == True
+        ), f"error: wrong file format for file: {file_fasta_random_seqs1}"
+
+        self.oligo_database.load_database_from_fasta(
+            files_fasta=file_fasta_random_seqs1,
+            database_overwrite=True,
+            sequence_type="oligo",
+            region_ids=None,
+        )
+
+        assert (
+            len(self.oligo_database.database["random_sequences1"].keys()) == 100
+        ), "error: wrong number sequences created"
+        self.oligo_database = self.oligo_attributes.calculate_oligo_length(oligo_database=self.oligo_database)
+        assert (
+            self.oligo_database.get_oligo_attribute_value(
+                attribute="length",
+                flatten=True,
+                region_id="random_sequences1",
+                oligo_id="random_sequences1::1",
+            )
+            == 30
+        ), "error: wrong sequence length"
+        assert check_if_dna_sequence(
+            self.oligo_database.database["random_sequences1"]["random_sequences1::50"]["oligo"]
+        ), "error: the craeted sequence is not a DNA seuqnece"
+
+    def test_create_sequences_sliding_window(self):
+        file_fasta_exons = self.oligo_sequence_generator.create_sequences_sliding_window(
+            files_fasta_in=FILE_NCBI_EXONS,
+            length_interval_sequences=(30, 31),
+            region_ids=[
+                "AARS1",
+                "DECR2",
+                "FAM234A",
+                "RHBDF1",
+                "WASIR2",
+            ],
+        )
+
+        self.oligo_database.load_database_from_fasta(
+            files_fasta=file_fasta_exons,
+            database_overwrite=True,
+            sequence_type="oligo",
+            region_ids="AARS1",
+        )
+
+        assert "AARS1" in self.oligo_database.database.keys(), "error: region missing"
+        self.oligo_database = self.oligo_attributes.calculate_oligo_length(oligo_database=self.oligo_database)
+        assert (
+            self.oligo_database.get_oligo_attribute_value(
+                attribute="length",
+                flatten=True,
+                region_id="AARS1",
+                oligo_id="AARS1::1",
+            )
+            == 30
+        ), "error: wrong sequence length"
+        assert check_if_dna_sequence(
+            self.oligo_database.database["AARS1"]["AARS1::50"]["oligo"]
+        ), "error: the craeted sequence is not a DNA seuqnece"

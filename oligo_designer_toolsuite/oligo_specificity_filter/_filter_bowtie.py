@@ -4,7 +4,7 @@
 
 import os
 import subprocess
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import pandas as pd
 from Bio import SeqIO
@@ -23,39 +23,6 @@ from ..utils._sequence_processor import get_sequence_from_annotation
 
 
 class BowtieFilter(AlignmentSpecificityFilter):
-    """A class that implements specificity filtering using the Bowtie alignment tool to align oligonucleotides against a reference database.
-    This class manages Bowtie search parameters and parses the output for specificity analysis.
-
-    Bowtie (1.3 or higher) can be installed via the Bowtie webpage (https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie)
-    or via Bioconda (http://bioconda.github.io/recipes/bowtie/README.html) with:
-    ``conda config --add channels conda-forge``
-    ``conda config --add channels bioconda``
-    ``conda update --all``
-    ``conda install "bowtie>=1.3.1"``
-
-    Useful Bowtie search parameters:
-    --norc: only report hits on the plus strand
-    --nofw: only report hits on the minus strand
-    -v <int>: Report alignments with at most <int> mismatches.
-    -n <int>: Maximum number of mismatches permitted in the “seed”, i.e., the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2, or 3 and the default is 2.
-    -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. Bowtie is faster for larger values of -l.
-    All available Bowtie search parameters are listed on the Bowtie webpage.
-
-    The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available
-    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
-
-    :param search_parameters: Custom parameters for the Bowtie search command.
-    :type search_parameters: dict
-    :param hit_parameters: Criteria to consider a Bowtie hit significant for filtering.
-    :type hit_parameters: dict
-    :param names_search_output: Column names for parsing Bowtie search output.
-    :type names_search_output: list
-    :param filter_name: Subdirectory path for the output, i.e., <dir_output>/<filter_name>, defaults to "bowtie_filter".
-    :type filter_name: str, optional
-    :param dir_output: Directory for saving intermediate files, defaults to "output".
-    :type dir_output: str, optional
-    """
-
     def __init__(
         self,
         search_parameters: dict = {},
@@ -72,7 +39,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         ],
         filter_name: str = "bowtie_filter",
         dir_output: str = "output",
-    ):
+    ) -> None:
         """Constructor for the BowtieFilter class."""
         super().__init__(filter_name, dir_output)
 
@@ -80,17 +47,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
         self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
 
-    def _create_index(self, file_reference: str, n_jobs: int):
-        """Creates a Bowtie index for the reference database. The index facilitates
-        fast alignment searches against the reference.
+    def _create_index(self, file_reference: str, n_jobs: int) -> str:
 
-        :param file_reference: Path to the reference database file.
-        :type file_reference: str
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
-        :return: The basename of the reference file used as the index name.
-        :rtype: str
-        """
         ## Create bowtie index
         file_reference = os.path.abspath(file_reference)
         filename_reference_index = os.path.basename(file_reference)
@@ -109,25 +67,11 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
     def _run_search(
         self,
-        sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
         file_index: str,
+        sequence_type: _TYPES_SEQ,
         region_ids: Union[str, List[str]] = None,
-    ):
-        """Performs a Bowtie search of oligonucleotide sequences against a reference database using a previously
-        created Bowtie index.
-
-        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
-        :type sequence_type: _TYPES_SEQ
-        :param oligo_database: The database of oligonucleotides to search.
-        :type oligo_database: OligoDatabase
-        :param file_index: The filename of the reference database index for Bowtie search.
-        :type file_index: str
-        :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
-        :type region_ids: Union[str, List[str]], optional
-        :return: A DataFrame containing the Bowtie search results.
-        :rtype: pd.DataFrame
-        """
+    ) -> pd.DataFrame:
         region_ids = check_if_list(region_ids)
         if region_ids:
             region_name = "_".join(region_ids)
@@ -136,6 +80,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         file_oligo_database = oligo_database.write_database_to_fasta(
             filename=f"oligo_database_bowtie_{region_name}",
+            save_description=False,
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
@@ -175,24 +120,10 @@ class BowtieFilter(AlignmentSpecificityFilter):
     def _find_hits(
         self,
         oligo_database: OligoDatabase,  # not used in this filter
-        region_ids: Union[str, List[str]],  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
-    ):
-        """Identifies oligonucleotides with significant alignment hits from Bowtie search results, optionally
-        excluding hits from the same input region.
-
-        :param oligo_database: The oligonucleotide database.
-        :type oligo_database: OligoDatabase
-        :param region_ids: The identifier for the region within the database to filter.
-        :type region_ids: Union[str, List[str]]
-        :param search_results: The DataFrame containing results from a Bowtie search.
-        :type search_results: pd.DataFrame
-        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
-        :type consider_hits_from_input_region: bool
-        :return: A tuple containing a DataFrame of significant Bowtie hits and a list of oligos with these hits.
-        :rtype: pd.DataFrame
-        """
+        region_ids: Union[str, List[str]],  # not used in this filter
+    ) -> pd.DataFrame:
         if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
@@ -201,19 +132,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         return search_results
 
-    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str):
-        """
-        Retrieve the reference sequences from the search results.
-
-        :param table_hits: DataFrame with the oligos that match the BLAST search.
-        :type table_hits: pd.DataFrame
-        :param file_reference: Path to the fasta file used as reference for the search.
-        :type file_reference: str
-        :param region_id: The identifier for the region within the database to filter.
-        :type region_id: str
-        :return: Reference sequences.
-        :rtype: list
-        """
+    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str) -> list:
         required_fields = [
             "query",
             "strand",
@@ -251,16 +170,9 @@ class BowtieFilter(AlignmentSpecificityFilter):
         os.remove(file_bed)
         return references
 
-    def _add_alignment_gaps(self, table_hits: pd.DataFrame, queries: list, references: list):
-        """Adjust the sequences of the oligos and the gaps found by the alignment search.
-        The gapped references and queries are defined such that nucleotides in the same index are binding.
-
-        :param table_hits: DataFrame with the oligos that have a match with the query oligo.
-        :type table_hits: pandas.DataFrame
-        :param database_region: Dictionary with the information of the oligo sequences.
-        :type database_region: dict
-        """
-
+    def _add_alignment_gaps(
+        self, table_hits: pd.DataFrame, queries: list, references: list
+    ) -> Tuple[list, list]:
         # bowtie does not support gaps
         return queries, references
 
@@ -271,38 +183,6 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
 
 class Bowtie2Filter(AlignmentSpecificityFilter):
-    """A class that implements specificity filtering using the Bowtie2 alignment tool to align oligonucleotides against a reference database.
-    This class manages Bowtie2 search parameters and parses the output for specificity analysis.
-
-    Bowtie2 (2.5 or higher) can be installed via the Bowtie2 webpage (https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2)
-    or via Bioconda (http://bioconda.github.io/recipes/bowtie2/README.html) with:
-    ``conda config --add channels conda-forge``
-    ``conda config --add channels bioconda``
-    ``conda update --all``
-    ``conda install "bowtie2>=2.5"``
-
-    Useful Bowtie2 search parameters:
-    --norc: only report hits on the plus strand
-    --nofw: only report hits on the minus strand
-    -N <int>: Sets the number of mismatches allowed in a seed alignment during multiseed alignment. Can be set to 0 or 1. Setting this higher makes alignment slower (often much slower) but increases sensitivity. Default: 0.
-    -L <int>: Sets the length of the seed substrings to align during multiseed alignment. Smaller values make alignment slower but more sensitive. Default: the --sensitive preset is used by default, which sets -L to 22 and 20 in --end-to-end mode and in --local mode.
-    All available Bowtie2 search parameters are listed on the Bowtie2 webpage.
-
-    The hits returned by Bowtie2 can be further filtered using machine learning models. For more information regarding which filters are available
-    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
-
-    :param search_parameters: Custom parameters for the Bowtie2 search command.
-    :type search_parameters: dict
-    :param hit_parameters: Criteria to consider a Bowtie hit significant for filtering.
-    :type hit_parameters: dict
-    :param names_search_output: Column names for parsing Bowtie2 search output.
-    :type names_search_output: list
-    :param filter_name: Subdirectory path for the output, i.e., <dir_output>/<filter_name>, defaults to "bowtie2_filter".
-    :type filter_name: str, optional
-    :param dir_output: Directory for saving intermediate files, defaults to "output".
-    :type dir_output: str, optional
-    """
-
     def __init__(
         self,
         search_parameters: dict = {},
@@ -322,7 +202,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         ],
         filter_name: str = "bowtie2_filter",
         dir_output: str = "output",
-    ):
+    ) -> None:
         """Constructor for the Bowtie2Filter class."""
         super().__init__(filter_name, dir_output)
 
@@ -330,17 +210,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         self.hit_parameters = hit_parameters  # currently not used
         self.names_search_output = names_search_output
 
-    def _create_index(self, file_reference: str, n_jobs: int):
-        """Creates a Bowtie2 index for the reference database. The index facilitates
-        fast alignment searches against the reference.
-
-        :param file_reference: Path to the reference database file.
-        :type file_reference: str
-        :param n_jobs: The number of parallel jobs to run.
-        :type n_jobs: int
-        :return: The basename of the reference file used as the index name.
-        :rtype: str
-        """
+    def _create_index(self, file_reference: str, n_jobs: int) -> str:
         ## Create bowtie index
         file_reference = os.path.abspath(file_reference)
         filename_reference_index = os.path.basename(file_reference)
@@ -361,25 +231,11 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
     def _run_search(
         self,
-        sequence_type: _TYPES_SEQ,
         oligo_database: OligoDatabase,
         file_index: str,
+        sequence_type: _TYPES_SEQ,
         region_ids: Union[str, List[str]] = None,
-    ):
-        """Performs a Bowtie2 search of oligonucleotide sequences against a reference database using a previously
-        created Bowtie2 index.
-
-        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
-        :type sequence_type: _TYPES_SEQ
-        :param oligo_database: The database of oligonucleotides to search.
-        :type oligo_database: OligoDatabase
-        :param file_index: The filename of the reference database index for Bowtie2 search.
-        :type file_index: str
-        :param region_ids: Specific region IDs within the oligo database to search. If None, searches all regions.
-        :type region_ids: Union[str, List[str]], optional
-        :return: A DataFrame containing the Bowtie2 search results.
-        :rtype: pd.DataFrame
-        """
+    ) -> pd.DataFrame:
         region_ids = check_if_list(obj=region_ids)
         if region_ids:
             region_name = "_".join(region_ids)
@@ -388,6 +244,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
         file_oligo_database = oligo_database.write_database_to_fasta(
             filename=f"oligo_database_bowtie2_{region_name}",
+            save_description=False,
             region_ids=region_ids,
             sequence_type=sequence_type,
         )
@@ -429,24 +286,10 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     def _find_hits(
         self,
         oligo_database: OligoDatabase,  # not used in this filter
-        region_ids: Union[str, List[str]],  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
-    ):
-        """Identifies oligonucleotides with significant alignment hits from Bowtie2 search results, optionally
-        excluding hits from the same input region.
-
-        :param oligo_database: The oligonucleotide database.
-        :type oligo_database: OligoDatabase
-        :param region_ids: The identifier for the region within the database to filter.
-        :type region_ids: Union[str, List[str]]
-        :param search_results: The DataFrame containing results from a Bowtie2 search.
-        :type search_results: pd.DataFrame
-        :param consider_hits_from_input_region: Flag to indicate whether hits from the input region should be considered.
-        :type consider_hits_from_input_region: bool
-        :return: A tuple containing a DataFrame of significant Bowtie2 hits.
-        :rtype: pd.DataFrame
-        """
+        region_ids: Union[str, List[str]],  # not used in this filter
+    ) -> pd.DataFrame:
         if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region
             search_results = search_results[
@@ -455,8 +298,10 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
         return search_results
 
-    def _get_references(self, search_results: pd.DataFrame, file_reference: str, region_id: str):
+    def _get_references(self, search_results: pd.DataFrame, file_reference: str, region_id: str) -> list:
         raise NotImplementedError("AI filters not supported for Bowtie2.")
 
-    def _add_alignment_gaps(self, search_results: pd.DataFrame, queries: List[Seq], references: List[Seq]):
+    def _add_alignment_gaps(
+        self, search_results: pd.DataFrame, queries: list, references: list
+    ) -> Tuple[list, list]:
         raise NotImplementedError("AI filters not supported for Bowtie2.")

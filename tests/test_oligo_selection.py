@@ -141,7 +141,7 @@ class TestOligoScoring(unittest.TestCase):
             write_regions_with_insufficient_oligos=True,
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_database_from_table(FILE_DATABASE)
+        self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
 
         self.oligo_scoring = WeightedTmGCOligoScoring(
             Tm_min=52,
@@ -223,17 +223,14 @@ class TestOligoScoring(unittest.TestCase):
                 "set_score_sum",
             ],
         )
-        print(oligo_scores)
-        print(overlapping_matrix.toarray())
+
         computed_sets = self.oligoset_generator._get_non_overlapping_sets(
             overlapping_matrix=overlapping_matrix,
             overlapping_matrix_ids=index,
             oligos_scores=oligo_scores,
             n_sets=100,
         )
-        print(computed_sets)
         computed_sets["set_score_lowest"] = computed_sets["set_score_lowest"].round(2)
         computed_sets["set_score_sum"] = computed_sets["set_score_sum"].round(2)
-        print(computed_sets)
 
         assert true_sets.equals(computed_sets), "Sets are not computed correctly"

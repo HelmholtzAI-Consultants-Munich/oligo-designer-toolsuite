@@ -12,6 +12,7 @@ from Bio.SeqUtils import MeltingTemp as mt
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
     ComplementFilter,
+    DetectionOligoFilter,
     FivePrimeSequenceFilter,
     GCClampFilter,
     GCContentFilter,
@@ -251,8 +252,10 @@ class TestSequenceStructureFilters(unittest.TestCase):
             Tm_salt_correction_parameters=TM_PARAMETERS_SALT_CORRECTION,
         )
         self.secondary_structure_filter = SecondaryStructureFilter(T=37, thr_DG=0)
-        self.self_comp_filter = SelfComplementFilter(max_len_selfcomp=6)
-        self.complement_filter = ComplementFilter(max_len_complement=6)
+        self.self_comp_filter = SelfComplementFilter(max_len_selfcomplement=6)
+        self.complement_filter = ComplementFilter(
+            comparison_sequence=Seq("ATTGTTATATATAACAAT"), max_len_complement=6
+        )
 
     def test_Tm_filter_default(self):
         seq_remove = Seq("TGGCTTGGGCCTTTCCAAGCCCCCATTTGAGCT")
@@ -306,14 +309,13 @@ class TestSequenceStructureFilters(unittest.TestCase):
 
     def test_complement_filter(self):
         seq_remove = Seq("TAACAATATATATTGTTA")
-        seq_complement = seq_remove.complement()
-        res = self.complement_filter.apply(seq_remove, seq_complement)
+        res = self.complement_filter.apply(seq_remove)
         assert (
             res == False
-        ), f"error: A sequence ({seq_remove}) not fulfilling the condition with ({seq_complement}) has been accepted!"
+        ), f"error: A sequence ({seq_remove}) not fulfilling the condition with ({seq_remove.complement()}) has been accepted!"
 
         seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
-        res = self.complement_filter.apply(seq_keep, seq_complement)
+        res = self.complement_filter.apply(seq_keep)
         assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
 
 
@@ -326,6 +328,19 @@ class TestExperimentSpecificFilters(unittest.TestCase):
             arm_Tm_dif_max=5,
             arm_Tm_min=40,
             arm_Tm_max=60,
+            Tm_parameters=TM_PARAMETERS,
+            Tm_salt_correction_parameters=TM_PARAMETERS_SALT_CORRECTION,
+            Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORRECTION,
+        )
+
+        self.detection_oligo_filter = DetectionOligoFilter(
+            detect_oligo_length_min=5,
+            detect_oligo_length_max=10,
+            min_thymines=2,
+            arm_Tm_min=40,
+            arm_Tm_max=60,
+            arm_length_min=5,
+            arm_Tm_dif_max=5,
             Tm_parameters=TM_PARAMETERS,
             Tm_salt_correction_parameters=TM_PARAMETERS_SALT_CORRECTION,
             Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORRECTION,
@@ -345,8 +360,17 @@ class TestExperimentSpecificFilters(unittest.TestCase):
         ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [PadlockArmsFilter]"
 
     def test_detection_oligo_filter(self):
-        # TODO: add test for this filter
-        pass
+        seq_remove = Seq("TGTCGGATCTCTTCAACAAGCTGGTCAT")
+        res = self.detection_oligo_filter.apply(seq_remove)
+        assert (
+            res == False
+        ), f"error: A sequence ({seq_remove}) not fulfilling the condition with has been accepted! [PadlockArmsFilter]"
+
+        seq_keep = Seq("TGGCTTGGGCCTTTCCAAGCCCCCATTTGAGCT")
+        res = self.detection_oligo_filter.apply(seq_keep)
+        assert (
+            res == True
+        ), f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted! [PadlockArmsFilter]"
 
 
 class TestPropertyFilter(unittest.TestCase):
@@ -420,4 +444,4 @@ class TestPropertyFilter(unittest.TestCase):
             database_overwrite=True,
         )
 
-        property_filter.apply(sequence_type="oligo", oligo_database=oligos, n_jobs=2)
+        property_filter.apply(oligo_database=oligos, sequence_type="oligo", n_jobs=2)
