@@ -17,26 +17,28 @@
 </div>
 
 Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that are designed with respect to a specific target region and have many application areas,
-ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for in situ hybridization or as guide RNAs for CRISPR-based gene editing.
-Based on the intended application and experimental design, researchers have to customize the length, sequence composition, and thermodynamic properties of the designed oligos.
+ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for in situ hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers have to customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/dev/docs/source/_figures/oligo_design.png" width="800">
+<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/pipelines/docs/source/_figures/oligo_design.png" width="800">
 
 </div>
 
 
-Various tools exist that provide custom design of oligo sequences depending on the area of application. Interestingly, all those pipelines have many common basic processing steps,
-ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos.
-Despite the fact that most tools apply the same basic processing steps, each newly developed tool usually uses its own implementation and different versions of package dependencies for those basic processing steps.
-As a consequence, the comparability of tools that differ only in certain steps is hampered, but also the maintenance of existing tools and the development of new tools is slowed down,
-because developers do not have a common resource for basic functionalities to use. We tackle this issue by providing such a common resource in our open-source *Oligo Designer Toolsuite*.
+Various tools exist that provide custom design of oligo sequences depending on the area of application. Even though most tools apply the same basic processing steps, ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos, each newly developed tool uses its own implementation and different package dependencies. Consequently, not only the development of new tools is slowed down, but also the maintenance and modification of existing tools is hampered, because developers do not have a common resource for those functionalities to use. We tackle this issue with our open-source *Oligo Designer Toolsuite*.
 
-***Oligo Designer Toolsuite*** **is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework.**
-Furthermore, we introduce a common underlying data structure, which allows the user to easily combine different modules, depending on the required processing steps.
-We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. SCRINSHOT or SeqFISH+ probe design for Spatial Transcriptomics.
+***Oligo Designer Toolsuite*** **is a collection of modules that provides all basic functionalities for custom oligo design pipelines as well as advanced experiment-specific functionalities like machine learning models for oligo specificity prediction within a flexible Python framework.** 
 
+To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. SCRINSHOT or SeqFISH+ probe design for Spatial Transcriptomics.
+
+## Documentation
+
+Please see [here](https://oligo-designer-toolsuite.readthedocs.io/) for full documentation on:
+
+- Getting Started 
+- Tutorials 
+- API documentation
 
 
 ## Installation
@@ -48,6 +50,16 @@ This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. For st
 ```
 conda create -n odt python=3.10
 conda activate odt
+```
+
+*Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
+
+If you have an Apple M chip, you need to create an environment simulating an x86 processor to be able to install **Blast**. This can be done as follows:
+
+```
+CONDA_SUBDIR=osx-64 conda create -n odt python=3.10
+conda activate odt
+conda config --env --set subdir osx-64
 ```
 
 It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
@@ -76,7 +88,7 @@ Follow this instruction to install the required additional tools:
 
 		conda install "bowtie2>=2.5"
 
-All other required packages are automatically installed if installation is done via :code:`pip`.
+All other required packages are automatically installed if installation is done via ```pip```.
 
 **Install Options:**
 
@@ -94,7 +106,6 @@ Installation from source:
 ```
 git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
 cd oligo-designer-toolsuite
-git switch pipelines
 ```
 
 - Installation as python package (run inside directory):
@@ -102,17 +113,40 @@ git switch pipelines
 		pip install .
 
 
-- Development Installation as python package (run inside directory):
+- Development installation as python package (run inside directory):
 
 		pip install -e .[dev]
 
 
 ## Implemented Oligo Design Pipelines
 
+For detailed information on each pipeline, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/).
+
+### Genomic Region Generator
+
+This pipeline is designed to extract genomic sequences of a specific type from NCBI, Ensembl or custom Fasta and GTF files. If a custom reference is chosen, a GTF file with gene annotations and a Fasta file with the genome sequence have to be provided. When choosing a NCBI or Ensembl reference, the annotation and genome sequence will be downloaded automatically via FTP from the respective servers. Therefore, the user has to define the species, annotation release and taxon (only for NCBI). From the given annotations, user-defined genomic regions are extracted. The genomic regions are stored in a memory efficient format, which eliminates duplicated sequences stemming from common exons of different gene isoforms, while preserving the isoform information. The user can choose from a pre-defined list of genomic regions, i.e. intergenic, gene, CDS, exon, intron, 3’ UTR, 5’ UTR and exon-exon junctions. 
+
+#### Usage
+
+*Command-Line Call:*
+
+To create sequences of genomic regions from NCBI annotations you can run the pipeline with 
+
+```
+genomic_region_generator -c data/configs/genomic_region_generator_ncbi.yaml
+```
+
+where:
+
+- ```-c```: config file, which contains parameter settings, specific to NCBI genomic region generation, *genomic_region_generator_ncbi.yaml* contains default parameter settings
+
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+The logging file will have the format: ```log_genomic_region_generator_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
+
 ### Scrinshot Probe Design
 
-A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. 
-The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is around 40nt.
+A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is around 40nt.
 
 
 #### Usage
@@ -123,7 +157,7 @@ To create scrinshot probes you can run the pipeline with
 
 ```
 scrinshot_probe_designer -c data/configs/scrinshot_probe_designer.yaml
-````
+```
 
 where:
 
@@ -131,6 +165,50 @@ where:
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_scrinshot_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
+### SeqFISH+ Probe Design
+
+A SeqFISH+ probe is a flourescent probe that contains a 28-nt gene-specific sequence complementary to the mRNA, four 15-nt barcode sequences, which are read out by fluorescent secondary readout probes, single T-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
+
+#### Usage
+
+*Command-Line Call:*
+
+To create scrinshot probes you can run the pipeline with 
+
+```
+seqfish_plus_probe_designer -c data/configs/seqfish_plus_probe_designer.yaml
+```
+
+where:
+
+- ```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *seqfish_plus_probe_designer.yaml* contains default parameter settings
+
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+The logging file will have the format: ```log_seqfish_plus_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
+
+### MERFISH Probe Design
+
+A MERFISCH encoding probe is a flourescent probe that contains a 30-nt targeting sequence which directs their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
+
+#### Usage
+
+*Command-Line Call:*
+
+To create scrinshot probes you can run the pipeline with 
+
+```
+merfish_probe_designer -c data/configs/merfish_probe_designer.yaml
+```
+
+where:
+
+- ```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *merfish_probe_designer.yaml* contains default parameter settings
+
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+The logging file will have the format: ```log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
 
 ### Oligo-Seq Probe Design
 
@@ -144,7 +222,7 @@ To create oligo-seq probes you can run the pipeline with
 
 ```
 oligo_seq_probe_designer -c data/configs/oligo_seq_probe_designer.yaml
-````
+```
 
 where:
 
@@ -157,6 +235,9 @@ The logging file will have the format: ```log_oligo_seq_probe_designer_{year}-{m
 ## Contributing
 
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
+
+For any further inquiries please send an email to [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Isra Mekki](mailto:isra.mekki@helmholtz-munich.de).
+
 
 ## How to cite
 

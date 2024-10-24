@@ -2,7 +2,7 @@
 
 ## Folder ```annotations```
 
-This folder contains example annotations from NCBI release 110 for *H.Sapiens* and Ensembl release 108 for *H.Sapiens*. It includes BED, fasta, GTF and GFF example files, filtered for chromosome 16 with:
+This folder contains example annotations from NCBI release 110 for *H.Sapiens*. It includes FASTA and GTF example files, filtered for chromosome 16 with:
 
 ```
 awk '$1 ~ /^#/ {print $0;next} {if ($1 == "16") print}' annotation.gff > annotation_chr16.gtf
@@ -18,8 +18,12 @@ using ```seqkit``` tool.
 
 ## Folder ```configs```
 
-This folder contains the configuration files for different ready-to-use oligo design pipelines. For each pipeline, there is a user configuration file, which allows the user to adjust pipeline specific parameters as well as a developer configuration file, which allows advanced parameter configuration that deviate from the standard parameters recommended for the pipeline.
+This folder contains the configuration files for different ready-to-use genomic region generator or oligo design pipelines with default parameters that can be adjusted by the users.
 
 ## Folder ```genes```
 
-This folder contains example lists of gene names, that are used for testing and the tutorials, for NCBI and Ensembl.
+This folder contains example lists of gene names that can be used to test run the pipelines.
+
+## Folder ```genomic_region```
+
+This folder contains different pre-generated genomic region files that were generated from the Fasta and GTF file in the `annotations` folder using the `_genomic_region_generator.py` pipeline.
