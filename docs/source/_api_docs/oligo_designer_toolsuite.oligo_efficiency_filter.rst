@@ -10,12 +10,13 @@ Module contents
 .. autosummary::
 
    OligoScoringBase
-   PadlockOligoScoring
-   SeqFISHOligoScoring
+   GCOligoScoring
+   WeightedGCUtrScoring
+   WeightedTmGCOligoScoring
+   WeightedIsoformTmGCOligoScoring
    SetScoringBase
-   PadlockSetScoring
+   LowestSetScoring
    AverageSetScoring
-   MaxSetScoring
 
    {% for name in oligo_designer_toolsuite.oligo_efficiency_filter.classes %}
      {{ name }}

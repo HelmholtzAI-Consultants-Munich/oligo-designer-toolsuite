@@ -1,23 +1,28 @@
-Sequence Design
+Sequence Generator
 =======================================================
 
 Module contents
 ---------------
 
-.. currentmodule:: oligo_designer_toolsuite.sequence_design
+.. currentmodule:: oligo_designer_toolsuite.sequence_generator
 
 
 .. autosummary::
 
-   PadlockSequence
-   MerfishSequence
+   BaseFtpLoader
+   FtpLoaderEnsembl
+   FtpLoaderNCBI
+   CustomGenomicRegionGenerator
+   NcbiGenomicRegionGenerator
+   EnsemblGenomicRegionGenerator
+   OligoSequenceGenerator
 
-   {% for name in oligo_designer_toolsuite.sequence_design.classes %}
+   {% for name in oligo_designer_toolsuite.sequence_generator.classes %}
      {{ name }}
    {% endfor %}
 
 
-.. automodule:: oligo_designer_toolsuite.sequence_design
+.. automodule:: oligo_designer_toolsuite.sequence_generator
    :members:
    :undoc-members:
    :show-inheritance:
