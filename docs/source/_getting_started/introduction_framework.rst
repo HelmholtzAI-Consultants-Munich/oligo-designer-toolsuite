@@ -4,9 +4,9 @@ Introduction to the Python Framework
 The Oligo Designer Toolsuite is a collection of modules that provide basic functionalities for custom oligo design pipelines within a flexible Python framework.
 All modules have a common underlying data structure and a standardized API, which allows the user to easily combine different modules depending on the required processing steps. 
 
-|image0|
+|image_workflow|
 
-.. |image0| image:: ../_figures/ODT_workflow.png
+.. |image_workflow| image:: ../_figures/ODT_workflow.png
 
 This section will cover the core components of the framework and it's underlying data structure.
 For explainations on how to customize and setup an oligo design pipeline, please have a look the tutorial :doc:`./_tutorials/build_a_custom_pipeline`
@@ -18,11 +18,15 @@ The underlying data structure implemented in the ``OligoDatabase`` class is desi
 This data structure organizes oligo records in a dictionary-like format, allowing for structured storage of sequence information, annotations, and experimental parameters. 
 Due to its structure, the OligoDatabase class enables seamless integration with other modules in the framework, supporting operations such as querying, filtering, and updating records. 
 
-The OligoDatabase class is based on an EffiDict data structure to optimize storage and retrieval efficiency. The EffiDict is a specialized dictionary-like structure that 
+The OligoDatabase class is based on an `EffiDict <https://github.com/HelmholtzAI-Consultants-Munich/EffiDict>`__ data structure to optimize storage and retrieval efficiency. The EffiDict is a specialized dictionary-like structure that 
 enhances performance by minimizing memory usage while providing rapid access to oligo records. The EffiDict achieves its efficiency by storing a maximum of *n_max* entries in memory and 
 leveraging lazy loading techniques, where data is loaded only when accessed. This results in a smaller memory footprint, which is particularly advantageous when working with 
 extensive oligo libraries. By using EffiDict, the OligoDatabase can handle high-throughput operations and complex queries more effectively, ensuring that even as the database grows, 
 performance remains consistent and resource usage stays manageable. 
+
+|image_effidict|
+
+.. |image_effidict| image:: ../_figures/effidict.png
 
 The database attribute ``OligoDatabase.database`` stores the oligos sequences for a given set of regions with additional information for each oligo in a dictionary-like structure:
 
