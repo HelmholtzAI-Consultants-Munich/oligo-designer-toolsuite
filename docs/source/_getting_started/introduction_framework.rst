@@ -55,10 +55,9 @@ This database allows users to compare target oligonucleotide sequences against a
 Oligo Sequence Generation
 --------------------------
 
-Modules of the 
-
-- **Database**: generation of fasta files for specific genomic regions, that can be used to create ``OligoDatabase`` or ``ReferenceDatabase``
-
+An initial pool oligo sequences can be generated using the ``OligoSequenceGenerator`` class. It can be used to generate sequences form an input FASTA file, 
+containing genomic sequences of interest, or at random with a pre-defined nucleotide distribution.
+The generated oligo sequences or a FASTA file with custom oligo sequences can be loaded into the ``OligoDatabase`` for further processing.
 
 Oligo Filtering
 ----------------
