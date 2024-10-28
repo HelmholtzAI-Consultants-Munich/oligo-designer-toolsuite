@@ -138,7 +138,7 @@ genomic_region_generator -c data/configs/genomic_region_generator_ncbi.yaml
 
 where:
 
-- ```-c```: config file, which contains parameter settings, specific to NCBI genomic region generation, *genomic_region_generator_ncbi.yaml* contains default parameter settings
+```-c```: config file, which contains parameter settings, specific to NCBI genomic region generation, *genomic_region_generator_ncbi.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_genomic_region_generator_{year}-{month}-{day}-{hour}-{minute}.txt```.
@@ -161,7 +161,7 @@ scrinshot_probe_designer -c data/configs/scrinshot_probe_designer.yaml
 
 where:
 
-- ```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *scrinshot_probe_designer.yaml* contains default parameter settings
+```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *scrinshot_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_scrinshot_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
@@ -182,7 +182,7 @@ seqfish_plus_probe_designer -c data/configs/seqfish_plus_probe_designer.yaml
 
 where:
 
-- ```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *seqfish_plus_probe_designer.yaml* contains default parameter settings
+```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *seqfish_plus_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_seqfish_plus_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
@@ -204,7 +204,7 @@ merfish_probe_designer -c data/configs/merfish_probe_designer.yaml
 
 where:
 
-- ```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *merfish_probe_designer.yaml* contains default parameter settings
+```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *merfish_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
@@ -226,7 +226,7 @@ oligo_seq_probe_designer -c data/configs/oligo_seq_probe_designer.yaml
 
 where:
 
-- ```-c```: config file, which contains parameter settings, specific to oligo-seq probe design, *oligo_seq_probe_designer.yaml* contains default parameter settings
+```-c```: config file, which contains parameter settings, specific to oligo-seq probe design, *oligo_seq_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_oligo_seq_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
@@ -245,15 +245,15 @@ If the Oligo Designer Toolsuite is useful for your research, consider citing the
 
 ```
 @software{campi_2023_7823048,
-    author       = { Isra Mekki,
-		     Francesco Campi,  
-                     Louis Kümmerle,
-		     Chelsea Bright,
-		     Malte Lücken
-                     Fabian Theis,
-                     Marie Piraud,
-                     Lisa Barros de Andrade e Sousa
-                     },
+    author       = {Isra Mekki,
+		     		Francesco Campi,  
+                    Louis Kümmerle,
+		     		Chelsea Bright,
+		     		Malte Lücken
+                    Fabian Theis,
+                    Marie Piraud,
+                    Lisa Barros de Andrade e Sousa
+                    },
     title        = {{Oligo Designer Toolsuite}},
     year         = 2023,
     publisher    = {Zenodo},
