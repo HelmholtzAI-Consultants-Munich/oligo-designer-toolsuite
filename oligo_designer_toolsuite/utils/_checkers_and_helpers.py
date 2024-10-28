@@ -37,6 +37,10 @@ class CustomYamlDumper(yaml.SafeDumper):
     def represent_dict(self, data):
         return self.represent_mapping("tag:yaml.org,2002:map", data, flow_style=False)
 
+    # Disables the use of aliases by returning True for all data
+    def ignore_aliases(self, data):
+        return True
+
 
 def check_if_dna_sequence(seq: str, valid_characters: list = ["A", "C", "T", "G"]) -> bool:
     """

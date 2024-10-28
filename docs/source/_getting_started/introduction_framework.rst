@@ -2,20 +2,28 @@ Introduction to the Python Framework
 =================================================
 
 The Oligo Designer Toolsuite is a collection of modules that provide basic functionalities for custom oligo design pipelines within a flexible Python framework.
-All modules have a common underlying data structure and a standardized API, which allows the user to easily combine different modules depending on the required processing steps.
+All modules have a common underlying data structure and a standardized API, which allows the user to easily combine different modules depending on the required processing steps. 
 
 |image0|
 
-.. |image0| image:: ../_figures/framework.png
+.. |image0| image:: ../_figures/ODT_workflow.png
 
-This section gives an overview on the main components of the toolsuite and it's underlying datastructure, to understand how the Oligo Designer Toolsuite can be used to implement a custom oligo design pipeline.
-For a practical example of how to use this framework to build a custom oligo design pipeline, please have a look the tutorial :doc:`../_tutorials/build_a_custom_pipeline`
+TThis section will cover the core components of the framework and it's underlying data structure.
+For a practical examples of pipeline setups, and explainations on how users can leverage the suite to customize oligo design for their specific needs, 
+please have a look the tutorial :doc:`../_tutorials/build_a_custom_pipeline`
 
-Data Model
-------------
+Data Structure
+---------------
 
-The underlying datastructure of the Oligo Designer Toolsuite framework is constituted by the ``OligoDatabase`` class.
-The ``OligoDatabase`` class comprises a ``database`` attribute, metadata information of the database content and all related read, create and write functionalities for the database.
+The underlying data structure implemented in the ``OligoDatabase`` class is designed to efficiently manage, store, and retrieve oligonucleotide sequences and their associated attributes. 
+This data structure organizes oligo records in a dictionary-like format, allowing for structured storage of sequence information, annotations, and experimental parameters. 
+Due to its structure, the OligoDatabase class enables seamless integration with other modules in the framework, supporting operations such as querying, filtering, and updating records. 
+
+The OligoDatabase class is based on an EffiDict data structure to optimize storage and retrieval efficiency. The EffiDict is a specialized dictionary-like structure that 
+enhances performance by minimizing memory usage while providing rapid access to oligo records. The EffiDict achieves its efficiency by storing a maximum of *n_max* entries in memory and 
+leveraging lazy loading techniques, where data is loaded only when accessed. This results in a smaller memory footprint, which is particularly advantageous when working with 
+extensive oligo libraries. By using EffiDict, the OligoDatabase can handle high-throughput operations and complex queries more effectively, ensuring that even as the database grows, 
+performance remains consistent and resource usage stays manageable. 
 
 The database attribute ``OligoDatabase.database`` stores the oligos sequences for a given set of regions with additional information for each oligo in a dictionary structure:
 
@@ -23,26 +31,37 @@ The database attribute ``OligoDatabase.database`` stores the oligos sequences fo
 
 	{"region_id":
 		{"oligo_id":
-			{'sequence': Seq('GAACTCAagaggaaaaaaatccagTACTTGACTCGTGG'),
-			'chromosome': '6',
-			'start': [26373289, ...],
-			'end': [26374330, ...],
-			'strand': '+',
-			'length': 38,
-			'additional_information_fasta': ['transcript_id=XM_047418113.1,exon_number=9;...],
+			{'oligo': Seq('GAACTCAagaggaaaaaaatccagTACTTGACTCGTGG'),
+			'target': Seq('CCACGAGTCAAGTActggatttttttcctctTGAGTTC'),
+			'chromosome': [['16'], ...]
+			'start': [[75242632], ...],
+			'end': [[75242676], ...],
+			'strand': [['-'], ...],
 			...,
 			'additional features': value,
+			'source': [['NCBI']], # Example of additional features
 			'GC_content': 52.0 # Example of additional features
 			}
 		}
 	}
 
-Each module in the framework takes as input an ``OligoDatabase`` object.
-Additional oligo features that are computed in the module (e.g. GC content of an oligo sequence) are stored within the ``database`` attribute.
-Oligos that don't meet module specific filtering criteria are removed from the ``database`` attribute and the updated ``OligoDatabase`` object returned.
 
 The ``ReferenceDatabase`` class is used to store the reference sequence needed for different alignment methods (e.g. Blast, Bowtie, ...).
-It aditionally allows to filter the sequences w.r.t. a list of regions, keeping only the sequences belonging to those regions.
+This database allows users to compare target oligonucleotide sequences against a broad range of genetic sequences to ensure specificity and avoid off-target effects.
+
+Oligo Sequence Generation
+--------------------------
+
+
+Oligo Filtering
+----------------
+
+
+Oligo Selection
+----------------
+
+Oligo Sequence Design
+----------------------
 
 
 Working principle
