@@ -67,13 +67,7 @@ html_theme = "renku"
 html_logo = "_figures/ODT_logo.png"
 
 html_title = "Oligo Designer Toolsuite"
-html_theme_options = {
-    "logo_only": True,
-    #    "repository_url": "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite",
-    #    "use_repository_button": True,
-    #    "use_fullscreen_button": True,
-    #    "use_issues_button": True,
-}
+html_theme_options = {"logo_only": True}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
