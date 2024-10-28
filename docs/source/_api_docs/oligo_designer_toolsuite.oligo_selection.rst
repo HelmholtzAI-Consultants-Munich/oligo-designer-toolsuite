@@ -9,7 +9,7 @@ Module contents
 
 .. autosummary::
 
-   OligosetGenerator
+   OligosetGeneratorIndependentSet
 
    {% for name in oligo_designer_toolsuite.oligo_selection.classes %}
      {{ name }}
