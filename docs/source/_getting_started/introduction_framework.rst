@@ -55,6 +55,8 @@ This database allows users to compare target oligonucleotide sequences against a
 Oligo Sequence Generation
 --------------------------
 
+Modules of the 
+
 - **Database**: generation of fasta files for specific genomic regions, that can be used to create ``OligoDatabase`` or ``ReferenceDatabase``
 
 
