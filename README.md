@@ -32,15 +32,6 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. SCRINSHOT or SeqFISH+ probe design for Spatial Transcriptomics.
 
-## Documentation
-
-Please see [here](https://oligo-designer-toolsuite.readthedocs.io/) for full documentation on:
-
-- Getting Started 
-- Tutorials 
-- API documentation
-
-
 ## Installation
 
 **Requirements:**
@@ -120,15 +111,9 @@ cd oligo-designer-toolsuite
 
 ## Implemented Oligo Design Pipelines
 
-For detailed information on each pipeline, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/).
-
 ### Genomic Region Generator
 
-This pipeline is designed to extract genomic sequences of a specific type from NCBI, Ensembl or custom Fasta and GTF files. If a custom reference is chosen, a GTF file with gene annotations and a Fasta file with the genome sequence have to be provided. When choosing a NCBI or Ensembl reference, the annotation and genome sequence will be downloaded automatically via FTP from the respective servers. Therefore, the user has to define the species, annotation release and taxon (only for NCBI). From the given annotations, user-defined genomic regions are extracted. The genomic regions are stored in a memory efficient format, which eliminates duplicated sequences stemming from common exons of different gene isoforms, while preserving the isoform information. The user can choose from a pre-defined list of genomic regions, i.e. intergenic, gene, CDS, exon, intron, 3’ UTR, 5’ UTR and exon-exon junctions. 
-
-#### Usage
-
-*Command-Line Call:*
+This pipeline is designed to extract genomic sequences, e.g. CDS, exon or UTRs, of a specific type from NCBI, Ensembl or custom Fasta and GTF files. The genomic regions are stored in a memory efficient format, which eliminates duplicated sequences stemming from common exons of different gene isoforms, while preserving the isoform information. 
 
 To create sequences of genomic regions from NCBI annotations you can run the pipeline with 
 
@@ -142,6 +127,8 @@ where:
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_genomic_region_generator_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
+For a detailed description of the pipeline and Python API usage, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html).
 
 
 ### Scrinshot Probe Design
