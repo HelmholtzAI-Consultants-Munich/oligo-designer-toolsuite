@@ -111,6 +111,12 @@ cd oligo-designer-toolsuite
 
 ## Implemented Oligo Design Pipelines
 
+- [Genomic Region Generator](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html)
+- [Scrinshot Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/scrinshot_probe_designer.html)
+- [SeqFISH+ Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/seqfishplus_probe_designer.html)
+- [MERFISH Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/merfish_probe_designer.html)
+- [Oligo-Seq Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html)
+
 ### Genomic Region Generator
 
 This pipeline is designed to extract genomic sequences, e.g. CDS, exon or UTRs, of a specific type from NCBI, Ensembl or custom Fasta and GTF files. The genomic regions are stored in a memory efficient format, which eliminates duplicated sequences stemming from common exons of different gene isoforms, while preserving the isoform information. 
