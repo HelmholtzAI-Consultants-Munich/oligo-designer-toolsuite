@@ -186,16 +186,14 @@ where:
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
+For a detailed description of the pipeline and Python API usage, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/merfish_probe_designer.html).
+
 
 ### Oligo-Seq Probe Design
 
 An oligo-seq probe is an oligo hybridization probe, which is optimized for probe-based targeted sequencing to measure RNA expression.
 
-#### Usage
-
-*Command-Line Call:*
-
-To create oligo-seq probes you can run the pipeline with 
+To create oligo-seq probes you can run the pipeline via the command-line with 
 
 ```
 oligo_seq_probe_designer -c data/configs/oligo_seq_probe_designer.yaml
@@ -208,6 +206,7 @@ where:
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_oligo_seq_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
+For a detailed description of the pipeline and Python API usage, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html).
 
 ## Contributing
 
