@@ -9,9 +9,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
 
-[Documentation]
+[📃 Documentation]
 
-[Docs]: https://oligo-designer-toolsuite.readthedocs.io/
+[📃 Documentation]: https://oligo-designer-toolsuite.readthedocs.io/
 
 
 </div>
