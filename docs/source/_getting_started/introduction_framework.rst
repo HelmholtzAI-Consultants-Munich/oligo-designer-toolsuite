@@ -81,3 +81,8 @@ The *Oligo Sequence Design* block provides different functionalities that help t
 raw oligo sequences for experimental purposes. The sequence refinements include the addition of primers, barcodes or
 other necessary sequence modifications, providing the user with ready-to-order oligo sequences. 
 Those functionalities are pipeline dependent and are implemented in each individual pipeline.
+
+
+All modules of each building block are specifically designed to seamlessly integrate with one another. 
+To this end, each module is based on a standardized API, which accepts as input and yields as output the same object type, 
+i.e. an ``OligoDatabase`` object. Having a common API allows the user to custom-fit the order of the modules depending on their specific needs.
