@@ -4,9 +4,7 @@ Introduction to the Python Framework
 The Oligo Designer Toolsuite is a collection of modules that provide basic functionalities for custom oligo design pipelines within a flexible Python framework.
 All modules have a common underlying data structure and a standardized API, which allows the user to easily combine different modules depending on the required processing steps. 
 
-|image_workflow|
-
-.. |image_workflow| image:: ../_figures/ODT_workflow.png
+.. image:: ../_figures/ODT_workflow.png
 
 This section will cover the core components of the framework and it's underlying data structure.
 For explainations on how to customize and setup an oligo design pipeline, please have a look the tutorial :doc:`./_tutorials/build_a_custom_pipeline`
@@ -24,9 +22,10 @@ leveraging lazy loading techniques, where data is loaded only when accessed. Thi
 extensive oligo libraries. By using EffiDict, the OligoDatabase can handle high-throughput operations and complex queries more effectively, ensuring that even as the database grows, 
 performance remains consistent and resource usage stays manageable. 
 
-|image_effidict|
-
-.. |image_effidict| image:: ../_figures/effidict.png
+.. image:: ../_figures/effidict.png
+   :align: right
+   :alt: EffiDict data structure diagram
+   :width: 200px
 
 The database attribute ``OligoDatabase.database`` stores the oligos sequences for a given set of regions with additional information for each oligo in a dictionary-like structure:
 

@@ -16,6 +16,7 @@ Usage
 To create sequences of genomic regions from NCBI annotations you can run the pipeline with 
 
 ::
+
     genomic_region_generator -c data/configs/genomic_region_generator_ncbi.yaml
 
 
@@ -24,4 +25,4 @@ where:
 ``-c``: config file, which contains parameter settings, specific to NCBI genomic region generation, *genomic_region_generator_ncbi.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
-The logging file will have the format: ``log_genomic_region_generator_{year}-{month}-{day}-{hour}-{minute}.txt``.
+The logging file will have the format: ``log_genomic_region_generator_{year}-{month}-{day}-{hour}-{minute}.txt``

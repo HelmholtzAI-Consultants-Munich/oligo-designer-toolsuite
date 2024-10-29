@@ -25,7 +25,7 @@ dependencies. Consequently, not only the development of new tools is slowed down
 is hampered, because developers do not have a common resource for those functionalities to use. We tackle this issue with our open-source 
 *Oligo Designer Toolsuite*.
 
-***Oligo Designer Toolsuite*** **is a collection of modules that provides all basic functionalities for custom oligo design pipelines as well as 
+**Oligo Designer Toolsuite is a collection of modules that provides all basic functionalities for custom oligo design pipelines as well as 
 advanced experiment-specific functionalities like machine learning models for oligo specificity prediction within a flexible Python framework.** 
 
 To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that 
