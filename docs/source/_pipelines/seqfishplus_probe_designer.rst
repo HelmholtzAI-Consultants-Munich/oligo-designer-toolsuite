@@ -40,14 +40,13 @@ Pipeline Description
 
 The pipeline has four major steps:
 
-1) probe generation,
+1) probe generation (dark blue),
 
-2) probe filtering by sequence property and binding specificity, 
+2) probe filtering by sequence property and binding specificity (light blue), 
 
-3) probe set selection for each gene, and
+3) probe set selection for each gene (green), and
 
-4) final probe sequence generation.
-
+4) final probe sequence generation (yellow).
 
 For the probe generation step, the user has to provide a FASTA file with genomic sequences which is used as reference for the generation of probe sequences. 
 The probe sequences are generated using the ``OligoSequenceGenerator``. 
@@ -57,7 +56,6 @@ The probe sequences are generated in a sliding window fashion from the DNA seque
 The generated probes are stored in a FASTA file, where the header of each sequence stores the information about its reference region and genomic coordinates. 
 In a next step, this FASTA file is used to create an ``OligoDatabase``, which contains all possible probes for a given set of genes. 
 When the probe sequences are loaded into the database, all probes of one gene having the exact same sequence are merged into one entry, saving the transcript, exon and genomic coordinate information of the respective probes. 
-Creating the database which contains all possible probes for a given set of genes, concludes the first step of each probe design pipeline. 
 
 In the second step, the number of probes per gene is reduced by applying different sequence property (``PropertyFilter``) and binding specificity filters (``SpecificityFilter``). 
 For the SeqFISH+ protocol, the following filters are applied: removal of sequences that contain unidentified nucleotides (``HardMaskedSequenceFilter``), that contain low-complexity region like repeat regions (``SoftMaskedSequenceFilter``), that have a GC content (``GCContentFilter``) outside a user-specified range, that contain homopolymeric runs of any nucleotide longer than a user-specified threshold (``HomopolymericRunsFilter``), that contain secondary structures like hairpins below a user-defined free energy threshold (``SecondaryStructureFilter``).
@@ -74,16 +72,16 @@ Following this step all genes with insufficient number of probes (user-defined) 
 
 In the last step of the pipeline, the ready-to-order probe sequences containing all additional required sequences are designed for the best non-overlapping sets of each gene. 
 For the SeqFISH+ protocol, four readout sequences are added to the probe, creating the encoding probes. 
-A pool of readout probe sequences is created from random sequences with equal per base probability that have a GC content (``GCContentFilter``) within a user-specified range and no homopolymeric runs of three or more G nucleotides (``HomopolymericRunsFilter``). 
+A pool of readout probe sequences is created from random sequences with user-defined per base probability that have a GC content (``GCContentFilter``) within a user-specified range and no homopolymeric runs of three or more G nucleotides (``HomopolymericRunsFilter``). 
 Additionally, the readout probes are checked for off-target binding (``BlastNFilter``) against the transcriptome and cross-hybridization (``CrossHybridizationFilter``) against other readout probe sequences where hits are removed with the ``RemoveByDegreePolicy`` that iteratively removes readout probes with the highest number of hits against other readout probes. 
 The readout probes are assigned to the probes according to a protocol-specific encoding scheme described in Eng et al. [3]. 
 In addition, one forward and one reverse primer is provided. 
-The reverse primer is the 20nt T7 promoter sequence (TAATACGACTCACTATAGGG) and the forward primer is created from a random sequence with equal per base probability that fulfills the following criteria: GC content (``GCContentFilter``) and melting temperature (``MeltingTemperatureNNFilter``) within a user-specified range, CG clamp at 3’ terminal end of the sequence (``GCClampFilter``), no homopolymeric runs of any nucleotide longer than a user-specified threshold (``HomopolymericRunsFilter``), no  secondary structures below a user-defined free energy threshold (``SecondaryStructureFilter``). 
+The reverse primer is the 20nt T7 promoter sequence (TAATACGACTCACTATAGGG) and the forward primer is created from a random sequence with user-defined per base probability that fulfills the following criteria: GC content (``GCContentFilter``) and melting temperature (``MeltingTemperatureNNFilter``) within a user-specified range, CG clamp at 3’ terminal end of the sequence (``GCClampFilter``), no homopolymeric runs of any nucleotide longer than a user-specified threshold (``HomopolymericRunsFilter``), no  secondary structures below a user-defined free energy threshold (``SecondaryStructureFilter``). 
 Furthermore, the forward primer sequence is checked for off-target binding (``BlastNFilter``) against the transcriptome, the encoding probes and T7 primer.
 
 The output is stored in two seperate files: 
 
-- ``seqfish_plus_probes_order.yml``: contains for each probe the sequences of the padlock probe and the detection oligo.
+- ``seqfish_plus_probes_order.yml``: contains for each probe the sequences of the seqfish+ probe and the detection oligo.
 - ``seqfish_plus_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
 
 All default parameters can be found in the ``seqfish_plus_probe_designer.yaml`` config file provided along the repository.
