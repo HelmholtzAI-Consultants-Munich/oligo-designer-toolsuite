@@ -74,7 +74,7 @@ class GCOligoScoring(OligoScoringBase):
     """
     A class for scoring oligonucleotides based on their GC content.
 
-        :math:`score = |GC_{opt} - GC_{oligo}|`
+        :math:`score = |GC_opt} - GC_{oligo}|`
 
     The `GCOligoScoring` class calculates the score for an oligo by evaluating the difference between
     its actual GC content and a predefined optimal GC content. The smaller the difference,
@@ -189,7 +189,7 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
     """
     A class used to score oligonucleotides based on their melting temperature (Tm) and GC content.
 
-        :math:`score = w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] + w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}]`
+        :math:`score = w_{Tm}\\left[I_{Tm_{oligo} \\ge Tm_{opt}}\\left(\\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}\\right) + I_{Tm_{oligo} < Tm_{opt}}\\left(\\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}}\\right)\\right] + w_{GC}\\left[I_{GC_{oligo} \\ge GC_{opt}}\\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}\\right]`
 
     The `WeightedTmGCOligoScoring` class evaluates nucleotides by calculating a weighted score that considers both
     the deviation of the oligo's melting temperature from an optimal value and the deviation of its GC content from a desired

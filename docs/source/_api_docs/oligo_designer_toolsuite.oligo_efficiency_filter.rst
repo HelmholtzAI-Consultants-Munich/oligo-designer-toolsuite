@@ -10,7 +10,13 @@ Module contents
 .. autosummary::
 
    OligoScoringBase
-
+   GCOligoScoring
+   WeightedGCUtrScoring
+   WeightedTmGCOligoScoring
+   WeightedIsoformTmGCOligoScoring
+   SetScoringBase
+   LowestSetScoring
+   AverageSetScoring
 
    {% for name in oligo_designer_toolsuite.oligo_efficiency_filter.classes %}
      {{ name }}
