@@ -222,15 +222,14 @@ If the Oligo Designer Toolsuite is useful for your research, consider citing the
 
 ```
 @software{campi_2023_7823048,
-    author       = {Isra Mekki,
-		     		Francesco Campi,  
-                    Louis Kümmerle,
-		     		Chelsea Bright,
-		     		Malte Lücken
-                    Fabian Theis,
-                    Marie Piraud,
-                    Lisa Barros de Andrade e Sousa
-                    },
+	author   = {Isra Mekki,
+		     Francesco Campi,  
+		     Louis Kümmerle,
+		     Chelsea Bright,
+		     Malte Lücken
+		     Fabian Theis,
+		     Marie Piraud,
+		     Lisa Barros de Andrade e Sousa},
     title        = {{Oligo Designer Toolsuite}},
     year         = 2023,
     publisher    = {Zenodo},

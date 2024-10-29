@@ -21,3 +21,13 @@ where:
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ``log_oligo_seq_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
+
+Python API
+^^^^^^^^^^^^^^^^^^^
+
+TBD
+
+Pipeline Description
+-----------------------
+
+TBD
