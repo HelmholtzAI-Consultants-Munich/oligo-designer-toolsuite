@@ -68,7 +68,7 @@ html_theme = "renku"
 html_logo = "_figures/ODT_logo.png"
 
 html_title = "Oligo Designer Toolsuite"
-html_theme_options = {"logo_only": True, "style": ""}
+html_theme_options = {"logo_only": True}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
