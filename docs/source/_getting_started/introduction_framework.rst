@@ -7,7 +7,7 @@ All modules have a common underlying data structure and a standardized API, whic
 .. image:: ../_figures/ODT_workflow.png
 
 This section will cover the core components of the framework and it's underlying data structure.
-For explainations on how to customize and setup an oligo design pipeline, please have a look the tutorial :doc:`./_tutorials/build_a_custom_pipeline`
+For explainations on how to customize and setup an oligo design pipeline, please have a look the tutorial :doc:`./build_a_custom_pipeline`
 
 Data Structure
 ---------------
@@ -18,7 +18,7 @@ Due to its structure, the OligoDatabase class enables seamless integration with 
 
 .. image:: ../_figures/effidict.png
    :align: right
-   :alt: EffiDict data structure diagram
+   :alt: EffiDict Data Structure Diagram
    :width: 200px
 
 The OligoDatabase class is based on an `EffiDict <https://github.com/HelmholtzAI-Consultants-Munich/EffiDict>`__ data structure to optimize storage and retrieval efficiency. The EffiDict is a specialized dictionary-like structure that 
