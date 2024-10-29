@@ -115,7 +115,7 @@ cd oligo-designer-toolsuite
 
 This pipeline is designed to extract genomic sequences, e.g. CDS, exon or UTRs, of a specific type from NCBI, Ensembl or custom Fasta and GTF files. The genomic regions are stored in a memory efficient format, which eliminates duplicated sequences stemming from common exons of different gene isoforms, while preserving the isoform information. 
 
-To create sequences of genomic regions from NCBI annotations you can run the pipeline with 
+To create sequences of genomic regions from NCBI annotations you can run the pipeline via the command-line with 
 
 ```
 genomic_region_generator -c data/configs/genomic_region_generator_ncbi.yaml
@@ -128,19 +128,14 @@ where:
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_genomic_region_generator_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
-For a detailed description of the pipeline and Python API usage, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html).
+For a detailed description of the pipeline, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html).
 
 
 ### Scrinshot Probe Design
 
 A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is around 40nt.
 
-
-#### Usage
-
-*Command-Line Call:*
-
-To create scrinshot probes you can run the pipeline with 
+To create scrinshot probes you can run the pipeline via the command-line with 
 
 ```
 scrinshot_probe_designer -c data/configs/scrinshot_probe_designer.yaml
@@ -153,15 +148,13 @@ where:
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_scrinshot_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
+For a detailed description of the pipeline and Python API usage, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/scrinshot_probe_designer.html).
+
 ### SeqFISH+ Probe Design
 
 A SeqFISH+ probe is a flourescent probe that contains a 28-nt gene-specific sequence complementary to the mRNA, four 15-nt barcode sequences, which are read out by fluorescent secondary readout probes, single T-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
-#### Usage
-
-*Command-Line Call:*
-
-To create SeqFISH+ probes you can run the pipeline with 
+To create SeqFISH+ probes you can run the pipeline via the command-line with 
 
 ```
 seqfish_plus_probe_designer -c data/configs/seqfish_plus_probe_designer.yaml
@@ -174,16 +167,13 @@ where:
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_seqfish_plus_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
+For a detailed description of the pipeline and Python API usage, please visit our [documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/seqfishplus_probe_designer.html).
 
 ### MERFISH Probe Design
 
 A MERFISCH encoding probe is a flourescent probe that contains a 30-nt targeting sequence which directs their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
-#### Usage
-
-*Command-Line Call:*
-
-To create MERFISCH probes you can run the pipeline with 
+To create MERFISCH probes you can run the pipeline via the command-line with 
 
 ```
 merfish_probe_designer -c data/configs/merfish_probe_designer.yaml

@@ -44,9 +44,6 @@ The pipeline has four major steps:
 4) final probe sequence generation.
 
 .. image:: ../_figures/pipeline_seqfishplus.jpg
-   :align: right
-   :alt: SeqFISH+ Probe Design Pipeline
-   :width: 400px
 
 
 For the probe generation step, the user has to provide a FASTA file with sequences of genomic regions which is used as reference for the generation of probe sequences. 
