@@ -13,9 +13,10 @@ This packages was tested for ``Python 3.9 - 3.10`` on ubuntu and macos. For stab
 
 *Note: if your institution does not support anaconda, you can use `miniforge <https://github.com/conda-forge/miniforge>`__ instead to run the conda installations.*
 
-*Note: if you have an Apple M chip, you need to create an environment simulating an x86 processor to be able to install Blast. This can be done as follow:*
+If you have an Apple M chip, you need to create an environment simulating an x86 processor to be able to install **Blast**. This can be done as follows:
 
 ::
+
 	CONDA_SUBDIR=osx-64 conda create -n odt python=3.10
   	conda activate odt
   	conda config --env --set subdir osx-64

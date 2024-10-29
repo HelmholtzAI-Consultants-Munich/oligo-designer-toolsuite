@@ -16,16 +16,16 @@ The underlying data structure implemented in the ``OligoDatabase`` class is desi
 This data structure organizes oligo records in a dictionary-like format, allowing for structured storage of sequence information, annotations, and experimental parameters. 
 Due to its structure, the OligoDatabase class enables seamless integration with other modules in the framework, supporting operations such as querying, filtering, and updating records. 
 
+.. image:: ../_figures/effidict.png
+   :align: right
+   :alt: EffiDict data structure diagram
+   :width: 200px
+
 The OligoDatabase class is based on an `EffiDict <https://github.com/HelmholtzAI-Consultants-Munich/EffiDict>`__ data structure to optimize storage and retrieval efficiency. The EffiDict is a specialized dictionary-like structure that 
 enhances performance by minimizing memory usage while providing rapid access to oligo records. The EffiDict achieves its efficiency by storing a maximum of *n_max* entries in memory and 
 leveraging lazy loading techniques, where data is loaded only when accessed. This results in a smaller memory footprint, which is particularly advantageous when working with 
 extensive oligo libraries. By using EffiDict, the OligoDatabase can handle high-throughput operations and complex queries more effectively, ensuring that even as the database grows, 
 performance remains consistent and resource usage stays manageable. 
-
-.. image:: ../_figures/effidict.png
-   :align: right
-   :alt: EffiDict data structure diagram
-   :width: 200px
 
 The database attribute ``OligoDatabase.database`` stores the oligos sequences for a given set of regions with additional information for each oligo in a dictionary-like structure:
 
@@ -54,7 +54,7 @@ This database allows users to compare target oligonucleotide sequences against a
 Oligo Sequence Generation
 --------------------------
 
-An initial pool oligo sequences can be generated using the ``OligoSequenceGenerator`` class. It can be used to generate sequences form an input FASTA file, 
+An initial pool of oligo sequences can be generated using the ``OligoSequenceGenerator`` class. It can be used to generate sequences form an input FASTA file, 
 containing genomic sequences of interest, or at random with a pre-defined nucleotide distribution.
 The generated oligo sequences or a FASTA file with custom oligo sequences can be loaded into the ``OligoDatabase`` for further processing.
 
