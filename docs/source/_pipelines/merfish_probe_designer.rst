@@ -1,8 +1,8 @@
-SeqFISH+ Probe Designer
+MERFISH Probe Designer
 ==========================
 
 
-A SeqFISH+ probe is a flourescent probe that contains a 28-nt gene-specific sequence complementary to the mRNA, four 15-nt barcode sequences, which are read out by fluorescent secondary readout probes, single T-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. 
+A MERFISCH encoding probe is a flourescent probe that contains a 30-nt targeting sequence which directs their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. 
 The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
 Usage
@@ -11,19 +11,19 @@ Usage
 Command-Line Call
 ^^^^^^^^^^^^^^^^^^^
 
-To create SeqFISH+ probes you can run the pipeline with 
+To create MERFISCH probes you can run the pipeline with 
 
 ::
 
-    seqfish_plus_probe_designer -c data/configs/seqfish_plus_probe_designer.yaml
+    merfish_probe_designer -c data/configs/merfish_probe_designer.yaml
 
 
 where:
 
-``-c``: config file, which contains parameter settings, specific to SeqFISH+ probe design, *seqfish_plus_probe_designer.yaml* contains default parameter settings
+``-c``: config file, which contains parameter settings, specific to MERFISCH probe design, *merfish_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
-The logging file will have the format: ``log_seqfish_plus_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
+The logging file will have the format: ``log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
 
 Python API
 ^^^^^^^^^^^^^^^^^^^
