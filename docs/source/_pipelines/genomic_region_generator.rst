@@ -11,7 +11,8 @@ while preserving the isoform information. The user can choose from a pre-defined
 Usage 
 -------
 
-*Command-Line Call:*
+Command-Line Call
+^^^^^^^^^^^^^^^^^^^
 
 To create sequences of genomic regions from NCBI annotations you can run the pipeline with 
 

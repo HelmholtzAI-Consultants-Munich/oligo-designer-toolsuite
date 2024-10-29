@@ -1,4 +1,4 @@
-Scrinshot Probe Design
+Scrinshot Probe Designer
 ==========================
 
 
@@ -33,6 +33,7 @@ Python API
 **Create Probe Database:**
 
 ::
+
     ## Setup pipeline
     pipeline = ScrinshotProbeDesigner(
         write_intermediate_steps=True,
@@ -72,7 +73,7 @@ The pipeline has four major steps:
 .. image:: ../_figures/pipeline_scrinshot.jpg
    :align: right
    :alt: SCRINSHOT Probe Design Pipeline
-   :width: 200px
+   :width: 400px
 
 
 For the probe generation step, the user has to provide a FASTA file with sequences of genomic regions which is used as reference for the generation of probe sequences. 

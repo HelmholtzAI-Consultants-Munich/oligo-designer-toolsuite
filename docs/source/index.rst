@@ -51,6 +51,7 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
    _pipelines/scrinshot_probe_designer
    _pipelines/merfish_probe_designer
    _pipelines/seqfishplus_probe_designer
+   _pipelines/oligoseq_probe_designer
 
 
 .. toctree::
