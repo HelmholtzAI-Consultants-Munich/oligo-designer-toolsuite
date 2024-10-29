@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.abspath("../../"))
 # -- Project information -----------------------------------------------------
 
 project = "Oligo Designer Toolsuite"
-copyright = "Helmholtz AI 2023"
-author = "Lisa Barros de Andrade e Sousa, Isra Mekki, Franceso Campi, Chelsea Bright"
+copyright = "Helmholtz AI 2024"
+author = "Lisa Barros de Andrade e Sousa, Isra Mekki, Franceso Campi"
 
 # The full version, including alpha/beta/rc tags
 release = "0.1"
@@ -68,12 +68,12 @@ html_theme = "renku"
 html_logo = "_figures/ODT_logo.png"
 
 html_title = "Oligo Designer Toolsuite"
-html_theme_options = {"logo_only": True, "style_nav_header_background": "#2980B9"}
+html_theme_options = {"logo_only": True, "style": ""}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ["_static"]
+html_static_path = ["_static"]
 
 
 # -- Extension configuration -------------------------------------------------
