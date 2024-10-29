@@ -1,4 +1,5 @@
 Sphinx
+sphinx_rtd_theme
 renku-sphinx-theme
 sphinx-autodocgen
 sphinxcontrib-napoleon
