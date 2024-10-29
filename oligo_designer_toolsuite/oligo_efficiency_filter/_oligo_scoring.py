@@ -332,7 +332,7 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
     """
     A class for scoring oligonucleotides based on melting temperature (Tm), GC content, and isoform consensus.
 
-        :math:`score = w_{Tm}[I_{Tm_{oligo} \ge Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}) + I_{Tm_{oligo} < Tm_{opt}}(\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}})] + w_{GC}[I_{GC_{oligo} \ge GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}] + w_{IC}IC`
+        :math:`score = w_{Tm}\\left[I_{Tm_{oligo} \\ge Tm_{opt}}\\left(\\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{max} - Tm_{opt}}\\right) + I_{Tm_{oligo} < Tm_{opt}}\\left(\\frac{|Tm_{oligo} - Tm_{opt}|}{Tm_{opt} - Tm_{min}}\\right)\\right] + w_{GC}\\left[I_{GC_{oligo} \\ge GC_{opt}}\\frac{|GC_{oligo} - GC_{opt}|}{GC_{max} - GC_{opt}} + I_{GC_{oligo} < GC_{opt}}\\frac{|GC_{oligo} - GC_{opt}|}{GC_{opt} - GC_{min}}\\right] + w_{IC} IC`
 
     This class extends `WeightedTmGCOligoScoring` by incorporating isoform targeting efficiency into the scoring criteria.
     It calculates a composite score using weights assigned to Tm, GC content, and isoform consensus, helping in the selection
