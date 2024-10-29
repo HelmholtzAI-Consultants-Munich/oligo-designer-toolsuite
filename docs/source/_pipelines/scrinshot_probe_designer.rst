@@ -71,6 +71,7 @@ The pipeline has four major steps:
 4) final probe sequence generation.
 
 .. image:: ../_figures/pipeline_scrinshot.jpg
+    :width: 500px
 
 
 For the probe generation step, the user has to provide a FASTA file with sequences of genomic regions which is used as reference for the generation of probe sequences. 
