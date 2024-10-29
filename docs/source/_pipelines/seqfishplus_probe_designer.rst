@@ -88,11 +88,12 @@ The output is stored in two seperate files:
 - ``padlock_probes_order.yml``: contains for each probe the sequences of the padlock probe and the detection oligo.
 - ``padlock_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
 
-All default parameters can be found in the ``scrinshot_probe_designer.yaml`` config file provided along the repository.
+All default parameters can be found in the ``seqfish_plus_probe_designer.yaml`` config file provided along the repository.
 
 
-If you are using the SCRINSHOT Probe Design Pipeline, consider citing in addition Kuemmerle et al. [2]
+If you are using the SeqFISH+ Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [2] and in addition Kuemmerle et al. [3]
 
 .. [1] Eng, C. H. L., Lawson, M., Zhu, Q., Dries, R., Koulena, N., Takei, Y., ... & Cai, L. (2019). Transcriptome-scale super-resolved imaging in tissues by RNA seqFISH+. Nature, 568(7751), 235-239. https://doi.org/10.1038/s41586-019-1049-y
 .. [2] Kuemmerle, L. B., Luecken, M. D., Firsova, A. B., Barros de Andrade e Sousa, L., Straßer, L., Heumos, L., ... & Theis, F. J. (2022). Probe set selection for targeted spatial transcriptomics. bioRxiv, 2022-08. https://doi.org/10.1101/2022.08.16.504115 
+.. [3] Kuemmerle, L. B., Luecken, M. D., Firsova, A. B., Barros de Andrade e Sousa, L., Straßer, L., Heumos, L., ... & Theis, F. J. (2022). Probe set selection for targeted spatial transcriptomics. bioRxiv, 2022-08. https://doi.org/10.1101/2022.08.16.504115 
 
