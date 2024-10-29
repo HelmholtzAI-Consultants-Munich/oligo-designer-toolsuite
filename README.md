@@ -9,10 +9,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
 
-[Docs] | [Tutorials]
+[Documentation]
 
 [Docs]: https://oligo-designer-toolsuite.readthedocs.io/
-[Tutorials]: https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/tree/main/tutorials
+
 
 </div>
 
@@ -174,7 +174,7 @@ A SeqFISH+ probe is a flourescent probe that contains a 28-nt gene-specific sequ
 
 *Command-Line Call:*
 
-To create scrinshot probes you can run the pipeline with 
+To create SeqFISH+ probes you can run the pipeline with 
 
 ```
 seqfish_plus_probe_designer -c data/configs/seqfish_plus_probe_designer.yaml
@@ -182,7 +182,7 @@ seqfish_plus_probe_designer -c data/configs/seqfish_plus_probe_designer.yaml
 
 where:
 
-```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *seqfish_plus_probe_designer.yaml* contains default parameter settings
+```-c```: config file, which contains parameter settings, specific to SeqFISH+ probe design, *seqfish_plus_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_seqfish_plus_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
@@ -196,7 +196,7 @@ A MERFISCH encoding probe is a flourescent probe that contains a 30-nt targeting
 
 *Command-Line Call:*
 
-To create scrinshot probes you can run the pipeline with 
+To create MERFISCH probes you can run the pipeline with 
 
 ```
 merfish_probe_designer -c data/configs/merfish_probe_designer.yaml
@@ -204,7 +204,7 @@ merfish_probe_designer -c data/configs/merfish_probe_designer.yaml
 
 where:
 
-```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *merfish_probe_designer.yaml* contains default parameter settings
+```-c```: config file, which contains parameter settings, specific to MERFISCH probe design, *merfish_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ```log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
