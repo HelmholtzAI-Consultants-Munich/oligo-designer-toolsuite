@@ -54,28 +54,30 @@ This database allows users to compare target oligonucleotide sequences against a
 Oligo Sequence Generation
 --------------------------
 
-An initial pool of oligo sequences can be generated using the ``OligoSequenceGenerator`` class. It can be used to generate sequences form an input FASTA file, 
-containing genomic sequences of interest, or at random with a pre-defined nucleotide distribution.
-The generated oligo sequences or a FASTA file with custom oligo sequences can be loaded into the ``OligoDatabase`` for further processing.
+The *Oligo Sequence Generation* block provides the user with different options to generate custom length oligo sequences.
+An initial pool of oligo sequences can be generated using the ``OligoSequenceGenerator`` class. 
+It can be used to generate sequences form an input FASTA file, containing genomic sequences of interest (e.g. a defined set of genes), or at random with a pre-defined nucleotide distribution.
+The generated oligo sequences (or a FASTA file with custom oligo sequences) can be loaded into the ``OligoDatabase`` for further processing.
 
 Oligo Filtering
 ----------------
 
-- **Oligo Property Filters**: filtering of oligos based on specific oligo properties (e.g. 52.0 < Melting Temperature < 57.0 )
-
-- **Oligo Specificity Filters**: filtering of oligos with high off-target hits using alignement methods such as Bowtie or Blast
-
-
+The *Oligo Filtering* block offers diverse filtering modules that ensure that the oligos comply with experimental requirements. 
+These modules comprise filters based on the physical properties of the oligo sequence, such as melting temperature and GC content, as well as the specificity of the oligos with respect to their target region. 
+Here, the latter refers to deleting oligos that have unintended but suitable binding sites outside the targeted region of the genome, which would compromise the results of experiments.
+Such off-target hits are identified using alignement methods like as Bowtie, Blast or AI filters.
 
 Oligo Selection
 ----------------
 
-- **Oligo Efficiency Filters**: filtering of oligos with low efficiency, based on experiment specific scoring methods
-
-- **Oligo Selection**: generation of the oligo sets that fulfill certain experimen-specific criteria (e.g. using an application-specific scoring function)
-
+The *Oligo Selection* block focuses on selecting sets of oligos that have high binding efficiency to the binding site based on experiment specific scoring methods.
+Additionally, the ``OligosetGenerator`` classes generate sets of oligos that work optimally together for specific experimental conditions, 
+e.g. ensuring the oligos don't compete for binding sites.
 
 Oligo Sequence Design
 ----------------------
 
-- **Sequence Design**: design of final experiment-specific oligo sequence (e.g. including primers, readout probes, detection probes, ...)
+The *Oligo Sequence Design* block provides different functionalities that help the user render the
+raw oligo sequences for experimental purposes. The sequence refinements include the addition of primers, barcodes or
+other necessary sequence modifications, providing the user with ready-to-order oligo sequences. 
+Those functionalities are pipeline dependent and are implemented in each individual pipeline.
