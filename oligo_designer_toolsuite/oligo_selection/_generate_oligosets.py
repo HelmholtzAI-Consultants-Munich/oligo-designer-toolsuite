@@ -93,8 +93,8 @@ class OligosetGeneratorIndependentSet:
         :type oligo_database: OligoDatabase
         :param sequence_type: The type of sequence to be used in the oligos scoring.
         :type sequence_type: _TYPES_SEQ
-        :param n_sets: Number of oligo sets to generate for each region, defaults to 50.
-        :type n_sets: int
+        :param n_attempts: Number of attempts to generate oligo sets, defaults to 10000.
+        :type n_attempts: int
         :param n_jobs: Number of parallel jobs to use for processing, defaults to 1.
         :type n_jobs: int
         :return: The updated oligo database with selected oligo sets.
@@ -132,8 +132,8 @@ class OligosetGeneratorIndependentSet:
         :type region_id: str
         :param sequence_type: The type of sequences being used, must match one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-        :param n_sets: The number of oligo sets to attempt to generate for the region.
-        :type n_sets: int
+        :param n_attempts: Number of attempts to generate oligo sets.
+        :type n_attempts: int
         :return: None
         :rtype: None
         """
@@ -149,11 +149,11 @@ class OligosetGeneratorIndependentSet:
         oligos_scores.sort_values(ascending=self.ascending, inplace=True)
 
         # hard limit on the number of oligos
-        # if len(oligos_scores) > self.max_oligos:
-        #     # select the best oligos
-        #     for oligo_id in oligos_scores.index[self.max_oligos :]:
-        #         del oligo_database.database[region_id][oligo_id]
-        #         oligos_scores.drop(oligo_id, inplace=True)
+        if len(oligos_scores) > self.max_oligos:
+            # select the best oligos
+            for oligo_id in oligos_scores.index[self.max_oligos :]:
+                del oligo_database.database[region_id][oligo_id]
+                oligos_scores.drop(oligo_id, inplace=True)
 
         # create the overlapping matrix
         overlapping_matrix = self._get_overlapping_matrix(oligo_database=oligo_database, region_id=region_id)
@@ -274,10 +274,10 @@ class HomogeneousPropertyOligoSetGenerator:
         self.properties = properties
 
     def apply(
-        self, oligo_database: OligoDatabase, n_sets: int = 1, n_combinations: int = 1000, n_jobs: int = 1
+        self, oligo_database: OligoDatabase, n_attempts: int = 1, n_combinations: int = 1000, n_jobs: int = 1
     ) -> OligoDatabase:
         """
-        Applies the oligo set generation process to an entire oligo database and returns an updated database with selected best `n_sets` oligo sets.
+        Applies the oligo set generation process to an entire oligo database and returns an updated database with selected best `n_attempts` oligo sets.
         Oligosets are stored in the class attribute `oligosets`, which is a dictionary with region names as keys and oligoset dataframes as values.
         The structure of the pandas.DataFrame is the following:
 
@@ -290,8 +290,8 @@ class HomogeneousPropertyOligoSetGenerator:
 
         :param oligo_database: The oligo database to generate sets from.
         :type oligo_database: OligoDatabase
-        :param n_sets: Number of sets to generate for each region, defaults to 1.
-        :type n_sets: int, optional
+        :param n_attempts: Number of sets to generate for each region, defaults to 1.
+        :type n_attempts: int, optional
         :param n_combinations: Number of random combinations to generate, defaults to 1000.
         :type n_combinations: int, optional
         :param n_jobs: Number of parallel jobs to run, defaults to 1.
@@ -303,7 +303,7 @@ class HomogeneousPropertyOligoSetGenerator:
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description="Find Oligosets", total=len(region_ids)):
             Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
-                delayed(self._get_oligo_sets_for_region)(oligo_database, region_id, n_sets, n_combinations)
+                delayed(self._get_oligo_sets_for_region)(oligo_database, region_id, n_attempts, n_combinations)
                 for region_id in region_ids
             )
 
@@ -311,7 +311,7 @@ class HomogeneousPropertyOligoSetGenerator:
         return oligo_database
 
     def _get_oligo_sets_for_region(
-        self, oligo_database: OligoDatabase, region_id: str, n_sets: int, n_combinations: int
+        self, oligo_database: OligoDatabase, region_id: str, n_attempts: int, n_combinations: int
     ) -> None:
         """
         Generate oligo sets for a specific region.
@@ -323,8 +323,8 @@ class HomogeneousPropertyOligoSetGenerator:
         :type oligo_database: OligoDatabase
         :param region_id: The ID of the region to generate oligo sets for.
         :type region_id: str
-        :param n_sets: Number of sets to generate for the region.
-        :type n_sets: int
+        :param n_attempts: Number of sets to generate for the region.
+        :type n_attempts: int
         :param n_combinations: Number of random combinations to generate.
         :type n_combinations: int
         """
@@ -345,7 +345,7 @@ class HomogeneousPropertyOligoSetGenerator:
             self._score_combination(oligo_df, list(combination)) for combination in combinations
         ]
         sorted_combinations = sorted(scored_combinations, key=lambda x: x[1], reverse=False)
-        best_combinations = [combination for combination in sorted_combinations[:n_sets]]
+        best_combinations = [combination for combination in sorted_combinations[:n_attempts]]
 
         rows = [[idx] + oligos + [score] for idx, (oligos, score) in enumerate(best_combinations)]
         columns = ["oligoset_id"] + [f"oligo_{i}" for i in range(self.set_size)] + ["set_score"]

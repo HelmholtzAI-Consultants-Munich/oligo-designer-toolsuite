@@ -98,6 +98,8 @@ cross_hybridization_blastn_hit_parameters:
 ### Parameters for the Oligo set selection
 ### -----------------------------------------------
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
+n_attempts: 10000 # number of attempts to find the optimal set of oligos
+pre_filtering: false # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for oligo sets with more than 10 oligos.
 
 
 ### Parameters for Melting Temperature

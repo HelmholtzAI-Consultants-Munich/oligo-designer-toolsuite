@@ -331,6 +331,7 @@ class ScrinshotProbeDesigner:
         probeset_size_min: int,
         max_graph_size: int,
         n_sets: int,
+        n_attempts: int,
         distance_between_probes: int,
     ):
         probes_scoring = WeightedIsoformTmGCOligoScoring(
@@ -369,7 +370,7 @@ class ScrinshotProbeDesigner:
             oligo_database=oligo_database,
             sequence_type="oligo",
             pre_filter=False,
-            n_sets=n_sets,
+            n_attempts=n_attempts,
             n_jobs=self.n_jobs,
         )
 
@@ -802,6 +803,7 @@ def main():
         probeset_size_min=config["probeset_size_min"],
         max_graph_size=config["max_graph_size"],
         n_sets=config["n_sets"],
+        n_attempts=config["n_attempts"],
         distance_between_probes=config["distance_between_probes"],
     )
 

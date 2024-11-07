@@ -18,6 +18,20 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import SetScoringBase
 
 
 class OligoSelectionPolicy:
+    """
+    Abstract base class for defining oligo selection policies.
+
+    :param set_size_opt: Optimal size for each oligo set.
+    :type set_size_opt: int
+    :param set_size_min: Minimum size for each oligo set.
+    :type set_size_min: int
+    :param n_sets: Number of oligo sets to generate.
+    :type n_sets: int
+    :param ascending: Flag indicating whether to sort scores in ascending order (depends on the score, set to True if lower scores are better).
+    :type ascending: bool
+    :param set_scoring: Set scoring class.
+    :type set_scoring: SetScoringBase
+    """
     def __init__(
         self, set_size_opt: int, set_size_min: int, n_sets: int, ascending: bool, set_scoring: SetScoringBase
     ) -> None:
@@ -30,6 +44,19 @@ class OligoSelectionPolicy:
     def apply(
         self, oligos_scores: pd.Series, overlapping_matrix: csr_matrix, pre_filter: bool, n_attempts: int
     ) -> pd.DataFrame:
+        """
+        Generic method for applying oligo selection policy. This method pre-filters oligos if necessary and then runs the selection logic. The results are formatted into a DataFrame.
+        :param oligos_scores: Series of oligo scores for ranking.
+        :type oligos_scores: pd.Series
+        :param overlapping_matrix: Sparse matrix indicating overlap between oligos.
+        :type overlapping_matrix: csr_matrix
+        :param pre_filter: Flag indicating whether to pre-filter oligos. We recommend setting this to True when the set size is larger than 10.
+        :type pre_filter: bool
+        :param n_attempts: Number of attempts to generate valid sets.
+        :type n_attempts: int
+        :return: DataFrame containing selected oligo sets with scores.
+        :rtype: pd.DataFrame
+        """
 
         if pre_filter:
             oligos_scores, overlapping_matrix = self.pre_filter_oligos(oligos_scores, overlapping_matrix)
@@ -45,6 +72,16 @@ class OligoSelectionPolicy:
         return self._format_as_df(oligosets, score_names)
 
     def _format_as_df(self, oligosets: list, score_names: list) -> pd.DataFrame:
+        """
+        Formats oligo sets and scores into a DataFrame.
+
+        :param oligosets: List of oligo sets.
+        :type oligosets: list
+        :param score_names: List of score metric names.
+        :type score_names: list
+        :return: DataFrame with formatted oligo sets and scores.
+        :rtype: pd.DataFrame
+        """
         if len(oligosets) > 0:
             oligosets_columns = [f"oligo_{i}" for i in range(self.opt_oligoset_size)] + score_names
             oligosets = pd.DataFrame(
@@ -66,6 +103,16 @@ class OligoSelectionPolicy:
     def pre_filter_oligos(
         self, oligos_scores: pd.Series, overlapping_matrix: csr_matrix
     ) -> tuple[pd.Series, csr_matrix]:
+        """
+        Filters oligos to keep only oligos which can be part of a set of size at least min_oligoset_size.  
+
+        :param oligos_scores: Series of oligo scores for ranking.
+        :type oligos_scores: pd.Series
+        :param overlapping_matrix: Sparse matrix indicating overlap between oligos.
+        :type overlapping_matrix: csr_matrix
+        :return: Filtered scores and overlap matrix.
+        :rtype: tuple(pd.Series, csr_matrix)
+        """
         G = nx.from_scipy_sparse_array(overlapping_matrix)
         max_clique = nx.approximation.max_clique(G)
         nodes = []
@@ -82,6 +129,18 @@ class OligoSelectionPolicy:
     def run_selection(
         self, oligos_scores: pd.Series, overlapping_matrix: csr_matrix, n_attempts: int
     ) -> list:
+        """
+        Abstract method for implementing selection logic.
+
+        :param oligos_scores: Series of oligo scores.
+        :type oligos_scores: pd.Series
+        :param overlapping_matrix: Sparse matrix indicating overlap between oligos.
+        :type overlapping_matrix: csr_matrix
+        :param n_attempts: Number of attempts to generate sets.
+        :type n_attempts: int
+        :return: List of selected oligo sets.
+        :rtype: list
+        """
         pass
 
 
@@ -96,6 +155,14 @@ class GreedySelectionPolicy(OligoSelectionPolicy):
         score_criteria: str,
         penalty: float = 0.05,
     ) -> None:
+        """
+        Greedy selection policy for oligos based on scores. This policy selects oligos iteratively based on their scores. To avoid selecting the same oligos multiple times, the policy applies a penalty to the scores of selected oligos (higher values of penalties result in more distinct sets).
+
+        :param score_criteria: String representing the score metric to use for set selection (e.g., "set_score_worst", "set_score_sum", see SetScoringBase).
+        :type score_criteria: str
+        :param penalty: Penalty factor applied to selected oligos, defaults to 0.05 (the higher the value, the more distinct the sets).
+        :type penalty: float, optional
+        """
         super().__init__(set_size_opt, set_size_min, n_sets, ascending, set_scoring)
         self.score_criteria = score_criteria
         self.penalty = penalty
@@ -103,6 +170,18 @@ class GreedySelectionPolicy(OligoSelectionPolicy):
     def run_selection(
         self, oligos_scores: pd.Series, overlapping_matrix: csr_matrix, n_attempts: int
     ) -> List[List[int]]:
+        """
+        Selects oligo sets using a greedy approach, prioritizing non-overlapping sets based on scores.
+
+        :param oligos_scores: Series of oligo scores.
+        :type oligos_scores: pd.Series
+        :param overlapping_matrix: Sparse matrix indicating overlap between oligos.
+        :type overlapping_matrix: csr_matrix
+        :param n_attempts: Number of attempts for set generation. The policy will stop generating sets if it reaches this number of attempts.
+        :type n_attempts: int
+        :return: List of selected oligo sets.
+        :rtype: List[List[int]]
+        """
         oligo_to_idx = {oligo: idx for idx, oligo in enumerate(oligos_scores.index)}
         selected_sets = set()
         adjusted_scores = oligos_scores.copy()
@@ -166,6 +245,18 @@ class GreedySelectionPolicy(OligoSelectionPolicy):
 
 class GraphBasedSelectionPolicy(OligoSelectionPolicy):
     def run_selection(self, oligos_scores: pd.Series, overlapping_matrix: csr_matrix, n_attempts: int):
+        """
+        Generates oligo sets based on clique-finding heuristics in an overlap graph.
+
+        :param oligos_scores: Series of oligo scores.
+        :type oligos_scores: pd.Series
+        :param overlapping_matrix: Sparse matrix indicating overlap between oligos.
+        :type overlapping_matrix: csr_matrix
+        :param n_attempts: Number of attempts for set generation.
+        :type n_attempts: int
+        :return: List of selected oligo sets with scores.
+        :rtype: List[List[int]]
+        """
         idx_to_oligo = {idx: oligo for idx, oligo in enumerate(oligos_scores.index)}
         G = nx.from_scipy_sparse_array(overlapping_matrix)
         G = nx.relabel_nodes(G, {i: idx_to_oligo[i] for i in G.nodes})
@@ -188,34 +279,33 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
         n = min(n, len(clique_init))
         oligoset_init, oligoset_init_scores = self.set_scoring.apply(oligos_scores.loc[clique_init], n)
 
-        if n == self.opt_oligoset_size:
-            # apply the heuristic
-            clique_heuristic, oligos_scores = self._heuristic_selection(
-                oligoset_init=oligoset_init,
-                oligos_scores=oligos_scores,
-                overlapping_matrix=overlapping_matrix,
-                overlapping_matrix_ids=overlapping_matrix_ids,
-                n_oligo=n,
-                ascending=self.ascending,
-            )
-            # overwrite initial oligoset
-            oligoset_init, oligoset_init_scores = self.set_scoring.apply(
-                oligos_scores.loc[clique_heuristic], n
-            )
-            # only keep oligos in overlap matrix that pass the heuristic
-            overlapping_matrix_indices = [
-                overlapping_matrix_ids.index(oligo_id) for oligo_id in oligos_scores.index
-            ]
-            overlapping_matrix = overlapping_matrix[overlapping_matrix_indices, :][
-                :, overlapping_matrix_indices
-            ]
-            overlapping_matrix_ids = [overlapping_matrix_ids[idx] for idx in overlapping_matrix_indices]
+        # apply the heuristic
+        clique_heuristic, oligos_scores = self._heuristic_selection(
+            oligoset_init=oligoset_init,
+            oligos_scores=oligos_scores,
+            overlapping_matrix=overlapping_matrix,
+            n_oligo=n,
+            ascending=self.ascending,
+        )
+        overlapping_matrix_ids = list(oligos_scores.index)
+        # overwrite initial oligoset
+        oligoset_init, oligoset_init_scores = self.set_scoring.apply(
+            oligos_scores.loc[clique_heuristic], n
+        )
+        # only keep oligos in overlap matrix that pass the heuristic
+        overlapping_matrix_indices = [
+            overlapping_matrix_ids.index(oligo_id) for oligo_id in oligos_scores.index
+        ]
+        overlapping_matrix = overlapping_matrix[overlapping_matrix_indices, :][
+            :, overlapping_matrix_indices
+        ]
+        overlapping_matrix_ids = [overlapping_matrix_ids[idx] for idx in overlapping_matrix_indices]
 
-            # recompute graph and cliques from reduced matrix
-            G = nx.from_scipy_sparse_array(overlapping_matrix)
-            G = nx.relabel_nodes(
-                G, {i: overlapping_matrix_ids[i] for i in range(len(overlapping_matrix_ids))}
-            )
+        # recompute graph and cliques from reduced matrix
+        G = nx.from_scipy_sparse_array(overlapping_matrix)
+        G = nx.relabel_nodes(
+            G, {i: overlapping_matrix_ids[i] for i in range(len(overlapping_matrix_ids))}
+        )
 
         # need to recompute cliques to be able to reiterate through them from the start and find all sets
         cliques = nx.algorithms.clique.find_cliques(G)
@@ -240,7 +330,6 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
         oligoset_init: list,
         oligos_scores: pd.Series,
         overlapping_matrix: csr_matrix,
-        overlapping_matrix_ids: list,
         n_oligo: int,
         ascending: bool,
         n_trials: int = 100,
@@ -268,6 +357,7 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
         oligo_ids_sorted = oligos_scores.sort_values(ascending=ascending).index.to_list()
 
         # Sort overlap matrix by oligo scores, i.e. best performing oligo at first entry
+        overlapping_matrix_ids = list(oligos_scores.index)
         overlapping_matrix_indices = [overlapping_matrix_ids.index(oligo_id) for oligo_id in oligo_ids_sorted]
         overlapping_matrix_sorted = overlapping_matrix[overlapping_matrix_indices, :][
             :, overlapping_matrix_indices
