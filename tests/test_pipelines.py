@@ -24,6 +24,9 @@ CONFIG_OLIGO_SEQ_PROBE_DESIGNER = "tests/data/configs/oligo_seq_probe_designer.y
 SCRIPT_SCRINSHOT_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_scrinshot_probe_designer.py"
 CONFIG_SCRINSHOT_PROBE_DESIGNER = "tests/data/configs/scrinshot_probe_designer.yaml"
 
+SCRIPT_SEQFISHPLUS_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_seqfish_plus_probe_designer.py"
+CONFIG_SEQFISHPLUS_PROBE_DESIGNER = "tests/data/configs/seqfish_plus_probe_designer.yaml"
+
 ############################################
 # Tests
 ############################################
@@ -103,3 +106,17 @@ class TestScrinshotProbeDesigner(PipelinesBase, unittest.TestCase):
 
     def setup_cmd_parameters(self):
         return f"-c{os.path.abspath(CONFIG_SCRINSHOT_PROBE_DESIGNER)}"
+
+
+# gets stuck in set selection, but if run from command line it runs through
+# class TestSeqfishplusProbeDesigner(PipelinesBase, unittest.TestCase):
+#     def setup_output_dir(self):
+#         with open(CONFIG_SEQFISHPLUS_PROBE_DESIGNER, "r") as handle:
+#             config = yaml.safe_load(handle)
+#         return os.path.abspath(config["dir_output"])
+
+#     def setup_script(self):
+#         return os.path.abspath(SCRIPT_SEQFISHPLUS_PROBE_DESIGNER)
+
+#     def setup_cmd_parameters(self):
+#         return f"-c{os.path.abspath(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)}"

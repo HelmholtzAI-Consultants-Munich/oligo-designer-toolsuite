@@ -12,11 +12,13 @@ source_params:
   annotation_release: current # required: release number of annotation, e.g. 'release-108' or 'current' to use most recent annotation release. Check out release numbers for ensemble at ftp.ensembl.org/pub/
 
 ### Parameters for sequences generation
-# List of genomic regions that should be generated, set the genomic regions you want to generate to True
+# List of genomic regions that should be generated, set the genomic regions you want to generate to true
 genomic_regions:
   gene: false
+  intergenic: false
   exon: true
-  exon_exon_junction: true
+  exon_exon_junction: false
+  utr: false
   cds: false
   intron: false
 

@@ -2,6 +2,7 @@
 # imports
 ############################################
 
+<<<<<<< HEAD
 import logging
 import os
 import shutil
@@ -19,6 +20,27 @@ from Bio.SeqUtils import Seq
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
+=======
+import os
+import yaml
+import shutil
+import logging
+import warnings
+
+import numpy as np
+import pandas as pd
+
+from typing import List, Tuple
+from pathlib import Path
+from datetime import datetime
+from itertools import product
+from joblib import Parallel, delayed
+from joblib_progress import joblib_progress
+
+from Bio.SeqUtils import Seq
+from Bio.SeqUtils import MeltingTemp as mt
+
+>>>>>>> origin/pipelines
 from oligo_designer_toolsuite.database import (
     OligoAttributes,
     OligoDatabase,
@@ -29,6 +51,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     WeightedGCUtrScoring,
 )
 from oligo_designer_toolsuite.oligo_property_filter import (
+<<<<<<< HEAD
     ComplementFilter,
     GCClampFilter,
     GCContentFilter,
@@ -43,6 +66,22 @@ from oligo_designer_toolsuite.oligo_property_filter import (
 from oligo_designer_toolsuite.oligo_selection import (
     GreedySelectionPolicy,
     OligosetGeneratorIndependentSet,
+=======
+    SoftMaskedSequenceFilter,
+    HardMaskedSequenceFilter,
+    HomopolymericRunsFilter,
+    GCContentFilter,
+    GCClampFilter,
+    MeltingTemperatureNNFilter,
+    SelfComplementFilter,
+    ComplementFilter,
+    SecondaryStructureFilter,
+    PropertyFilter,
+)
+from oligo_designer_toolsuite.oligo_selection import (
+    OligosetGeneratorIndependentSet,
+    heuristic_selection_independent_set,
+>>>>>>> origin/pipelines
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -97,7 +136,12 @@ class SeqFishPlusProbeDesigner:
         oligo_length_max: int,
         files_fasta_oligo_database: list[str],
         min_probes_per_gene: int,
+<<<<<<< HEAD
     ):
+=======
+        isoform_consensus: float,
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### creating the oligo sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         probe_fasta_file = probe_sequences.create_sequences_sliding_window(
@@ -118,20 +162,47 @@ class SeqFishPlusProbeDesigner:
         )
         oligo_database.load_database_from_fasta(
             files_fasta=probe_fasta_file,
+<<<<<<< HEAD
+=======
+            database_overwrite=True,
+>>>>>>> origin/pipelines
             sequence_type="target",
             region_ids=gene_ids,
         )
 
+<<<<<<< HEAD
         ##### save database #####
         if self.write_intermediate_steps:
             file_database = oligo_database.save_database(dir_database="1_db_probes_initial")
         else:
             file_database = ""
+=======
+        ##### pre-filter oligo database for certain attributes #####
+        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+        oligo_database.filter_database_by_attribute_threshold(
+            attribute_name="isoform_consensus",
+            attribute_thr=isoform_consensus,
+            remove_if_smaller_threshold=True,
+        )
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
+
+        ##### save database #####
+        if self.write_intermediate_steps:
+            dir_database = oligo_database.save_database(dir_database="1_db_probes_initial")
+        else:
+            dir_database = ""
+>>>>>>> origin/pipelines
 
         dir = probe_sequences.dir_output
         shutil.rmtree(dir) if os.path.exists(dir) else None
 
+<<<<<<< HEAD
         return oligo_database, file_database
+=======
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Target Probe Generation - Property Filters")
     def filter_by_property(
@@ -142,7 +213,11 @@ class SeqFishPlusProbeDesigner:
         homopolymeric_base_n: str,
         T_secondary_structure: float,
         secondary_structures_threshold_deltaG: float,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
@@ -168,18 +243,31 @@ class SeqFishPlusProbeDesigner:
 
         # filter the database
         oligo_database = property_filter.apply(
+<<<<<<< HEAD
             sequence_type="oligo",
             oligo_database=oligo_database,
+=======
+            oligo_database=oligo_database,
+            sequence_type="oligo",
+>>>>>>> origin/pipelines
             n_jobs=self.n_jobs,
         )
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
         else:
             file_database = ""
 
         return oligo_database, file_database
+=======
+            dir_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
+        else:
+            dir_database = ""
+
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Target Probe Generation - Specificity Filters")
     def filter_by_specificity(
@@ -190,7 +278,11 @@ class SeqFishPlusProbeDesigner:
         specificity_blastn_hit_params: dict,
         cross_hybridization_blastn_search_params: dict,
         cross_hybridization_blastn_hit_params: dict,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### define reference database #####
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
@@ -234,9 +326,15 @@ class SeqFishPlusProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
         else:
             file_database = ""
+=======
+            dir_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
+        else:
+            dir_database = ""
+>>>>>>> origin/pipelines
 
         # remove all directories of intermediate steps
         for directory in [
@@ -248,7 +346,11 @@ class SeqFishPlusProbeDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
+<<<<<<< HEAD
         return oligo_database, file_database
+=======
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Target Probe Generation - Set Selection")
     def create_oligo_sets(
@@ -262,11 +364,16 @@ class SeqFishPlusProbeDesigner:
         max_graph_size: int,
         n_sets: int,
         distance_between_oligos: int,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str, str]:
+>>>>>>> origin/pipelines
         probes_scoring = WeightedGCUtrScoring(
             GC_content_opt=GC_content_opt, GC_weight=GC_weight, UTR_weight=UTR_weight
         )
         set_scoring = LowestSetScoring(ascending=True)
+<<<<<<< HEAD
 
         selection_policy = GreedySelectionPolicy(
             set_size_opt=set_size_opt,
@@ -277,25 +384,36 @@ class SeqFishPlusProbeDesigner:
             score_criteria="set_score_worst",
             penalty=0.01,
         )
+=======
+>>>>>>> origin/pipelines
         probeset_generator = OligosetGeneratorIndependentSet(
             opt_oligoset_size=set_size_opt,
             min_oligoset_size=set_size_min,
             oligos_scoring=probes_scoring,
             set_scoring=set_scoring,
+<<<<<<< HEAD
             heuristic_selection=selection_policy,
+=======
+            heuristic_selection=heuristic_selection_independent_set,
+>>>>>>> origin/pipelines
             max_oligos=max_graph_size,
             distance_between_oligos=distance_between_oligos,
         )
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
+<<<<<<< HEAD
             pre_filter=True,
             n_attempts=100,
+=======
+            n_sets=n_sets,
+>>>>>>> origin/pipelines
             n_jobs=self.n_jobs,
         )
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
             file_probesets = oligo_database.write_oligosets_to_table()
         else:
@@ -303,6 +421,15 @@ class SeqFishPlusProbeDesigner:
             file_probesets = ""
 
         return oligo_database, file_database, file_probesets
+=======
+            dir_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
+            dir_probesets = oligo_database.write_oligosets_to_table()
+        else:
+            dir_database = ""
+            dir_probesets = ""
+
+        return oligo_database, dir_database, dir_probesets
+>>>>>>> origin/pipelines
 
     def design_final_probe_sequence(
         self,
@@ -344,10 +471,17 @@ class SeqFishPlusProbeDesigner:
         forward_primer_specificity_refrence_blastn_hit_params: dict,
         forward_primer_specificity_encoding_probes_blastn_search_parameters: dict,
         forward_primer_specificity_encoding_probes_blastn_hit_parameters: dict,
+<<<<<<< HEAD
     ):
         def _generate_readout_probes(
             n_genes: int,
         ):
+=======
+    ) -> OligoDatabase:
+        def _generate_readout_probes(
+            n_genes: int,
+        ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+>>>>>>> origin/pipelines
             pipeline = SeqFishPlusReadoutProbeDesigner(
                 write_intermediate_steps=self.write_intermediate_steps,
                 dir_output=self.dir_output,
@@ -386,11 +520,21 @@ class SeqFishPlusProbeDesigner:
             )
             return codebook, readout_probe_table
 
+<<<<<<< HEAD
         def _assemble_encoding_sequence(oligo_database, region_id, barcode, readout_probe_table):
+=======
+        def _assemble_encoding_sequence(
+            oligo_database: OligoDatabase,
+            region_id: str,
+            barcode: pd.Series,
+            readout_probe_table: pd.DataFrame,
+        ) -> None:
+>>>>>>> origin/pipelines
 
             bits = barcode[barcode == 1].index
             readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
 
+<<<<<<< HEAD
             database_region = oligo_database.database[region_id]
             for probe_id, probe_attributes in database_region.items():
                 probe_attributes["barcode"] = barcode
@@ -414,6 +558,47 @@ class SeqFishPlusProbeDesigner:
 
         def _generate_primers(file_fasta_encoding_probes_database):
             def _get_forward_primer_opt():
+=======
+            new_probe_attributes_encoding_probe = {}
+
+            for probe_id in oligo_database.database[region_id].keys():
+
+                sequence_readout_probe_1 = readout_probe_sequences[0]
+                sequence_readout_probe_2 = readout_probe_sequences[1]
+                sequence_readout_probe_3 = readout_probe_sequences[2]
+                sequence_readout_probe_4 = readout_probe_sequences[3]
+
+                new_probe_attributes_encoding_probe[probe_id] = {
+                    "barcode": barcode,
+                    "sequence_target": oligo_database.get_oligo_attribute_value(
+                        attribute="target", region_id=region_id, oligo_id=probe_id, flatten=True
+                    ),
+                    "sequence_target_probe": oligo_database.get_oligo_attribute_value(
+                        attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
+                    ),
+                    "sequence_readout_probe_1": sequence_readout_probe_1,
+                    "sequence_readout_probe_2": sequence_readout_probe_2,
+                    "sequence_readout_probe_3": sequence_readout_probe_3,
+                    "sequence_readout_probe_4": sequence_readout_probe_4,
+                    "sequence_encoding_probe": (
+                        str(Seq(sequence_readout_probe_1).reverse_complement())
+                        + str(Seq(sequence_readout_probe_2).reverse_complement())
+                        + "T"
+                        + oligo_database.get_oligo_attribute_value(
+                            attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
+                        )
+                        + "T"
+                        + str(Seq(sequence_readout_probe_3).reverse_complement())
+                        + str(Seq(sequence_readout_probe_4).reverse_complement())
+                    ),
+                }
+
+            oligo_database.update_oligo_attributes(new_probe_attributes_encoding_probe)
+
+        def _generate_primers(file_fasta_encoding_probes_database: str) -> Tuple[str, str]:
+
+            def _get_forward_primer_opt() -> str:
+>>>>>>> origin/pipelines
                 # get the sequence with Tm closest to the Tm of the reverse primer
                 forward_primer_sequence = ""
                 min_dif_Tm = 100
@@ -485,6 +670,7 @@ class SeqFishPlusProbeDesigner:
 
             return reverse_primer_sequence, forward_primer_sequence
 
+<<<<<<< HEAD
         def _add_primer_sequences(oligo_database, reverse_primer_sequence, forward_primer_sequence):
             probe_ids = oligo_database.get_oligoid_list()
             primer_attribute = {
@@ -504,6 +690,31 @@ class SeqFishPlusProbeDesigner:
                         + probe_attributes["sequence_encoding_probe"]
                         + probe_attributes["sequence_reverse_primer"]
                     )
+=======
+        def _add_primer_sequences(
+            oligo_database: OligoDatabase, sequence_reverse_primer: str, sequence_forward_primer: str
+        ) -> OligoDatabase:
+
+            new_probe_attributes_primer = {}
+
+            for region_id in oligo_database.database.keys():
+                for probe_id in oligo_database.database[region_id].keys():
+                    new_probe_attributes_primer[probe_id] = {
+                        "sequence_reverse_primer": sequence_reverse_primer,
+                        "sequence_forward_primer": sequence_forward_primer,
+                        "sequence_seqfish_plus_probe": forward_primer_sequence
+                        + "T"
+                        + oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_encoding_probe",
+                            region_id=region_id,
+                            oligo_id=probe_id,
+                            flatten=True,
+                        )
+                        + reverse_primer_sequence,
+                    }
+
+            oligo_database.update_oligo_attributes(new_probe_attributes_primer)
+>>>>>>> origin/pipelines
             return oligo_database
 
         region_ids = list(oligo_database.database.keys())
@@ -529,6 +740,10 @@ class SeqFishPlusProbeDesigner:
 
         file_fasta_encoding_probes_database = oligo_database.write_database_to_fasta(
             filename=f"db_reference_encoding_probes",
+<<<<<<< HEAD
+=======
+            save_description=False,
+>>>>>>> origin/pipelines
             region_ids=None,
             sequence_type="sequence_encoding_probe",
         )
@@ -549,7 +764,11 @@ class SeqFishPlusProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         T_secondary_structure: float,
+<<<<<<< HEAD
     ):
+=======
+    ) -> OligoAttributes:
+>>>>>>> origin/pipelines
         oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
             oligo_database=oligo_database
         )
@@ -568,9 +787,23 @@ class SeqFishPlusProbeDesigner:
 
         return oligo_database
 
+<<<<<<< HEAD
     def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int):
 
         attributes = [
+=======
+    def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int) -> None:
+
+        attributes = [
+            "source",
+            "species",
+            "annotation_release",
+            "genome_assembly",
+            "regiontype",
+            "gene_id",
+            "transcript_id",
+            "exon_number",
+>>>>>>> origin/pipelines
             "chromosome",
             "start",
             "end",
@@ -589,6 +822,7 @@ class SeqFishPlusProbeDesigner:
             "GC_content",
             "isoform_consensus",
             "DG_secondary_structure",
+<<<<<<< HEAD
             "source",
             "species",
             "annotation_release",
@@ -597,6 +831,9 @@ class SeqFishPlusProbeDesigner:
             "gene_id",
             "transcript_id",
             "exon_number",
+=======
+            "isoform_consensus",
+>>>>>>> origin/pipelines
         ]
         oligo_database.write_oligosets_to_yaml(
             attributes=attributes,
@@ -608,7 +845,11 @@ class SeqFishPlusProbeDesigner:
         # write a second file that only contains order information
         yaml_dict_order = {}
 
+<<<<<<< HEAD
         for region_id, database_region in oligo_database.database.items():
+=======
+        for region_id in oligo_database.database.keys():
+>>>>>>> origin/pipelines
             yaml_dict_order[region_id] = {}
             oligosets_region = oligo_database.oligosets[region_id]
             oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
@@ -624,6 +865,7 @@ class SeqFishPlusProbeDesigner:
                 yaml_dict_order[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
                     yaml_dict_order[region_id][oligoset_id][oligo_id] = {
+<<<<<<< HEAD
                         "sequence_seqfish_plus_probe": database_region[oligo_id][
                             "sequence_seqfish_plus_probe"
                         ],
@@ -631,6 +873,38 @@ class SeqFishPlusProbeDesigner:
                         "sequence_readout_probe_2": database_region[oligo_id]["sequence_readout_probe_2"],
                         "sequence_readout_probe_3": database_region[oligo_id]["sequence_readout_probe_3"],
                         "sequence_readout_probe_4": database_region[oligo_id]["sequence_readout_probe_4"],
+=======
+                        "sequence_seqfish_plus_probe": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_seqfish_plus_probe",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_1": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_1",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_2": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_2",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_3": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_3",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_4": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_4",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+>>>>>>> origin/pipelines
                     }
 
         with open(os.path.join(self.dir_output, "padlock_probes_order.yml"), "w") as outfile:
@@ -667,7 +941,11 @@ class SeqFishPlusReadoutProbeDesigner:
         oligo_length: int,
         oligo_base_probabilities: dict,
         initial_num_sequences: int,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### creating the oligo sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         probe_fasta_file = probe_sequences.create_sequences_random(
@@ -689,19 +967,35 @@ class SeqFishPlusReadoutProbeDesigner:
         )
         oligo_database.load_database_from_fasta(
             files_fasta=probe_fasta_file,
+<<<<<<< HEAD
             sequence_type="oligo",
+=======
+            database_overwrite=True,
+            sequence_type="oligo",
+            region_ids=None,
+>>>>>>> origin/pipelines
         )
 
         ##### save database #####
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="1_db_readout_probes_initial")
         else:
             file_database = ""
+=======
+            dir_database = oligo_database.save_database(dir_database="1_db_readout_probes_initial")
+        else:
+            dir_database = ""
+>>>>>>> origin/pipelines
 
         dir = probe_sequences.dir_output
         shutil.rmtree(dir) if os.path.exists(dir) else None
 
+<<<<<<< HEAD
         return oligo_database, file_database
+=======
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Property Filters")
     def filter_by_property(
@@ -710,7 +1004,11 @@ class SeqFishPlusReadoutProbeDesigner:
         GC_content_min: float,
         GC_content_max: float,
         homopolymeric_base_n: int,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         # define the filters
         gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
         homopolymeric_runs = HomopolymericRunsFilter(
@@ -727,29 +1025,50 @@ class SeqFishPlusReadoutProbeDesigner:
 
         # filter the database
         oligo_database = property_filter.apply(
+<<<<<<< HEAD
             sequence_type="oligo",
             oligo_database=oligo_database,
+=======
+            oligo_database=oligo_database,
+            sequence_type="oligo",
+>>>>>>> origin/pipelines
             n_jobs=self.n_jobs,
         )
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="2_db_readout_probes_property_filter")
         else:
             file_database = ""
 
         return oligo_database, file_database
+=======
+            dir_database = oligo_database.save_database(dir_database="2_db_readout_probes_property_filter")
+        else:
+            dir_database = ""
+
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Specificity Filters")
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
+<<<<<<< HEAD
         files_fasta_reference_database: List[str],
+=======
+        files_fasta_reference_database: list,
+>>>>>>> origin/pipelines
         specificity_blastn_search_parameters: dict,
         specificity_blastn_hit_parameters: dict,
         cross_hybridization_blastn_search_parameters: dict,
         cross_hybridization_blastn_hit_parameters: dict,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
@@ -796,9 +1115,15 @@ class SeqFishPlusReadoutProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="3_db_readout_probes_specificty_filter")
         else:
             file_database = ""
+=======
+            dir_database = oligo_database.save_database(dir_database="3_db_readout_probes_specificty_filter")
+        else:
+            dir_database = ""
+>>>>>>> origin/pipelines
 
         for directory in [
             reference_database.dir_output,
@@ -809,6 +1134,7 @@ class SeqFishPlusReadoutProbeDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
+<<<<<<< HEAD
         return oligo_database, file_database
 
     def generate_codebook(self, n_regions: int, n_barcode_rounds: int, n_pseudocolors: int, n_channels: int):
@@ -845,6 +1171,14 @@ class SeqFishPlusReadoutProbeDesigner:
             :return: Binary barcode.
             :rtype: np.Array
             """
+=======
+        return oligo_database, dir_database
+
+    def generate_codebook(
+        self, n_regions: int, n_barcode_rounds: int, n_pseudocolors: int, n_channels: int
+    ) -> pd.DataFrame:
+        def _generate_barcode(pseudocolors: list, channel: int, n_pseudocolors: int, n_channels: int) -> list:
+>>>>>>> origin/pipelines
             pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
             assert n_pseudocolors > max(
                 pseudocolors
@@ -886,6 +1220,7 @@ class SeqFishPlusReadoutProbeDesigner:
         channels_ids: list,
         n_barcode_rounds: int,
         n_pseudocolors: int,
+<<<<<<< HEAD
     ):
         """This function associates the readout probes with the bit of the barcodes and assigns them to a specific barcoding round, pseudocolor and channel.
 
@@ -900,6 +1235,9 @@ class SeqFishPlusReadoutProbeDesigner:
         :return: table containig the information for each readout probe.
         :rtype: pd.DataFrame
         """
+=======
+    ) -> pd.DataFrame:
+>>>>>>> origin/pipelines
         n_channels = len(channels_ids)
         n_bits = n_barcode_rounds * n_pseudocolors * n_channels
         readout_probes = readout_probe_database.get_oligoid_sequence_mapping(
@@ -970,7 +1308,11 @@ class SeqFishPlusPrimerDesigner:
         oligo_length: int,
         oligo_base_probabilities: dict,
         initial_num_sequences: int,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### creating the primer sequences #####
         # random forward primer
         forward_primer_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -993,19 +1335,35 @@ class SeqFishPlusPrimerDesigner:
         )
         oligo_database.load_database_from_fasta(
             files_fasta=forward_primer_fasta_file,
+<<<<<<< HEAD
             sequence_type="oligo",
+=======
+            database_overwrite=True,
+            sequence_type="oligo",
+            region_ids=None,
+>>>>>>> origin/pipelines
         )
 
         ##### save database #####
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="1_db_primers_initial")
         else:
             file_database = ""
+=======
+            dir_database = oligo_database.save_database(dir_database="1_db_primers_initial")
+        else:
+            dir_database = ""
+>>>>>>> origin/pipelines
 
         dir = forward_primer_sequences.dir_output
         shutil.rmtree(dir) if os.path.exists(dir) else None
 
+<<<<<<< HEAD
         return oligo_database, file_database
+=======
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Primer Generation - Property Filters")
     def filter_by_property(
@@ -1026,7 +1384,11 @@ class SeqFishPlusPrimerDesigner:
         Tm_salt_correction_parameters: dict,
         T_secondary_structure: float,
         secondary_structures_threshold_deltaG: float,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         # define the filters
         # we want to keep primer which end with a specific nucleotide, i.e. "T"
         gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
@@ -1065,18 +1427,31 @@ class SeqFishPlusPrimerDesigner:
 
         # filter the database
         oligo_database = property_filter.apply(
+<<<<<<< HEAD
             sequence_type="oligo",
             oligo_database=oligo_database,
+=======
+            oligo_database=oligo_database,
+            sequence_type="oligo",
+>>>>>>> origin/pipelines
             n_jobs=self.n_jobs,
         )
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="2_db_primer_property_filter")
         else:
             file_database = ""
 
         return oligo_database, file_database
+=======
+            dir_database = oligo_database.save_database(dir_database="2_db_primer_property_filter")
+        else:
+            dir_database = ""
+
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Primer Generation - Specificity Filters")
     def filter_by_specificity(
@@ -1088,7 +1463,11 @@ class SeqFishPlusPrimerDesigner:
         file_fasta_encoding_probes_database: str,
         specificity_encoding_probes_blastn_search_parameters: dict,
         specificity_encoding_probes_blastn_hit_parameters: dict,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### specificity filters against reference #####
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
@@ -1137,9 +1516,15 @@ class SeqFishPlusPrimerDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
+<<<<<<< HEAD
             file_database = oligo_database.save_database(dir_database="3_db_primer_specificty_filter")
         else:
             file_database = ""
+=======
+            dir_database = oligo_database.save_database(dir_database="3_db_primer_specificty_filter")
+        else:
+            dir_database = ""
+>>>>>>> origin/pipelines
 
         for directory in [
             reference_database.dir_output,
@@ -1150,7 +1535,11 @@ class SeqFishPlusPrimerDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
+<<<<<<< HEAD
         return oligo_database, file_database
+=======
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
 
 ############################################
@@ -1159,6 +1548,11 @@ class SeqFishPlusPrimerDesigner:
 
 
 def main():
+<<<<<<< HEAD
+=======
+    print("--------------START PIPELINE--------------")
+
+>>>>>>> origin/pipelines
     args = base_parser()
 
     ##### read the config file #####
@@ -1200,6 +1594,10 @@ def main():
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
         min_probes_per_gene=config["probeset_size_min"],
+<<<<<<< HEAD
+=======
+        isoform_consensus=config["probe_isoform_consensus"],
+>>>>>>> origin/pipelines
     )
 
     ##### filter oligos by property #####
@@ -1303,3 +1701,12 @@ def main():
 
     logging.info(f"Oligo sets were saved in {dir_probesets}")
     logging.info("##### End of the pipeline. #####")
+<<<<<<< HEAD
+=======
+
+    print("--------------END PIPELINE--------------")
+
+
+if __name__ == "__main__":
+    main()
+>>>>>>> origin/pipelines

@@ -10,14 +10,28 @@ write_intermediate_steps: true # writes the oligo sequences after each step of t
 
 ### Parameters for oligo sequences generation
 ### -----------------------------------------------
+<<<<<<< HEAD
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+=======
+file_regions: data/genes/custom_10.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+>>>>>>> origin/pipelines
 files_fasta_oligo_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 oligo_length_min: 26 #min length of oligos
 oligo_length_max: 30 #max length of oligos
+targeted_exons:
+  - "1"
+  - "2"
+  - "3"
+oligo_isoform_consensus: 0 #min isoform consesnsus for oligos, i.e. how many transcripts of the total number of transcripts of a gene are covered by the oligo, given in %
+split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
 
+<<<<<<< HEAD
 ### Parameters for the property filers
+=======
+### Parameters for the property filters
+>>>>>>> origin/pipelines
 ### -----------------------------------------------
 ## oligo sequence
 GC_content_min: 45 # minimum GC content of oligos
@@ -31,7 +45,7 @@ homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolym
   T: 6
   C: 6
   G: 6
-max_len_selfcomp: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
+max_len_selfcomplement: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
 
 ### Parameters for the specificity filters
 ### -----------------------------------------------

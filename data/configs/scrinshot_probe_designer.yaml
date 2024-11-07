@@ -16,6 +16,7 @@ files_fasta_probe_database: # fasta file with sequences form which the oligos sh
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 probe_length_min: 40 #min length of oligos
 probe_length_max: 45 #max length of oligos
+probe_isoform_consensus: 50 #min isoform consesnsus for probes, i.e. how many transcripts of the total number of transcripts of a gene are covered by the probe, given in %
 
 ### Parameters for the property filers, i.e. properties that the sequences should fulfill
 ### -----------------------------------------------
@@ -164,4 +165,8 @@ Tm_chem_correction_param_detection_oligo:
     fmdmethod: 1 #default
     GC: null #default
 
+<<<<<<< HEAD
 Tm_salt_correction_param_detection_oligo: null # if salt correction desired, please add parameters below
+=======
+Tm_salt_correction_param_detection_oligo: null # if salt correction desired, please add parameters below
+>>>>>>> origin/pipelines

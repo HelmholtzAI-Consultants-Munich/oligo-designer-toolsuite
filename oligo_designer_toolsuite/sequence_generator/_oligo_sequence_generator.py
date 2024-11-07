@@ -5,12 +5,11 @@
 import os
 import random
 from pathlib import Path
-
 from joblib import Parallel, delayed
-
+from Bio.SeqRecord import SeqRecord
 from oligo_designer_toolsuite.utils import FastaParser
 
-from ..utils._checkers import check_if_list
+from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename
 
 ############################################
 # Oligo Database Class
@@ -18,31 +17,11 @@ from ..utils._checkers import check_if_list
 
 
 class OligoSequenceGenerator:
-    """A class for generating oligo sequences.
-
-    This class provides functionality for generating oligo sequences and managing output directories.
-
-    The generated sequences are saved as fasta file with region id, additional information and coordinates in header.
-    The header of each sequence must start with '>' and contain the following information:
-    region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
-    where the region_id is compulsory and the other fields are optional.
-
-    Input Format (per sequence):
-    >region_id::additional information::chromosome:start-end(strand)
-    sequence
-
-    Example:
-    >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
-    AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
-
-    :param dir_output: The directory path for output files.
-    :type dir_output: str
-    """
 
     def __init__(
         self,
         dir_output: str = "output",
-    ):
+    ) -> None:
         """Constructor for the OligoSequenceGenerator class."""
         self.dir_output = os.path.abspath(os.path.join(dir_output, "annotation"))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
@@ -61,33 +40,10 @@ class OligoSequenceGenerator:
             "G": 0.25,
             "T": 0.25,
         },
-    ):
-        """Create a FASTA file containing random DNA sequences.
+    ) -> str:
 
-        :param filename_out: The name of the output FASTA file.
-        :type filename_out: str
-        :param length_sequences: The length of each random DNA sequence.
-        :type length_sequences: int
-        :param num_sequences: The number of random DNA sequences to generate.
-        :type num_sequences: int
-        :param name_sequences: The prefix for sequence names in the output FASTA file.
-        :type name_sequences: str, optional
-        :param base_alphabet_with_probability: A dictionary mapping DNA bases to their probabilities.
-        :type base_alphabet_with_probability: dict, optional
-        :return: The path to the generated FASTA file.
-        :rtype: str
-        """
+        def get_sequence_random(sequence_length: int, base_alphabet_with_probability: dict) -> str:
 
-        def get_sequence_random(sequence_length, base_alphabet_with_probability):
-            """Generate a random DNA sequence of a given length based on a specified base alphabet with probabilities.
-
-            :param sequence_length: The length of the generated DNA sequence.
-            :type sequence_length: int
-            :param base_alphabet_with_probability: A dictionary mapping DNA bases to their probabilities.
-            :type base_alphabet_with_probability: dict
-            :return: The generated random DNA sequence.
-            :rtype: str
-            """
             bases = list(base_alphabet_with_probability.keys())
             sequence = "".join(
                 random.choices(
@@ -120,43 +76,13 @@ class OligoSequenceGenerator:
         self,
         files_fasta_in: list[str],
         length_interval_sequences: tuple,
+        split_region: int = 0,
         region_ids: list[str] = None,
         n_jobs: int = 1,
-    ):
-        """Generate sequences with sliding windows from input FASTA files and write them to an output FASTA file.
-
-        :param filename_out: The name of the output FASTA file.
-        :type filename_out: str
-        :param files_fasta_in: List of input FASTA files.
-        :type files_fasta_in: list[str]
-        :param length_interval_sequences: A tuple representing the interval of sliding window lengths to generate.
-        :type length_interval_sequences: tuple
-        :param region_ids: List of region IDs to consider. If None, all regions are considered.
-        :type region_ids: list[str], optional
-        :param n_jobs: The number of jobs to use for parallel processing.
-        :type n_jobs: int
-        :return: The path to the generated output FASTA file.
-        :rtype: str
-        """
-
-        def generate_unique_filename(region):
-            while True:
-                random_number = random.randint(1, 1000000)
-                file_fasta_region = os.path.join(self.dir_output, f"{region}_{random_number}.fna")
-                if not os.path.exists(file_fasta_region):
-                    return file_fasta_region
-
-        def get_sliding_window_sequence(entry, length_interval_sequences):
-            """Extract sliding window sequences from a given entry and write them to a FASTA file.
-
-            :param entry: Bio.SeqRecord.SeqRecord object representing the sequence entry.
-            :type entry: Bio.SeqRecord.SeqRecord
-            :param length_interval_sequences: The max and min length of each sliding window sequence.
-            :type length_interval_sequences: List[int]
-            :param handle_fasta: The file handle for writing the output FASTA file.
-            :type handle_fasta: _io.TextIOWrapper
-            """
-
+    ) -> list:
+        def get_sliding_window_sequence(
+            entry: SeqRecord, length_interval_sequences: tuple, split_region: int
+        ) -> str:
             entry_sequence = entry.seq
             region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(
                 header=entry.id, parse_additional_info=False
@@ -167,6 +93,16 @@ class OligoSequenceGenerator:
             chromosome = coordinates["chromosome"][0]
             strand = coordinates["strand"][0]
             list_of_coordinates = []
+
+            # check if loaded region is spanning split sequences (e.g. exon junctions)
+            # if yes, calculate which sequences should be excluded
+            # because they have too few bases on each side of the split
+            split_sequence = len(coordinates["start"]) > 1
+            if split_sequence:
+                excluded_coordinates = [
+                    coord + offset for coord in coordinates["start"][1:] for offset in range(split_region)
+                ] + [coord - offset for coord in coordinates["end"][:-1] for offset in range(split_region)]
+
             # if the fasta header DOES NOT contain coordinates information
             if chromosome is None:
                 list_of_coordinates = [None for i in range(len(entry_sequence))]
@@ -174,14 +110,16 @@ class OligoSequenceGenerator:
             else:
                 # coordinates in fasta file use 1-base indixing, which go from 1 (for base 1) to n (for base n)
                 # range produces values until end-1 (e.g. range(10) goes until 9) -> add +1
-                # the start and end coordinates can be a list for regions spanning split sequences (e.g. exon junctions, UTRs)
+                # the start and end coordinates can be a list for regions spanning split sequences (e.g. exon junctions)
                 for start, end in zip(coordinates["start"], coordinates["end"]):
                     list_of_coordinates.extend(range(start, end + 1))
             # sort reverse on minus strand becaus the sequence is translated into the reverse complement by fasta -strand option
             if strand == "-":
                 list_of_coordinates.reverse()
 
-            file_fasta_region = generate_unique_filename(region=region)
+            file_fasta_region = generate_unique_filename(
+                dir_output=self.dir_output, base_name=region, extension="fna"
+            )
             with open(file_fasta_region, "w") as handle_fasta:
                 for sequence_length in range(length_interval_sequences[0], length_interval_sequences[1] + 1):
                     # generate sequences with sliding window and write to fasta file (use lock to ensure that hat only one process can write to the file at any given time)
@@ -201,7 +139,18 @@ class OligoSequenceGenerator:
                         end_seq = max(seq_start_end)
 
                         header = f"{region}::{additional_info}::{chromosome}:{start_seq}-{end_seq}({strand})"
-                        handle_fasta.write(f">{header}\n{seq}\n")
+
+                        if not split_sequence:
+                            handle_fasta.write(f">{header}\n{seq}\n")
+
+                        # if split sequence, only consider cases where we have at least x bases on each side of the split sequence
+                        else:
+                            split_distance = end_seq - start_seq
+                            if (split_distance > sequence_length) and (
+                                start_seq not in excluded_coordinates and end_seq not in excluded_coordinates
+                            ):
+                                handle_fasta.write(f">{header}\n{seq}\n")
+
             return file_fasta_region
 
         files_fasta_in = check_if_list(files_fasta_in)
@@ -232,7 +181,7 @@ class OligoSequenceGenerator:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
             files_fasta_oligos = Parallel(n_jobs=n_jobs)(
-                delayed(get_sliding_window_sequence)(entry, length_interval_sequences)
+                delayed(get_sliding_window_sequence)(entry, length_interval_sequences, split_region)
                 for entry in fasta_sequences
             )
             for region_id in region_ids:

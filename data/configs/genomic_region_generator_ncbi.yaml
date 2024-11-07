@@ -13,11 +13,13 @@ source_params:
   annotation_release: 110 # required: release number of annotation e.g. '109' or '109.20211119'  or 'current' to use most recent annotation release. Check out release numbers for NCBI at ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/
 
 ### Parameters for sequences generation
-# List of genomic regions that should be generated, set the genomic regions you want to generate to True
+# List of genomic regions that should be generated, set the genomic regions you want to generate to true
 genomic_regions:
   gene: false
+  intergenic: false
   exon: true
-  exon_exon_junction: true
+  exon_exon_junction: false
+  utr: false
   cds: false
   intron: false
 

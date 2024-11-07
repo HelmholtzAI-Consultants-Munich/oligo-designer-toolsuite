@@ -8,7 +8,7 @@ import shutil
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import yaml
 from Bio.SeqUtils import MeltingTemp as mt
@@ -54,21 +54,6 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 
 class OligoSeqProbeDesigner:
-    """This class handles the setup and execution of the oligo-seq probe design pipeline, including reading gene region files,
-    managing output directories, and configuring logging. It supports parallel processing to optimize the probe design tasks
-    and allows intermediate steps to be saved for review. The class is designed to work with various configuration settings to
-    customize the probe generation process according to user-defined parameters.
-
-    :param file_regions: List of file paths containing regions of interest. If None, all regions from the fasta file are used.
-    :type file_regions: list
-    :param write_intermediate_steps: Flag indicating whether intermediate results should be saved.
-    :type write_intermediate_steps: bool
-    :param dir_output: Directory path where output and logs will be saved.
-    :type dir_output: str
-    :param n_jobs: Number of parallel jobs to run.
-    :type n_jobs: int
-    """
-
     def __init__(
         self,
         file_regions: list,
@@ -80,7 +65,11 @@ class OligoSeqProbeDesigner:
 
         self.write_intermediate_steps = write_intermediate_steps
         self.n_jobs = n_jobs
+<<<<<<< HEAD
         self.oligo_attributes = OligoAttributes()
+=======
+        self.oligo_attributes_calculator = OligoAttributes()
+>>>>>>> origin/pipelines
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -109,8 +98,10 @@ class OligoSeqProbeDesigner:
         gene_ids: list,
         oligo_length_min: int,
         oligo_length_max: int,
+        split_region: int,
         files_fasta_oligo_database: list[str],
         min_oligos_per_region: int,
+<<<<<<< HEAD
     ):
         """
         Creates an oligo database using sequences generated through a sliding window approach, loading them from specified FASTA files.
@@ -127,11 +118,20 @@ class OligoSeqProbeDesigner:
         :return: A tuple containing the oligo database object and path to the saved database file.
         :rtype: (OligoDatabase, str)
         """
+=======
+        isoform_consensus: float,
+        targeted_exons: list[str],
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
             files_fasta_in=files_fasta_oligo_database,
             length_interval_sequences=(oligo_length_min, oligo_length_max),
+<<<<<<< HEAD
+=======
+            split_region=split_region,
+>>>>>>> origin/pipelines
             region_ids=gene_ids,
             n_jobs=self.n_jobs,
         )
@@ -148,19 +148,39 @@ class OligoSeqProbeDesigner:
         oligo_database.load_database_from_fasta(
             files_fasta=oligo_fasta_file,
             sequence_type="target",
+<<<<<<< HEAD
+=======
+            database_overwrite=True,
+>>>>>>> origin/pipelines
             region_ids=gene_ids,
         )
 
+        ##### pre-filter oligo database for certain attributes #####
+        oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+        oligo_database.filter_database_by_attribute_threshold(
+            attribute_name="isoform_consensus",
+            attribute_thr=isoform_consensus,
+            remove_if_smaller_threshold=True,
+        )
+        oligo_database.filter_database_by_attribute_category(
+            attribute_name="exon_number",
+            attribute_category=targeted_exons,
+            remove_if_equals_category=False,
+        )
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
+
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="1_db_initial")
+            dir_database = oligo_database.save_database(dir_database="1_db_initial")
         else:
-            file_database = ""
+            dir_database = ""
 
         dir = oligo_sequences.dir_output
         shutil.rmtree(dir) if os.path.exists(dir) else None
 
-        return oligo_database, file_database
+        return oligo_database, dir_database
 
     @pipeline_step_basic(step_name="Property Filters")
     def filter_by_property(
@@ -173,9 +193,10 @@ class OligoSeqProbeDesigner:
         secondary_structures_T: float,
         secondary_structures_threshold_deltaG: float,
         homopolymeric_base_n: str,
-        max_len_selfcomp: int,
+        max_len_selfcomplement: int,
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
+<<<<<<< HEAD
     ):
         """
         Applies multiple sequence property filters to an oligonucleotide database to refine the selection of oligos based on specified criteria.
@@ -206,6 +227,9 @@ class OligoSeqProbeDesigner:
         :return: Tuple containing the filtered oligo database and path to the saved database file.
         :rtype: (OligoDatabase, str)
         """
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
@@ -223,18 +247,31 @@ class OligoSeqProbeDesigner:
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
+<<<<<<< HEAD
         self_comp = SelfComplementFilter(max_len_selfcomplement=max_len_selfcomp)
+=======
+        self_comp = SelfComplementFilter(
+            max_len_selfcomplement=max_len_selfcomplement,
+        )
+>>>>>>> origin/pipelines
 
         filters = [
             hard_masked_sequences,
             soft_masked_sequences,
             homopolymeric_runs,
             gc_content,
+<<<<<<< HEAD
             self_comp,
+=======
+>>>>>>> origin/pipelines
             melting_temperature,
+            self_comp,
             secondary_sctructure,
             homopolymeric_runs,
+<<<<<<< HEAD
             self_comp,
+=======
+>>>>>>> origin/pipelines
         ]
 
         # initialize the preoperty filter class
@@ -242,18 +279,18 @@ class OligoSeqProbeDesigner:
 
         # filter the database
         oligo_database = property_filter.apply(
-            sequence_type="oligo",
             oligo_database=oligo_database,
+            sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="2_db_property_filter")
+            dir_database = oligo_database.save_database(dir_database="2_db_property_filter")
         else:
-            file_database = ""
+            dir_database = ""
 
-        return oligo_database, file_database
+        return oligo_database, dir_database
 
     @pipeline_step_basic(step_name="Specificity Filters")
     def filter_by_specificity(
@@ -267,34 +304,7 @@ class OligoSeqProbeDesigner:
         hybridization_probability_search_parameters: dict,
         hybridization_probability_hit_parameters: dict,
         hybridization_probability_threshold: float,
-    ):
-        """
-        Applies a series of filters to an oligonucleotide database to ensure the specificity of the oligos
-        based on cross-hybridization and hybridization probability criteria. The function initializes specific alignment
-        methods for each filtering criterion and logs the process and results.
-
-        :param oligo_database: Database to filter.
-        :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of reference database FASTA files.
-        :type files_fasta_reference_database: List[str]
-        :param cross_hybridization_alignment_method: Alignment method for cross-hybridization.
-        :type cross_hybridization_alignment_method: str
-        :param cross_hybridization_search_parameters: Search parameters for cross-hybridization alignment.
-        :type cross_hybridization_search_parameters: dict
-        :param cross_hybridization_hit_parameters: Hit parameters for cross-hybridization alignment.
-        :type cross_hybridization_hit_parameters: dict
-        :param hybridization_probability_alignment_method: Alignment method for calculating hybridization probability.
-        :type hybridization_probability_alignment_method: str
-        :param hybridization_probability_search_parameters: Search parameters for hybridization probability.
-        :type hybridization_probability_search_parameters: dict
-        :param hybridization_probability_hit_parameters: Hit parameters for hybridization probability.
-        :type hybridization_probability_hit_parameters: dict
-        :param hybridization_probability_threshold: Threshold for deciding significant hybridization probability.
-        :type hybridization_probability_threshold: float
-        :return: Updated oligo database and path to the saved database file.
-        :rtype: (OligoDatabase, str)
-        """
-
+    ) -> Tuple[OligoDatabase, str]:
         def _get_alignment_method(
             alignment_method,
             search_parameters,
@@ -366,9 +376,9 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="3_db_specificity_filter")
+            dir_database = oligo_database.save_database(dir_database="3_db_specificity_filter")
         else:
-            file_database = ""
+            dir_database = ""
 
         # remove all directories of intermediate steps
         for directory in [
@@ -381,7 +391,11 @@ class OligoSeqProbeDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
+<<<<<<< HEAD
         return oligo_database, file_database
+=======
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Oligo Selection")
     def create_oligo_sets(
@@ -400,43 +414,7 @@ class OligoSeqProbeDesigner:
         max_oligos: int,
         n_sets: int,
         distance_between_oligos: int,
-    ):
-        """
-        Initializes and applies the oligo set generation process with specified melting temperature and GC content parameters.
-        This function configures scoring mechanisms for oligos and sets, generates oligo sets, and logs the process.
-        It also saves intermediate results if specified.
-
-        :param oligo_database: Database containing oligo sequences and related data.
-        :type oligo_database: OligoDatabase
-        :param Tm_min: Minimum melting temperature for oligos.
-        :type Tm_min: float
-        :param Tm_opt: Optimal melting temperature for oligos.
-        :type Tm_opt: float
-        :param Tm_max: Maximum melting temperature for oligos.
-        :type Tm_max: float
-        :param Tm_parameters: Parameters for Tm calculations.
-        :type Tm_parameters: dict
-        :param Tm_chem_correction_parameters: Chemical correction parameters for Tm calculations.
-        :type Tm_chem_correction_parameters: dict
-        :param GC_content_min: Minimum acceptable GC content percentage.
-        :type GC_content_min: float
-        :param GC_content_opt: Optimal GC content percentage.
-        :type GC_content_opt: float
-        :param GC_content_max: Maximum acceptable GC content percentage.
-        :type GC_content_max: float
-        :param opt_oligoset_size: Optimal size of oligo sets to generate.
-        :type opt_oligoset_size: int
-        :param min_oligoset_size: Minimum acceptable size of oligo sets.
-        :type min_oligoset_size: int
-        :param max_oligos: Maximum number of oligos to consider in the generation process.
-        :type max_oligos: int
-        :param n_sets: Number of sets to generate.
-        :type n_sets: int
-        :param distance_between_oligos: Minimum distance required between oligos within a set.
-        :type distance_between_oligos: int
-        :return: The updated oligo database, file path of the database, file path of oligo sets.
-        :rtype: tuple(OligoDatabase, str, str)
-        """
+    ) -> Tuple[OligoDatabase, str, str]:
         oligos_scoring = WeightedTmGCOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,
@@ -474,13 +452,13 @@ class OligoSeqProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="4_db_oligosets")
-            file_oligosets = oligo_database.write_oligosets_to_table()
+            dir_database = oligo_database.save_database(dir_database="4_db_oligosets")
+            dir_oligosets = oligo_database.write_oligosets_to_table()
         else:
-            file_database = ""
-            file_oligosets = ""
+            dir_database = ""
+            dir_oligosets = ""
 
-        return oligo_database, file_database, file_oligosets
+        return oligo_database, dir_database, dir_oligosets
 
     def compute_oligo_attributes(
         self,
@@ -488,10 +466,9 @@ class OligoSeqProbeDesigner:
         secondary_structures_T: float,
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
-    ):
-        """
-        Computes various attributes for oligos and stores them in the provided oligo database.
+    ) -> OligoDatabase:
 
+<<<<<<< HEAD
         :param oligo_database: The database containing oligos for which attributes are to be computed.
         :type oligo_database: OligoDatabase
         :param secondary_structures_T: Temperature at which secondary structure delta G is calculated.
@@ -508,11 +485,21 @@ class OligoSeqProbeDesigner:
             oligo_database=oligo_database, sequence_type="oligo"
         )
         oligo_database = self.oligo_attributes.calculate_TmNN(
+=======
+        oligo_database = self.oligo_attributes_calculator.calculate_oligo_length(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_GC_content(
+            oligo_database=oligo_database, sequence_type="oligo"
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_TmNN(
+>>>>>>> origin/pipelines
             oligo_database=oligo_database,
             sequence_type="oligo",
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
+<<<<<<< HEAD
         oligo_database = self.oligo_attributes.calculate_num_targeted_transcripts(
             oligo_database=oligo_database
         )
@@ -593,14 +580,34 @@ class OligoSeqProbeDesigner:
             oligo_database=oligo_database, sequence_type="oligo"
         )
         oligo_database = self.oligo_attributes.calculate_DG_secondary_structure(
+=======
+        oligo_database = self.oligo_attributes_calculator.calculate_num_targeted_transcripts(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_length_selfcomplement(
+            oligo_database=oligo_database, sequence_type="oligo"
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_DG_secondary_structure(
+>>>>>>> origin/pipelines
             oligo_database=oligo_database, sequence_type="oligo", T=secondary_structures_T
         )
 
         return oligo_database
 
-    def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int):
+    def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int) -> None:
 
         attributes = [
+            "source",
+            "species",
+            "annotation_release",
+            "genome_assembly",
+            "regiontype",
+            "gene_id",
+            "transcript_id",
+            "exon_number",
             "chromosome",
             "start",
             "end",
@@ -611,19 +618,16 @@ class OligoSeqProbeDesigner:
             "GC_content",
             "TmNN",
             "num_targeted_transcripts",
+            "number_total_transcripts",
             "isoform_consensus",
             "length_selfcomplement",
-            "DG_secondary_structure" "source",
-            "species",
-            "annotation_release",
-            "genome_assembly",
-            "regiontype",
-            "gene_id",
-            "transcript_id",
-            "exon_number",
+            "DG_secondary_structure",
         ]
         oligo_database.write_oligosets_to_yaml(
-            attributes=attributes, top_n_sets=top_n_sets, ascending=True, filename="oligo_seq_probes.yml"
+            attributes=attributes, top_n_sets=top_n_sets, ascending=True, filename="oligo_seq_probesets"
+        )
+        oligo_database.write_database_to_table(
+            attributes=attributes, flatten_attribute=True, filename="oligo_seq_probes"
         )
 
 
@@ -633,10 +637,7 @@ class OligoSeqProbeDesigner:
 
 
 def main():
-    """Main function to execute the oligo probe design pipeline based on user configurations.
-    It parses command line arguments, initializes the pipeline with specified parameters, creates an oligo database,
-    applies various filtering criteria, computes necessary oligo attributes, and finally generates oligo sets.
-    """
+    print("--------------START PIPELINE--------------")
 
     args = base_parser()
 
@@ -673,17 +674,27 @@ def main():
     )
 
     ##### create oligo database #####
+<<<<<<< HEAD
     oligo_database, file_database = pipeline.create_oligo_database(
+=======
+    oligo_database, dir_database = pipeline.create_oligo_database(
+>>>>>>> origin/pipelines
         gene_ids=gene_ids,
         oligo_length_min=config["oligo_length_min"],
         oligo_length_max=config["oligo_length_max"],
+        split_region=config["split_region"],
         files_fasta_oligo_database=config["files_fasta_oligo_database"],
         # we should have at least "min_oligoset_size" oligos per gene to create one set
         min_oligos_per_region=config["min_oligoset_size"],
+<<<<<<< HEAD
+=======
+        isoform_consensus=config["oligo_isoform_consensus"],
+        targeted_exons=config["targeted_exons"],
+>>>>>>> origin/pipelines
     )
 
     ##### filter oligos by property #####
-    oligo_database, file_database = pipeline.filter_by_property(
+    oligo_database, dir_database = pipeline.filter_by_property(
         oligo_database,
         config["GC_content_min"],
         config["GC_content_max"],
@@ -692,13 +703,13 @@ def main():
         secondary_structures_T=config["secondary_structures_T"],
         secondary_structures_threshold_deltaG=config["secondary_structures_threshold_deltaG"],
         homopolymeric_base_n=config["homopolymeric_base_n"],
-        max_len_selfcomp=config["max_len_selfcomp"],
+        max_len_selfcomplement=config["max_len_selfcomplement"],
         Tm_parameters=Tm_parameters,
         Tm_chem_correction_parameters=config["Tm_chem_correction_parameters"],
     )
 
     # ##### filter oligos by specificity #####
-    oligo_database, file_database = pipeline.filter_by_specificity(
+    oligo_database, dir_database = pipeline.filter_by_specificity(
         oligo_database=oligo_database,
         files_fasta_reference_database=config["files_fasta_reference_database"],
         cross_hybridization_alignment_method=config["cross_hybridization_alignment_method"],
@@ -719,7 +730,7 @@ def main():
     )
 
     ##### create oligo sets #####
-    oligo_database, file_database, dir_oligosets = pipeline.create_oligo_sets(
+    oligo_database, dir_database, dir_oligosets = pipeline.create_oligo_sets(
         oligo_database=oligo_database,
         Tm_min=config["Tm_min"],
         Tm_opt=config["Tm_opt"],
@@ -749,6 +760,8 @@ def main():
 
     logging.info(f"Oligo sets were saved in {dir_oligosets}")
     logging.info("##### End of the pipeline. #####")
+
+    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":

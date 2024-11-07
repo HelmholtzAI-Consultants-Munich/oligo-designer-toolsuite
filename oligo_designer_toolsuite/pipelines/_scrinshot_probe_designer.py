@@ -10,7 +10,11 @@ import shutil
 import warnings
 from datetime import datetime
 from pathlib import Path
+<<<<<<< HEAD
 from typing import List
+=======
+from typing import List, Tuple
+>>>>>>> origin/pipelines
 
 import yaml
 from Bio.SeqUtils import MeltingTemp as mt
@@ -92,7 +96,12 @@ class ScrinshotProbeDesigner:
         probe_length_max: int,
         files_fasta_oligo_database: list[str],
         min_probes_per_gene: int,
+<<<<<<< HEAD
     ):
+=======
+        isoform_consensus: float,
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### creating the probe sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         probe_fasta_file = probe_sequences.create_sequences_sliding_window(
@@ -113,20 +122,32 @@ class ScrinshotProbeDesigner:
         )
         oligo_database.load_database_from_fasta(
             files_fasta=probe_fasta_file,
+            database_overwrite=True,
             sequence_type="target",
             region_ids=gene_ids,
         )
 
+        ##### pre-filter oligo database for certain attributes #####
+        oligo_database = self.probe_attributes_calculator.calculate_isoform_consensus(
+            oligo_database=oligo_database
+        )
+        oligo_database.filter_database_by_attribute_threshold(
+            attribute_name="isoform_consensus",
+            attribute_thr=isoform_consensus,
+            remove_if_smaller_threshold=True,
+        )
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
+
         ##### save database #####
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="1_db_probes_initial")
+            dir_database = oligo_database.save_database(dir_database="1_db_probes_initial")
         else:
-            file_database = ""
+            dir_database = ""
 
         dir = probe_sequences.dir_output
         shutil.rmtree(dir) if os.path.exists(dir) else None
 
-        return oligo_database, file_database
+        return oligo_database, dir_database
 
     @pipeline_step_basic(step_name="Property Filters")
     def filter_by_property(
@@ -147,7 +168,11 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
@@ -190,18 +215,18 @@ class ScrinshotProbeDesigner:
 
         # filter the database
         oligo_database = property_filter.apply(
-            sequence_type="oligo",
             oligo_database=oligo_database,
+            sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
+            dir_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
         else:
-            file_database = ""
+            dir_database = ""
 
-        return oligo_database, file_database
+        return oligo_database, dir_database
 
     @pipeline_step_basic(step_name="Specificity Filters")
     def filter_by_specificity(
@@ -220,7 +245,11 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
+<<<<<<< HEAD
     ):
+=======
+    ) -> Tuple[OligoDatabase, str]:
+>>>>>>> origin/pipelines
         ##### define reference database #####
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
@@ -295,9 +324,9 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
+            dir_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
         else:
-            file_database = ""
+            dir_database = ""
 
         # remove all directories of intermediate steps
         for directory in [
@@ -309,7 +338,11 @@ class ScrinshotProbeDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
+<<<<<<< HEAD
         return oligo_database, file_database
+=======
+        return oligo_database, dir_database
+>>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Set Selection")
     def create_probe_sets(
@@ -333,7 +366,7 @@ class ScrinshotProbeDesigner:
         n_sets: int,
         n_attempts: int,
         distance_between_probes: int,
-    ):
+    ) -> Tuple[OligoDatabase, str, str]:
         probes_scoring = WeightedIsoformTmGCOligoScoring(
             Tm_min=probe_Tm_min,
             Tm_opt=probe_Tm_opt,
@@ -376,13 +409,13 @@ class ScrinshotProbeDesigner:
 
         # write the intermediate result in a file
         if self.write_intermediate_steps:
-            file_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
-            file_probesets = oligo_database.write_oligosets_to_table()
+            dir_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
+            dir_probesets = oligo_database.write_oligosets_to_table()
         else:
-            file_database = ""
-            file_probesets = ""
+            dir_database = ""
+            dir_probesets = ""
 
-        return oligo_database, file_database, file_probesets
+        return oligo_database, dir_database, dir_probesets
 
     def design_final_probe_sequence(
         self,
@@ -398,10 +431,14 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
+<<<<<<< HEAD
     ):
         """ """
+=======
+    ) -> OligoDatabase:
+>>>>>>> origin/pipelines
 
-        def _get_barcode(number_regions: int, barcode_length: int, seed: int, choices: list):
+        def _get_barcode(number_regions: int, barcode_length: int, seed: int, choices: list) -> list:
 
             while len(choices) ** barcode_length < number_regions:
                 barcode_length += 1
@@ -412,49 +449,64 @@ class ScrinshotProbeDesigner:
 
             return barcodes
 
-        def _get_padlock_probe(probe_attributes: dict):
+        def _get_padlock_probe(
+            oligo_database: OligoDatabase, region_id: str, probe_id: str, barcode: str
+        ) -> dict:
 
-            ligation_site = probe_attributes["ligation_site"]
-            probe_attributes["sequence_padlock_arm1"] = probe_attributes["oligo"][ligation_site:]
-            probe_attributes["sequence_padlock_arm2"] = probe_attributes["oligo"][:ligation_site]
-
-            probe_attributes["sequence_padlock_accessory1"] = "TCCTCTATGATTACTGAC"
-            probe_attributes["sequence_padlock_ISS_anchor"] = "TGCGTCTATTTAGTGGAGCC"
-            probe_attributes["sequence_padlock_accessory2"] = "CTATCTTCTTT"
-
-            probe_attributes["sequence_padlock_backbone"] = (
-                probe_attributes["sequence_padlock_accessory1"]
-                + probe_attributes["sequence_padlock_ISS_anchor"]
-                + probe_attributes["barcode"]
-                + probe_attributes["sequence_padlock_accessory2"]
+            ligation_site = oligo_database.get_oligo_attribute_value(
+                attribute="ligation_site", region_id=region_id, oligo_id=probe_id, flatten=True
             )
-
-            probe_attributes["sequence_padlock_probe"] = (
-                probe_attributes["sequence_padlock_arm1"]
-                + probe_attributes["sequence_padlock_backbone"]
-                + probe_attributes["sequence_padlock_arm2"]
+            sequence_probe = oligo_database.get_oligo_attribute_value(
+                attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
             )
-
-            probe_attributes["Tm_arm1"] = self.probe_attributes_calculator._calc_TmNN(
-                sequence=probe_attributes["sequence_padlock_arm1"],
+            sequence_padlock_arm1 = sequence_probe[ligation_site:]
+            sequence_padlock_arm2 = sequence_probe[:ligation_site]
+            sequence_padlock_accessory1 = "TCCTCTATGATTACTGAC"
+            sequence_padlock_ISS_anchor = "TGCGTCTATTTAGTGGAGCC"
+            sequence_padlock_accessory2 = "CTATCTTCTTT"
+            sequence_padlock_backbone = (
+                sequence_padlock_accessory1
+                + sequence_padlock_ISS_anchor
+                + barcode
+                + sequence_padlock_accessory2
+            )
+            sequence_padlock_probe = sequence_padlock_arm1 + sequence_padlock_backbone + sequence_padlock_arm2
+            Tm_arm1 = self.probe_attributes_calculator._calc_TmNN(
+                sequence=sequence_padlock_arm1,
                 Tm_parameters=Tm_parameters_probe,
                 Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
                 Tm_salt_correction_parameters=Tm_salt_correction_param_probe,
             )
-            probe_attributes["Tm_arm2"] = self.probe_attributes_calculator._calc_TmNN(
-                sequence=probe_attributes["sequence_padlock_arm2"],
+            Tm_arm2 = self.probe_attributes_calculator._calc_TmNN(
+                sequence=sequence_padlock_arm2,
                 Tm_parameters=Tm_parameters_probe,
                 Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
                 Tm_salt_correction_parameters=Tm_salt_correction_param_probe,
+<<<<<<< HEAD
             )
             probe_attributes["Tm_diff_arms"] = round(
                 abs(probe_attributes["Tm_arm1"] - probe_attributes["Tm_arm2"]), 2
+=======
+>>>>>>> origin/pipelines
             )
 
-            return probe_attributes
+            new_probe_attributes_padlock_probe = {
+                "sequence_padlock_arm1": sequence_padlock_arm1,
+                "sequence_padlock_arm2": sequence_padlock_arm2,
+                "sequence_padlock_accessory1": sequence_padlock_accessory1,
+                "sequence_padlock_ISS_anchor": sequence_padlock_ISS_anchor,
+                "sequence_padlock_accessory2": sequence_padlock_accessory2,
+                "sequence_padlock_backbone": sequence_padlock_backbone,
+                "sequence_padlock_probe": sequence_padlock_probe,
+                "Tm_arm1": Tm_arm1,
+                "Tm_arm2": Tm_arm2,
+                "Tm_diff_arms": round(abs(Tm_arm1 - Tm_arm2), 2),
+            }
 
-        def _get_detection_oligo(probe_attributes: dict):
-            def get_Tm_dif(oligo):
+            return new_probe_attributes_padlock_probe
+
+        def _get_detection_oligo(oligo_database: OligoDatabase, region_id: str, probe_id: str) -> dict:
+            def get_Tm_dif(oligo: str) -> int:
                 Tm = self.probe_attributes_calculator._calc_TmNN(
                     sequence=oligo,
                     Tm_parameters=Tm_parameters_detection_oligo,
@@ -463,7 +515,7 @@ class ScrinshotProbeDesigner:
                 )
                 return abs(Tm - detect_oligo_Tm_opt)
 
-            def _find_best_oligo(oligo, cut_from_right):
+            def _find_best_oligo(oligo: str, cut_from_right: bool) -> Tuple[list, list]:
 
                 oligos = [oligo]
                 Tm_dif = [get_Tm_dif(oligo)]
@@ -481,7 +533,7 @@ class ScrinshotProbeDesigner:
 
                 return oligos, Tm_dif
 
-            def _exchange_T_with_U(oligo):
+            def _exchange_T_with_U(oligo: str) -> str:
                 if oligo.find("T") < oligo[::-1].find("T"):
                     fluorophor_pos = "left"
                 else:
@@ -510,13 +562,20 @@ class ScrinshotProbeDesigner:
 
                 return oligo
 
+            ligation_site = oligo_database.get_oligo_attribute_value(
+                attribute="ligation_site", region_id=region_id, oligo_id=probe_id, flatten=True
+            )
+            sequence_probe = oligo_database.get_oligo_attribute_value(
+                attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
+            )
+
             (
                 detect_oligo_even,
                 detect_oligo_long_left,
                 detect_oligo_long_right,
             ) = self.probe_attributes_calculator._calc_detect_oligo(
-                sequence=probe_attributes["oligo"],
-                ligation_site=probe_attributes["ligation_site"],
+                sequence=sequence_probe,
+                ligation_site=ligation_site,
                 detect_oligo_length_min=detect_oligo_length_min,
                 detect_oligo_length_max=detect_oligo_length_max,
                 min_thymines=min_thymines,
@@ -548,7 +607,7 @@ class ScrinshotProbeDesigner:
             Tm_dif = Tm_dif_cut_from_right + Tm_dif_cut_from_left
             detection_oligo = oligos[Tm_dif.index(min(Tm_dif))]
 
-            probe_attributes["Tm_detection_oligo"] = self.probe_attributes_calculator._calc_TmNN(
+            Tm_detection_oligo = self.probe_attributes_calculator._calc_TmNN(
                 sequence=detection_oligo,
                 Tm_parameters=Tm_parameters_detection_oligo,
                 Tm_chem_correction_parameters=Tm_chem_correction_param_detection_oligo,
@@ -557,28 +616,52 @@ class ScrinshotProbeDesigner:
 
             # exchange T's with U (for enzymatic degradation of oligos)
             detection_oligo = _exchange_T_with_U(detection_oligo)
-            probe_attributes["sequence_detection_oligo"] = detection_oligo
 
-            return probe_attributes
+            new_probe_attributes_detection_oligo = {
+                "Tm_detection_oligo": Tm_detection_oligo,
+                "sequence_detection_oligo": detection_oligo,
+            }
 
-        def _assemble_sequence(oligo_database, region_id, region_idx, barcodes):
-            database_region = oligo_database.database[region_id]
+            return new_probe_attributes_detection_oligo
+
+        def _assemble_sequence(
+            oligo_database: OligoDatabase, region_id: str, region_idx: int, barcodes: list
+        ) -> None:
             probesets_region = oligo_database.oligosets[region_id]
             probesets_probe_columns = [col for col in probesets_region.columns if col.startswith("oligo_")]
+
+            new_probe_attributes = {}
 
             for index in range(len(probesets_region.index)):
                 for column in probesets_probe_columns:
                     probe_id = str(probesets_region.loc[index, column])
-                    probe_attributes = database_region[probe_id]
+                    barcode = barcodes[region_idx]
 
-                    probe_attributes["barcode"] = barcodes[region_idx]
-                    probe_attributes["sequence_mRNA"] = probe_attributes["target"]
-                    probe_attributes["sequence_mRNA_probe"] = probe_attributes["oligo"]
+                    new_probe_attributes[probe_id] = {
+                        "barcode": barcode,
+                        "sequence_target": oligo_database.get_oligo_attribute_value(
+                            attribute="target", region_id=region_id, oligo_id=probe_id, flatten=True
+                        ),
+                        "sequence_target_probe": oligo_database.get_oligo_attribute_value(
+                            attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
+                        ),
+                    }
 
-                    probe_attributes = _get_padlock_probe(probe_attributes)
-                    probe_attributes = _get_detection_oligo(probe_attributes)
+                    new_probe_attributes[probe_id].update(
+                        _get_padlock_probe(
+                            oligo_database=oligo_database,
+                            region_id=region_id,
+                            probe_id=probe_id,
+                            barcode=barcode,
+                        )
+                    )
+                    new_probe_attributes[probe_id].update(
+                        _get_detection_oligo(
+                            oligo_database=oligo_database, region_id=region_id, probe_id=probe_id
+                        )
+                    )
 
-                    oligo_database.database[region_id][probe_id] = probe_attributes
+            oligo_database.update_oligo_attributes(new_probe_attributes)
 
         region_ids = list(oligo_database.database.keys())
 
@@ -600,7 +683,11 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
+<<<<<<< HEAD
     ):
+=======
+    ) -> OligoDatabase:
+>>>>>>> origin/pipelines
         oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
             oligo_database=oligo_database
         )
@@ -623,9 +710,21 @@ class ScrinshotProbeDesigner:
 
         return oligo_database
 
+<<<<<<< HEAD
     def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int):
+=======
+    def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int) -> None:
+>>>>>>> origin/pipelines
 
         attributes = [
+            "source",
+            "species",
+            "annotation_release",
+            "genome_assembly",
+            "regiontype",
+            "gene_id",
+            "transcript_id",
+            "exon_number",
             "chromosome",
             "start",
             "end",
@@ -638,22 +737,15 @@ class ScrinshotProbeDesigner:
             "barcode",
             "sequence_padlock_accessory2",
             "sequence_padlock_arm2",
-            "sequence_mRNA",
-            "sequence_mRNA_probe",
+            "sequence_target",
+            "sequence_target_probe",
             "length",
             "ligation_site",
             "Tm_arm1",
             "Tm_arm2",
             "Tm_diff_arms",
             "Tm_detection_oligo",
-            "source",
-            "species",
-            "annotation_release",
-            "genome_assembly",
-            "regiontype",
-            "gene_id",
-            "transcript_id",
-            "exon_number",
+            "isoform_consensus",
         ]
         oligo_database.write_oligosets_to_yaml(
             attributes=attributes,
@@ -665,7 +757,7 @@ class ScrinshotProbeDesigner:
         # write a second file that only contains order information
         yaml_dict_order = {}
 
-        for region_id, database_region in oligo_database.database.items():
+        for region_id in oligo_database.database.keys():
             yaml_dict_order[region_id] = {}
             oligosets_region = oligo_database.oligosets[region_id]
             oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
@@ -681,8 +773,18 @@ class ScrinshotProbeDesigner:
                 yaml_dict_order[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
                     yaml_dict_order[region_id][oligoset_id][oligo_id] = {
-                        "sequence_padlock_probe": database_region[oligo_id]["sequence_padlock_probe"],
-                        "sequence_detection_oligo": database_region[oligo_id]["sequence_detection_oligo"],
+                        "sequence_padlock_probe": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_padlock_probe",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_detection_oligo": oligo_database.get_oligo_attribute_value(
+                            attribute="sequence_detection_oligo",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
                     }
 
         with open(os.path.join(self.dir_output, "padlock_probes_order.yml"), "w") as outfile:
@@ -695,6 +797,7 @@ class ScrinshotProbeDesigner:
 
 
 def main():
+    print("--------------START PIPELINE--------------")
 
     args = base_parser()
 
@@ -744,6 +847,10 @@ def main():
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
         min_probes_per_gene=config["probeset_size_min"],
+<<<<<<< HEAD
+=======
+        isoform_consensus=config["probe_isoform_consensus"],
+>>>>>>> origin/pipelines
     )
 
     ##### filter probes by property #####
@@ -836,6 +943,8 @@ def main():
 
     logging.info(f"Oligo sets were saved in {dir_probesets}")
     logging.info("##### End of the pipeline. #####")
+
+    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":
