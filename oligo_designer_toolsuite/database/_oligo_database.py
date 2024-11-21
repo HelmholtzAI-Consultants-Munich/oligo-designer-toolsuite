@@ -26,10 +26,7 @@ from oligo_designer_toolsuite.utils import (
     collapse_attributes_for_duplicated_sequences,
     format_oligo_attributes,
     merge_databases,
-<<<<<<< HEAD
-=======
     flatten_attribute_list,
->>>>>>> origin/pipelines
 )
 
 CustomYamlDumper.add_representer(list, CustomYamlDumper.represent_list)
@@ -41,42 +38,6 @@ CustomYamlDumper.add_representer(dict, CustomYamlDumper.represent_dict)
 
 
 class OligoDatabase:
-<<<<<<< HEAD
-    """Class for managing the oligo databases. This class provides functionality for handling oligo databases,
-    allowing users to load, manipulate, and save oligo information efficiently. It includes methods for
-    loading and managing oligo databases from various sources (e.g. fasta file or saved database),
-    and performing operations such as removing regions with insufficient oligos and calculating the number of targeted
-    transcripts for each oligo.
-
-    The header of each sequence must start with '>' and contain the following information:
-    region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
-    where the region_id is compulsory and the other fileds are opional.
-
-    Input Format (per sequence):
-    >region_id::additional information::chromosome:start-end(strand)
-    sequence
-
-    Example:
-    >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
-    AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
-
-    Moreover, the database can be saved and loaded to/from a tsv file.
-
-    :param min_oligos_per_region: Minimum number of oligos required per region (default is 0).
-    :type min_oligos_per_region: int, optional
-    :param write_regions_with_insufficient_oligos: Flag to enable writing regions with insufficient oligos to a file (default is True).
-    :type write_regions_with_insufficient_oligos: bool, optional
-    :param lru_db_max_in_memory: Maximum number of dictionary entries stored in RAM, defaults to 1.
-    :type lru_db_max_in_memory: int, optional
-    :param database_name: Subdirectory path for the output, i.e. <dir_output>/<database_name>, defaults to "db_oligo".
-    :type database_name: str, optional
-    :param dir_output: Directory path for the output, defaults to "output".
-    :type dir_output: str, optional
-    :param n_jobs: The number of parallel jobs to run. Default is 1.
-    :type n_jobs: int
-    """
-=======
->>>>>>> origin/pipelines
 
     def __init__(
         self,
@@ -126,84 +87,6 @@ class OligoDatabase:
     # Load Functions
     ############################################
 
-<<<<<<< HEAD
-    def load_database(
-        self,
-        dir_database: str,
-        region_ids: Union[str, List[str]] = None,
-        database_overwrite: bool = False,
-    ) -> None:
-        """Load a previously saved oligo database from a folder containing pickled files.
-
-        This function loads the oligo database from a folder containing pickled files. Each file in the folder
-        represents a region in the database. The file must contain a dictionary with oligo IDs as keys and
-        oligo sequences and additional metadata as values.
-
-        The database can be optionally filtered by specifying a list of region IDs.
-
-        :param dir_database: Path to the folder containing pickled files of the oligo database.
-        :type dir_database: str
-        :param region_ids: List of region IDs to filter the database. Defaults to None (all regions are loaded).
-        :type region_ids: Union[str, List[str]], optional
-        :param database_overwrite: If True, overwrite the existing database. Defaults to False.
-        :type database_overwrite: bool, optional
-
-        :raises ValueError: If the database file has an incorrect format or does not exist.
-        """
-
-        def load(file):
-            # extract region ID from the file name and remove the extension
-            region_id = os.path.basename(file).split(".")[0]
-            with open(file, "rb") as handle:
-                content = pickle.load(handle)
-                database_region = content["database_region"]
-                oligoset_region = content["oligoset_region"]
-
-            # only merge if there are common keys
-            if region_id in self.database.keys():
-                self.database = merge_databases(
-                    database1=self.database,
-                    database2={region_id: database_region},
-                    dir_cache_files=self._dir_cache_files,
-                    lru_db_max_in_memory=self.lru_db_max_in_memory,
-                )
-                self.oligosets[region_id] = pd.concat([self.oligosets[region_id], oligoset_region])
-            else:
-                self.database[region_id] = database_region
-                self.oligosets[region_id] = oligoset_region
-
-        region_ids = check_if_list(region_ids)
-
-        if not os.path.isdir(dir_database):
-            raise ValueError("Database directory does not exist!")
-
-        if database_overwrite:
-            self.database = LRUPickleDict(
-                max_in_memory=self.lru_db_max_in_memory,
-                storage_path=self._dir_cache_files,
-            )
-
-        # retrieve all files in the directory
-        path = os.path.abspath(dir_database)
-        files_database = [entry.path for entry in os.scandir(path) if entry.is_file()]
-
-        # Load files parallel into database
-        with joblib_progress(description=f"Database Loading", total=len(files_database)):
-            Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
-                delayed(load)(file_database) for file_database in files_database
-            )
-
-        # add this step to log regions which are not available in database
-        if region_ids:
-            check_if_region_in_database(
-                database=self.database,
-                region_ids=region_ids,
-                write_regions_with_insufficient_oligos=self.write_regions_with_insufficient_oligos,
-                file_removed_regions=self.file_removed_regions,
-            )
-
-=======
->>>>>>> origin/pipelines
     def load_database_from_fasta(
         self,
         files_fasta: Union[str, List[str]],
@@ -626,30 +509,14 @@ class OligoDatabase:
     # Getter Functions
     ############################################
 
-<<<<<<< HEAD
-    def get_oligoid_list(self):
-        """Retrieve a list of all oligo IDs in the database.
-
-        This function iterates over the database regions and collects all oligo IDs into a single list.
-
-        :return: A list containing all oligo IDs in the database.
-        :rtype: list[str]
-        """
-=======
     def get_oligoid_list(self) -> list[str]:
->>>>>>> origin/pipelines
         oligo_ids = [
             oligo_id for database_region in self.database.values() for oligo_id in database_region.keys()
         ]
 
         return oligo_ids
 
-<<<<<<< HEAD
-    def get_sequence_list(self, sequence_type: _TYPES_SEQ = "oligo"):
-        """Retrieve a list of sequences of the specified type (e.g., 'oligo' or 'target') from the oligo database.
-=======
     def get_sequence_list(self, sequence_type: _TYPES_SEQ) -> list[str]:
->>>>>>> origin/pipelines
 
         options = get_args(_TYPES_SEQ)
         assert (
@@ -664,25 +531,8 @@ class OligoDatabase:
         return sequences
 
     def get_oligoid_sequence_mapping(
-<<<<<<< HEAD
-        self, sequence_type: _TYPES_SEQ = "oligo", sequence_to_upper: bool = False
-    ):
-        """Generate a mapping between oligonucleotide IDs and their corresponding sequences, with an option to convert sequences to uppercase.
-
-        Validates the sequence type against predefined options. If `sequence_to_upper` is True, converts all sequences to uppercase before mapping,
-        ensuring case-insensitive comparisons.
-
-        :param sequence_type: The type of sequence to use for the mapping, defaulting to "oligo".
-        :type sequence_type: _TYPES_SEQ
-        :param sequence_to_upper: Flag indicating whether to convert sequences to uppercase.
-        :type sequence_to_upper: bool
-        :return: A dictionary mapping oligonucleotide IDs to corresponding sequences.
-        :rtype: dict
-        """
-=======
         self, sequence_type: _TYPES_SEQ, sequence_to_upper: bool = False
     ) -> dict:
->>>>>>> origin/pipelines
         options = get_args(_TYPES_SEQ)
         assert (
             sequence_type in options
@@ -813,21 +663,23 @@ class OligoDatabase:
     def filter_database_by_attribute_threshold(
         self, attribute_name: str, attribute_thr: float, remove_if_smaller_threshold: bool
     ) -> None:
-        oligos_to_delete = []
+        oligos_to_delete = [] 
         for region_id in self.database.keys():
-            for oligo_id in self.database[region_id].keys():
+            for oligo_id in self.database[region_id].keys(): 
                 attribute_values = check_if_list(
                     self.get_oligo_attribute_value(
                         attribute=attribute_name, region_id=region_id, oligo_id=oligo_id, flatten=True
                     )
                 )
                 if attribute_values:
-                    if remove_if_smaller_threshold and any(item < attribute_thr for item in attribute_values):
-                        del self.database[region_id][oligo_id]
-                    elif not remove_if_smaller_threshold and all(
-                        item > attribute_thr for item in attribute_values
+                    if (remove_if_smaller_threshold and any(item < attribute_thr for item in attribute_values)) or (
+                        not remove_if_smaller_threshold and all(item > attribute_thr for item in attribute_values)
                     ):
-                        del self.database[region_id][oligo_id]
+                        oligos_to_delete.append((region_id, oligo_id))  
+        
+        for region_id, oligo_id in oligos_to_delete:
+            del self.database[region_id][oligo_id]
+
 
     def filter_database_by_attribute_category(
         self, attribute_name: str, attribute_category: Union[str, List[str]], remove_if_equals_category: bool

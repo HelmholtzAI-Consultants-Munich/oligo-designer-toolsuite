@@ -40,11 +40,6 @@ from ._checkers_and_helpers import (
 from ._database_processor import (
     check_if_region_in_database,
     collapse_attributes_for_duplicated_sequences,
-<<<<<<< HEAD
-    filter_dabase_for_region,
-    flatten_attribute_list,
-=======
->>>>>>> origin/pipelines
     format_oligo_attributes,
     merge_databases,
     flatten_attribute_list,

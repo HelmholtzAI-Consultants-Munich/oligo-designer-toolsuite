@@ -11,21 +11,14 @@ write_intermediate_steps: true # if true, writes the oligo sequences after each 
 ### Parameters for probe sequences generation
 ### -----------------------------------------------
 ## target probe sequence
-file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the probe sequences, leave empty if all the genes are used
+file_regions: data/genes/custom_10.txt # file with a list the genes used to generate the probe sequences, leave empty if all the genes are used
 #TODO: adapt files
 files_fasta_probe_database: # fasta file with sequences form which the probes should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-<<<<<<< HEAD
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-probe_length_min: 28 #min length of probe
-probe_length_max: 28 #max length of probe
-=======
   - data/genomic_regions/cds_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/utr_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 probe_length_min: 28 #min length of probe
 probe_length_max: 28 #max length of probe
 probe_isoform_consensus: 100 #min isoform consesnsus for probes, i.e. how many transcripts of the total number of transcripts of a gene are covered by the probe, given in %
->>>>>>> origin/pipelines
 ## readout probe sequence
 readout_probe_length: 15 # length of readout probes
 readout_probe_base_probabilities: # probabilities of each base for random readout probe sequence generation
@@ -40,11 +33,7 @@ forward_primer_base_probabilities: # probabilities of each base for random prime
   C: 0.25
   G: 0.25
   T: 0.25
-<<<<<<< HEAD
-reverse_primer_sequence: CCCTATAGTGAGTCGTATTA # reverse complement of 20 nt T7 promoter sequence
-=======
 reverse_primer_sequence: CCCTATAGTGAGTCGTATTA # defaults to reverse complement of 20 nt T7 promoter sequence, change if different sequence desired
->>>>>>> origin/pipelines
 
 ### Parameters for the sequence property filers
 ### -----------------------------------------------
@@ -110,11 +99,7 @@ n_sets: 100 # maximum number of sets to generate
 ### -----------------------------------------------
 channels_ids: # names of fluorescent channels
   - Alexa488
-<<<<<<< HEAD
-  - Cy3b
-=======
   - Cy3b 
->>>>>>> origin/pipelines
   - Alexa647
 n_barcode_rounds: 4 # number of barcoding rounds
 n_pseudocolors: 20 # number of pseudocolors
@@ -207,6 +192,8 @@ forward_primer_specificity_encoding_probes_blastn_hit_parameters:
 ### Parameters for the Oligo set selection
 ### -----------------------------------------------
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
+pre_filtering: true # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for oligo sets with more than 10 oligos.
+n_attempts: 10000 # number of attempts to find the optimal set of oligos
 
 ### Parameters for Melting Temperature
 ### -----------------------------------------------
@@ -234,8 +221,4 @@ Tm_parameters_primer:
 
 Tm_chem_correction_param_primer: null # if chem correction desired, please add parameters below
 
-<<<<<<< HEAD
 Tm_salt_correction_param_primer: null # if salt correction desired, please add parameters below
-=======
-Tm_salt_correction_param_primer: null # if salt correction desired, please add parameters below
->>>>>>> origin/pipelines

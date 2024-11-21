@@ -55,76 +55,20 @@ class GCOligoScoring(OligoScoringBase):
         GC_content_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
         return abs(self.GC_content_opt - GC_content_oligo)
 
-<<<<<<< HEAD
-        :param oligo_attributes: A dictionary containing attributes of the oligo.
-        :type oligo_attributes: dict
-        :param sequence_type: The type of sequence (e.g., 'oligo', 'target').
-        :type sequence_type: _TYPES_SEQ
-        :return: The calculated score based on Tm and GC content.
-        :rtype: float
-        """
-        sequence = oligo_attributes[sequence_type]
-        GC_content_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
-        return abs(self.GC_content_opt - GC_content_oligo)
-
 
 class WeightedGCUtrScoring(OligoScoringBase):
-    """Scoring class that evaluates oligos based on their GC content and whether they originate from untranslated regions (UTRs).
-
-    This class assigns scores to oligos by considering their GC content and whether they are part of the 3' or 5' UTRs.
-    The score is computed as a weighted sum of the difference from optimal GC content and the presence in UTR regions, with different weights assigned to each factor.
-
-    $score = w_{GC} * |GC_{opt} - GC_{oligo}| + w_{UTR} * I_{UTR}$.
-
-    :param GC_content_opt: Optimal percentage of guanine and cytosine.
-    :type GC_content_opt: float
-    :param GC_weight: Weight for the GC content component in the scoring, defaults to 1.
-    :type GC_weight: float
-    :param UTR_weight: Weight for the UTR component in the scoring, defaults to 10.
-    :type UTR_weight: float
-    """
-=======
-
-class WeightedGCUtrScoring(OligoScoringBase):
->>>>>>> origin/pipelines
 
     def __init__(
         self,
         GC_content_opt: float,
         GC_weight: float = 1,
         UTR_weight: float = 10,
-<<<<<<< HEAD
-    ):
-=======
     ) -> None:
->>>>>>> origin/pipelines
         """Constructor for the WeightedGCUtrScoring class."""
         self.GC_content_opt = GC_content_opt
         self.GC_weight = GC_weight
         self.UTR_weight = UTR_weight
 
-<<<<<<< HEAD
-    def get_score(self, oligo_attributes: dict, sequence_type: _TYPES_SEQ):
-        """Calculates the GC content score for a given oligonucleotide sequence based
-        on its deviation from the optimal GC content and whether it originates from the UTR.
-        Score: the lower the better.
-
-        :param oligo_attributes: Dictionary containing attributes of the oligo.
-        :type oligo_attributes: dict
-        :param sequence_type: The type of sequence being scored.
-        :type sequence_type: _TYPES_SEQ
-        :return: Calculated score for the oligo.
-        :rtype: float
-        """
-        sequence = oligo_attributes[sequence_type]
-        GC_content_oligo = OligoAttributes._calc_GC_content(sequence=sequence)
-
-        if "regiontype" in oligo_attributes:
-            flattened_regiontype = flatten_attribute_list(oligo_attributes["regiontype"])
-            sequence_originates_from_UTR = (
-                "three_prime_UTR" in flattened_regiontype or "five_prime_UTR" in flattened_regiontype
-            )
-=======
     def get_score(
         self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
     ) -> float:
@@ -139,7 +83,6 @@ class WeightedGCUtrScoring(OligoScoringBase):
         )
         if regiontype:
             sequence_originates_from_UTR = "three_prime_UTR" in regiontype or "five_prime_UTR" in regiontype
->>>>>>> origin/pipelines
         else:
             sequence_originates_from_UTR = False
 

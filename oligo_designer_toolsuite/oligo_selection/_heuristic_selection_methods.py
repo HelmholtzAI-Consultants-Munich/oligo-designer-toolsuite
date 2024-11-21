@@ -68,7 +68,7 @@ class OligoSelectionPolicy:
 
         # not clean but it works
         score_names = list(self.set_scoring.apply(pd.Series([], dtype=object), 0)[1].keys())
-
+        
         return self._format_as_df(oligosets, score_names)
 
     def _format_as_df(self, oligosets: list, score_names: list) -> pd.DataFrame:
@@ -274,7 +274,7 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
 
         if not clique_init:
             # if no clique with min_oligoset_size was found we don't need to compute the sets
-            return None
+            return []
 
         n = min(n, len(clique_init))
         oligoset_init, oligoset_init_scores = self.set_scoring.apply(oligos_scores.loc[clique_init], n)
@@ -312,7 +312,6 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
 
         # Initialize oligoset results table
         oligosets = [list(oligoset_init) + list(oligoset_init_scores.values())]
-
         # Note: Search could be further optimised by iteratively throwing out oligos with worse scores then current best set
         for count, clique in enumerate(cliques):
             # Limit the number of combinations we iterate through

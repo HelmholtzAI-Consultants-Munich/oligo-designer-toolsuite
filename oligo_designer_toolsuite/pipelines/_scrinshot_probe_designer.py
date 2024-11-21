@@ -10,11 +10,7 @@ import shutil
 import warnings
 from datetime import datetime
 from pathlib import Path
-<<<<<<< HEAD
-from typing import List
-=======
 from typing import List, Tuple
->>>>>>> origin/pipelines
 
 import yaml
 from Bio.SeqUtils import MeltingTemp as mt
@@ -96,12 +92,8 @@ class ScrinshotProbeDesigner:
         probe_length_max: int,
         files_fasta_oligo_database: list[str],
         min_probes_per_gene: int,
-<<<<<<< HEAD
-    ):
-=======
         isoform_consensus: float,
     ) -> Tuple[OligoDatabase, str]:
->>>>>>> origin/pipelines
         ##### creating the probe sequences #####
         probe_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         probe_fasta_file = probe_sequences.create_sequences_sliding_window(
@@ -168,11 +160,7 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
-<<<<<<< HEAD
-    ):
-=======
     ) -> Tuple[OligoDatabase, str]:
->>>>>>> origin/pipelines
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
@@ -245,11 +233,7 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
-<<<<<<< HEAD
-    ):
-=======
     ) -> Tuple[OligoDatabase, str]:
->>>>>>> origin/pipelines
         ##### define reference database #####
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
@@ -338,11 +322,7 @@ class ScrinshotProbeDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
-<<<<<<< HEAD
-        return oligo_database, file_database
-=======
         return oligo_database, dir_database
->>>>>>> origin/pipelines
 
     @pipeline_step_basic(step_name="Set Selection")
     def create_probe_sets(
@@ -365,6 +345,7 @@ class ScrinshotProbeDesigner:
         max_graph_size: int,
         n_sets: int,
         n_attempts: int,
+        pre_filter: bool,
         distance_between_probes: int,
     ) -> Tuple[OligoDatabase, str, str]:
         probes_scoring = WeightedIsoformTmGCOligoScoring(
@@ -402,7 +383,7 @@ class ScrinshotProbeDesigner:
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            pre_filter=False,
+            pre_filter=pre_filter,
             n_attempts=n_attempts,
             n_jobs=self.n_jobs,
         )
@@ -431,12 +412,7 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
-<<<<<<< HEAD
-    ):
-        """ """
-=======
     ) -> OligoDatabase:
->>>>>>> origin/pipelines
 
         def _get_barcode(number_regions: int, barcode_length: int, seed: int, choices: list) -> list:
 
@@ -482,12 +458,6 @@ class ScrinshotProbeDesigner:
                 Tm_parameters=Tm_parameters_probe,
                 Tm_chem_correction_parameters=Tm_chem_correction_param_probe,
                 Tm_salt_correction_parameters=Tm_salt_correction_param_probe,
-<<<<<<< HEAD
-            )
-            probe_attributes["Tm_diff_arms"] = round(
-                abs(probe_attributes["Tm_arm1"] - probe_attributes["Tm_arm2"]), 2
-=======
->>>>>>> origin/pipelines
             )
 
             new_probe_attributes_padlock_probe = {
@@ -683,11 +653,7 @@ class ScrinshotProbeDesigner:
         Tm_parameters_probe: dict,
         Tm_chem_correction_param_probe: dict,
         Tm_salt_correction_param_probe: dict,
-<<<<<<< HEAD
-    ):
-=======
     ) -> OligoDatabase:
->>>>>>> origin/pipelines
         oligo_database = self.probe_attributes_calculator.calculate_oligo_length(
             oligo_database=oligo_database
         )
@@ -710,11 +676,7 @@ class ScrinshotProbeDesigner:
 
         return oligo_database
 
-<<<<<<< HEAD
-    def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int):
-=======
     def generate_output(self, oligo_database: OligoDatabase, top_n_sets: int) -> None:
->>>>>>> origin/pipelines
 
         attributes = [
             "source",
@@ -847,10 +809,7 @@ def main():
         files_fasta_oligo_database=config["files_fasta_probe_database"],
         # we should have at least "min_probeset_size" probes per gene to create one set
         min_probes_per_gene=config["probeset_size_min"],
-<<<<<<< HEAD
-=======
         isoform_consensus=config["probe_isoform_consensus"],
->>>>>>> origin/pipelines
     )
 
     ##### filter probes by property #####
@@ -911,6 +870,7 @@ def main():
         max_graph_size=config["max_graph_size"],
         n_sets=config["n_sets"],
         n_attempts=config["n_attempts"],
+        pre_filter=config["pre_filtering"], 
         distance_between_probes=config["distance_between_probes"],
     )
 

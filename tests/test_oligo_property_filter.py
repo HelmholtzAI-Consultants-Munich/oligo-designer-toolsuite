@@ -12,10 +12,7 @@ from Bio.SeqUtils import MeltingTemp as mt
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
     ComplementFilter,
-<<<<<<< HEAD
-=======
     DetectionOligoFilter,
->>>>>>> origin/pipelines
     FivePrimeSequenceFilter,
     GCClampFilter,
     GCContentFilter,
@@ -255,15 +252,10 @@ class TestSequenceStructureFilters(unittest.TestCase):
             Tm_salt_correction_parameters=TM_PARAMETERS_SALT_CORRECTION,
         )
         self.secondary_structure_filter = SecondaryStructureFilter(T=37, thr_DG=0)
-<<<<<<< HEAD
-        self.self_comp_filter = SelfComplementFilter(max_len_selfcomp=6)
-        self.complement_filter = ComplementFilter(max_len_complement=6)
-=======
         self.self_comp_filter = SelfComplementFilter(max_len_selfcomplement=6)
         self.complement_filter = ComplementFilter(
             comparison_sequence=Seq("ATTGTTATATATAACAAT"), max_len_complement=6
         )
->>>>>>> origin/pipelines
 
     def test_Tm_filter_default(self):
         seq_remove = Seq("TGGCTTGGGCCTTTCCAAGCCCCCATTTGAGCT")
@@ -317,16 +309,6 @@ class TestSequenceStructureFilters(unittest.TestCase):
 
     def test_complement_filter(self):
         seq_remove = Seq("TAACAATATATATTGTTA")
-<<<<<<< HEAD
-        seq_complement = seq_remove.complement()
-        res = self.complement_filter.apply(seq_remove, seq_complement)
-        assert (
-            res == False
-        ), f"error: A sequence ({seq_remove}) not fulfilling the condition with ({seq_complement}) has been accepted!"
-
-        seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
-        res = self.complement_filter.apply(seq_keep, seq_complement)
-=======
         res = self.complement_filter.apply(seq_remove)
         assert (
             res == False
@@ -334,7 +316,6 @@ class TestSequenceStructureFilters(unittest.TestCase):
 
         seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
         res = self.complement_filter.apply(seq_keep)
->>>>>>> origin/pipelines
         assert res == True, f"error: A sequence ({seq_keep}) fulfilling the conditions has not been accepted!"
 
 

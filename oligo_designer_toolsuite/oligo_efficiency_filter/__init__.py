@@ -13,14 +13,10 @@ Classes:
 """
 
 from ._oligo_scoring import (
-    GCOligoScoring,
-<<<<<<< HEAD
     OligoScoringBase,
-    WeightedGCUtrScoring,
-=======
+    GCOligoScoring,
     WeightedGCUtrScoring,
     WeightedTmGCOligoScoring,
->>>>>>> origin/pipelines
     WeightedIsoformTmGCOligoScoring,
     WeightedTmGCOligoScoring,
 )

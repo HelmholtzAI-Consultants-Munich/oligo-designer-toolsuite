@@ -11,11 +11,7 @@ from typing import Dict, List, Tuple
 import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
-<<<<<<< HEAD
-from scipy.sparse import lil_matrix
-=======
 from scipy.sparse import csr_matrix, lil_matrix
->>>>>>> origin/pipelines
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -136,13 +132,8 @@ class OligosetGeneratorIndependentSet:
         :type region_id: str
         :param sequence_type: The type of sequences being used, must match one of the predefined sequence types.
         :type sequence_type: _TYPES_SEQ
-<<<<<<< HEAD
         :param n_attempts: Number of attempts to generate oligo sets.
         :type n_attempts: int
-=======
-        :param n_sets: The number of oligo sets to attempt to generate for the region.
-        :type n_sets: int
->>>>>>> origin/pipelines
         :return: None
         :rtype: None
         """

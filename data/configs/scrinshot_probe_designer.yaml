@@ -165,8 +165,4 @@ Tm_chem_correction_param_detection_oligo:
     fmdmethod: 1 #default
     GC: null #default
 
-<<<<<<< HEAD
 Tm_salt_correction_param_detection_oligo: null # if salt correction desired, please add parameters below
-=======
-Tm_salt_correction_param_detection_oligo: null # if salt correction desired, please add parameters below
->>>>>>> origin/pipelines

@@ -49,16 +49,6 @@ class PropertyFilter:
         self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ
     ) -> None:
 
-<<<<<<< HEAD
-        :param sequence_type: The type of sequences being filtered, must be one of the predefined sequence types.
-        :type sequence_type: _TYPES_SEQ
-        :param database_region: A region from the oligo database.
-        :type database_region: dict
-        :return: None
-        :rtype: None
-        """
-=======
->>>>>>> origin/pipelines
         oligo_ids = list(oligo_database.database[region_id].keys())
         for oligo_id in oligo_ids:
             fulfills_all_filter = self._filter_sequence(

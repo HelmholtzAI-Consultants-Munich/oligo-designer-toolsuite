@@ -21,25 +21,11 @@ from ._policies import FilterPolicyBase, RemoveAllPolicy
 
 
 class ExactMatchFilter(SpecificityFilterBase):
-<<<<<<< HEAD
-    """A filter that identifies and removes oligonucleotides with exact match sequences within the database,
-    to prevent potential off-target effects. It leverages parallel processing to efficiently analyze large oligo databases.
-
-    :param policy: The filter policy to apply for minimizing cross-hybridization.
-        If no policy is provided (i.e. policy = None) the RemoveAllPolicy() is applied. Defaults to None.
-    """
-
-=======
->>>>>>> origin/pipelines
     def __init__(
         self,
         policy: FilterPolicyBase = None,
         filter_name: str = "exact_match_filter",
-<<<<<<< HEAD
-    ):
-=======
     ) -> None:
->>>>>>> origin/pipelines
         """Constructor for the ExactMatches class."""
         if not policy:
             policy = RemoveAllPolicy()
