@@ -55,7 +55,7 @@ class OligosetGeneratorIndependentSet:
         set_scoring: SetScoringBase,
         heuristic_selection: OligoSelectionPolicy,
         distance_between_oligos: int = 0,
-        max_oligos: int = 5000,
+        max_oligos: int = None,
     ) -> None:
         """Constructor for the OligosetGenerator class."""
 
