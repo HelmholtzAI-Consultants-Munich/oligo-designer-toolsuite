@@ -146,10 +146,10 @@ class TestSetScoring(unittest.TestCase):
 
     def test_max_sum(self):
         oligoset = self.score_max_sum.apply(self.oligo_set, self.n_oligo_set)
-        assert oligoset[0] == [0, 1, 4, 7, 3], "Max scoring failed"
-        assert oligoset[1] == {"set_score_lowest": 5, "set_score_sum": 11}, "Max scoring failed"
+        assert oligoset[0] == [0, 1, 4, 7, 3], "Max scoring failed case"
+        assert oligoset[1] == {"set_score_worst": 5, "set_score_sum": 11}, "Max scoring failed"
 
     def test_ave_max(self):
         oligoset = self.score_ave_max.apply(self.oligo_set, self.n_oligo_set)
         assert oligoset[0] == [0, 1, 4, 7, 3], "Average scoring failed"
-        assert oligoset[1] == {"set_score_average": 2.2, "set_score_lowest": 5}, "Average scoring failed"
+        assert oligoset[1] == {"set_score_average": 2.2, "set_score_worst": 5}, "Average scoring failed"

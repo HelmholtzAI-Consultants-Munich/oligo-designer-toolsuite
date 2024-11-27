@@ -1,0 +1,107 @@
+#######################
+### BASIC PARAMETERS ###
+#######################
+
+### General parameters
+n_jobs: 4 # number of cores used to run the pipeline
+oligo_db_max_in_memory: 10 # maximum number of regions stored in memory (each region contains its oligos) the rest is offloaded to the disk
+dir_output: output_merfish_probe_designer # name of the directory where the output files will be written
+write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
+readout_probe_designer: merfish_subconfigs/readout_probe_designer.yaml # path to the readout probe designer config file, relative to the location of this file
+primer_designer: merfish_subconfigs/primer_designer.yaml # path to the primer designer config file, relative to the location of this file
+
+### Parameters for sequences generation
+file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+files_fasta_probe_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+probe_length: 30 # length of oligos
+
+### Parameters for the property filers, i.e. properties that the sequences should fulfill
+# Probe sequence
+probe_GC_content_min: 43 # minimum GC content of oligos
+probe_GC_content_max: 63 # maximum GC content of oligos
+probe_Tm_min: 66 # minimum melting temperature of oligos
+probe_Tm_max: 76 # maximum melting temperature of oligos
+probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
+  A: 5
+  T: 5
+  C: 5
+  G: 5
+probe_T_secondary_structure: 76 # Temperature at which the free energy is calculated
+probe_thr_deltaG_secondary_structure: 0 # threshold for the secondary structure free energy
+
+
+### Parameters for the specificity filters
+probe_files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+
+### Parameters for the Oligo set selection
+probe_isoform_weight: 2 # weight of the isoform consensus of the probe in the efficiency score
+probe_GC_content_opt: 55 # max and min values are defiend above
+probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
+probe_Tm_opt: 72 # max and min values are defiend above
+probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
+
+probeset_size: 50 # size of probe sets
+distance_between_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
+n_sets: 100 # maximum number of sets to generate
+top_n_sets: 3 #maximum number of sets to report in "merfish_probes_order.yaml"
+
+############################
+### ADVANCED PARAMETERS ###
+############################
+
+### Parameters for the specificity filters
+# Specificity filter with BlastN
+specificity_blastn_search_parameters:
+  perc_identity: 80
+  strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
+  word_size: 7
+  dust: "no"
+  soft_masking: "false"
+  max_target_seqs: 10
+  max_hsps: 1000
+specificity_blastn_hit_parameters:
+  coverage: 55 # can be turned into min_alignment_length
+  # min_alignment_length: 17
+
+# Crosshybridization filter with BlastN
+cross_hybridization_blastn_search_parameters:
+  perc_identity: 80
+  strand: "minus" # this parameter is fixed
+  word_size: 7
+  dust: "no"
+  soft_masking: "false"
+  max_target_seqs: 10
+cross_hybridization_blastn_hit_parameters:
+  coverage: 55 # can be turned into min_alignment_length
+
+
+### Parameters for the Oligo set selection
+max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
+
+
+### Parameters for Melting Temperature
+# TODO
+# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+probe_Tm_parameters:
+    check: true #default
+    strict: true #default
+    c_seq: null #default
+    shift: 0 #default
+    nn_table: DNA_NN4 # Moffitt (2016)
+    tmm_table: DNA_TMM1 #default
+    imm_table: DNA_IMM1 #default
+    de_table: DNA_DE1 #default
+    dnac1: 5 #[nM] Moffitt (2016)
+    dnac2: 0 #[nM]
+    selfcomp: false #default
+    saltcorr: 5 # Correction for deltaS, taken from repo
+    Na: 300 #[mM], 0.3M, taken from Moffitt (2016)
+    # K: 75 #[mM]
+    # Tris: 20 #[mM]
+    # Mg: 10 #[mM]
+    dNTPs: 0 #[mM] default

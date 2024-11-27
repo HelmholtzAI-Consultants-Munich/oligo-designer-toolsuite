@@ -21,7 +21,6 @@ from oligo_designer_toolsuite.utils import (
     FastaParser,
     CustomYamlDumper,
     check_if_list,
-    check_tsv_format,
     check_if_region_in_database,
     check_tsv_format,
     collapse_attributes_for_duplicated_sequences,
@@ -664,21 +663,23 @@ class OligoDatabase:
     def filter_database_by_attribute_threshold(
         self, attribute_name: str, attribute_thr: float, remove_if_smaller_threshold: bool
     ) -> None:
-        oligos_to_delete = []
+        oligos_to_delete = [] 
         for region_id in self.database.keys():
-            for oligo_id in self.database[region_id].keys():
+            for oligo_id in self.database[region_id].keys(): 
                 attribute_values = check_if_list(
                     self.get_oligo_attribute_value(
                         attribute=attribute_name, region_id=region_id, oligo_id=oligo_id, flatten=True
                     )
                 )
                 if attribute_values:
-                    if remove_if_smaller_threshold and any(item < attribute_thr for item in attribute_values):
-                        del self.database[region_id][oligo_id]
-                    elif not remove_if_smaller_threshold and all(
-                        item > attribute_thr for item in attribute_values
+                    if (remove_if_smaller_threshold and any(item < attribute_thr for item in attribute_values)) or (
+                        not remove_if_smaller_threshold and all(item > attribute_thr for item in attribute_values)
                     ):
-                        del self.database[region_id][oligo_id]
+                        oligos_to_delete.append((region_id, oligo_id))  
+        
+        for region_id, oligo_id in oligos_to_delete:
+            del self.database[region_id][oligo_id]
+
 
     def filter_database_by_attribute_category(
         self, attribute_name: str, attribute_category: Union[str, List[str]], remove_if_equals_category: bool
