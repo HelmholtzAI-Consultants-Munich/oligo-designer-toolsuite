@@ -2,9 +2,11 @@
 # imports
 ############################################
 
+import os
+import sys
 import inspect
 import logging
-import sys
+
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 ############################################
