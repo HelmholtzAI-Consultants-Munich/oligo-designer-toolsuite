@@ -9,7 +9,6 @@ import pandas as pd
 from typing import Tuple
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
-from oligo_designer_toolsuite.utils import flatten_attribute_list
 
 ############################################
 # Oligo Scoring Classes
