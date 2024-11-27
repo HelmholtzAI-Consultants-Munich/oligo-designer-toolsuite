@@ -3,9 +3,9 @@
 ############################################
 
 import os
-from typing import List
-
 import pandas as pd
+
+from typing import List
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
@@ -172,6 +172,4 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
                 "reference_sequence",
                 "reference_strand",
             ]
-            self.alignment_method.search_parameters[
-                "outfmt"
-            ] = "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
+            self.alignment_method.search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
