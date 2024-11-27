@@ -32,8 +32,6 @@ class ExactMatchFilter(SpecificityFilterBase):
         self.policy = policy
         self.filter_name = filter_name
 
-        self.filter_name = filter_name
-
     def apply(
         self,
         oligo_database: OligoDatabase,
