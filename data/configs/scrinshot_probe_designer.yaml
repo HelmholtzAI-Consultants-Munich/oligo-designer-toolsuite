@@ -93,7 +93,7 @@ cross_hybridization_blastn_search_parameters:
   soft_masking: "false"
   max_target_seqs: 10
 cross_hybridization_blastn_hit_parameters:
-  coverage: 80 # can be turned into min_alignment_length 60?
+  coverage: 80 # can be turned into min_alignment_length
 
 
 ### Parameters for the Oligo set selection
