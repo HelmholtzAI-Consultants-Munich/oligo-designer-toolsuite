@@ -20,7 +20,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     SetScoringBase,
 )
 
-from ._heuristic_selection_methods import OligoSelectionPolicy
+from ._selection_methods import OligoSelectionPolicy
 
 ############################################
 # Oligo set Generation Classes
@@ -32,16 +32,12 @@ class OligosetGeneratorIndependentSet:
     Generator class for optimal sets of non-overlapping oligonucleotides, designed to manage and execute the scoring
     and selection of oligonucleotide sets based on given `oligo_scoring` and `set_scoring` classes.
 
-    :param opt_oligoset_size: Optimal size of the oligo set to be generated.
-    :type opt_oligoset_size: int
-    :param min_oligoset_size: Minimum size of the oligo set considered for generation.
-    :type min_oligoset_size: int
     :param oligos_scoring: An instance of OligoScoringBase used for scoring individual oligos.
     :type oligos_scoring: OligoScoringBase
     :param set_scoring: An instance of SetScoringBase used for scoring sets of oligos.
     :type set_scoring: SetScoringBase
-    :param heurustic_selection: A callable for heuristic selection of oligo sets, default is None.
-    :type heurustic_selection: Callable, optional
+    :param selection_policy: An instance of OligoSelectionPolicy used for selecting oligo sets.
+    :type selection_policy: OligoSelectionPolicy
     :param distance_between_oligos: Distance between neighboring oligos, e.g. -x: oligos overlap x bases; 0: oligos can be next to each other; +x: oligos are x bases apart
     :param max_oligos: Maximum number of oligos to consider in the generation process, defaults to 5000.
     :type max_oligos: int
@@ -49,19 +45,15 @@ class OligosetGeneratorIndependentSet:
 
     def __init__(
         self,
-        opt_oligoset_size: int,
-        min_oligoset_size: int,
         oligos_scoring: OligoScoringBase,
         set_scoring: SetScoringBase,
-        heuristic_selection: OligoSelectionPolicy,
+        selection_policy: OligoSelectionPolicy,
         distance_between_oligos: int = 0,
-        max_oligos: int = 5000,
+        max_oligos: int = None,
     ) -> None:
         """Constructor for the OligosetGenerator class."""
 
-        self.opt_oligoset_size = opt_oligoset_size
-        self.min_oligoset_size = min_oligoset_size
-        self.heuristic_selection = heuristic_selection
+        self.selection_policy = selection_policy
         self.oligos_scoring = oligos_scoring
         self.set_scoring = set_scoring
         self.distance_between_oligos = distance_between_oligos
@@ -72,7 +64,6 @@ class OligosetGeneratorIndependentSet:
         self,
         oligo_database: OligoDatabase,
         sequence_type: _TYPES_SEQ,
-        pre_filter: bool,
         n_attempts: int = 10000,
         n_jobs: int = 1,
     ):
@@ -107,7 +98,7 @@ class OligosetGeneratorIndependentSet:
                 n_jobs=n_jobs, prefer="threads", require="sharedmem"
             )(  # there should be an explicit return
                 delayed(self._get_oligo_set_for_gene)(
-                    oligo_database, region_id, sequence_type, pre_filter, n_attempts
+                    oligo_database, region_id, sequence_type, n_attempts
                 )
                 for region_id in region_ids
             )
@@ -120,7 +111,6 @@ class OligosetGeneratorIndependentSet:
         oligo_database: OligoDatabase,
         region_id: str,
         sequence_type: _TYPES_SEQ,
-        pre_filter: bool,
         n_attempts: int,
     ):
         """Processes a single gene region from the oligo database to generate non-overlapping sets of
@@ -159,10 +149,9 @@ class OligosetGeneratorIndependentSet:
         overlapping_matrix = self._get_overlapping_matrix(oligo_database=oligo_database, region_id=region_id)
 
         # create the set
-        oligosets = self.heuristic_selection.apply(
+        oligosets = self.selection_policy.apply(
             oligos_scores=oligos_scores,
             overlapping_matrix=overlapping_matrix,
-            pre_filter=pre_filter,
             n_attempts=n_attempts,
         )
 

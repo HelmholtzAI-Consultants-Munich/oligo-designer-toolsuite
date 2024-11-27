@@ -370,20 +370,18 @@ class ScrinshotProbeDesigner:
             n_sets=n_sets,
             ascending=True,
             set_scoring=set_scoring,
+            pre_filter=pre_filter
         )
         probeset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=probeset_size_opt,
-            min_oligoset_size=probeset_size_min,
             oligos_scoring=probes_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=selection_policy,
+            selection_policy=selection_policy,
             max_oligos=max_graph_size,
             distance_between_oligos=distance_between_probes,
         )
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            pre_filter=pre_filter,
             n_attempts=n_attempts,
             n_jobs=self.n_jobs,
         )

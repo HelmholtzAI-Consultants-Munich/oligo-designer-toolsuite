@@ -31,18 +31,22 @@ class OligoSelectionPolicy:
     :type ascending: bool
     :param set_scoring: Set scoring class.
     :type set_scoring: SetScoringBase
+    :param pre_filter: Flag indicating whether to pre-filter oligos. We recommend setting this to True when the set size is larger than 10.
+    :type pre_filter: bool
     """
     def __init__(
-        self, set_size_opt: int, set_size_min: int, n_sets: int, ascending: bool, set_scoring: SetScoringBase
+        self, set_size_opt: int, set_size_min: int, n_sets: int, ascending: bool, set_scoring: SetScoringBase, pre_filter:bool
     ) -> None:
         self.opt_oligoset_size = set_size_opt
         self.min_oligoset_size = set_size_min
         self.n_sets = n_sets
         self.ascending = ascending
         self.set_scoring = set_scoring
+        self.pre_filter = pre_filter
+
 
     def apply(
-        self, oligos_scores: pd.Series, overlapping_matrix: csr_matrix, pre_filter: bool, n_attempts: int
+        self, oligos_scores: pd.Series, overlapping_matrix: csr_matrix, n_attempts: int
     ) -> pd.DataFrame:
         """
         Generic method for applying oligo selection policy. This method pre-filters oligos if necessary and then runs the selection logic. The results are formatted into a DataFrame.
@@ -50,18 +54,16 @@ class OligoSelectionPolicy:
         :type oligos_scores: pd.Series
         :param overlapping_matrix: Sparse matrix indicating overlap between oligos.
         :type overlapping_matrix: csr_matrix
-        :param pre_filter: Flag indicating whether to pre-filter oligos. We recommend setting this to True when the set size is larger than 10.
-        :type pre_filter: bool
         :param n_attempts: Number of attempts to generate valid sets.
         :type n_attempts: int
         :return: DataFrame containing selected oligo sets with scores.
         :rtype: pd.DataFrame
         """
 
-        if pre_filter:
+        if self.pre_filter:
             oligos_scores, overlapping_matrix = self.pre_filter_oligos(oligos_scores, overlapping_matrix)
 
-        if len(oligos_scores) > 0:
+        if len(oligos_scores) > self.min_oligoset_size:
             oligosets = self.run_selection(oligos_scores, overlapping_matrix, n_attempts)
         else:
             oligosets = []

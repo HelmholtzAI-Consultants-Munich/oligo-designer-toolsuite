@@ -357,13 +357,12 @@ class OligoSeqProbeDesigner:
             n_sets=n_sets,
             ascending=True,
             set_scoring=set_scoring,
+            pre_filter=pre_filter,
         )
         oligoset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=opt_oligoset_size,
-            min_oligoset_size=min_oligoset_size,
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=selection_policy,
+            selection_policy=selection_policy,
             max_oligos=max_oligos,
             distance_between_oligos=distance_between_oligos,
         )
@@ -371,7 +370,6 @@ class OligoSeqProbeDesigner:
             oligo_database=oligo_database,
             sequence_type="oligo",
             n_attempts=n_attempts,
-            pre_filter=pre_filter,
             n_jobs=self.n_jobs,
         )
 
