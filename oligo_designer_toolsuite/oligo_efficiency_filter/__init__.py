@@ -18,7 +18,6 @@ from ._oligo_scoring import (
     WeightedGCUtrScoring,
     WeightedTmGCOligoScoring,
     WeightedIsoformTmGCOligoScoring,
-    WeightedTmGCOligoScoring,
 )
 from ._set_scoring import AverageSetScoring, LowestSetScoring, SetScoringBase
 
