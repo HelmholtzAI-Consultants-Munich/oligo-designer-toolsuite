@@ -33,7 +33,7 @@ homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolym
 ## padlock arms
 arm_Tm_dif_max: 2 # maximum melting temperature difference of both arms (difference shouldn't be higher than 5! But range is not super important, the lower the better)
 arm_length_min: 10 # minimum length of each arm
-arm_Tm_min: 50 # minimum melting temperature of each arm 
+arm_Tm_min: 50 # minimum melting temperature of each arm
 arm_Tm_max: 60 # maximum melting temperature of each arm
 ## detection oligos
 min_thymines: 2 # minimal number of Thymines in detection oligo.
@@ -99,6 +99,8 @@ cross_hybridization_blastn_hit_parameters:
 ### Parameters for the Oligo set selection
 ### -----------------------------------------------
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
+n_attempts: 10000 # number of attempts to find the optimal set of oligos
+pre_filtering: false # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for oligo sets with more than 10 oligos.
 
 
 ### Parameters for Melting Temperature

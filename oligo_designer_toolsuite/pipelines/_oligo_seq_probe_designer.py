@@ -33,8 +33,8 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    GraphBasedSelectionPolicy,
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -55,7 +55,11 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 class OligoSeqProbeDesigner:
     def __init__(
-        self, file_regions: list, write_intermediate_steps: bool, dir_output: str, n_jobs: int
+        self,
+        file_regions: list,
+        write_intermediate_steps: bool,
+        dir_output: str,
+        n_jobs: int,
     ) -> None:
         """Constructor for the OligoSeqProbeDesigner class."""
 
@@ -228,7 +232,10 @@ class OligoSeqProbeDesigner:
         hybridization_probability_threshold: float,
     ) -> Tuple[OligoDatabase, str]:
         def _get_alignment_method(
-            alignment_method, search_parameters, hit_parameters, filter_name_specification: str = ""
+            alignment_method,
+            search_parameters,
+            hit_parameters,
+            filter_name_specification: str = "",
         ):
             if alignment_method == "blastn":
                 return BlastNFilter(
@@ -328,6 +335,8 @@ class OligoSeqProbeDesigner:
         min_oligoset_size: int,
         max_oligos: int,
         n_sets: int,
+        n_attempts: int,
+        pre_filter: bool,
         distance_between_oligos: int,
     ) -> Tuple[OligoDatabase, str, str]:
         oligos_scoring = WeightedTmGCOligoScoring(
@@ -341,19 +350,26 @@ class OligoSeqProbeDesigner:
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
         )
         set_scoring = AverageSetScoring(ascending=True)
+
+        selection_policy = GraphBasedSelectionPolicy(
+            set_size_opt=opt_oligoset_size,
+            set_size_min=min_oligoset_size,
+            n_sets=n_sets,
+            ascending=True,
+            set_scoring=set_scoring,
+            pre_filter=pre_filter,
+        )
         oligoset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=opt_oligoset_size,
-            min_oligoset_size=min_oligoset_size,
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
+            selection_policy=selection_policy,
             max_oligos=max_oligos,
             distance_between_oligos=distance_between_oligos,
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            n_sets=n_sets,
+            n_attempts=n_attempts,
             n_jobs=self.n_jobs,
         )
 
@@ -527,6 +543,7 @@ def main():
         hybridization_probability_threshold=config["hybridization_probability_threshold"],
     )
 
+
     ##### create oligo sets #####
     oligo_database, dir_database, dir_oligosets = pipeline.create_oligo_sets(
         oligo_database=oligo_database,
@@ -542,6 +559,8 @@ def main():
         min_oligoset_size=config["min_oligoset_size"],
         max_oligos=config["max_graph_size"],
         n_sets=config["n_sets"],
+        n_attempts=config["n_attempts"],
+        pre_filter=config["pre_filtering"],
         distance_between_oligos=config["distance_between_oligos"],
     )
 

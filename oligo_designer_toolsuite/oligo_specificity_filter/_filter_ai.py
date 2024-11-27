@@ -266,6 +266,4 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
                 "reference_sequence",
                 "reference_strand",
             ]
-            self.alignment_method.search_parameters["outfmt"] = (
-                "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
-            )
+            self.alignment_method.search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"

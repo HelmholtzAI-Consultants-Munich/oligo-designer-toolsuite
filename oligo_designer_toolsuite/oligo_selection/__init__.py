@@ -7,5 +7,8 @@ from ._heuristic_selection_methods import heuristic_selection_independent_set
 
 __all__ = [
     "OligosetGeneratorIndependentSet",
-    "heuristic_selection_independent_set",
+    "HomogeneousPropertyOligoSetGenerator",
+    "OligoSelectionPolicy",
+    "GreedySelectionPolicy",
+    "GraphBasedSelectionPolicy",
 ]

@@ -44,7 +44,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
 )
 from oligo_designer_toolsuite.oligo_selection import (
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
+    GraphBasedSelectionPolicy,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -276,25 +276,34 @@ class SeqFishPlusProbeDesigner:
         set_size_min: int,
         max_graph_size: int,
         n_sets: int,
+        n_attempts: int,
+        pre_filter: bool,
         distance_between_oligos: int,
     ) -> Tuple[OligoDatabase, str, str]:
         probes_scoring = WeightedGCUtrScoring(
             GC_content_opt=GC_content_opt, GC_weight=GC_weight, UTR_weight=UTR_weight
         )
         set_scoring = LowestSetScoring(ascending=True)
+
+        selection_policy = GraphBasedSelectionPolicy(
+            set_size_opt=set_size_opt,
+            set_size_min=set_size_min,
+            n_sets=n_sets,
+            ascending=True,
+            set_scoring=set_scoring,
+            pre_filter=pre_filter
+        )
         probeset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=set_size_opt,
-            min_oligoset_size=set_size_min,
             oligos_scoring=probes_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
+            selection_policy=selection_policy,
             max_oligos=max_graph_size,
             distance_between_oligos=distance_between_oligos,
         )
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            n_sets=n_sets,
+            n_attempts=n_attempts,
             n_jobs=self.n_jobs,
         )
 
@@ -1250,6 +1259,8 @@ def main():
         set_size_min=config["probeset_size_min"],
         max_graph_size=config["max_graph_size"],
         n_sets=config["n_sets"],
+        n_attempts=config["n_attempts"],
+        pre_filter=config["pre_filtering"],
         distance_between_oligos=config["distance_between_probes"],
     )
 
@@ -1321,8 +1332,6 @@ def main():
 
     logging.info(f"Oligo sets were saved in {dir_probesets}")
     logging.info("##### End of the pipeline. #####")
-
-    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":

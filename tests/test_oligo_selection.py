@@ -18,7 +18,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 )
 from oligo_designer_toolsuite.oligo_selection import (
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
+    GraphBasedSelectionPolicy,
 )
 
 ############################################
@@ -76,11 +76,9 @@ class TestOverlapMatrix(unittest.TestCase):
         )
         set_scoring = LowestSetScoring(ascending=True)
         self.oligoset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=5,
-            min_oligoset_size=2,
             oligos_scoring=oligo_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=None,
+            selection_policy=None,
         )
 
     def test_nonoverlapping_matrix_ovelapping_oligos(self):
@@ -154,12 +152,19 @@ class TestOligoScoring(unittest.TestCase):
             Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORR,
         )
         set_scoring = LowestSetScoring(ascending=True)
+        selection_policy = GraphBasedSelectionPolicy(
+            set_size_opt=5,
+            set_size_min=2,
+            n_sets=10,
+            ascending=True,
+            set_scoring=set_scoring,
+            pre_filter=True
+        )
+
         self.oligoset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=5,
-            min_oligoset_size=2,
             oligos_scoring=self.oligo_scoring,
             set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
+            selection_policy=selection_policy,
         )
 
     def tearDown(self) -> None:
@@ -167,7 +172,7 @@ class TestOligoScoring(unittest.TestCase):
 
     def test_oligoset_generation(self):
         oligos_database = self.oligoset_generator.apply(
-            oligo_database=self.oligo_database, sequence_type="oligo", n_sets=100, n_jobs=1
+            oligo_database=self.oligo_database, sequence_type="oligo", n_attempts=100, n_jobs=1
         )
         for gene in oligos_database.oligosets.keys():
             computed_sets = oligos_database.oligosets[gene]
@@ -229,6 +234,7 @@ class TestOligoScoring(unittest.TestCase):
             overlapping_matrix_ids=index,
             oligos_scores=oligo_scores,
             n_sets=100,
+        
         )
         computed_sets["set_score_lowest"] = computed_sets["set_score_lowest"].round(2)
         computed_sets["set_score_sum"] = computed_sets["set_score_sum"].round(2)

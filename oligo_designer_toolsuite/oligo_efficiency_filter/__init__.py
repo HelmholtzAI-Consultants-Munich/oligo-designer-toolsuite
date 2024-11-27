@@ -9,11 +9,7 @@ from ._oligo_scoring import (
     WeightedTmGCOligoScoring,
     WeightedIsoformTmGCOligoScoring,
 )
-from ._set_scoring import (
-    SetScoringBase,
-    LowestSetScoring,
-    AverageSetScoring,
-)
+from ._set_scoring import AverageSetScoring, LowestSetScoring, SetScoringBase
 
 __all__ = [
     "OligoScoringBase",

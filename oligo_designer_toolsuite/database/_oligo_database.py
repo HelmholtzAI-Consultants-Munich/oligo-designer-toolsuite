@@ -21,7 +21,6 @@ from oligo_designer_toolsuite.utils import (
     FastaParser,
     CustomYamlDumper,
     check_if_list,
-    check_tsv_format,
     check_if_region_in_database,
     check_tsv_format,
     collapse_attributes_for_duplicated_sequences,
@@ -955,10 +954,11 @@ class OligoDatabase:
                     )
                 )
                 if attribute_values:
-                    if remove_if_smaller_threshold and any(item < attribute_thr for item in attribute_values):
-                        oligos_to_delete.append((region_id, oligo_id))
-                    elif not remove_if_smaller_threshold and all(
-                        item > attribute_thr for item in attribute_values
+                    if (
+                        remove_if_smaller_threshold and any(item < attribute_thr for item in attribute_values)
+                    ) or (
+                        not remove_if_smaller_threshold
+                        and all(item > attribute_thr for item in attribute_values)
                     ):
                         oligos_to_delete.append((region_id, oligo_id))
 
