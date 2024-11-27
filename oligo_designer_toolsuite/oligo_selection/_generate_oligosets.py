@@ -28,20 +28,6 @@ from ._selection_methods import OligoSelectionPolicy
 
 
 class OligosetGeneratorIndependentSet:
-    """
-    Generator class for optimal sets of non-overlapping oligonucleotides, designed to manage and execute the scoring
-    and selection of oligonucleotide sets based on given `oligo_scoring` and `set_scoring` classes.
-
-    :param oligos_scoring: An instance of OligoScoringBase used for scoring individual oligos.
-    :type oligos_scoring: OligoScoringBase
-    :param set_scoring: An instance of SetScoringBase used for scoring sets of oligos.
-    :type set_scoring: SetScoringBase
-    :param selection_policy: An instance of OligoSelectionPolicy used for selecting oligo sets.
-    :type selection_policy: OligoSelectionPolicy
-    :param distance_between_oligos: Distance between neighboring oligos, e.g. -x: oligos overlap x bases; 0: oligos can be next to each other; +x: oligos are x bases apart
-    :param max_oligos: Maximum number of oligos to consider in the generation process, defaults to 5000.
-    :type max_oligos: int
-    """
 
     def __init__(
         self,
@@ -51,7 +37,6 @@ class OligosetGeneratorIndependentSet:
         distance_between_oligos: int = 0,
         max_oligos: int = None,
     ) -> None:
-        """Constructor for the OligosetGenerator class."""
 
         self.selection_policy = selection_policy
         self.oligos_scoring = oligos_scoring
@@ -67,39 +52,14 @@ class OligosetGeneratorIndependentSet:
         n_attempts: int = 10000,
         n_jobs: int = 1,
     ):
-        """
-        Applies the oligo set generation process to an entire oligo database and returns updated database with selected best `n_sets` oligo sets.
-        Oligosets are stored in the class attribute `oligosets`, which is a dictionary with region names as keys and oligoset dataframes as values.
-        The structure of the pandas.DataFrame is the following:
 
-
-        +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
-        | oligoset_id | oligo_0  | oligo_1  | oligo_2  |  ...  | oligo_n  | set_score_1 | set_score_2 |  ...  |
-        +-------------+----------+----------+----------+-------+----------+-------------+-------------+-------+
-        | 0           | AGRN_184 | AGRN_133 | AGRN_832 |  ...  | AGRN_706 | 0.3445      | 1.2332      |  ...  |
-        +-------------+----------+----------+-----+----+-------+----------+-------------+-------------+-------+
-
-
-        :param oligo_database: The database of oligos to process.
-        :type oligo_database: OligoDatabase
-        :param sequence_type: The type of sequence to be used in the oligos scoring.
-        :type sequence_type: _TYPES_SEQ
-        :param n_attempts: Number of attempts to generate oligo sets, defaults to 10000.
-        :type n_attempts: int
-        :param n_jobs: Number of parallel jobs to use for processing, defaults to 1.
-        :type n_jobs: int
-        :return: The updated oligo database with selected oligo sets.
-        :rtype: OligoDatabase
-        """
         region_ids = list(oligo_database.database.keys())
         # get the oligo set for this region in parallel
         with joblib_progress(description="Find Oligosets", total=len(region_ids)):
             Parallel(
                 n_jobs=n_jobs, prefer="threads", require="sharedmem"
             )(  # there should be an explicit return
-                delayed(self._get_oligo_set_for_gene)(
-                    oligo_database, region_id, sequence_type, n_attempts
-                )
+                delayed(self._get_oligo_set_for_gene)(oligo_database, region_id, sequence_type, n_attempts)
                 for region_id in region_ids
             )
 
@@ -113,20 +73,6 @@ class OligosetGeneratorIndependentSet:
         sequence_type: _TYPES_SEQ,
         n_attempts: int,
     ):
-        """Processes a single gene region from the oligo database to generate non-overlapping sets of
-        oligos based on scoring and set selection criteria.
-
-        :param oligo_database: The database of oligos to process.
-        :type oligo_database: OligoDatabase
-        :param region_id: The ID of the region to process.
-        :type region_id: str
-        :param sequence_type: The type of sequences being used, must match one of the predefined sequence types.
-        :type sequence_type: _TYPES_SEQ
-        :param n_attempts: Number of attempts to generate oligo sets.
-        :type n_attempts: int
-        :return: None
-        :rtype: None
-        """
 
         # Score oligos and create a pd series
         oligo_database, oligos_scores = self.oligos_scoring.apply(
@@ -173,20 +119,6 @@ class OligosetGeneratorIndependentSet:
         gc.collect()
 
     def _get_overlapping_matrix(self, oligo_database: OligoDatabase, region_id: str):
-        """
-        Generates a matrix indicating the overlap between oligos in a given database region.
-        The matrix is computed based on the start and end intervals of each oligo,
-        with an optional parameter to adjust for permissible overlap distance.
-        The matrix has dimensions n_oligos * n_oligos. Each entry contains 1 if the
-        correspondent oligos don't overlap and 0 if they overlap. This matrix will be used
-        as an adjacency matrix, and the sets of non-overlapping oligos are cliques of this graph.
-
-
-        :param oligo_database: The database of oligos to process.
-        :type oligo_database: OligoDatabase
-        :return: A DataFrame where each cell [i, j] is 0 if oligos i and j overlap and 1 otherwise, with oligo IDs as indices and columns.
-        :rtype: pd.DataFrame
-        """
 
         def _get_overlap(seq1_intervals, seq2_intervals):
             # Determine if two ligos overlap based on a distance value
@@ -234,65 +166,26 @@ class OligosetGeneratorIndependentSet:
         overlapping_matrix = ones_matrix - overlapping_matrix
         overlapping_matrix = overlapping_matrix.tocsr()
 
-        # overlapping_matrix = pd.DataFrame(
-        #    data=overlapping_matrix.toarray(),
-        #    columns=oligos_indices,
-        #    index=oligos_indices,
-        #    dtype=int,
-        # )
-
         return overlapping_matrix
 
 
 class HomogeneousPropertyOligoSetGenerator:
-    """
-    A generator class for creating oligo sets that ensure homogeneity in specified properties.
-
-    This class generates sets of oligos by selecting combinations with the lowest weighted sum
-    of variances for specified properties, which ensures homogeneity within each set.
-
-    :param set_size: The size of each oligo set.
-    :type set_size: int
-    :param properties: A dictionary where the key is the property name and the value is the weight for that property.
-    :type properties: dict
-    """
 
     def __init__(self, set_size: int, properties: Dict[str, float]) -> None:
-        """Constructor for the HomogeneousPropertyOligoSetGenerator class."""
+
         self.set_size = set_size
         self.properties = properties
 
     def apply(
         self, oligo_database: OligoDatabase, n_attempts: int = 1, n_combinations: int = 1000, n_jobs: int = 1
     ) -> OligoDatabase:
-        """
-        Applies the oligo set generation process to an entire oligo database and returns an updated database with selected best `n_attempts` oligo sets.
-        Oligosets are stored in the class attribute `oligosets`, which is a dictionary with region names as keys and oligoset dataframes as values.
-        The structure of the pandas.DataFrame is the following:
-
-
-        +-------------+----------+----------+----------+-------+----------+-------------+
-        | oligoset_id | oligo_0  | oligo_1  | oligo_2  |  ...  | oligo_n  | set_score   |
-        +-------------+----------+----------+----------+-------+----------+-------------+
-        | 0           | AGRN_184 | AGRN_133 | AGRN_832 |  ...  | AGRN_706 | 0.3445      |
-        +-------------+----------+----------+-----+----+-------+----------+-------------+
-
-        :param oligo_database: The oligo database to generate sets from.
-        :type oligo_database: OligoDatabase
-        :param n_attempts: Number of sets to generate for each region, defaults to 1.
-        :type n_attempts: int, optional
-        :param n_combinations: Number of random combinations to generate, defaults to 1000.
-        :type n_combinations: int, optional
-        :param n_jobs: Number of parallel jobs to run, defaults to 1.
-        :type n_jobs: int, optional
-        :return: The updated oligo database with generated oligo sets.
-        :rtype: OligoDatabase
-        """
 
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description="Find Oligosets", total=len(region_ids)):
             Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
-                delayed(self._get_oligo_sets_for_region)(oligo_database, region_id, n_attempts, n_combinations)
+                delayed(self._get_oligo_sets_for_region)(
+                    oligo_database, region_id, n_attempts, n_combinations
+                )
                 for region_id in region_ids
             )
 
@@ -302,21 +195,6 @@ class HomogeneousPropertyOligoSetGenerator:
     def _get_oligo_sets_for_region(
         self, oligo_database: OligoDatabase, region_id: str, n_attempts: int, n_combinations: int
     ) -> None:
-        """
-        Generate oligo sets for a specific region.
-
-        This method generates all possible combinations of oligos for a given region and scores them based on
-        the specified properties. The top N sets with the lowest weighted sum of variances are selected.
-
-        :param oligo_database: The oligo database to generate sets from.
-        :type oligo_database: OligoDatabase
-        :param region_id: The ID of the region to generate oligo sets for.
-        :type region_id: str
-        :param n_attempts: Number of sets to generate for the region.
-        :type n_attempts: int
-        :param n_combinations: Number of random combinations to generate.
-        :type n_combinations: int
-        """
 
         region_dict = oligo_database.database[region_id]
         oligo_df = pd.DataFrame.from_dict(region_dict, orient="index")
@@ -342,20 +220,6 @@ class HomogeneousPropertyOligoSetGenerator:
         oligo_database.oligosets[region_id] = pd.DataFrame(rows, columns=columns)
 
     def _score_combination(self, oligo_df: pd.DataFrame, combination: List[str]) -> Tuple[List[str], float]:
-        """
-        Score a combination of oligos based on the specified properties.
-
-        This method calculates the score for a combination of oligos by computing the weighted sum of the variances
-        of the specified properties. The lower the score, the more homogeneous the set is with respect to the
-        specified properties.
-
-        :param oligo_df: The DataFrame containing oligo information.
-        :type oligo_df: pd.DataFrame
-        :param combination: A list of oligo IDs representing a combination.
-        :type combination: list
-        :return: A tuple containing the combination and its score.
-        :rtype: tuple
-        """
 
         oligo_set = oligo_df.loc[combination]
         score = sum([oligo_set[property].var() * self.properties[property] for property in self.properties])
