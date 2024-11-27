@@ -165,7 +165,6 @@ class OligoSequenceGenerator:
                 for file_fasta in files_fasta_in
                 for region_id in self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta)
             ]
-            region_ids = [item for sublist in region_ids for item in sublist]
             # make keys unique
             region_ids = list(set(region_ids))
 
