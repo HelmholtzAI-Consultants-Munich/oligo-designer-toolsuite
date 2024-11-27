@@ -5,7 +5,7 @@
 import os
 import pandas as pd
 
-from typing import List
+from typing import List, Union
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
