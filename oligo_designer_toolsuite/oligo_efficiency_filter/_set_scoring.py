@@ -44,9 +44,7 @@ class LowestSetScoring(SetScoringBase):
     """
 
     def __init__(self, ascending: bool) -> None:
-        """
-        Constructor for the LowestSetScoring class.
-        """
+        """Constructor for the LowestSetScoring class."""
         self.ascending = ascending
 
     def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
