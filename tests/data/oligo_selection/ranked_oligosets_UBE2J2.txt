@@ -1,4 +1,4 @@
-	oligo_0	oligo_1	oligo_2	oligo_3	oligo_4	set_score_lowest	set_score_sum
+	oligo_0	oligo_1	oligo_2	oligo_3	oligo_4	set_score_worst	set_score_sum
 0	UBE2J2_pid1589	UBE2J2_pid1792	UBE2J2_pid1863	UBE2J2_pid1655	UBE2J2_pid951	0.3486	1.438
 1	UBE2J2_pid1589	UBE2J2_pid1792	UBE2J2_pid1863	UBE2J2_pid1637	UBE2J2_pid951	0.3486	1.44
 2	UBE2J2_pid1589	UBE2J2_pid1792	UBE2J2_pid1863	UBE2J2_pid1639	UBE2J2_pid951	0.3486	1.44
