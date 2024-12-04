@@ -42,7 +42,7 @@ class OligosetGeneratorIndependentSet:
     :param max_oligos: Maximum number of oligos to include in the set optimizatoin process. If None, there is no limit on the number of oligos.
     :type max_oligos: int, optional
     :param distance_between_oligos: Minimum allowed distance between oligos in the set to avoid clustering of oligos.
-    :type distance_between_oligos: int, optional, defaults to 0
+    :type distance_between_oligos: int, optional
     """
 
     def __init__(

@@ -73,7 +73,9 @@ class OligoSelectionPolicy:
         self.n_sets = n_sets
 
         if self.pre_filter:
-            oligos_scores, non_overlap_matrix = self._pre_filter_oligos(oligos_scores, non_overlap_matrix)
+            oligos_scores, non_overlap_matrix, non_overlap_matrix_ids = self._pre_filter_oligos(
+                oligos_scores, non_overlap_matrix, non_overlap_matrix_ids
+            )
 
         if len(oligos_scores) > self.min_oligoset_size:
             oligosets = self._run_selection(oligos_scores, non_overlap_matrix, non_overlap_matrix_ids)
@@ -302,7 +304,8 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
 
     :param set_scoring: Scoring method for evaluating the quality of the oligo sets.
     :type set_scoring: SetScoringBase
-    :param pre_filter: A flag indicating whether pre-filtering should be applied to the oligos before selection.
+    :param pre_filter: A flag indicating whether pre-filtering should be applied to the oligos before selection,
+                    which improves performance for larger sets (e.g., oligo_size_opt = 50) but can slow down small set selection (e.g., oligo_size_opt = 5).
     :type pre_filter: bool
     :param n_attempts: The number of attempts to make when generating oligo sets. Default is 1000.
     :type n_attempts: int, optional
