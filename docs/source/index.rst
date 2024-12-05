@@ -74,7 +74,7 @@ or `Isra Mekki <mailto:isra.mekki@helmholtz-munich.de>`_.
 How to cite
 ------------
 
-If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
+If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
 
 ::
 

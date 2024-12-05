@@ -4,14 +4,14 @@ Installation
 Requirements:
 -------------------
 
-This packages was tested for ``Python 3.9 - 3.10`` on ubuntu and macos. For stable installatio, we recommend to first setup a conda environment, e.g.:
+This packages was tested for ``Python 3.9 - 3.10`` on ubuntu and macos. For stable installation, we recommend to first setup a conda environment, e.g.:
 
 ::
 
 	conda create -n odt python=3.10
 	conda activate odt
 
-*Note: if your institution does not support anaconda, you can use `miniforge <https://github.com/conda-forge/miniforge>`__ instead to run the conda installations.*
+*Note: if your institution does not support anaconda, you can use `miniforge <https://github.com/conda-forge/miniforge>`_ instead to run the conda installations.*
 
 If you have an Apple M chip, you need to create an environment simulating an x86 processor to be able to install **Blast**. This can be done as follows:
 
@@ -34,7 +34,7 @@ To install those tools via conda, please activate the Bioconda and conda-forge c
 
 Follow this instruction to install the required additional tools:
 
-- **Blast** (2.15 or higher) can be instelled via `NCBI webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__ or via `Bioconda <http://bioconda.github.io/recipes/blast/README.html>`__ installation of Blast with:
+- **Blast** (2.15 or higher) can be installed via `NCBI webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__ or via `Bioconda <http://bioconda.github.io/recipes/blast/README.html>`__ installation of Blast with:
 
 	::
 

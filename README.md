@@ -36,7 +36,7 @@ To allow the flexible usage of different modules, depending on the required proc
 
 **Requirements:**
 
-This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. For stable installatio, we recommend to first setup a conda environment, e.g.:
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. For stable installation, we recommend to first setup a conda environment, e.g.:
 
 ```
 conda create -n odt python=3.10
@@ -63,7 +63,7 @@ conda update --all
 
 Follow this instruction to install the required additional tools:
 
-- **Blast** (2.15 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
+- **Blast** (2.15 or higher) can be installed via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
 
 		conda install "blast>=2.15.0"
 
