@@ -11,7 +11,7 @@ This packages was tested for ``Python 3.9 - 3.10`` on ubuntu and macos. For stab
 	conda create -n odt python=3.10
 	conda activate odt
 
-*Note: if your institution does not support anaconda, you can use `miniforge <https://github.com/conda-forge/miniforge>`_ instead to run the conda installations.*
+*Note: if your institution does not support Anaconda, you can use* `miniforge <https://github.com/conda-forge/miniforge>`_ *instead to run the conda installations.*
 
 If you have an Apple M chip, you need to create an environment simulating an x86 processor to be able to install **Blast**. This can be done as follows:
 
