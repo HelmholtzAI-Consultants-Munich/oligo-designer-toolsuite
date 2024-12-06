@@ -154,14 +154,19 @@ If the Oligo Designer Toolsuite is useful for your research, consider citing the
 If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
 
 ```
-@article {Kuemmerle2022.08.16.504115,
+@article {kuemmerle2024probe,
     author 	 = { Louis B. Kuemmerle,
 		     Malte D. Luecken,
 		     Alexandra B. Firsova
 		     Lisa Barros de Andrade e Sousa
 		     Lena Strasser
+                     Ilhem Isra Mekki
+                     Francesco Campi
 		     Lukas Heumos
-		     Ilhem Isra Mekki
+		     Maiia Shulman
+                     Valentina Beliaeva
+                     Soroor Hediyeh-Zadeh
+                     Anna C. Schaar
 		     Krishnaa T. Mahbubani
 		     Alexandros Sountoulidis
 		     Tamas Balassa
@@ -172,11 +177,11 @@ If you are using one of the spatial transcriptomics pipelines provided along the
 		     Christos Samakovlis
 		     Fabian J. Theis},
     title 	 = {{Probe set selection for targeted spatial transcriptomics}},
-    year 	 = {2022},
-    publisher 	 = {Cold Spring Harbor Laboratory},
-    journal 	 = {bioRxiv},
-    doi 	 = {10.1101/2022.08.16.504115},
-    URL 	 = {https://www.biorxiv.org/content/early/2022/08/17/2022.08.16.504115}
+    year 	 = {2024},
+    publisher 	 = {Nature Publishing Group US New York},
+    journal 	 = {Nature methods},
+    doi 	 = {10.1038/s41592-024-02496-z},
+    URL 	 = {https://doi.org/10.1038/s41592-024-02496-z}
 }
 ```
 
