@@ -83,14 +83,14 @@ def pipeline_step_basic(step_name: str):
             logging.info(f"Parameters {step_name}:")
             log_parameters_and_get_db(function, args, kwargs)
 
-            oligo_database, *returned_values = function(*args, **kwargs)
+            oligo_database = function(*args, **kwargs)
 
             num_genes, num_oligos = get_oligo_database_info(oligo_database.database)
             logging.info(
                 f"Step - {step_name}: database contains {num_oligos} oligos from {num_genes} regions."
             )
 
-            return oligo_database, *returned_values
+            return oligo_database
 
         return wrapper
 
