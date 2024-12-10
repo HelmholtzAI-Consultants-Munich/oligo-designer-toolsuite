@@ -19,30 +19,30 @@ A step-by-step installation guide is available
 Oligo Sequence Generation
 -------------------------
 The first step is generating oligo sequences. 
-This notebook describes how to produce oligo sequences either from a reference genomic sequence 
+`This notebook <_tutorials/1-oligo-sequences-generation>`_ describes how to produce oligo sequences either from a reference genomic sequence 
 or at random.
 
 Oligo Database
 --------------
 The oligo database is a central data structure in the Oligo Designer Toolsuite. 
 It stores generated oligos and is used as both input and output for all pipeline steps. 
-This notebook shows how to create a database from previously generated sequences 
+`This notebook <_tutorials/2-oligo-database>`_ shows how to create a database from previously generated sequences 
 (in FASTA format) and demonstrates various functionalities, such as pre-filtering by attributes, 
 loading, saving, and exporting.
 
 Property Filters
 ----------------
 The next step in a typical pipeline involves applying property filters. 
-This notebook illustrates how to define and apply property filters on an oligo database.
+`This notebook <_tutorials/3-property-filters>`_ illustrates how to define and apply property filters on an oligo database.
 
 Specificity Filters
 -------------------
 Specificity filters ensure that designed oligos do not bind to off-target sites. 
 They operate with both the ``OligoDatabase`` and ``ReferenceDatabase`` objects. 
-This notebook demonstrates how to create a reference database and apply specificity filters.
+`This notebook <_tutorials/4-specificity-filters>`_ demonstrates how to create a reference database and apply specificity filters.
 
 Oligo Sets Generation
 ---------------------
 After applying property and specificity filters, the final phase involves selecting 
-the best-performing sets of oligos. This notebook shows how to score oligos and 
+the best-performing sets of oligos. `This notebook <_tutorials/5-oligoset-generation>`_ shows how to score oligos and 
 use a graph-based approach to identify non-overlapping, optimal oligo sets.
