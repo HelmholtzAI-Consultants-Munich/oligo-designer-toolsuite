@@ -42,11 +42,7 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
    _getting_started/installation.rst
    _getting_started/introduction_framework.rst
    _getting_started/build_a_custom_pipeline
-   _getting_started/tutorials/1-oligo-sequences-generation
-   _getting_started/tutorials/2-oligo-database
-   _getting_started/tutorials/3-property-filters
-   _getting_started/tutorials/4-specificity-filters
-   _getting_started/tutorials/5-oligoset-generation
+   _getting_started/tutorials/
 
 .. toctree::
    :maxdepth: 1
