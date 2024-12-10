@@ -1,6 +1,10 @@
 How to Build a Custom Oligo Design Pipeline
 ===========================================
 
+.. contents::
+   :local:
+   :depth: 1
+
 The Oligo Designer Toolsuite is a collection of modules providing core functionalities 
 for custom oligo design pipelines within a flexible Python framework. 
 All modules share a common runtime- and memory-optimized data structure 
@@ -9,6 +13,15 @@ required processing steps.
 
 This section demonstrates how to use the Oligo Designer Toolsuite to develop 
 a custom oligo design pipeline.
+
+Navigation
+----------
+- `Setup <#setup>`_
+- `Oligo Sequence Generation <#oligo-sequence-generation>`_
+- `Oligo Database <#oligo-database>`_
+- `Property Filters <#property-filters>`_
+- `Specificity Filters <#specificity-filters>`_
+- `Oligo Sets Generation <#oligo-sets-generation>`_
 
 Setup
 -----
