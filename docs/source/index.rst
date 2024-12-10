@@ -42,7 +42,7 @@ We also provide ready-to-use oligo design pipelines for specific experimental se
    _getting_started/installation.rst
    _getting_started/introduction_framework.rst
    _getting_started/build_a_custom_pipeline
-   _getting_started/tutorials/
+   _getting_started/_tutorials/index.rst
 
 .. toctree::
    :maxdepth: 1
