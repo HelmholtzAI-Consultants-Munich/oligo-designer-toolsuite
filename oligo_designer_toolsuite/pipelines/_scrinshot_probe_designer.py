@@ -133,7 +133,7 @@ class ScrinshotProbeDesigner:
             "Mg": 10,
             "dNTPs": 0,
         },
-        target_probe_Tm_chem_correction_param: dict = {
+        target_probe_Tm_chem_correction_parameters: dict = {
             "DMSO": 0,
             "fmd": 20,
             "DMSOfactor": 0.75,
@@ -141,7 +141,7 @@ class ScrinshotProbeDesigner:
             "fmdmethod": 1,
             "GC": None,
         },
-        target_probe_Tm_salt_correction_param: dict = None,
+        target_probe_Tm_salt_correction_parameters: dict = None,
         detection_oligo_Tm_parameters: dict = {
             "check": True,
             "strict": True,
@@ -161,7 +161,7 @@ class ScrinshotProbeDesigner:
             "Mg": 0,
             "dNTPs": 0,
         },
-        detection_oligo_Tm_chem_correction_param: dict = {
+        detection_oligo_Tm_chem_correction_parameters: dict = {
             "DMSO": 0,
             "fmd": 30,
             "DMSOfactor": 0.75,
@@ -169,7 +169,7 @@ class ScrinshotProbeDesigner:
             "fmdmethod": 1,
             "GC": None,
         },
-        detection_oligo_Tm_salt_correction_param: dict = None,
+        detection_oligo_Tm_salt_correction_parameters: dict = None,
     ):
         ### Parameters for the specificity filters
         # Specificity filter with BlastN
@@ -210,13 +210,13 @@ class ScrinshotProbeDesigner:
 
         ## target probe
         self.target_probe_Tm_parameters = target_probe_Tm_parameters
-        self.target_probe_Tm_chem_correction_param = target_probe_Tm_chem_correction_param
-        self.target_probe_Tm_salt_correction_param = target_probe_Tm_salt_correction_param
+        self.target_probe_Tm_chem_correction_parameters = target_probe_Tm_chem_correction_parameters
+        self.target_probe_Tm_salt_correction_parameters = target_probe_Tm_salt_correction_parameters
 
         ## detection oligo
         self.detection_oligo_Tm_parameters = detection_oligo_Tm_parameters
-        self.detection_oligo_Tm_chem_correction_param = detection_oligo_Tm_chem_correction_param
-        self.detection_oligo_Tm_salt_correction_param = detection_oligo_Tm_salt_correction_param
+        self.detection_oligo_Tm_chem_correction_parameters = detection_oligo_Tm_chem_correction_parameters
+        self.detection_oligo_Tm_salt_correction_parameters = detection_oligo_Tm_salt_correction_parameters
 
     def design_target_probes(
         self,
@@ -281,8 +281,8 @@ class ScrinshotProbeDesigner:
             arm_Tm_max=target_probe_padlock_arm_Tm_max,
             homopolymeric_base_n=target_probe_homopolymeric_base_n,
             Tm_parameters=self.target_probe_Tm_parameters,
-            Tm_chem_correction_param=self.target_probe_Tm_chem_correction_param,
-            Tm_salt_correction_param=self.target_probe_Tm_salt_correction_param,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
         )
         check_content_oligo_database(oligo_database)
 
@@ -303,8 +303,8 @@ class ScrinshotProbeDesigner:
             arm_Tm_min=target_probe_padlock_arm_Tm_min,
             arm_Tm_max=target_probe_padlock_arm_Tm_max,
             Tm_parameters=self.target_probe_Tm_parameters,
-            Tm_chem_correction_param=self.target_probe_Tm_chem_correction_param,
-            Tm_salt_correction_param=self.target_probe_Tm_salt_correction_param,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
         )
         check_content_oligo_database(oligo_database)
 
@@ -324,8 +324,8 @@ class ScrinshotProbeDesigner:
             Tm_max=target_probe_Tm_max,
             Tm_weight=target_probe_Tm_weight,
             Tm_parameters=self.target_probe_Tm_parameters,
-            Tm_chem_correction_param=self.target_probe_Tm_chem_correction_param,
-            Tm_salt_correction_param=self.target_probe_Tm_salt_correction_param,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
             set_size_opt=set_size_opt,
             set_size_min=set_size_min,
             distance_between_oligos=distance_between_target_probes,
@@ -365,8 +365,8 @@ class ScrinshotProbeDesigner:
             U_distance=detection_oligo_U_distance,
             Tm_opt=detection_oligo_Tm_opt,
             Tm_parameters=self.detection_oligo_Tm_parameters,
-            Tm_chem_correction_parameters=self.detection_oligo_Tm_chem_correction_param,
-            Tm_salt_correction_parameters=self.detection_oligo_Tm_salt_correction_param,
+            Tm_chem_correction_parameters=self.detection_oligo_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.detection_oligo_Tm_salt_correction_parameters,
         )
 
         return oligo_database
@@ -425,14 +425,14 @@ class ScrinshotProbeDesigner:
                     Tm_arm1 = self.oligo_attributes_calculator._calc_TmNN(
                         sequence=sequence_padlock_arm1,
                         Tm_parameters=self.target_probe_Tm_parameters,
-                        Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_param,
-                        Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_param,
+                        Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+                        Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
                     )
                     Tm_arm2 = self.oligo_attributes_calculator._calc_TmNN(
                         sequence=sequence_padlock_arm2,
                         Tm_parameters=self.target_probe_Tm_parameters,
-                        Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_param,
-                        Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_param,
+                        Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+                        Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
                     )
 
                     new_oligo_attributes[oligo_id] = {
@@ -505,8 +505,8 @@ class ScrinshotProbeDesigner:
             oligo_database=oligo_database,
             sequence_type="oligo",
             Tm_parameters=self.target_probe_Tm_parameters,
-            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_param,
-            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_param,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
         )
         oligo_database = self.oligo_attributes_calculator.calculate_num_targeted_transcripts(
             oligo_database=oligo_database
@@ -641,8 +641,8 @@ class TargetProbeDesigner:
         arm_Tm_max: float,
         homopolymeric_base_n: str,
         Tm_parameters: dict,
-        Tm_chem_correction_param: dict,
-        Tm_salt_correction_param: dict,
+        Tm_chem_correction_parameters: dict,
+        Tm_salt_correction_parameters: dict,
     ) -> Tuple[OligoDatabase, str]:
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
@@ -652,8 +652,8 @@ class TargetProbeDesigner:
             Tm_min=Tm_min,
             Tm_max=Tm_max,
             Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_param,
-            Tm_salt_correction_parameters=Tm_salt_correction_param,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
         )
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
@@ -668,8 +668,8 @@ class TargetProbeDesigner:
             arm_Tm_min=arm_Tm_min,
             arm_Tm_max=arm_Tm_max,
             Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_param,
-            Tm_salt_correction_parameters=Tm_salt_correction_param,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
         )
 
         filters = [
@@ -708,8 +708,8 @@ class TargetProbeDesigner:
         arm_Tm_min: float,
         arm_Tm_max: float,
         Tm_parameters: dict,
-        Tm_chem_correction_param: dict,
-        Tm_salt_correction_param: dict,
+        Tm_chem_correction_parameters: dict,
+        Tm_salt_correction_parameters: dict,
     ) -> Tuple[OligoDatabase, str]:
         ##### define reference database #####
         reference_database = ReferenceDatabase(
@@ -740,8 +740,8 @@ class TargetProbeDesigner:
             arm_Tm_min=arm_Tm_min,
             arm_Tm_max=arm_Tm_max,
             Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_param,
-            Tm_salt_correction_parameters=Tm_salt_correction_param,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
         )
 
         ##### specificity filters #####
@@ -809,8 +809,8 @@ class TargetProbeDesigner:
         Tm_max: float,
         Tm_weight: float,
         Tm_parameters: dict,
-        Tm_chem_correction_param: dict,
-        Tm_salt_correction_param: dict,
+        Tm_chem_correction_parameters: dict,
+        Tm_salt_correction_parameters: dict,
         set_size_opt: int,
         set_size_min: int,
         distance_between_oligos: int,
@@ -829,8 +829,8 @@ class TargetProbeDesigner:
             GC_content_opt=GC_content_opt,
             GC_content_max=GC_content_max,
             Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_param,
-            Tm_salt_correction_parameters=Tm_salt_correction_param,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
             isoform_weight=isoform_weight,
             Tm_weight=Tm_weight,
             GC_weight=GC_weight,
@@ -1149,16 +1149,16 @@ def main():
             "target_probe_cross_hybridization_blastn_hit_parameters"
         ],
         max_graph_size=config["max_graph_size"],
-        pre_filter=config["pre_filtering"],
+        pre_filter=config["pre_filter"],
         n_attempts=config["n_attempts"],
         heuristic=config["heuristic"],
         heuristic_n_attempts=config["heuristic_n_attempts"],
         target_probe_Tm_parameters=config["target_probe_Tm_parameters"],
-        target_probe_Tm_chem_correction_param=config["target_probe_Tm_chem_correction_param"],
-        target_probe_Tm_salt_correction_param=config["target_probe_Tm_salt_correction_param"],
+        target_probe_Tm_chem_correction_parameters=config["target_probe_Tm_chem_correction_parameters"],
+        target_probe_Tm_salt_correction_parameters=config["target_probe_Tm_salt_correction_parameters"],
         detection_oligo_Tm_parameters=config["detection_oligo_Tm_parameters"],
-        detection_oligo_Tm_chem_correction_param=config["detection_oligo_Tm_chem_correction_param"],
-        detection_oligo_Tm_salt_correction_param=config["detection_oligo_Tm_salt_correction_param"],
+        detection_oligo_Tm_chem_correction_parameters=config["detection_oligo_Tm_chem_correction_parameters"],
+        detection_oligo_Tm_salt_correction_parameters=config["detection_oligo_Tm_salt_correction_parameters"],
     )
 
     ##### design probes #####

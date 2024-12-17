@@ -84,7 +84,7 @@ target_probe_cross_hybridization_blastn_hit_parameters:
   coverage: 80 # can be turned into min_alignment_length
 # Parameters for the Oligo set selection
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
-pre_filtering: false # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for oligo sets with more than 30 oligos.
+pre_filter: false # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for oligo sets with more than 30 oligos.
 n_attempts: 100000 # number of attempts to find the optimal set of oligos
 heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
 heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
@@ -109,14 +109,14 @@ target_probe_Tm_parameters:
     Tris: 20 #[mM]
     Mg: 10 #[mM]
     dNTPs: 0 #[mM] default
-target_probe_Tm_chem_correction_param:
+target_probe_Tm_chem_correction_parameters:
     DMSO: 0 #default
     fmd: 20
     DMSOfactor: 0.75 #default
     fmdfactor: 0.65 #default
     fmdmethod: 1 #default
     GC: null #default
-target_probe_Tm_salt_correction_param: null # if salt correction desired, please add parameters below
+target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
 
 
 ### Detection Oligo Parameters
@@ -142,11 +142,11 @@ detection_oligo_Tm_parameters:
     Tris: 0 #[mM] default
     Mg: 0 #[mM] default
     dNTPs: 0 #[mM] default
-detection_oligo_Tm_chem_correction_param:
+detection_oligo_Tm_chem_correction_parameters:
     DMSO: 0 #default
     fmd: 30
     DMSOfactor: 0.75 #default
     fmdfactor: 0.65 #default
     fmdmethod: 1 #default
     GC: null #default
-detection_oligo_Tm_salt_correction_param: null # if salt correction desired, please add parameters below
+detection_oligo_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
