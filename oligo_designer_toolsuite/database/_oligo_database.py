@@ -685,6 +685,17 @@ class OligoDatabase:
     # Getter Functions
     ############################################
 
+    def get_regionid_list(self) -> list[str]:
+        """
+        Retrieves a list of all region IDs present in the database.
+
+        :return: A list of region IDs in the database.
+        :rtype: list[str]
+        """
+        region_ids = list(self.database.keys())
+
+        return region_ids
+
     def get_oligoid_list(self) -> list[str]:
         """
         Retrieves a list of all oligo IDs present in the database.
