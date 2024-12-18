@@ -759,7 +759,6 @@ class MerfishProbeDesigner:
 
         for region_id in region_ids:
             barcode = codebook.loc[region_id]
-
             bits = barcode[barcode == 1].index
             readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
 
@@ -1856,7 +1855,7 @@ class MerfishReadoutProbeDesigner:
             channel = (channel + 1) % n_channels
             if i >= n_bits - 1:
                 break
-
+        readout_probe_table.set_index("bit", inplace=True)
         return readout_probe_table
 
 
