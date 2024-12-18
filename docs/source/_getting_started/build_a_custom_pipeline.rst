@@ -10,48 +10,31 @@ required processing steps.
 This section demonstrates how to use the Oligo Designer Toolsuite to develop 
 a custom oligo design pipeline.
 
-.. toctree::
-   :maxdepth: 1
+.. list-table::
+   :widths: 33 33 33
+   :header-rows: 0
 
-   Oligo Sequence Generation <_tutorials/1-oligo-sequences-generation.html>
-   Oligo Database <_tutorials/2-oligo-database.html>
-   Property Filters <_tutorials/3-property-filters.html>
-   Specificity Filters <_tutorials/4-specificity-filters.html>
-   Oligo Sets Generation <_tutorials/5-oligoset-generation.html>
+   * - .. image:: _images/setup.png
+         :width: 100px
 
-Setup
------
-Before getting started, you must install the Oligo Designer Toolsuite Python package. 
-A step-by-step installation guide is available 
-`here <https://oligo-designer-toolsuite.readthedocs.io/en/latest/_getting_started/installation.html>`_.
+         `Setup <https://oligo-designer-toolsuite.readthedocs.io/en/latest/_getting_started/installation.html>`_
+     - .. image:: _images/sequence.png
+         :width: 100px
 
-`Oligo Sequence Generation <_tutorials/1-oligo-sequences-generation.html>`_
------------------------------------------------------------------------
-The first step is generating oligo sequences. 
-`This notebook <_tutorials/1-oligo-sequences-generation>`_ describes how to produce oligo sequences either from a reference genomic sequence 
-or at random.
+         `Oligo Sequence Generation <_tutorials/1-oligo-sequences-generation.html>`_
+     - .. image:: db.png
+         :width: 100px
 
-`Oligo Database <_tutorials/2-oligo-database.html>`_
------------------------------------------------
-The oligo database is a central data structure in the Oligo Designer Toolsuite. 
-It stores generated oligos and is used as both input and output for all pipeline steps. 
-`This notebook <_tutorials/2-oligo-database>`_ shows how to create a database from previously generated sequences 
-(in FASTA format) and demonstrates various functionalities, such as pre-filtering by attributes, 
-loading, saving, and exporting.
+         `Oligo Database <_tutorials/2-oligo-database.html>`_
+   * - .. image:: _images/property.png
+         :width: 100px
 
-`Property Filters <_tutorials/3-property-filters.html>`_
----------------------------------------------------
-The next step in a typical pipeline involves applying property filters. 
-`This notebook <_tutorials/3-property-filters>`_ illustrates how to define and apply property filters on an oligo database.
+         `Property Filters <_tutorials/3-property-filters.html>`_
+     - .. image:: specificity.png
+         :width: 100px
 
-`Specificity Filters <_tutorials/4-specificity-filters.html>`_
----------------------------------------------------------
-Specificity filters ensure that designed oligos do not bind to off-target sites. 
-They operate with both the ``OligoDatabase`` and ``ReferenceDatabase`` objects. 
-`This notebook <_tutorials/4-specificity-filters>`_ demonstrates how to create a reference database and apply specificity filters.
+         `Specificity Filters <_tutorials/4-specificity-filters.html>`_
+     - .. image:: selection.png
+         :width: 100px
 
-`Oligo Sets Generation <_tutorials/5-oligoset-generation.html>`_
------------------------------------------------------------
-After applying property and specificity filters, the final phase involves selecting 
-the best-performing sets of oligos. `This notebook <_tutorials/5-oligoset-generation>`_ shows how to score oligos and 
-use a graph-based approach to identify non-overlapping, optimal oligo sets.
+         `Oligo Sets Generation <_tutorials/5-oligoset-generation.html>`_
