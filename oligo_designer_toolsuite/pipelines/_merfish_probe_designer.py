@@ -640,7 +640,7 @@ class MerfishProbeDesigner:
         :return: A tuple containing the generated codebook and readout probe table.
         :rtype: Tuple[pd.DataFrame, pd.DataFrame]
         """
-        readout_probe_designer = MerfishReadoutProbeDesigner(
+        readout_probe_designer = ReadoutProbeDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
@@ -845,7 +845,7 @@ class MerfishProbeDesigner:
             sequence_type="sequence_encoding_probe",
         )
 
-        primer_designer = MerfishPrimerDesigner(
+        primer_designer = PrimerDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
@@ -1452,7 +1452,7 @@ class TargetProbeDesigner:
 ############################################
 
 
-class MerfishReadoutProbeDesigner:
+class ReadoutProbeDesigner:
     """
     A class for designing MERFISH readout probes.
     This class provides methods for creating, filtering, and scoring oligos based
@@ -1469,7 +1469,7 @@ class MerfishReadoutProbeDesigner:
         dir_output: str,
         n_jobs: int,
     ) -> None:
-        """Constructor for the MerfishReadoutProbeDesigner class."""
+        """Constructor for the ReadoutProbeDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -1487,10 +1487,7 @@ class MerfishReadoutProbeDesigner:
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
-        Create an oligo database by generating random oligo sequences.
-
-        This method generates random oligo sequences based on specified probabilities for nucleotide bases
-        and loads them into an oligo database.
+        Creates an oligo database by generating random sequences with pre-defined nucleotide probabilities.
 
         :param oligo_length: Length of the oligos to generate.
         :type oligo_length: int
@@ -1542,10 +1539,7 @@ class MerfishReadoutProbeDesigner:
         homopolymeric_base_n: int,
     ) -> OligoDatabase:
         """
-        Filter an oligo database based on sequence properties.
-
-        This method applies property filters such as GC content and homopolymeric base limits to
-        ensure the oligos meet specified criteria.
+        Filter the oligo database based on various sequence properties.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
@@ -1592,10 +1586,8 @@ class MerfishReadoutProbeDesigner:
         cross_hybridization_blastn_hit_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter an oligo database based on sequence specificity.
-
-        This method applies specificity filters, including exact matches, BLASTN specificity,
-        and cross-hybridization.
+        Filter the oligo database based on sequence specificity to remove sequences that
+        cross-hybridize to other oligos or hybridization to other genomic regions.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
@@ -1680,10 +1672,7 @@ class MerfishReadoutProbeDesigner:
         Tm_salt_correction_parameters,
     ) -> OligoDatabase:
         """
-        Create homogeneous oligo sets based on specified properties.
-
-        This method creates oligo sets such that each set contains oligos with homogeneous GC content
-        and melting temperature (Tm).
+        Create optimal oligo sets with homogeneous GC content and melting temperature (Tm).
 
         :param oligo_database: The oligo database from which sets will be created.
         :type oligo_database: OligoDatabase
@@ -1728,11 +1717,8 @@ class MerfishReadoutProbeDesigner:
         hamming_weight: int,
     ) -> pd.DataFrame:
         """
-        Generate a codebook for regions with specified Hamming distance and weight constraints.
-
-        This method creates a set of binary barcodes (codebook) for the specified number of regions,
-        ensuring that the Hamming distance between any two barcodes is at least the given minimum
-        and that each barcode has the specified Hamming weight.
+        Generate a set of binary barcodes (codebook) with specified Hamming distance between any two barcodes
+        and specified Hamming weight for each barcode.
 
         :param n_regions: Number of regions to encode in the codebook.
         :type n_regions: int
@@ -1742,8 +1728,7 @@ class MerfishReadoutProbeDesigner:
         :type min_hamming_dist: int
         :param hamming_weight: Fixed Hamming weight (number of 1's) for each barcode.
         :type hamming_weight: int
-        :return: A pandas DataFrame representing the codebook, where each row is a barcode and columns
-            represent individual bits.
+        :return: Codebook as a DataFrame with binary encoded bits.
         :rtype: pd.DataFrame
 
         :raises ValueError: If the number of valid barcodes is insufficient for the number of regions.
@@ -1791,8 +1776,7 @@ class MerfishReadoutProbeDesigner:
         :type channels_ids: list
         :param n_bits: Number of bits in the codebook, representing the number of readout probes needed.
         :type n_bits: int
-        :return: A pandas DataFrame containing the readout probe table with columns for bit, channel,
-                readout probe ID, and readout probe sequence.
+        :return: DataFrame containing the readout probe table with columns for bit, channel, readout probe ID, and readout probe sequence.
         :rtype: pd.DataFrame
 
         :raises AssertionError: If the number of available readout probes is less than the number of required bits.
@@ -1828,11 +1812,11 @@ class MerfishReadoutProbeDesigner:
 ############################################
 
 
-class MerfishPrimerDesigner:
+class PrimerDesigner:
     """
-    A class for designing primers for MERFISH experiments.
-
-    This class provides methods for creating and filtering oligos for primers.
+    A class for designing MERFISH primers.
+    This class provides methods for creating, filtering, and scoring oligos based
+    on specific properties and designing oligo sets for primers.
 
     :param dir_output: The output directory for storing generated files and intermediate results.
     :type dir_output: str
@@ -1845,7 +1829,7 @@ class MerfishPrimerDesigner:
         dir_output: str,
         n_jobs: int,
     ) -> None:
-        """Constructor for the MerfishPrimerDesigner class."""
+        """Constructor for the PrimerDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -1862,10 +1846,7 @@ class MerfishPrimerDesigner:
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
-        Create an oligo database by generating random forward primer sequences.
-
-        This method generates random forward primer sequences with specified probabilities for nucleotide bases,
-        all ending with a "T" nucleotide, and loads the sequences into an oligo database.
+        Creates an oligo database by generating random sequences with pre-defined nucleotide probabilities, all ending with a "T" nucleotide
 
         :param oligo_length: Length of the oligos to generate.
         :type oligo_length: int
@@ -1933,7 +1914,7 @@ class MerfishPrimerDesigner:
         secondary_structures_threshold_deltaG: float,
     ) -> OligoDatabase:
         """
-        Filter an oligo database by property.
+        Filter the oligo database based on various sequence properties.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
@@ -2026,7 +2007,8 @@ class MerfishPrimerDesigner:
         specificity_encoding_probes_blastn_hit_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter an oligo database for sequence specificity against reference and encoding probes.
+        Filter the oligo database based on sequence specificity to remove sequences that
+        hybridize to encoding probes or other genomic regions.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase

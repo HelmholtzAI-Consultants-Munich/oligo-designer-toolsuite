@@ -513,7 +513,7 @@ class SeqFishPlusProbeDesigner:
         :return: A tuple containing the generated codebook and readout probe table.
         :rtype: Tuple[pd.DataFrame, pd.DataFrame]
         """
-        readout_probe_designer = SeqFishPlusReadoutProbeDesigner(
+        readout_probe_designer = ReadoutProbeDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
@@ -711,7 +711,7 @@ class SeqFishPlusProbeDesigner:
             sequence_type="sequence_encoding_probe",
         )
 
-        primer_designer = SeqFishPlusPrimerDesigner(
+        primer_designer = PrimerDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
@@ -1268,13 +1268,24 @@ class TargetProbeDesigner:
 ############################################
 
 
-class SeqFishPlusReadoutProbeDesigner:
+class ReadoutProbeDesigner:
+    """
+    A class for designing MERFISH readout probes.
+    This class provides methods for creating, filtering, and scoring oligos based
+    on specific properties and designing oligo sets for readout probes.
+
+    :param dir_output: Path to the output directory where results will be stored.
+    :type dir_output: str
+    :param n_jobs: Number of parallel jobs to use for processing.
+    :type n_jobs: int
+    """
+
     def __init__(
         self,
         dir_output: str,
         n_jobs: int,
     ) -> None:
-        """Constructor for the SeqFishPlusReadoutProbeDesigner class."""
+        """Constructor for the ReadoutProbeDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -1291,16 +1302,16 @@ class SeqFishPlusReadoutProbeDesigner:
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
-        Create an oligo database by generating random readout probe sequences.
+        Creates an oligo database by generating random sequences with pre-defined nucleotide probabilities.
 
         :param oligo_length: Length of the oligos to generate.
         :type oligo_length: int
-        :param oligo_base_probabilities: Probabilities for nucleotide bases during sequence generation.
+        :param oligo_base_probabilities: Dictionary specifying probabilities for each base
+            (e.g., {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25}).
         :type oligo_base_probabilities: dict
         :param initial_num_sequences: Number of sequences to generate initially.
         :type initial_num_sequences: int
-
-        :return: Oligo database with generated sequences.
+        :return: The generated oligo database.
         :rtype: OligoDatabase
         """
         ##### creating the oligo sequences #####
@@ -1343,18 +1354,17 @@ class SeqFishPlusReadoutProbeDesigner:
         homopolymeric_base_n: int,
     ) -> OligoDatabase:
         """
-        Filter an oligo database based on GC content and homopolymeric base constraints.
+        Filter the oligo database based on various sequence properties.
 
-        :param oligo_database: Oligo database to filter.
+        :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
-        :param GC_content_min: Minimum GC content for oligos.
+        :param GC_content_min: Minimum acceptable GC content for oligos.
         :type GC_content_min: float
-        :param GC_content_max: Maximum GC content for oligos.
+        :param GC_content_max: Maximum acceptable GC content for oligos.
         :type GC_content_max: float
-        :param homopolymeric_base_n: Maximum length of homopolymeric base runs.
+        :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
         :type homopolymeric_base_n: int
-
-        :return: Filtered oligo database.
+        :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
         # define the filters
@@ -1391,22 +1401,23 @@ class SeqFishPlusReadoutProbeDesigner:
         cross_hybridization_blastn_hit_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter an oligo database based on specificity using BLASTN and cross-hybridization filters.
+        Filter the oligo database based on sequence specificity to remove sequences that
+        cross-hybridize to other oligos or hybridization to other genomic regions.
 
-        :param oligo_database: Oligo database to filter.
+        :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: FASTA files containing reference sequences.
+        :param files_fasta_reference_database: List of FASTA files containing reference sequences for
+            specificity filtering.
         :type files_fasta_reference_database: list
         :param specificity_blastn_search_parameters: Parameters for BLASTN specificity search.
         :type specificity_blastn_search_parameters: dict
-        :param specificity_blastn_hit_parameters: Parameters for filtering BLASTN hits.
+        :param specificity_blastn_hit_parameters: Parameters for filtering BLASTN specificity hits.
         :type specificity_blastn_hit_parameters: dict
-        :param cross_hybridization_blastn_search_parameters: Parameters for cross-hybridization search.
+        :param cross_hybridization_blastn_search_parameters: Parameters for BLASTN cross-hybridization search.
         :type cross_hybridization_blastn_search_parameters: dict
-        :param cross_hybridization_blastn_hit_parameters: Parameters for filtering cross-hybridization hits.
+        :param cross_hybridization_blastn_hit_parameters: Parameters for filtering BLASTN cross-hybridization hits.
         :type cross_hybridization_blastn_hit_parameters: dict
-
-        :return: Filtered oligo database.
+        :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
         reference_database = ReferenceDatabase(
@@ -1468,9 +1479,9 @@ class SeqFishPlusReadoutProbeDesigner:
         self, n_regions: int, n_barcode_rounds: int, n_pseudocolors: int, n_channels: int
     ) -> pd.DataFrame:
         """
-        Generate a codebook for SeqFISH+ with barcodes using pseudocolors and channels.
+        Generate a set of binary barcodes (codebook) using pseudocolors and channels.
 
-        :param n_regions: Number of regions to encode.
+        :param n_regions: Number of regions to encode in the codebook.
         :type n_regions: int
         :param n_barcode_rounds: Number of barcode rounds.
         :type n_barcode_rounds: int
@@ -1478,7 +1489,6 @@ class SeqFishPlusReadoutProbeDesigner:
         :type n_pseudocolors: int
         :param n_channels: Number of channels to assign barcodes to.
         :type n_channels: int
-
         :return: Codebook as a DataFrame with binary encoded bits.
         :rtype: pd.DataFrame
         """
@@ -1527,7 +1537,7 @@ class SeqFishPlusReadoutProbeDesigner:
         n_pseudocolors: int,
     ) -> pd.DataFrame:
         """
-        Create a readout probe table mapping probes to barcode rounds, pseudocolors, and channels.
+        Create a readout probe table that maps bits to barcode rounds, pseudocolors, and channels.
 
         :param readout_probe_database: Oligo database of readout probes.
         :type readout_probe_database: OligoDatabase
@@ -1537,8 +1547,7 @@ class SeqFishPlusReadoutProbeDesigner:
         :type n_barcode_rounds: int
         :param n_pseudocolors: Number of pseudocolors.
         :type n_pseudocolors: int
-
-        :return: DataFrame containing the readout probe table.
+        :return: DataFrame containing the readout probe table with columns for bit, pseudocolor, channel, readout probe sequence.
         :rtype: pd.DataFrame
         """
         n_channels = len(channels_ids)
@@ -1586,13 +1595,24 @@ class SeqFishPlusReadoutProbeDesigner:
 ############################################
 
 
-class SeqFishPlusPrimerDesigner:
+class PrimerDesigner:
+    """
+    A class for designing MERFISH primers.
+    This class provides methods for creating, filtering, and scoring oligos based
+    on specific properties and designing oligo sets for primers.
+
+    :param dir_output: The output directory for storing generated files and intermediate results.
+    :type dir_output: str
+    :param n_jobs: The number of parallel jobs to use for computations.
+    :type n_jobs: int
+    """
+
     def __init__(
         self,
         dir_output: str,
         n_jobs: int,
     ) -> None:
-        """Constructor for the SeqFishPlusPrimerDesigner class."""
+        """Constructor for the PrimerDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -1609,19 +1629,16 @@ class SeqFishPlusPrimerDesigner:
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
-        Create an oligo database by generating random forward primer sequences.
+        Creates an oligo database by generating random sequences with pre-defined nucleotide probabilities, all ending with a "T" nucleotide
 
-        This method generates random sequences for forward primers, appends a specific nucleotide
-        to the end of each sequence, and loads the sequences into an oligo database.
-
-        :param oligo_length: Length of the primers to generate (excluding the appended nucleotide).
+        :param oligo_length: Length of the oligos to generate.
         :type oligo_length: int
-        :param oligo_base_probabilities: Dictionary specifying probabilities for each base.
+        :param oligo_base_probabilities: Dictionary specifying probabilities for each base
+            (e.g., {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25}).
         :type oligo_base_probabilities: dict
         :param initial_num_sequences: Number of sequences to generate initially.
         :type initial_num_sequences: int
-
-        :return: an Oligodatabase
+        :return: The generated oligo database.
         :rtype: OligoDatabase
         """
         ##### creating the primer sequences #####
@@ -1679,21 +1696,17 @@ class SeqFishPlusPrimerDesigner:
         secondary_structures_threshold_deltaG: float,
     ) -> OligoDatabase:
         """
-        Filter an oligo database based on properties.
-
-        This method applies filters for GC content, GC clamps, homopolymeric base runs,
-        self-complementarity, complementarity to the reverse primer, melting temperature (Tm),
-        and secondary structure thresholds.
+        Filter the oligo database based on various sequence properties.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
-        :param GC_content_min: Minimum GC content for primers.
+        :param GC_content_min: Minimum acceptable GC content for oligos.
         :type GC_content_min: float
-        :param GC_content_max: Maximum GC content for primers.
+        :param GC_content_max: Maximum acceptable GC content for oligos.
         :type GC_content_max: float
-        :param number_GC_GCclamp: Minimum number of GC bases in the GC clamp region.
+        :param number_GC_GCclamp: The minimum number of G or C nucleotides required within the specified number of bases.
         :type number_GC_GCclamp: int
-        :param number_three_prime_base_GCclamp: Minimum number of GC bases in the last three bases of the primer.
+        :param number_three_prime_base_GCclamp: The number of bases to consider from the 3' end of the sequence.
         :type number_three_prime_base_GCclamp: int
         :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
         :type homopolymeric_base_n: int
@@ -1703,9 +1716,9 @@ class SeqFishPlusPrimerDesigner:
         :type reverse_primer_sequence: str
         :param max_len_complement: Maximum allowable length of complementarity to the reverse primer.
         :type max_len_complement: int
-        :param Tm_min: Minimum acceptable melting temperature (Tm) for primers.
+        :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos.
         :type Tm_min: float
-        :param Tm_max: Maximum acceptable melting temperature (Tm) for primers.
+        :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos.
         :type Tm_max: float
         :param Tm_parameters: Parameters for melting temperature calculation.
         :type Tm_parameters: dict
@@ -1713,12 +1726,11 @@ class SeqFishPlusPrimerDesigner:
         :type Tm_chem_correction_parameters: dict
         :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
         :type Tm_salt_correction_parameters: dict
-        :param T_secondary_structure: Maximum allowable melting temperature for secondary structures.
+        :param T_secondary_structure: Temperature for secondary structure analysis.
         :type T_secondary_structure: float
-        :param secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG) of secondary structures.
+        :param secondary_structures_threshold_deltaG: Threshold for secondary structure deltaG.
         :type secondary_structures_threshold_deltaG: float
-
-        :return: Filtered oligo database.
+        :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
         # define the filters
@@ -1777,27 +1789,24 @@ class SeqFishPlusPrimerDesigner:
         specificity_encoding_probes_blastn_hit_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter an oligo database for specificity against reference and encoding probes.
-
-        This method applies BLASTN-based specificity filters to ensure primers do not match
-        unintended sequences in the reference database or encoding probes database.
+        Filter the oligo database based on sequence specificity to remove sequences that
+        hybridize to encoding probes or other genomic regions.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of FASTA files containing reference sequences.
+        :param files_fasta_reference_database: List of FASTA files containing reference sequences for specificity filtering.
         :type files_fasta_reference_database: list[str]
         :param specificity_refrence_blastn_search_parameters: Parameters for BLASTN search against the reference database.
         :type specificity_refrence_blastn_search_parameters: dict
         :param specificity_refrence_blastn_hit_parameters: Parameters for filtering BLASTN hits against the reference database.
         :type specificity_refrence_blastn_hit_parameters: dict
-        :param file_fasta_encoding_probes_database: Path to the FASTA file containing encoding probes.
+        :param file_fasta_encoding_probes_database: Path to the FASTA file containing encoding probes for specificity filtering.
         :type file_fasta_encoding_probes_database: str
         :param specificity_encoding_probes_blastn_search_parameters: Parameters for BLASTN search against the encoding probes database.
         :type specificity_encoding_probes_blastn_search_parameters: dict
         :param specificity_encoding_probes_blastn_hit_parameters: Parameters for filtering BLASTN hits against the encoding probes database.
         :type specificity_encoding_probes_blastn_hit_parameters: dict
-
-        :return: Filtered oligo database.
+        :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
         ##### specificity filters against reference #####
@@ -1864,6 +1873,15 @@ class SeqFishPlusPrimerDesigner:
 
 
 def main():
+    """
+    Main function for running the SeqFishPlusProbeDesigner pipeline. This function reads the configuration file,
+    processes gene IDs, initializes the probe designer, sets developer parameters, and executes probe design
+    and output generation steps.
+
+    :param args: Command-line arguments parsed using the base parser. The arguments include:
+        - config: Path to the configuration YAML file containing parameters for the pipeline.
+    :type args: dict
+    """
     print("--------------START PIPELINE--------------")
 
     args = base_parser()
