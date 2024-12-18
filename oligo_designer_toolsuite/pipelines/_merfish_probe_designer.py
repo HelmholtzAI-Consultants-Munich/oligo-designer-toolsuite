@@ -447,7 +447,7 @@ class MerfishProbeDesigner:
         Design target probes, and runs the Merfish target probe designer pipeline.
 
         This method creates, filters, and optimizes a database of target probes based on various 
-        design criteria: property, specificity and oligo selection.
+        design criteria: property, specificity and does oligo selection.
 
         :param files_fasta_target_probe_database: List of FASTA files containing the target probe 
             database sequences.
@@ -1761,6 +1761,29 @@ class MerfishReadoutProbeDesigner:
         min_hamming_dist: int,
         hamming_weight: int,
     ) -> pd.DataFrame:
+        """
+        Generate a codebook for regions with specified Hamming distance and weight constraints.
+
+        This method creates a set of binary barcodes (codebook) for the specified number of regions,
+        ensuring that the Hamming distance between any two barcodes is at least the given minimum
+        and that each barcode has the specified Hamming weight.
+
+        :param n_regions: Number of regions to encode in the codebook.
+        :type n_regions: int
+        :param n_bits: Number of bits in each barcode.
+        :type n_bits: int
+        :param min_hamming_dist: Minimum Hamming distance required between any two barcodes.
+        :type min_hamming_dist: int
+        :param hamming_weight: Fixed Hamming weight (number of 1's) for each barcode.
+        :type hamming_weight: int
+
+        :return: A pandas DataFrame representing the codebook, where each row is a barcode and columns
+            represent individual bits.
+        :rtype: pd.DataFrame
+
+        :raises ValueError: If the number of valid barcodes is insufficient for the number of regions.
+        """
+
         def _generate_barcode(raw_barcode: list, n_bits: int):
             barcode = np.zeros(n_bits, dtype=np.int8)
             for i in raw_barcode:
@@ -1790,6 +1813,27 @@ class MerfishReadoutProbeDesigner:
     def create_readout_probe_table(
         self, readout_probe_database: OligoDatabase, channels_ids: list, n_bits: int
     ) -> pd.DataFrame:
+        """
+        Create a readout probe table that maps bits to channels and readout probes.
+
+        This method assigns readout probes from the database to bits in the codebook.
+
+        :param readout_probe_database: The database of readout probes.
+        :type readout_probe_database: OligoDatabase
+        :param channels_ids: List of channel identifiers to assign to the readout probes.
+        :type channels_ids: list
+        :param n_bits: Number of bits in the codebook (i.e., the number of readout probes needed).
+        :type n_bits: int
+
+        :return: A pandas DataFrame containing the readout probe table. Columns include:
+            - "bit": Bit identifier (e.g., "bit_1").
+            - "channel": Channel assigned to the readout probe.
+            - "readout_probe_id": Identifier of the readout probe.
+            - "readout_probe_sequence": Sequence of the readout probe.
+        :rtype: pd.DataFrame
+
+        :raises AssertionError: If the number of readout probes is less than the number of bits.
+        """
         readout_probes = readout_probe_database.get_oligoid_sequence_mapping(
             sequence_type="oligo", sequence_to_upper=False
         )
@@ -1843,6 +1887,25 @@ class MerfishPrimerDesigner:
         oligo_base_probabilities: dict,
         initial_num_sequences: int,
     ) -> Tuple[OligoDatabase, str]:
+        """
+        Create an oligo database by generating random forward primer sequences.
+
+        This method generates random forward primer sequences with specified probabilities for nucleotide bases,
+        appends a specific nucleotide to the end of each sequence, and loads the sequences into an oligo database.
+
+        :param oligo_length: Length of the oligos to generate (excluding the appended nucleotide).
+        :type oligo_length: int
+        :param oligo_base_probabilities: Dictionary specifying probabilities for each base
+            (e.g., {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25}).
+        :type oligo_base_probabilities: dict
+        :param initial_num_sequences: Number of sequences to generate initially.
+        :type initial_num_sequences: int
+
+        :return: A tuple containing:
+            - `oligo_database`: The created oligo database with forward primer sequences.
+            - `dir`: Directory containing intermediate output from the sequence generation step.
+        :rtype: Tuple[OligoDatabase, str]
+        """
         ##### creating the primer sequences #####
         # random forward primer
         forward_primer_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -1898,6 +1961,45 @@ class MerfishPrimerDesigner:
         T_secondary_structure: float,
         secondary_structures_threshold_deltaG: float,
     ) -> Tuple[OligoDatabase, str]:
+        """
+        Filter an oligo database by property.
+
+        :param oligo_database: The oligo database to be filtered.
+        :type oligo_database: OligoDatabase
+        :param GC_content_min: Minimum acceptable GC content for oligos.
+        :type GC_content_min: float
+        :param GC_content_max: Maximum acceptable GC content for oligos.
+        :type GC_content_max: float
+        :param number_GC_GCclamp: Minimum number of GC bases in the GC clamp region.
+        :type number_GC_GCclamp: int
+        :param number_three_prime_base_GCclamp: Minimum number of GC bases in the last three bases of the GC clamp.
+        :type number_three_prime_base_GCclamp: int
+        :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
+        :type homopolymeric_base_n: int
+        :param max_len_selfcomplement: Maximum allowable length of self-complementary sequences.
+        :type max_len_selfcomplement: int
+        :param reverse_primer_sequence: Sequence of the reverse primer for complementarity filtering.
+        :type reverse_primer_sequence: str
+        :param max_len_complement: Maximum allowable length of complementarity to the reverse primer.
+        :type max_len_complement: int
+        :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos.
+        :type Tm_min: float
+        :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos.
+        :type Tm_max: float
+        :param Tm_parameters: Parameters for melting temperature calculation.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
+        :type Tm_salt_correction_parameters: dict
+        :param T_secondary_structure: Maximum allowable melting temperature for secondary structures.
+        :type T_secondary_structure: float
+        :param secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG) of secondary structures.
+        :type secondary_structures_threshold_deltaG: float
+
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
         # define the filters
         gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
         gc_clamp = GCClampFilter(n_bases=number_three_prime_base_GCclamp, n_GC=number_GC_GCclamp)
@@ -1953,6 +2055,27 @@ class MerfishPrimerDesigner:
         specificity_encoding_probes_blastn_search_parameters: dict,
         specificity_encoding_probes_blastn_hit_parameters: dict,
     ) -> Tuple[OligoDatabase, str]:
+        """
+        Filter an oligo database for sequence specificity against reference and encoding probes.
+
+        :param oligo_database: The oligo database to be filtered.
+        :type oligo_database: OligoDatabase
+        :param files_fasta_reference_database: List of FASTA files containing reference sequences for specificity filtering.
+        :type files_fasta_reference_database: list[str]
+        :param specificity_refrence_blastn_search_parameters: Parameters for BLASTN search against the reference database.
+        :type specificity_refrence_blastn_search_parameters: dict
+        :param specificity_refrence_blastn_hit_parameters: Parameters for filtering BLASTN hits against the reference database.
+        :type specificity_refrence_blastn_hit_parameters: dict
+        :param file_fasta_encoding_probes_database: Path to the FASTA file containing encoding probes for specificity filtering.
+        :type file_fasta_encoding_probes_database: str
+        :param specificity_encoding_probes_blastn_search_parameters: Parameters for BLASTN search against the encoding probes database.
+        :type specificity_encoding_probes_blastn_search_parameters: dict
+        :param specificity_encoding_probes_blastn_hit_parameters: Parameters for filtering BLASTN hits against the encoding probes database.
+        :type specificity_encoding_probes_blastn_hit_parameters: dict
+
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
         ##### specificity filters against reference #####
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
