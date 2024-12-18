@@ -26,6 +26,14 @@ from oligo_designer_toolsuite.sequence_generator import (
 
 
 class GenomicRegionGenerator:
+    """
+    A class to generate genomic regions and manage annotations. This class allows loading of annotations from different
+    sources (NCBI, Ensembl, or custom files), and generates genomic regions such as genes, intergenic regions, exons, etc.
+
+    :param dir_output: Directory where the output files will be stored.
+    :type dir_output: str
+    """
+
     def __init__(self, dir_output: str) -> None:
         """Constructor for the GenomicRegionGenerator class."""
         # create the output folder
@@ -51,6 +59,20 @@ class GenomicRegionGenerator:
         source: str,
         source_params: dict,
     ) -> CustomGenomicRegionGenerator:
+        """
+        Loads annotations from the specified source (NCBI, Ensembl, or custom files).
+
+        :param source: The source of the annotations. Options: 'ncbi', 'ensembl', 'custom'.
+        :type source: str
+        :param source_params: Parameters required for loading the annotations depending on the source.
+            If source is 'ncbi', it should contain 'taxon', 'species', and 'annotation_release'.
+            If source is 'ensembl', it should contain 'species' and 'annotation_release'.
+            If source is 'custom', it should contain 'file_annotation', 'file_sequence', 'files_source',
+            'species', 'annotation_release', and 'genome_assembly'.
+        :type source_params: dict
+        :return: An instance of the corresponding region generator class based on the source.
+        :rtype: CustomGenomicRegionGenerator
+        """
         ##### log parameters #####
         logging.info("Parameters Load Annotations:")
         args, _, _, values = inspect.getargvalues(inspect.currentframe())
@@ -100,8 +122,22 @@ class GenomicRegionGenerator:
         self,
         region_generator: CustomGenomicRegionGenerator,
         genomic_regions: dict,
-        block_size: int,
+        block_size: int = 50,
     ) -> list:
+        """
+        Generates the specified genomic regions (e.g., genes, intergenic, exons, etc.) using the provided region generator.
+
+        :param region_generator: An instance of CustomGenomicRegionGenerator that contains methods for generating
+            genomic regions.
+        :type region_generator: CustomGenomicRegionGenerator
+        :param genomic_regions: A dictionary where keys are genomic region types (e.g., 'gene', 'intergenic', etc.)
+            and values are flags indicating whether to generate that region.
+        :type genomic_regions: dict
+        :param block_size: Size of the block for genomic regions like exon-exon junctions. Defaults to 50.
+        :type block_size: int
+        :return: A list of file paths to the generated genomic regions.
+        :rtype: list
+        """
         files_fasta = []
         # loop not parallizeable due to file access restrictions
         for genomic_region, flag in genomic_regions.items():
@@ -135,6 +171,16 @@ class GenomicRegionGenerator:
 
 
 def main():
+    """
+    Main function to execute the genomic region generation pipeline.
+
+    The pipeline reads a configuration file, initializes a `GenomicRegionGenerator`,
+    loads annotations from the specified source, and generates genomic regions based on the provided configuration.
+
+    :param args: Command-line arguments parsed using the base parser. The arguments include:
+        - config: Path to the configuration YAML file containing parameters for the pipeline.
+    :type args: dict
+    """
     print("--------------START PIPELINE--------------")
     args = base_parser()
 
