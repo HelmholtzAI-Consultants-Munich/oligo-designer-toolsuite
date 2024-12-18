@@ -59,9 +59,10 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 class OligoSeqProbeDesigner:
     """
-    A class for designing Oligo-Seq probes for genomic applications. An oligo-seq probe
-    is an oligo hybridization probe, which is optimized for probe-based targeted sequencing
-    to measure RNA expression.
+    A class for designing hybridization probes for the Oligo-Seq experiments.
+
+    An oligo-seq probe is an oligo hybridization probe, which is optimized for
+    probe-based targeted sequencing to measure RNA expression.
 
     :param write_intermediate_steps: Whether to save intermediate results during the probe design pipeline.
     :type write_intermediate_steps: bool
@@ -160,8 +161,8 @@ class OligoSeqProbeDesigner:
         target_probe_Tm_salt_correction_parameters: dict = None,
     ):
         """
-        Sets the default parameters for probe design, including specificity filters, oligo set selection,
-        and melting temperature computation.
+        Set developer-specific parameters for scrinshot probe designer pipeline.
+        These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_hybridization_probability_alignment_method: Alignment method for computing hybridization probabilities,
             either 'blastn' or 'bowtie'. Defaults to 'blastn'.
@@ -300,8 +301,8 @@ class OligoSeqProbeDesigner:
         n_sets: int = 100,
     ):
         """
-        Designs target probes by creating an oligo database, applying property and specificity filters,
-        and generating oligo sets based on the specified criteria.
+        Design target probes based on specified parameters, including property and specificity filters.
+        The designed probes are organized into sets based on customizable constraints.
 
         :param files_fasta_target_probe_database: FASTA files containing the target probe database.
         :type files_fasta_target_probe_database: list
@@ -475,15 +476,16 @@ class OligoSeqProbeDesigner:
         ],
     ) -> None:
         """
-        Generates the output files for the designed probes, including a YAML file with selected probe sets
-        and a table with all probes and their attributes.
+        Generate the final output files for the Oligo-Seq probe design pipeline.
 
-        :param oligo_database: The oligo database containing the designed probes.
+        :param oligo_database: The oligo database containing final designed probes and attributes.
         :type oligo_database: OligoDatabase
-        :param top_n_sets: Number of top sets to include in the output, defaults to 3.
-        :type top_n_sets: int, optional
-        :param attributes: List of attributes to include in the output files, defaults to a predefined set of attributes.
-        :type attributes: list, optional
+        :param top_n_sets: Number of top probe sets to include in the output, defaults to 3.
+        :type top_n_sets: int
+        :param attributes: List of attributes to include in the output files, defaults to a predefined list of probe attributes.
+        :type attributes: list
+
+        :return: None
         """
         oligo_database = self.oligo_attributes_calculator.calculate_oligo_length(
             oligo_database=oligo_database
@@ -523,7 +525,7 @@ class OligoSeqProbeDesigner:
 ############################################
 class TargetProbeDesigner:
     """
-    A class for designing target-specific Oligo-Seq probes for genomic applications.
+    A class for designing target probes for Oligo-Seq experiments.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for targeted probes.
 
@@ -558,7 +560,7 @@ class TargetProbeDesigner:
     ) -> OligoDatabase:
         """
         Creates an oligo database by generating sequences using a sliding window approach
-        and filtering based on exon and isoform consensus criteria.
+        and filtering based on specified criteria.
 
         :param gene_ids: List of gene identifiers for which oligos should be generated.
                         If None, all genes in the input fasta file are used.
@@ -644,8 +646,7 @@ class TargetProbeDesigner:
         Tm_salt_correction_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filters the oligo database based on various properties such as GC content,
-        melting temperature (Tm), secondary structures, and homopolymeric runs.
+        Filter the oligo database based on various sequence properties.
 
         :param oligo_database: The oligo database to filter.
         :type oligo_database: OligoDatabase
@@ -733,8 +734,8 @@ class TargetProbeDesigner:
         hybridization_probability_threshold: float,
     ) -> OligoDatabase:
         """
-        Filters the oligo database for specificity to remove sequences that cross-hybridize
-        to other oligos or hybridization with a certain probability to other genomic regions.
+        Filter the oligo database based on sequence specificity to remove sequences that
+        cross-hybridize to other oligos or hybridization to other genomic regions.
 
         :param oligo_database: The oligo database to filter.
         :type oligo_database: OligoDatabase
@@ -867,8 +868,7 @@ class TargetProbeDesigner:
         heuristic_n_attempts: int,
     ) -> OligoDatabase:
         """
-        Creates oligo sets based on scoring criteria, distance constraints, and
-        selection policies using a graph-based approach.
+        Create optimal oligo sets based on weighted scoring criteria, distance constraints and selection policies.
 
         :param oligo_database: The oligo database to process.
         :type oligo_database: OligoDatabase

@@ -70,7 +70,7 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 class MerfishProbeDesigner:
     """
-    A class for designing encoding probes for the Merfish experiment.
+    A class for designing encoding probes for the Merfish experiments.
 
     A MERFISH encoding probe is a fluorescent probe that contains a 30-nt targeting sequence which directs
     their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary
@@ -247,12 +247,8 @@ class MerfishProbeDesigner:
         heuristic_n_attempts: int = 100,
     ):
         """
-        Configure the developer parameters and set them to default values of Merfish.
-
-        This method sets developer parameters required for the design, evaluation, and filtering
-        of target probes, readout probes, and primers. These parameters include BlastN search
-        and hit configurations, melting temperature (Tm) calculations, and settings for heuristic
-        oligo selection.
+        Set developer-specific parameters for scrinshot probe designer pipeline.
+        These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity
             search for target probes.
@@ -461,10 +457,8 @@ class MerfishProbeDesigner:
         n_sets: int = 100,
     ) -> OligoDatabase:
         """
-        Design target probes, and runs the Merfish target probe designer pipeline.
-
-        This method creates, filters, and optimizes a database of target probes based on various
-        design criteria: property, specificity and does oligo selection.
+        Design target probes based on specified parameters, including property and specificity filters.
+        The designed probes are organized into sets based on customizable constraints.
 
         :param files_fasta_target_probe_database: List of input FASTA files for the target probe database.
         :type files_fasta_target_probe_database: list[str]
@@ -514,7 +508,7 @@ class MerfishProbeDesigner:
         :rtype: OligoDatabase
         """
 
-        target_probe_designer = MerfishTargetProbeDesigner(self.dir_output, self.n_jobs)
+        target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
 
         oligo_database = target_probe_designer.create_oligo_database(
             gene_ids=gene_ids,
@@ -615,10 +609,7 @@ class MerfishProbeDesigner:
         channels_ids: list = ["Alexa488", "Cy3b", "Alexa647"],
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Design readout probes and execute the Merfish readout probe designer pipeline.
-
-        This method creates, filters, and optimizes a database of readout probes based on
-        various design criteria including sequence properties, specificity, and oligo set selection.
+        Design readout probes based on specified parameters.
 
         :param n_genes: Number of genes for which readout probes are to be designed.
         :type n_genes: int
@@ -727,12 +718,9 @@ class MerfishProbeDesigner:
         target_probe_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
-    ):
+    ) -> OligoDatabase:
         """
         Design encoding probes by combining target probes with readout probe sequences based on the codebook.
-
-        This method generates encoding probes for each region in the target probe database by incorporating
-        sequences from the readout probes and their corresponding barcodes defined in the codebook.
 
         :param target_probe_database: Database of target probes containing sequence and attribute information.
         :type target_probe_database: OligoDatabase
@@ -746,7 +734,6 @@ class MerfishProbeDesigner:
             for target probes, readout probes, and the full encoding probe sequence.
         :rtype: OligoDatabase
         """
-
         region_ids = list(target_probe_database.database.keys())
 
         codebook.index = region_ids + [
@@ -815,9 +802,6 @@ class MerfishProbeDesigner:
     ):
         """
         Design forward and reverse primers for the encoding probe database.
-
-        This method runs the Merfish primer designer pipeline to create, filter, and optimize a database. Then the
-        best forward primer is selected based on the melting temperature (Tm) of the reverse primer.
 
         :param encoding_probe_database: Path to the encoding probe database file.
         :type encoding_probe_database: str
@@ -978,10 +962,6 @@ class MerfishProbeDesigner:
         """
         Generate the final output files for the MERFISH probe design pipeline.
 
-        This method updates the encoding probe database with primer sequences, computes
-        additional attributes, and writes the results to YAML files, including a file
-        for probe order information.
-
         :param encoding_probe_database: Database of encoding probes with associated attributes and sequences.
         :type encoding_probe_database: OligoDatabase
         :param reverse_primer_sequence: Sequence of the reverse primer.
@@ -990,8 +970,8 @@ class MerfishProbeDesigner:
         :type forward_primer_sequence: str
         :param top_n_sets: Number of top probe sets to include in the output, defaults to 3.
         :type top_n_sets: int
-        :param attributes: List of attributes to include in the final output YAML file.
-        :type attributes: list[str], optional
+        :param attributes: List of attributes to include in the output files, defaults to a comprehensive list of probe attributes.
+        :type attributes: list
 
         :return: None
         """
@@ -1083,9 +1063,9 @@ class MerfishProbeDesigner:
 ############################################
 
 
-class MerfishTargetProbeDesigner:
+class TargetProbeDesigner:
     """
-    Class for designing target probes for MERFISH experiments.
+    A class for designing target probes for MERFISH experiments.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for targeted probes.
 
@@ -1096,7 +1076,7 @@ class MerfishTargetProbeDesigner:
     """
 
     def __init__(self, dir_output: str, n_jobs: int) -> None:
-        """Constructor for the MerfishTargetProbeDesigner class."""
+        """Constructor for the TargetProbeDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -1117,11 +1097,8 @@ class MerfishTargetProbeDesigner:
         isoform_consensus: float,
     ) -> OligoDatabase:
         """
-        Create an oligo database by generating oligo sequences and applying pre-filters.
-
-        This method uses a sliding window approach to generate oligo sequences from input FASTA files,
-        creates a database of oligos, and pre-filters the database based on isoform consensus and
-        minimum oligos per gene.
+        Creates an oligo database by generating sequences using a sliding window approach
+        and filtering based on specified criteria.
 
         :param gene_ids: List of gene identifiers for which oligos should be generated.
                         If None, all genes in the input fasta file are used.
@@ -1196,10 +1173,7 @@ class MerfishTargetProbeDesigner:
         Tm_salt_correction_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter an oligo database based on sequence properties.
-
-        This method applies a series of property filters to the oligo database, such as GC content,
-        melting temperature, homopolymeric runs, and secondary structure thresholds.
+        Filter the oligo database based on various sequence properties.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
@@ -1277,15 +1251,12 @@ class MerfishTargetProbeDesigner:
         cross_hybridization_blastn_hit_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter an oligo database based on sequence specificity.
-
-        This method applies specificity filters to ensure that oligos match the intended targets
-        and minimize cross-hybridization using exact matches and BLASTN-based filters.
+        Filter the oligo database based on sequence specificity to remove sequences that
+        cross-hybridize to other oligos or hybridization to other genomic regions.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of FASTA files containing reference sequences for
-            specificity filtering.
+        :param files_fasta_reference_database: List of FASTA files containing reference sequences for specificity filtering.
         :type files_fasta_reference_database: list[str]
         :param specificity_blastn_search_parameters: Parameters for BLASTN specificity search.
         :type specificity_blastn_search_parameters: dict
@@ -1378,10 +1349,7 @@ class MerfishTargetProbeDesigner:
         heuristic_n_attempts: int,
     ) -> Tuple[OligoDatabase, str, str]:
         """
-        Create optimal oligo sets based on weighted scoring criteria.
-        This method generates oligo sets based on weighted scoring criteria, such as melting
-        temperature (Tm), GC content, and isoform specificity, and applies a selection policy to
-        ensure optimized sets.
+        Create optimal oligo sets based on weighted scoring criteria, distance constraints and selection policies.
 
         :param oligo_database: The oligo database from which sets will be created.
         :type oligo_database: OligoDatabase

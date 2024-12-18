@@ -188,9 +188,8 @@ class ScrinshotProbeDesigner:
         detection_oligo_Tm_salt_correction_parameters: dict = None,
     ):
         """
-        Set developer-specific parameters for probe design, including specificity, cross-hybridization,
-        and melting temperature (Tm) configurations. These parameters are used to customize and fine-tune
-        the probe design pipeline.
+        Set developer-specific parameters for scrinshot probe designer pipeline.
+        These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_specificity_blastn_search_parameters: Parameters for BlastN search in specificity filtering.
         :type target_probe_specificity_blastn_search_parameters: dict
@@ -314,8 +313,8 @@ class ScrinshotProbeDesigner:
         n_sets: int = 100,
     ) -> OligoDatabase:
         """
-        Design target probes based on specified parameters, including length, GC content, melting temperature,
-        and specificity filters. The designed probes are organized into sets with customizable constraints.
+        Design target probes based on specified parameters, including property and specificity filters.
+        The designed probes are organized into sets based on customizable constraints.
 
         :param files_fasta_target_probe_database: List of FASTA files containing sequences for the target probe database.
         :type files_fasta_target_probe_database: list
@@ -483,7 +482,7 @@ class ScrinshotProbeDesigner:
         detection_oligo_Tm_opt: float = 56,
     ) -> OligoDatabase:
         """
-        Design detection oligos for probes based on specified parameters such as length, thymine content, and melting temperature.
+        Design detection oligos for probes based on specified parameters.
 
         :param oligo_database: The oligo database containing existing probes and associated data.
         :type oligo_database: OligoDatabase
@@ -520,8 +519,8 @@ class ScrinshotProbeDesigner:
         oligo_database: OligoDatabase,
     ) -> OligoDatabase:
         """
-        Design padlock probe backbones, including arms and accessory sequences, for each probe in the oligo database.
-        Generates barcodes and calculates melting temperatures for the arms.
+        Design padlock probe backbones, including padlock arms, accessory sequences, barcode and ISS anchor,
+        for each probe in the oligo database.
 
         :param oligo_database: The oligo database containing target probes and attributes.
         :type oligo_database: OligoDatabase
@@ -649,8 +648,7 @@ class ScrinshotProbeDesigner:
         ],
     ) -> None:
         """
-        Generate output files containing designed padlock probes, detection oligos, and associated attributes.
-        Saves the output in YAML format and an order-specific YAML file for probe ordering.
+        Generate the final output files for the Scrinshot probe design pipeline.
 
         :param oligo_database: The oligo database containing final designed probes and attributes.
         :type oligo_database: OligoDatabase
@@ -658,6 +656,8 @@ class ScrinshotProbeDesigner:
         :type top_n_sets: int
         :param attributes: List of attributes to include in the output files, defaults to a comprehensive list of probe attributes.
         :type attributes: list
+
+        :return: None
         """
         oligo_database = self.oligo_attributes_calculator.calculate_oligo_length(
             oligo_database=oligo_database
@@ -730,12 +730,13 @@ class ScrinshotProbeDesigner:
 ############################################
 class TargetProbeDesigner:
     """
-    A class for designing target probes for genomic regions. Handles the creation of probe databases,
-    reference data, and associated calculations for probe attributes.
+    A class for designing target probes for Scrinshot experiments.
+    This class provides methods for creating, filtering, and scoring oligos based
+    on specific properties and designing oligo sets for targeted probes.
 
-    :param dir_output: The directory where output files and logs will be stored.
+    :param dir_output: Directory path where output files and intermediate results will be saved.
     :type dir_output: str
-    :param n_jobs: Number of jobs to run in parallel for computational tasks.
+    :param n_jobs: Number of parallel jobs to use for computationally intensive tasks.
     :type n_jobs: int
     """
 
@@ -761,7 +762,8 @@ class TargetProbeDesigner:
         isoform_consensus: float,
     ) -> OligoDatabase:
         """
-        Creates an oligo database by generating probe sequences and filtering them based on specified criteria.
+        Creates an oligo database by generating sequences using a sliding window approach
+        and filtering based on specified criteria.
 
         :param gene_ids: List of gene identifiers for which oligos should be generated.
                         If None, all genes in the input fasta file are used.
@@ -840,8 +842,7 @@ class TargetProbeDesigner:
         Tm_salt_correction_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filters the oligo database based on various property filters including GC content, melting temperature,
-        and detection oligo properties.
+        Filter the oligo database based on various sequence properties.
 
         :param oligo_database: The oligo database to filter.
         :type oligo_database: OligoDatabase
@@ -946,8 +947,8 @@ class TargetProbeDesigner:
         Tm_salt_correction_parameters: dict,
     ) -> OligoDatabase:
         """
-        Applies specificity filters to the oligo database, ensuring probes meet requirements for
-        specificity, cross-hybridization, and Padlock arm properties.
+        Filter the oligo database based on sequence specificity to remove sequences that
+        cross-hybridize to other oligos or hybridization to other genomic regions.
 
         :param oligo_database: The oligo database to filter.
         :type oligo_database: OligoDatabase
@@ -1091,7 +1092,7 @@ class TargetProbeDesigner:
         heuristic_n_attempts: int,
     ) -> OligoDatabase:
         """
-        Creates optimal sets of oligos by scoring candidates and applying selection policies.
+        Create optimal oligo sets based on weighted scoring criteria, distance constraints and selection policies.
 
         :param oligo_database: The oligo database to process.
         :type oligo_database: OligoDatabase
@@ -1213,8 +1214,7 @@ class DetectionOligoDesigner:
         Tm_salt_correction_parameters: dict,
     ) -> dict:
         """
-        Creates detection oligos for each probe in the oligo database. The detection oligos are optimized
-        for melting temperature (Tm), length, and specific sequence properties.
+        Creates detection oligos for each probe in the oligo database.
 
         :param oligo_database: The oligo database containing probe data.
         :type oligo_database: OligoDatabase
@@ -1274,8 +1274,7 @@ class DetectionOligoDesigner:
         Tm_salt_correction_parameters: dict,
     ) -> dict:
         """
-        Generates detection oligos for a specific region in the oligo database. Detection oligos are designed
-        by optimizing length, thymine count, and melting temperature (Tm).
+        Generates detection oligos for a specific region in the oligo database.
 
         :param oligo_database: The oligo database containing probe data.
         :type oligo_database: OligoDatabase
