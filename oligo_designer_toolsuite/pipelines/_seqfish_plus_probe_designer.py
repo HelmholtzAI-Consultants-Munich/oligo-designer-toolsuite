@@ -828,6 +828,26 @@ class SeqFishPlusProbeDesigner:
             "target_probe_isoform_consensus",
         ],
     ) -> None:
+        """
+        Generate the final output files for the SeqFishPlus probe design pipeline.
+
+        This method updates the encoding probe database with primer sequences, computes
+        additional attributes, and writes the results to YAML files, including a file
+        for probe order information.
+
+        :param encoding_probe_database: Database of encoding probes with associated attributes and sequences.
+        :type encoding_probe_database: OligoDatabase
+        :param reverse_primer_sequence: Sequence of the reverse primer.
+        :type reverse_primer_sequence: str
+        :param forward_primer_sequence: Sequence of the forward primer.
+        :type forward_primer_sequence: str
+        :param top_n_sets: Number of top oligo sets to include in the output.
+        :type top_n_sets: int
+        :param attributes: List of attributes to include in the final output YAML file.
+        :type attributes: list[str], optional
+
+        :return: None
+        """
         new_probe_attributes_primer = {}
 
         for region_id in encoding_probe_database.database.keys():
@@ -929,6 +949,9 @@ class SeqFishPlusProbeDesigner:
 
 
 class SeqFishTargetProbeDesigner:
+    """
+    Class for designing target probes for SeqFishPlus experiments.
+    """
     def __init__(self, dir_output: str, n_jobs: int) -> None:
         """Constructor for the SeqFishPlusProbeDesigner class."""
 
@@ -950,6 +973,31 @@ class SeqFishTargetProbeDesigner:
         min_oligos_per_gene: int,
         isoform_consensus: float,
     ) -> Tuple[OligoDatabase, str]:
+        """
+        Create an oligo database by generating sequences and applying pre-filters.
+
+        This method uses a sliding window approach to generate oligo sequences from input FASTA files,
+        creates a database of oligos, and applies pre-filters based on isoform consensus and minimum
+        oligos per gene.
+
+        :param gene_ids: List of gene IDs to include in the oligo database.
+        :type gene_ids: list
+        :param oligo_length_min: Minimum length of the oligos to generate.
+        :type oligo_length_min: int
+        :param oligo_length_max: Maximum length of the oligos to generate.
+        :type oligo_length_max: int
+        :param files_fasta_oligo_database: List of FASTA files containing sequences for oligo generation.
+        :type files_fasta_oligo_database: list[str]
+        :param min_oligos_per_gene: Minimum number of oligos required per gene in the database.
+        :type min_oligos_per_gene: int
+        :param isoform_consensus: Minimum isoform consensus threshold for filtering oligos.
+        :type isoform_consensus: float
+
+        :return: A tuple containing:
+            - `oligo_database`: The created and filtered oligo database.
+            - `dir`: Directory containing intermediate output from the sequence generation step.
+        :rtype: Tuple[OligoDatabase, str]
+        """
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
@@ -1001,6 +1049,28 @@ class SeqFishTargetProbeDesigner:
         T_secondary_structure: float,
         secondary_structures_threshold_deltaG: float,
     ) -> Tuple[OligoDatabase, str]:
+        """
+        Filter an oligo database based on various sequence properties.
+
+        This method applies filters to remove oligos that do not meet specified criteria, including
+        GC content, homopolymeric base runs, and secondary structure thresholds.
+
+        :param oligo_database: The oligo database to be filtered.
+        :type oligo_database: OligoDatabase
+        :param GC_content_min: Minimum acceptable GC content for oligos.
+        :type GC_content_min: float
+        :param GC_content_max: Maximum acceptable GC content for oligos.
+        :type GC_content_max: float
+        :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
+        :type homopolymeric_base_n: str
+        :param T_secondary_structure: Maximum allowable melting temperature for secondary structures.
+        :type T_secondary_structure: float
+        :param secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG) of secondary structures.
+        :type secondary_structures_threshold_deltaG: float
+
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
@@ -1043,6 +1113,28 @@ class SeqFishTargetProbeDesigner:
         cross_hybridization_blastn_search_parameters: dict,
         cross_hybridization_blastn_hit_parameters: dict,
     ) -> Tuple[OligoDatabase, str]:
+        """
+        Filter an oligo database based on sequence specificity.
+
+        This method applies specificity filters, including exact match, BLASTN specificity, and
+        cross-hybridization filters, to ensure oligos target only the intended sequences.
+
+        :param oligo_database: The oligo database to be filtered.
+        :type oligo_database: OligoDatabase
+        :param files_fasta_reference_database: List of FASTA files containing reference sequences for specificity filtering.
+        :type files_fasta_reference_database: list[str]
+        :param specificity_blastn_search_parameters: Parameters for BLASTN specificity search.
+        :type specificity_blastn_search_parameters: dict
+        :param specificity_blastn_hit_parameters: Parameters for filtering BLASTN specificity hits.
+        :type specificity_blastn_hit_parameters: dict
+        :param cross_hybridization_blastn_search_parameters: Parameters for BLASTN cross-hybridization search.
+        :type cross_hybridization_blastn_search_parameters: dict
+        :param cross_hybridization_blastn_hit_parameters: Parameters for filtering BLASTN cross-hybridization hits.
+        :type cross_hybridization_blastn_hit_parameters: dict
+
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
         ##### define reference database #####
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
@@ -1113,6 +1205,43 @@ class SeqFishTargetProbeDesigner:
         heuristic_n_attempts: int,
         distance_between_oligos: int,
     ) -> Tuple[OligoDatabase, str, str]:
+        """
+        Create optimal oligo sets based on weighted scoring criteria.
+        
+        This method generates oligo sets based on a weighted scoring function that considers GC content,
+        untranslated region (UTR) properties, and oligo set size. The sets are optimized using a graph-based
+        selection policy and a heuristic approach.
+
+        :param oligo_database: The oligo database from which sets will be created.
+        :type oligo_database: OligoDatabase
+        :param GC_weight: Weight assigned to GC content in the scoring function.
+        :type GC_weight: float
+        :param GC_content_opt: Optimal GC content for scoring.
+        :type GC_content_opt: float
+        :param UTR_weight: Weight assigned to untranslated region (UTR) properties in the scoring function.
+        :type UTR_weight: float
+        :param set_size_opt: Optimal size of each oligo set.
+        :type set_size_opt: int
+        :param set_size_min: Minimum size of each oligo set.
+        :type set_size_min: int
+        :param max_graph_size: Maximum size of the graph used in the selection policy.
+        :type max_graph_size: int
+        :param n_sets: Number of oligo sets to generate.
+        :type n_sets: int
+        :param n_attempts: Number of attempts for set optimization.
+        :type n_attempts: int
+        :param pre_filter: Whether to apply pre-filtering during the selection process.
+        :type pre_filter: bool
+        :param heuristic: Whether to use a heuristic approach for set optimization.
+        :type heuristic: bool
+        :param heuristic_n_attempts: Number of attempts for heuristic optimization.
+        :type heuristic_n_attempts: int
+        :param distance_between_oligos: Minimum distance between oligos in a set.
+        :type distance_between_oligos: int
+
+        :return: The updated oligo database with the generated oligo sets.
+        :rtype: OligoDatabase
+        """
         oligos_scoring = WeightedGCUtrScoring(
             GC_content_opt=GC_content_opt, GC_weight=GC_weight, UTR_weight=UTR_weight
         )

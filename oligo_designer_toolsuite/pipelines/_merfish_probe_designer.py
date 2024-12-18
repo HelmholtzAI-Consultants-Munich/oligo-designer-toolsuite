@@ -1096,7 +1096,7 @@ class MerfishTargetProbeDesigner:
     Class for designing target probes for MERFISH experiments.
     """
     def __init__(self, dir_output: str, n_jobs: int) -> None:
-        """Constructor for the MerfishProbeDesigner class."""
+        """Constructor for the MerfishTargetProbeDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
