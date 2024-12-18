@@ -2,10 +2,10 @@ MERFISH Probe Designer
 ==========================
 
 
-A MERFISCH encoding probe is a flourescent probe that contains a 30-nt targeting sequence which directs their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. 
+A MERFISH encoding probe is a fluorescent probe that contains a 30-nt targeting sequence which directs their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. 
 The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
-If you are using the MERFISCH Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
+If you are using the MERFISH Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
 
 
 Usage
@@ -14,7 +14,7 @@ Usage
 Command-Line Call
 ^^^^^^^^^^^^^^^^^^^
 
-To create MERFISCH probes you can run the pipeline with 
+To create MERFISH probes you can run the pipeline with 
 
 ::
 
@@ -23,7 +23,7 @@ To create MERFISCH probes you can run the pipeline with
 
 where:
 
-``-c``: config file, which contains parameter settings, specific to MERFISCH probe design, *merfish_probe_designer.yaml* contains default parameter settings
+``-c``: config file, which contains parameter settings, specific to MERFISH probe design, *merfish_probe_designer.yaml* contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
 The logging file will have the format: ``log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
@@ -78,7 +78,7 @@ In addition, one forward and one reverse primer is provided.
 The reverse primer is the 20nt T7 promoter sequence (TAATACGACTCACTATAGGG) and the forward primer is created from a random sequence with user-defined per base probability that fulfills the following criteria: GC content (``GCContentFilter``) and melting temperature (``MeltingTemperatureNNFilter``) within a user-specified range, CG clamp at 3’ terminal end of the sequence (``GCClampFilter``), no homopolymeric runs of any nucleotide longer than a user-specified threshold (``HomopolymericRunsFilter``), no  secondary structures below a user-defined free energy threshold (``SecondaryStructureFilter``). 
 Furthermore, the forward primer sequence is checked for off-target binding (``BlastNFilter``) against the transcriptome, the encoding probes and T7 primer. 
 
-The output is stored in two seperate files: 
+The output is stored in two separate files: 
 
 - ``merfish_probes_order.yml``: contains for each probe the sequences of the merfish probe and the detection oligo.
 - ``merfish_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
