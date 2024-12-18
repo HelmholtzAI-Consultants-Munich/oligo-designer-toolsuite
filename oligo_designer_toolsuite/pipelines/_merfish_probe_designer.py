@@ -3,7 +3,6 @@
 ############################################
 
 import os
-import sys
 import yaml
 import shutil
 import logging
@@ -15,7 +14,7 @@ import pandas as pd
 from typing import List, Tuple
 from pathlib import Path
 from datetime import datetime
-from itertools import product, combinations
+from itertools import combinations
 from scipy.spatial.distance import hamming
 
 from Bio.SeqUtils import Seq
