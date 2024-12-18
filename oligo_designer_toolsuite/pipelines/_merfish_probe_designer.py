@@ -441,7 +441,7 @@ class MerfishProbeDesigner:
         readout_probe_GC_content_max: float = 50,
         readout_probe_homopolymeric_base_n: dict = {"G": 3},
         readout_probe_set_size: int = 16,
-        readout_probe_homogeneous_properties_weights: dict = {"Tm_weight": 1, "GC_weight": 1},
+        readout_probe_homogeneous_properties_weights: dict = {"TmNN": 1, "GC_content": 1},
         n_bits: int = 16,
         min_hamming_dist: int = 4,
         hamming_weight: int = 4,
@@ -1227,11 +1227,11 @@ class MerfishReadoutProbeDesigner:
         Tm_salt_correction_parameters,
     ):
         oligo_database = self.oligo_attributes_calculator.calculate_TmNN(
-            oligo_database,
-            "oligo",
+            oligo_database=oligo_database,
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
             Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+            sequence_type="oligo",
         )
         oligo_database = self.oligo_attributes_calculator.calculate_GC_content(oligo_database, "oligo")
 
@@ -1620,7 +1620,7 @@ def main():
     )
 
     codebook, readout_probe_table = pipeline.design_readout_probes(
-        n_genes=len(target_probe_database.database),
+        n_genes=3,
         files_fasta_reference_database_readout_probe=config["files_fasta_reference_database_readout_probe"],
         readout_probe_length=config["readout_probe_length"],
         readout_probe_base_probabilities=config["readout_probe_base_probabilities"],

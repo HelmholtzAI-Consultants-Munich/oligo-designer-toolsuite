@@ -61,8 +61,8 @@ readout_probe_homopolymeric_base_n: # minimum number of nucleotides to consider 
   G: 3
 readout_probe_set_size: 16 # total number of readout probes
 readout_probe_homogeneous_properties_weights: # readout probes in one set should have similar properties, the weighted sum of variance of the properties is minimized
-  Tm_weight: 1 # melting temperature
-  GC_weight: 1 # GC content
+  TmNN: 1 # melting temperature
+  GC_content: 1 # GC content
 n_bits: 16 # number of bits contained in each barcode
 min_hamming_dist: 4 # minimum distance between two valid barcodes
 hamming_weight: 4 # number of bits containing one in each barcode
