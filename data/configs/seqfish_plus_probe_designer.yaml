@@ -77,8 +77,8 @@ primer_base_probabilities: # probabilities of each base for random primer sequen
   T: 0.25
 primer_GC_content_min: 50 # minimum GC content of oligos
 primer_GC_content_max: 65 # maximum GC content of oligos
-primer_number_GC_GCclamp: 1
-primer_number_three_prime_base_GCclamp: 2
+primer_number_GC_GCclamp: 1 # the minimum number of G or C nucleotides required within the specified number of bases
+primer_number_three_prime_base_GCclamp: 2 #the number of bases to consider from the 3' end of the sequence
 primer_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
   A: 4
   T: 4
