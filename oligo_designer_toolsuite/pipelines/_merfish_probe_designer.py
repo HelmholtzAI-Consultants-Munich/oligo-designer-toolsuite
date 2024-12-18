@@ -1294,7 +1294,7 @@ class MerfishReadoutProbeDesigner:
         channel = 0
         for i, (readout_probe_id, readout_probe_sequence) in enumerate(readout_probes.items()):
             readout_probe_table.iloc[i] = [
-                i,
+                f"bit_{i+1}",
                 channels_ids[channel],
                 readout_probe_id,
                 readout_probe_sequence,
