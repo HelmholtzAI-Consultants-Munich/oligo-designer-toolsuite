@@ -79,7 +79,7 @@ In addition, one forward and one reverse primer is provided.
 The reverse primer is the 20nt T7 promoter sequence (TAATACGACTCACTATAGGG) and the forward primer is created from a random sequence with user-defined per base probability that fulfills the following criteria: GC content (``GCContentFilter``) and melting temperature (``MeltingTemperatureNNFilter``) within a user-specified range, CG clamp at 3’ terminal end of the sequence (``GCClampFilter``), no homopolymeric runs of any nucleotide longer than a user-specified threshold (``HomopolymericRunsFilter``), no  secondary structures below a user-defined free energy threshold (``SecondaryStructureFilter``). 
 Furthermore, the forward primer sequence is checked for off-target binding (``BlastNFilter``) against the transcriptome, the encoding probes and T7 primer.
 
-The output is stored in two seperate files: 
+The output is stored in two separate files: 
 
 - ``seqfish_plus_probes_order.yml``: contains for each probe the sequences of the seqfish+ probe and the detection oligo.
 - ``seqfish_plus_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
