@@ -53,11 +53,24 @@ from oligo_designer_toolsuite.pipelines._utils import (
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
-# Oligo-seq Designer Functions
+# Oligo-Seq Probe Designer
 ############################################
 
 
 class OligoSeqProbeDesigner:
+    """
+    A class for designing Oligo-Seq probes for genomic applications. An oligo-seq probe
+    is an oligo hybridization probe, which is optimized for probe-based targeted sequencing
+    to measure RNA expression.
+
+    :param write_intermediate_steps: Whether to save intermediate results during the probe design pipeline.
+    :type write_intermediate_steps: bool
+    :param dir_output: Directory path where output files and logs will be saved.
+    :type dir_output: str
+    :param n_jobs: Number of parallel jobs to use for computationally intensive tasks.
+    :type n_jobs: int
+    """
+
     def __init__(self, write_intermediate_steps: bool, dir_output: str, n_jobs: int) -> None:
         """Constructor for the OligoSeqProbeDesigner class."""
 
@@ -146,6 +159,55 @@ class OligoSeqProbeDesigner:
         },
         target_probe_Tm_salt_correction_parameters: dict = None,
     ):
+        """
+        Sets the default parameters for probe design, including specificity filters, oligo set selection,
+        and melting temperature computation.
+
+        :param target_probe_hybridization_probability_alignment_method: Alignment method for computing hybridization probabilities,
+            either 'blastn' or 'bowtie'. Defaults to 'blastn'.
+        :type target_probe_hybridization_probability_alignment_method: str
+        :param target_probe_hybridization_probability_blastn_search_parameters: Parameters for BLASTN search.
+        :type target_probe_hybridization_probability_blastn_search_parameters: dict
+        :param target_probe_hybridization_probability_blastn_hit_parameters: Parameters for BLASTN hits.
+        :type target_probe_hybridization_probability_blastn_hit_parameters: dict
+        :param target_probe_hybridization_probability_bowtie_search_parameters: Parameters for Bowtie search.
+        :type target_probe_hybridization_probability_bowtie_search_parameters: dict
+        :param target_probe_hybridization_probability_bowtie_hit_parameters: Parameters for Bowtie hits.
+        :type target_probe_hybridization_probability_bowtie_hit_parameters: dict
+        :param target_probe_cross_hybridization_alignment_method: Alignment method for cross-hybridization filtering,
+            either 'blastn' or 'bowtie'. Defaults to 'blastn'.
+        :type target_probe_cross_hybridization_alignment_method: str
+        :param target_probe_cross_hybridization_blastn_search_parameters: Parameters for BLASTN cross-hybridization search.
+        :type target_probe_cross_hybridization_blastn_search_parameters: dict
+        :param target_probe_cross_hybridization_blastn_hit_parameters: Parameters for BLASTN cross-hybridization hits.
+        :type target_probe_cross_hybridization_blastn_hit_parameters: dict
+        :param target_probe_cross_hybridization_bowtie_search_parameters: Parameters for Bowtie cross-hybridization search.
+        :type target_probe_cross_hybridization_bowtie_search_parameters: dict
+        :param target_probe_cross_hybridization_bowtie_hit_parameters: Parameters for Bowtie cross-hybridization hits.
+        :type target_probe_cross_hybridization_bowtie_hit_parameters: dict
+        :param max_graph_size: Maximum size of the graph used in set selection, defaults to 5000.
+        :type max_graph_size: int
+        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small, defaults to False.
+        :type pre_filter: bool
+        :param n_attempts: Maximum number of attempts for selecting oligo sets, defaults to 100000.
+        :type n_attempts: int
+        :param heuristic: Whether to apply heuristic methods in oligo set selection, defaults to True.
+        :type heuristic: bool
+        :param heuristic_n_attempts: Maximum number of attempts for heuristic selecting oligo sets, defaults to 100.
+        :type heuristic_n_attempts: int
+        :param target_probe_Tm_parameters: Parameters for melting temperature computation.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type target_probe_Tm_parameters: dict
+        :param target_probe_Tm_chem_correction_parameters: Chemical correction parameters for melting temperature.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+        :type target_probe_Tm_chem_correction_parameters: dict
+        :param target_probe_Tm_salt_correction_parameters: Salt correction parameters for melting temperature.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+        :type target_probe_Tm_salt_correction_parameters: dict
+        """
         ### Parameters for the specificity filters
         self.target_probe_hybridization_probability_alignment_method = (
             target_probe_hybridization_probability_alignment_method
@@ -237,6 +299,63 @@ class OligoSeqProbeDesigner:
         distance_between_target_probes: int = 0,
         n_sets: int = 100,
     ):
+        """
+        Designs target probes by creating an oligo database, applying property and specificity filters,
+        and generating oligo sets based on the specified criteria.
+
+        :param files_fasta_target_probe_database: FASTA files containing the target probe database.
+        :type files_fasta_target_probe_database: list
+        :param files_fasta_reference_database_targe_probe: FASTA files containing the reference database.
+        :type files_fasta_reference_database_targe_probe: list
+        :param gene_ids: List of gene IDs to target, or None to target all genes.
+        :type gene_ids: list, optional
+        :param target_probe_length_min: Minimum length of target probes, defaults to 26.
+        :type target_probe_length_min: int, optional
+        :param target_probe_length_max: Maximum length of target probes, defaults to 30.
+        :type target_probe_length_max: int, optional
+        :param target_probe_split_region: The number of bases required on each side of a split sequence (e.g. exon junctions) to include it, defaults to 4.
+        :type target_probe_split_region: int, optional
+        :param target_probe_targeted_exons: Exons to target, defaults to ["1", "2", "3"].
+        :type target_probe_targeted_exons: list, optional
+        :param target_probe_isoform_consensus: Minimum isoform consensus, defaults to 0.
+        :type target_probe_isoform_consensus: float, optional
+        :param target_probe_GC_content_min: Minimum GC content for probes, defaults to 45.
+        :type target_probe_GC_content_min: float, optional
+        :param target_probe_GC_content_opt: Optimal GC content for probes, defaults to 55.
+        :type target_probe_GC_content_opt: float, optional
+        :param target_probe_GC_content_max: Maximum GC content for probes, defaults to 65.
+        :type target_probe_GC_content_max: float, optional
+        :param target_probe_Tm_min: Minimum melting temperature for probes, defaults to 50.
+        :type target_probe_Tm_min: float, optional
+        :param target_probe_Tm_opt: Optimal melting temperature for probes, defaults to 60.
+        :type target_probe_Tm_opt: float, optional
+        :param target_probe_Tm_max: Maximum melting temperature for probes, defaults to 70.
+        :type target_probe_Tm_max: float, optional
+        :param target_probe_secondary_structures_T: Temperature for secondary structure evaluation, defaults to 37.
+        :type target_probe_secondary_structures_T: int, optional
+        :param target_probe_secondary_structures_threshold_deltaG: Threshold delta G for secondary structures, defaults to 0.
+        :type target_probe_secondary_structures_threshold_deltaG: int, optional
+        :param target_probe_homopolymeric_base_n: Maximum number of consecutive homopolymeric bases, defaults to {"A": 6, "T": 6, "C": 6, "G": 6}.
+        :type target_probe_homopolymeric_base_n: dict, optional
+        :param target_probe_max_len_selfcomplement: Maximum length of self-complementary sequences, defaults to 10.
+        :type target_probe_max_len_selfcomplement: int, optional
+        :param target_probe_hybridization_probability_threshold: Threshold for hybridization probability, defaults to 0.001.
+        :type target_probe_hybridization_probability_threshold: float, optional
+        :param target_probe_GC_weight: Weight for GC content in set scoring, defaults to 1.
+        :type target_probe_GC_weight: float, optional
+        :param target_probe_Tm_weight: Weight for melting temperature in set scoring, defaults to 1.
+        :type target_probe_Tm_weight: float, optional
+        :param set_size_min: Minimum size of probe sets, defaults to 3.
+        :type set_size_min: int, optional
+        :param set_size_opt: Optimal size of probe sets, defaults to 5.
+        :type set_size_opt: int, optional
+        :param distance_between_target_probes: Minimum genomic distance between probes in a set, defaults to 0.
+        :type distance_between_target_probes: int, optional
+        :param n_sets: Number of probe sets to generate, defaults to 100.
+        :type n_sets: int, optional
+        :return: The designed oligo database with probe sets.
+        :rtype: OligoDatabase
+        """
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
 
         oligo_database = target_probe_designer.create_oligo_database(
@@ -355,6 +474,17 @@ class OligoSeqProbeDesigner:
             "DG_secondary_structure",
         ],
     ) -> None:
+        """
+        Generates the output files for the designed probes, including a YAML file with selected probe sets
+        and a table with all probes and their attributes.
+
+        :param oligo_database: The oligo database containing the designed probes.
+        :type oligo_database: OligoDatabase
+        :param top_n_sets: Number of top sets to include in the output, defaults to 3.
+        :type top_n_sets: int, optional
+        :param attributes: List of attributes to include in the output files, defaults to a predefined set of attributes.
+        :type attributes: list, optional
+        """
         oligo_database = self.oligo_attributes_calculator.calculate_oligo_length(
             oligo_database=oligo_database
         )
@@ -388,7 +518,21 @@ class OligoSeqProbeDesigner:
         logging.info("--------------END PIPELINE--------------")
 
 
+############################################
+# Oligo-Seq Target Probe Designer
+############################################
 class TargetProbeDesigner:
+    """
+    A class for designing target-specific Oligo-Seq probes for genomic applications.
+    This class provides methods for creating, filtering, and scoring oligos based
+    on specific properties and designing oligo sets for targeted probes.
+
+    :param dir_output: Directory path where output files and intermediate results will be saved.
+    :type dir_output: str
+    :param n_jobs: Number of parallel jobs to use for computationally intensive tasks.
+    :type n_jobs: int
+    """
+
     def __init__(self, dir_output: str, n_jobs: int) -> None:
         """Constructor for the TargetProbeDesigner class."""
 
@@ -411,7 +555,31 @@ class TargetProbeDesigner:
         min_oligos_per_gene: int,
         isoform_consensus: float,
         targeted_exons: list[str],
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
+        """
+        Creates an oligo database by generating sequences using a sliding window approach
+        and filtering based on exon and isoform consensus criteria.
+
+        :param gene_ids: List of gene identifiers for which oligos should be generated.
+                        If None, all genes in the input fasta file are used.
+        :type gene_ids: list
+        :param oligo_length_min: Minimum length of oligos to generate.
+        :type oligo_length_min: int
+        :param oligo_length_max: Maximum length of oligos to generate.
+        :type oligo_length_max: int
+        :param split_region: The number of bases required on each side of a split sequence (e.g. exon junctions) to include it.
+        :type split_region: int
+        :param files_fasta_oligo_database: List of FASTA files to use for sequence generation.
+        :type files_fasta_oligo_database: list[str]
+        :param min_oligos_per_gene: Minimum number of oligos required per gene.
+        :type min_oligos_per_gene: int
+        :param isoform_consensus: Threshold for isoform consensus filtering.
+        :type isoform_consensus: float
+        :param targeted_exons: List of exon numbers to target.
+        :type targeted_exons: list[str]
+        :return: The generated oligo database.
+        :rtype: OligoDatabase
+        """
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
@@ -474,7 +642,38 @@ class TargetProbeDesigner:
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
+        """
+        Filters the oligo database based on various properties such as GC content,
+        melting temperature (Tm), secondary structures, and homopolymeric runs.
+
+        :param oligo_database: The oligo database to filter.
+        :type oligo_database: OligoDatabase
+        :param GC_content_min: Minimum GC content for filtering.
+        :type GC_content_min: int
+        :param GC_content_max: Maximum GC content for filtering.
+        :type GC_content_max: int
+        :param Tm_min: Minimum melting temperature for filtering.
+        :type Tm_min: int
+        :param Tm_max: Maximum melting temperature for filtering.
+        :type Tm_max: int
+        :param secondary_structures_T: Temperature for secondary structure analysis.
+        :type secondary_structures_T: float
+        :param secondary_structures_threshold_deltaG: Threshold for secondary structure deltaG.
+        :type secondary_structures_threshold_deltaG: float
+        :param homopolymeric_base_n: Threshold for homopolymeric runs for each base.
+        :type homopolymeric_base_n: str
+        :param max_len_selfcomplement: Maximum self-complementary length allowed.
+        :type max_len_selfcomplement: int
+        :param Tm_parameters: Parameters for melting temperature calculations.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections in Tm calculations.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections in Tm calculations.
+        :type Tm_salt_correction_parameters: dict
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
@@ -532,7 +731,33 @@ class TargetProbeDesigner:
         hybridization_probability_search_parameters: dict,
         hybridization_probability_hit_parameters: dict,
         hybridization_probability_threshold: float,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
+        """
+        Filters the oligo database for specificity to remove sequences that cross-hybridize
+        to other oligos or hybridization with a certain probability to other genomic regions.
+
+        :param oligo_database: The oligo database to filter.
+        :type oligo_database: OligoDatabase
+        :param files_fasta_reference_database: List of FASTA files for the reference database.
+        :type files_fasta_reference_database: List[str]
+        :param cross_hybridization_alignment_method: Alignment method for cross-hybridization analysis.
+        :type cross_hybridization_alignment_method: str
+        :param cross_hybridization_search_parameters: Search parameters for cross-hybridization analysis.
+        :type cross_hybridization_search_parameters: dict
+        :param cross_hybridization_hit_parameters: Hit parameters for cross-hybridization analysis.
+        :type cross_hybridization_hit_parameters: dict
+        :param hybridization_probability_alignment_method: Alignment method for hybridization probability analysis.
+        :type hybridization_probability_alignment_method: str
+        :param hybridization_probability_search_parameters: Search parameters for hybridization probability analysis.
+        :type hybridization_probability_search_parameters: dict
+        :param hybridization_probability_hit_parameters: Hit parameters for hybridization probability analysis.
+        :type hybridization_probability_hit_parameters: dict
+        :param hybridization_probability_threshold: Threshold for hybridization probability filtering.
+        :type hybridization_probability_threshold: float
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
+
         def _get_alignment_method(
             alignment_method,
             search_parameters,
@@ -640,7 +865,56 @@ class TargetProbeDesigner:
         pre_filter: bool,
         heuristic: bool,
         heuristic_n_attempts: int,
-    ) -> Tuple[OligoDatabase, str, str]:
+    ) -> OligoDatabase:
+        """
+        Creates oligo sets based on scoring criteria, distance constraints, and
+        selection policies using a graph-based approach.
+
+        :param oligo_database: The oligo database to process.
+        :type oligo_database: OligoDatabase
+        :param GC_content_min: Minimum GC content for scoring.
+        :type GC_content_min: float
+        :param GC_content_opt: Optimal GC content for scoring.
+        :type GC_content_opt: float
+        :param GC_content_max: Maximum GC content for scoring.
+        :type GC_content_max: float
+        :param GC_weight: Weight for GC content scoring.
+        :type GC_weight: float
+        :param Tm_min: Minimum melting temperature for scoring.
+        :type Tm_min: float
+        :param Tm_opt: Optimal melting temperature for scoring.
+        :type Tm_opt: float
+        :param Tm_max: Maximum melting temperature for scoring.
+        :type Tm_max: float
+        :param Tm_weight: Weight for melting temperature scoring.
+        :type Tm_weight: float
+        :param Tm_parameters: Parameters for melting temperature calculations.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections in Tm calculations.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections in Tm calculations.
+        :type Tm_salt_correction_parameters: dict
+        :param set_size_opt: Optimal size for oligo sets.
+        :type set_size_opt: int
+        :param set_size_min: Minimum size for oligo sets.
+        :type set_size_min: int
+        :param distance_between_oligos: Minimum genomic distance between oligos in a set.
+        :type distance_between_oligos: int
+        :param n_sets: Number of oligo sets to generate.
+        :type n_sets: int
+        :param max_graph_size: Maximum size of the graph used in set selection.
+        :type max_graph_size: int
+        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small.
+        :type pre_filter: bool
+        :param n_attempts: Maximum number of attempts for selecting oligo sets.
+        :type n_attempts: int
+        :param heuristic: Whether to apply heuristic methods in oligo set selection.
+        :type heuristic: bool
+        :param heuristic_n_attempts: Maximum number of attempts for heuristic selecting oligo sets.
+        :type heuristic_n_attempts: int
+        :return: The updated oligo database.
+        :rtype: OligoDatabase
+        """
         oligos_scoring = WeightedTmGCOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,
@@ -688,6 +962,15 @@ class TargetProbeDesigner:
 
 
 def main():
+    """
+    Main function for running the OligoSeqProbeDesigner pipeline. This function reads the configuration file,
+    processes gene IDs, initializes the probe designer, sets developer parameters, and executes probe design
+    and output generation steps.
+
+    :param args: Command-line arguments parsed using the base parser. The arguments include:
+        - config: Path to the configuration YAML file containing parameters for the pipeline.
+    :type args: dict
+    """
     print("--------------START PIPELINE--------------")
 
     args = base_parser()

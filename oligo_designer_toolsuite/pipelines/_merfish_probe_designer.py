@@ -70,14 +70,22 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 class MerfishProbeDesigner:
     """
-    Class for designing probes for the Merfish experiment.
+    A class for designing encoding probes for the Merfish experiment.
 
-    A MERFISH encoding probe is a fluorescent probe that contains a 30-nt targeting sequence which directs 
-    their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary 
-    readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR 
-    primer binding sites. The specific readout sequences contained by an encoding probe are determined by 
+    A MERFISH encoding probe is a fluorescent probe that contains a 30-nt targeting sequence which directs
+    their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary
+    readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR
+    primer binding sites. The specific readout sequences contained by an encoding probe are determined by
     the binary barcode assigned to that RNA.
+
+    :param write_intermediate_steps: Whether to save intermediate results during the probe design pipeline.
+    :type write_intermediate_steps: bool
+    :param dir_output: Directory path where output files and logs will be saved.
+    :type dir_output: str
+    :param n_jobs: Number of parallel jobs to use for computationally intensive tasks.
+    :type n_jobs: int
     """
+
     def __init__(self, write_intermediate_steps: bool, dir_output: str, n_jobs: int) -> None:
         """Constructor for the MerfishProbeDesigner class."""
 
@@ -241,91 +249,100 @@ class MerfishProbeDesigner:
         """
         Configure the developer parameters and set them to default values of Merfish.
 
-        This method sets developer parameters required for the design, evaluation, and filtering 
-        of target probes, readout probes, and primers. These parameters include BlastN search 
-        and hit configurations, melting temperature (Tm) calculations, and settings for heuristic 
+        This method sets developer parameters required for the design, evaluation, and filtering
+        of target probes, readout probes, and primers. These parameters include BlastN search
+        and hit configurations, melting temperature (Tm) calculations, and settings for heuristic
         oligo selection.
 
-        :param target_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity 
+        :param target_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity
             search for target probes.
         :type target_probe_specificity_blastn_search_parameters: dict, optional
-        :param target_probe_specificity_blastn_hit_parameters: Parameters for filtering BlastN hits 
+        :param target_probe_specificity_blastn_hit_parameters: Parameters for filtering BlastN hits
             for target probe specificity.
         :type target_probe_specificity_blastn_hit_parameters: dict, optional
-        :param target_probe_cross_hybridization_blastn_search_parameters: Parameters for the BlastN 
+        :param target_probe_cross_hybridization_blastn_search_parameters: Parameters for the BlastN
             cross-hybridization search for target probes.
         :type target_probe_cross_hybridization_blastn_search_parameters: dict, optional
-        :param target_probe_cross_hybridization_blastn_hit_parameters: Parameters for filtering 
+        :param target_probe_cross_hybridization_blastn_hit_parameters: Parameters for filtering
             BlastN hits for target probe cross-hybridization.
         :type target_probe_cross_hybridization_blastn_hit_parameters: dict, optional
-        :param target_probe_Tm_parameters: Parameters for calculating the melting temperature (Tm) 
-            of target probes.
-        :type target_probe_Tm_parameters: dict, optional
-        :param target_probe_Tm_chem_correction_parameters: Parameters for chemical corrections in Tm 
-            calculations for target probes.
-        :type target_probe_Tm_chem_correction_parameters: dict, optional
-        :param target_probe_Tm_salt_correction_parameters: Parameters for salt corrections in Tm 
-            calculations for target probes.
-        :type target_probe_Tm_salt_correction_parameters: dict, optional
-        :param readout_probe_initial_num_sequences: Initial number of sequences for readout probe design.
+        :param target_probe_Tm_parameters: Parameters for calculating melting temperature (Tm) of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type target_probe_Tm_parameters: dict
+        :param target_probe_Tm_chem_correction_parameters: Chemical correction parameters for Tm calculation of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+        :type target_probe_Tm_chem_correction_parameters: dict
+        :param target_probe_Tm_salt_correction_parameters: Salt correction parameters for Tm calculation of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+        :type target_probe_Tm_salt_correction_parameters: dict
+        :param readout_probe_initial_num_sequences: Initial number of sequences for readout probe design, defaults to 100000
         :type readout_probe_initial_num_sequences: int, optional
-        :param readout_probe_n_combinations: Number of combinations for readout probe design.
+        :param readout_probe_n_combinations: Number of combinations to iterate through for readout probe set selection, defaults to 100000
         :type readout_probe_n_combinations: int, optional
-        :param readout_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity 
+        :param readout_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity
             search for readout probes.
         :type readout_probe_specificity_blastn_search_parameters: dict, optional
-        :param readout_probe_specificity_blastn_hit_parameters: Parameters for filtering BlastN hits 
+        :param readout_probe_specificity_blastn_hit_parameters: Parameters for filtering BlastN hits
             for readout probe specificity.
         :type readout_probe_specificity_blastn_hit_parameters: dict, optional
-        :param readout_probe_cross_hybridization_blastn_search_parameters: Parameters for the BlastN 
+        :param readout_probe_cross_hybridization_blastn_search_parameters: Parameters for the BlastN
             cross-hybridization search for readout probes.
         :type readout_probe_cross_hybridization_blastn_search_parameters: dict, optional
-        :param readout_probe_cross_hybridization_blastn_hit_parameters: Parameters for filtering 
+        :param readout_probe_cross_hybridization_blastn_hit_parameters: Parameters for filtering
             BlastN hits for readout probe cross-hybridization.
         :type readout_probe_cross_hybridization_blastn_hit_parameters: dict, optional
-        :param readout_probe_Tm_parameters: Parameters for calculating the melting temperature (Tm) 
-            of readout probes.
-        :type readout_probe_Tm_parameters: dict, optional
-        :param readout_probe_Tm_chem_correction_parameters: Parameters for chemical corrections in Tm 
-            calculations for readout probes.
+        :param readout_probe_Tm_parameters: Parameters for calculating melting temperature (Tm) of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type readout_probe_Tm_parameters: dict
+        :param readout_probe_Tm_chem_correction_parameters: Chemical correction parameters for Tm calculation of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
         :type readout_probe_Tm_chem_correction_parameters: dict, optional
-        :param readout_probe_Tm_salt_correction_parameters: Parameters for salt corrections in Tm 
-            calculations for readout probes.
+        :param readout_probe_Tm_salt_correction_parameters: Salt correction parameters for Tm calculation of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
         :type readout_probe_Tm_salt_correction_parameters: dict, optional
-        :param primer_initial_num_sequences: Initial number of sequences for primer design.
+        :param primer_initial_num_sequences: Initial number of sequences for primer design, defaults to 100000
         :type primer_initial_num_sequences: int, optional
-        :param primer_specificity_refrence_blastn_search_parameters: Parameters for the BlastN 
+        :param primer_specificity_refrence_blastn_search_parameters: Parameters for the BlastN
             specificity search against reference sequences for primers.
         :type primer_specificity_refrence_blastn_search_parameters: dict, optional
-        :param primer_specificity_refrence_blastn_hit_parameters: Parameters for filtering BlastN hits 
+        :param primer_specificity_refrence_blastn_hit_parameters: Parameters for filtering BlastN hits
             for primer specificity against reference sequences.
         :type primer_specificity_refrence_blastn_hit_parameters: dict, optional
-        :param primer_specificity_encoding_probes_blastn_search_parameters: Parameters for the BlastN 
+        :param primer_specificity_encoding_probes_blastn_search_parameters: Parameters for the BlastN
             specificity search against encoding probes for primers.
         :type primer_specificity_encoding_probes_blastn_search_parameters: dict, optional
-        :param primer_specificity_encoding_probes_blastn_hit_parameters: Parameters for filtering 
+        :param primer_specificity_encoding_probes_blastn_hit_parameters: Parameters for filtering
             BlastN hits for primer specificity against encoding probes.
         :type primer_specificity_encoding_probes_blastn_hit_parameters: dict, optional
-        :param primer_Tm_parameters: Parameters for calculating the melting temperature (Tm) of primers.
-        :type primer_Tm_parameters: dict, optional
-        :param primer_Tm_chem_correction_parameters: Parameters for chemical corrections in Tm 
-            calculations for primers.
+        :param primer_Tm_parameters: Parameters for calculating melting temperature (Tm) of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type primer_Tm_parameters: dict
+        :param primer_Tm_chem_correction_parameters: Chemical correction parameters for Tm calculation of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
         :type primer_Tm_chem_correction_parameters: dict, optional
-        :param primer_Tm_salt_correction_parameters: Parameters for salt corrections in Tm 
-            calculations for primers.
+        :param primer_Tm_salt_correction_parameters: Salt correction parameters for Tm calculation of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
         :type primer_Tm_salt_correction_parameters: dict, optional
-        :param max_graph_size: Maximum size of the graph used for oligo selection.
-        :type max_graph_size: int, optional
-        :param pre_filter: Whether to apply pre-filtering to sequences before oligo selection.
-        :type pre_filter: bool, optional
-        :param n_attempts: Number of attempts for oligo selection.
-        :type n_attempts: int, optional
-        :param heuristic: Whether to use heuristic methods for oligo selection.
-        :type heuristic: bool, optional
-        :param heuristic_n_attempts: Number of attempts for heuristic-based oligo selection.
-        :type heuristic_n_attempts: int, optional
-    """
-
+        :param max_graph_size: Maximum size of the graph used in set selection, defaults to 5000.
+        :type max_graph_size: int
+        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small, defaults to True.
+        :type pre_filter: bool
+        :param n_attempts: Maximum number of attempts for selecting oligo sets, defaults to 100000.
+        :type n_attempts: int
+        :param heuristic: Whether to apply heuristic methods in oligo set selection, defaults to True.
+        :type heuristic: bool
+        :param heuristic_n_attempts: Maximum number of attempts for heuristic selecting oligo sets, defaults to 100.
+        :type heuristic_n_attempts: int
+        """
         ### Parameters for the specificity filters
         # Specificity filter with BlastN
         self.target_probe_specificity_blastn_search_parameters = (
@@ -446,17 +463,16 @@ class MerfishProbeDesigner:
         """
         Design target probes, and runs the Merfish target probe designer pipeline.
 
-        This method creates, filters, and optimizes a database of target probes based on various 
+        This method creates, filters, and optimizes a database of target probes based on various
         design criteria: property, specificity and does oligo selection.
 
-        :param files_fasta_target_probe_database: List of FASTA files containing the target probe 
+        :param files_fasta_target_probe_database: List of FASTA files containing the target probe
             database sequences.
         :type files_fasta_target_probe_database: list[str]
-        :param files_fasta_reference_database_targe_probe: List of FASTA files containing the reference 
+        :param files_fasta_reference_database_targe_probe: List of FASTA files containing the reference
             database sequences for specificity filtering.
         :type files_fasta_reference_database_targe_probe: list[str]
-        :param gene_ids: List of gene IDs to include in the probe design. If None, all genes in the 
-            database are considered.
+        :param gene_ids: List of gene IDs to target, or None to target all genes.
         :type gene_ids: list, optional
         :param target_probe_length_min: Minimum length of the target probes.
         :type target_probe_length_min: int, optional
@@ -476,13 +492,13 @@ class MerfishProbeDesigner:
         :type target_probe_Tm_opt: float, optional
         :param target_probe_Tm_max: Maximum acceptable melting temperature (Tm) for the target probes.
         :type target_probe_Tm_max: float, optional
-        :param target_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length 
+        :param target_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length
             of homopolymeric stretches (e.g., "A": 5).
         :type target_probe_homopolymeric_base_n: dict, optional
-        :param target_probe_T_secondary_structure: Maximum allowable melting temperature of secondary 
+        :param target_probe_T_secondary_structure: Maximum allowable melting temperature of secondary
             structures.
         :type target_probe_T_secondary_structure: float, optional
-        :param target_probe_secondary_structures_threshold_deltaG: Threshold for the free energy 
+        :param target_probe_secondary_structures_threshold_deltaG: Threshold for the free energy
             (deltaG) of secondary structures.
         :type target_probe_secondary_structures_threshold_deltaG: float, optional
         :param target_probe_GC_weight: Weight assigned to GC content in the scoring function.
@@ -503,7 +519,6 @@ class MerfishProbeDesigner:
         :return: A database of designed target probes.
         :rtype: OligoDatabase
         """
-
 
         target_probe_designer = MerfishTargetProbeDesigner(self.dir_output, self.n_jobs)
 
@@ -647,7 +662,7 @@ class MerfishProbeDesigner:
             - `readout_probe_table`: A pandas DataFrame summarizing the designed readout probes.
         :rtype: Tuple[pd.DataFrame, pd.DataFrame]
         """
-         
+
         readout_probe_designer = MerfishReadoutProbeDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
@@ -821,14 +836,14 @@ class MerfishProbeDesigner:
 
         :param encoding_probe_database: The encoding probe database containing sequences and regions.
         :type encoding_probe_database: str
-        :param files_fasta_reference_database_primer: List of FASTA files containing reference sequences 
+        :param files_fasta_reference_database_primer: List of FASTA files containing reference sequences
             for primer specificity filtering.
         :type files_fasta_reference_database_primer: list[str]
         :param reverse_primer_sequence: Sequence of the reverse primer.
         :type reverse_primer_sequence: str, optional
         :param primer_length: Length of the forward primers to design.
         :type primer_length: int, optional
-        :param primer_base_probabilities: Dictionary specifying base probabilities for random primer 
+        :param primer_base_probabilities: Dictionary specifying base probabilities for random primer
             sequence generation.
         :type primer_base_probabilities: dict, optional
         :param primer_GC_content_min: Minimum acceptable GC content for primers.
@@ -837,15 +852,15 @@ class MerfishProbeDesigner:
         :type primer_GC_content_max: float, optional
         :param primer_number_GC_GCclamp: Minimum number of GC bases required at the primer's 3' end.
         :type primer_number_GC_GCclamp: int, optional
-        :param primer_number_three_prime_base_GCclamp: Minimum number of GC bases required within 
+        :param primer_number_three_prime_base_GCclamp: Minimum number of GC bases required within
             the last three bases at the primer's 3' end.
         :type primer_number_three_prime_base_GCclamp: int, optional
-        :param primer_homopolymeric_base_n: Dictionary specifying maximum allowed length of homopolymeric 
+        :param primer_homopolymeric_base_n: Dictionary specifying maximum allowed length of homopolymeric
             stretches.
         :type primer_homopolymeric_base_n: dict, optional
         :param primer_max_len_selfcomplement: Maximum length of self-complementary sequences in the primer.
         :type primer_max_len_selfcomplement: int, optional
-        :param primer_max_len_complement_reverse_primer: Maximum length of complementary sequences between 
+        :param primer_max_len_complement_reverse_primer: Maximum length of complementary sequences between
             the forward and reverse primers.
         :type primer_max_len_complement_reverse_primer: int, optional
         :param primer_Tm_min: Minimum acceptable melting temperature (Tm) for primers.
@@ -854,7 +869,7 @@ class MerfishProbeDesigner:
         :type primer_Tm_max: float, optional
         :param primer_T_secondary_structure: Maximum allowable melting temperature for secondary structures.
         :type primer_T_secondary_structure: float, optional
-        :param primer_secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG) 
+        :param primer_secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG)
             of secondary structures.
         :type primer_secondary_structures_threshold_deltaG: float, optional
 
@@ -1095,6 +1110,7 @@ class MerfishTargetProbeDesigner:
     """
     Class for designing target probes for MERFISH experiments.
     """
+
     def __init__(self, dir_output: str, n_jobs: int) -> None:
         """Constructor for the MerfishTargetProbeDesigner class."""
 
@@ -1625,12 +1641,12 @@ class MerfishReadoutProbeDesigner:
         """
         Filter an oligo database based on sequence specificity.
 
-        This method applies specificity filters, including exact matches, BLASTN specificity, 
+        This method applies specificity filters, including exact matches, BLASTN specificity,
         and cross-hybridization.
 
         :param oligo_database: The oligo database to be filtered.
         :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of FASTA files containing reference sequences for 
+        :param files_fasta_reference_database: List of FASTA files containing reference sequences for
             specificity filtering.
         :type files_fasta_reference_database: list
         :param specificity_blastn_search_parameters: Parameters for BLASTN specificity search.
@@ -2252,7 +2268,7 @@ def main():
     )
 
     codebook, readout_probe_table = pipeline.design_readout_probes(
-        n_genes=3,
+        n_genes=len(target_probe_database.database),
         files_fasta_reference_database_readout_probe=config["files_fasta_reference_database_readout_probe"],
         readout_probe_length=config["readout_probe_length"],
         readout_probe_base_probabilities=config["readout_probe_base_probabilities"],

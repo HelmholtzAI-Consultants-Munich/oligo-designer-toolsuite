@@ -55,11 +55,27 @@ from oligo_designer_toolsuite.pipelines._utils import (
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
-# SCRINSHOT Probe Designer Functions
+# SCRINSHOT Probe Designer
 ############################################
 
 
 class ScrinshotProbeDesigner:
+    """
+    A class for designing padlock probes for Scrinshot experiments.
+
+    A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and
+    the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence.
+    The gene-specific arms of padlock probes are around 20nt long each, thus the total
+    length of the gene-specific sequence of each padlock is around 40nt.
+
+    :param write_intermediate_steps: Whether to save intermediate results during the probe design pipeline.
+    :type write_intermediate_steps: bool
+    :param dir_output: Directory path where output files and logs will be saved.
+    :type dir_output: str
+    :param n_jobs: Number of parallel jobs to use for computationally intensive tasks.
+    :type n_jobs: int
+    """
+
     def __init__(self, write_intermediate_steps: bool, dir_output: str, n_jobs: int) -> None:
         """Constructor for the ScrinshotProbeDesigner class."""
 
@@ -171,6 +187,54 @@ class ScrinshotProbeDesigner:
         },
         detection_oligo_Tm_salt_correction_parameters: dict = None,
     ):
+        """
+        Set developer-specific parameters for probe design, including specificity, cross-hybridization,
+        and melting temperature (Tm) configurations. These parameters are used to customize and fine-tune
+        the probe design pipeline.
+
+        :param target_probe_specificity_blastn_search_parameters: Parameters for BlastN search in specificity filtering.
+        :type target_probe_specificity_blastn_search_parameters: dict
+        :param target_probe_specificity_blastn_hit_parameters: Parameters for evaluating BlastN hits in specificity filtering.
+        :type target_probe_specificity_blastn_hit_parameters: dict
+        :param target_probe_cross_hybridization_blastn_search_parameters: Parameters for BlastN search in cross-hybridization filtering.
+        :type target_probe_cross_hybridization_blastn_search_parameters: dict
+        :param target_probe_cross_hybridization_blastn_hit_parameters: Parameters for evaluating BlastN hits in cross-hybridization filtering.
+        :type target_probe_cross_hybridization_blastn_hit_parameters: dict
+        :param max_graph_size: Maximum size of the graph used in set selection, defaults to 5000.
+        :type max_graph_size: int
+        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small, defaults to False.
+        :type pre_filter: bool
+        :param n_attempts: Maximum number of attempts for selecting oligo sets, defaults to 100000.
+        :type n_attempts: int
+        :param heuristic: Whether to apply heuristic methods in oligo set selection, defaults to True.
+        :type heuristic: bool
+        :param heuristic_n_attempts: Maximum number of attempts for heuristic selecting oligo sets, defaults to 100.
+        :type heuristic_n_attempts: int
+        :param target_probe_Tm_parameters: Parameters for calculating melting temperature (Tm) of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type target_probe_Tm_parameters: dict
+        :param target_probe_Tm_chem_correction_parameters: Chemical correction parameters for Tm calculation of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+        :type target_probe_Tm_chem_correction_parameters: dict
+        :param target_probe_Tm_salt_correction_parameters: Salt correction parameters for Tm calculation of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+        :type target_probe_Tm_salt_correction_parameters: dict
+        :param detection_oligo_Tm_parameters: Parameters for calculating Tm of detection oligos.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type detection_oligo_Tm_parameters: dict
+        :param detection_oligo_Tm_chem_correction_parameters: Chemical correction parameters for Tm calculation of detection oligos.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+        :type detection_oligo_Tm_chem_correction_parameters: dict
+        :param detection_oligo_Tm_salt_correction_parameters: Salt correction parameters for Tm calculation of detection oligos.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+        :type detection_oligo_Tm_salt_correction_parameters: dict
+        """
         ### Parameters for the specificity filters
         # Specificity filter with BlastN
         self.target_probe_specificity_blastn_search_parameters = (
@@ -249,7 +313,69 @@ class ScrinshotProbeDesigner:
         distance_between_target_probes: int = 0,
         n_sets: int = 100,
     ) -> OligoDatabase:
+        """
+        Design target probes based on specified parameters, including length, GC content, melting temperature,
+        and specificity filters. The designed probes are organized into sets with customizable constraints.
 
+        :param files_fasta_target_probe_database: List of FASTA files containing sequences for the target probe database.
+        :type files_fasta_target_probe_database: list
+        :param files_fasta_reference_database_targe_probe: List of FASTA files for the reference database used in specificity filtering.
+        :type files_fasta_reference_database_targe_probe: list
+        :param gene_ids: List of gene IDs to target, or None to target all genes.
+        :type gene_ids: list, optional
+        :param target_probe_length_min: Minimum length for target probes, defaults to 40.
+        :type target_probe_length_min: int
+        :param target_probe_length_max: Maximum length for target probes, defaults to 45.
+        :type target_probe_length_max: int
+        :param target_probe_isoform_consensus: Minimum isoform consensus percentage for probes, defaults to 50.
+        :type target_probe_isoform_consensus: float
+        :param target_probe_isoform_weight: Weight for isoform consensus in probe scoring, defaults to 2.
+        :type target_probe_isoform_weight: float
+        :param target_probe_GC_content_min: Minimum GC content percentage for probes, defaults to 40.
+        :type target_probe_GC_content_min: float
+        :param target_probe_GC_content_opt: Optimal GC content percentage for probes, defaults to 50.
+        :type target_probe_GC_content_opt: float
+        :param target_probe_GC_content_max: Maximum GC content percentage for probes, defaults to 60.
+        :type target_probe_GC_content_max: float
+        :param target_probe_GC_weight: Weight for GC content in probe scoring, defaults to 1.
+        :type target_probe_GC_weight: float
+        :param target_probe_Tm_min: Minimum melting temperature (Tm) for probes, defaults to 65.
+        :type target_probe_Tm_min: float
+        :param target_probe_Tm_opt: Optimal melting temperature (Tm) for probes, defaults to 70.
+        :type target_probe_Tm_opt: float
+        :param target_probe_Tm_max: Maximum melting temperature (Tm) for probes, defaults to 75.
+        :type target_probe_Tm_max: float
+        :param target_probe_Tm_weight: Weight for Tm in probe scoring, defaults to 1.
+        :type target_probe_Tm_weight: float
+        :param target_probe_homopolymeric_base_n: Maximum allowed homopolymeric run lengths for each nucleotide, defaults to {"A": 5, "T": 5, "C": 5, "G": 5}.
+        :type target_probe_homopolymeric_base_n: dict
+        :param detection_oligo_min_thymines: Minimum number of thymines required in detection oligos, defaults to 2.
+        :type detection_oligo_min_thymines: int
+        :param detection_oligo_length_min: Minimum length for detection oligos, defaults to 15.
+        :type detection_oligo_length_min: int
+        :param detection_oligo_length_max: Maximum length for detection oligos, defaults to 40.
+        :type detection_oligo_length_max: int
+        :param target_probe_padlock_arm_length_min: Minimum length for padlock arms, defaults to 10.
+        :type target_probe_padlock_arm_length_min: int
+        :param target_probe_padlock_arm_Tm_dif_max: Maximum allowed Tm difference between padlock arms, defaults to 2.
+        :type target_probe_padlock_arm_Tm_dif_max: float
+        :param target_probe_padlock_arm_Tm_min: Minimum Tm for padlock arms, defaults to 50.
+        :type target_probe_padlock_arm_Tm_min: float
+        :param target_probe_padlock_arm_Tm_max: Maximum Tm for padlock arms, defaults to 60.
+        :type target_probe_padlock_arm_Tm_max: float
+        :param target_probe_ligation_region_size: Size of the ligation region for padlock probes, defaults to 5.
+        :type target_probe_ligation_region_size: int
+        :param set_size_min: Minimum size of probe sets, defaults to 3.
+        :type set_size_min: int, optional
+        :param set_size_opt: Optimal size of probe sets, defaults to 5.
+        :type set_size_opt: int, optional
+        :param distance_between_target_probes: Minimum distance between probes in a set, defaults to 0.
+        :type distance_between_target_probes: int
+        :param n_sets: Number of probe sets to generate, defaults to 100.
+        :type n_sets: int
+        :return: The designed probe database containing the generated probes and their attributes.
+        :rtype: OligoDatabase
+        """
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
 
         oligo_database = target_probe_designer.create_oligo_database(
@@ -356,6 +482,24 @@ class ScrinshotProbeDesigner:
         detection_oligo_U_distance: int = 5,
         detection_oligo_Tm_opt: float = 56,
     ) -> OligoDatabase:
+        """
+        Design detection oligos for probes based on specified parameters such as length, thymine content, and melting temperature.
+
+        :param oligo_database: The oligo database containing existing probes and associated data.
+        :type oligo_database: OligoDatabase
+        :param detection_oligo_length_min: Minimum length for detection oligos, defaults to 15.
+        :type detection_oligo_length_min: int
+        :param detection_oligo_length_max: Maximum length for detection oligos, defaults to 40.
+        :type detection_oligo_length_max: int
+        :param detection_oligo_min_thymines: Minimum number of thymines required in the detection oligos, defaults to 2.
+        :type detection_oligo_min_thymines: int
+        :param detection_oligo_U_distance: Preferred minimal distance between U(racils), defaults to 5.
+        :type detection_oligo_U_distance: int
+        :param detection_oligo_Tm_opt: Optimal melting temperature for detection oligos, defaults to 56.
+        :type detection_oligo_Tm_opt: float
+        :return: Updated oligo database with designed detection oligos.
+        :rtype: OligoDatabase
+        """
         detection_oligo_designer = DetectionOligoDesigner(self.n_jobs)
         oligo_database = detection_oligo_designer.create_detection_oligos(
             oligo_database=oligo_database,
@@ -375,6 +519,15 @@ class ScrinshotProbeDesigner:
         self,
         oligo_database: OligoDatabase,
     ) -> OligoDatabase:
+        """
+        Design padlock probe backbones, including arms and accessory sequences, for each probe in the oligo database.
+        Generates barcodes and calculates melting temperatures for the arms.
+
+        :param oligo_database: The oligo database containing target probes and attributes.
+        :type oligo_database: OligoDatabase
+        :return: Updated oligo database with designed padlock probe backbones.
+        :rtype: OligoDatabase
+        """
 
         def _get_barcode(number_regions: int, barcode_length: int, seed: int, choices: list) -> list:
 
@@ -495,6 +648,17 @@ class ScrinshotProbeDesigner:
             "isoform_consensus",
         ],
     ) -> None:
+        """
+        Generate output files containing designed padlock probes, detection oligos, and associated attributes.
+        Saves the output in YAML format and an order-specific YAML file for probe ordering.
+
+        :param oligo_database: The oligo database containing final designed probes and attributes.
+        :type oligo_database: OligoDatabase
+        :param top_n_sets: Number of top probe sets to include in the output, defaults to 3.
+        :type top_n_sets: int
+        :param attributes: List of attributes to include in the output files, defaults to a comprehensive list of probe attributes.
+        :type attributes: list
+        """
         oligo_database = self.oligo_attributes_calculator.calculate_oligo_length(
             oligo_database=oligo_database
         )
@@ -561,9 +725,22 @@ class ScrinshotProbeDesigner:
         logging.info("--------------END PIPELINE--------------")
 
 
+############################################
+# Scrinshot Target Probe Designer
+############################################
 class TargetProbeDesigner:
+    """
+    A class for designing target probes for genomic regions. Handles the creation of probe databases,
+    reference data, and associated calculations for probe attributes.
+
+    :param dir_output: The directory where output files and logs will be stored.
+    :type dir_output: str
+    :param n_jobs: Number of jobs to run in parallel for computational tasks.
+    :type n_jobs: int
+    """
+
     def __init__(self, dir_output: str, n_jobs: int) -> None:
-        """Constructor for the ScrinshotProbeDesigner class."""
+        """Constructor for the TargetProbeDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -582,7 +759,25 @@ class TargetProbeDesigner:
         files_fasta_oligo_database: list[str],
         min_oligos_per_gene: int,
         isoform_consensus: float,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
+        """
+        Creates an oligo database by generating probe sequences and filtering them based on specified criteria.
+
+        :param gene_ids: List of gene identifiers for which oligos should be generated.
+                        If None, all genes in the input fasta file are used.
+        :param oligo_length_min: Minimum length of oligos to generate.
+        :type oligo_length_min: int
+        :param oligo_length_max: Maximum length of oligos to generate.
+        :type oligo_length_max: int
+        :param files_fasta_oligo_database: List of FASTA files to use for creating the oligo database.
+        :type files_fasta_oligo_database: list[str]
+        :param min_oligos_per_gene: Minimum number of oligos required for each gene.
+        :type min_oligos_per_gene: int
+        :param isoform_consensus: Threshold for isoform consensus filtering.
+        :type isoform_consensus: float
+        :return: The generated oligo database.
+        :rtype: OligoDatabase
+        """
         ##### creating the probe sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
@@ -643,7 +838,46 @@ class TargetProbeDesigner:
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
+        """
+        Filters the oligo database based on various property filters including GC content, melting temperature,
+        and detection oligo properties.
+
+        :param oligo_database: The oligo database to filter.
+        :type oligo_database: OligoDatabase
+        :param GC_content_min: Minimum GC content for oligos.
+        :type GC_content_min: float
+        :param GC_content_max: Maximum GC content for oligos.
+        :type GC_content_max: float
+        :param Tm_min: Minimum melting temperature for oligos.
+        :type Tm_min: float
+        :param Tm_max: Maximum melting temperature for oligos.
+        :type Tm_max: float
+        :param detect_oligo_length_min: Minimum length for detection oligos.
+        :type detect_oligo_length_min: int
+        :param detect_oligo_length_max: Maximum length for detection oligos.
+        :type detect_oligo_length_max: int
+        :param min_thymines: Minimum number of thymine bases in detection oligos.
+        :type min_thymines: int
+        :param arm_Tm_dif_max: Maximum allowable difference in melting temperature between Padlock arms.
+        :type arm_Tm_dif_max: int
+        :param arm_length_min: Minimum length for Padlock arms.
+        :type arm_length_min: int
+        :param arm_Tm_min: Minimum melting temperature for Padlock arms.
+        :type arm_Tm_min: float
+        :param arm_Tm_max: Maximum melting temperature for Padlock arms.
+        :type arm_Tm_max: float
+        :param homopolymeric_base_n: Maximum allowed length of homopolymeric runs (e.g., 'A', 'T', 'C', 'G').
+        :type homopolymeric_base_n: str
+        :param Tm_parameters: Parameters for calculating melting temperature.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections to melting temperature.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections to melting temperature.
+        :type Tm_salt_correction_parameters: dict
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
         # define the filters
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
@@ -710,7 +944,42 @@ class TargetProbeDesigner:
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
+        """
+        Applies specificity filters to the oligo database, ensuring probes meet requirements for
+        specificity, cross-hybridization, and Padlock arm properties.
+
+        :param oligo_database: The oligo database to filter.
+        :type oligo_database: OligoDatabase
+        :param files_fasta_reference_database: List of FASTA files to be used as the reference database for filtering.
+        :type files_fasta_reference_database: List[str]
+        :param specificity_blastn_search_parameters: Parameters for the BLASTN search used in specificity filtering.
+        :type specificity_blastn_search_parameters: dict
+        :param specificity_blastn_hit_parameters: Parameters for processing BLASTN hits in specificity filtering.
+        :type specificity_blastn_hit_parameters: dict
+        :param cross_hybridization_blastn_search_parameters: Parameters for the BLASTN search used in cross-hybridization filtering.
+        :type cross_hybridization_blastn_search_parameters: dict
+        :param cross_hybridization_blastn_hit_parameters: Parameters for processing BLASTN hits in cross-hybridization filtering.
+        :type cross_hybridization_blastn_hit_parameters: dict
+        :param ligation_region_size: Size of the ligation region for probes.
+        :type ligation_region_size: int
+        :param arm_Tm_dif_max: Maximum allowable difference in melting temperature between Padlock arms.
+        :type arm_Tm_dif_max: int
+        :param arm_length_min: Minimum length for Padlock arms.
+        :type arm_length_min: int
+        :param arm_Tm_min: Minimum melting temperature for Padlock arms.
+        :type arm_Tm_min: float
+        :param arm_Tm_max: Maximum melting temperature for Padlock arms.
+        :type arm_Tm_max: float
+        :param Tm_parameters: Parameters for calculating melting temperature.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections to melting temperature.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections to melting temperature.
+        :type Tm_salt_correction_parameters: dict
+        :return: The filtered oligo database.
+        :rtype: OligoDatabase
+        """
         ##### define reference database #####
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
@@ -820,7 +1089,57 @@ class TargetProbeDesigner:
         pre_filter: bool,
         heuristic: bool,
         heuristic_n_attempts: int,
-    ) -> Tuple[OligoDatabase, str, str]:
+    ) -> OligoDatabase:
+        """
+        Creates optimal sets of oligos by scoring candidates and applying selection policies.
+
+        :param oligo_database: The oligo database to process.
+        :type oligo_database: OligoDatabase
+        :param isoform_weight: Weight for isoform consensus in scoring.
+        :type isoform_weight: float
+        :param GC_content_min: Minimum GC content for oligos.
+        :type GC_content_min: float
+        :param GC_content_opt: Optimal GC content for oligos.
+        :type GC_content_opt: float
+        :param GC_content_max: Maximum GC content for oligos.
+        :type GC_content_max: float
+        :param GC_weight: Weight for GC content in scoring.
+        :type GC_weight: float
+        :param Tm_min: Minimum melting temperature for oligos.
+        :type Tm_min: float
+        :param Tm_opt: Optimal melting temperature for oligos.
+        :type Tm_opt: float
+        :param Tm_max: Maximum melting temperature for oligos.
+        :type Tm_max: float
+        :param Tm_weight: Weight for melting temperature in scoring.
+        :type Tm_weight: float
+        :param Tm_parameters: Parameters for calculating melting temperature.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections to melting temperature.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections to melting temperature.
+        :type Tm_salt_correction_parameters: dict
+        :param set_size_opt: Optimal size of oligo sets.
+        :type set_size_opt: int
+        :param set_size_min: Minimum size of oligo sets.
+        :type set_size_min: int
+        :param distance_between_oligos: Minimum distance allowed between oligos.
+        :type distance_between_oligos: int
+        :param n_sets: Number of oligo sets to generate.
+        :type n_sets: int
+        :param max_graph_size: Maximum size of the graph used in set selection.
+        :type max_graph_size: int
+        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small.
+        :type pre_filter: bool
+        :param n_attempts: Maximum number of attempts for selecting oligo sets.
+        :type n_attempts: int
+        :param heuristic: Whether to apply heuristic methods in oligo set selection.
+        :type heuristic: bool
+        :param heuristic_n_attempts: Maximum number of attempts for heuristic selecting oligo sets.
+        :type heuristic_n_attempts: int
+        :return: Updated oligo database.
+        :rtype: OligoDatabase
+        """
         oligos_scoring = WeightedIsoformTmGCOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,
@@ -863,9 +1182,19 @@ class TargetProbeDesigner:
         return oligo_database
 
 
+############################################
+# Scrinshot Detection Oligo Designer
+############################################
 class DetectionOligoDesigner:
+    """
+    A class for designing detection oligos with specific attributes and constraints.
+
+    :param n_jobs: The number of parallel jobs to use for processing.
+    :type n_jobs: int
+    """
+
     def __init__(self, n_jobs: int) -> None:
-        """Constructor for the ScrinshotProbeDesigner class."""
+        """Constructor for the DetectionOligoDesigner class."""
 
         ##### create the output folder #####
         self.n_jobs = n_jobs
@@ -883,7 +1212,31 @@ class DetectionOligoDesigner:
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
     ) -> dict:
+        """
+        Creates detection oligos for each probe in the oligo database. The detection oligos are optimized
+        for melting temperature (Tm), length, and specific sequence properties.
 
+        :param oligo_database: The oligo database containing probe data.
+        :type oligo_database: OligoDatabase
+        :param oligo_length_min: Minimum length of the detection oligo.
+        :type oligo_length_min: int
+        :param oligo_length_max: Maximum length of the detection oligo.
+        :type oligo_length_max: int
+        :param min_thymines: Minimum number of thymine bases in the detection oligo.
+        :type min_thymines: int
+        :param U_distance: Minimum distance between uracil substitutions in the oligo sequence.
+        :type U_distance: int
+        :param Tm_opt: Optimal melting temperature for the detection oligo.
+        :type Tm_opt: float
+        :param Tm_parameters: Parameters for calculating the melting temperature.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections to melting temperature.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections to melting temperature.
+        :type Tm_salt_correction_parameters: dict
+        :return: The updated oligo database with detection oligos added.
+        :rtype: dict
+        """
         region_ids = list(oligo_database.database.keys())
 
         with joblib_progress(description="Design Detection Oligos", total=len(region_ids)):
@@ -920,7 +1273,33 @@ class DetectionOligoDesigner:
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
     ) -> dict:
+        """
+        Generates detection oligos for a specific region in the oligo database. Detection oligos are designed
+        by optimizing length, thymine count, and melting temperature (Tm).
 
+        :param oligo_database: The oligo database containing probe data.
+        :type oligo_database: OligoDatabase
+        :param region_id: The ID of the region to process.
+        :type region_id: str
+        :param oligo_length_min: Minimum length of the detection oligo.
+        :type oligo_length_min: int
+        :param oligo_length_max: Maximum length of the detection oligo.
+        :type oligo_length_max: int
+        :param min_thymines: Minimum number of thymine bases in the detection oligo.
+        :type min_thymines: int
+        :param U_distance: Minimum distance between uracil substitutions in the oligo sequence.
+        :type U_distance: int
+        :param Tm_opt: Optimal melting temperature for the detection oligo.
+        :type Tm_opt: float
+        :param Tm_parameters: Parameters for calculating the melting temperature.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections to melting temperature.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections to melting temperature.
+        :type Tm_salt_correction_parameters: dict
+        :return: Updates the detection oligo attributes for the specified region.
+        :rtype: dict
+        """
         oligosets_region = oligo_database.oligosets[region_id]
         oligosets_oligo_columns = [col for col in oligosets_region.columns if col.startswith("oligo_")]
 
@@ -1023,6 +1402,22 @@ class DetectionOligoDesigner:
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
     ) -> int:
+        """
+        Calculate the absolute difference between the melting temperature (Tm) of an oligo and the optimal Tm.
+
+        :param oligo: The oligo sequence.
+        :type oligo: str
+        :param Tm_opt: The optimal melting temperature.
+        :type Tm_opt: float
+        :param Tm_parameters: Parameters for calculating the melting temperature.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections to melting temperature.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections to melting temperature.
+        :type Tm_salt_correction_parameters: dict
+        :return: The absolute difference between the calculated and optimal Tm.
+        :rtype: int
+        """
         Tm = self.oligo_attributes_calculator._calc_TmNN(
             sequence=oligo,
             Tm_parameters=Tm_parameters,
@@ -1042,7 +1437,29 @@ class DetectionOligoDesigner:
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
     ) -> Tuple[list, list]:
+        """
+        Iteratively find the best oligo by trimming the sequence from either end and optimizing
+        for melting temperature (Tm) and other constraints.
 
+        :param oligo: The initial oligo sequence.
+        :type oligo: str
+        :param cut_from_right: Whether to start trimming from the right end.
+        :type cut_from_right: bool
+        :param oligo_length_min: Minimum allowable length for the oligo.
+        :type oligo_length_min: int
+        :param min_thymines: Minimum number of thymine bases required in the oligo.
+        :type min_thymines: int
+        :param Tm_opt: Optimal melting temperature for the oligo.
+        :type Tm_opt: float
+        :param Tm_parameters: Parameters for calculating the melting temperature.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical corrections to melting temperature.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt corrections to melting temperature.
+        :type Tm_salt_correction_parameters: dict
+        :return: A tuple containing a list of oligos and their respective Tm differences from the optimal Tm.
+        :rtype: Tuple[list, list]
+        """
         oligos = [oligo]
         Tm_dif = [
             self._get_Tm_dif(
@@ -1072,6 +1489,19 @@ class DetectionOligoDesigner:
         return oligos, Tm_dif
 
     def _exchange_T_with_U(self, oligo: str, min_thymines: int, U_distance: int) -> str:
+        """
+        Replace thymine ('T') bases in an oligo with uracil ('U') while maintaining a minimum
+        spacing between replacements and adding a fluorophore.
+
+        :param oligo: The original oligo sequence.
+        :type oligo: str
+        :param min_thymines: Minimum number of thymine bases to replace with uracil.
+        :type min_thymines: int
+        :param U_distance: Minimum spacing between uracil substitutions in the sequence.
+        :type U_distance: int
+        :return: The modified oligo sequence with uracil substitutions and a fluorophore tag.
+        :rtype: str
+        """
         if oligo.find("T") < oligo[::-1].find("T"):
             fluorophor_pos = "left"
         else:
@@ -1107,6 +1537,15 @@ class DetectionOligoDesigner:
 
 
 def main():
+    """
+    Main function for running the ScrinshotProbeDesigner pipeline. This function reads the configuration file,
+    processes gene IDs, initializes the probe designer, sets developer parameters, and executes probe design
+    and output generation steps.
+
+    :param args: Command-line arguments parsed using the base parser. The arguments include:
+        - config: Path to the configuration YAML file containing parameters for the pipeline.
+    :type args: dict
+    """
     print("--------------START PIPELINE--------------")
 
     args = base_parser()
