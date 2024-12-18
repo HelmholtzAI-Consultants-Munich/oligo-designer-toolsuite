@@ -466,57 +466,51 @@ class MerfishProbeDesigner:
         This method creates, filters, and optimizes a database of target probes based on various
         design criteria: property, specificity and does oligo selection.
 
-        :param files_fasta_target_probe_database: List of FASTA files containing the target probe
-            database sequences.
+        :param files_fasta_target_probe_database: List of input FASTA files for the target probe database.
         :type files_fasta_target_probe_database: list[str]
-        :param files_fasta_reference_database_targe_probe: List of FASTA files containing the reference
-            database sequences for specificity filtering.
-        :type files_fasta_reference_database_targe_probe: list[str]
+        :param files_fasta_reference_database_targe_probe: List of input FASTA files for the reference database.
+        :type files_fasta_reference_database_targe_probe: List[str]
         :param gene_ids: List of gene IDs to target, or None to target all genes.
         :type gene_ids: list, optional
-        :param target_probe_length_min: Minimum length of the target probes.
-        :type target_probe_length_min: int, optional
-        :param target_probe_length_max: Maximum length of the target probes.
-        :type target_probe_length_max: int, optional
-        :param target_probe_isoform_consensus: Minimum percentage consensus for isoform-specific probes.
-        :type target_probe_isoform_consensus: float, optional
-        :param target_probe_GC_content_min: Minimum acceptable GC content for the target probes.
-        :type target_probe_GC_content_min: float, optional
-        :param target_probe_GC_content_opt: Optimal GC content for the target probes.
-        :type target_probe_GC_content_opt: float, optional
-        :param target_probe_GC_content_max: Maximum acceptable GC content for the target probes.
-        :type target_probe_GC_content_max: float, optional
-        :param target_probe_Tm_min: Minimum acceptable melting temperature (Tm) for the target probes.
-        :type target_probe_Tm_min: float, optional
-        :param target_probe_Tm_opt: Optimal melting temperature (Tm) for the target probes.
-        :type target_probe_Tm_opt: float, optional
-        :param target_probe_Tm_max: Maximum acceptable melting temperature (Tm) for the target probes.
-        :type target_probe_Tm_max: float, optional
-        :param target_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length
-            of homopolymeric stretches (e.g., "A": 5).
-        :type target_probe_homopolymeric_base_n: dict, optional
-        :param target_probe_T_secondary_structure: Maximum allowable melting temperature of secondary
-            structures.
-        :type target_probe_T_secondary_structure: float, optional
-        :param target_probe_secondary_structures_threshold_deltaG: Threshold for the free energy
-            (deltaG) of secondary structures.
-        :type target_probe_secondary_structures_threshold_deltaG: float, optional
-        :param target_probe_GC_weight: Weight assigned to GC content in the scoring function.
-        :type target_probe_GC_weight: float, optional
-        :param target_probe_Tm_weight: Weight assigned to melting temperature (Tm) in the scoring function.
-        :type target_probe_Tm_weight: float, optional
-        :param target_probe_isoform_weight: Weight assigned to isoform specificity in the scoring function.
-        :type target_probe_isoform_weight: float, optional
-        :param set_size_opt: Optimal size of each oligo set.
-        :type set_size_opt: int, optional
-        :param set_size_min: Minimum size of each oligo set.
-        :type set_size_min: int, optional
-        :param distance_between_target_probes: Minimum distance between target probes in each set.
+        :param target_probe_length_min: Minimum length for target probes. Default is 30.
+        :type target_probe_length_min: int
+        :param target_probe_length_max: Maximum length for target probes. Default is 30.
+        :type target_probe_length_max: int
+        :param target_probe_isoform_consensus: Isoform consensus threshold for filtering. Default is 50.
+        :type target_probe_isoform_consensus: float
+        :param target_probe_GC_content_min: Minimum GC content for target probes. Default is 43.
+        :type target_probe_GC_content_min: float
+        :param target_probe_GC_content_opt: Optimal GC content for target probes. Default is 55.
+        :type target_probe_GC_content_opt: float
+        :param target_probe_GC_content_max: Maximum GC content for target probes. Default is 63.
+        :type target_probe_GC_content_max: float
+        :param target_probe_Tm_min: Minimum melting temperature (Tm) for target probes. Default is 66.
+        :type target_probe_Tm_min: float
+        :param target_probe_Tm_opt: Optimal melting temperature (Tm) for target probes. Default is 72.
+        :type target_probe_Tm_opt: float
+        :param target_probe_Tm_max: Maximum melting temperature (Tm) for target probes. Default is 76.
+        :type target_probe_Tm_max: float
+        :param target_probe_homopolymeric_base_n: Maximum allowed homopolymeric runs for each nucleotide. Default is {"A": 5, "T": 5, "C": 5, "G": 5}.
+        :type target_probe_homopolymeric_base_n: dict
+        :param target_probe_T_secondary_structure: Threshold temperature for secondary structure evaluation. Default is 76.
+        :type target_probe_T_secondary_structure: float
+        :param target_probe_secondary_structures_threshold_deltaG: DeltaG threshold for secondary structure stability. Default is 0.
+        :type target_probe_secondary_structures_threshold_deltaG: float
+        :param target_probe_GC_weight: Weight for GC content in probe scoring. Default is 1.
+        :type target_probe_GC_weight: float
+        :param target_probe_Tm_weight: Weight for Tm in probe scoring. Default is 1.
+        :type target_probe_Tm_weight: float
+        :param target_probe_isoform_weight: Weight for isoform consensus in probe scoring. Default is 2.
+        :type target_probe_isoform_weight: float
+        :param set_size_opt: Optimal size of oligo sets. Default is 50.
+        :type set_size_opt: int
+        :param set_size_min: Minimum size of oligo sets. Default is 50.
+        :type set_size_min: int
+        :param distance_between_target_probes: Minimum genomic distance between probes in a set, defaults to 0.
         :type distance_between_target_probes: int, optional
-        :param n_sets: Number of oligo sets to generate.
-        :type n_sets: int, optional
-
-        :return: A database of designed target probes.
+        :param n_sets: Number of oligo sets to generate. Default is 100.
+        :type n_sets: int
+        :return: An `OligoDatabase` object containing the designed target probes.
         :rtype: OligoDatabase
         """
 
@@ -626,43 +620,35 @@ class MerfishProbeDesigner:
         This method creates, filters, and optimizes a database of readout probes based on
         various design criteria including sequence properties, specificity, and oligo set selection.
 
-        :param n_genes: Number of genes or regions to encode in the codebook.
+        :param n_genes: Number of genes for which readout probes are to be designed.
         :type n_genes: int
-        :param files_fasta_reference_database_readout_probe: List of FASTA files containing reference
-            sequences for specificity filtering of readout probes.
-        :type files_fasta_reference_database_readout_probe: list[str]
-        :param readout_probe_length: Length of the readout probes.
-        :type readout_probe_length: int, optional
-        :param readout_probe_base_probabilities: Dictionary specifying base probabilities for random
-            sequence generation (e.g., {"A": 0.25, "C": 0.00, "G": 0.50, "T": 0.25}).
-        :type readout_probe_base_probabilities: dict, optional
-        :param readout_probe_GC_content_min: Minimum acceptable GC content for the readout probes.
-        :type readout_probe_GC_content_min: float, optional
-        :param readout_probe_GC_content_max: Maximum acceptable GC content for the readout probes.
-        :type readout_probe_GC_content_max: float, optional
-        :param readout_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length of
-            homopolymeric stretches (e.g., {"G": 3}).
-        :type readout_probe_homopolymeric_base_n: dict, optional
-        :param readout_probe_set_size: Size of each readout probe set.
-        :type readout_probe_set_size: int, optional
-        :param readout_probe_homogeneous_properties_weights: Dictionary of weights for property
-            homogeneity scoring (e.g., {"Tm_weight": 1, "GC_weight": 1}).
-        :type readout_probe_homogeneous_properties_weights: dict, optional
-        :param n_bits: Number of bits in the codebook.
-        :type n_bits: int, optional
-        :param min_hamming_dist: Minimum Hamming distance required between codebook entries.
-        :type min_hamming_dist: int, optional
-        :param hamming_weight: Fixed Hamming weight for each codeword in the codebook.
-        :type hamming_weight: int, optional
-        :param channels_ids: List of channel identifiers for assigning probes to fluorescent channels.
-        :type channels_ids: list, optional
-
-        :return: A tuple containing:
-            - `codebook`: A pandas DataFrame encoding the design regions.
-            - `readout_probe_table`: A pandas DataFrame summarizing the designed readout probes.
+        :param files_fasta_reference_database_readout_probe: List of input FASTA files for the reference database.
+        :type files_fasta_reference_database_readout_probe: List[str]
+        :param readout_probe_length: Length of each readout probe. Default is 20.
+        :type readout_probe_length: int
+        :param readout_probe_base_probabilities: Base probabilities for generating oligos. Default is {"A": 0.25, "C": 0.00, "G": 0.50, "T": 0.25}.
+        :type readout_probe_base_probabilities: dict
+        :param readout_probe_GC_content_min: Minimum GC content for readout probes. Default is 40.
+        :type readout_probe_GC_content_min: float
+        :param readout_probe_GC_content_max: Maximum GC content for readout probes. Default is 50.
+        :type readout_probe_GC_content_max: float
+        :param readout_probe_homopolymeric_base_n: Maximum allowed homopolymeric runs for specified bases. Default is {"G": 3}.
+        :type readout_probe_homopolymeric_base_n: dict
+        :param readout_probe_set_size: Number of probes in each readout set. Default is 16.
+        :type readout_probe_set_size: int
+        :param readout_probe_homogeneous_properties_weights: Weights for scoring probe properties (e.g., TmNN, GC_content). Default is {"TmNN": 1, "GC_content": 1}.
+        :type readout_probe_homogeneous_properties_weights: dict
+        :param n_bits: Number of bits for the codebook. Default is 16.
+        :type n_bits: int
+        :param min_hamming_dist: Minimum Hamming distance between barcodes. Default is 4.
+        :type min_hamming_dist: int
+        :param hamming_weight: Hamming weight of each barcode entry. Default is 4.
+        :type hamming_weight: int
+        :param channels_ids: List of channel identifiers for readout probes. Default is ["Alexa488", "Cy3b", "Alexa647"].
+        :type channels_ids: list
+        :return: A tuple containing the generated codebook and readout probe table.
         :rtype: Tuple[pd.DataFrame, pd.DataFrame]
         """
-
         readout_probe_designer = MerfishReadoutProbeDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
@@ -756,8 +742,7 @@ class MerfishProbeDesigner:
         :param readout_probe_table: A DataFrame containing readout probe sequences and their associated bit
             identifiers.
         :type readout_probe_table: pd.DataFrame
-
-        :return: Updated `target_probe_database` with attributes for encoding probes, including sequences
+        :return: Updated target_probe_database with attributes for encoding probes, including sequences
             for target probes, readout probes, and the full encoding probe sequence.
         :rtype: OligoDatabase
         """
@@ -834,49 +819,41 @@ class MerfishProbeDesigner:
         This method runs the Merfish primer designer pipeline to create, filter, and optimize a database. Then the
         best forward primer is selected based on the melting temperature (Tm) of the reverse primer.
 
-        :param encoding_probe_database: The encoding probe database containing sequences and regions.
+        :param encoding_probe_database: Path to the encoding probe database file.
         :type encoding_probe_database: str
-        :param files_fasta_reference_database_primer: List of FASTA files containing reference sequences
-            for primer specificity filtering.
-        :type files_fasta_reference_database_primer: list[str]
-        :param reverse_primer_sequence: Sequence of the reverse primer.
-        :type reverse_primer_sequence: str, optional
-        :param primer_length: Length of the forward primers to design.
-        :type primer_length: int, optional
-        :param primer_base_probabilities: Dictionary specifying base probabilities for random primer
-            sequence generation.
-        :type primer_base_probabilities: dict, optional
-        :param primer_GC_content_min: Minimum acceptable GC content for primers.
-        :type primer_GC_content_min: float, optional
-        :param primer_GC_content_max: Maximum acceptable GC content for primers.
-        :type primer_GC_content_max: float, optional
-        :param primer_number_GC_GCclamp: Minimum number of GC bases required at the primer's 3' end.
-        :type primer_number_GC_GCclamp: int, optional
-        :param primer_number_three_prime_base_GCclamp: Minimum number of GC bases required within
-            the last three bases at the primer's 3' end.
-        :type primer_number_three_prime_base_GCclamp: int, optional
-        :param primer_homopolymeric_base_n: Dictionary specifying maximum allowed length of homopolymeric
-            stretches.
-        :type primer_homopolymeric_base_n: dict, optional
-        :param primer_max_len_selfcomplement: Maximum length of self-complementary sequences in the primer.
-        :type primer_max_len_selfcomplement: int, optional
-        :param primer_max_len_complement_reverse_primer: Maximum length of complementary sequences between
-            the forward and reverse primers.
-        :type primer_max_len_complement_reverse_primer: int, optional
-        :param primer_Tm_min: Minimum acceptable melting temperature (Tm) for primers.
-        :type primer_Tm_min: float, optional
-        :param primer_Tm_max: Maximum acceptable melting temperature (Tm) for primers.
-        :type primer_Tm_max: float, optional
-        :param primer_T_secondary_structure: Maximum allowable melting temperature for secondary structures.
-        :type primer_T_secondary_structure: float, optional
-        :param primer_secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG)
-            of secondary structures.
-        :type primer_secondary_structures_threshold_deltaG: float, optional
-
-        :return: The selected reverse primer sequence and the best forward primer sequence.
+        :param files_fasta_reference_database_primer: List of input FASTA files for the reference database.
+        :type files_fasta_reference_database_primer: List[str]
+        :param reverse_primer_sequence: Sequence of the reverse primer. Default is "CCCTATAGTGAGTCGTATTA".
+        :type reverse_primer_sequence: str
+        :param primer_length: Length of the primers to be designed. Default is 20.
+        :type primer_length: int
+        :param primer_base_probabilities: Base probabilities for generating primers. Default is {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25}.
+        :type primer_base_probabilities: dict
+        :param primer_GC_content_min: Minimum GC content for primers. Default is 50.
+        :type primer_GC_content_min: float
+        :param primer_GC_content_max: Maximum GC content for primers. Default is 65.
+        :type primer_GC_content_max: float
+        :param primer_number_GC_GCclamp: Minimum number of GC bases at the 3' end for GC clamping. Default is 1.
+        :type primer_number_GC_GCclamp: int
+        :param primer_number_three_prime_base_GCclamp: Number of bases at the 3' end to check for GC clamping. Default is 2.
+        :type primer_number_three_prime_base_GCclamp: int
+        :param primer_homopolymeric_base_n: Maximum allowed homopolymeric runs for specified bases. Default is {"A": 4, "T": 4, "C": 4, "G": 4}.
+        :type primer_homopolymeric_base_n: dict
+        :param primer_max_len_selfcomplement: Maximum self-complementarity length allowed for primers. Default is 6.
+        :type primer_max_len_selfcomplement: int
+        :param primer_max_len_complement_reverse_primer: Maximum complementarity length allowed with the reverse primer. Default is 5.
+        :type primer_max_len_complement_reverse_primer: int
+        :param primer_Tm_min: Minimum melting temperature (Tm) for primers. Default is 60.
+        :type primer_Tm_min: float
+        :param primer_Tm_max: Maximum melting temperature (Tm) for primers. Default is 75.
+        :type primer_Tm_max: float
+        :param primer_T_secondary_structure: Temperature for assessing secondary structure stability. Default is 76.
+        :type primer_T_secondary_structure: float
+        :param primer_secondary_structures_threshold_deltaG: Threshold for secondary structure stability based on deltaG. Default is 0.
+        :type primer_secondary_structures_threshold_deltaG: float
+        :return: A tuple containing the reverse primer sequence and the selected forward primer sequence.
         :rtype: Tuple[str, str]
         """
-
         file_fasta_encoding_probes_database = encoding_probe_database.write_database_to_fasta(
             filename=f"db_reference_encoding_probes",
             save_description=False,
@@ -971,7 +948,7 @@ class MerfishProbeDesigner:
         encoding_probe_database: OligoDatabase,
         reverse_primer_sequence: str,
         forward_primer_sequence: str,
-        top_n_sets: int,
+        top_n_sets: int = 3,
         attributes=[
             "source",
             "species",
@@ -1011,7 +988,7 @@ class MerfishProbeDesigner:
         :type reverse_primer_sequence: str
         :param forward_primer_sequence: Sequence of the forward primer.
         :type forward_primer_sequence: str
-        :param top_n_sets: Number of top oligo sets to include in the output.
+        :param top_n_sets: Number of top probe sets to include in the output, defaults to 3.
         :type top_n_sets: int
         :param attributes: List of attributes to include in the final output YAML file.
         :type attributes: list[str], optional
@@ -1109,6 +1086,13 @@ class MerfishProbeDesigner:
 class MerfishTargetProbeDesigner:
     """
     Class for designing target probes for MERFISH experiments.
+    This class provides methods for creating, filtering, and scoring oligos based
+    on specific properties and designing oligo sets for targeted probes.
+
+    :param dir_output: Directory path where output files and intermediate results will be saved.
+    :type dir_output: str
+    :param n_jobs: Number of parallel jobs to use for computationally intensive tasks.
+    :type n_jobs: int
     """
 
     def __init__(self, dir_output: str, n_jobs: int) -> None:
@@ -1131,7 +1115,7 @@ class MerfishTargetProbeDesigner:
         files_fasta_oligo_database: list[str],
         min_oligos_per_gene: int,
         isoform_consensus: float,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Create an oligo database by generating oligo sequences and applying pre-filters.
 
@@ -1139,7 +1123,8 @@ class MerfishTargetProbeDesigner:
         creates a database of oligos, and pre-filters the database based on isoform consensus and
         minimum oligos per gene.
 
-        :param gene_ids: List of gene IDs to include in the oligo database.
+        :param gene_ids: List of gene identifiers for which oligos should be generated.
+                        If None, all genes in the input fasta file are used.
         :type gene_ids: list
         :param oligo_length_min: Minimum length of the oligos.
         :type oligo_length_min: int
@@ -1149,13 +1134,10 @@ class MerfishTargetProbeDesigner:
         :type files_fasta_oligo_database: list[str]
         :param min_oligos_per_gene: Minimum number of oligos required per gene in the database.
         :type min_oligos_per_gene: int
-        :param isoform_consensus: Minimum isoform consensus threshold for oligo filtering.
+        :param isoform_consensus: Threshold for isoform consensus filtering.
         :type isoform_consensus: float
-
-        :return: A tuple containing:
-            - `oligo_database`: The created and pre-filtered oligo database.
-            - `dir`: Directory containing intermediate output from the sequence generation step.
-        :rtype: Tuple[OligoDatabase, str]
+        :return: The generated oligo database.
+        :rtype: OligoDatabase
         """
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -1212,7 +1194,7 @@ class MerfishTargetProbeDesigner:
         Tm_parameters: dict,
         Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Filter an oligo database based on sequence properties.
 
@@ -1231,10 +1213,9 @@ class MerfishTargetProbeDesigner:
         :type Tm_max: float
         :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
         :type homopolymeric_base_n: str
-        :param T_secondary_structure: Maximum allowable melting temperature for secondary structures.
-        :type T_secondary_structure: float
-        :param secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG) of secondary
-            structures.
+        :param secondary_structures_T: Temperature for secondary structure analysis.
+        :type secondary_structures_T: float
+        :param secondary_structures_threshold_deltaG: Threshold for secondary structure deltaG.
         :type secondary_structures_threshold_deltaG: float
         :param Tm_parameters: Parameters for melting temperature calculation.
         :type Tm_parameters: dict
@@ -1242,7 +1223,6 @@ class MerfishTargetProbeDesigner:
         :type Tm_chem_correction_parameters: dict
         :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
         :type Tm_salt_correction_parameters: dict
-
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -1295,7 +1275,7 @@ class MerfishTargetProbeDesigner:
         specificity_blastn_hit_parameters: dict,
         cross_hybridization_blastn_search_parameters: dict,
         cross_hybridization_blastn_hit_parameters: dict,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Filter an oligo database based on sequence specificity.
 
@@ -1315,7 +1295,6 @@ class MerfishTargetProbeDesigner:
         :type cross_hybridization_blastn_search_parameters: dict
         :param cross_hybridization_blastn_hit_parameters: Parameters for filtering BLASTN cross-hybridization hits.
         :type cross_hybridization_blastn_hit_parameters: dict
-
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -1430,26 +1409,25 @@ class MerfishTargetProbeDesigner:
         :type Tm_chem_correction_parameters: dict
         :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
         :type Tm_salt_correction_parameters: dict
-        :param set_size_opt: Optimal size of each oligo set.
+        :param set_size_opt: Optimal size for oligo sets.
         :type set_size_opt: int
-        :param set_size_min: Minimum size of each oligo set.
+        :param set_size_min: Minimum size for oligo sets.
         :type set_size_min: int
-        :param distance_between_oligos: Minimum distance between oligos in a set.
+        :param distance_between_oligos: Minimum genomic distance between oligos in a set.
         :type distance_between_oligos: int
         :param n_sets: Number of oligo sets to generate.
         :type n_sets: int
-        :param max_graph_size: Maximum size of the graph used in the selection policy.
+        :param max_graph_size: Maximum size of the graph used in set selection.
         :type max_graph_size: int
-        :param n_attempts: Number of attempts for set optimization.
-        :type n_attempts: int
-        :param pre_filter: Whether to apply pre-filtering during the selection process.
+        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small.
         :type pre_filter: bool
-        :param heuristic: Whether to use a heuristic approach for set optimization.
+        :param n_attempts: Maximum number of attempts for selecting oligo sets.
+        :type n_attempts: int
+        :param heuristic: Whether to apply heuristic methods in oligo set selection.
         :type heuristic: bool
-        :param heuristic_n_attempts: Number of attempts for heuristic optimization.
+        :param heuristic_n_attempts: Maximum number of attempts for heuristic selecting oligo sets.
         :type heuristic_n_attempts: int
-
-        :return: The updated oligo database with the generated oligo sets.
+        :return: The updated oligo database.
         :rtype: OligoDatabase
         """
         oligos_scoring = WeightedIsoformTmGCOligoScoring(
@@ -1507,6 +1485,17 @@ class MerfishTargetProbeDesigner:
 
 
 class MerfishReadoutProbeDesigner:
+    """
+    A class for designing MERFISH readout probes.
+    This class provides methods for creating, filtering, and scoring oligos based
+    on specific properties and designing oligo sets for readout probes.
+
+    :param dir_output: Path to the output directory where results will be stored.
+    :type dir_output: str
+    :param n_jobs: Number of parallel jobs to use for processing.
+    :type n_jobs: int
+    """
+
     def __init__(
         self,
         dir_output: str,
@@ -1528,7 +1517,7 @@ class MerfishReadoutProbeDesigner:
         oligo_length: int,
         oligo_base_probabilities: dict,
         initial_num_sequences: int,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Create an oligo database by generating random oligo sequences.
 
@@ -1542,11 +1531,8 @@ class MerfishReadoutProbeDesigner:
         :type oligo_base_probabilities: dict
         :param initial_num_sequences: Number of sequences to generate initially.
         :type initial_num_sequences: int
-
-        :return: A tuple containing:
-            - `oligo_database`: The created oligo database with random sequences.
-            - `dir`: Directory containing intermediate output from the sequence generation step.
-        :rtype: Tuple[OligoDatabase, str]
+        :return: The generated oligo database.
+        :rtype: OligoDatabase
         """
         ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
@@ -1586,7 +1572,7 @@ class MerfishReadoutProbeDesigner:
         GC_content_min: float,
         GC_content_max: float,
         homopolymeric_base_n: int,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Filter an oligo database based on sequence properties.
 
@@ -1601,7 +1587,6 @@ class MerfishReadoutProbeDesigner:
         :type GC_content_max: float
         :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
         :type homopolymeric_base_n: int
-
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -1637,7 +1622,7 @@ class MerfishReadoutProbeDesigner:
         specificity_blastn_hit_parameters: dict,
         cross_hybridization_blastn_search_parameters: dict,
         cross_hybridization_blastn_hit_parameters: dict,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Filter an oligo database based on sequence specificity.
 
@@ -1657,7 +1642,6 @@ class MerfishReadoutProbeDesigner:
         :type cross_hybridization_blastn_search_parameters: dict
         :param cross_hybridization_blastn_hit_parameters: Parameters for filtering BLASTN cross-hybridization hits.
         :type cross_hybridization_blastn_hit_parameters: dict
-
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -1726,7 +1710,7 @@ class MerfishReadoutProbeDesigner:
         Tm_parameters,
         Tm_chem_correction_parameters,
         Tm_salt_correction_parameters,
-    ):
+    ) -> OligoDatabase:
         """
         Create homogeneous oligo sets based on specified properties.
 
@@ -1747,7 +1731,6 @@ class MerfishReadoutProbeDesigner:
         :type Tm_chem_correction_parameters: dict
         :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
         :type Tm_salt_correction_parameters: dict
-
         :return: The updated oligo database with the generated oligo sets.
         :rtype: OligoDatabase
         """
@@ -1791,7 +1774,6 @@ class MerfishReadoutProbeDesigner:
         :type min_hamming_dist: int
         :param hamming_weight: Fixed Hamming weight (number of 1's) for each barcode.
         :type hamming_weight: int
-
         :return: A pandas DataFrame representing the codebook, where each row is a barcode and columns
             represent individual bits.
         :rtype: pd.DataFrame
@@ -1831,23 +1813,21 @@ class MerfishReadoutProbeDesigner:
         """
         Create a readout probe table that maps bits to channels and readout probes.
 
-        This method assigns readout probes from the database to bits in the codebook.
+        This function generates a table where each bit in the codebook is assigned a readout probe
+        from the database, along with a corresponding channel. It ensures that the required number of
+        bits is matched with available readout probes.
 
-        :param readout_probe_database: The database of readout probes.
+        :param readout_probe_database: The database containing readout probes and their sequences.
         :type readout_probe_database: OligoDatabase
-        :param channels_ids: List of channel identifiers to assign to the readout probes.
+        :param channels_ids: List of channel identifiers to assign to the readout probes (e.g., fluorophore channels).
         :type channels_ids: list
-        :param n_bits: Number of bits in the codebook (i.e., the number of readout probes needed).
+        :param n_bits: Number of bits in the codebook, representing the number of readout probes needed.
         :type n_bits: int
-
-        :return: A pandas DataFrame containing the readout probe table. Columns include:
-            - "bit": Bit identifier (e.g., "bit_1").
-            - "channel": Channel assigned to the readout probe.
-            - "readout_probe_id": Identifier of the readout probe.
-            - "readout_probe_sequence": Sequence of the readout probe.
+        :return: A pandas DataFrame containing the readout probe table with columns for bit, channel,
+                readout probe ID, and readout probe sequence.
         :rtype: pd.DataFrame
 
-        :raises AssertionError: If the number of readout probes is less than the number of bits.
+        :raises AssertionError: If the number of available readout probes is less than the number of required bits.
         """
         readout_probes = readout_probe_database.get_oligoid_sequence_mapping(
             sequence_type="oligo", sequence_to_upper=False
@@ -1881,6 +1861,17 @@ class MerfishReadoutProbeDesigner:
 
 
 class MerfishPrimerDesigner:
+    """
+    A class for designing primers for MERFISH experiments.
+
+    This class provides methods for creating and filtering oligos for primers.
+
+    :param dir_output: The output directory for storing generated files and intermediate results.
+    :type dir_output: str
+    :param n_jobs: The number of parallel jobs to use for computations.
+    :type n_jobs: int
+    """
+
     def __init__(
         self,
         dir_output: str,
@@ -1901,25 +1892,22 @@ class MerfishPrimerDesigner:
         oligo_length: int,
         oligo_base_probabilities: dict,
         initial_num_sequences: int,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Create an oligo database by generating random forward primer sequences.
 
         This method generates random forward primer sequences with specified probabilities for nucleotide bases,
-        appends a specific nucleotide to the end of each sequence, and loads the sequences into an oligo database.
+        all ending with a "T" nucleotide, and loads the sequences into an oligo database.
 
-        :param oligo_length: Length of the oligos to generate (excluding the appended nucleotide).
+        :param oligo_length: Length of the oligos to generate.
         :type oligo_length: int
         :param oligo_base_probabilities: Dictionary specifying probabilities for each base
             (e.g., {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25}).
         :type oligo_base_probabilities: dict
         :param initial_num_sequences: Number of sequences to generate initially.
         :type initial_num_sequences: int
-
-        :return: A tuple containing:
-            - `oligo_database`: The created oligo database with forward primer sequences.
-            - `dir`: Directory containing intermediate output from the sequence generation step.
-        :rtype: Tuple[OligoDatabase, str]
+        :return: The generated oligo database.
+        :rtype: OligoDatabase
         """
         ##### creating the primer sequences #####
         # random forward primer
@@ -1975,7 +1963,7 @@ class MerfishPrimerDesigner:
         Tm_salt_correction_parameters: dict,
         T_secondary_structure: float,
         secondary_structures_threshold_deltaG: float,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Filter an oligo database by property.
 
@@ -1985,9 +1973,9 @@ class MerfishPrimerDesigner:
         :type GC_content_min: float
         :param GC_content_max: Maximum acceptable GC content for oligos.
         :type GC_content_max: float
-        :param number_GC_GCclamp: Minimum number of GC bases in the GC clamp region.
+        :param number_GC_GCclamp: The minimum number of G or C nucleotides required within the specified number of bases.
         :type number_GC_GCclamp: int
-        :param number_three_prime_base_GCclamp: Minimum number of GC bases in the last three bases of the GC clamp.
+        :param number_three_prime_base_GCclamp: The number of bases to consider from the 3' end of the sequence.
         :type number_three_prime_base_GCclamp: int
         :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
         :type homopolymeric_base_n: int
@@ -2007,11 +1995,10 @@ class MerfishPrimerDesigner:
         :type Tm_chem_correction_parameters: dict
         :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
         :type Tm_salt_correction_parameters: dict
-        :param T_secondary_structure: Maximum allowable melting temperature for secondary structures.
+        :param T_secondary_structure: Temperature for secondary structure analysis.
         :type T_secondary_structure: float
-        :param secondary_structures_threshold_deltaG: Threshold for the free energy (deltaG) of secondary structures.
+        :param secondary_structures_threshold_deltaG: Threshold for secondary structure deltaG.
         :type secondary_structures_threshold_deltaG: float
-
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -2069,7 +2056,7 @@ class MerfishPrimerDesigner:
         file_fasta_encoding_probes_database: str,
         specificity_encoding_probes_blastn_search_parameters: dict,
         specificity_encoding_probes_blastn_hit_parameters: dict,
-    ) -> Tuple[OligoDatabase, str]:
+    ) -> OligoDatabase:
         """
         Filter an oligo database for sequence specificity against reference and encoding probes.
 
@@ -2087,7 +2074,6 @@ class MerfishPrimerDesigner:
         :type specificity_encoding_probes_blastn_search_parameters: dict
         :param specificity_encoding_probes_blastn_hit_parameters: Parameters for filtering BLASTN hits against the encoding probes database.
         :type specificity_encoding_probes_blastn_hit_parameters: dict
-
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -2155,6 +2141,15 @@ class MerfishPrimerDesigner:
 
 
 def main():
+    """
+    Main function for running the MerfishProbeDesigner pipeline. This function reads the configuration file,
+    processes gene IDs, initializes the probe designer, sets developer parameters, and executes probe design
+    and output generation steps.
+
+    :param args: Command-line arguments parsed using the base parser. The arguments include:
+        - config: Path to the configuration YAML file containing parameters for the pipeline.
+    :type args: dict
+    """
     print("--------------START PIPELINE--------------")
 
     args = base_parser()
