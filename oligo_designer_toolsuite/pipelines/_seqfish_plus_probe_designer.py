@@ -58,6 +58,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     pipeline_step_basic,
     check_content_oligo_database,
 )
+from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
@@ -96,7 +97,7 @@ class SeqFishPlusProbeDesigner:
 
     def set_developer_parameters(
         self,
-        target_probe_specificity_blastn_search_params: dict = {
+        target_probe_specificity_blastn_search_parameters: dict = {
             "perc_identity": 100,
             "strand": "minus",
             "word_size": 7,
@@ -105,8 +106,8 @@ class SeqFishPlusProbeDesigner:
             "max_target_seqs": 10,
             "max_hsps": 1000,
         },
-        target_probe_specificity_blastn_hit_params: dict = {"min_alignment_length": 15},
-        target_probe_cross_hybridization_blastn_search_params: dict = {
+        target_probe_specificity_blastn_hit_parameters: dict = {"min_alignment_length": 15},
+        target_probe_cross_hybridization_blastn_search_parameters: dict = {
             "perc_identity": 80,
             "strand": "minus",
             "word_size": 7,
@@ -114,9 +115,9 @@ class SeqFishPlusProbeDesigner:
             "soft_masking": "false",
             "max_target_seqs": 10,
         },
-        target_probe_cross_hybridization_blastn_hit_params: dict = {"min_alignment_length": 17},
+        target_probe_cross_hybridization_blastn_hit_parameters: dict = {"min_alignment_length": 17},
         readout_probe_initial_num_sequences: int = 100000,
-        readout_probe_specificity_blastn_search_params: dict = {
+        readout_probe_specificity_blastn_search_parameters: dict = {
             "perc_identity": 100,
             "strand": "minus",
             "word_size": 7,
@@ -125,8 +126,8 @@ class SeqFishPlusProbeDesigner:
             "max_target_seqs": 10,
             "max_hsps": 1000,
         },
-        readout_probe_specificity_blastn_hit_params: dict = {"min_alignment_length": 10},
-        readout_probe_cross_hybridization_blastn_search_params: dict = {
+        readout_probe_specificity_blastn_hit_parameters: dict = {"min_alignment_length": 10},
+        readout_probe_cross_hybridization_blastn_search_parameters: dict = {
             "perc_identity": 100,
             "strand": "minus",
             "word_size": 7,
@@ -134,9 +135,9 @@ class SeqFishPlusProbeDesigner:
             "soft_masking": "false",
             "max_target_seqs": 10,
         },
-        readout_probe_cross_hybridization_blastn_hit_params: dict = {"min_alignment_length": 10},
+        readout_probe_cross_hybridization_blastn_hit_parameters: dict = {"min_alignment_length": 10},
         primer_initial_num_sequences: int = 1000000,
-        primer_specificity_refrence_blastn_search_params: dict = {
+        primer_specificity_refrence_blastn_search_parameters: dict = {
             "perc_identity": 100,
             "strand": "minus",
             "word_size": 7,
@@ -145,7 +146,7 @@ class SeqFishPlusProbeDesigner:
             "max_target_seqs": 10,
             "max_hsps": 1000,
         },
-        primer_specificity_refrence_blastn_hit_params: dict = {"min_alignment_length": 14},
+        primer_specificity_refrence_blastn_hit_parameters: dict = {"min_alignment_length": 14},
         primer_specificity_encoding_probes_blastn_search_parameters: dict = {
             "perc_identity": 100,
             "strand": "minus",
@@ -175,8 +176,8 @@ class SeqFishPlusProbeDesigner:
             "Mg": 0,
             "dNTPs": 0,
         },
-        primer_Tm_chem_correction_param: dict = None,
-        primer_Tm_salt_correction_param: dict = None,
+        primer_Tm_chem_correction_parameters: dict = None,
+        primer_Tm_salt_correction_parameters: dict = None,
         max_graph_size: int = 5000,
         pre_filter: bool = False,
         n_attempts: int = 100000,
@@ -185,38 +186,44 @@ class SeqFishPlusProbeDesigner:
     ):
         ### Parameters for the specificity filters
         # Specificity filter with BlastN
-        self.target_probe_specificity_blastn_search_params = target_probe_specificity_blastn_search_params
-        self.target_probe_specificity_blastn_hit_params = target_probe_specificity_blastn_hit_params
+        self.target_probe_specificity_blastn_search_parameters = (
+            target_probe_specificity_blastn_search_parameters
+        )
+        self.target_probe_specificity_blastn_hit_parameters = target_probe_specificity_blastn_hit_parameters
 
         # Crosshybridization filter with BlastN
-        self.target_probe_cross_hybridization_blastn_search_params = (
-            target_probe_cross_hybridization_blastn_search_params
+        self.target_probe_cross_hybridization_blastn_search_parameters = (
+            target_probe_cross_hybridization_blastn_search_parameters
         )
-        self.target_probe_cross_hybridization_blastn_hit_params = (
-            target_probe_cross_hybridization_blastn_hit_params
+        self.target_probe_cross_hybridization_blastn_hit_parameters = (
+            target_probe_cross_hybridization_blastn_hit_parameters
         )
 
         ## readout probe sequence
         self.readout_probe_initial_num_sequences = readout_probe_initial_num_sequences
         # Specificity filter with BlastN
-        self.readout_probe_specificity_blastn_search_params = readout_probe_specificity_blastn_search_params
-        self.readout_probe_specificity_blastn_hit_params = readout_probe_specificity_blastn_hit_params
+        self.readout_probe_specificity_blastn_search_parameters = (
+            readout_probe_specificity_blastn_search_parameters
+        )
+        self.readout_probe_specificity_blastn_hit_parameters = readout_probe_specificity_blastn_hit_parameters
 
         # Crosshybridization filter with BlastN
-        self.readout_probe_cross_hybridization_blastn_search_params = (
-            readout_probe_cross_hybridization_blastn_search_params
+        self.readout_probe_cross_hybridization_blastn_search_parameters = (
+            readout_probe_cross_hybridization_blastn_search_parameters
         )
-        self.readout_probe_cross_hybridization_blastn_hit_params = (
-            readout_probe_cross_hybridization_blastn_hit_params
+        self.readout_probe_cross_hybridization_blastn_hit_parameters = (
+            readout_probe_cross_hybridization_blastn_hit_parameters
         )
 
         ##forward primer sequence
         self.primer_initial_num_sequences = primer_initial_num_sequences
         # Specificity filter with BlastN against reference
-        self.primer_specificity_refrence_blastn_search_params = (
-            primer_specificity_refrence_blastn_search_params
+        self.primer_specificity_refrence_blastn_search_parameters = (
+            primer_specificity_refrence_blastn_search_parameters
         )
-        self.primer_specificity_refrence_blastn_hit_params = primer_specificity_refrence_blastn_hit_params
+        self.primer_specificity_refrence_blastn_hit_parameters = (
+            primer_specificity_refrence_blastn_hit_parameters
+        )
 
         # Specificity filter with BlastN against encoding rpobes
         self.primer_specificity_encoding_probes_blastn_search_parameters = (
@@ -230,7 +237,7 @@ class SeqFishPlusProbeDesigner:
         # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
         # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 
-        # preprocess melting temperature params
+        # preprocess melting temperature parameters
         primer_Tm_parameters["nn_table"] = getattr(mt, primer_Tm_parameters["nn_table"])
         primer_Tm_parameters["tmm_table"] = getattr(mt, primer_Tm_parameters["tmm_table"])
         primer_Tm_parameters["imm_table"] = getattr(mt, primer_Tm_parameters["imm_table"])
@@ -238,8 +245,8 @@ class SeqFishPlusProbeDesigner:
 
         ## primer
         self.primer_Tm_parameters = primer_Tm_parameters
-        self.primer_Tm_chem_correction_param = primer_Tm_chem_correction_param
-        self.primer_Tm_salt_correction_param = primer_Tm_salt_correction_param
+        self.primer_Tm_chem_correction_parameters = primer_Tm_chem_correction_parameters
+        self.primer_Tm_salt_correction_parameters = primer_Tm_salt_correction_parameters
 
         ### Parameters for the Oligo set selection
         self.max_graph_size = max_graph_size
@@ -303,10 +310,10 @@ class SeqFishPlusProbeDesigner:
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
             files_fasta_reference_database=files_fasta_reference_database_targe_probe,
-            specificity_blastn_search_params=self.target_probe_specificity_blastn_search_params,
-            specificity_blastn_hit_params=self.target_probe_specificity_blastn_hit_params,
-            cross_hybridization_blastn_search_params=self.target_probe_cross_hybridization_blastn_search_params,
-            cross_hybridization_blastn_hit_params=self.target_probe_cross_hybridization_blastn_hit_params,
+            specificity_blastn_search_parameters=self.target_probe_specificity_blastn_search_parameters,
+            specificity_blastn_hit_parameters=self.target_probe_specificity_blastn_hit_parameters,
+            cross_hybridization_blastn_search_parameters=self.target_probe_cross_hybridization_blastn_search_parameters,
+            cross_hybridization_blastn_hit_parameters=self.target_probe_cross_hybridization_blastn_hit_parameters,
         )
         check_content_oligo_database(oligo_database)
 
@@ -383,10 +390,10 @@ class SeqFishPlusProbeDesigner:
         oligo_database = readout_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
             files_fasta_reference_database=files_fasta_reference_database_readout_probe,
-            specificity_blastn_search_parameters=self.readout_probe_specificity_blastn_search_params,
-            specificity_blastn_hit_parameters=self.readout_probe_specificity_blastn_hit_params,
-            cross_hybridization_blastn_search_parameters=self.readout_probe_cross_hybridization_blastn_search_params,
-            cross_hybridization_blastn_hit_parameters=self.readout_probe_cross_hybridization_blastn_hit_params,
+            specificity_blastn_search_parameters=self.readout_probe_specificity_blastn_search_parameters,
+            specificity_blastn_hit_parameters=self.readout_probe_specificity_blastn_hit_parameters,
+            cross_hybridization_blastn_search_parameters=self.readout_probe_cross_hybridization_blastn_search_parameters,
+            cross_hybridization_blastn_hit_parameters=self.readout_probe_cross_hybridization_blastn_hit_parameters,
         )
         check_content_oligo_database(oligo_database)
 
@@ -528,8 +535,8 @@ class SeqFishPlusProbeDesigner:
             Tm_min=primer_Tm_min,
             Tm_max=primer_Tm_max,
             Tm_parameters=self.primer_Tm_parameters,
-            Tm_chem_correction_param=self.primer_Tm_chem_correction_param,
-            Tm_salt_correction_parameters=self.primer_Tm_salt_correction_param,
+            Tm_chem_correction_parameters=self.primer_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.primer_Tm_salt_correction_parameters,
             T_secondary_structure=primer_T_secondary_structure,
             secondary_structures_threshold_deltaG=primer_secondary_structures_threshold_deltaG,
         )
@@ -542,8 +549,8 @@ class SeqFishPlusProbeDesigner:
         oligo_database = primer_designer.filter_by_specificity(
             oligo_database=oligo_database,
             files_fasta_reference_database=files_fasta_reference_database_primer,
-            specificity_refrence_blastn_search_parameters=self.primer_specificity_refrence_blastn_search_params,
-            specificity_refrence_blastn_hit_parameters=self.primer_specificity_refrence_blastn_hit_params,
+            specificity_refrence_blastn_search_parameters=self.primer_specificity_refrence_blastn_search_parameters,
+            specificity_refrence_blastn_hit_parameters=self.primer_specificity_refrence_blastn_hit_parameters,
             file_fasta_encoding_probes_database=file_fasta_encoding_probes_database,
             specificity_encoding_probes_blastn_search_parameters=self.primer_specificity_encoding_probes_blastn_search_parameters,
             specificity_encoding_probes_blastn_hit_parameters=self.primer_specificity_encoding_probes_blastn_hit_parameters,
@@ -560,8 +567,8 @@ class SeqFishPlusProbeDesigner:
         Tm_reverse_primer = OligoAttributes._calc_TmNN(
             sequence=reverse_primer_sequence,
             Tm_parameters=self.primer_Tm_parameters,
-            Tm_chem_correction_parameters=self.primer_Tm_chem_correction_param,
-            Tm_salt_correction_parameters=self.primer_Tm_salt_correction_param,
+            Tm_chem_correction_parameters=self.primer_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.primer_Tm_salt_correction_parameters,
         )
 
         # iterate over all primers in the database to find the one with Tm closest to the reverse primer Tm
@@ -570,8 +577,8 @@ class SeqFishPlusProbeDesigner:
                 Tm_forward_primer = OligoAttributes._calc_TmNN(
                     sequence=primer_attributes["oligo"],
                     Tm_parameters=self.primer_Tm_parameters,
-                    Tm_chem_correction_parameters=self.primer_Tm_chem_correction_param,
-                    Tm_salt_correction_parameters=self.primer_Tm_salt_correction_param,
+                    Tm_chem_correction_parameters=self.primer_Tm_chem_correction_parameters,
+                    Tm_salt_correction_parameters=self.primer_Tm_salt_correction_parameters,
                 )
                 dif_Tm = abs(Tm_forward_primer - Tm_reverse_primer)
                 if dif_Tm < min_dif_Tm:
@@ -624,7 +631,6 @@ class SeqFishPlusProbeDesigner:
                     "sequence_reverse_primer": reverse_primer_sequence,
                     "sequence_forward_primer": forward_primer_sequence,
                     "sequence_seqfish_plus_probe": forward_primer_sequence
-                    + "T"
                     + encoding_probe_database.get_oligo_attribute_value(
                         attribute="sequence_encoding_probe",
                         region_id=region_id,
@@ -706,7 +712,7 @@ class SeqFishPlusProbeDesigner:
                         ),
                     }
 
-        with open(os.path.join(self.dir_output, "padlock_probes_order.yml"), "w") as outfile:
+        with open(os.path.join(self.dir_output, "seqfish_plus_probes_order.yml"), "w") as outfile:
             yaml.dump(yaml_dict_order, outfile, default_flow_style=False, sort_keys=False)
 
         logging.info("--------------END PIPELINE--------------")
@@ -827,10 +833,10 @@ class SeqFishTargetProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         files_fasta_reference_database: List[str],
-        specificity_blastn_search_params: dict,
-        specificity_blastn_hit_params: dict,
-        cross_hybridization_blastn_search_params: dict,
-        cross_hybridization_blastn_hit_params: dict,
+        specificity_blastn_search_parameters: dict,
+        specificity_blastn_hit_parameters: dict,
+        cross_hybridization_blastn_search_parameters: dict,
+        cross_hybridization_blastn_hit_parameters: dict,
     ) -> Tuple[OligoDatabase, str]:
         ##### define reference database #####
         reference_database = ReferenceDatabase(
@@ -845,15 +851,15 @@ class SeqFishTargetProbeDesigner:
 
         ##### specificity filters #####
         specificity = BlastNFilter(
-            search_parameters=specificity_blastn_search_params,
-            hit_parameters=specificity_blastn_hit_params,
+            search_parameters=specificity_blastn_search_parameters,
+            hit_parameters=specificity_blastn_hit_parameters,
             filter_name="oligo_blastn_specificity",
             dir_output=self.dir_output,
         )
 
         cross_hybridization_aligner = BlastNFilter(
-            search_parameters=cross_hybridization_blastn_search_params,
-            hit_parameters=cross_hybridization_blastn_hit_params,
+            search_parameters=cross_hybridization_blastn_search_parameters,
+            hit_parameters=cross_hybridization_blastn_hit_parameters,
             filter_name="oligo_blastn_crosshybridization",
             dir_output=self.dir_output,
         )
@@ -1205,11 +1211,13 @@ class SeqFishPlusPrimerDesigner:
         forward_primer_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         forward_primer_fasta_file = forward_primer_sequences.create_sequences_random(
             filename_out="forward_primer_sequences",
-            length_sequences=oligo_length,
+            length_sequences=oligo_length - 1,
             num_sequences=initial_num_sequences,
             name_sequences="forward_primer",
             base_alphabet_with_probability=oligo_base_probabilities,
         )
+        # we want to keep primer which end with a specific nucleotide, i.e. "T"
+        forward_primer_fasta_file = append_nucleotide_to_sequences(forward_primer_fasta_file, nucleotide="T")
 
         ##### creating the primer database #####
         oligo_database = OligoDatabase(
@@ -1247,13 +1255,12 @@ class SeqFishPlusPrimerDesigner:
         Tm_min: float,
         Tm_max: float,
         Tm_parameters: dict,
-        Tm_chem_correction_param: dict,
+        Tm_chem_correction_parameters: dict,
         Tm_salt_correction_parameters: dict,
         T_secondary_structure: float,
         secondary_structures_threshold_deltaG: float,
     ) -> Tuple[OligoDatabase, str]:
         # define the filters
-        # we want to keep primer which end with a specific nucleotide, i.e. "T"
         gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
         gc_clamp = GCClampFilter(n_bases=number_three_prime_base_GCclamp, n_GC=number_GC_GCclamp)
         homopolymeric_runs = HomopolymericRunsFilter(
@@ -1267,7 +1274,7 @@ class SeqFishPlusPrimerDesigner:
             Tm_min=Tm_min,
             Tm_max=Tm_max,
             Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_param,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
             Tm_salt_correction_parameters=Tm_salt_correction_parameters,
         )
         secondary_sctructure = SecondaryStructureFilter(
@@ -1401,30 +1408,38 @@ def main():
 
     ##### set custom developer parameters #####
     pipeline.set_developer_parameters(
-        target_probe_specificity_blastn_search_params=config["target_probe_specificity_blastn_search_params"],
-        target_probe_specificity_blastn_hit_params=config["target_probe_specificity_blastn_hit_params"],
-        target_probe_cross_hybridization_blastn_search_params=config[
-            "target_probe_cross_hybridization_blastn_search_params"
+        target_probe_specificity_blastn_search_parameters=config[
+            "target_probe_specificity_blastn_search_parameters"
         ],
-        target_probe_cross_hybridization_blastn_hit_params=config[
-            "target_probe_cross_hybridization_blastn_hit_params"
+        target_probe_specificity_blastn_hit_parameters=config[
+            "target_probe_specificity_blastn_hit_parameters"
+        ],
+        target_probe_cross_hybridization_blastn_search_parameters=config[
+            "target_probe_cross_hybridization_blastn_search_parameters"
+        ],
+        target_probe_cross_hybridization_blastn_hit_parameters=config[
+            "target_probe_cross_hybridization_blastn_hit_parameters"
         ],
         readout_probe_initial_num_sequences=config["readout_probe_initial_num_sequences"],
-        readout_probe_specificity_blastn_search_params=config[
-            "readout_probe_specificity_blastn_search_params"
+        readout_probe_specificity_blastn_search_parameters=config[
+            "readout_probe_specificity_blastn_search_parameters"
         ],
-        readout_probe_specificity_blastn_hit_params=config["readout_probe_specificity_blastn_hit_params"],
-        readout_probe_cross_hybridization_blastn_search_params=config[
-            "readout_probe_cross_hybridization_blastn_search_params"
+        readout_probe_specificity_blastn_hit_parameters=config[
+            "readout_probe_specificity_blastn_hit_parameters"
         ],
-        readout_probe_cross_hybridization_blastn_hit_params=config[
-            "readout_probe_cross_hybridization_blastn_hit_params"
+        readout_probe_cross_hybridization_blastn_search_parameters=config[
+            "readout_probe_cross_hybridization_blastn_search_parameters"
+        ],
+        readout_probe_cross_hybridization_blastn_hit_parameters=config[
+            "readout_probe_cross_hybridization_blastn_hit_parameters"
         ],
         primer_initial_num_sequences=config["primer_initial_num_sequences"],
-        primer_specificity_refrence_blastn_search_params=config[
-            "primer_specificity_refrence_blastn_search_params"
+        primer_specificity_refrence_blastn_search_parameters=config[
+            "primer_specificity_refrence_blastn_search_parameters"
         ],
-        primer_specificity_refrence_blastn_hit_params=config["primer_specificity_refrence_blastn_hit_params"],
+        primer_specificity_refrence_blastn_hit_parameters=config[
+            "primer_specificity_refrence_blastn_hit_parameters"
+        ],
         primer_specificity_encoding_probes_blastn_search_parameters=config[
             "primer_specificity_encoding_probes_blastn_search_parameters"
         ],
@@ -1432,8 +1447,8 @@ def main():
             "primer_specificity_encoding_probes_blastn_hit_parameters"
         ],
         primer_Tm_parameters=config["primer_Tm_parameters"],
-        primer_Tm_chem_correction_param=config["primer_Tm_chem_correction_param"],
-        primer_Tm_salt_correction_param=config["primer_Tm_salt_correction_param"],
+        primer_Tm_chem_correction_parameters=config["primer_Tm_chem_correction_parameters"],
+        primer_Tm_salt_correction_parameters=config["primer_Tm_salt_correction_parameters"],
         max_graph_size=config["max_graph_size"],
         pre_filter=config["pre_filter"],
         n_attempts=config["n_attempts"],
