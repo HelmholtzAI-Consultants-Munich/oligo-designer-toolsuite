@@ -1,3 +1,7 @@
+"""
+This module provides classes for generating oligo sequences, custom genomic regions, and loading genomic data via FTP.
+"""
+
 from ._ftp_loader import BaseFtpLoader, FtpLoaderEnsembl, FtpLoaderNCBI
 from ._genomic_region_generator import (
     CustomGenomicRegionGenerator,

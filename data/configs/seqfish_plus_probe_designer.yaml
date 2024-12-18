@@ -46,7 +46,7 @@ probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a hom
   C: 5
   G: 5
 probe_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy
+probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 ## readout probe sequence
 readout_probe_GC_content_min: 40 # minimum GC content of oligos
 readout_probe_GC_content_max: 60 # maximum GC content of oligos
@@ -60,14 +60,14 @@ primer_number_three_prime_base_GCclamp: 2
 primer_max_len_selfcomplement: 6
 primer_max_len_complement_reverse_primer: 5
 primer_Tm_min: 60
-primer_Tm_max: 65
+primer_Tm_max: 75
 primer_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
-  A: 3
-  T: 3
-  C: 3
-  G: 3
+  A: 4
+  T: 4
+  C: 4
+  G: 4
 primer_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy
+primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature 
 
 ### Parameters for the specificity filters
 ### -----------------------------------------------

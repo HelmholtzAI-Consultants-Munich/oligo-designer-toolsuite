@@ -9,17 +9,21 @@ Module contents
 
 .. autosummary::
 
-   SpecificityFilter
    SpecificityFilterBase
-   ExactMatches
-   Blastn
-   Bowtie
-   Bowtie2
-   BowtieSeedRegion
-   SeedRegionCreationBase
-   SeedRegionCreationStandard
-   SeedRegionCreationPercentage
-   LigationRegionCreation
+   AlignmentSpecificityFilter
+   ExactMatchFilter
+   BlastNFilter
+   BlastNSeedregionFilter
+   BlastNSeedregionLigationsiteFilter
+   BowtieFilter
+   Bowtie2Filter
+   CrossHybridizationFilter
+   HybridizationProbabilityFilter
+   FilterPolicyBase
+   RemoveAllPolicy
+   RemoveByDegreePolicy
+   RemoveByLargerRegionPolicy
+   SpecificityFilter
 
    {% for name in oligo_designer_toolsuite.oligo_specificity_filter.classes %}
      {{ name }}

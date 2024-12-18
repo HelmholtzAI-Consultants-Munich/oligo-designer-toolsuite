@@ -21,6 +21,18 @@ from ._policies import FilterPolicyBase, RemoveAllPolicy
 
 
 class ExactMatchFilter(SpecificityFilterBase):
+    """
+    A filter class for identifying and handling exact sequence matches within an OligoDatabase.
+
+    The `ExactMatchFilter` class is designed to apply a specific policy to oligonucleotides that have exact sequence matches in the OligoDatabase.
+    This filter can be used to remove or handle exact matches based on the provided policy.
+
+    :param policy: The policy to apply to exact matches. If not provided, a default policy (`RemoveAllPolicy`) will be used.
+    :type policy: FilterPolicyBase
+    :param filter_name: Name of the filter for identification purposes.
+    :type filter_name: str
+    """
+
     def __init__(
         self,
         policy: FilterPolicyBase = None,
@@ -35,10 +47,28 @@ class ExactMatchFilter(SpecificityFilterBase):
     def apply(
         self,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,  # not used in this filter but needed for API
+        reference_database: ReferenceDatabase,  # not utilized in this filter
         sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> OligoDatabase:
+        """
+        Applies the exact match filter to an OligoDatabase.
+
+        This function identifies sequences within the OligoDatabase that have exact matches according to the specified `sequence_type`.
+        It then uses the provided policy to determine how these exact matches should be handled.
+        The filter operates in parallel across regions in the OligoDatabase to improve performance.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param reference_database: The ReferenceDatabase used for alignment (not utilized in this filter).
+        :type reference_database: ReferenceDatabase
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param n_jobs: The number of parallel jobs to use for processing.
+        :type n_jobs: int
+        :return: The filtered OligoDatabase with exact matching sequences removed.
+        :rtype: OligoDatabase
+        """
         # extract all the sequences
         sequences = oligo_database.get_sequence_list(sequence_type=sequence_type)
         search_results = self._get_duplicated_sequences(sequences)
@@ -79,10 +109,27 @@ class ExactMatchFilter(SpecificityFilterBase):
     def get_oligo_pair_hits(
         self,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,  # not used in this filter but needed for API
+        reference_database: ReferenceDatabase,  # not utilized in this filter
         sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> list:
+        """
+        Identifies oligonucleotide pairs that have exact sequence matches within the OligoDatabase.
+
+        This function compares oligo sequences within the OligoDatabase to identify pairs of oligos that have exact matches,
+        including their reverse complements. It generates a list of these matching oligo pairs, which can be used for further filtering or analysis.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param reference_database: The ReferenceDatabase used for alignment (not utilized in this filter).
+        :type reference_database: ReferenceDatabase
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param n_jobs: The number of parallel jobs to use for processing.
+        :type n_jobs: int
+        :return: A list of tuples representing oligo pairs that have exact matches.
+        :rtype: list
+        """
         options = get_args(_TYPES_SEQ)
         assert (
             sequence_type in options
@@ -121,6 +168,17 @@ class ExactMatchFilter(SpecificityFilterBase):
         return oligo_pair_hits
 
     def _get_duplicated_sequences(self, sequences: list) -> list:
+        """
+        Identifies duplicated sequences within a list of sequences.
+
+        This function takes a list of sequences, converts them to uppercase, and identifies sequences that appear more than once.
+        It returns a list of these duplicated sequences, which can be used for further analysis or filtering.
+
+        :param sequences: A list of sequences to be checked for duplicates.
+        :type sequences: list
+        :return: A list of duplicated sequences.
+        :rtype: list
+        """
         # convert to upper sequence
         sequences = [sequence.upper() for sequence in sequences]
 
@@ -140,6 +198,27 @@ class ExactMatchFilter(SpecificityFilterBase):
         sequence_type: _TYPES_SEQ,
         region_id: str,
     ) -> pd.DataFrame:
+        """
+        Runs a filter on the OligoDatabase to identify and record any matching sequences found in the provided search results.
+
+        This function checks each sequence in a specified region of the oligo OligoDatabase against a list of search results.
+        It then maps these sequences to their corresponding oligo IDs and records any hits that are either within or outside the input region, depending on the filter settings.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param search_results: A list of sequences that were identified as duplicates.
+        :type search_results: List
+        :param sequence_oligoids_mapping: A dictionary mapping sequences to their respective oligo IDs.
+        :type sequence_oligoids_mapping: dict
+        :param consider_hits_from_input_region: Flag indicating whether to consider hits from the same region as the input sequences.
+        :type consider_hits_from_input_region: bool
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :return: A DataFrame containing the oligo ID pairs for sequences that matched the search results.
+        :rtype: pd.DataFrame
+        """
         database_region = oligo_database.database[region_id]
         hit_dict = {}
         for oligo_id in database_region.keys():

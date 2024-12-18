@@ -15,15 +15,6 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 
 def base_parser():
-    """
-    Parses command-line arguments for the genomic region generator.
-
-    This function initializes a command-line parser and defines an argument for specifying a configuration file in YAML format.
-    It processes the input arguments provided when the script is run from the command line, returning them in a dictionary.
-
-    :return: A dictionary containing the command-line arguments where the key is the argument name and the value is its specified value.
-    :rtype: dict
-    """
     parser = ArgumentParser(
         prog="Genomic Region Generator",
         usage="genomic_region_generation [options]",
@@ -43,18 +34,13 @@ def base_parser():
 
 
 def base_log_parameters(parameters):
-    """Log function parameters.
 
-    :param parameters: Dict with parameter name : parameter value pairs
-    :type parameters: dict
-    """
     for key, value in parameters.items():
         if key != "self":
             logging.info(f"{key} = {value}")
 
 
 def log_parameters_and_get_db(func, args, kwargs):
-    """Log function parameters."""
     sig = inspect.signature(func)
     bound_args = sig.bind(*args, **kwargs)
     bound_args.apply_defaults()
@@ -68,26 +54,14 @@ def log_parameters_and_get_db(func, args, kwargs):
 
 
 def get_oligo_database_info(oligo_database: dict):
-    """Count the number of oligos and genes in the database.
 
-    :param oligo_database: Database with oligos.
-    :type oligo_database: dict
-    :return: Number of genes and oligos in the database.
-    :rtype: int, int
-    """
     num_genes = len(oligo_database)
     num_oligos = sum(len(oligos) for oligos in oligo_database.values())
     return num_genes, num_oligos
 
 
 def get_oligo_length_min_max_from_database(oligo_database: dict):
-    """Get minimum and maximum length of oligos stored in the oligo database.
 
-    :param oligo_database: Database with oligos.
-    :type oligo_database: dict
-    :return: Min and max length of oligos
-    :rtype: int, int
-    """
     oligo_length_min = sys.maxsize
     oligo_length_max = 0
 
@@ -103,12 +77,6 @@ def get_oligo_length_min_max_from_database(oligo_database: dict):
 
 
 def pipeline_step_basic(step_name: str):
-    """Decorator function to log the input parameter of a general generative step (where an oligo database is created) of any pipeline and the information of the database generated.
-    This decorator requires that the first returned value of the function is the oligo database.
-
-    :param step_name: Name identifying the step.
-    :type step_name: str.
-    """
 
     def decorator(function):
         def wrapper(*args, **kwargs):
@@ -130,14 +98,6 @@ def pipeline_step_basic(step_name: str):
 
 
 def pipeline_step_advanced(step_name: str):
-    """Decorator function to log the input parameter of a general filtering step (where an oligo database is filtered) of any pipeline and the information of the changes applied to the database.
-    This decorator requires that the first returned value of the function is the oligo database.
-
-    Note: using this function can increase runtime when database is large.
-
-    :param step_name: Name identifying the step.
-    :type step_name: str.
-    """
 
     def decorator(function):
         def wrapper(*args, **kwargs):

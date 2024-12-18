@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.abspath("../../"))
 # -- Project information -----------------------------------------------------
 
 project = "Oligo Designer Toolsuite"
-copyright = "Helmholtz AI 2023"
-author = "Lisa Barros de Andrade e Sousa, Isra Mekki, Franceso Campi, Chelsea Bright"
+copyright = "Helmholtz AI 2024"
+author = "Lisa Barros de Andrade e Sousa, Isra Mekki, Franceso Campi"
 
 # The full version, including alpha/beta/rc tags
 release = "0.1"
@@ -34,6 +34,7 @@ release = "0.1"
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.mathjax",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "nbsphinx",
@@ -67,18 +68,13 @@ html_theme = "renku"
 html_logo = "_figures/ODT_logo.png"
 
 html_title = "Oligo Designer Toolsuite"
-html_theme_options = {
-    "logo_only": True,
-    #    "repository_url": "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite",
-    #    "use_repository_button": True,
-    #    "use_fullscreen_button": True,
-    #    "use_issues_button": True,
-}
+html_theme_options = {"logo_only": True}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+html_css_files = []
 
 
 # -- Extension configuration -------------------------------------------------

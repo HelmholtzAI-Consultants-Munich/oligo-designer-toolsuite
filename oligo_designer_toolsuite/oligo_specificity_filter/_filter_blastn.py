@@ -25,6 +25,42 @@ from ..utils._sequence_processor import get_sequence_from_annotation
 
 
 class BlastNFilter(AlignmentSpecificityFilter):
+    """
+    A class for filtering oligonucleotide sequences using BLASTN alignments.
+
+    The `BlastNFilter` class is designed to align sequences against a ReferenceDatabase using BLASTN.
+    This class manages BLAST search parameters and interprets the alignment results according to user-defined criteria.
+    It can be used to filter sequences based on their specificity and alignment properties.
+
+    Blast (2.12 or higher)  can be installed via NCBI webpage (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+    or via Bioconda (http://bioconda.github.io/recipes/blast/README.html) installation of Bowtie2 with:
+    ``conda config --add channels conda-forge``
+    ``conda config --add channels bioconda``
+    ``conda update --all``
+    ``conda install "blast>=2.12"``
+
+    Useful BlastN search parameter:
+    - word_size: Length of initial exact match. Default: 11
+    - strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus. Default: both
+    - perc_identity: Percent identity cutoff. Default: 0
+    All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+
+    The hits returned by BLASTN can be further filtered using machine learning models. For more information regarding which filters are available
+    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
+
+
+    :param search_parameters: Parameters to configure the BLAST search.
+    :type search_parameters: dict
+    :param hit_parameters: Criteria for interpreting BLAST hits.
+    :type hit_parameters: dict
+    :param names_search_output: List of names for the BLAST search output fields.
+    :type names_search_output: list
+    :param filter_name: Name of the filter for identification purposes.
+    :type filter_name: str
+    :param dir_output: Directory to store output files and temporary data.
+    :type dir_output: str
+    """
+
     def __init__(
         self,
         search_parameters: dict = {},
@@ -52,7 +88,24 @@ class BlastNFilter(AlignmentSpecificityFilter):
         if "outfmt" not in self.search_parameters.keys():
             self.search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen"
 
-    def _create_index(self, file_reference: str, n_jobs: int) -> str:
+    def _create_index(
+        self,
+        file_reference: str,
+        n_jobs: int,  # not utilized in this filter
+    ) -> str:
+        """
+        Creates a BLAST index for a given reference file.
+
+        This method generates an index for a nucleotide BLAST database from the specified reference file.
+        The index is stored in the specified output directory.
+
+        :param file_reference: The path to the reference file for which the BLAST index will be created.
+        :type file_reference: str
+        :param n_jobs: The number of parallel jobs to use for creating the index (not utilized in this filter).
+        :type n_jobs: int
+        :return: The name of the created BLAST index file.
+        :rtype: str
+        """
         ## Create blast index
         filename_reference_index = os.path.basename(file_reference)
 
@@ -74,6 +127,24 @@ class BlastNFilter(AlignmentSpecificityFilter):
         sequence_type: _TYPES_SEQ,
         region_ids: Union[str, List[str]] = None,
     ) -> pd.DataFrame:
+        """
+        Runs a BLAST search for the specified oligo sequences against a ReferenceDatabase.
+
+        This function writes the sequences from the OligoDatabase to a FASTA file and
+        performs a BLAST search against the provided ReferenceDatabase index.
+        The results are read into a DataFrame for further analysis.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param file_index: The name of the BLAST database index file to search against.
+        :type file_index: str
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
+        :type region_ids: Union[str, List[str]], optional
+        :return: A DataFrame containing the BLAST search results.
+        :rtype: pd.DataFrame
+        """
         region_ids = check_if_list(region_ids)
         if region_ids:
             region_name = "_".join(region_ids)
@@ -127,6 +198,24 @@ class BlastNFilter(AlignmentSpecificityFilter):
         consider_hits_from_input_region: bool,
         region_ids: Union[str, List[str]],  # not utilized in this filter
     ) -> pd.DataFrame:
+        """
+        Identifies significant hits from BLAST search results based on alignment length or coverage.
+
+        This function processes the BLAST search results to identify significant hits,
+        considering either a minimum alignment length or a coverage percentage of the query sequence.
+        Additionally, it can exclude hits where the query and reference sequences originate from the same region.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes (not utilized in this filter).
+        :type oligo_database: OligoDatabase
+        :param search_results: DataFrame containing the results of the BLAST search.
+        :type search_results: pd.DataFrame
+        :param consider_hits_from_input_region: Whether to include hits from the same region as the query.
+        :type consider_hits_from_input_region: bool
+        :param region_ids: List of region IDs to process (not utilized in this filter).
+        :type region_ids: Union[str, List[str]]
+        :return: A DataFrame containing the filtered BLAST search hits.
+        :rtype: pd.DataFrame
+        """
         if "min_alignment_length" in self.hit_parameters.keys():
             if "coverage" in self.hit_parameters.keys():
                 warnings.warn(
@@ -153,6 +242,22 @@ class BlastNFilter(AlignmentSpecificityFilter):
         return blast_table_hits
 
     def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str) -> list:
+        """
+        Generates reference sequences from BLAST hits and returns them in a padded format.
+
+        This function takes a DataFrame of BLAST hits and processes it to generate a list of reference sequences.
+        The function creates a BED file based on the hits, retrieves the corresponding sequences from the reference genome,
+        and then pads the sequences as necessary to ensure they align correctly with the query sequences.
+
+        :param table_hits: DataFrame containing BLAST search hits.
+        :type table_hits: pd.DataFrame
+        :param file_reference: Path to the reference genome file.
+        :type file_reference: str
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :return: A list of padded reference sequences.
+        :rtype: list
+        """
         required_fields = [
             "query",
             "reference",
@@ -212,6 +317,19 @@ class BlastNFilter(AlignmentSpecificityFilter):
         return references_padded
 
     def _0_index_coordinates(self, table_hits: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adjusts BLAST hit coordinates to a 0-based index system.
+
+        This method modifies the coordinates in the BLAST hits DataFrame to follow a 0-based indexing system,
+        which is commonly used in bioinformatics formats like BED files.
+        The adjustments are made based on the strand orientation of the sequences,
+        ensuring that the coordinates are accurate for both plus and minus strands.
+
+        :param table_hits: DataFrame containing the BLAST hits with coordinates to be adjusted.
+        :type table_hits: pd.DataFrame
+        :return: DataFrame with adjusted 0-based coordinates.
+        :rtype: pd.DataFrame
+        """
         table_hits["query_start_corr"] = table_hits["query_start"] - 1
         table_hits["reference_start_corr"] = np.where(
             table_hits["reference_strand"] == "plus",
@@ -226,6 +344,17 @@ class BlastNFilter(AlignmentSpecificityFilter):
         return table_hits
 
     def _extend_reference_start_end_coordinates(self, table_hits: pd.DataFrame) -> pd.DataFrame:
+        """
+        Extends the reference start and end coordinates for BLAST hits.
+
+        This function calculates and extends the start and end coordinates of reference sequences based on the alignment's strand orientation.
+        The adjustments ensure the coordinates fully encompass the aligned query sequence in the reference genome.
+
+        :param table_hits: DataFrame containing BLAST hits with corrected 0-based reference coordinates.
+        :type table_hits: pd.DataFrame
+        :return: DataFrame with extended start and end coordinates for reference sequences.
+        :rtype: pd.DataFrame
+        """
         table_hits["start"] = np.where(
             table_hits["reference_strand"] == "plus",
             table_hits["reference_start_corr"] - table_hits["query_start_corr"],
@@ -239,7 +368,19 @@ class BlastNFilter(AlignmentSpecificityFilter):
         return table_hits
 
     def _remove_overflows(self, bed: pd.DataFrame, file_reference: str) -> pd.DataFrame:
+        """
+        Removes coordinate overflows in BED format entries relative to reference sequences.
 
+        This function adjusts the start and end coordinates in a BED file to ensure they fit within the boundaries of the reference sequence.
+        It calculates and corrects overflows that occur when coordinates extend beyond the reference sequence's length, ensuring the adjusted coordinates are valid.
+
+        :param bed: DataFrame containing BED format data with start and end coordinates.
+        :type bed: pd.DataFrame
+        :param file_reference: Path to the reference sequence file in FASTA format.
+        :type file_reference: str
+        :return: DataFrame with corrected start and end coordinates and calculated overflows.
+        :rtype: pd.DataFrame
+        """
         bed["overflow_start"] = bed["start"].apply(lambda x: -x if x < 0 else 0)
         bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
 
@@ -258,6 +399,20 @@ class BlastNFilter(AlignmentSpecificityFilter):
         return bed
 
     def _pad_overflows(self, bed: pd.DataFrame, references: list) -> list:
+        """
+        Pads sequence references to account for coordinate overflows.
+
+        This function adjusts sequence references by adding padding to account for any overflows that
+        occur when sequence coordinates exceed the boundaries of the reference sequence.
+        The padding is added at the beginning or end of the sequence depending on the strand direction.
+
+        :param bed: DataFrame containing BED format data, including overflow calculations.
+        :type bed: pd.DataFrame
+        :param references: List of sequence references extracted from the reference file.
+        :type references: list
+        :return: List of padded sequence references with overflow accounted for.
+        :rtype: list
+        """
         references_padded = []
         for reference, overflow_start, overflow_end, strand in zip(
             references, bed["overflow_start"], bed["overflow_end"], bed["strand"]
@@ -275,6 +430,23 @@ class BlastNFilter(AlignmentSpecificityFilter):
     def _add_alignment_gaps(
         self, table_hits: pd.DataFrame, queries: list, references: list
     ) -> Tuple[list, list]:
+        """
+        Aligns query and reference sequences by introducing gaps based on alignment hits.
+
+        This function adjusts query and reference sequences by inserting gaps at specific positions,
+        aligning them according to the provided alignment hits.
+        The gaps are added to match the alignment patterns derived from the sequence comparisons.
+
+        :param table_hits: DataFrame containing information about the alignment hits, including gap positions.
+        :type table_hits: pd.DataFrame
+        :param queries: List of query sequences to be aligned.
+        :type queries: list
+        :param references: List of reference sequences to be aligned.
+        :type references: list
+        :return: A tuple containing the gapped query and reference sequences.
+        :rtype: Tuple[list, list]
+        """
+
         def add_gaps(seq, gaps):
             for gap in gaps:
                 seq = seq[:gap] + "-" + seq[gap:]
@@ -303,6 +475,38 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
 
 class BlastNSeedregionFilterBase(BlastNFilter):
+    """
+    A base class for BLASTN-based seed region filters in oligonucleotide design.
+
+    The `BlastNSeedregionFilterBase` class extends the `BlastNFilter` class,
+    providing a foundation for implementing specific filters that utilize BLASTN
+    to assess the specificity of seed regions in oligonucleotide sequences.
+
+    Blast (2.12 or higher)  can be installed via NCBI webpage (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+    or via Bioconda (http://bioconda.github.io/recipes/blast/README.html) installation of Bowtie2 with:
+    ``conda config --add channels conda-forge``
+    ``conda config --add channels bioconda``
+    ``conda update --all``
+    ``conda install "blast>=2.12"``
+
+    Useful BlastN search parameter:
+    - word_size: Length of initial exact match. Default: 11
+    - strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus. Default: both
+    - perc_identity: Percent identity cutoff. Default: 0
+    All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+
+    :param search_parameters: Parameters to configure the BLAST search.
+    :type search_parameters: dict
+    :param hit_parameters: Criteria for interpreting BLAST hits.
+    :type hit_parameters: dict
+    :param names_search_output: List of names for the BLAST search output fields.
+    :type names_search_output: list
+    :param filter_name: Name of the filter for identification purposes.
+    :type filter_name: str
+    :param dir_output: Directory to store output files and temporary data.
+    :type dir_output: str
+    """
+
     def __init__(
         self,
         search_parameters: dict = None,
@@ -331,7 +535,21 @@ class BlastNSeedregionFilterBase(BlastNFilter):
     def _add_seed_region_information(
         self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_ids: Union[str, List[str]]
     ) -> pd.DataFrame:
-        """ """
+        """
+        An abstract method to add seed region information to BLAST search results.
+
+        The `_add_seed_region_information` method is intended to be implemented in subclasses.
+        It processes the BLAST search results and integrates specific seed region data into the provided OligoDatabase.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param search_results: The DataFrame containing the results of the BLAST search.
+        :type search_results: pd.DataFrame
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
+        :type region_ids: Union[str, List[str]]
+        :return: The BLAST search results with added seed region information.
+        :rtype: pd.DataFrame
+        """
 
     def _find_hits(
         self,
@@ -340,6 +558,23 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         consider_hits_from_input_region: bool,
         region_ids: Union[str, List[str]],
     ) -> pd.DataFrame:
+        """
+        Finds and filters hits from BLAST search results based on alignment length, coverage, and seed region information.
+
+        This method processes the search results to identify significant hits by applying user-defined thresholds for alignment length or coverage.
+        It also incorporates seed region information into the search results and optionally filters out hits that originate from the same region as the input sequence.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param search_results: DataFrame containing BLAST search results.
+        :type search_results: pd.DataFrame
+        :param consider_hits_from_input_region: Whether to include hits from the same region as the input sequence.
+        :type consider_hits_from_input_region: bool
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
+        :type region_ids: Union[str, List[str]]
+        :return: Filtered BLAST search results containing significant hits.
+        :rtype: pd.DataFrame
+        """
         if "min_alignment_length" in self.hit_parameters.keys():
             if "coverage" in self.hit_parameters.keys():
                 warnings.warn(
@@ -379,6 +614,42 @@ class BlastNSeedregionFilterBase(BlastNFilter):
 
 
 class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
+    """
+    A filter class for BLAST searches that considers seed regions in oligonucleotide sequences.
+
+    The `BlastNSeedregionFilter` class extends the functionality of BLAST searches by incorporating seed region information.
+    It allows for precise filtering based on the alignment within specific regions of the oligonucleotide sequences,
+    ensuring that only relevant alignments are retained.
+
+    Blast (2.12 or higher)  can be installed via NCBI webpage (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+    or via Bioconda (http://bioconda.github.io/recipes/blast/README.html) installation of Bowtie2 with:
+    ``conda config --add channels conda-forge``
+    ``conda config --add channels bioconda``
+    ``conda update --all``
+    ``conda install "blast>=2.12"``
+
+    Useful BlastN search parameter:
+    - word_size: Length of initial exact match. Default: 11
+    - strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus. Default: both
+    - perc_identity: Percent identity cutoff. Default: 0
+    All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+
+    :param seedregion_start: The start position of the seed region within the sequence.
+    :type seedregion_start: Union[int, float]
+    :param seedregion_end: The end position of the seed region within the sequence.
+    :type seedregion_end: Union[int, float]
+    :param search_parameters: Parameters to configure the BLAST search.
+    :type search_parameters: dict
+    :param hit_parameters: Criteria for interpreting BLAST hits.
+    :type hit_parameters: dict
+    :param names_search_output: List of names for the BLAST search output fields.
+    :type names_search_output: list
+    :param filter_name: Name of the filter for identification purposes.
+    :type filter_name: str
+    :param dir_output: Directory to store output files and temporary data.
+    :type dir_output: str
+    """
+
     def __init__(
         self,
         seedregion_start: Union[int, float],
@@ -411,6 +682,21 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
     def _add_seed_region_information(
         self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_ids
     ) -> pd.DataFrame:
+        """
+        Adds seed region information to the BLAST search results.
+
+        This method enhances the BLAST search results by incorporating seed region start and end positions from the OligoDatabase.
+        It calculates the seed region positions for each oligonucleotide and merges this information with the BLAST search results to refine the output.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param search_results: The DataFrame containing the results of the BLAST search.
+        :type search_results: pd.DataFrame
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
+        :type region_ids: Union[str, List[str]]
+        :return: The BLAST search results with added seed region information.
+        :rtype: pd.DataFrame
+        """
         oligo_attributes_calculator = OligoAttributes()
         oligo_database = oligo_attributes_calculator.calculate_seedregion(
             oligo_database=oligo_database,
@@ -435,6 +721,40 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
 
 
 class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
+    """
+    A filter class for BLASTN alignment considering seed region and ligation site proximity.
+
+    The `BlastNSeedregionLigationsiteFilter` class extends the `BlastNSeedregionFilterBase` to focus on evaluating oligonucleotide
+    sequences based on their alignment within a specified seed region size, particularly around the ligation site.
+    This is useful for ensuring that sequences align in a biologically meaningful region.
+
+    Blast (2.12 or higher)  can be installed via NCBI webpage (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+    or via Bioconda (http://bioconda.github.io/recipes/blast/README.html) installation of Bowtie2 with:
+    ``conda config --add channels conda-forge``
+    ``conda config --add channels bioconda``
+    ``conda update --all``
+    ``conda install "blast>=2.12"``
+
+    Useful BlastN search parameter:
+    - word_size: Length of initial exact match. Default: 11
+    - strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus. Default: both
+    - perc_identity: Percent identity cutoff. Default: 0
+    All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+
+    :param seedregion_size: The size of the seed region around the ligation site to consider.
+    :type seedregion_size: int
+    :param search_parameters: Parameters to configure the BLAST search.
+    :type search_parameters: dict
+    :param hit_parameters: Criteria for interpreting BLAST hits.
+    :type hit_parameters: dict
+    :param names_search_output: List of names for the BLAST search output fields.
+    :type names_search_output: list
+    :param filter_name: Name of the filter for identification purposes.
+    :type filter_name: str
+    :param dir_output: Directory to store output files and temporary data.
+    :type dir_output: str
+    """
+
     def __init__(
         self,
         seedregion_size: int,
@@ -458,6 +778,21 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
     def _add_seed_region_information(
         self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_ids: Union[str, List[str]]
     ) -> pd.DataFrame:
+        """
+        Adds seed region information to the BLASTN search results based on the ligation site.
+
+        This method calculates the seed region around the ligation site for each oligonucleotide in the OligoDatabase and
+        merges this information with the BLASTN search results. The seed region is defined by the `seedregion_size` parameter.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param search_results: The DataFrame containing the results of the BLASTN search.
+        :type search_results: pd.DataFrame
+        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
+        :type region_ids: Union[str, List[str]]
+        :return: The BLAST search results with added seed region information.
+        :rtype: pd.DataFrame
+        """
         oligo_attributes_calculator = OligoAttributes()
         oligo_database = oligo_attributes_calculator.calculate_seedregion_ligationsite(
             oligo_database=oligo_database, region_ids=region_ids, seedregion_size=self.seedregion_size

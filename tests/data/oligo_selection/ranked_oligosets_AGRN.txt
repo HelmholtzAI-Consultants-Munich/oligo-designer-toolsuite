@@ -1,4 +1,4 @@
-	oligo_0	oligo_1	oligo_2	oligo_3	set_score_lowest	set_score_sum
+	oligo_0	oligo_1	oligo_2	oligo_3	set_score_worst	set_score_sum
 0	AGRN_pid258	AGRN_pid77	AGRN_pid80	AGRN_pid281	0.6596	1.6853
 1	AGRN_pid77	AGRN_pid261	AGRN_pid80	AGRN_pid281	0.6596	1.7996
 2	AGRN_pid77	AGRN_pid259	AGRN_pid80	AGRN_pid281	0.6596	1.8067

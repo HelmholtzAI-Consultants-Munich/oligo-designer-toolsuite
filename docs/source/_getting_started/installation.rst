@@ -4,23 +4,42 @@ Installation
 Requirements:
 -------------------
 
-This packages was tested for ``Python 3.9 - 3.10`` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
+This packages was tested for ``Python 3.9 - 3.10`` on ubuntu and macos. For stable installation, we recommend to first setup a conda environment, e.g.:
+
+::
+
+	conda create -n odt python=3.10
+	conda activate odt
+
+*Note: if your institution does not support Anaconda, you can use* `miniforge <https://github.com/conda-forge/miniforge>`_ *instead to run the conda installations.*
+
+If you have an Apple M chip, you need to create an environment simulating an x86 processor to be able to install **Blast**. This can be done as follows:
+
+::
+
+	CONDA_SUBDIR=osx-64 conda create -n odt python=3.10
+  	conda activate odt
+  	conda config --env --set subdir osx-64
+
+
+It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. 
+To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
 
 ::
 
 	conda config --add channels bioconda
 	conda config --add channels conda-forge
-	conda update conda
 	conda update --all
 
 
 Follow this instruction to install the required additional tools:
 
-- **Blast** (2.12 or higher) can be instelled via `NCBI webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__ or via `Bioconda <http://bioconda.github.io/recipes/blast/README.html>`__ installation of Blast with:
+- **Blast** (2.15 or higher) can be installed via `NCBI webpage <https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download>`__ or via `Bioconda <http://bioconda.github.io/recipes/blast/README.html>`__ installation of Blast with:
 
 	::
 
-		conda install "blast>=2.12"
+		conda install "blast>=2.15.0"
+
 
 - **BedTools** (2.30 or higher) can be installed via `BedTools GitHub <https://bedtools.readthedocs.io/en/latest/content/installation.html>`__ or via `Bioconda <http://bioconda.github.io/recipes/bedtools/README.html>`__ installation of BedTools with:
 
@@ -45,7 +64,7 @@ All other required packages are automatically installed if installation is done 
 Install Options:
 -------------------
 
-The installation of the package is done via pip. Note: if you are using conda, first install pip with: ``conda install pip``.
+The installation of the package is done via pip. Note: if you are using conda, first install pip with: :code:`conda install pip`.
 
 PyPI install:
 
@@ -59,6 +78,7 @@ Installation from source:
 ::
 
 	git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
+	cd oligo-designer-toolsuite
 
 
 - Installation as python package (run inside directory):
@@ -68,8 +88,9 @@ Installation from source:
 		pip install .
 
 
-- Development Installation as python package (run inside directory):
+- Development installation as python package (run inside directory):
 
 	::
 
 		pip install -e . [dev]
+

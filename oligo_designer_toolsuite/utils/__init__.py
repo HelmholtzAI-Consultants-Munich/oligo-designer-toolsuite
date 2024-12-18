@@ -1,3 +1,7 @@
+"""
+This module provides utilities for processing databases, parsing sequences and checking different file or object formats.
+"""
+
 from ._checkers_and_helpers import (
     CustomYamlDumper,
     check_if_dna_sequence,

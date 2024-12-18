@@ -1,3 +1,7 @@
+"""
+This module provides a comprehensive set of filters designed to assess and mitigate the off-target and cross-hybridization potential of oligonucleotide sequences, ensuring high specificity and low off-target effects.
+"""
+
 from ._filter_base import SpecificityFilterBase, AlignmentSpecificityFilter
 
 from ._filter_exact_matches import ExactMatchFilter
