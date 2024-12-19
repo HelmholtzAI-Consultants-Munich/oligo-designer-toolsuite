@@ -69,6 +69,9 @@ jobs:
         conda config --show channels
         which python
         python --version
+
+    - name: Check permissions
+      run: echo blablabla > test.txt
     
     - name: Install conda dependencies
       run: |
@@ -76,9 +79,6 @@ jobs:
         conda install "bedtools>=2.30"
         conda install "bowtie2>=2.5"
         conda install "bowtie>=1.3.1"
-
-    - name: Check permissions
-      run: ls -ld $(pwd)
 
     - name: Install pip dependencies
       run: |
