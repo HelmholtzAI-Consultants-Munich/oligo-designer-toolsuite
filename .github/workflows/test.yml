@@ -1,39 +1,53 @@
 name: test
 
-on:
+on: 
   push:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'
+      - '.github/workflows/**'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'
+      - '.github/workflows/**'
   workflow_dispatch:
   workflow_call:
 
 jobs:
   build:
-
+  
     runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 12
       matrix:
-        os: [ubuntu-latest] #, ubuntu-latest, windows-latest
-        python-version: ["3.9", "3.10"] #"3.7", "3.8", "3.10", , "3.11"
-
+        os: [ubuntu-latest] #, macos-latest, windows-latest
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        
     steps:
-    - name: Checkout Repository
+    - name: Checkout Repository 
       uses: actions/checkout@v3
-
+    
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-
+        
     - name: Setup Conda for Ubuntu and Mac
       if: matrix.os != 'windows-latest'
-      run: |
-        #$CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest" 
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
 
     - name: Setup Conda for Windows
       if: matrix.os == 'windows-latest'
@@ -41,20 +55,21 @@ jobs:
       with:
         update-conda: true
         python-version: ${{ matrix.python-version }}
-        conda-channels: anaconda, bioconda, conda-forge
+        conda-channels: anaconda, conda-forge
 
     - name: Update conda and add channels
       run: |
         conda config --add channels bioconda
         conda config --add channels conda-forge
-        conda update conda
         conda update --all
 
-    - name: Conda Configs
+    - name: check python and conda version
       run: |
         conda --version
         conda config --show channels
-
+        which python
+        python --version
+    
     - name: Install conda dependencies
       run: |
         conda install "blast>=2.12"
