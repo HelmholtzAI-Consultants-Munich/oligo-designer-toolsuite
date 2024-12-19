@@ -69,11 +69,6 @@ jobs:
         conda config --show channels
         which python
         python --version
-
-    - name: Check permissions
-      run: |
-        echo blablabla > test.txt
-        ls -lh
     
     - name: Install conda dependencies
       run: |
