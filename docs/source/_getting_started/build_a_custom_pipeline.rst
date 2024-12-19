@@ -29,8 +29,8 @@ A step-by-step installation guide is available
    :caption:Tutorials
    :name: rst-link-gallery
 
-   ../../../tutorials/1-oligo-sequences-generation.ipynb
-   ../../../tutorials/2-oligo-database.ipynb
-   ../../../tutorials/3-property-filters.ipynb
-   ../../../tutorials/4-specificity-filters.ipynb
-   ../../../tutorials/5-oligoset-generation.ipynb
+   _tutorials/1-oligo-sequences-generation
+   _tutorials/2-oligo-database
+   _tutorials/3-property-filters
+   _tutorials/4-specificity-filters
+   _tutorials/5-oligoset-generation
