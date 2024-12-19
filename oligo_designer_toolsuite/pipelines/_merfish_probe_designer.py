@@ -3,7 +3,6 @@
 ############################################
 
 import os
-import sys
 import yaml
 import shutil
 import logging
@@ -15,7 +14,8 @@ import pandas as pd
 from typing import List, Tuple
 from pathlib import Path
 from datetime import datetime
-from itertools import product
+from itertools import combinations
+from scipy.spatial.distance import hamming
 
 from Bio.SeqUtils import Seq
 from Bio.SeqUtils import MeltingTemp as mt
@@ -27,7 +27,7 @@ from oligo_designer_toolsuite.database import (
 )
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     LowestSetScoring,
-    WeightedGCUtrScoring,
+    WeightedIsoformTmGCOligoScoring,
 )
 from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
@@ -42,8 +42,10 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     PropertyFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    HomogeneousPropertyOligoSetGenerator,
     OligosetGeneratorIndependentSet,
     GraphBasedSelectionPolicy,
+    GreedySelectionPolicy,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -62,20 +64,19 @@ from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
-# SeqFISH Plus Probe Designer
+# Merfish Probe Designer
 ############################################
 
 
-class SeqFishPlusProbeDesigner:
+class MerfishProbeDesigner:
     """
-    A class for designing encoding probes for SeqFISH+ experiments.
+    A class for designing encoding probes for the Merfish experiments.
 
-    A SeqFISH+ encoding probe is a flourescent probe that contains a 28-nt gene-specific
-    sequence complementary to the mRNA, four 15-nt barcode sequences, which are read out
-    by fluorescent secondary readout probes, single T-nucleotide spacers between readout
-    and gene-specific regions, and two 20-nt PCR primer binding sites. The specific
-    readout sequences contained by an encoding probe are determined by the binary
-    barcode assigned to that RNA.
+    A MERFISH encoding probe is a fluorescent probe that contains a 30-nt targeting sequence which directs
+    their binding to the specific RNA, two 20-nt barcode sequences, which are read out by fluorescent secondary
+    readout probes, single A-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR
+    primer binding sites. The specific readout sequences contained by an encoding probe are determined by
+    the binary barcode assigned to that RNA.
 
     :param write_intermediate_steps: Whether to save intermediate results during the probe design pipeline.
     :type write_intermediate_steps: bool
@@ -86,7 +87,7 @@ class SeqFishPlusProbeDesigner:
     """
 
     def __init__(self, write_intermediate_steps: bool, dir_output: str, n_jobs: int) -> None:
-        """Constructor for the SeqFishPlusProbeDesigner class."""
+        """Constructor for the MerfishProbeDesigner class."""
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -96,7 +97,7 @@ class SeqFishPlusProbeDesigner:
         timestamp = datetime.now()
         file_logger = os.path.join(
             self.dir_output,
-            f"log_seqfishplus_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
+            f"log_Merfish_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
         )
         logging.getLogger("log_name")
         logging.basicConfig(
@@ -116,15 +117,15 @@ class SeqFishPlusProbeDesigner:
     def set_developer_parameters(
         self,
         target_probe_specificity_blastn_search_parameters: dict = {
-            "perc_identity": 100,
+            "perc_identity": 80,
             "strand": "minus",
-            "word_size": 7,
+            "word_size": 10,
             "dust": "no",
             "soft_masking": "false",
             "max_target_seqs": 10,
             "max_hsps": 1000,
         },
-        target_probe_specificity_blastn_hit_parameters: dict = {"min_alignment_length": 15},
+        target_probe_specificity_blastn_hit_parameters: dict = {"min_alignment_length": 17},
         target_probe_cross_hybridization_blastn_search_parameters: dict = {
             "perc_identity": 80,
             "strand": "minus",
@@ -134,7 +135,29 @@ class SeqFishPlusProbeDesigner:
             "max_target_seqs": 10,
         },
         target_probe_cross_hybridization_blastn_hit_parameters: dict = {"min_alignment_length": 17},
+        target_probe_Tm_parameters: dict = {
+            "check": True,
+            "strict": True,
+            "c_seq": None,
+            "shift": 0,
+            "nn_table": "DNA_NN4",
+            "tmm_table": "DNA_TMM1",
+            "imm_table": "DNA_IMM1",
+            "de_table": "DNA_DE1",
+            "dnac1": 5,
+            "dnac2": 0,
+            "selfcomp": False,
+            "saltcorr": 5,
+            "Na": 300,
+            "K": 0,
+            "Tris": 0,
+            "Mg": 0,
+            "dNTPs": 0,
+        },
+        target_probe_Tm_chem_correction_parameters: dict = None,
+        target_probe_Tm_salt_correction_parameters: dict = None,
         readout_probe_initial_num_sequences: int = 100000,
+        readout_probe_n_combinations: int = 100000,
         readout_probe_specificity_blastn_search_parameters: dict = {
             "perc_identity": 100,
             "strand": "minus",
@@ -144,7 +167,7 @@ class SeqFishPlusProbeDesigner:
             "max_target_seqs": 10,
             "max_hsps": 1000,
         },
-        readout_probe_specificity_blastn_hit_parameters: dict = {"min_alignment_length": 10},
+        readout_probe_specificity_blastn_hit_parameters: dict = {"min_alignment_length": 11},
         readout_probe_cross_hybridization_blastn_search_parameters: dict = {
             "perc_identity": 100,
             "strand": "minus",
@@ -153,7 +176,28 @@ class SeqFishPlusProbeDesigner:
             "soft_masking": "false",
             "max_target_seqs": 10,
         },
-        readout_probe_cross_hybridization_blastn_hit_parameters: dict = {"min_alignment_length": 10},
+        readout_probe_cross_hybridization_blastn_hit_parameters: dict = {"min_alignment_length": 11},
+        readout_probe_Tm_parameters: dict = {
+            "check": True,
+            "strict": True,
+            "c_seq": None,
+            "shift": 0,
+            "nn_table": "DNA_NN4",
+            "tmm_table": "DNA_TMM1",
+            "imm_table": "DNA_IMM1",
+            "de_table": "DNA_DE1",
+            "dnac1": 25,
+            "dnac2": 25,
+            "selfcomp": False,
+            "saltcorr": 5,
+            "Na": 300,
+            "K": 0,
+            "Tris": 0,
+            "Mg": 0,
+            "dNTPs": 0,
+        },
+        readout_probe_Tm_chem_correction_parameters: dict = None,
+        readout_probe_Tm_salt_correction_parameters: dict = None,
         primer_initial_num_sequences: int = 1000000,
         primer_specificity_refrence_blastn_search_parameters: dict = {
             "perc_identity": 100,
@@ -197,13 +241,13 @@ class SeqFishPlusProbeDesigner:
         primer_Tm_chem_correction_parameters: dict = None,
         primer_Tm_salt_correction_parameters: dict = None,
         max_graph_size: int = 5000,
-        pre_filter: bool = False,
+        pre_filter: bool = True,
         n_attempts: int = 100000,
         heuristic: bool = True,
         heuristic_n_attempts: int = 100,
     ):
         """
-        Set developer-specific parameters for SeqFish+ probe designer pipeline.
+        Set developer-specific parameters for Merfish probe designer pipeline.
         These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity
@@ -218,8 +262,22 @@ class SeqFishPlusProbeDesigner:
         :param target_probe_cross_hybridization_blastn_hit_parameters: Parameters for filtering
             BlastN hits for target probe cross-hybridization.
         :type target_probe_cross_hybridization_blastn_hit_parameters: dict, optional
+        :param target_probe_Tm_parameters: Parameters for calculating melting temperature (Tm) of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type target_probe_Tm_parameters: dict
+        :param target_probe_Tm_chem_correction_parameters: Chemical correction parameters for Tm calculation of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+        :type target_probe_Tm_chem_correction_parameters: dict
+        :param target_probe_Tm_salt_correction_parameters: Salt correction parameters for Tm calculation of target probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+        :type target_probe_Tm_salt_correction_parameters: dict
         :param readout_probe_initial_num_sequences: Initial number of sequences for readout probe design, defaults to 100000
         :type readout_probe_initial_num_sequences: int, optional
+        :param readout_probe_n_combinations: Number of combinations to iterate through for readout probe set selection, defaults to 100000
+        :type readout_probe_n_combinations: int, optional
         :param readout_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity
             search for readout probes.
         :type readout_probe_specificity_blastn_search_parameters: dict, optional
@@ -232,6 +290,18 @@ class SeqFishPlusProbeDesigner:
         :param readout_probe_cross_hybridization_blastn_hit_parameters: Parameters for filtering
             BlastN hits for readout probe cross-hybridization.
         :type readout_probe_cross_hybridization_blastn_hit_parameters: dict, optional
+        :param readout_probe_Tm_parameters: Parameters for calculating melting temperature (Tm) of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+        :type readout_probe_Tm_parameters: dict
+        :param readout_probe_Tm_chem_correction_parameters: Chemical correction parameters for Tm calculation of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+        :type readout_probe_Tm_chem_correction_parameters: dict, optional
+        :param readout_probe_Tm_salt_correction_parameters: Salt correction parameters for Tm calculation of readout probes.
+            For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+            see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+        :type readout_probe_Tm_salt_correction_parameters: dict, optional
         :param primer_initial_num_sequences: Initial number of sequences for primer design, defaults to 100000
         :type primer_initial_num_sequences: int, optional
         :param primer_specificity_refrence_blastn_search_parameters: Parameters for the BlastN
@@ -286,6 +356,7 @@ class SeqFishPlusProbeDesigner:
 
         ## readout probe sequence
         self.readout_probe_initial_num_sequences = readout_probe_initial_num_sequences
+        self.readout_probe_n_combinations = readout_probe_n_combinations
         # Specificity filter with BlastN
         self.readout_probe_specificity_blastn_search_parameters = (
             readout_probe_specificity_blastn_search_parameters
@@ -322,11 +393,31 @@ class SeqFishPlusProbeDesigner:
         # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
         # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 
-        # preprocess melting temperature parameters
+        # preprocess melting temperature params
+        target_probe_Tm_parameters["nn_table"] = getattr(mt, target_probe_Tm_parameters["nn_table"])
+        target_probe_Tm_parameters["tmm_table"] = getattr(mt, target_probe_Tm_parameters["tmm_table"])
+        target_probe_Tm_parameters["imm_table"] = getattr(mt, target_probe_Tm_parameters["imm_table"])
+        target_probe_Tm_parameters["de_table"] = getattr(mt, target_probe_Tm_parameters["de_table"])
+
+        readout_probe_Tm_parameters["nn_table"] = getattr(mt, readout_probe_Tm_parameters["nn_table"])
+        readout_probe_Tm_parameters["tmm_table"] = getattr(mt, readout_probe_Tm_parameters["tmm_table"])
+        readout_probe_Tm_parameters["imm_table"] = getattr(mt, readout_probe_Tm_parameters["imm_table"])
+        readout_probe_Tm_parameters["de_table"] = getattr(mt, readout_probe_Tm_parameters["de_table"])
+
         primer_Tm_parameters["nn_table"] = getattr(mt, primer_Tm_parameters["nn_table"])
         primer_Tm_parameters["tmm_table"] = getattr(mt, primer_Tm_parameters["tmm_table"])
         primer_Tm_parameters["imm_table"] = getattr(mt, primer_Tm_parameters["imm_table"])
         primer_Tm_parameters["de_table"] = getattr(mt, primer_Tm_parameters["de_table"])
+
+        ## target probe
+        self.target_probe_Tm_parameters = target_probe_Tm_parameters
+        self.target_probe_Tm_chem_correction_parameters = target_probe_Tm_chem_correction_parameters
+        self.target_probe_Tm_salt_correction_parameters = target_probe_Tm_salt_correction_parameters
+
+        ## readout probe
+        self.readout_probe_Tm_parameters = readout_probe_Tm_parameters
+        self.readout_probe_Tm_chem_correction_parameters = readout_probe_Tm_chem_correction_parameters
+        self.readout_probe_Tm_salt_correction_parameters = readout_probe_Tm_salt_correction_parameters
 
         ## primer
         self.primer_Tm_parameters = primer_Tm_parameters
@@ -345,65 +436,78 @@ class SeqFishPlusProbeDesigner:
         files_fasta_target_probe_database: list[str],
         files_fasta_reference_database_targe_probe: List[str],
         gene_ids: list = None,
-        target_probe_length_min: int = 28,
-        target_probe_length_max: int = 28,
-        target_probe_isoform_consensus: float = 100,
-        target_probe_GC_content_min: float = 45,
+        target_probe_length_min: int = 30,
+        target_probe_length_max: int = 30,
+        target_probe_isoform_consensus: float = 50,
+        target_probe_GC_content_min: float = 43,
         target_probe_GC_content_opt: float = 55,
-        target_probe_GC_content_max: float = 65,
+        target_probe_GC_content_max: float = 63,
+        target_probe_Tm_min: float = 66,
+        target_probe_Tm_opt: float = 72,
+        target_probe_Tm_max: float = 76,
         target_probe_homopolymeric_base_n: dict = {"A": 5, "T": 5, "C": 5, "G": 5},
         target_probe_T_secondary_structure: float = 76,
         target_probe_secondary_structures_threshold_deltaG: float = 0,
         target_probe_GC_weight: float = 1,
-        target_probe_UTR_weight: float = 10,
-        set_size_opt: int = 24,
-        set_size_min: int = 24,
-        distance_between_target_probes: int = 2,
+        target_probe_Tm_weight: float = 1,
+        target_probe_isoform_weight: float = 2,
+        set_size_opt: int = 50,
+        set_size_min: int = 50,
+        distance_between_target_probes: int = 0,
         n_sets: int = 100,
     ) -> OligoDatabase:
         """
         Design target probes based on specified parameters, including property and specificity filters.
         The designed probes are organized into sets based on customizable constraints.
 
-        :param files_fasta_target_probe_database: List of FASTA files containing sequences for designing target probes.
+        :param files_fasta_target_probe_database: List of input FASTA files for the target probe database.
         :type files_fasta_target_probe_database: list[str]
-        :param files_fasta_reference_database_targe_probe: List of FASTA files containing reference sequences for specificity filtering.
+        :param files_fasta_reference_database_targe_probe: List of input FASTA files for the reference database.
         :type files_fasta_reference_database_targe_probe: List[str]
         :param gene_ids: List of gene IDs to target, or None to target all genes.
         :type gene_ids: list, optional
-        :param target_probe_length_min: Minimum length of the target probes. Default is 28.
+        :param target_probe_length_min: Minimum length for target probes. Default is 30.
         :type target_probe_length_min: int
-        :param target_probe_length_max: Maximum length of the target probes. Default is 28.
+        :param target_probe_length_max: Maximum length for target probes. Default is 30.
         :type target_probe_length_max: int
-        :param target_probe_isoform_consensus: Isoform consensus threshold for filtering. Default is 100.
+        :param target_probe_isoform_consensus: Isoform consensus threshold for filtering. Default is 50.
         :type target_probe_isoform_consensus: float
-        :param target_probe_GC_content_min: Minimum GC content percentage for the target probes. Default is 45.
+        :param target_probe_GC_content_min: Minimum GC content for target probes. Default is 43.
         :type target_probe_GC_content_min: float
-        :param target_probe_GC_content_opt: Optimal GC content percentage for the target probes. Default is 55.
+        :param target_probe_GC_content_opt: Optimal GC content for target probes. Default is 55.
         :type target_probe_GC_content_opt: float
-        :param target_probe_GC_content_max: Maximum GC content percentage for the target probes. Default is 65.
+        :param target_probe_GC_content_max: Maximum GC content for target probes. Default is 63.
         :type target_probe_GC_content_max: float
+        :param target_probe_Tm_min: Minimum melting temperature (Tm) for target probes. Default is 66.
+        :type target_probe_Tm_min: float
+        :param target_probe_Tm_opt: Optimal melting temperature (Tm) for target probes. Default is 72.
+        :type target_probe_Tm_opt: float
+        :param target_probe_Tm_max: Maximum melting temperature (Tm) for target probes. Default is 76.
+        :type target_probe_Tm_max: float
         :param target_probe_homopolymeric_base_n: Maximum allowed homopolymeric runs for each nucleotide. Default is {"A": 5, "T": 5, "C": 5, "G": 5}.
         :type target_probe_homopolymeric_base_n: dict
         :param target_probe_T_secondary_structure: Threshold temperature for secondary structure evaluation. Default is 76.
         :type target_probe_T_secondary_structure: float
         :param target_probe_secondary_structures_threshold_deltaG: DeltaG threshold for secondary structure stability. Default is 0.
         :type target_probe_secondary_structures_threshold_deltaG: float
-        :param target_probe_GC_weight: Weight for GC content optimization in probe set scoring. Default is 1.
+        :param target_probe_GC_weight: Weight for GC content in probe scoring. Default is 1.
         :type target_probe_GC_weight: float
-        :param target_probe_UTR_weight: Weight for targeting untranslated regions in probe set scoring. Default is 10.
-        :type target_probe_UTR_weight: float
-        :param set_size_opt: Optimal number of probes in each set. Default is 24.
+        :param target_probe_Tm_weight: Weight for Tm in probe scoring. Default is 1.
+        :type target_probe_Tm_weight: float
+        :param target_probe_isoform_weight: Weight for isoform consensus in probe scoring. Default is 2.
+        :type target_probe_isoform_weight: float
+        :param set_size_opt: Optimal size of oligo sets. Default is 50.
         :type set_size_opt: int
-        :param set_size_min: Minimum number of probes in each set. Default is 24.
+        :param set_size_min: Minimum size of oligo sets. Default is 50.
         :type set_size_min: int
-        :param distance_between_target_probes: Minimum genomic distance between probes in a set, defaults to 2.
+        :param distance_between_target_probes: Minimum genomic distance between probes in a set, defaults to 0.
         :type distance_between_target_probes: int, optional
-        :param n_sets: Number of probe sets to generate. Default is 100.
+        :param n_sets: Number of oligo sets to generate. Default is 100.
         :type n_sets: int
-        :return: The oligo database containing the designed target probes.
+        :return: An `OligoDatabase` object containing the designed target probes.
         :rtype: OligoDatabase
         """
+
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
 
         oligo_database = target_probe_designer.create_oligo_database(
@@ -424,9 +528,14 @@ class SeqFishPlusProbeDesigner:
             oligo_database=oligo_database,
             GC_content_min=target_probe_GC_content_min,
             GC_content_max=target_probe_GC_content_max,
+            Tm_min=target_probe_Tm_min,
+            Tm_max=target_probe_Tm_max,
             homopolymeric_base_n=target_probe_homopolymeric_base_n,
             T_secondary_structure=target_probe_T_secondary_structure,
             secondary_structures_threshold_deltaG=target_probe_secondary_structures_threshold_deltaG,
+            Tm_parameters=self.target_probe_Tm_parameters,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
         )
         check_content_oligo_database(oligo_database)
 
@@ -450,18 +559,27 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database = target_probe_designer.create_oligo_sets(
             oligo_database=oligo_database,
-            GC_weight=target_probe_GC_weight,
+            isoform_weight=target_probe_isoform_weight,
+            GC_content_min=target_probe_GC_content_min,
             GC_content_opt=target_probe_GC_content_opt,
-            UTR_weight=target_probe_UTR_weight,
+            GC_content_max=target_probe_GC_content_max,
+            GC_weight=target_probe_GC_weight,
+            Tm_min=target_probe_Tm_min,
+            Tm_opt=target_probe_Tm_opt,
+            Tm_max=target_probe_Tm_max,
+            Tm_weight=target_probe_Tm_weight,
+            Tm_parameters=self.target_probe_Tm_parameters,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
             set_size_opt=set_size_opt,
             set_size_min=set_size_min,
-            max_graph_size=self.max_graph_size,
+            distance_between_oligos=distance_between_target_probes,
             n_sets=n_sets,
+            max_graph_size=self.max_graph_size,
             n_attempts=self.n_attempts,
             pre_filter=self.pre_filter,
             heuristic=self.heuristic,
             heuristic_n_attempts=self.heuristic_n_attempts,
-            distance_between_oligos=distance_between_target_probes,
         )
         check_content_oligo_database(oligo_database)
 
@@ -478,37 +596,46 @@ class SeqFishPlusProbeDesigner:
         self,
         n_genes: int,
         files_fasta_reference_database_readout_probe: List[str],
-        readout_probe_length: int = 15,
-        readout_probe_base_probabilities: dict = {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
+        readout_probe_length: int = 20,
+        readout_probe_base_probabilities: dict = {"A": 0.25, "C": 0.00, "G": 0.50, "T": 0.25},
         readout_probe_GC_content_min: float = 40,
-        readout_probe_GC_content_max: float = 60,
+        readout_probe_GC_content_max: float = 50,
         readout_probe_homopolymeric_base_n: dict = {"G": 3},
-        n_barcode_rounds: int = 4,
-        n_pseudocolors: int = 20,
+        readout_probe_set_size: int = 16,
+        readout_probe_homogeneous_properties_weights: dict = {"TmNN": 1, "GC_content": 1},
+        n_bits: int = 16,
+        min_hamming_dist: int = 4,
+        hamming_weight: int = 4,
         channels_ids: list = ["Alexa488", "Cy3b", "Alexa647"],
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Design readout probes based on specified parameters.
 
-        :param n_genes: Number of genes for which to design readout probes.
+        :param n_genes: Number of genes for which readout probes are to be designed.
         :type n_genes: int
-        :param files_fasta_reference_database_readout_probe: List of FASTA files containing reference sequences for specificity filtering.
+        :param files_fasta_reference_database_readout_probe: List of input FASTA files for the reference database.
         :type files_fasta_reference_database_readout_probe: List[str]
-        :param readout_probe_length: Length of the readout probes. Default is 15.
+        :param readout_probe_length: Length of each readout probe. Default is 20.
         :type readout_probe_length: int
-        :param readout_probe_base_probabilities: Probabilities for each nucleotide in readout probe sequences. Default is {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25}.
+        :param readout_probe_base_probabilities: Base probabilities for generating oligos. Default is {"A": 0.25, "C": 0.00, "G": 0.50, "T": 0.25}.
         :type readout_probe_base_probabilities: dict
-        :param readout_probe_GC_content_min: Minimum GC content percentage for the readout probes. Default is 40.
+        :param readout_probe_GC_content_min: Minimum GC content for readout probes. Default is 40.
         :type readout_probe_GC_content_min: float
-        :param readout_probe_GC_content_max: Maximum GC content percentage for the readout probes. Default is 60.
+        :param readout_probe_GC_content_max: Maximum GC content for readout probes. Default is 50.
         :type readout_probe_GC_content_max: float
-        :param readout_probe_homopolymeric_base_n: Maximum allowed homopolymeric runs for specific bases in readout probes. Default is {"G": 3}.
+        :param readout_probe_homopolymeric_base_n: Maximum allowed homopolymeric runs for specified bases. Default is {"G": 3}.
         :type readout_probe_homopolymeric_base_n: dict
-        :param n_barcode_rounds: Number of barcode rounds for encoding. Default is 4.
-        :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors to assign to the barcode. Default is 20.
-        :type n_pseudocolors: int
-        :param channels_ids: List of channel identifiers for assigning readout probes. Default is ["Alexa488", "Cy3b", "Alexa647"].
+        :param readout_probe_set_size: Number of probes in each readout set. Default is 16.
+        :type readout_probe_set_size: int
+        :param readout_probe_homogeneous_properties_weights: Weights for scoring probe properties (e.g., TmNN, GC_content). Default is {"TmNN": 1, "GC_content": 1}.
+        :type readout_probe_homogeneous_properties_weights: dict
+        :param n_bits: Number of bits for the codebook. Default is 16.
+        :type n_bits: int
+        :param min_hamming_dist: Minimum Hamming distance between barcodes. Default is 4.
+        :type min_hamming_dist: int
+        :param hamming_weight: Hamming weight of each barcode entry. Default is 4.
+        :type hamming_weight: int
+        :param channels_ids: List of channel identifiers for readout probes. Default is ["Alexa488", "Cy3b", "Alexa647"].
         :type channels_ids: list
         :return: A tuple containing the generated codebook and readout probe table.
         :rtype: Tuple[pd.DataFrame, pd.DataFrame]
@@ -556,18 +683,32 @@ class SeqFishPlusProbeDesigner:
                 f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
             )
 
+        oligo_database = readout_probe_designer.create_oligo_sets(
+            oligo_database=oligo_database,
+            set_size=readout_probe_set_size,
+            homogeneous_properties_weights=readout_probe_homogeneous_properties_weights,
+            n_combinations=self.readout_probe_n_combinations,
+            Tm_parameters=self.readout_probe_Tm_parameters,
+            Tm_chem_correction_parameters=self.readout_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.readout_probe_Tm_salt_correction_parameters,
+        )
+        check_content_oligo_database(oligo_database)
+
+        if self.write_intermediate_steps:
+            dir_database = oligo_database.save_database(dir_database="4_db_readout_probes_set_selection")
+            print(f"Saved readout probe database for step 4 (Set Selection) in directory {dir_database}")
+
         codebook = readout_probe_designer.generate_codebook(
             n_regions=n_genes,
-            n_barcode_rounds=n_barcode_rounds,
-            n_pseudocolors=n_pseudocolors,
-            n_channels=len(channels_ids),
+            n_bits=n_bits,
+            min_hamming_dist=min_hamming_dist,
+            hamming_weight=hamming_weight,
         )
 
         readout_probe_table = readout_probe_designer.create_readout_probe_table(
             readout_probe_database=oligo_database,
             channels_ids=channels_ids,
-            n_barcode_rounds=n_barcode_rounds,
-            n_pseudocolors=n_pseudocolors,
+            n_bits=n_bits,
         )
 
         return codebook, readout_probe_table
@@ -605,7 +746,6 @@ class SeqFishPlusProbeDesigner:
 
         for region_id in region_ids:
             barcode = codebook.loc[region_id]
-
             bits = barcode[barcode == 1].index
             readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
 
@@ -615,8 +755,6 @@ class SeqFishPlusProbeDesigner:
 
                 sequence_readout_probe_1 = readout_probe_sequences[0]
                 sequence_readout_probe_2 = readout_probe_sequences[1]
-                sequence_readout_probe_3 = readout_probe_sequences[2]
-                sequence_readout_probe_4 = readout_probe_sequences[3]
 
                 new_probe_attributes_encoding_probe[probe_id] = {
                     "barcode": barcode,
@@ -628,18 +766,14 @@ class SeqFishPlusProbeDesigner:
                     ),
                     "sequence_readout_probe_1": sequence_readout_probe_1,
                     "sequence_readout_probe_2": sequence_readout_probe_2,
-                    "sequence_readout_probe_3": sequence_readout_probe_3,
-                    "sequence_readout_probe_4": sequence_readout_probe_4,
                     "sequence_encoding_probe": (
                         str(Seq(sequence_readout_probe_1).reverse_complement())
-                        + str(Seq(sequence_readout_probe_2).reverse_complement())
-                        + "T"
+                        + "A"
                         + target_probe_database.get_oligo_attribute_value(
                             attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
                         )
-                        + "T"
-                        + str(Seq(sequence_readout_probe_3).reverse_complement())
-                        + str(Seq(sequence_readout_probe_4).reverse_complement())
+                        + "A"
+                        + str(Seq(sequence_readout_probe_2).reverse_complement())
                     ),
                 }
 
@@ -798,7 +932,7 @@ class SeqFishPlusProbeDesigner:
         encoding_probe_database: OligoDatabase,
         reverse_primer_sequence: str,
         forward_primer_sequence: str,
-        top_n_sets: int,
+        top_n_sets: int = 3,
         attributes=[
             "source",
             "species",
@@ -812,12 +946,10 @@ class SeqFishPlusProbeDesigner:
             "start",
             "end",
             "strand",
-            "sequence_seqfish_plus_probe",
+            "sequence_merfish_probe",
             "sequence_encoding_probe",
             "sequence_readout_probe_1",
             "sequence_readout_probe_2",
-            "sequence_readout_probe_3",
-            "sequence_readout_probe_4",
             "sequence_forward_primer",
             "sequence_reverse_primer",
             "sequence_target",
@@ -828,11 +960,7 @@ class SeqFishPlusProbeDesigner:
         ],
     ) -> None:
         """
-        Generate the final output files for the SeqFish+ probe design pipeline.
-
-        This method updates the encoding probe database with primer sequences, computes
-        additional attributes, and writes the results to YAML files, including a file
-        for probe order information.
+        Generate the final output files for the MERFISH probe design pipeline.
 
         :param encoding_probe_database: Database of encoding probes with associated attributes and sequences.
         :type encoding_probe_database: OligoDatabase
@@ -854,7 +982,7 @@ class SeqFishPlusProbeDesigner:
                 new_probe_attributes_primer[probe_id] = {
                     "sequence_reverse_primer": reverse_primer_sequence,
                     "sequence_forward_primer": forward_primer_sequence,
-                    "sequence_seqfish_plus_probe": forward_primer_sequence
+                    "sequence_merfish_probe": forward_primer_sequence
                     + encoding_probe_database.get_oligo_attribute_value(
                         attribute="sequence_encoding_probe",
                         region_id=region_id,
@@ -882,7 +1010,7 @@ class SeqFishPlusProbeDesigner:
             attributes=attributes,
             top_n_sets=top_n_sets,
             ascending=True,
-            filename="seqfish_plus_probes.yml",
+            filename="merfish_probes.yml",
         )
 
         # write a second file that only contains order information
@@ -904,8 +1032,8 @@ class SeqFishPlusProbeDesigner:
                 yaml_dict_order[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
                     yaml_dict_order[region_id][oligoset_id][oligo_id] = {
-                        "sequence_seqfish_plus_probe": encoding_probe_database.get_oligo_attribute_value(
-                            attribute="sequence_seqfish_plus_probe",
+                        "sequence_merfish_probe": encoding_probe_database.get_oligo_attribute_value(
+                            attribute="sequence_merfish_probe",
                             region_id=region_id,
                             oligo_id=oligo_id,
                             flatten=True,
@@ -922,34 +1050,22 @@ class SeqFishPlusProbeDesigner:
                             oligo_id=oligo_id,
                             flatten=True,
                         ),
-                        "sequence_readout_probe_3": encoding_probe_database.get_oligo_attribute_value(
-                            attribute="sequence_readout_probe_3",
-                            region_id=region_id,
-                            oligo_id=oligo_id,
-                            flatten=True,
-                        ),
-                        "sequence_readout_probe_4": encoding_probe_database.get_oligo_attribute_value(
-                            attribute="sequence_readout_probe_4",
-                            region_id=region_id,
-                            oligo_id=oligo_id,
-                            flatten=True,
-                        ),
                     }
 
-        with open(os.path.join(self.dir_output, "seqfish_plus_probes_order.yml"), "w") as outfile:
+        with open(os.path.join(self.dir_output, "merfish_probes_order.yml"), "w") as outfile:
             yaml.dump(yaml_dict_order, outfile, default_flow_style=False, sort_keys=False)
 
         logging.info("--------------END PIPELINE--------------")
 
 
 ############################################
-# SeqFish Plus Target Probe Designer
+# Merfish Target Probe Designer
 ############################################
 
 
 class TargetProbeDesigner:
     """
-    A class for designing target probes for SeqFISH+ experiments.
+    A class for designing target probes for MERFISH experiments.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for targeted probes.
 
@@ -1047,9 +1163,14 @@ class TargetProbeDesigner:
         oligo_database: OligoDatabase,
         GC_content_min: float,
         GC_content_max: float,
+        Tm_min: float,
+        Tm_max: float,
         homopolymeric_base_n: str,
         T_secondary_structure: float,
         secondary_structures_threshold_deltaG: float,
+        Tm_parameters: dict,
+        Tm_chem_correction_parameters: dict,
+        Tm_salt_correction_parameters: dict,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on various sequence properties.
@@ -1060,12 +1181,22 @@ class TargetProbeDesigner:
         :type GC_content_min: float
         :param GC_content_max: Maximum acceptable GC content for oligos.
         :type GC_content_max: float
+        :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos.
+        :type Tm_min: float
+        :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos.
+        :type Tm_max: float
         :param homopolymeric_base_n: Maximum allowable length of homopolymeric base runs.
         :type homopolymeric_base_n: str
-        :param T_secondary_structure: Temperature for secondary structure analysis.
-        :type T_secondary_structure: float
+        :param secondary_structures_T: Temperature for secondary structure analysis.
+        :type secondary_structures_T: float
         :param secondary_structures_threshold_deltaG: Threshold for secondary structure deltaG.
         :type secondary_structures_threshold_deltaG: float
+        :param Tm_parameters: Parameters for melting temperature calculation.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
+        :type Tm_salt_correction_parameters: dict
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -1073,6 +1204,13 @@ class TargetProbeDesigner:
         hard_masked_sequences = HardMaskedSequenceFilter()
         soft_masked_sequences = SoftMaskedSequenceFilter()
         gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
+        melting_temperature = MeltingTemperatureNNFilter(
+            Tm_min=Tm_min,
+            Tm_max=Tm_max,
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+        )
         homopolymeric_runs = HomopolymericRunsFilter(
             base_n=homopolymeric_base_n,
         )
@@ -1086,6 +1224,7 @@ class TargetProbeDesigner:
             soft_masked_sequences,
             homopolymeric_runs,
             gc_content,
+            melting_temperature,
             secondary_sctructure,
         ]
 
@@ -1187,62 +1326,107 @@ class TargetProbeDesigner:
     def create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
-        GC_weight: float,
+        isoform_weight: float,
+        GC_content_min: float,
         GC_content_opt: float,
-        UTR_weight: float,
+        GC_content_max: float,
+        GC_weight: float,
+        Tm_min: float,
+        Tm_opt: float,
+        Tm_max: float,
+        Tm_weight: float,
+        Tm_parameters: dict,
+        Tm_chem_correction_parameters: dict,
+        Tm_salt_correction_parameters: dict,
         set_size_opt: int,
         set_size_min: int,
-        max_graph_size: int,
+        distance_between_oligos: int,
         n_sets: int,
+        max_graph_size: int,
         n_attempts: int,
         pre_filter: bool,
         heuristic: bool,
         heuristic_n_attempts: int,
-        distance_between_oligos: int,
-    ) -> OligoDatabase:
+    ) -> Tuple[OligoDatabase, str, str]:
         """
         Create optimal oligo sets based on weighted scoring criteria, distance constraints and selection policies.
 
         :param oligo_database: The oligo database from which sets will be created.
         :type oligo_database: OligoDatabase
-        :param GC_weight: Weight assigned to GC content in the scoring function.
-        :type GC_weight: float
-        :param GC_content_opt: Optimal GC content for scoring.
+        :param isoform_weight: Weight assigned to isoform specificity in scoring.
+        :type isoform_weight: float
+        :param GC_content_min: Minimum acceptable GC content for oligos.
+        :type GC_content_min: float
+        :param GC_content_opt: Optimal GC content for oligos.
         :type GC_content_opt: float
-        :param UTR_weight: Weight assigned to untranslated region (UTR) properties in the scoring function.
-        :type UTR_weight: float
-        :param set_size_opt: Optimal size of each oligo set.
+        :param GC_content_max: Maximum acceptable GC content for oligos.
+        :type GC_content_max: float
+        :param GC_weight: Weight assigned to GC content in scoring.
+        :type GC_weight: float
+        :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos.
+        :type Tm_min: float
+        :param Tm_opt: Optimal melting temperature (Tm) for oligos.
+        :type Tm_opt: float
+        :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos.
+        :type Tm_max: float
+        :param Tm_weight: Weight assigned to melting temperature (Tm) in scoring.
+        :type Tm_weight: float
+        :param Tm_parameters: Parameters for Tm calculation.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
+        :type Tm_salt_correction_parameters: dict
+        :param set_size_opt: Optimal size for oligo sets.
         :type set_size_opt: int
-        :param set_size_min: Minimum size of each oligo set.
+        :param set_size_min: Minimum size for oligo sets.
         :type set_size_min: int
-        :param max_graph_size: Maximum size of the graph used in set selection.
-        :type max_graph_size: int
+        :param distance_between_oligos: Minimum genomic distance between oligos in a set.
+        :type distance_between_oligos: int
         :param n_sets: Number of oligo sets to generate.
         :type n_sets: int
-        :param n_attempts: Maximum number of attempts for selecting oligo sets.
-        :type n_attempts: int
+        :param max_graph_size: Maximum size of the graph used in set selection.
+        :type max_graph_size: int
         :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small.
         :type pre_filter: bool
+        :param n_attempts: Maximum number of attempts for selecting oligo sets.
+        :type n_attempts: int
         :param heuristic: Whether to apply heuristic methods in oligo set selection.
         :type heuristic: bool
         :param heuristic_n_attempts: Maximum number of attempts for heuristic selecting oligo sets.
         :type heuristic_n_attempts: int
-        :param distance_between_oligos: Minimum genomic distance between oligos in a set.
-        :type distance_between_oligos: int
-        :return: The updated oligo database with the generated oligo sets.
+        :return: The updated oligo database.
         :rtype: OligoDatabase
         """
-        oligos_scoring = WeightedGCUtrScoring(
-            GC_content_opt=GC_content_opt, GC_weight=GC_weight, UTR_weight=UTR_weight
+        oligos_scoring = WeightedIsoformTmGCOligoScoring(
+            Tm_min=Tm_min,
+            Tm_opt=Tm_opt,
+            Tm_max=Tm_max,
+            GC_content_min=GC_content_min,
+            GC_content_opt=GC_content_opt,
+            GC_content_max=GC_content_max,
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+            isoform_weight=isoform_weight,
+            Tm_weight=Tm_weight,
+            GC_weight=GC_weight,
         )
         set_scoring = LowestSetScoring(ascending=True)
 
-        selection_policy = GraphBasedSelectionPolicy(
+        # selection_policy = GraphBasedSelectionPolicy(
+        #     set_scoring=set_scoring,
+        #     pre_filter=pre_filter,
+        #     n_attempts=n_attempts,
+        #     heuristic=heuristic,
+        #     heuristic_n_attempts=heuristic_n_attempts,
+        # )
+        selection_policy = GreedySelectionPolicy(
             set_scoring=set_scoring,
+            score_criteria="set_score_worst",
             pre_filter=pre_filter,
+            penalty=0.01,
             n_attempts=n_attempts,
-            heuristic=heuristic,
-            heuristic_n_attempts=heuristic_n_attempts,
         )
         probeset_generator = OligosetGeneratorIndependentSet(
             selection_policy=selection_policy,
@@ -1264,13 +1448,13 @@ class TargetProbeDesigner:
 
 
 ############################################
-# SeqFish Plus Readout Probe Designer
+# Merfish Readout Probe Designer
 ############################################
 
 
 class ReadoutProbeDesigner:
     """
-    A class for designing SeqFish+ readout probes.
+    A class for designing MERFISH readout probes.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for readout probes.
 
@@ -1293,6 +1477,7 @@ class ReadoutProbeDesigner:
         self.subdir_db_reference = "db_reference"
 
         self.n_jobs = n_jobs
+        self.oligo_attributes_calculator = OligoAttributes()
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Create Oligo Database")
     def create_oligo_database(
@@ -1475,83 +1660,127 @@ class ReadoutProbeDesigner:
 
         return oligo_database
 
+    @pipeline_step_basic(step_name="Readout Probe Generation - Set Selection")
+    def create_oligo_sets(
+        self,
+        oligo_database: OligoDatabase,
+        set_size: int,
+        homogeneous_properties_weights: dict,
+        n_combinations: int,
+        Tm_parameters,
+        Tm_chem_correction_parameters,
+        Tm_salt_correction_parameters,
+    ) -> OligoDatabase:
+        """
+        Create optimal oligo sets with homogeneous GC content and melting temperature (Tm).
+
+        :param oligo_database: The oligo database from which sets will be created.
+        :type oligo_database: OligoDatabase
+        :param set_size: Number of oligos in each set.
+        :type set_size: int
+        :param homogeneous_properties_weights: Dictionary of weights for weighting property homogeneity.
+        :type homogeneous_properties_weights: dict
+        :param n_combinations: Number of combinations to evaluate during set creation.
+        :type n_combinations: int
+        :param Tm_parameters: Parameters for melting temperature calculation.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation.
+        :type Tm_salt_correction_parameters: dict
+        :return: The updated oligo database with the generated oligo sets.
+        :rtype: OligoDatabase
+        """
+        oligo_database = self.oligo_attributes_calculator.calculate_TmNN(
+            oligo_database=oligo_database,
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+            sequence_type="oligo",
+        )
+        oligo_database = self.oligo_attributes_calculator.calculate_GC_content(oligo_database, "oligo")
+
+        set_generator = HomogeneousPropertyOligoSetGenerator(
+            set_size=set_size, properties=homogeneous_properties_weights
+        )
+        oligo_database = set_generator.apply(
+            oligo_database, n_sets=1, n_combinations=n_combinations, n_jobs=self.n_jobs
+        )
+
+        return oligo_database
+
     def generate_codebook(
-        self, n_regions: int, n_barcode_rounds: int, n_pseudocolors: int, n_channels: int
+        self,
+        n_regions: int,
+        n_bits: int,
+        min_hamming_dist: int,
+        hamming_weight: int,
     ) -> pd.DataFrame:
         """
-        Generate a set of binary barcodes (codebook) using pseudocolors and channels.
+        Generate a set of binary barcodes (codebook) with specified Hamming distance between any two barcodes
+        and specified Hamming weight for each barcode.
 
         :param n_regions: Number of regions to encode in the codebook.
         :type n_regions: int
-        :param n_barcode_rounds: Number of barcode rounds.
-        :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors to use.
-        :type n_pseudocolors: int
-        :param n_channels: Number of channels to assign barcodes to.
-        :type n_channels: int
+        :param n_bits: Number of bits in each barcode.
+        :type n_bits: int
+        :param min_hamming_dist: Minimum Hamming distance required between any two barcodes.
+        :type min_hamming_dist: int
+        :param hamming_weight: Fixed Hamming weight (number of 1's) for each barcode.
+        :type hamming_weight: int
         :return: Codebook as a DataFrame with binary encoded bits.
         :rtype: pd.DataFrame
+
+        :raises ValueError: If the number of valid barcodes is insufficient for the number of regions.
         """
 
-        def _generate_barcode(pseudocolors: list, channel: int, n_pseudocolors: int, n_channels: int) -> list:
-            pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
-            assert n_pseudocolors > max(
-                pseudocolors
-            ), f"The number of pseudocolor is {n_pseudocolors}, while the barcode contains {max(pseudocolors)} pseudocolors."
-            assert (
-                n_channels > channel
-            ), f"The number of channles is {n_channels}, while the barcode contains {channel} channels."
-            n_barcode_rounds = len(pseudocolors)
-            barcode = np.zeros(n_channels * n_pseudocolors * n_barcode_rounds, dtype=np.int8)
-            for i, pseudocolor in enumerate(pseudocolors):
-                barcode[i * n_pseudocolors * n_channels + n_channels * pseudocolor + channel] = 1
+        def _generate_barcode(raw_barcode: list, n_bits: int):
+            barcode = np.zeros(n_bits, dtype=np.int8)
+            for i in raw_barcode:
+                barcode[i] = 1
             return barcode
 
         codebook = []
-        codebook_size = n_channels * (n_pseudocolors ** (n_barcode_rounds - 1))
-        barcode_size = n_pseudocolors * n_barcode_rounds * n_channels
-        if codebook_size < n_regions:
+        for raw_barcode in combinations(iterable=range(n_bits), r=hamming_weight):
+            new_barcode = _generate_barcode(raw_barcode=raw_barcode, n_bits=n_bits)
+            # check if the barcode passes the requirements
+            add_new_barcode = True
+            for barcode in codebook:
+                hamming_dist = hamming(new_barcode, barcode) * n_bits
+                if hamming_dist < min_hamming_dist:
+                    add_new_barcode = False
+                    break
+            if add_new_barcode:
+                codebook.append(new_barcode)
+        if len(codebook) < n_regions:
             raise ValueError(
-                f"The number of valid barcodes ({codebook_size}) is lower than the number of regions ({n_regions}). Consider increasing the number of psudocolors or barcoding rounds."
+                f"The number of valid barcodes ({len(codebook)}) is lower than the number of regions({n_regions}). Consider increasing the number of bits."
             )
-        for pseudocolors in product(range(n_pseudocolors), repeat=n_barcode_rounds - 1):
-            pseudocolors = list(pseudocolors)
-            for channel in range(n_channels):
-                barcode = _generate_barcode(
-                    pseudocolors=pseudocolors,
-                    channel=channel,
-                    n_pseudocolors=n_pseudocolors,
-                    n_channels=n_channels,
-                )
-                codebook.append(barcode)
 
-        codebook = pd.DataFrame(codebook, columns=[f"bit_{i+1}" for i in range(barcode_size)])
-
+        codebook = pd.DataFrame(codebook, columns=[f"bit_{i+1}" for i in range(n_bits)])
         return codebook
 
     def create_readout_probe_table(
-        self,
-        readout_probe_database: OligoDatabase,
-        channels_ids: list,
-        n_barcode_rounds: int,
-        n_pseudocolors: int,
+        self, readout_probe_database: OligoDatabase, channels_ids: list, n_bits: int
     ) -> pd.DataFrame:
         """
-        Create a readout probe table that maps bits to barcode rounds, pseudocolors, and channels.
+        Create a readout probe table that maps bits to channels and readout probes.
 
-        :param readout_probe_database: Oligo database of readout probes.
+        This function generates a table where each bit in the codebook is assigned a readout probe
+        from the database, along with a corresponding channel. It ensures that the required number of
+        bits is matched with available readout probes.
+
+        :param readout_probe_database: The database containing readout probes and their sequences.
         :type readout_probe_database: OligoDatabase
-        :param channels_ids: List of channel identifiers.
+        :param channels_ids: List of channel identifiers to assign to the readout probes (e.g., fluorophore channels).
         :type channels_ids: list
-        :param n_barcode_rounds: Number of barcode rounds.
-        :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors.
-        :type n_pseudocolors: int
-        :return: DataFrame containing the readout probe table with columns for bit, pseudocolor, channel, readout probe sequence.
+        :param n_bits: Number of bits in the codebook, representing the number of readout probes needed.
+        :type n_bits: int
+        :return: DataFrame containing the readout probe table with columns for bit, channel, readout probe ID, and readout probe sequence.
         :rtype: pd.DataFrame
+
+        :raises AssertionError: If the number of available readout probes is less than the number of required bits.
         """
-        n_channels = len(channels_ids)
-        n_bits = n_barcode_rounds * n_pseudocolors * n_channels
         readout_probes = readout_probe_database.get_oligoid_sequence_mapping(
             sequence_type="oligo", sequence_to_upper=False
         )
@@ -1559,31 +1788,19 @@ class ReadoutProbeDesigner:
             len(readout_probes) >= n_bits
         ), f"There are less readout probes ({len(readout_probes)}) than bits ({n_bits})."
         readout_probe_table = pd.DataFrame(
-            columns=[
-                "bit",
-                "barcode_round",
-                "pseudocolor",
-                "channel",
-                "readout_probe_sequence",
-            ],
+            columns=["bit", "channel", "readout_probe_id", "readout_probe_sequence"],
             index=list(range(n_bits)),
         )
-        barcode_round = 0
-        pseudocolor = 0
+        n_channels = len(channels_ids)
         channel = 0
-        for i, readout_probe_sequence in enumerate(readout_probes.values()):
+        for i, (readout_probe_id, readout_probe_sequence) in enumerate(readout_probes.items()):
             readout_probe_table.iloc[i] = [
-                f"bit_{i + 1}",
-                barcode_round + 1,
-                pseudocolor + 1,
+                f"bit_{i+1}",
                 channels_ids[channel],
+                readout_probe_id,
                 readout_probe_sequence,
             ]
             channel = (channel + 1) % n_channels
-            if channel == 0:
-                pseudocolor = (pseudocolor + 1) % n_pseudocolors
-                if pseudocolor == 0:
-                    barcode_round = (barcode_round + 1) % n_barcode_rounds
             if i >= n_bits - 1:
                 break
         readout_probe_table.set_index("bit", inplace=True)
@@ -1591,13 +1808,13 @@ class ReadoutProbeDesigner:
 
 
 ############################################
-# SeqFish Plus Primer Designer
+# Merfish Primer Designer
 ############################################
 
 
 class PrimerDesigner:
     """
-    A class for designing SeqFish+ primers.
+    A class for designing MERFISH primers.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for primers.
 
@@ -1651,6 +1868,7 @@ class PrimerDesigner:
             name_sequences="forward_primer",
             base_alphabet_with_probability=oligo_base_probabilities,
         )
+
         # we want to keep primer which end with a specific nucleotide, i.e. "T"
         forward_primer_fasta_file = append_nucleotide_to_sequences(forward_primer_fasta_file, nucleotide="T")
 
@@ -1868,13 +2086,13 @@ class PrimerDesigner:
 
 
 ############################################
-# SeqFish Plus Probe Designer Pipeline
+# Merfish Probe Designer Pipeline
 ############################################
 
 
 def main():
     """
-    Main function for running the SeqFishPlusProbeDesigner pipeline. This function reads the configuration file,
+    Main function for running the MerfishProbeDesigner pipeline. This function reads the configuration file,
     processes gene IDs, initializes the probe designer, sets developer parameters, and executes probe design
     and output generation steps.
 
@@ -1903,7 +2121,7 @@ def main():
             gene_ids = list(set([line.rstrip() for line in lines]))
 
     ##### initialize probe designer pipeline #####
-    pipeline = SeqFishPlusProbeDesigner(
+    pipeline = MerfishProbeDesigner(
         write_intermediate_steps=config["write_intermediate_steps"],
         dir_output=config["dir_output"],
         n_jobs=config["n_jobs"],
@@ -1923,7 +2141,11 @@ def main():
         target_probe_cross_hybridization_blastn_hit_parameters=config[
             "target_probe_cross_hybridization_blastn_hit_parameters"
         ],
+        target_probe_Tm_parameters=config["target_probe_Tm_parameters"],
+        target_probe_Tm_chem_correction_parameters=config["target_probe_Tm_chem_correction_parameters"],
+        target_probe_Tm_salt_correction_parameters=config["target_probe_Tm_salt_correction_parameters"],
         readout_probe_initial_num_sequences=config["readout_probe_initial_num_sequences"],
+        readout_probe_n_combinations=config["readout_probe_n_combinations"],
         readout_probe_specificity_blastn_search_parameters=config[
             "readout_probe_specificity_blastn_search_parameters"
         ],
@@ -1936,6 +2158,9 @@ def main():
         readout_probe_cross_hybridization_blastn_hit_parameters=config[
             "readout_probe_cross_hybridization_blastn_hit_parameters"
         ],
+        readout_probe_Tm_parameters=config["readout_probe_Tm_parameters"],
+        readout_probe_Tm_chem_correction_parameters=config["readout_probe_Tm_chem_correction_parameters"],
+        readout_probe_Tm_salt_correction_parameters=config["readout_probe_Tm_salt_correction_parameters"],
         primer_initial_num_sequences=config["primer_initial_num_sequences"],
         primer_specificity_refrence_blastn_search_parameters=config[
             "primer_specificity_refrence_blastn_search_parameters"
@@ -1970,13 +2195,17 @@ def main():
         target_probe_GC_content_min=config["target_probe_GC_content_min"],
         target_probe_GC_content_opt=config["target_probe_GC_content_opt"],
         target_probe_GC_content_max=config["target_probe_GC_content_max"],
+        target_probe_Tm_min=config["target_probe_Tm_min"],
+        target_probe_Tm_opt=config["target_probe_Tm_opt"],
+        target_probe_Tm_max=config["target_probe_Tm_max"],
         target_probe_homopolymeric_base_n=config["target_probe_homopolymeric_base_n"],
         target_probe_T_secondary_structure=config["target_probe_T_secondary_structure"],
         target_probe_secondary_structures_threshold_deltaG=config[
             "target_probe_secondary_structures_threshold_deltaG"
         ],
         target_probe_GC_weight=config["target_probe_GC_weight"],
-        target_probe_UTR_weight=config["target_probe_UTR_weight"],
+        target_probe_Tm_weight=config["target_probe_Tm_weight"],
+        target_probe_isoform_weight=config["target_probe_isoform_weight"],
         set_size_opt=config["set_size_opt"],
         set_size_min=config["set_size_min"],
         distance_between_target_probes=config["distance_between_target_probes"],
@@ -1991,8 +2220,11 @@ def main():
         readout_probe_GC_content_min=config["readout_probe_GC_content_min"],
         readout_probe_GC_content_max=config["readout_probe_GC_content_max"],
         readout_probe_homopolymeric_base_n=config["readout_probe_homopolymeric_base_n"],
-        n_barcode_rounds=config["n_barcode_rounds"],
-        n_pseudocolors=config["n_pseudocolors"],
+        readout_probe_set_size=config["readout_probe_set_size"],
+        readout_probe_homogeneous_properties_weights=config["readout_probe_homogeneous_properties_weights"],
+        n_bits=config["n_bits"],
+        min_hamming_dist=config["min_hamming_dist"],
+        hamming_weight=config["hamming_weight"],
         channels_ids=config["channels_ids"],
     )
 

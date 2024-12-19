@@ -617,8 +617,6 @@ class OligoDatabase:
                     oligo_id_yaml = f"Oligo {oligo_idx + 1}"
                     yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
 
-        print(yaml_dict)
-
         file_yaml = os.path.join(os.path.dirname(self.dir_output), f"{filename}.yml")
 
         with open(file_yaml, "w") as handle:
@@ -686,6 +684,17 @@ class OligoDatabase:
     ############################################
     # Getter Functions
     ############################################
+
+    def get_regionid_list(self) -> list[str]:
+        """
+        Retrieves a list of all region IDs present in the database.
+
+        :return: A list of region IDs in the database.
+        :rtype: list[str]
+        """
+        region_ids = list(self.database.keys())
+
+        return region_ids
 
     def get_oligoid_list(self) -> list[str]:
         """

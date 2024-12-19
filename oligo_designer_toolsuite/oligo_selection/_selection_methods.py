@@ -25,7 +25,8 @@ class OligoSelectionPolicy:
 
     :param set_scoring: Scoring method for evaluating the quality of the oligo sets.
     :type set_scoring: SetScoringBase
-    :param pre_filter: A flag indicating whether pre-filtering should be applied to the oligos before selection.
+    :param pre_filter: A flag indicating whether pre-filtering should be applied to the oligos before selection,
+                which improves performance for larger sets (e.g., > 30) but can slow down small set selection (e.g., < 30).
     :type pre_filter: bool
     """
 
@@ -95,7 +96,7 @@ class OligoSelectionPolicy:
     ) -> tuple[pd.Series, csr_matrix, list]:
         """
         Pre-filters oligos based on the minimal set set removing all oligos from the initial set that
-        from independent sets which are smaller than the minimal set size.
+        form independent sets which are smaller than the minimal set size.
 
         :param oligos_scores: A pandas Series containing the scores for each oligo.
         :type oligos_scores: pd.Series
@@ -190,7 +191,8 @@ class GreedySelectionPolicy(OligoSelectionPolicy):
     :type set_scoring: SetScoringBase
     :param score_criteria: String representing the score metric to use for set selection (e.g., "set_score_worst", "set_score_sum", see SetScoringBase).
     :type score_criteria: str
-    :param pre_filter: A flag indicating whether pre-filtering should be applied to the oligos before selection.
+    :param pre_filter: A flag indicating whether pre-filtering should be applied to the oligos before selection,
+                which improves performance for larger sets (e.g., > 30) but can slow down small set selection (e.g., < 30).
     :type pre_filter: bool
     :param penalty: Penalty factor applied to selected oligos, defaults to 0.05 (the higher the value, the more distinct the sets).
     :type penalty: float, optional
@@ -305,7 +307,7 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
     :param set_scoring: Scoring method for evaluating the quality of the oligo sets.
     :type set_scoring: SetScoringBase
     :param pre_filter: A flag indicating whether pre-filtering should be applied to the oligos before selection,
-                    which improves performance for larger sets (e.g., oligo_size_opt = 50) but can slow down small set selection (e.g., oligo_size_opt = 5).
+                which improves performance for larger sets (e.g., > 30) but can slow down small set selection (e.g., < 30).
     :type pre_filter: bool
     :param n_attempts: The number of attempts to make when generating oligo sets. Default is 1000.
     :type n_attempts: int, optional
@@ -350,16 +352,24 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
         G = nx.from_scipy_sparse_array(non_overlap_matrix)
         G = nx.relabel_nodes(G, {i: non_overlap_matrix_ids[i] for i in range(len(non_overlap_matrix_ids))})
 
-        # First check if there are no cliques with n oligos
-        cliques = nx.algorithms.clique.find_cliques(G)
+        # First check if there are no cliques with n oligos.
+        # If we have large sets it's better to check the max clique size with an heuristic
+        # because iterating through cliques until we find one which is greater than the
+        # optimal set size, will take a long time.
         oligoset_size = self.opt_oligoset_size
         clique_init = []
 
-        for clique in cliques:
-            if len(clique) > self.min_oligoset_size:
-                clique_init = clique
-            if len(clique) >= oligoset_size:
-                break
+        if self.opt_oligoset_size < 15:
+            cliques = nx.algorithms.clique.find_cliques(G)
+            for clique in cliques:
+                if len(clique) > self.min_oligoset_size:
+                    clique_init = clique
+                if len(clique) >= oligoset_size:
+                    break
+        else:
+            clique_max = nx.approximation.max_clique(G)
+            if len(clique_max) > self.min_oligoset_size:
+                clique_init = list(clique_max)
 
         if not clique_init:
             # if no clique with min_oligoset_size was found we don't need to compute the sets

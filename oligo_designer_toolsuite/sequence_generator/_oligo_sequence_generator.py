@@ -128,7 +128,7 @@ class OligoSequenceGenerator:
         :type files_fasta_in: list[str]
         :param length_interval_sequences: A tuple specifying the range (min, max) of sequence lengths to generate.
         :type length_interval_sequences: tuple
-        :param split_region: Number of bases to exclude around split regions (e.g. exon junctions). Default is 0.
+        :param split_region: The number of bases required on each side of a split sequence (e.g. exon junctions) to include it. Default is 0.
         :type split_region: int
         :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional

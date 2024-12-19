@@ -2,6 +2,9 @@
 # imports
 ############################################
 
+import os
+
+from Bio import SeqIO
 from subprocess import Popen
 
 ############################################
@@ -70,3 +73,28 @@ def get_complement_regions(file_bed_in: str, file_chromosome_length: str, file_b
     cmd += " > " + file_bed_out
 
     process = Popen(cmd, shell=True).wait()
+
+
+def append_nucleotide_to_sequences(input_fasta, nucleotide):
+    """
+    Appends a specific nucleotide to each sequence in a FASTA file.
+
+    :param input_fasta: Path to the input FASTA file.
+    :type input_fasta: str
+    :param nucleotide: Nucleotide to append to each sequence (e.g., 'A', 'T', 'C', 'G').
+    :type nucleotide: str
+    :return: Path to the output FASTA file with modified sequences.
+    :rtype: str
+    """
+    base, ext = os.path.splitext(input_fasta)
+    output_fasta = f"{base}_modified{ext}"
+    # Open the input and output FASTA files
+    with open(input_fasta, "r") as infile, open(output_fasta, "w") as outfile:
+        for record in SeqIO.parse(infile, "fasta"):
+            # Append the nucleotide to the sequence
+            record.seq = record.seq + nucleotide
+
+            # Write the modified record to the output file
+            SeqIO.write(record, outfile, "fasta")
+
+    return output_fasta

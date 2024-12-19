@@ -19,7 +19,11 @@ from ._database_processor import (
     flatten_attribute_list,
 )
 from ._sequence_parser import FastaParser, GffParser
-from ._sequence_processor import get_complement_regions, get_sequence_from_annotation
+from ._sequence_processor import (
+    get_complement_regions,
+    get_sequence_from_annotation,
+    append_nucleotide_to_sequences,
+)
 
 __all__ = [
     "FastaParser",
@@ -34,8 +38,9 @@ __all__ = [
     "generate_unique_filename",
     "collapse_attributes_for_duplicated_sequences",
     "format_oligo_attributes",
-    "get_complement_regions",
-    "get_sequence_from_annotation",
     "merge_databases",
     "flatten_attribute_list",
+    "get_complement_regions",
+    "get_sequence_from_annotation",
+    "append_nucleotide_to_sequences",
 ]

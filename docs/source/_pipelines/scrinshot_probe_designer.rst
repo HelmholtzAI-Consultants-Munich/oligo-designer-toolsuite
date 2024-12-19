@@ -77,7 +77,7 @@ Following this step all genes with insufficient number of probes (user-defined) 
 In the last step of the pipeline, the ready-to-order probe sequences containing all additional required sequences are designed for the best non-overlapping sets of each gene. 
 For the SCRINSHOT protocol, the padlock backbone is added to each probe and for each probe a detection oligo is created, by cropping the probe with even nucleotide removal from both ends, exchanging Thymines to Uracils, and placing the fluorescent dye at the side with the closest Uracil as described in Sountoulidis et al. [3]. 
 
-The output is stored in two seperate files: 
+The output is stored in two separate files: 
 
 - ``padlock_probes_order.yml``: contains for each probe the sequences of the padlock probe and the detection oligo.
 - ``padlock_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.

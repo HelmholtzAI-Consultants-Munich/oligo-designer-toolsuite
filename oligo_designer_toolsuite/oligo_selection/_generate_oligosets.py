@@ -324,22 +324,27 @@ class HomogeneousPropertyOligoSetGenerator:
         :param n_combinations: The number of random oligo combinations to generate per region, defaults to 1000.
         :type n_combinations: int, optional
         """
-        region_dict = oligo_database.database[region_id]
-        oligo_df = pd.DataFrame.from_dict(region_dict, orient="index")
+        oligo_df = pd.DataFrame({"oligo_id": oligo_database.database[region_id].keys()})
 
         # # check if all properties in self.properties are in oligo_df columns
         for property in self.properties:
-            if property not in oligo_df.columns:
+            property_table = oligo_database.get_oligo_attribute_table(
+                attribute=property, flatten=True, region_ids=region_id
+            )
+
+            if property_table[property].isnull().any():
                 raise ValueError(
                     f"Property '{property}' is not present in oligo database please calculate it first using oligo_designer_toolsuite.OligoAttributes()."
                 )
             else:
-                if not pd.api.types.is_integer_dtype(oligo_df[property]) or pd.api.types.is_float_dtype(
-                    oligo_df[property]
+                if not (
+                    pd.api.types.is_integer_dtype(property_table[property])
+                    or pd.api.types.is_float_dtype(property_table[property])
                 ):
                     raise ValueError(
                         f"Property '{property}' is not numeric. Cannot use for variance computation."
                     )
+            oligo_df = pd.merge(oligo_df, property_table, how="inner", on="oligo_id")
 
         combinations = self._generate_random_combinations(oligo_df.index, self.set_size, n_combinations)
 
