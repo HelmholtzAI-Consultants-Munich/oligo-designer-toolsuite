@@ -82,9 +82,9 @@ html_css_files = []
 autodoc_member_order = "bysource"
 
 nbsphinx_thumbnails = {
-    "../../tutorials/1-oligo-sequences-generation": "_figures/_tutorials/1-oligo-sequences-generation.png",
-    "../../tutorials/2-oligo-database": "_figures/_tutorials/2-oligo-database.png",
-    "../../tutorials/3-property-filters": "_figures/_tutorials/3-property-filters.png",
-    "../../tutorials/4-specificity-filters": "_figures/_tutorials/4-specificity-filters.png",
-    "../../tutorials/5-oligoset-generation": "_figures/_tutorials/5-oligoset-generation.png",
+    "_getting_started/_tutorials/1-oligo-sequences-generation": "_figures/_tutorials/1-oligo-sequences-generation.png",
+    "_getting_started/_tutorials/2-oligo-database": "_figures/_tutorials/2-oligo-database.png",
+    "_getting_started/_tutorials/3-property-filters": "_figures/_tutorials/3-property-filters.png",
+    "_getting_started/_tutorials/4-specificity-filters": "_figures/_tutorials/4-specificity-filters.png",
+    "_getting_started/_tutorials/5-oligoset-generation": "_figures/_tutorials/5-oligoset-generation.png",
 }
