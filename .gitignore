@@ -127,3 +127,22 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# mac OS
+
+.DS_Store
+
+# VSCode
+.vscode
+
+# Experiments
+output*
+merfish_pipeline.ipynb
+seqfish_pipeline.ipynb
+tests/*.pickle
+
+oligo_designer_toolsuite/_version.py
+tests/notebooks/temp_path/*
+tests/notebooks/test_cross_hybridization_filter.ipynb
+
+./tmp_*

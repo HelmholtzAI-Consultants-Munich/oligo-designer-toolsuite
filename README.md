@@ -2,7 +2,9 @@
 
 # *Oligo Designer Toolsuite* - Lightweight Development of Custom Oligo Design Pipelines
 
+[![test](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/oligo-designer-toolsuite.svg)](https://pypi.org/project/oligo-designer-toolsuite)
+[![codecov](https://codecov.io/gh/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/branch/pipelines/graph/badge.svg)](https://codecov.io/gh/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite)
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
@@ -14,44 +16,58 @@
 
 </div>
 
-Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that have many application areas, ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for *in situ* hybridization or as guide RNAs for CRISPR-based gene editing. Based on the intended application and experimental design, researchers can customize the length, sequence composition, and thermodynamic properties of the designed oligos.
-
-*Oligo Designer Toolsuite* provides ready-to-use oligo design pipelines for specific experimental setups, e.g. Padlock Probes for Spatial Transcriptomics. 
+Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that are designed with respect to a specific target region and have many application areas,
+ranging from research to disease diagnosis or therapeutics. Oligos can be used as primers during DNA amplification, as probes for in situ hybridization or as guide RNAs for CRISPR-based gene editing.
+Based on the intended application and experimental design, researchers have to customize the length, sequence composition, and thermodynamic properties of the designed oligos.
 
 <div align="center">
 
 <img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/dev/docs/source/_figures/oligo_design.png" width="800">
-	
+
 </div>
 
 
-## News
+Various tools exist that provide custom design of oligo sequences depending on the area of application. Interestingly, all those pipelines have many common basic processing steps,
+ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic properties as well as the selection of an optimal set of oligos.
+Despite the fact that most tools apply the same basic processing steps, each newly developed tool usually uses its own implementation and different versions of package dependencies for those basic processing steps.
+As a consequence, the comparability of tools that differ only in certain steps is hampered, but also the maintenance of existing tools and the development of new tools is slowed down,
+because developers do not have a common resource for basic functionalities to use. We tackle this issue by providing such a common resource in our open-source *Oligo Designer Toolsuite*.
 
-- **[2023.05.03]** 🔥🔥 We will soon release a new version of the Oligo Designer Toolsuite with major updates! The new version 1) provides custom pipelines for MERFISH and SeqFISH+ probe design , 2) allows the user to design probes for all species available at NCBi or Ensemble and 3) allows the user to easily implement customized oligo design piplines using our new basic functionality modules! If you want to try out those functionalities already today, then check out the *dev* branch!
+***Oligo Designer Toolsuite*** **is a collection of modules that provide all basic functionalities for custom oligo design pipelines within a flexible Python framework.**
+Furthermore, we introduce a common underlying data structure, which allows the user to easily combine different modules, depending on the required processing steps.
+We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. SCRINSHOT or SeqFISH+ probe design for Spatial Transcriptomics.
+
+
 
 ## Installation
 
 **Requirements:**
 
-This package was build with ```Python 3.8``` on ubuntu. It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
+This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. For stable installatio, we recommend to first setup a conda environment, e.g.:
+
+```
+conda create -n odt python=3.10
+conda activate odt
+```
+
+It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
 
 ```
 conda config --add channels bioconda
 conda config --add channels conda-forge
-conda update conda
 conda update --all
 ```
 
 Follow this instruction to install the required additional tools:
 
-- **Blast** (2.12 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
+- **Blast** (2.15 or higher) can be instelled via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
 
-		conda install "blast>=2.12"
+		conda install "blast>=2.15.0"
 
 - **BedTools** (2.30 or higher) can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via [Bioconda](http://bioconda.github.io/recipes/bedtools/README.html) installation of BedTools with:
 
 		conda install "bedtools>=2.30"
-		
+
 - **Bowtie** (1.3 or higher) can be installed via [Bowtie webpage](https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie) or via [Bioconda](http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
 
 		conda install "bowtie>=1.3.1"
@@ -77,11 +93,13 @@ Installation from source:
 
 ```
 git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
+cd oligo-designer-toolsuite
+git switch pipelines
 ```
 
 - Installation as python package (run inside directory):
 
-		pip install .   
+		pip install .
 
 
 - Development Installation as python package (run inside directory):
@@ -91,50 +109,50 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-tools
 
 ## Implemented Oligo Design Pipelines
 
-### Padlock Probe Design
+### Scrinshot Probe Design
 
-A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is 40nt.
+A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence. 
+The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is around 40nt.
 
 
 #### Usage
 
 *Command-Line Call:*
 
-To create padlock probes you can run the pipeline with 
+To create scrinshot probes you can run the pipeline with 
 
 ```
-padlock_probe_designer -c ./config/padlock_probe_designer.yaml -o output/ [-d False]
+scrinshot_probe_designer -c data/configs/scrinshot_probe_designer.yaml
 ````
 
 where:
 
-- ```-c```: config file, which contains parameter settings, specific to padlock probe design, *./config/padlock_probe_designer.yaml* contains default parameter settings
-- ```-o```: output folder, where results of pipeline are stored
-  - ```annotations```folder: downloaded gene and genome annotation as well as constructed transcriptome
-  - ```probes```folder: list of probes per gene, which fulfill user-defined criteria, given in config file
-  - ```probesets```folder: sets of non-overlapping probes per gene, ranked by best set criteria
-  - ```padlock_probes```folder: final padlock probe sequences per gene, ready to order
-- ```-d```: optional, 'download only' option, where only gene and genome annotation files are downloaded but no probes generated, default: False
+- ```-c```: config file, which contains parameter settings, specific to scrinshot probe design, *scrinshot_probe_designer.yaml* contains default parameter settings
 
-All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. The logging file will have the format: ```log_padlock_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+The logging file will have the format: ```log_scrinshot_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
 
-*Python Import:*
+### Oligo-Seq Probe Design
 
-Import padlock probe design pipeline as python package:
+An oligo-seq probe is an oligo hybridization probe, which is optimized for probe-based targeted sequencing to measure RNA expression.
+
+#### Usage
+
+*Command-Line Call:*
+
+To create oligo-seq probes you can run the pipeline with 
 
 ```
-import oligo_designer_toolsuite.pipelines.padlock_probe_designer as packlock_probe_designer
+oligo_seq_probe_designer -c data/configs/oligo_seq_probe_designer.yaml
+````
 
-config = './config/padlock_probe_designer.yaml'
-dir_output = './padlock_probes'
+where:
 
-annotations = packlock_probe_designer.download_annotations(config, dir_output)
-packlock_probe_designer.filter_probes(config, annotations, dir_output)
-del annotations # free memory
+- ```-c```: config file, which contains parameter settings, specific to oligo-seq probe design, *oligo_seq_probe_designer.yaml* contains default parameter settings
 
-packlock_probe_designer.generate_probe_sets(config, dir_output)
-packlock_probe_designer.design_padlock_probes(config, dir_output)
-```
+All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+The logging file will have the format: ```log_oligo_seq_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt```.
+
 
 ## Contributing
 
@@ -142,7 +160,7 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 
 ## How to cite
 
-If the Ologo Designer Toolsuite is useful for your research, consider citing the package:
+If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
 
 ```
 @software{campi_2023_7823048,
@@ -164,7 +182,7 @@ If the Ologo Designer Toolsuite is useful for your research, consider citing the
 }
 ```
 
-If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing the paper:
+If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
 
 ```
 @article {Kuemmerle2022.08.16.504115,

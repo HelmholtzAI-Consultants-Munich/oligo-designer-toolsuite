@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+
+[tool.setuptools]
+packages = ["oligo_designer_toolsuite"]
+
+[tool.setuptools.dynamic]
+#version = {attr = "my_package.VERSION"}
+readme = { file = "README.md" }
+
+[tool.setuptools_scm]
+write_to = "oligo_designer_toolsuite/_version.py"
+
+[project]
+name = "oligo-designer-toolsuite"
+dynamic = ["version"]
+#version = "1.0.2"
+authors = [
+  { name = "Lisa Barros de Andrade e Sousa" },
+  { name = "Isra Mekki" },
+  { name = "Francesco Campi" },
+  { name = "Louis Kümmerle" },
+  { name = "Chelsea Bright" },
+]
+maintainers = [
+  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
+  { name = "Isra Mekki", email = "isra.mekki@helmholtz-muenchen.de" },
+]
+description = "Develop custom oligo design pipelines."
+keywords = [
+  "bioinformatics",
+  "probes",
+  "oligo nucleotides",
+  "probe design",
+  "oligo design",
+]
+readme = "README.md"
+requires-python = "<3.11"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "datetime",
+  "argparse",
+  "numpy",
+  "pandas",
+  "scipy",
+  "iteration_utilities",
+  "Bio",
+  "pyyaml",
+  "networkx",
+  "joblib",
+  "seqfold",
+  "effidict",
+  "joblib_progress",
+  "oligo-designer-toolsuite-ai-filters",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+genomic_region_generator = "oligo_designer_toolsuite.pipelines._genomic_region_generator:main"
+oligo_seq_probe_designer = "oligo_designer_toolsuite.pipelines._oligo_seq_probe_designer:main"
+scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_designer:main"
+seqfish_plus_probe_designer = "oligo_designer_toolsuite.pipelines._seqfish_plus_probe_designer:main"
+
+[project.urls]
+documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
+repository = "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite"

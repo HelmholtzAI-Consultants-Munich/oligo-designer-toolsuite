@@ -1,0 +1,203 @@
+############################################
+# imports
+############################################
+
+import os
+import random
+from pathlib import Path
+from joblib import Parallel, delayed
+from Bio.SeqRecord import SeqRecord
+from oligo_designer_toolsuite.utils import FastaParser
+
+from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename
+
+############################################
+# Oligo Database Class
+############################################
+
+
+class OligoSequenceGenerator:
+
+    def __init__(
+        self,
+        dir_output: str = "output",
+    ) -> None:
+        """Constructor for the OligoSequenceGenerator class."""
+        self.dir_output = os.path.abspath(os.path.join(dir_output, "annotation"))
+        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+
+        self.fasta_parser = FastaParser()
+
+    def create_sequences_random(
+        self,
+        filename_out: str,
+        length_sequences: int,
+        num_sequences: int,
+        name_sequences: str = "randomsequence",
+        base_alphabet_with_probability: dict = {
+            "A": 0.25,
+            "C": 0.25,
+            "G": 0.25,
+            "T": 0.25,
+        },
+    ) -> str:
+
+        def get_sequence_random(sequence_length: int, base_alphabet_with_probability: dict) -> str:
+
+            bases = list(base_alphabet_with_probability.keys())
+            sequence = "".join(
+                random.choices(
+                    bases,
+                    weights=[base_alphabet_with_probability[n] for n in bases],
+                    k=sequence_length,
+                )
+            )
+            return sequence
+
+        sequences_set = set()
+        while len(sequences_set) < num_sequences:
+            num_missing_sequences = num_sequences - len(sequences_set)
+            new_sequences = {
+                get_sequence_random(length_sequences, base_alphabet_with_probability)
+                for _ in range(num_missing_sequences)
+            }
+            sequences_set.update(new_sequences)
+
+        file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
+
+        with open(file_fasta_out, "w") as handle_fasta:
+            for i, seq in enumerate(sequences_set):
+                handle_fasta.write(
+                    f">{name_sequences}::regiontype=random_sequence;region_id={name_sequences}_{i}\n{seq}\n"
+                )
+        return file_fasta_out
+
+    def create_sequences_sliding_window(
+        self,
+        files_fasta_in: list[str],
+        length_interval_sequences: tuple,
+        split_region: int = 0,
+        region_ids: list[str] = None,
+        n_jobs: int = 1,
+    ) -> list:
+        def get_sliding_window_sequence(
+            entry: SeqRecord, length_interval_sequences: tuple, split_region: int
+        ) -> str:
+            entry_sequence = entry.seq
+            region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(
+                header=entry.id, parse_additional_info=False
+            )
+            # chromosome and strand information is the same for an entry but parsed as
+            # list in the parse_fasta_header, hence, we take only the first element for each
+            # if no information provided in fasta file, those entries are None
+            chromosome = coordinates["chromosome"][0]
+            strand = coordinates["strand"][0]
+            list_of_coordinates = []
+
+            # check if loaded region is spanning split sequences (e.g. exon junctions)
+            # if yes, calculate which sequences should be excluded
+            # because they have too few bases on each side of the split
+            split_sequence = len(coordinates["start"]) > 1
+            if split_sequence:
+                excluded_coordinates = [
+                    coord + offset for coord in coordinates["start"][1:] for offset in range(split_region)
+                ] + [coord - offset for coord in coordinates["end"][:-1] for offset in range(split_region)]
+
+            # if the fasta header DOES NOT contain coordinates information
+            if chromosome is None:
+                list_of_coordinates = [None for i in range(len(entry_sequence))]
+            # if the fasta header DOES contain coordinates information
+            else:
+                # coordinates in fasta file use 1-base indixing, which go from 1 (for base 1) to n (for base n)
+                # range produces values until end-1 (e.g. range(10) goes until 9) -> add +1
+                # the start and end coordinates can be a list for regions spanning split sequences (e.g. exon junctions)
+                for start, end in zip(coordinates["start"], coordinates["end"]):
+                    list_of_coordinates.extend(range(start, end + 1))
+            # sort reverse on minus strand becaus the sequence is translated into the reverse complement by fasta -strand option
+            if strand == "-":
+                list_of_coordinates.reverse()
+
+            file_fasta_region = generate_unique_filename(
+                dir_output=self.dir_output, base_name=region, extension="fna"
+            )
+            with open(file_fasta_region, "w") as handle_fasta:
+                for sequence_length in range(length_interval_sequences[0], length_interval_sequences[1] + 1):
+                    # generate sequences with sliding window and write to fasta file (use lock to ensure that hat only one process can write to the file at any given time)
+                    if len(entry_sequence) < sequence_length:
+                        continue
+                    num_sequences = len(entry_sequence) - (sequence_length - 1)
+                    sequences = [entry_sequence[i : i + sequence_length] for i in range(num_sequences)]
+
+                    for i in range(num_sequences):
+                        seq = sequences[i]
+                        seq_start_end = [
+                            list_of_coordinates[i],
+                            list_of_coordinates[(i + sequence_length - 1)],
+                        ]
+                        # sort coordinates for oligos on minus strand
+                        start_seq = min(seq_start_end)  # 1-base index
+                        end_seq = max(seq_start_end)
+
+                        header = f"{region}::{additional_info}::{chromosome}:{start_seq}-{end_seq}({strand})"
+
+                        if not split_sequence:
+                            handle_fasta.write(f">{header}\n{seq}\n")
+
+                        # if split sequence, only consider cases where we have at least x bases on each side of the split sequence
+                        else:
+                            split_distance = end_seq - start_seq
+                            if (split_distance > sequence_length) and (
+                                start_seq not in excluded_coordinates and end_seq not in excluded_coordinates
+                            ):
+                                handle_fasta.write(f">{header}\n{seq}\n")
+
+            return file_fasta_region
+
+        files_fasta_in = check_if_list(files_fasta_in)
+        for file_fasta in files_fasta_in:
+            self.fasta_parser.check_fasta_format(file_fasta)
+
+        if region_ids:
+            region_ids = check_if_list(region_ids)
+        else:
+            region_ids = [
+                region_id
+                for file_fasta in files_fasta_in
+                for region_id in self.fasta_parser.get_fasta_regions(file_fasta_in=file_fasta)
+            ]
+            # make keys unique
+            region_ids = list(set(region_ids))
+
+        # delete previous content
+        for region_id in region_ids:
+            file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
+            if os.path.isfile(file_fasta_region):
+                os.remove(file_fasta_region)
+
+        # create oligos and store all oligos of one region in seperate files
+        file_fasta_out = set()
+        for file_fasta in files_fasta_in:
+            self.fasta_parser.check_fasta_format(file_fasta)
+            fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
+            files_fasta_oligos = Parallel(n_jobs=n_jobs)(
+                delayed(get_sliding_window_sequence)(entry, length_interval_sequences, split_region)
+                for entry in fasta_sequences
+            )
+            for region_id in region_ids:
+                files_fasta_oligos_region = [
+                    file for file in files_fasta_oligos if os.path.basename(file).startswith(f"{region_id}_")
+                ]
+                if len(files_fasta_oligos_region) > 0:
+                    file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
+                    file_fasta_out.add(file_fasta_region)
+                    # merge the fasta files into one single file per region
+                    self.fasta_parser.merge_fasta_files(
+                        files_in=files_fasta_oligos_region, file_out=file_fasta_region, overwrite=False
+                    )
+
+            # remove the temporary fasta files
+            for file_fasta_oligos in files_fasta_oligos:
+                if os.path.isfile(file_fasta_oligos):
+                    os.remove(file_fasta_oligos)
+
+        return sorted(list(file_fasta_out))
