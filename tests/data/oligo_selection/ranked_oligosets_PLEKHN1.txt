@@ -1,4 +1,4 @@
-	oligo_0	oligo_1	oligo_2	set_score_lowest	set_score_sum
+	oligo_0	oligo_1	oligo_2	set_score_worst	set_score_sum
 0	PLEKHN1_pid2984	PLEKHN1_pid3105	PLEKHN1_pid3063	0.7174	1.5339
 1	PLEKHN1_pid2982	PLEKHN1_pid3105	PLEKHN1_pid3063	0.7174	1.5382
 2	PLEKHN1_pid2984	PLEKHN1_pid3178	PLEKHN1_pid3063	0.7174	1.5417

@@ -5,7 +5,7 @@
 import os
 import pandas as pd
 
-from typing import List, Union
+from typing import List
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
@@ -26,6 +26,31 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 
 
 class HybridizationProbabilityFilter(SpecificityFilterBase):
+    """
+    A filter for assessing hybridization probabilities of oligonucleotides using AI models.
+
+    The `HybridizationProbabilityFilter` class evaluates the likelihood of hybridization between oligonucleotides and potential off-target sequences based on a threshold.
+    It utilizes an AI model to predict hybridization probabilities and filters out oligonucleotides that exceed the specified threshold.
+
+    To define the hybridization probability we consider an experiment where the oligo sequence, the on-target site, and the off-target site are introduced with the
+    same concentration. Next, the hybridization probability is the ratio of the final concentration of the DNA complex composed of the oligo and the off-target site,
+    and all the DNA complexes that contain the oligo (oligo + off-target and oligo + on-target):
+
+    $$C_{oligo + off-t} /C_{oligo + off-t} + C_{oligo + on-t}$$.
+
+    In simpler terms, the hybridization probability is the frequency with which the oligo binds to the off-target site, compared to the number of successful bindings of the oligo.
+
+    :param alignment_method: The alignment method used to identify potential off-targets with reference sequences.
+    :type alignment_method: AlignmentSpecificityFilter
+    :param threshold: The probability threshold above which sequences will be filtered out.
+    :type threshold: float
+    :param ai_filter_path: Path to the AI model used for hybridization probability predictions. If None, the default path will be used.
+    :type ai_filter_path: str, optional
+    :param filter_name: Name of the filter for identification purposes.
+    :type filter_name: str
+    :param dir_output: Directory to store output files and temporary data.
+    :type dir_output: str
+    """
 
     def __init__(
         self,
@@ -52,6 +77,24 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> OligoDatabase:
+        """
+        Applies the hybridization probability filter to the OligoDatabase.
+
+        This function aligns the oligonucleotides in the given OligoDatabase against a reference database and then
+        uses an AI model that predicts hybridization probabilities. The filter removes oligonucleotides that are
+        likely to hybridize with off-target sequences, based on a predefined threshold.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param reference_database: The ReferenceDatabase used for alignment.
+        :type reference_database: ReferenceDatabase
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param n_jobs: The number of parallel jobs to use for processing.
+        :type n_jobs: int
+        :return: The filtered OligoDatabase with off-targets removed.
+        :rtype: OligoDatabase
+        """
         # When applying the filter we don't want to consider hits within the same region
         consider_hits_from_input_region = False
 
@@ -90,9 +133,29 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         oligo_database: OligoDatabase,
         file_reference: str,
         file_index: str,
-        region_id: List[str],
+        region_id: str,
         consider_hits_from_input_region: bool,
     ) -> None:
+        """
+        Applies the hybridization probability filter to a specific region in the OligoDatabase.
+
+        This function processes a specific region of the OligoDatabase by filtering sequences based on their
+        likelihood to hybridize with off-target sequences in a reference database. The filtering process uses
+        an alignment method and AI model to evaluate the sequences, removing those that meet the criteria for potential cross-hybridization.
+
+        :param sequence_type: The type of sequence to be used for filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param file_reference: The path to the reference FASTA file used for the alignment.
+        :type file_reference: str
+        :param file_index: The index file for the ReferenceDatabase.
+        :type file_index: str
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param consider_hits_from_input_region: Whether to consider hits from the input region in the filtering process.
+        :type consider_hits_from_input_region: bool
+        """
         table_hits_region = self.alignment_method._run_filter(
             sequence_type=sequence_type,
             region_id=region_id,
@@ -124,6 +187,27 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         file_reference: str,
         region_id: str,
     ) -> pd.DataFrame:
+        """
+        Filters the hits from the alignment table based on hybridization probability.
+
+        This function processes the alignment results by filtering out hits with a hybridization probability
+        below a specified threshold. It generates aligned sequences (queries and references) with gaps,
+        predicts their hybridization probability, and retains only those hits that exceed the threshold.
+
+        :param sequence_type: The type of sequence to be used for filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param table_hits: A DataFrame containing the alignment results.
+        :type table_hits: pd.DataFrame
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param file_reference: The path to the reference FASTA file used for the alignment.
+        :type file_reference: str
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :return: A filtered DataFrame containing only the hits with hybridization probabilities above the threshold.
+        :rtype: pd.DataFrame
+        """
+
         # check if there are any oligos to filter
         if len(table_hits) == 0:
             return table_hits
@@ -153,6 +237,16 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
         return table_hits
 
     def overwrite_output_format(self) -> None:
+        """
+        Overwrites the output format for the alignment method if it is a BlastN method.
+
+        This function modifies the output format of the alignment method to include specific fields required for subsequent processing.
+        It checks if the alignment method is an instance of any of the BlastN-related classes, and if so, updates
+        the `names_search_output` and `search_parameters["outfmt"]` to include detailed alignment information.
+
+        :param alignment_method: The alignment method object whose output format may need to be overwritten.
+        :type alignment_method: AlignmentSpecificityFilter
+        """
         # if the alignment method is a  Blastn method overwrite the
         if type(self.alignment_method) in [
             BlastNFilter,
@@ -172,6 +266,4 @@ class HybridizationProbabilityFilter(SpecificityFilterBase):
                 "reference_sequence",
                 "reference_strand",
             ]
-            self.alignment_method.search_parameters["outfmt"] = (
-                "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"
-            )
+            self.alignment_method.search_parameters["outfmt"] = "6 qseqid sseqid length qstart qend qlen qseq sstart send sseq sstrand"

@@ -1,4 +1,4 @@
-	oligo_0	oligo_1	oligo_2	oligo_3	oligo_4	set_score_lowest	set_score_sum
+	oligo_0	oligo_1	oligo_2	oligo_3	oligo_4	set_score_worst	set_score_sum
 0	MIB2_pid4051	MIB2_pid3499	MIB2_pid4043	MIB2_pid4119	MIB2_pid3476	0.4516	1.7358
 1	MIB2_pid4051	MIB2_pid3499	MIB2_pid4042	MIB2_pid4119	MIB2_pid3476	0.4516	1.7358
 2	MIB2_pid4051	MIB2_pid4043	MIB2_pid3501	MIB2_pid4119	MIB2_pid3476	0.4516	1.7974

@@ -9,10 +9,9 @@ Module contents
 
 .. autosummary::
 
-   BaseFtpLoader
-   FtpLoaderNCBI
-   FtpLoaderEnsembl
+   FastaParser
    GffParser
+   CustomYamlDumper
 
    {% for name in oligo_designer_toolsuite.utils.classes %}
      {{ name }}

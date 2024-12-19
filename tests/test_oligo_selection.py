@@ -18,7 +18,8 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 )
 from oligo_designer_toolsuite.oligo_selection import (
     OligosetGeneratorIndependentSet,
-    heuristic_selection_independent_set,
+    HomogeneousPropertyOligoSetGenerator,
+    GraphBasedSelectionPolicy,
 )
 
 ############################################
@@ -62,9 +63,17 @@ TM_PARAMETERS_CHEM_CORR = {
 ############################################
 
 
-class TestOverlapMatrix(unittest.TestCase):
+class TestOligosetGeneratorIndependentSet(unittest.TestCase):
     def setUp(self):
-        oligo_scoring = WeightedTmGCOligoScoring(
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_selection")
+        self.oligo_database = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=self.tmp_path,
+        )
+        self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
+
+        self.oligo_scoring = WeightedTmGCOligoScoring(
             Tm_min=52,
             Tm_opt=60,
             Tm_max=67,
@@ -74,14 +83,27 @@ class TestOverlapMatrix(unittest.TestCase):
             Tm_parameters=TM_PARAMETERS,
             Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORR,
         )
-        set_scoring = LowestSetScoring(ascending=True)
-        self.oligoset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=5,
-            min_oligoset_size=2,
-            oligos_scoring=oligo_scoring,
-            set_scoring=set_scoring,
-            heuristic_selection=None,
+        self.set_scoring = LowestSetScoring(ascending=True)
+        self.selection_policy = GraphBasedSelectionPolicy(
+            set_scoring=self.set_scoring,
+            pre_filter=False,
+            n_attempts=100000,
+            heuristic=True,
+            heuristic_n_attempts=100,
         )
+
+        self.oligoset_generator = OligosetGeneratorIndependentSet(
+            selection_policy=self.selection_policy,
+            oligos_scoring=self.oligo_scoring,
+            set_scoring=self.set_scoring,
+            max_oligos=5000,
+        )
+
+        self.set_size_opt = 5
+        self.set_size_min = 2
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
 
     def test_nonoverlapping_matrix_ovelapping_oligos(self):
         # check the overlapping matrix is created correctly with 2 oligos given in input
@@ -93,7 +115,7 @@ class TestOverlapMatrix(unittest.TestCase):
                 "A_1": {"start": [[20], [53]], "end": [[25], [58]]},
             }
         }
-        computed_matrix, computed_matrix_ids = self.oligoset_generator._get_overlapping_matrix(
+        computed_matrix, computed_matrix_ids = self.oligoset_generator._get_non_overlap_matrix(
             oligo_database=oligo_database, region_id="region_1"
         )
         computed_matrix = pd.DataFrame(
@@ -117,7 +139,7 @@ class TestOverlapMatrix(unittest.TestCase):
                 "A_1": {"start": [[20], [35]], "end": [[25], [40]]},
             }
         }
-        computed_matrix, computed_matrix_ids = self.oligoset_generator._get_overlapping_matrix(
+        computed_matrix, computed_matrix_ids = self.oligoset_generator._get_non_overlap_matrix(
             oligo_database=oligo_database, region_id="region_1"
         )
         computed_matrix = pd.DataFrame(
@@ -132,42 +154,14 @@ class TestOverlapMatrix(unittest.TestCase):
             computed_matrix
         ), "overlapping matrix for two non-overlapping oligos wrongly computed"
 
-
-class TestOligoScoring(unittest.TestCase):
-    def setUp(self):
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_selection")
-        self.oligo_database = OligoDatabase(
-            min_oligos_per_region=2,
-            write_regions_with_insufficient_oligos=True,
-            dir_output=self.tmp_path,
-        )
-        self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
-
-        self.oligo_scoring = WeightedTmGCOligoScoring(
-            Tm_min=52,
-            Tm_opt=60,
-            Tm_max=67,
-            GC_content_min=40,
-            GC_content_opt=50,
-            GC_content_max=60,
-            Tm_parameters=TM_PARAMETERS,
-            Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORR,
-        )
-        set_scoring = LowestSetScoring(ascending=True)
-        self.oligoset_generator = OligosetGeneratorIndependentSet(
-            opt_oligoset_size=5,
-            min_oligoset_size=2,
-            oligos_scoring=self.oligo_scoring,
-            set_scoring=set_scoring,
-            heuristic_selection=heuristic_selection_independent_set,
-        )
-
-    def tearDown(self) -> None:
-        shutil.rmtree(self.tmp_path)
-
     def test_oligoset_generation(self):
         oligos_database = self.oligoset_generator.apply(
-            oligo_database=self.oligo_database, sequence_type="oligo", n_sets=100, n_jobs=1
+            oligo_database=self.oligo_database,
+            sequence_type="oligo",
+            set_size_opt=self.set_size_opt,
+            set_size_min=self.set_size_min,
+            n_sets=100,
+            n_jobs=1,
         )
         for gene in oligos_database.oligosets.keys():
             computed_sets = oligos_database.oligosets[gene]
@@ -219,18 +213,46 @@ class TestOligoScoring(unittest.TestCase):
                 "oligo_0",
                 "oligo_1",
                 "oligo_2",
-                "set_score_lowest",
+                "set_score_worst",
                 "set_score_sum",
             ],
         )
 
-        computed_sets = self.oligoset_generator._get_non_overlapping_sets(
-            overlapping_matrix=overlapping_matrix,
-            overlapping_matrix_ids=index,
+        computed_sets = self.selection_policy.apply(
+            set_size_opt=self.set_size_opt,
+            set_size_min=self.set_size_min,
+            n_sets=10,
             oligos_scores=oligo_scores,
-            n_sets=100,
+            non_overlap_matrix=overlapping_matrix,
+            non_overlap_matrix_ids=index,
         )
-        computed_sets["set_score_lowest"] = computed_sets["set_score_lowest"].round(2)
+        computed_sets["set_score_worst"] = computed_sets["set_score_worst"].round(2)
         computed_sets["set_score_sum"] = computed_sets["set_score_sum"].round(2)
 
         assert true_sets.equals(computed_sets), "Sets are not computed correctly"
+
+
+class TestHomogeneousPropertyOligoSetGenerator(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_selection")
+        self.oligo_database = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=self.tmp_path,
+        )
+        self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
+
+        self.oligoset_generator = HomogeneousPropertyOligoSetGenerator(
+            set_size=5,
+            properties=["GC_content"],
+        )
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_oligoset_generation(self):
+        # TODO: add tests
+        pass
+
+
+# TODO: add tests for selection policies
