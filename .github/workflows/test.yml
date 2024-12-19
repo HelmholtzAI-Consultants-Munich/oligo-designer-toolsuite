@@ -71,7 +71,9 @@ jobs:
         python --version
 
     - name: Check permissions
-      run: echo blablabla > test.txt
+      run: |
+        echo blablabla > test.txt
+        ls -lh
     
     - name: Install conda dependencies
       run: |
