@@ -68,7 +68,7 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 class SeqFishPlusProbeDesigner:
     """
-    A class for designing encoding probes for SeqFISH Plus experiments.
+    A class for designing encoding probes for SeqFISH+ experiments.
 
     A SeqFISH+ encoding probe is a flourescent probe that contains a 28-nt gene-specific
     sequence complementary to the mRNA, four 15-nt barcode sequences, which are read out
@@ -203,7 +203,7 @@ class SeqFishPlusProbeDesigner:
         heuristic_n_attempts: int = 100,
     ):
         """
-        Set developer-specific parameters for scrinshot probe designer pipeline.
+        Set developer-specific parameters for SeqFish+ probe designer pipeline.
         These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity
@@ -828,7 +828,7 @@ class SeqFishPlusProbeDesigner:
         ],
     ) -> None:
         """
-        Generate the final output files for the SeqFishPlus probe design pipeline.
+        Generate the final output files for the SeqFish+ probe design pipeline.
 
         This method updates the encoding probe database with primer sequences, computes
         additional attributes, and writes the results to YAML files, including a file
@@ -949,7 +949,7 @@ class SeqFishPlusProbeDesigner:
 
 class TargetProbeDesigner:
     """
-    A class for designing target probes for SeqFISH Plus experiments.
+    A class for designing target probes for SeqFISH+ experiments.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for targeted probes.
 
@@ -1270,7 +1270,7 @@ class TargetProbeDesigner:
 
 class ReadoutProbeDesigner:
     """
-    A class for designing MERFISH readout probes.
+    A class for designing SeqFish+ readout probes.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for readout probes.
 
@@ -1597,7 +1597,7 @@ class ReadoutProbeDesigner:
 
 class PrimerDesigner:
     """
-    A class for designing MERFISH primers.
+    A class for designing SeqFish+ primers.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for primers.
 

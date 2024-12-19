@@ -247,7 +247,7 @@ class MerfishProbeDesigner:
         heuristic_n_attempts: int = 100,
     ):
         """
-        Set developer-specific parameters for scrinshot probe designer pipeline.
+        Set developer-specific parameters for Merfish probe designer pipeline.
         These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_specificity_blastn_search_parameters: Parameters for the BlastN specificity

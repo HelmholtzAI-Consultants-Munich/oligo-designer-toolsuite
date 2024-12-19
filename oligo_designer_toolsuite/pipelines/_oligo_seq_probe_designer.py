@@ -161,7 +161,7 @@ class OligoSeqProbeDesigner:
         target_probe_Tm_salt_correction_parameters: dict = None,
     ):
         """
-        Set developer-specific parameters for scrinshot probe designer pipeline.
+        Set developer-specific parameters for Oligo-Seq probe designer pipeline.
         These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_hybridization_probability_alignment_method: Alignment method for computing hybridization probabilities,
