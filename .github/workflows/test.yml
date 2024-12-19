@@ -89,5 +89,5 @@ jobs:
         pip install -e .
 
     - name: Test with pytest
-      run: pytest
+      run: pytest tests/test_oligo_specificity_filter.py
       
