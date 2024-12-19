@@ -65,7 +65,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # a list of builtin themes.
 #
 html_theme = "renku"
-html_logo = "_figures/ODT_logo.png"
+html_logo = "_static/ODT_logo.png"
 
 html_title = "Oligo Designer Toolsuite"
 html_theme_options = {"logo_only": True}
@@ -82,9 +82,9 @@ html_css_files = []
 autodoc_member_order = "bysource"
 
 nbsphinx_thumbnails = {
-    "_getting_started/_tutorials/1-oligo-sequences-generation": "_figures/_tutorials/1-oligo-sequences-generation.png",
-    "_getting_started/_tutorials/2-oligo-database": "_figures/_tutorials/2-oligo-database.png",
-    "_getting_started/_tutorials/3-property-filters": "_figures/_tutorials/3-property-filters.png",
-    "_getting_started/_tutorials/4-specificity-filters": "_figures/_tutorials/4-specificity-filters.png",
-    "_getting_started/_tutorials/5-oligoset-generation": "_figures/_tutorials/5-oligoset-generation.png",
+    "_getting_started/_tutorials/1-oligo-sequences-generation": "_static/tutorials/1-oligo-sequences-generation.png",
+    "_getting_started/_tutorials/2-oligo-database": "_static/tutorials/2-oligo-database.png",
+    "_getting_started/_tutorials/3-property-filters": "_static/tutorials/3-property-filters.png",
+    "_getting_started/_tutorials/4-specificity-filters": "_static/tutorials/4-specificity-filters.png",
+    "_getting_started/_tutorials/5-oligoset-generation": "_static/tutorials/5-oligoset-generation.png",
 }
