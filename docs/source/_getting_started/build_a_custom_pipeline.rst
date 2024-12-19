@@ -33,4 +33,4 @@ A step-by-step installation guide is available
    _tutorials/2-oligo-database
    _tutorials/3-property-filters
    _tutorials/4-specificity-filters
-   _tutorials/5-oligoset-selection
+   _tutorials/5-oligoset-generation

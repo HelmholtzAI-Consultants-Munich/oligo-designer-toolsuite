@@ -80,3 +80,7 @@ html_css_files = []
 # -- Extension configuration -------------------------------------------------
 
 autodoc_member_order = "bysource"
+
+nbsphinx_thumbnails = {
+    "_getting_started/_tutorials/1-oligo-sequences-generation": "_figures/_tutorials/1-oligo-sequences-generation.png",
+}
