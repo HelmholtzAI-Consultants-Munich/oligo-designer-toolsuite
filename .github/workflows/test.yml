@@ -1,6 +1,6 @@
 name: test
 
-on:
+on: 
   push:
     branches:
       - main
@@ -19,35 +19,64 @@ on:
       - 'tutorials/**'
       - '.github/workflows/**'
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+  
+    runs-on: ${{ matrix.os }}
     strategy:
+      max-parallel: 12
       matrix:
-        python-version: ["3.10"]
-
+        os: [ubuntu-latest] #, macos-latest, windows-latest
+        python-version: ["3.10"] # "3.10", "3.11", "3.12"
+        
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    - name: Checkout Repository 
+      uses: actions/checkout@v3
+        
+    - name: Setup Conda for Ubuntu and Mac
+      if: matrix.os != 'windows-latest'
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest" 
+        python-version: ${{ matrix.python-version }}
+        activate-environment: "test-env"
 
-      - name: Setup Conda for Ubuntu
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniconda-version: "latest"
-          python-version: ${{ matrix.python-version }}
-          activate-environment: "test-env"
+    - name: Setup Conda for Windows
+      if: matrix.os == 'windows-latest'
+      uses: s-weigand/setup-conda@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+        activate-environment: "test-env"
+        conda-channels: anaconda, conda-forge
 
-      - name: Install Dependencies
-        run: |
-          conda config --add channels bioconda
-          conda config --add channels conda-forge
-          conda install -n test-env -y "blast>=2.15.0" "bedtools>=2.30" "bowtie>=1.3.1" "bowtie2>=2.5"
-          conda activate test-env
-          python -m pip install --upgrade pip
-          pip install pytest
-          pip install -e .
+    - name: Update conda and add channels
+      run: |
+        conda config --add channels bioconda
+        conda config --add channels conda-forge
+        conda update --all
 
-      - name: Test with pytest
-        run: |
-          pytest tests/test_oligo_specificity_filter.py
+    
+    - name: Install conda dependencies
+      run: |
+        conda install -n test-env -y "blast>=2.15.0" "bedtools>=2.30" "bowtie>=1.3.1" "bowtie2>=2.5"
+
+    - name: Activate Conda Environment
+      shell: bash
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
+        conda update pip
+        conda info --envs
+    
+    - name: Install pip dependencies
+      run: |
+        python --version
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -e .
+
+    - name: Test with pytest
+      run: pytest tests/test_oligo_specificity_filter.py
+    
