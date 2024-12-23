@@ -1,0 +1,87 @@
+name: test-dependencies
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 12
+      matrix:
+        os: [ubuntu-latest] # Add macos-latest, windows-latest if needed
+        python-version: ["3.9", "3.10"]
+
+    steps:
+    - name: Checkout Repository 
+      uses: actions/checkout@v3
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Setup Conda for Ubuntu and Mac
+      if: matrix.os != 'windows-latest'
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest" 
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+
+    - name: Setup Conda for Windows
+      if: matrix.os == 'windows-latest'
+      uses: s-weigand/setup-conda@v1
+      with:
+        update-conda: true
+        python-version: ${{ matrix.python-version }}
+        conda-channels: anaconda, conda-forge
+
+    - name: Update Conda and Add Channels
+      run: |
+        conda config --add channels bioconda
+        conda config --add channels conda-forge
+        conda update --all
+
+    - name: Check Conda and Python Version
+      run: |
+        conda --version
+        conda config --show channels
+        which python
+        python --version
+
+    - name: Install Conda Dependencies
+      run: |
+        conda install "blast>=2.15.0"
+        conda install "bedtools>=2.30"
+        conda install "bowtie>=1.3.1"
+        conda install "bowtie2>=2.5"
+
+    - name: Validate BLAST Installation
+      run: |
+        blastn -version
+        echo ">testseq\nACGTACGTACGT" > test.fa
+        echo ">dbseq\nACGTACGTACGT" > db.fa
+        makeblastdb -in db.fa -dbtype nucl
+        blastn -query test.fa -db db.fa -out results.out
+        cat results.out
+
+    - name: Validate Bedtools Installation
+      run: |
+        bedtools --version
+        echo -e "chr1\t100\t200\nchr1\t150\t250" > test.bed
+        bedtools merge -i test.bed
+
+    - name: Validate Bowtie Installation
+      run: |
+        bowtie --version
+        bowtie-build test.fa test_index
+        bowtie -f test_index test.fa
+
+    - name: Validate Bowtie2 Installation
+      run: |
+        bowtie2 --version
+        bowtie2-build test.fa test_index2
+        bowtie2 -x test_index2 -U test.fa -S test.sam
+        cat test.sam
