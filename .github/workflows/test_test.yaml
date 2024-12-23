@@ -19,7 +19,6 @@ jobs:
         python-version: 3.9  # Specify the desired Python version
         auto-update-conda: true
         activate-environment: myenv  # Automatically activate the environment after creation
-        environment-file: environment.yml  # If you have an environment.yml file
 
     - name: Create and Activate Conda Environment
       run: |
