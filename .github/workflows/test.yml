@@ -74,6 +74,7 @@ jobs:
     
     - name: Install pip dependencies
       run: |
+        python --version
         python -m pip install --upgrade pip
         pip install pytest
         pip install -e .
