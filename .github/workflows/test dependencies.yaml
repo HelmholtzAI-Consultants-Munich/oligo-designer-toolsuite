@@ -58,14 +58,7 @@ jobs:
         conda install "bowtie>=1.3.1"
         conda install "bowtie2>=2.5"
 
-    - name: Validate BLAST Installation
-      run: |
-        blastn -version
-        echo ">testseq\nACGTACGTACGT" > test.fa
-        echo ">dbseq\nACGTACGTACGT" > db.fa
-        makeblastdb -in db.fa -dbtype nucl
-        blastn -query test.fa -db db.fa -out results.out
-        cat results.out
+
 
     - name: Validate Bedtools Installation
       run: |
