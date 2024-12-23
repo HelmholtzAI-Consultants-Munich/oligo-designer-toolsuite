@@ -9,7 +9,6 @@ on:
       - 'pyproject.toml'
       - 'docs/**'
       - 'tutorials/**'
-      - '.github/workflows/**'
   pull_request:
     branches:
       - main
@@ -70,6 +69,7 @@ jobs:
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
+        conda update pip
         conda info --envs
     
     - name: Install pip dependencies
