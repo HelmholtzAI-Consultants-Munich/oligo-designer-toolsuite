@@ -83,5 +83,5 @@ jobs:
         pip install -e .
 
     - name: Test with pytest
-      run: pytest tests/test_oligo_specificity_filter.py
+      run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
     
