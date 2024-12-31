@@ -38,7 +38,7 @@ TBD
 Pipeline Description
 -----------------------
 
-.. image:: ../source/_static/pipeline_scrinshot.jpg
+.. image:: ../_static/pipeline_scrinshot.jpg
     :width: 500px
 
 The pipeline has four major steps:
