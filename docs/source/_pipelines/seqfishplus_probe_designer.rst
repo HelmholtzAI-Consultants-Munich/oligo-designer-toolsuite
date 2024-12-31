@@ -36,7 +36,7 @@ TBD
 Pipeline Description
 -----------------------
 
-.. image:: ../source/_static/pipeline_seqfishplus.jpg
+.. image:: ../_static/pipeline_seqfishplus.jpg
 
 The pipeline has four major steps:
 
