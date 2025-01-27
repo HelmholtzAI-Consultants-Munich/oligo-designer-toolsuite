@@ -123,7 +123,7 @@ The following pipelines are pre-implemented and ready-to-use:
 
 [🧫 Oligo-Seq Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html)
 
-If you would like to modify an existing pipeline for your specific experimental settings or would like to design a new pipeline for a different experimental setup, feel free to reach out to us [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Isra Mekki](mailto:isra.mekki@helmholtz-munich.de).
+If you would like to modify an existing pipeline for adjusted experimental settings or to design a new pipeline for a different experimental setup, feel free to reach out to us [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Isra Mekki](mailto:isra.mekki@helmholtz-munich.de).
 
 ## Contributing
 
