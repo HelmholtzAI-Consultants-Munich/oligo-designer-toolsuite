@@ -35,7 +35,7 @@ TBD
 
 Pipeline Description
 -----------------------
-.. image:: ../_figures/pipeline_merfish.jpg
+.. image:: ../_static/pipeline_merfish.jpg
 
 The pipeline has four major steps:
 
