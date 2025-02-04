@@ -21,7 +21,7 @@ ranging from research to disease diagnosis or therapeutics. Oligos can be used a
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/main/docs/source/_figures/oligo_design.png" width="800">
+<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/main/docs/source/_static/oligo_design.png" width="800">
 
 </div>
 
