@@ -4,7 +4,7 @@ Introduction to the Python Framework
 The Oligo Designer Toolsuite is a collection of modules that provide basic functionalities for custom oligo design pipelines within a flexible Python framework.
 All modules have a common underlying data structure and a standardized API, which allows the user to easily combine different modules depending on the required processing steps. 
 
-.. image:: ../_figures/ODT_workflow.png
+.. image:: ../_static/ODT_workflow.png
 
 This section will cover the core components of the framework and it's underlying data structure.
 For explanations on how to customize and setup an oligo design pipeline, please have a look the tutorial :doc:`./build_a_custom_pipeline`
@@ -16,7 +16,7 @@ The underlying data structure implemented in the ``OligoDatabase`` class is desi
 This data structure organizes oligo records in a dictionary-like format, allowing for structured storage of sequence information, annotations, and experimental parameters. 
 Due to its structure, the OligoDatabase class enables seamless integration with other modules in the framework, supporting operations such as querying, filtering, and updating records. 
 
-.. image:: ../_figures/effidict.png
+.. image:: ../_static/effidict.png
    :align: right
    :alt: EffiDict Data Structure Diagram
    :width: 200px
