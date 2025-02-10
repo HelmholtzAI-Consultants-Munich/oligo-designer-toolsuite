@@ -1,63 +1,85 @@
-name: Test with Conda
+name: test n1
 
-on:
+on: 
   push:
-    branches: [ main ]
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'
+      - '.github/workflows/**'
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build:
+  
     runs-on: ${{ matrix.os }}
     strategy:
+      max-parallel: 12
       matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.10"] 
-        # Add "3.11", "3.12", etc. if desired
-
+        os: [ubuntu-latest] #, macos-latest, windows-latest
+        python-version: ["3.10"] # "3.10", "3.11", "3.12"
+        
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+    - name: Checkout Repository 
+      uses: actions/checkout@v3
 
-      - name: Set up Miniconda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-activate-base: false
-          activate-environment: test-env
-          # This ensures a new environment with the correct Python is created:
-          environment-spec: python=${{ matrix.python-version }}
-          use-mamba: true
-          # All channels you need:
-          channels: conda-forge, bioconda, defaults
-          channel-priority: strict
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Setup Conda for Ubuntu and Mac
+      if: matrix.os != 'windows-latest'
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest" 
+        python-version: ${{ matrix.python-version }}
+        activate-environment: "test-env"
 
-      - name: Show Python version (should be 3.10)
-        run: python --version
+    - name: Setup Conda for Windows
+      if: matrix.os == 'windows-latest'
+      uses: s-weigand/setup-conda@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+        activate-environment: "test-env"
+        conda-channels: anaconda, conda-forge
 
-      - name: Update Conda
-        run: mamba update -n base conda --yes
+    - name: Activate Conda Environment
+      shell: bash
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
+        conda update pip
+        conda info --envs
+        conda config --add channels bioconda
+        conda config --add channels conda-forge
+        conda -n base -c defaults conda
+        conda update --all
+        conda install -n test-env -y "blast>=2.15.0" "bedtools>=2.30" "bowtie>=1.3.1" "bowtie2>=2.5"
 
-      - name: Install conda dependencies
-        run: mamba install --yes \
-          "blast>=2.15.0" "bedtools>=2.30" "bowtie>=1.3.1" "bowtie2>=2.5"
-        # If any of these packages *force* Python to downgrade,
-        # conda will let you know in the solver output.
 
-      - name: Install pip packages
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-          pip install -e .
+    - name: Install pip dependencies
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
+        python --version
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -e .
+    - name: Check Conda dependencies
+      run: conda list
 
-      - name: Verify environment and run tests
-        run: |
-          echo "Conda environment list:"
-          conda env list
-          echo "Conda list in test-env:"
-          conda list
-          echo "Python version in test-env:"
-          python --version
-
-      - name: Run pytest
-        run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
+    - name: Test with pytest
+      run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
