@@ -31,7 +31,7 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 🚀 ***Oligo Designer Toolsuite*** **is a collection of modules that provides all basic functionalities for custom oligo design pipelines as well as advanced experiment-specific functionalities like machine learning models for oligo specificity prediction within a flexible Python framework.** 
 
-To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. SCRINSHOT or SeqFISH+ probe design for Spatial Transcriptomics.
+To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. MERFISH or SeqFISH+ probe design for Spatial Transcriptomics.
 
 <!-- LINK INTRODUCTION END -->
 
@@ -163,7 +163,7 @@ If the Oligo Designer Toolsuite is useful for your research, consider citing the
 }
 ```
 
-If you are using one of the spatial transcriptomics pipelines provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
+If you are using the SCRINSHOT, MERFISH or SeqFISH+ pipeline provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
 
 ```
 @article {kuemmerle2024probe,
