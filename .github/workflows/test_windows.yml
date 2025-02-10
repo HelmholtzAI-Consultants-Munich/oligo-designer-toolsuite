@@ -24,12 +24,28 @@ jobs:
         run: |
           Start-Process -FilePath "blast_installer.exe" -ArgumentList "/S /D=C:\\blast" -NoNewWindow -Wait
 
+      - name: Find BLAST Executable (Optimized)
+        id: find-blast
+        run: |
+          $commonPaths = @("C:\\blast\\bin", "C:\\blast")
+          $blastPath = $null
+          foreach ($path in $commonPaths) {
+            if (Test-Path "$path\\blastn.exe") {
+              $blastPath = "$path\\blastn.exe"
+              break
+            }
+          }
+          if (-Not $blastPath) {
+            throw "BLAST+ installation failed or incorrect path."
+          }
+          echo "BLAST_PATH=$blastPath" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       - name: Add BLAST to PATH
         run: |
-          echo "C:\\blast\\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          $blastDir = (Get-Item $env:BLAST_PATH).DirectoryName
+          echo "$blastDir" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
       - name: Verify Installation
         run: |
-          Get-Command "C:\\blast\\bin\\blastn.exe"
-          C:\\blast\\bin\\blastn.exe -version
+          echo "Using BLAST from: $env:BLAST_PATH"
+          & $env:BLAST_PATH -version
