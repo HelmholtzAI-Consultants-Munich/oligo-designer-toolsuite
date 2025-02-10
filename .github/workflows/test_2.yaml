@@ -72,11 +72,13 @@ jobs:
 
     - name: Test dependencies
       run: |
-        blastn -h
+        python --version
+        conda list
+        bedtools -h
 
     - name: Test dependencies
       run: |
-        bedtools -h
+        blastn -h
         
     - name: Install pip dependencies
       run: |
