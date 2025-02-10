@@ -58,14 +58,18 @@ jobs:
 
     - name: Update conda, add channels and install dependencies
       run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate base
         conda config --add channels bioconda
         conda config --add channels conda-forge
         conda update -n base -c defaults conda
         conda update --all
-        conda install "blast>=2.15.0"
-        conda install "bedtools>=2.30"
-        conda install "bowtie>=1.3.1"
-        conda install "bowtie2>=2.5"
+        conda install -y "blast>=2.15.0"
+        conda install -y "bedtools>=2.30"
+        conda install -y "bowtie>=1.3.1"
+        conda install -y "bowtie2>=2.5"
+        echo "$(conda info --base)/bin" >> $GITHUB_PATH
+        which blastn
         blastn -version
 
         
