@@ -2,16 +2,14 @@ name: test n1
 
 on: 
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths-ignore:
       - 'README.md'
       - 'pyproject.toml'
       - 'docs/**'
       - 'tutorials/**'
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
     paths-ignore:
       - 'README.md'
       - 'pyproject.toml'
@@ -23,68 +21,56 @@ on:
 
 jobs:
   build:
-  
     runs-on: ${{ matrix.os }}
     strategy:
-      max-parallel: 12
       matrix:
-        os: [ubuntu-latest] #, macos-latest, windows-latest
-        python-version: ["3.10"] # "3.10", "3.11", "3.12"
-        
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10"] 
+        # Add more versions as needed: ["3.10", "3.11", "3.12"]
+
     steps:
-    - name: Checkout Repository 
-      uses: actions/checkout@v3
+      - name: Check out repository
+        uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: Setup Conda for Ubuntu and Mac
-      if: matrix.os != 'windows-latest'
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        miniconda-version: "latest" 
-        python-version: ${{ matrix.python-version }}
-        activate-environment: "test-env"
+      # 1) Setup Miniconda on all platforms
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-activate-base: false
+          activate-environment: test-env
+          python-version: ${{ matrix.python-version }}
+          # Add channels you need:
+          channels: conda-forge, bioconda, defaults
+          # Speeds installs
+          use-mamba: true
 
-    - name: Setup Conda for Windows
-      if: matrix.os == 'windows-latest'
-      uses: s-weigand/setup-conda@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-        activate-environment: "test-env"
-        conda-channels: anaconda, conda-forge
+      # 2) Update conda and installed packages
+      - name: Update conda
+        run: |
+          conda update -n base conda --yes
+          conda update --all --yes
 
-    - name: Activate Conda Environment
-      shell: bash
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate test-env
-        conda update pip
-        conda info --envs
+      # 3) Install conda dependencies
+      - name: Install conda dependencies
+        run: |
+          conda install --yes \
+            "blast>=2.15.0" \
+            "bedtools>=2.30" \
+            "bowtie>=1.3.1" \
+            "bowtie2>=2.5"
 
-    - name: Update conda and add channels
-      run: |
-        conda config --add channels bioconda
-        conda config --add channels conda-forge
-        conda -n base -c defaults conda
-        conda update --all
+      # 4) Install pip dependencies
+      - name: Install pip dependencies
+        run: |
+          python --version
+          python -m pip install --upgrade pip
+          pip install pytest
+          # If your package is pip-installable in editable mode:
+          pip install -e .
 
-        
-    - name: Install conda dependencies
-      run: |
-        conda install -n test-env -y "blast>=2.15.0" "bedtools>=2.30" "bowtie>=1.3.1" "bowtie2>=2.5"
-    
-    - name: Install pip dependencies
-      run: |
-        python --version
-        python -m pip install --upgrade pip
-        pip install pytest
-        pip install -e .
-    - name: Check Conda dependencies
-      run: conda list
+      # 5) Verify environment and run tests
+      - name: Check conda environment
+        run: conda list
 
-    - name: Test with pytest
-      run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
-    
+      - name: Test with pytest
+        run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
