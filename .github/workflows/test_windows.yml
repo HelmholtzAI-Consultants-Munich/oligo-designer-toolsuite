@@ -18,16 +18,21 @@ jobs:
 
       - name: Download BLAST+
         run: |
-          Invoke-WebRequest -Uri "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.16.0/ncbi-blast-2.1634.0+-win64.exe" -OutFile "blast_installer.exe"
+          Invoke-WebRequest -Uri "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.16.0/ncbi-blast-2.16.0+-win64.exe" -OutFile "blast_installer.exe"
 
       - name: Install BLAST+
         run: |
           Start-Process -FilePath "blast_installer.exe" -ArgumentList "/S /D=C:\\blast" -NoNewWindow -Wait
 
+      - name: List Installed Files
+        run: |
+          Get-ChildItem -Path C:\\blast -Recurse
+
       - name: Add BLAST to PATH
         run: |
-          echo "C:\\blast" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          echo "C:\\blast\\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
       - name: Verify Installation
         run: |
-          blastn -version
+          Get-Command "C:\\blast\\bin\\blastn.exe"
+          C:\\blast\\bin\\blastn.exe -version
