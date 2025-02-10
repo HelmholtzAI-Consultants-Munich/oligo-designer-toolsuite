@@ -56,11 +56,6 @@ jobs:
         activate-environment: "test-env"
         conda-channels: anaconda, conda-forge
 
-    
-    - name: Install conda dependencies
-      run: |
-        conda install -n test-env -y "blast>=2.15.0" "bedtools>=2.30" "bowtie>=1.3.1" "bowtie2>=2.5"
-
     - name: Activate Conda Environment
       shell: bash
       run: |
@@ -74,6 +69,11 @@ jobs:
         conda config --add channels bioconda
         conda config --add channels conda-forge
         conda update --all
+
+        
+    - name: Install conda dependencies
+      run: |
+        conda install -n test-env -y "blast>=2.15.0" "bedtools>=2.30" "bowtie>=1.3.1" "bowtie2>=2.5"
     
     - name: Install pip dependencies
       run: |
