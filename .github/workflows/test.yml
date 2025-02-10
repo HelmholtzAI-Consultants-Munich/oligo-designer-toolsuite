@@ -75,10 +75,12 @@ jobs:
         conda activate test-env
         python --version
         python -m pip install --upgrade pip
-        pip install -m pytest
-        pip install -m -e .
+        pip install pytest
+        pip install -e .
     - name: Check Conda dependencies
       run: conda list
 
     - name: Test with pytest
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
       run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
