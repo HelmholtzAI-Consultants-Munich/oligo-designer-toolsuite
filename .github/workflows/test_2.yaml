@@ -65,15 +65,19 @@ jobs:
 
     - name: Install conda dependencies
       run: |
-        conda install "blast>=2.15.0"
-        conda install "bedtools>=2.30"
-        conda install "bowtie>=1.3.1"
-        conda install "bowtie2>=2.5"
+        conda install -y "blast>=2.15.0"
+        conda install -y "bedtools>=2.30"
+        conda install -y "bowtie>=1.3.1"
+        conda install -y "bowtie2>=2.5"
 
-    - name: Test dependencies
+    - name: Activate Conda Environment and Verify Installation
       run: |
-        python --version
-        conda list
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate base
+        which blast
+        which bedtools
+        which bowtie
+        blastn -version
         
     - name: Install pip dependencies
       run: |
