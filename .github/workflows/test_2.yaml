@@ -68,10 +68,7 @@ jobs:
         conda install -y "bedtools>=2.30"
         conda install -y "bowtie>=1.3.1"
         conda install -y "bowtie2>=2.5"
-        echo "$(conda info --base)/bin" >> $GITHUB_PATH
-        which blastn
-        blastn -version
-
+        python --version
         
     - name: Install pip dependencies
       run: |
