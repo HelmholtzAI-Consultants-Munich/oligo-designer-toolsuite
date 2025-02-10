@@ -56,12 +56,6 @@ jobs:
         activate-environment: "test-env"
         conda-channels: anaconda, conda-forge
 
-    - name: Update conda and add channels
-      run: |
-        conda config --add channels bioconda
-        conda config --add channels conda-forge
-        conda update --all
-
     
     - name: Install conda dependencies
       run: |
@@ -74,6 +68,12 @@ jobs:
         conda activate test-env
         conda update pip
         conda info --envs
+
+    - name: Update conda and add channels
+      run: |
+        conda config --add channels bioconda
+        conda config --add channels conda-forge
+        conda update --all
     
     - name: Install pip dependencies
       run: |
