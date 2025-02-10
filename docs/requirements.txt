@@ -5,6 +5,7 @@ sphinx-autodocgen
 sphinxcontrib-napoleon
 nbsphinx
 nbsphinx-link
+myst-parser
 pandoc
 jinja2
 
