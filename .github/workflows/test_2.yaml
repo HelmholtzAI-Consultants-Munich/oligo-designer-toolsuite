@@ -71,7 +71,6 @@ jobs:
         conda install -n test-env -y "bedtools>=2.30"
         conda install -n test-env -y "bowtie>=1.3.1"
         conda install -n test-env -y "bowtie2>=2.5"
-        echo "$(conda info --base)/envs/myenv/bin" >> $GITHUB_PATH
         python --version
         which blastn
         
