@@ -90,4 +90,4 @@ jobs:
         conda activate test-env
         python --version
         which blastn
-        pytest --disable-warnings tests/test_oligo_specificity_filter.py
+        pytest --disable-warnings
