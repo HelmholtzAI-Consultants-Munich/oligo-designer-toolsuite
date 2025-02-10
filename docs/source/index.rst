@@ -6,35 +6,6 @@
 *Oligo Designer Toolsuite* - Lightweight Development of Custom Oligo Design Pipelines
 =======================================================================================
 
-Oligonucleotides (abbrev. oligos) are short, synthetic strands of DNA or RNA that are designed with respect to a specific target region and
-have many application areas, ranging from research to disease diagnosis or therapeutics.
-Oligos can be used as primers during DNA amplification, as probes for *in-situ* hybridization or as guide RNAs for CRISPR-based gene editing.
-Based on the intended application and experimental design, researchers have to customize the length, sequence composition, and thermodynamic
-properties of the designed oligos.
-
-
-|image0|
-
-.. |image0| image:: _figures/oligo_design.png
-
-
-Various tools exist that provide custom design of oligo sequences depending on the area of application. Even though most tools apply the same 
-basic processing steps, ranging from the generation of custom-length oligo sequences, the filtering of oligo sequences based on thermodynamic 
-properties as well as the selection of an optimal set of oligos, each newly developed tool uses its own implementation and different package 
-dependencies. Consequently, not only the development of new tools is slowed down, but also the maintenance and modification of existing tools 
-is hampered, because developers do not have a common resource for those functionalities to use. We tackle this issue with our open-source 
-*Oligo Designer Toolsuite*.
-
-**Oligo Designer Toolsuite is a collection of modules that provides all basic functionalities for custom oligo design pipelines as well as 
-advanced experiment-specific functionalities like machine learning models for oligo specificity prediction within a flexible Python framework.** 
-
-To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that 
-ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of 
-large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design 
-pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. 
-We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. SCRINSHOT or SeqFISH+ probe design for Spatial Transcriptomics.
-
-
 .. include:: ../../../README.md
    :parser: myst_parser.sphinx_
    :start-after: <!-- LINK INTRODUCTION START -->
