@@ -39,6 +39,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "nbsphinx",
     "nbsphinx_link",
+    "myst_parser",
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 add_module_names = False
