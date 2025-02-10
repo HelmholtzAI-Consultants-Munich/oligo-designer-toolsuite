@@ -19,6 +19,8 @@ jobs:
       - name: Download BLAST+
         run: |
           Invoke-WebRequest -Uri "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.16.0/ncbi-blast-2.16.0+-win64.exe" -OutFile "blast_installer.exe"
+          Get-ChildItem
+
 
       - name: Install BLAST+
         run: |
