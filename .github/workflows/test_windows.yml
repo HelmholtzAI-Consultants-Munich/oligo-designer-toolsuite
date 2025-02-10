@@ -19,28 +19,25 @@ jobs:
       - name: Download BLAST+
         run: |
           Invoke-WebRequest -Uri "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.16.0/ncbi-blast-2.16.0+-win64.exe" -OutFile "blast_installer.exe"
-          Get-ChildItem
 
-
-      - name: Install BLAST+
+      - name: Run Installer with Logging
         run: |
-          Start-Process -FilePath "blast_installer.exe" -ArgumentList "/quiet /D=C:\\blast" -NoNewWindow -Wait
-          Get-ChildItem "C:\\"
+          Start-Process -FilePath "blast_installer.exe" -ArgumentList "/S /D=C:\\blast" -RedirectStandardOutput "blast_install.log" -RedirectStandardError "blast_error.log" -NoNewWindow -Wait
 
-      - name: Find BLAST Executable (Optimized)
+      - name: Check Installation Logs
+        run: |
+          if (Test-Path "blast_install.log") { Get-Content "blast_install.log" }
+          if (Test-Path "blast_error.log") { Get-Content "blast_error.log" }
+
+      - name: Find Installed Files
+        run: |
+          Get-ChildItem -Path C:\\blast -Recurse
+
+      - name: Locate BLAST Executable
         id: find-blast
         run: |
-          $commonPaths = @("C:\\blast\\bin", "C:\\blast")
-          $blastPath = $null
-          foreach ($path in $commonPaths) {
-            if (Test-Path "$path\\blastn.exe") {
-              $blastPath = "$path\\blastn.exe"
-              break
-            }
-          }
-          if (-Not $blastPath) {
-            throw "BLAST+ installation failed or incorrect path."
-          }
+          $blastPath = Get-ChildItem -Path "C:\\blast" -Recurse -Filter "blastn.exe" | Select-Object -ExpandProperty FullName -First 1
+          if (-Not $blastPath) { throw "BLAST+ installation failed or incorrect path." }
           echo "BLAST_PATH=$blastPath" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       - name: Add BLAST to PATH
