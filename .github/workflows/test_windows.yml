@@ -24,7 +24,7 @@ jobs:
 
       - name: Install BLAST+
         run: |
-          Start-Process -FilePath "blast_installer.exe" -ArgumentList "/D=C:\\blast" -NoNewWindow -Wait
+          Start-Process -FilePath "blast_installer.exe" -ArgumentList "/quiet /D=C:\\blast" -NoNewWindow -Wait
           Get-ChildItem "C:\\"
 
       - name: Find BLAST Executable (Optimized)
