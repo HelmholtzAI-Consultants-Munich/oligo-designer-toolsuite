@@ -75,8 +75,8 @@ jobs:
         conda activate test-env
         python --version
         python -m pip install --upgrade pip
-        pip -m install pytest
-        pip -m install -e .
+        pip install -m pytest
+        pip install -m -e .
     - name: Check Conda dependencies
       run: conda list
 
