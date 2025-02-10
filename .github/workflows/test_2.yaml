@@ -1,0 +1,89 @@
+name: test
+
+on: 
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+  
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 12
+      matrix:
+        os: [ubuntu-latest] #, macos-latest, windows-latest
+        python-version: ["3.10"] # "3.10", "3.11", "3.12"
+        
+    steps:
+    - name: Checkout Repository 
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Setup Conda for Ubuntu and Mac
+      if: matrix.os != 'windows-latest'
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest" 
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+
+    - name: Setup Conda for Windows
+      if: matrix.os == 'windows-latest'
+      uses: s-weigand/setup-conda@v1
+      with:
+        update-conda: true
+        python-version: ${{ matrix.python-version }}
+        conda-channels: anaconda, conda-forge, bioconda
+
+    - name: Update conda and add channels
+      run: |
+        conda config --add channels bioconda
+        conda config --add channels conda-forge
+        conda update -n base -c defaults conda
+        conda update --all
+
+    - name: Install conda dependencies
+      run: |
+        conda install "blast>=2.15.0"
+        conda install "bedtools>=2.30"
+        conda install "bowtie>=1.3.1"
+        conda install "bowtie2>=2.5"
+
+    - name: Test dependencies
+      run: |
+        blastn -h
+
+    - name: Test dependencies
+      run: |
+        bedtools -h
+        
+    - name: Install pip dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -e .
+        
+    - name: Test with pytest
+      run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
+    
