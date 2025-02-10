@@ -47,19 +47,23 @@ jobs:
         miniconda-version: "latest" 
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
+        conda-channels: anaconda, conda-forge, bioconda
+        activate-environment: "test-env"
 
     - name: Setup Conda for Windows
       if: matrix.os == 'windows-latest'
       uses: s-weigand/setup-conda@v1
       with:
+        miniconda-version: "latest" 
         update-conda: true
         python-version: ${{ matrix.python-version }}
         conda-channels: anaconda, conda-forge, bioconda
+        activate-environment: "test-env"
 
     - name: Update conda, add channels and install dependencies
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate base
+        conda activate test-env
         conda config --add channels bioconda
         conda config --add channels conda-forge
         conda update -n base -c defaults conda
