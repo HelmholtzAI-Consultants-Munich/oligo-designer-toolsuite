@@ -47,7 +47,6 @@ jobs:
         miniconda-version: "latest" 
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
-        conda-channels: anaconda, conda-forge, bioconda
         activate-environment: "test-env"
 
     - name: Setup Conda for Windows
@@ -57,7 +56,6 @@ jobs:
         miniconda-version: "latest" 
         update-conda: true
         python-version: ${{ matrix.python-version }}
-        conda-channels: anaconda, conda-forge, bioconda
         activate-environment: "test-env"
 
     - name: Update conda, add channels and install dependencies
@@ -71,8 +69,6 @@ jobs:
         conda install -n test-env -y "bedtools>=2.30"
         conda install -n test-env -y "bowtie>=1.3.1"
         conda install -n test-env -y "bowtie2>=2.5"
-        python --version
-        which blastn
         
     - name: Install pip dependencies
       run: |
@@ -81,14 +77,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install -e .
-        python --version
-        which blastn
         
     - name: Test with pytest
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
+        pytest --disable-warnings tests/test_oligo_specificity_filter.py
         python --version
         which blastn
-        pytest --disable-warnings tests/test_oligo_specificity_filter.py
     
