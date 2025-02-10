@@ -1,0 +1,33 @@
+name: Install BLAST on Windows
+
+on:
+  push:
+    branches:
+      - test-windows
+  pull_request:
+    branches:
+      - test-windows
+
+jobs:
+  install-blast:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download BLAST+
+        run: |
+          Invoke-WebRequest -Uri "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.16.0/ncbi-blast-2.16.0+-win64.exe" -OutFile "blast_installer.exe"
+
+      - name: Install BLAST+
+        run: |
+          Start-Process -FilePath "blast_installer.exe" -ArgumentList "/S /D=C:\\blast" -NoNewWindow -Wait
+
+      - name: Add BLAST to PATH
+        run: |
+          echo "C:\\blast" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: Verify Installation
+        run: |
+          blastn -version
