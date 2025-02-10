@@ -90,6 +90,7 @@ jobs:
       shell: bash
       run: |
         eval "$(conda shell.bash hook)"
+        conda create -y -n test-env python=${{ matrix.python-version }}
         conda activate test-env
         conda config --add channels bioconda
         conda config --add channels conda-forge
