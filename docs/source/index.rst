@@ -35,6 +35,12 @@ pipelines, helping to accelerate the development of new tools and facilitate the
 We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. SCRINSHOT or SeqFISH+ probe design for Spatial Transcriptomics.
 
 
+.. include:: ../../../README.md
+   :parser: myst_parser.sphinx_
+   :start-after: <!-- LINK INTRODUCTION START -->
+   :end-before: <!-- LINK INTRODUCTION END -->
+
+
 .. toctree::
    :maxdepth: 1
    :caption: GETTING STARTED
