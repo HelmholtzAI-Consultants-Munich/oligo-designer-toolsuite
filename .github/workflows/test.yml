@@ -81,6 +81,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install -e .
+    - name: Check Conda dependencies
+      run: conda list
 
     - name: Test with pytest
       run: pytest --disable-warnings tests/test_oligo_specificity_filter.py
