@@ -1,3 +1,5 @@
-.. mdinclude:: ../../../README.md
-   :start-after: <!-- INSTALLATION START -->
-   :end-before: <!-- INSTALLATION END -->
+Installation
+==============
+
+.. include:: ../../../README.md
+   :parser: myst_parser.sphinx_
