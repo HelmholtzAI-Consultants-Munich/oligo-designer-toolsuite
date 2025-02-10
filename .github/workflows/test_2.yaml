@@ -66,12 +66,12 @@ jobs:
         conda activate test-env
         conda config --add channels bioconda
         conda config --add channels conda-forge
-        conda update -n base -c defaults conda
+        # conda update -n base -c defaults conda
         conda update --all
-        conda install -y "blast>=2.15.0"
-        conda install -y "bedtools>=2.30"
-        conda install -y "bowtie>=1.3.1"
-        conda install -y "bowtie2>=2.5"
+        conda install -n test-env -y "blast>=2.15.0"
+        conda install -n test-env -y "bedtools>=2.30"
+        conda install -n test-env -y "bowtie>=1.3.1"
+        conda install -n test-env -y "bowtie2>=2.5"
         python --version
         echo "$(conda info --base)/envs/myenv/bin" >> $GITHUB_PATH
         which blastn
