@@ -68,6 +68,7 @@ jobs:
       run: |
         conda config --add channels bioconda
         conda config --add channels conda-forge
+        conda -n base -c defaults conda
         conda update --all
 
         
