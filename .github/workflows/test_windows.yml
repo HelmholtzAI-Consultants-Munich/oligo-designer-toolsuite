@@ -24,9 +24,6 @@ jobs:
         run: |
           Start-Process -FilePath "blast_installer.exe" -ArgumentList "/S /D=C:\\blast" -NoNewWindow -Wait
 
-      - name: List Installed Files
-        run: |
-          Get-ChildItem -Path C:\\blast -Recurse
 
       - name: Add BLAST to PATH
         run: |
