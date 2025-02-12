@@ -44,7 +44,8 @@ To allow the flexible usage of different modules, depending on the required proc
 
 This packages was tested for ***Python 3.9 - 3.12*** on ***Linux (x64)*** and ***MacOS (osx64 and arm64)***.
 
-For stable installation, we recommend to first setup a conda environment.  
+For stable installation, we recommend to first setup a conda environment.
+
 *Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
 
 <details>
