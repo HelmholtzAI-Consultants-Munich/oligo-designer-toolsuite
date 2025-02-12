@@ -116,41 +116,42 @@ For the Apple M chips, there is currently no Blast installation available via co
 <details>
   <summary>Option 1: Blast installation via conda installation through osx64 environment emulation</summary>
 
-  	*Pro: Works with conda and requires no extra dependencies*  
-	*Con: Runs via Rosetta osx64 emulation, which does not support installation of ```torch > 2.2.2```*
+  *Pro: Works with conda and requires no extra dependencies*  
+  *Con: Runs via Rosetta osx64 emulation, which does not support installation of ```torch > 2.2.2```*
 
-	First we need to create an conda environment that emulates the osx64 processor:
+  First we need to create an conda environment that emulates the osx64 processor:
 
-	```
-	CONDA_SUBDIR=osx-64 conda create -n odt-osx64 python=3.11
-	conda activate odt-osx64
-	conda config --env --set subdir osx-64
-	```
+  ```
+  CONDA_SUBDIR=osx-64 conda create -n odt-osx64 python=3.11
+  conda activate odt-osx64
+  conda config --env --set subdir osx-64
+  ```
 
-	To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
+  To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
 
-	```
-	conda config --add channels bioconda
-	conda config --add channels conda-forge
-	conda update --all
-	```
+  ```
+  conda config --add channels bioconda
+  conda config --add channels conda-forge
+  conda update --all
+  ```
 
-	The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+  The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
 
-	```
-	conda install "blast>=2.15.0" 
-	conda install "bedtools>=2.30"
-	conda install "bowtie>=1.3.1"
-	conda install "bowtie2>=2.5"
-	```
+  ```
+  conda install "blast>=2.15.0" 
+  conda install "bedtools>=2.30"
+  conda install "bowtie>=1.3.1"
+  conda install "bowtie2>=2.5"
+  ```
 
-	Since ```torch > 2.2.2``` installation is not provided anymore for osx64 processor, we need to make sure to have a numpy version which is ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
+  Since ```torch > 2.2.2``` installation is not provided anymore for osx64 processor, we need to make sure to have a numpy version which is ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
 
-	```
-	pip install "numpy<2.0"
-	```
+  ```
+  pip install "numpy<2.0"
+  ```
 
-	All other required packages are automatically installed if installation is done via ```pip```.
+  All other required packages are automatically installed if installation is done via ```pip```.
+</details>
 
 ***Option 1: Blast installation via conda installation through osx64 environment emulation***
 
