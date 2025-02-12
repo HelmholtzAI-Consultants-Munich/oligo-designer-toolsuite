@@ -109,7 +109,8 @@ pip install "numpy<2.0"
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-#### MacOS (arm64) Requirements
+<details>
+  <summary> **MacOS (arm64) Requirements** </summary>
 
 For the Apple M chips, there is currently no Blast installation available via conda. Hence, we need a workaround for the Blast installation. Therefore, we have two options:
 
