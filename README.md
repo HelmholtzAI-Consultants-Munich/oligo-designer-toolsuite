@@ -48,8 +48,7 @@ For stable installation, we recommend to first setup a conda environment.
 
 *Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
 
-<details>
-  <summary><strong>🖥️ Linux (x64) Requirements</strong></summary> 
+**🖥️ Linux (x64) Requirements**
 
 First create a conda environment:
 
@@ -77,10 +76,7 @@ conda install "bowtie2>=2.5"
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-</details>
-
-<details>
-  <summary><strong>🖥️ MacOS (osx64) Requirements</strong></summary>
+**🖥️ MacOS (osx64) Requirements**
 
 First create a conda environment:
 
@@ -114,15 +110,12 @@ pip install "numpy<2.0"
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-</details>
-
-<details>
-  <summary><strong>🖥️ MacOS (arm64) Requirements</strong></summary>
+**🖥️ MacOS (arm64) Requirements**
 
 For the Apple M chips, there is currently no Blast installation available via conda. Hence, we need a workaround for the Blast installation. Therefore, we have two options:
 
 
-***Option 1: Blast installation via conda installation through osx64 environment emulation***
+<u>Option 1: Blast installation via conda installation through osx64 environment emulation</u>
 
 *Pro: Works with conda and requires no extra dependencies*  
 *Con: Runs via Rosetta osx64 emulation, which does not support installation of ```torch > 2.2.2```*
@@ -160,7 +153,7 @@ pip install "numpy<2.0"
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-***Option 2: Blast installation via Homebrew:***
+<u>Option 2: Blast installation via Homebrew</u>
 
 *Pro: Allows to install a native ARM version of Blast and supports installation of ```torch > 2.2.2``*  
 *Con: Requires Homebrew*
@@ -203,10 +196,7 @@ ln -s /opt/homebrew/bin/makeblastdb $(conda info --base)/envs/odt-arm64/bin/make
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-</details>
-
-<details>
-  <summary><strong>🖥️ Windows Requirements</strong></summary>
+**🖥️ Windows Requirements**
 
 TBD
 
