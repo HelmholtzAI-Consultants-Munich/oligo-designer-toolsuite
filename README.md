@@ -40,26 +40,23 @@ To allow the flexible usage of different modules, depending on the required proc
 
 <!-- LINK INSTALLATION START -->
 
-**Requirements:**
+### Requirements
 
-This packages was tested for ```Python 3.9 - 3.10``` on ubuntu and macos. For stable installation, we recommend to first setup a conda environment, e.g.:
+This packages was tested for ***Python 3.9 - 3.12*** on ***Linux (x64)*** and ***MacOS (osx64 and arm64)***.
 
-```
-conda create -n odt python=3.10
-conda activate odt
-```
-
+For stable installation, we recommend to first setup a conda environment.  
 *Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
 
-If you have an Apple M chip, you need to create an environment simulating an x86 processor to be able to install **Blast**. This can be done as follows:
+#### Linux (x64) Requirements
+
+First create a conda environment:
 
 ```
-CONDA_SUBDIR=osx-64 conda create -n odt python=3.10
-conda activate odt
-conda config --env --set subdir osx-64
+conda create -n odt-x64 python=3.11
+conda activate odt-x64
 ```
 
-It depends on the following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** that need to be installed independently. To install those tools via conda, please activate the Bioconda and conda-forge channels in your conda environment with and update conda and all packages in your environment:
+To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
 
 ```
 conda config --add channels bioconda
@@ -67,27 +64,152 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
-Follow this instruction to install the required additional tools:
+The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
 
-- **Blast** (2.15 or higher) can be installed via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) or via [Bioconda](http://bioconda.github.io/recipes/blast/README.html) installation of Blast with:
-
-		conda install "blast>=2.15.0"
-
-- **BedTools** (2.30 or higher) can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html) or via [Bioconda](http://bioconda.github.io/recipes/bedtools/README.html) installation of BedTools with:
-
-		conda install "bedtools>=2.30"
-
-- **Bowtie** (1.3 or higher) can be installed via [Bowtie webpage](https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie) or via [Bioconda](http://bioconda.github.io/recipes/bowtie/README.html) installation of Bowtie with:
-
-		conda install "bowtie>=1.3.1"
-
-- **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) or via [Bioconda](http://bioconda.github.io/recipes/bowtie2/README.html) installation of Bowtie2 with:
-
-		conda install "bowtie2>=2.5"
+```
+conda install "blast>=2.15.0" 
+conda install "bedtools>=2.30"
+conda install "bowtie>=1.3.1"
+conda install "bowtie2>=2.5"
+```
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-**Install Options:**
+#### MacOS (osx64) Requirements
+
+First create a conda environment:
+
+```
+conda create -n odt-x64 python=3.11
+conda activate odt-x64
+```
+
+To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
+
+```
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda update --all
+```
+
+The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+
+```
+conda install "blast>=2.15.0" 
+conda install "bedtools>=2.30"
+conda install "bowtie>=1.3.1"
+conda install "bowtie2>=2.5"
+```
+
+Since ```torch > 2.2.2``` installation is not provided anymore for osx64 processor, we need to make sure to have a numpy version which is ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
+
+```
+pip install "numpy<2.0"
+```
+
+All other required packages are automatically installed if installation is done via ```pip```.
+
+#### MacOS (arm64) Requirements
+
+For the Apple M chips, there is currently no Blast installation available via conda. Hence, we need a workaround for the Blast installation. Therefore, we have two options:
+
+**Option 1: Blast installation via conda installation through osx64 environment emulation**
+
+*Pro: Works with conda and requires no extra dependencies*  
+*Con: Runs via Rosetta osx64 emulation, which does not support installation of ```torch > 2.2.2```*
+
+First we need to create an conda environment that emulates the osx64 processor:
+
+```
+CONDA_SUBDIR=osx-64 conda create -n odt-osx64 python=3.11
+conda activate odt-osx64
+conda config --env --set subdir osx-64
+```
+
+To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
+
+```
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda update --all
+```
+
+The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+
+```
+conda install "blast>=2.15.0" 
+conda install "bedtools>=2.30"
+conda install "bowtie>=1.3.1"
+conda install "bowtie2>=2.5"
+```
+
+Since ```torch > 2.2.2``` installation is not provided anymore for osx64 processor, we need to make sure to have a numpy version which is ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
+
+```
+pip install "numpy<2.0"
+```
+
+All other required packages are automatically installed if installation is done via ```pip```.
+
+**Option 2: Blast installation via Homebrew:**
+
+*Pro: Allows to install a native ARM version of Blast and supports installation of ```torch > 2.2.2``*  
+*Con: Requires Homebrew*
+
+First create a conda environment:
+
+```
+conda create -n odt-arm64 python=3.11
+conda activate odt-arm64
+```
+
+To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
+
+```
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda update --all
+```
+
+The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+
+```
+conda install "bedtools>=2.30"
+conda install "bowtie>=1.3.1"
+conda install "bowtie2>=2.5"
+```
+
+To install the arm64 Blast version you need Homebrew, which can be installed as described [here](https://brew.sh/). Blast can then be installed via Homebrew:
+
+```
+brew install blast
+```
+
+To use Homebrew-installed BLAST inside your conda environment, you need to ensure that the conda environment recognizes the Homebrew installation by creating a symbolic link inside the conda environment’s ```bin``` directory:
+
+```
+ln -s /opt/homebrew/bin/blastn $(conda info --base)/envs/odt-arm64/bin/blastn
+ln -s /opt/homebrew/bin/makeblastdb $(conda info --base)/envs/odt-arm64/bin/makeblastdb
+```
+
+All other required packages are automatically installed if installation is done via ```pip```.
+
+#### Windows Requirements
+
+TBD
+
+The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+
+- **Blast** (2.15 or higher) can be installed via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+
+- **BedTools** (2.30 or higher) can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html)
+
+- **Bowtie** (1.3 or higher) can be installed via [Bowtie webpage](https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie)
+
+- **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) 
+
+
+### Install Options
 
 The installation of the package is done via pip. Note: if you are using conda, first install pip with: ```conda install pip```.
 
