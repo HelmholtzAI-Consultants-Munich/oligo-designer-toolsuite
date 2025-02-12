@@ -47,7 +47,8 @@ This packages was tested for ***Python 3.9 - 3.12*** on ***Linux (x64)*** and **
 For stable installation, we recommend to first setup a conda environment.  
 *Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
 
-#### Linux (x64) Requirements
+<details>
+  <summary><strong>Linux (x64) Requirements</strong></summary> 
 
 First create a conda environment:
 
@@ -75,7 +76,10 @@ conda install "bowtie2>=2.5"
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-#### MacOS (osx64) Requirements
+</details>
+
+<details>
+  <summary><strong>MacOS (osx64) Requirements</strong></summary>
 
 First create a conda environment:
 
@@ -108,6 +112,8 @@ pip install "numpy<2.0"
 ```
 
 All other required packages are automatically installed if installation is done via ```pip```.
+
+</details>
 
 <details>
   <summary><strong>MacOS (arm64) Requirements</strong></summary>
@@ -198,7 +204,8 @@ All other required packages are automatically installed if installation is done 
 
 </details>
 
-#### Windows Requirements
+<details>
+  <summary><strong>Windows Requirements</strong></summary>
 
 TBD
 
@@ -212,6 +219,7 @@ The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2
 
 - **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) 
 
+</details>
 
 ### Install Options
 
