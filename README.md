@@ -49,7 +49,7 @@ For stable installation, we recommend to first setup a conda environment.
 
 <details>
   <summary><strong>Linux (x64) Requirements</strong></summary> 
-  
+
 First create a conda environment:
 
 ```
