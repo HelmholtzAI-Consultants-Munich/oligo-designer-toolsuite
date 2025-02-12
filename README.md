@@ -118,7 +118,7 @@ For the Apple M chips, there is currently no Blast installation available via co
 ***Option 1: Blast installation via conda installation through osx64 environment emulation***
 
 *Pro: Works with conda and requires no extra dependencies*  
-*Con: Runs via Rosetta osx64 emulation, which does not support installation of ```torch > 2.2.2```*
+*Con: Runs via Rosetta osx64 emulation, which does not support installation of* ```torch > 2.2.2```
 
 First we need to create an conda environment that emulates the osx64 processor:
 
@@ -155,7 +155,7 @@ All other required packages are automatically installed if installation is done 
 
 ***Option 2: Blast installation via Homebrew***
 
-*Pro: Allows to install a native ARM version of Blast and supports installation of ```torch > 2.2.2``*  
+*Pro: Allows to install a native ARM version of Blast and supports installation of* ```torch > 2.2.2``  
 *Con: Requires Homebrew*
 
 First create a conda environment:
