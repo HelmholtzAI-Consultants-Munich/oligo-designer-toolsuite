@@ -260,12 +260,17 @@ If you would like to modify an existing pipeline for adjusted experimental setti
 
 ## Contributing
 
+<!-- LINK CONTRIBUTION START -->
+
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
 
 For any further inquiries please send an email to [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Isra Mekki](mailto:isra.mekki@helmholtz-munich.de).
 
+<!-- LINK CONTRIBUTION END -->
 
 ## How to cite
+
+<!-- LINK CITE START -->
 
 If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
 
@@ -287,6 +292,8 @@ If the Oligo Designer Toolsuite is useful for your research, consider citing the
     url          = {https://doi.org/10.5281/zenodo.7823048}
 }
 ```
+
+<!-- LINK CITE END -->
 
 If you are using the SCRINSHOT, MERFISH or SeqFISH+ pipeline provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
 
@@ -324,4 +331,8 @@ If you are using the SCRINSHOT, MERFISH or SeqFISH+ pipeline provided along the 
 
 ## License
 
+<!-- LINK LICENSE START -->
+
 ```oligo-designer-toolsuite``` is released under the MIT license. See [LICENSE](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/dev/LICENSE) for additional details about it.
+
+<!-- LINK LICENSE END -->

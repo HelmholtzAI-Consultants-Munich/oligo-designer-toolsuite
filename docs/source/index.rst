@@ -41,40 +41,23 @@
 Contributing
 -------------
 
-Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you 
-can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with 
-you and get your code merged into the main branch.
-
-For any further inquiries please send an email to `Lisa Barros de Andrade e Sousa <mailto:lisa.barros@helmholtz-munich.de>`_
-or `Isra Mekki <mailto:isra.mekki@helmholtz-munich.de>`_.
+.. include:: ../../README.md
+   :parser: myst_parser.sphinx_
+   :start-after: <!-- LINK CONTRIBUTION START -->
+   :end-before: <!-- LINK CONTRIBUTION END -->
 
 How to cite
 ------------
 
-If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
-
-::
-
-   @software{campi_2023_7823048,
-      author       = { Isra Mekki,
-                     Francesco Campi,  
-                     Louis Kümmerle,
-                     Chelsea Bright,
-                     Malte Lücken
-                     Fabian Theis,
-                     Marie Piraud,
-                     Lisa Barros de Andrade e Sousa
-                     },
-      title        = {{Oligo Designer Toolsuite}},
-      year         = 2023,
-      publisher    = {Zenodo},
-      version      = {v0.1.3},
-      doi          = {10.5281/zenodo.7823048},
-      url          = {https://doi.org/10.5281/zenodo.7823048}
-   }
-
+.. include:: ../../README.md
+   :parser: myst_parser.sphinx_
+   :start-after: <!-- LINK CITE START -->
+   :end-before: <!-- LINK CITE END -->
 
 License
 --------
 
-``oligo-designer-toolsuite`` is released under the MIT license. See `LICENSE <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/dev/LICENSE>`_ for additional details about it.
+.. include:: ../../README.md
+   :parser: myst_parser.sphinx_
+   :start-after: <!-- LINK LICENSE START -->
+   :end-before: <!-- LINK LICENSE END -->
