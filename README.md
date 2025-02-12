@@ -155,7 +155,7 @@ All other required packages are automatically installed if installation is done 
 
 ***Option 2: Blast installation via Homebrew***
 
-*Pro: Allows to install a native ARM version of Blast and supports installation of* ```torch > 2.2.2``  
+*Pro: Allows to install a native ARM version of Blast and supports installation of* ```torch > 2.2.2```
 *Con: Requires Homebrew*
 
 First create a conda environment:
