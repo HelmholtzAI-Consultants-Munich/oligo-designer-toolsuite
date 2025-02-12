@@ -115,7 +115,7 @@ All other required packages are automatically installed if installation is done 
 For the Apple M chips, there is currently no Blast installation available via conda. Hence, we need a workaround for the Blast installation. Therefore, we have two options:
 
 
-<u>Option 1: Blast installation via conda installation through osx64 environment emulation</u>
+***Option 1: Blast installation via conda installation through osx64 environment emulation***
 
 *Pro: Works with conda and requires no extra dependencies*  
 *Con: Runs via Rosetta osx64 emulation, which does not support installation of ```torch > 2.2.2```*
@@ -153,7 +153,7 @@ pip install "numpy<2.0"
 
 All other required packages are automatically installed if installation is done via ```pip```.
 
-<u>Option 2: Blast installation via Homebrew</u>
+***Option 2: Blast installation via Homebrew***
 
 *Pro: Allows to install a native ARM version of Blast and supports installation of ```torch > 2.2.2``*  
 *Con: Requires Homebrew*
