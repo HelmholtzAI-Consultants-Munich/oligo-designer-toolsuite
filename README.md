@@ -49,7 +49,7 @@ For stable installation, we recommend to first setup a conda environment.
 *Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
 
 <details>
-  <summary><strong>Linux (x64) Requirements</strong></summary> 
+  <summary><strong>🖥️ Linux (x64) Requirements</strong></summary> 
 
 First create a conda environment:
 
@@ -80,7 +80,7 @@ All other required packages are automatically installed if installation is done 
 </details>
 
 <details>
-  <summary><strong>MacOS (osx64) Requirements</strong></summary>
+  <summary><strong>🖥️ MacOS (osx64) Requirements</strong></summary>
 
 First create a conda environment:
 
@@ -117,7 +117,7 @@ All other required packages are automatically installed if installation is done 
 </details>
 
 <details>
-  <summary><strong>MacOS (arm64) Requirements</strong></summary>
+  <summary><strong>🖥️ MacOS (arm64) Requirements</strong></summary>
 
 For the Apple M chips, there is currently no Blast installation available via conda. Hence, we need a workaround for the Blast installation. Therefore, we have two options:
 
@@ -206,7 +206,7 @@ All other required packages are automatically installed if installation is done 
 </details>
 
 <details>
-  <summary><strong>Windows Requirements</strong></summary>
+  <summary><strong>🖥️ Windows Requirements</strong></summary>
 
 TBD
 
