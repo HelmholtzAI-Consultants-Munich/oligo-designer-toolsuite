@@ -155,7 +155,7 @@ All other required packages are automatically installed if installation is done 
 
 ***Option 2: Blast installation via Homebrew***
 
-*Pro: Allows to install a native ARM version of Blast and supports installation of* ```torch > 2.2.2```
+*Pro: Allows to install a native ARM version of Blast and supports installation of* ```torch > 2.2.2```  
 *Con: Requires Homebrew*
 
 First create a conda environment:
@@ -185,13 +185,6 @@ To install the arm64 Blast version you need Homebrew, which can be installed as 
 
 ```
 brew install blast
-```
-
-To use Homebrew-installed BLAST inside your conda environment, you need to ensure that the conda environment recognizes the Homebrew installation by creating a symbolic link inside the conda environment’s ```bin``` directory:
-
-```
-ln -s /opt/homebrew/bin/blastn $(conda info --base)/envs/odt-arm64/bin/blastn
-ln -s /opt/homebrew/bin/makeblastdb $(conda info --base)/envs/odt-arm64/bin/makeblastdb
 ```
 
 All other required packages are automatically installed if installation is done via ```pip```.
