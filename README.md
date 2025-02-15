@@ -48,13 +48,13 @@ For stable installation, we recommend to first setup a conda environment.
 
 *Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
 
-**🖥️ Linux (x64) Requirements**
+**🖥️ Linux Requirements**
 
 First create a conda environment:
 
 ```
-conda create -n odt-x64 python=3.11
-conda activate odt-x64
+conda create -n odt python=3.11
+conda activate odt
 ```
 
 To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
@@ -65,7 +65,7 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
-The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+The additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
 
 ```
 conda install "blast>=2.15.0" 
@@ -74,50 +74,52 @@ conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
 ```
 
-All other required packages are automatically installed if installation is done via ```pip```.
+All other required packages are automatically installed if installation is done via ```pip``` (see below).
 
-**🖥️ MacOS (osx64) Requirements**
 
-First create a conda environment:
-
-```
-conda create -n odt-x64 python=3.11
-conda activate odt-x64
-```
-
-To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
-
-```
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda update --all
-```
-
-The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
-
-```
-conda install "blast>=2.15.0" 
-conda install "bedtools>=2.30"
-conda install "bowtie>=1.3.1"
-conda install "bowtie2>=2.5"
-```
-
-Since ```torch > 2.2.2``` installation is not provided anymore for osx64 processor, we need to make sure to have a numpy version which is ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
-
-```
-pip install "numpy<2.0"
-```
-
-All other required packages are automatically installed if installation is done via ```pip```.
-
-**🖥️ MacOS (arm64) Requirements**
+**🖥️ MacOS M Chip (arm64) Requirements**
 
 For the Apple M chips, there is currently no Blast installation available via conda. Hence, we need a workaround for the Blast installation. Therefore, we have two options:
 
+***Option 1: Blast installation via Homebrew***
 
-***Option 1: Blast installation via conda installation through osx64 environment emulation***
+*Pro: Allows to install a native M Chip (arm64) version of Blast and supports installation of* ```torch > 2.2.2```.   
+*Con: Requires installation Homebrew, which needs sudo rights.*
 
-*Pro: Works with conda and requires no extra dependencies*  
+First create a conda environment:
+
+```
+conda create -n odt-arm64 python=3.11
+conda activate odt-arm64
+```
+
+To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
+
+```
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda update --all
+```
+
+The additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently. **BedTools**, **Bowtie** and **Bowtie2** can be installed via conda:
+
+```
+conda install "bedtools>=2.30"
+conda install "bowtie>=1.3.1"
+conda install "bowtie2>=2.5"
+```
+
+To install the M Chip (arm64) version of Blast you need Homebrew, which can be installed as described [here](https://brew.sh/). Blast can then be installed via Homebrew:
+
+```
+brew install blast
+```
+
+All other required packages are automatically installed if installation is done via ```pip``` (see below).
+
+***Option 2: Blast installation via conda installation through Intel Chip (osx64) environment emulation***
+
+*Pro: Works with conda and requires no extra dependencies.*  
 *Con: Runs via Rosetta osx64 emulation, which does not support installation of* ```torch > 2.2.2```
 
 First we need to create an conda environment that emulates the osx64 processor:
@@ -145,24 +147,22 @@ conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
 ```
 
-Since ```torch > 2.2.2``` installation is not provided anymore for osx64 processor, we need to make sure to have a numpy version which is ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
+Since ```torch > 2.2.2``` installation is not provided anymore for Max Intel Chips (osx64 processor), we need to make sure to have ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
 
 ```
 pip install "numpy<2.0"
 ```
 
-All other required packages are automatically installed if installation is done via ```pip```.
+All other required packages are automatically installed if installation is done via ```pip``` (see below).
 
-***Option 2: Blast installation via Homebrew***
 
-*Pro: Allows to install a native ARM version of Blast and supports installation of* ```torch > 2.2.2```  
-*Con: Requires Homebrew*
+**🖥️ MacOS Intel Chip (osx64) Requirements**
 
 First create a conda environment:
 
 ```
-conda create -n odt-arm64 python=3.11
-conda activate odt-arm64
+conda create -n odt-x64 python=3.11
+conda activate odt-x64
 ```
 
 To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
@@ -176,18 +176,19 @@ conda update --all
 The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
 
 ```
+conda install "blast>=2.15.0" 
 conda install "bedtools>=2.30"
 conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
 ```
 
-To install the arm64 Blast version you need Homebrew, which can be installed as described [here](https://brew.sh/). Blast can then be installed via Homebrew:
+Since ```torch > 2.2.2``` installation is not provided anymore for Max Intel Chips (osx64 processor), we need to make sure to have ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
 
 ```
-brew install blast
+pip install "numpy<2.0"
 ```
 
-All other required packages are automatically installed if installation is done via ```pip```.
+All other required packages are automatically installed if installation is done via ```pip``` (see below).
 
 **🖥️ Windows Requirements**
 
@@ -203,7 +204,6 @@ The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2
 
 - **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) 
 
-</details>
 
 ### Install Options
 
