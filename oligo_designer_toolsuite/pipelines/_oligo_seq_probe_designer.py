@@ -523,6 +523,8 @@ class OligoSeqProbeDesigner:
 ############################################
 # Oligo-Seq Target Probe Designer
 ############################################
+
+
 class TargetProbeDesigner:
     """
     A class for designing target probes for Oligo-Seq experiments.
@@ -819,8 +821,7 @@ class TargetProbeDesigner:
             dir_output=self.dir_output,
         )
 
-        # TODO: add hybridization filter once it works again
-        filters = [exact_matches, cross_hybridization]  # hybridization_probability
+        filters = [exact_matches, cross_hybridization, hybridization_probability]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",
