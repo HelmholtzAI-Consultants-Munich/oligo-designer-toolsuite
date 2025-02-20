@@ -41,17 +41,12 @@ jobs:
     strategy:
       max-parallel: 12
       matrix:
-        os: ["macos-14"] 
+        os: ["macos-latest"] 
         python-version: ["3.9", "3.10", "3.11", "3.12"]
         
     steps:
     - name: Checkout Repository 
       uses: actions/checkout@v4
-
-    #- name: Setup Python
-    #  uses: actions/setup-python@v4
-    #  with:
-    #    python-version: ${{ matrix.python-version }}
     
     - name: Setup Conda
       uses: conda-incubator/setup-miniconda@v3
@@ -62,12 +57,11 @@ jobs:
         activate-environment: "test-env"
     
     - name: Check arm64 
-      if: matrix.os == 'macos-14'
       run: |
         conda install -y python
         python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
 
-    - name: Update conda, add channels and install dependencies (Ubuntu and Mac)
+    - name: Update conda, add channels and install dependencies
       shell: bash
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
@@ -92,6 +86,4 @@ jobs:
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
-        python --version
-        which blastn
         pytest --disable-warnings
