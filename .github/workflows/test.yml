@@ -55,7 +55,7 @@ jobs:
         
     - name: Setup Conda (Ubuntu & macos x64)
       if: matrix.os != 'macos-14'
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         miniconda-version: "latest" 
         auto-update-conda: true
@@ -64,8 +64,9 @@ jobs:
     
     - name: Setup Conda (macos arm64)
       if: matrix.os == 'macos-14'
-      uses: ./
+      uses: conda-incubator/setup-miniconda@v3
       with:
+        installer-url: https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh
         miniforge-version: latest
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
