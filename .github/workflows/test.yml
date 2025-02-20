@@ -41,20 +41,20 @@ jobs:
     strategy:
       max-parallel: 12
       matrix:
-        os: [ubuntu-latest, macos-14] 
+        os: ["macos-14"] #"ubuntu-latest", "macos-latest"
         python-version: ["3.9", "3.10", "3.11", "3.12"]
         
     steps:
     - name: Checkout Repository 
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+    #- name: Setup Python
+    #  uses: actions/setup-python@v4
+    #  with:
+    #    python-version: ${{ matrix.python-version }}
         
-    - name: Setup Conda (Ubuntu and Mac)
-      if: matrix.os != 'windows-latest'
+    - name: Setup Conda (Ubuntu & macos x64)
+      if: matrix.os != "macos-14"
       uses: conda-incubator/setup-miniconda@v2
       with:
         miniconda-version: "latest" 
@@ -62,10 +62,20 @@ jobs:
         python-version: ${{ matrix.python-version }}
         activate-environment: "test-env"
     
-    - name: Check arm64
+    - name: Setup Conda (macos arm64)
+      if: matrix.os == "macos-14"
+      uses: ./
+      with:
+        miniforge-version: latest
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+        activate-environment: "test-env"
+    
+    - name: Check arm64 
+      if: matrix.os == "macos-14"
       run: |
         conda install -y python
-        python -c "import platform; print(platform.machine())"
+        python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
 
     - name: Update conda, add channels and install dependencies (Ubuntu and Mac)
       if: matrix.os != 'windows-latest'
