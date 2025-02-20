@@ -61,6 +61,11 @@ jobs:
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
         activate-environment: "test-env"
+    
+    - name: Check arm64
+      run: |
+        conda install -y python
+        python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
 
     - name: Update conda, add channels and install dependencies (Ubuntu and Mac)
       if: matrix.os != 'windows-latest'
