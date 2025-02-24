@@ -41,14 +41,14 @@ jobs:
     strategy:
       max-parallel: 12
       matrix:
-        os: ["macos-13"]
+        os: ["macos-13"] #last version that uses intel chip macos
         python-version: ["3.9", "3.10", "3.11", "3.12"]
         
     steps:
     - name: Checkout Repository 
       uses: actions/checkout@v4
         
-    - name: Setup Conda (Ubuntu and Mac)
+    - name: Setup Conda
       uses: conda-incubator/setup-miniconda@v3
       with:
         miniconda-version: "latest" 
@@ -74,8 +74,8 @@ jobs:
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
         python -m pip install --upgrade pip
-        pip install pytest
         pip install "numpy<2.0" #downgrade numpy to make it work with torch < 2.2.2
+        pip install pytest
         pip install -e .
         
     - name: Test with pytest
