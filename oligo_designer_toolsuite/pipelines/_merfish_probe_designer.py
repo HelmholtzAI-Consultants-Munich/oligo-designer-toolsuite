@@ -749,8 +749,8 @@ class MerfishProbeDesigner:
 
             for probe_id in target_probe_database.database[region_id].keys():
 
-                sequence_readout_probe_1 = readout_probe_sequences[0]
-                sequence_readout_probe_2 = readout_probe_sequences[1]
+                sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
+                sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
 
                 new_probe_attributes_encoding_probe[probe_id] = {
                     "barcode": barcode,
