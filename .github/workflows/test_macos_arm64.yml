@@ -39,7 +39,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     strategy:
-      max-parallel: 1
+      max-parallel: 12
       matrix:
         os: ["macos-latest"] 
         python-version: ["3.9", "3.10", "3.11", "3.12"]
@@ -81,6 +81,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install -e .
+
+    - name: Change n_jobs
+      run: |
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/merfish_probe_designer.yaml
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/oligo_seq_probe_designer.yaml
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/scrinshot_probe_designer.yaml
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/seqfish_plus_probe_designer.yaml
+        cat data/configs/merfish_probe_designer.yaml
+        cat data/configs/oligo_seq_probe_designer.yaml
+        cat data/configs/scrinshot_probe_designer.yaml
+        cat data/configs/seqfish_plus_probe_designer.yaml
         
     - name: Test with pytest
       run: |
