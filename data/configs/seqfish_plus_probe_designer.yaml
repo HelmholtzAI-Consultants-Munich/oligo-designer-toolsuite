@@ -120,7 +120,6 @@ target_probe_cross_hybridization_blastn_hit_parameters:
   min_alignment_length: 17 # can be turned into coverage
 # Parameters for the Oligo set selection
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
-pre_filter: false # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for large oligo sets with more than 30 oligos.
 n_attempts: 100000 # number of attempts to find the optimal set of oligos
 heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
 heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
@@ -181,17 +180,12 @@ primer_specificity_encoding_probes_blastn_hit_parameters:
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 primer_Tm_parameters:
-    check: true #default
-    strict: true #default
-    c_seq: null #default
-    shift: 0 #default
     nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
     tmm_table: DNA_TMM1 #default
     imm_table: DNA_IMM1 #default
     de_table: DNA_DE1 #default
-    dnac1: 500 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
-    dnac2: 25 #[nM] default
-    selfcomp: false #default
+    dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
+    dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
     saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
     Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
     K: 0 #[mM] default

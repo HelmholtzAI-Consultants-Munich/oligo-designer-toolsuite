@@ -37,6 +37,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
 )
 from oligo_designer_toolsuite.oligo_selection import (
     GraphBasedSelectionPolicy,
+    GreedySelectionPolicy,
     OligosetGeneratorIndependentSet,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
@@ -49,6 +50,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
 )
 from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
+    base_log_parameters,
     pipeline_step_basic,
     check_content_oligo_database,
 )
@@ -126,7 +128,6 @@ class ScrinshotProbeDesigner:
         },
         target_probe_cross_hybridization_blastn_hit_parameters: dict = {"coverage": 80},
         max_graph_size: int = 5000,
-        pre_filter: bool = False,
         n_attempts: int = 100000,
         heuristic: bool = True,
         heuristic_n_attempts: int = 100,
@@ -201,8 +202,6 @@ class ScrinshotProbeDesigner:
         :type target_probe_cross_hybridization_blastn_hit_parameters: dict
         :param max_graph_size: Maximum size of the graph used in set selection, defaults to 5000.
         :type max_graph_size: int
-        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small, defaults to False.
-        :type pre_filter: bool
         :param n_attempts: Maximum number of attempts for selecting oligo sets, defaults to 100000.
         :type n_attempts: int
         :param heuristic: Whether to apply heuristic methods in oligo set selection, defaults to True.
@@ -251,7 +250,6 @@ class ScrinshotProbeDesigner:
 
         ### Parameters for the Oligo set selection
         self.max_graph_size = max_graph_size
-        self.pre_filter = pre_filter
         self.heuristic = heuristic
         self.n_attempts = n_attempts
         self.heuristic_n_attempts = heuristic_n_attempts
@@ -457,7 +455,6 @@ class ScrinshotProbeDesigner:
             n_sets=n_sets,
             max_graph_size=self.max_graph_size,
             n_attempts=self.n_attempts,
-            pre_filter=self.pre_filter,
             heuristic=self.heuristic,
             heuristic_n_attempts=self.heuristic_n_attempts,
         )
@@ -1087,7 +1084,6 @@ class TargetProbeDesigner:
         n_sets: int,
         max_graph_size: int,
         n_attempts: int,
-        pre_filter: bool,
         heuristic: bool,
         heuristic_n_attempts: int,
     ) -> OligoDatabase:
@@ -1130,8 +1126,6 @@ class TargetProbeDesigner:
         :type n_sets: int
         :param max_graph_size: Maximum size of the graph used in set selection.
         :type max_graph_size: int
-        :param pre_filter: Whether to apply pre-filtering to remove oligos which form non-overlapping sets that are too small.
-        :type pre_filter: bool
         :param n_attempts: Maximum number of attempts for selecting oligo sets.
         :type n_attempts: int
         :param heuristic: Whether to apply heuristic methods in oligo set selection.
@@ -1141,6 +1135,65 @@ class TargetProbeDesigner:
         :return: Updated oligo database.
         :rtype: OligoDatabase
         """
+        set_scoring = LowestSetScoring(ascending=True)
+
+        # We change the processing dependent on the required number of probes in the probe sets
+        # For small sets, we don't pre-filter and find the initial set by iterating
+        # through all possible generated sets, which is faster than the max clique approximation.
+        if set_size_min < 15:
+            pre_filter = False
+            clique_init_approximation = False
+            selection_policy = GraphBasedSelectionPolicy(
+                set_scoring=set_scoring,
+                pre_filter=pre_filter,
+                n_attempts=n_attempts,
+                heuristic=heuristic,
+                heuristic_n_attempts=heuristic_n_attempts,
+                clique_init_approximation=clique_init_approximation,
+            )
+            base_log_parameters(
+                {
+                    "pre_filter": pre_filter,
+                    "clique_init_approximation": clique_init_approximation,
+                    "selection_policy": "Graph-Based",
+                }
+            )
+
+        # For medium sized sets, we don't pre-filter but we apply the max clique approximation
+        # to find an initial probe set faster.
+        if set_size_min > 15:
+            pre_filter = False
+            clique_init_approximation = True
+            selection_policy = GraphBasedSelectionPolicy(
+                set_scoring=set_scoring,
+                pre_filter=pre_filter,
+                n_attempts=n_attempts,
+                heuristic=heuristic,
+                heuristic_n_attempts=heuristic_n_attempts,
+                clique_init_approximation=clique_init_approximation,
+            )
+            base_log_parameters(
+                {
+                    "pre_filter": pre_filter,
+                    "clique_init_approximation": clique_init_approximation,
+                    "selection_policy": "Graph-Based",
+                }
+            )
+
+        # For large sets, we apply the pre-filter which removes all probes from the
+        # graph that are only part of cliques which are smaller than the minimum set size
+        # and we apply the Greedy Selection Policy istead of the graph-based selection policy.
+        if set_size_min > 30:
+            pre_filter = True
+            selection_policy = GreedySelectionPolicy(
+                set_scoring=set_scoring,
+                score_criteria=set_scoring.score_1,
+                pre_filter=pre_filter,
+                penalty=0.01,
+                n_attempts=n_attempts,
+            )
+            base_log_parameters({"pre_filter": pre_filter, "selection_policy": "Greedy"})
+
         oligos_scoring = WeightedIsoformTmGCOligoScoring(
             Tm_min=Tm_min,
             Tm_opt=Tm_opt,
@@ -1154,15 +1207,6 @@ class TargetProbeDesigner:
             isoform_weight=isoform_weight,
             Tm_weight=Tm_weight,
             GC_weight=GC_weight,
-        )
-        set_scoring = LowestSetScoring(ascending=True)
-
-        selection_policy = GraphBasedSelectionPolicy(
-            set_scoring=set_scoring,
-            pre_filter=pre_filter,
-            n_attempts=n_attempts,
-            heuristic=heuristic,
-            heuristic_n_attempts=heuristic_n_attempts,
         )
         oligoset_generator = OligosetGeneratorIndependentSet(
             selection_policy=selection_policy,
@@ -1587,7 +1631,6 @@ def main():
             "target_probe_cross_hybridization_blastn_hit_parameters"
         ],
         max_graph_size=config["max_graph_size"],
-        pre_filter=config["pre_filter"],
         n_attempts=config["n_attempts"],
         heuristic=config["heuristic"],
         heuristic_n_attempts=config["heuristic_n_attempts"],

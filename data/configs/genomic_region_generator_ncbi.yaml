@@ -18,7 +18,7 @@ genomic_regions:
   gene: false
   intergenic: false
   exon: true
-  exon_exon_junction: false
+  exon_exon_junction: true
   utr: false
   cds: false
   intron: false

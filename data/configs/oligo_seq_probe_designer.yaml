@@ -85,7 +85,6 @@ target_probe_cross_hybridization_bowtie_search_parameters:
 target_probe_cross_hybridization_bowtie_hit_parameters: # No hit parameters available currently
 # Parameters for the Oligo set selection
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
-pre_filter: false # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for oligo sets with more than 30 oligos.
 n_attempts: 100000 # number of attempts to find the optimal set of oligos
 heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
 heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
@@ -93,28 +92,23 @@ heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 target_probe_Tm_parameters:
-  check: true
-  strict: true
-  c_seq: null
-  shift: 0
   nn_table: DNA_NN3
   tmm_table: DNA_TMM1
   imm_table: DNA_IMM1
   de_table: DNA_DE1
   dnac1: 50 #[nM]
-  dnac2: 0
-  selfcomp: false
+  dnac2: 0 #[nM]
   saltcorr: 7
   Na: 1000 #[mM] #1M from probeArray paper
   K: 0 #[mM]
   Tris: 0 #[mM]
   Mg: 0 #[mM]
-  dNTPs: 0
+  dNTPs: 0 #[mM]
 target_probe_Tm_chem_correction_parameters:
   DMSO: 0
   DMSOfactor: 0.75
+  fmd: 20
   fmdfactor: 0.65
   fmdmethod: 1
   GC: null
-  fmd: 20
 target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below

@@ -84,7 +84,6 @@ target_probe_cross_hybridization_blastn_hit_parameters:
   coverage: 80 # can be turned into min_alignment_length
 # Parameters for the Oligo set selection
 max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
-pre_filter: false # if true, runs a pre-filtering step to reduce the number of oligos that are taken into consideration in the oligo set selection. This step is recommended for oligo sets with more than 30 oligos.
 n_attempts: 100000 # number of attempts to find the optimal set of oligos
 heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
 heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
@@ -92,32 +91,26 @@ heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 target_probe_Tm_parameters:
-    check: true #default
-    strict: true #default
-    c_seq: null #default
-    shift: 0 #default
     nn_table: DNA_NN3 # Allawi & SantaLucia (1997)
     tmm_table: DNA_TMM1 #default
     imm_table: DNA_IMM1 #default
     de_table: DNA_DE1 #default
     dnac1: 50 #[nM]
     dnac2: 0 #[nM]
-    selfcomp: false #default
     saltcorr: 7 # Owczarzy et al. (2008)
     Na: 39 #[mM]
     K: 75 #[mM]
     Tris: 20 #[mM]
     Mg: 10 #[mM]
     dNTPs: 0 #[mM] default
-target_probe_Tm_chem_correction_parameters:
+target_probe_Tm_chem_correction_parameters: # if chem correction desired, please add parameters below
     DMSO: 0 #default
-    fmd: 20
     DMSOfactor: 0.75 #default
+    fmd: 20
     fmdfactor: 0.65 #default
     fmdmethod: 1 #default
     GC: null #default
 target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-
 
 ### Detection Oligo Parameters
 ### -----------------------------------------------
@@ -125,27 +118,22 @@ target_probe_Tm_salt_correction_parameters: null # if salt correction desired, p
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 detection_oligo_Tm_parameters:
-    check: true #default
-    strict: true #default
-    c_seq: null #default
-    shift: 0 #default
     nn_table: DNA_NN3 # Allawi & SantaLucia (1997)
     tmm_table: DNA_TMM1 #default
     imm_table: DNA_IMM1 #default
     de_table: DNA_DE1 #default
     dnac1: 50 #[nM]
     dnac2: 0 #[nM]
-    selfcomp: false #default
     saltcorr: 7 # Owczarzy et al. (2008)
     Na: 39 #[mM]
     K: 0 #[mM] default
     Tris: 0 #[mM] default
     Mg: 0 #[mM] default
     dNTPs: 0 #[mM] default
-detection_oligo_Tm_chem_correction_parameters:
+detection_oligo_Tm_chem_correction_parameters: # if chem correction desired, please add parameters below
     DMSO: 0 #default
-    fmd: 30
     DMSOfactor: 0.75 #default
+    fmd: 30
     fmdfactor: 0.65 #default
     fmdmethod: 1 #default
     GC: null #default
