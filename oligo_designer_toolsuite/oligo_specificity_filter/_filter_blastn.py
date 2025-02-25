@@ -593,8 +593,10 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         )
 
         # if seedregion not given
-        search_results.seedregion_start.fillna(0, inplace=True)
-        search_results.seedregion_end.fillna(search_results.query_length, inplace=True)
+        search_results["seedregion_start"] = search_results["seedregion_start"].fillna(0)
+        search_results["seedregion_end"] = search_results["seedregion_end"].fillna(
+            search_results["query_length"]
+        )
 
         if not consider_hits_from_input_region:
             # remove all hits where query and reference come from the same region

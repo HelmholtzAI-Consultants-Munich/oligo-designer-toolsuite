@@ -707,14 +707,14 @@ class CustomGenomicRegionGenerator:
                 UTR_left = copy.deepcopy(exons)
                 UTR_left = UTR_left[UTR_left.start_1base < cds_start]
                 UTR_left.type = UTR_left_type
-                UTR_left.end[UTR_left.end >= cds_start] = cds_start - 1
+                UTR_left.loc[UTR_left["end"] >= cds_start, "end"] = cds_start - 1
                 utrs.append(UTR_left)
 
                 UTR_right = copy.deepcopy(exons)
                 UTR_right = UTR_right[UTR_right.end > cds_end]
                 UTR_right.type = UTR_right_type
-                UTR_right.start_1base[UTR_right.start_1base <= cds_end] = cds_end + 1
-                UTR_right.start_0base[(UTR_right.start_0base + 1) <= cds_end] = cds_end
+                UTR_right.loc[UTR_right["start_1base"] <= cds_end, "start_1base"] = cds_end + 1
+                UTR_right.loc[(UTR_right["start_0base"] + 1) <= cds_end, "start_0base"] = cds_end
                 utrs.append(UTR_right)
 
             utr_annotation = pd.concat(utrs, ignore_index=True)
