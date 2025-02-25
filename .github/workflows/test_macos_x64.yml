@@ -82,4 +82,4 @@ jobs:
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
-        pytest --disable-warnings
+        pytest --disable-warnings -k "not FTPLoader" #exclude slow FTP loader -> runs in ubuntu test
