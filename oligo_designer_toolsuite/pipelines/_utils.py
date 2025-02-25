@@ -40,7 +40,7 @@ def base_log_parameters(parameters):
 
     for key, value in parameters.items():
         if key != "self":
-            logging.info(f"{key} = {value}")
+            logging.info("Parameter: %s = %s", key, value)
 
 
 def log_parameters_and_get_db(func, args, kwargs):
