@@ -95,7 +95,7 @@ class OligoSelectionPolicy:
         non_overlap_matrix_ids: list,
     ) -> tuple[pd.Series, csr_matrix, list]:
         """
-        Pre-filters oligos based on the minimal set set removing all oligos from the initial set that
+        Pre-filters oligos based on the minimal set removing all oligos from the initial set that
         form independent sets which are smaller than the minimal set size.
 
         :param oligos_scores: A pandas Series containing the scores for each oligo.
@@ -315,6 +315,8 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
     :type heuristic: bool, optional
     :param heuristic_n_attempts: The number of attempts to find the optimal oligo set using the heuristic approach. Default is 1000.
     :type heuristic_n_attempts: int, optional
+    :param clique_init_approximation: Whether to use an approximation approach for faster finding of initial oligo set. Defaults to False.
+    :type clique_init_approximation: bool, optional
     """
 
     def __init__(
@@ -324,12 +326,14 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
         n_attempts: int = 1000,
         heuristic: bool = True,
         heuristic_n_attempts: int = 1000,
+        clique_init_approximation=False,
     ) -> None:
         """Constructor for the GraphBasedSelectionPolicy class."""
         super().__init__(set_scoring=set_scoring, pre_filter=pre_filter)
         self.n_attempts = n_attempts
         self.heuristic = heuristic
         self.heuristic_n_attempts = heuristic_n_attempts
+        self.clique_init_approximation = clique_init_approximation
 
     def _run_selection(
         self, oligos_scores: pd.Series, non_overlap_matrix: csr_matrix, non_overlap_matrix_ids: list
@@ -359,17 +363,17 @@ class GraphBasedSelectionPolicy(OligoSelectionPolicy):
         oligoset_size = self.opt_oligoset_size
         clique_init = []
 
-        if self.opt_oligoset_size < 15:
+        if self.clique_init_approximation:
+            clique_max = nx.approximation.max_clique(G)
+            if len(clique_max) > self.min_oligoset_size:
+                clique_init = list(clique_max)
+        else:
             cliques = nx.algorithms.clique.find_cliques(G)
             for clique in cliques:
                 if len(clique) > self.min_oligoset_size:
                     clique_init = clique
                 if len(clique) >= oligoset_size:
                     break
-        else:
-            clique_max = nx.approximation.max_clique(G)
-            if len(clique_max) > self.min_oligoset_size:
-                clique_init = list(clique_max)
 
         if not clique_init:
             # if no clique with min_oligoset_size was found we don't need to compute the sets

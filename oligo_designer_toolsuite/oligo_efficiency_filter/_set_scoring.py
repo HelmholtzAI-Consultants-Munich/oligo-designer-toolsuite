@@ -46,6 +46,8 @@ class LowestSetScoring(SetScoringBase):
     def __init__(self, ascending: bool) -> None:
         """Constructor for the LowestSetScoring class."""
         self.ascending = ascending
+        self.score_1 = "set_score_worst"
+        self.score_2 = "set_score_sum"
 
     def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
         """
@@ -69,8 +71,8 @@ class LowestSetScoring(SetScoringBase):
         set_score_sum = best_n_oligos.sum()
         oligoset = best_n_oligos.index.tolist()
         return oligoset, {
-            "set_score_worst": round(set_score_lowest, 4),
-            "set_score_sum": round(set_score_sum, 4),
+            self.score_1: round(set_score_lowest, 4),
+            self.score_2: round(set_score_sum, 4),
         }
 
 
@@ -86,6 +88,8 @@ class AverageSetScoring(SetScoringBase):
     def __init__(self, ascending: bool) -> None:
         """Constructor for the AverageSetScoring class."""
         self.ascending = ascending
+        self.score_1 = "set_score_average"
+        self.score_2 = "set_score_worst"
 
     def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
         """
@@ -109,6 +113,6 @@ class AverageSetScoring(SetScoringBase):
 
         oligoset = best_n_oligos.index.tolist()
         return oligoset, {
-            "set_score_average": round(set_score_avg, 4),
-            "set_score_worst": round(set_score_lowest, 4),
+            self.score_1: round(set_score_avg, 4),
+            self.score_2: round(set_score_lowest, 4),
         }
