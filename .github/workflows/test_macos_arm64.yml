@@ -1,4 +1,4 @@
-name: test
+name: test_macos_arm64
 
 on: 
   schedule:
@@ -41,29 +41,27 @@ jobs:
     strategy:
       max-parallel: 12
       matrix:
-        os: [ubuntu-latest, macos-latest] 
+        os: ["macos-latest"] 
         python-version: ["3.9", "3.10", "3.11", "3.12"]
         
     steps:
     - name: Checkout Repository 
-      uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/checkout@v4
+    
+    - name: Setup Conda
+      uses: conda-incubator/setup-miniconda@v3
       with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: Setup Conda (Ubuntu and Mac)
-      if: matrix.os != 'windows-latest'
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        miniconda-version: "latest" 
+        installer-url: https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
         activate-environment: "test-env"
+    
+    - name: Check arm64 
+      run: |
+        conda install -y python
+        python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
 
-    - name: Update conda, add channels and install dependencies (Ubuntu and Mac)
-      if: matrix.os != 'windows-latest'
+    - name: Update conda, add channels and install dependencies
       shell: bash
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
@@ -71,10 +69,10 @@ jobs:
         conda config --add channels bioconda
         conda config --add channels conda-forge
         conda update --all
-        conda install -n test-env -y "blast>=2.15.0"
         conda install -n test-env -y "bedtools>=2.30"
         conda install -n test-env -y "bowtie>=1.3.1"
         conda install -n test-env -y "bowtie2>=2.5"
+        brew install blast
         
     - name: Install pip dependencies
       run: |
@@ -83,11 +81,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install -e .
+
+    - name: Change n_jobs
+      run: |
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/merfish_probe_designer.yaml
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/oligo_seq_probe_designer.yaml
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/scrinshot_probe_designer.yaml
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/seqfish_plus_probe_designer.yaml
+        cat data/configs/merfish_probe_designer.yaml
+        cat data/configs/oligo_seq_probe_designer.yaml
+        cat data/configs/scrinshot_probe_designer.yaml
+        cat data/configs/seqfish_plus_probe_designer.yaml
         
     - name: Test with pytest
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
-        python --version
-        which blastn
         pytest --disable-warnings

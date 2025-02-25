@@ -1,0 +1,85 @@
+name: test_macos_x64
+
+on: 
+  schedule:
+    - cron: '0 0 1 * *'  # Runs at midnight UTC on the 1st day of each month
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.gitignore'
+      - '.pre-commit-config.yaml'
+      - '.readthedocs.yaml'
+      - 'CONTRIBUTION.md'
+      - 'LICENSE'
+      - 'MANIFEST.in'
+      - 'README.md'
+      - 'data/**'
+      - 'docs/**'
+      - 'tutorials/**'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '.gitignore'
+      - '.pre-commit-config.yaml'
+      - '.readthedocs.yaml'
+      - 'CONTRIBUTION.md'
+      - 'LICENSE'
+      - 'MANIFEST.in'
+      - 'README.md'
+      - 'data/**'
+      - 'docs/**'
+      - 'tutorials/**'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      max-parallel: 12
+      matrix:
+        os: ["macos-13"] #last version that uses intel chip macos
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        
+    steps:
+    - name: Checkout Repository 
+      uses: actions/checkout@v4
+        
+    - name: Setup Conda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniconda-version: "latest" 
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+        activate-environment: "test-env"
+
+    - name: Update conda, add channels and install dependencies
+      shell: bash
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
+        conda config --add channels bioconda
+        conda config --add channels conda-forge
+        conda update --all
+        conda install -n test-env -y "blast>=2.15.0"
+        conda install -n test-env -y "bedtools>=2.30"
+        conda install -n test-env -y "bowtie>=1.3.1"
+        conda install -n test-env -y "bowtie2>=2.5"
+        
+    - name: Install pip dependencies
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
+        python -m pip install --upgrade pip
+        pip install "numpy<2.0" #downgrade numpy to make it work with torch < 2.2.2
+        pip install pytest
+        pip install -e .
+        
+    - name: Test with pytest
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
+        pytest --disable-warnings
