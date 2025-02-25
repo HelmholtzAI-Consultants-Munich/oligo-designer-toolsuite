@@ -16,19 +16,19 @@ import yaml
 ############################################
 
 SCRIPT_GENOMIC_REGION_GENERATOR = "oligo_designer_toolsuite/pipelines/_genomic_region_generator.py"
-CONFIG_GENOMIC_REGION_GENERATOR = "tests/data/configs/genomic_region_generator_custom.yaml"
+CONFIG_GENOMIC_REGION_GENERATOR = "data/configs/genomic_region_generator_custom.yaml"
 
 SCRIPT_OLIGO_SEQ_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_oligo_seq_probe_designer.py"
-CONFIG_OLIGO_SEQ_PROBE_DESIGNER = "tests/data/configs/oligo_seq_probe_designer.yaml"
+CONFIG_OLIGO_SEQ_PROBE_DESIGNER = "data/configs/oligo_seq_probe_designer.yaml"
 
 SCRIPT_SCRINSHOT_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_scrinshot_probe_designer.py"
-CONFIG_SCRINSHOT_PROBE_DESIGNER = "tests/data/configs/scrinshot_probe_designer.yaml"
+CONFIG_SCRINSHOT_PROBE_DESIGNER = "data/configs/scrinshot_probe_designer.yaml"
 
 SCRIPT_SEQFISHPLUS_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_seqfish_plus_probe_designer.py"
-CONFIG_SEQFISHPLUS_PROBE_DESIGNER = "tests/data/configs/seqfish_plus_probe_designer.yaml"
+CONFIG_SEQFISHPLUS_PROBE_DESIGNER = "data/configs/seqfish_plus_probe_designer.yaml"
 
 SCRIPT_MERFISH_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_merfish_probe_designer.py"
-CONFIG_MERFISH_PROBE_DESIGNER = "tests/data/configs/merfish_probe_designer.yaml"
+CONFIG_MERFISH_PROBE_DESIGNER = "data/configs/merfish_probe_designer.yaml"
 
 ############################################
 # Tests
@@ -67,6 +67,9 @@ class PipelinesBase:
             capture_output=True,
             text=True,
         )
+
+        # Check terminal output
+        print(result)
 
         # Check the return code to ensure the script ran successfully
         self.assertEqual(result.returncode, 0)
