@@ -40,7 +40,7 @@ Below is an example demonstrating how this can be done.
 For a complete explanation of all function parameters, refer to the API documentation.
 
 .. code-block:: python
-    
+
     ##### Initialize the MERFISH Probe Designer Pipeline #####
     # We create an instance of the MerfishProbeDesigner class. This pipeline handles
     # all steps required to design probes for MERFISH experiments, including target probes,
