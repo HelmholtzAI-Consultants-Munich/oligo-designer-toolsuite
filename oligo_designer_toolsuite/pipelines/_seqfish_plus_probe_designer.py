@@ -186,8 +186,8 @@ class SeqFishPlusProbeDesigner:
             "tmm_table": "DNA_TMM1",
             "imm_table": "DNA_IMM1",
             "de_table": "DNA_DE1",
-            "dnac1": 500,
-            "dnac2": 25,
+            "dnac1": 250,
+            "dnac2": 250,
             "selfcomp": False,
             "saltcorr": 5,
             "Na": 300,
@@ -610,10 +610,10 @@ class SeqFishPlusProbeDesigner:
 
             for probe_id in target_probe_database.database[region_id].keys():
 
-                sequence_readout_probe_1 = readout_probe_sequences[0]
-                sequence_readout_probe_2 = readout_probe_sequences[1]
-                sequence_readout_probe_3 = readout_probe_sequences[2]
-                sequence_readout_probe_4 = readout_probe_sequences[3]
+                sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
+                sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
+                sequence_readout_probe_3 = readout_probe_sequences.iloc[2]
+                sequence_readout_probe_4 = readout_probe_sequences.iloc[3]
 
                 new_probe_attributes_encoding_probe[probe_id] = {
                     "barcode": barcode,
