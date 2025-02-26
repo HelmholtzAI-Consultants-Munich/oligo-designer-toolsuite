@@ -6,10 +6,15 @@ on:
   workflow_dispatch:
 
 jobs:
-   test:
-     uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test.yml@dev
+   test_ubuntu_x64:
+     uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_ubuntu_x64.yml@main
+   test_macos_arm64:
+    uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_macos_arm64.yml@main
+   test_macos_x64:
+    uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_macos_x64.yml@main
+
    publish:
-    needs: test
+    needs: [test_ubuntu_x64, test_macos_arm64, test_macos_x64]
     name: Publish to PyPI
     runs-on: ubuntu-latest
     strategy:
