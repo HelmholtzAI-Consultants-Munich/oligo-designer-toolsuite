@@ -1,4 +1,4 @@
-name: Tests MacOS Arm64
+name: MacOS Arm64
 
 on: 
   schedule:
