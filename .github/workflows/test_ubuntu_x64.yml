@@ -1,4 +1,4 @@
-name: test_ubuntu_x64
+name: Tests Ubuntu x64
 
 on: 
   schedule:
