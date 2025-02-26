@@ -10,7 +10,7 @@ two 20-nt barcode sequences, which are read out by fluorescent secondary readout
 and two 20-nt PCR primer binding sites. The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
 If you are using the MERFISH Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
-
+The MERFISH Probe Design Pipeline follows the design steps listed in [3].
 
 Usage
 -------
@@ -49,7 +49,7 @@ For a complete explanation of all function parameters, refer to the API document
 # - n_jobs: number of CPU cores/threads to use for parallel tasks
 pipeline = MerfishProbeDesigner(
         write_intermediate_steps=True,
-        dir_output="output_merfish",
+        dir_output="output_merfish_probe_designer",
         n_jobs=2,
     )
 
