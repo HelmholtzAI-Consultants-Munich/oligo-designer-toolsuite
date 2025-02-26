@@ -27,7 +27,7 @@ To create MERFISH probes you can run the pipeline with
 
 where:
 
-``-c``: config file, which contains parameter settings, specific to MERFISH probe design, `*merfish_probe_designer.yaml* <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/merfish_probe_designer.yaml>`__ contains default parameter settings
+``-c``: config file, which contains parameter settings, specific to MERFISH probe design, `merfish_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/merfish_probe_designer.yaml>`__ contains default parameter settings
 
 All steps and config parameters will be documented in a log file, that is saved in the defined output directory. 
 The logging file will have the format: ``log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
@@ -39,123 +39,122 @@ The MERFISH probe design pipeline can also be integrated directly into Python co
 Below is an example demonstrating how this can be done.
 For a complete explanation of all function parameters, refer to the API documentation.
 
-```
-##### Initialize the MERFISH Probe Designer Pipeline #####
-# We create an instance of the MerfishProbeDesigner class. This pipeline handles
-# all steps required to design probes for MERFISH experiments, including target probes,
-# readout probes, primers, and final output. 
-# - write_intermediate_steps: whether to save intermediate results (True/False)
-# - dir_output: directory path where output files will be stored
-# - n_jobs: number of CPU cores/threads to use for parallel tasks
-pipeline = MerfishProbeDesigner(
-        write_intermediate_steps=True,
-        dir_output="output_merfish_probe_designer",
-        n_jobs=2,
+.. code-block:: python
+    
+    ##### Initialize the MERFISH Probe Designer Pipeline #####
+    # We create an instance of the MerfishProbeDesigner class. This pipeline handles
+    # all steps required to design probes for MERFISH experiments, including target probes,
+    # readout probes, primers, and final output. 
+    # - write_intermediate_steps: whether to save intermediate results (True/False)
+    # - dir_output: directory path where output files will be stored
+    # - n_jobs: number of CPU cores/threads to use for parallel tasks
+    pipeline = MerfishProbeDesigner(
+            write_intermediate_steps=True,
+            dir_output="output_merfish_probe_designer",
+            n_jobs=2,
+        )
+
+    # Optional: If you need to customize certain developer parameters (for debugging, advanced usage, etc.),
+    # call set_developer_parameters(...) with any overrides. By default, the pipeline uses internal defaults.
+    pipeline.set_developer_parameters(...)
+
+
+    ##### Design Target Probes #####
+    # We first generate probes that hybridize specifically to target genes sequences.
+    # The pipeline will generate multiple candidate sets (n_sets) and return them as part of the probe database.
+    target_probe_database = pipeline.design_target_probes(
+        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
+        files_fasta_reference_database_targe_probe=...,         # List of FASTA files for specificity reference 
+        gene_ids=...,                                           # List of gene symbols or identifiers
+        target_probe_length_min=30,
+        target_probe_length_max=30,
+        target_probe_isoform_consensus=50,                      
+        target_probe_GC_content_min=43,
+        target_probe_GC_content_opt=55,
+        target_probe_GC_content_max=63,
+        target_probe_Tm_min=66,
+        target_probe_Tm_opt=72,
+        target_probe_Tm_max=76,
+        target_probe_homopolymeric_base_n={"A": 6, "T": 6, "C": 6, "G": 6},
+        target_probe_T_secondary_structure=76,                  
+        target_probe_secondary_structures_threshold_deltaG=0,   
+        target_probe_GC_weight=1,                               
+        target_probe_Tm_weight=1,                               
+        target_probe_isoform_weight=2,                          
+        set_size_opt=50,                                        
+        set_size_min=50,                                        
+        distance_between_target_probes=0,                       
+        n_sets=100,                                             
     )
 
-# Optional: If you need to customize certain developer parameters (for debugging, advanced usage, etc.),
-# call set_developer_parameters(...) with any overrides. By default, the pipeline uses internal defaults.
-pipeline.set_developer_parameters(...)
+    ##### Design Readout Probes #####
+    # After we have generated valid target probes, we design short "readout probes" (barcodes) used in MERFISH imaging.
+    # A codebook is generated to map each gene to a unique barcode pattern.
+    # The readout probe table contains the actual sequences and associated metadata for these probes.
+    codebook, readout_probe_table = pipeline.design_readout_probes(
+        n_genes=len(target_probe_database.database),
+        files_fasta_reference_database_readout_probe=...,          # List of FASTA files for specificity reference
+        readout_probe_length=20,
+        readout_probe_base_probabilities={"A": 0.25, "C": 0.0, "G": 0.5, "T": 0.25},
+        readout_probe_GC_content_min=40,
+        readout_probe_GC_content_max=50,
+        readout_probe_homopolymeric_base_n={"G": 3},
+        readout_probe_set_size=16,
+        readout_probe_homogeneous_properties_weights={"TmNN": 1,"GC_content": 1},
+        n_bits=16,
+        min_hamming_dist=4,
+        hamming_weight=4,
+        channels_ids=["Alexa488", "Cy3b", "Alexa647"],
+    )
 
+    ##### Combine Target and Readout Probes into Encoding Probes #####
+    # Merges the target probe database with the codebook/readout information to create the final
+    # encoding probe database, which associates each target region with its readout sequences.
+    encoding_probe_database = pipeline.design_encoding_probe(
+        target_probe_database=target_probe_database,
+        codebook=codebook,
+        readout_probe_table=readout_probe_table,
+    )
 
-##### Design Target Probes #####
-# We first generate probes that hybridize specifically to target genes sequences.
-# The pipeline will generate multiple candidate sets (n_sets) and return them as part of the probe database.
-target_probe_database = pipeline.design_target_probes(
-    files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
-    files_fasta_reference_database_targe_probe=...,         # List of FASTA files for specificity reference 
-    gene_ids=...,                                           # List of gene symbols or identifiers
-    target_probe_length_min=30,
-    target_probe_length_max=30,
-    target_probe_isoform_consensus=50,                      
-    target_probe_GC_content_min=43,
-    target_probe_GC_content_opt=55,
-    target_probe_GC_content_max=63,
-    target_probe_Tm_min=66,
-    target_probe_Tm_opt=72,
-    target_probe_Tm_max=76,
-    target_probe_homopolymeric_base_n={"A": 6, "T": 6, "C": 6, "G": 6},
-    target_probe_T_secondary_structure=76,                  
-    target_probe_secondary_structures_threshold_deltaG=0,   
-    target_probe_GC_weight=1,                               
-    target_probe_Tm_weight=1,                               
-    target_probe_isoform_weight=2,                          
-    set_size_opt=50,                                        
-    set_size_min=50,                                        
-    distance_between_target_probes=0,                       
-    n_sets=100,                                             
-)
+    ##### Design Primers #####
+    # After we have generated valid encoding probes, we design primer sequences used for amplification.
+    # The reverse primer sequence has to be provided to design the forward primer.
+    reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
+        encoding_probe_database=encoding_probe_database,
+        files_fasta_reference_database_primer=...,
+        reverse_primer_sequence="CCCTATAGTGAGTCGTATTA",
+        primer_length=20,
+        primer_base_probabilities={"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
+        primer_GC_content_min=50,
+        primer_GC_content_max=65,
+        primer_number_GC_GCclamp=1,
+        primer_number_three_prime_base_GCclamp=2,
+        primer_homopolymeric_base_n={"A": 4, "T": 4, "C": 4, "G": 4},
+        primer_max_len_selfcomplement=6,
+        primer_max_len_complement_reverse_primer=5,
+        primer_Tm_min=60,
+        primer_Tm_max=75,
+        primer_T_secondary_structure=76,
+        primer_secondary_structures_threshold_deltaG=0,
+    )
 
-##### Design Readout Probes #####
-# After we have generated valid target probes, we design short "readout probes" (barcodes) used in MERFISH imaging.
-# A codebook is generated to map each gene to a unique barcode pattern.
-# The readout probe table contains the actual sequences and associated metadata for these probes.
-codebook, readout_probe_table = pipeline.design_readout_probes(
-    n_genes=len(target_probe_database.database),
-    files_fasta_reference_database_readout_probe=...,          # List of FASTA files for specificity reference
-    readout_probe_length=20,
-    readout_probe_base_probabilities={"A": 0.25, "C": 0.0, "G": 0.5, "T": 0.25},
-    readout_probe_GC_content_min=40,
-    readout_probe_GC_content_max=50,
-    readout_probe_homopolymeric_base_n={"G": 3},
-    readout_probe_set_size=16,
-    readout_probe_homogeneous_properties_weights={"TmNN": 1,"GC_content": 1},
-    n_bits=16,
-    min_hamming_dist=4,
-    hamming_weight=4,
-    channels_ids=["Alexa488", "Cy3b", "Alexa647"],
-)
+    ##### Generate Final Output #####
+    # The pipeline can now generate its final outputs, such as:
+    # - Final encoding probe sequences
+    # - The chosen forward/reverse primers
+    # - Codebooks and metadata for the designed sets
+    # - Intermediate files if write_intermediate_steps=True
+    # 'top_n_sets' specifies how many of the best scoring probe sets to keep.
+    pipeline.generate_output(
+        encoding_probe_database=encoding_probe_database,
+        reverse_primer_sequence=reverse_primer_sequence,
+        forward_primer_sequence=forward_primer_sequence,
+        top_n_sets=3,
+    )
 
-##### Combine Target and Readout Probes into Encoding Probes #####
-# Merges the target probe database with the codebook/readout information to create the final
-# encoding probe database, which associates each target region with its readout sequences.
-encoding_probe_database = pipeline.design_encoding_probe(
-    target_probe_database=target_probe_database,
-    codebook=codebook,
-    readout_probe_table=readout_probe_table,
-)
-
-##### Design Primers #####
-# After we have generated valid encoding probes, we design primer sequences used for amplification.
-# The reverse primer sequence has to be provided to design the forward primer.
-reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
-    encoding_probe_database=encoding_probe_database,
-    files_fasta_reference_database_primer=...,
-    reverse_primer_sequence="CCCTATAGTGAGTCGTATTA",
-    primer_length=20,
-    primer_base_probabilities={"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
-    primer_GC_content_min=50,
-    primer_GC_content_max=65,
-    primer_number_GC_GCclamp=1,
-    primer_number_three_prime_base_GCclamp=2,
-    primer_homopolymeric_base_n={"A": 4, "T": 4, "C": 4, "G": 4},
-    primer_max_len_selfcomplement=6,
-    primer_max_len_complement_reverse_primer=5,
-    primer_Tm_min=60,
-    primer_Tm_max=75,
-    primer_T_secondary_structure=76,
-    primer_secondary_structures_threshold_deltaG=0,
-)
-
-##### Generate Final Output #####
-# The pipeline can now generate its final outputs, such as:
-# - Final encoding probe sequences
-# - The chosen forward/reverse primers
-# - Codebooks and metadata for the designed sets
-# - Intermediate files if write_intermediate_steps=True
-# 'top_n_sets' specifies how many of the best scoring probe sets to keep.
-pipeline.generate_output(
-    encoding_probe_database=encoding_probe_database,
-    reverse_primer_sequence=reverse_primer_sequence,
-    forward_primer_sequence=forward_primer_sequence,
-    top_n_sets=3,
-)
-
-```
 
 Pipeline Description
 -----------------------
-.. image:: ../_static/pipeline_merfish.jpg
 
 The pipeline has four major steps:
 
@@ -166,6 +165,8 @@ The pipeline has four major steps:
 3) probe set selection for each gene (green), and
 
 4) final probe sequence generation (yellow).
+
+.. image:: ../_static/pipeline_merfish.jpg
 
 For the probe generation step, the user has to provide a FASTA file with genomic sequences which is used as reference for the generation of probe sequences. 
 The probe sequences are generated using the ``OligoSequenceGenerator``. 
@@ -203,7 +204,7 @@ The output is stored in two separate files:
 - ``merfish_probes_order.yml``: contains for each probe the sequences of the merfish probe and the detection oligo.
 - ``merfish_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
 
-All default parameters can be found in the `*merfish_probe_designer.yaml* <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/merfish_probe_designer.yaml>`__ config file provided along the repository.
+All default parameters can be found in the `merfish_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/merfish_probe_designer.yaml>`__ config file provided along the repository.
 
 
 
