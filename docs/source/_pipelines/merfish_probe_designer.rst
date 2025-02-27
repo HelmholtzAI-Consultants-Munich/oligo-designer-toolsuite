@@ -12,11 +12,9 @@ and two 20-nt PCR primer binding sites. The specific readout sequences contained
 If you are using the MERFISH Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
 The MERFISH Probe Design Pipeline follows the design steps listed in [3].
 
-Usage
--------
 
 Command-Line Call
-^^^^^^^^^^^^^^^^^^^
+------------------
 
 To create MERFISH probes you can run the pipeline with 
 
@@ -33,7 +31,7 @@ All steps and config parameters will be documented in a log file, that is saved 
 The logging file will have the format: ``log_merfish_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
 
 Python API
-^^^^^^^^^^^^^^^^^^^
+------------------
 
 The MERFISH probe design pipeline can also be integrated directly into Python code.
 Below is an example demonstrating how this can be done.
@@ -205,7 +203,6 @@ The output is stored in two separate files:
 - ``merfish_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
 
 All default parameters can be found in the `merfish_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/merfish_probe_designer.yaml>`__ config file provided along the repository.
-
 
 
 .. [1] Mekki, I., Campi, F., Kuemmerle, L. B., ... & Barros de Andrade e Sousa, L. (2023). Oligo Designer Toolsuite. Zenodo, https://doi.org/10.5281/zenodo.7823048 

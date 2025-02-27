@@ -6,11 +6,8 @@ An oligo-seq probe is an oligo hybridization probe, which is optimized for probe
 If you are using the Oligo-Seq Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1].
 
 
-Usage
---------
-
 Command-Line Call
-^^^^^^^^^^^^^^^^^^^^
+------------------
 
 To create oligo-seq probes you can run the pipeline with 
 
@@ -27,7 +24,7 @@ The logging file will have the format: ``log_oligo_seq_probe_designer_{year}-{mo
 
 
 Python API
-^^^^^^^^^^^^^^^^^^^
+------------------
 
 The oligo-seq probe design pipeline can also be integrated directly into Python code.
 Below is an example demonstrating how this can be done.

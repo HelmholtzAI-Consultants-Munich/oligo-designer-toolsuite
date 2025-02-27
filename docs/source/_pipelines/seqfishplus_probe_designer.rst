@@ -1,18 +1,19 @@
 SeqFISH+ Probe Designer
 ==========================
 
+SeqFISH+ (sequential fluorescence in situ hybridization) probes are short DNA oligonucleotides designed for multiplexed single-molecule FISH. 
+In seqFISH+, multiple rounds of hybridization and imaging are performed sequentially, enabling detailed visualization and quantification of hundreds of RNA targets in a single sample. 
+This technique preserves the spatial context of gene expression while providing high-throughput and single-cell resolution.
 
-A SeqFISH+ probe is a flourescent probe that contains a 28-nt gene-specific sequence complementary to the mRNA, four 15-nt barcode sequences, which are read out by fluorescent secondary readout probes, single T-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. 
+A SeqFISH+ probe is a flourescent probe that contains a 28-nt gene-specific sequence complementary to the mRNA, four 15-nt barcode sequences, which are read out by fluorescent secondary readout probes, 
+single T-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. 
 The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
 If you are using the SeqFISH+ Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
-
-
-Usage
--------
+The SeqFISH+ Probe Design Pipeline follows the design steps listed in [3].
 
 Command-Line Call
-^^^^^^^^^^^^^^^^^^^
+------------------
 
 To create SeqFISH+ probes you can run the pipeline with 
 
@@ -23,20 +24,127 @@ To create SeqFISH+ probes you can run the pipeline with
 
 where:
 
-``-c``: config file, which contains parameter settings, specific to SeqFISH+ probe design, *seqfish_plus_probe_designer.yaml* contains default parameter settings
+``-c``: config file, which contains parameter settings, specific to SeqFISH+ probe design, `seqfish_plus_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/seqfish_plus_probe_designer.yaml>`__ contains default parameter settings
 
-All steps and config parameters will be documented in a log file, that is saved in the directory where the pipeline is executed from. 
+All steps and config parameters will be documented in a log file, that is saved in the defined output directory. 
 The logging file will have the format: ``log_seqfish_plus_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
 
-Python API
-^^^^^^^^^^^^^^^^^^^
 
-TBD
+Python API
+------------------
+
+The SeqFISH+ probe design pipeline can also be integrated directly into Python code.
+Below is an example demonstrating how this can be done.
+For a complete explanation of all function parameters, refer to the API documentation.
+
+.. code-block:: python
+
+    ##### Initialize the SeqFISH+ Probe Designer Pipeline #####
+    # We create an instance of the SeqFishPlusProbeDesigner class. This pipeline handles
+    # all steps required to design probes for SeqFISH+ experiments, including target probes,
+    # readout probes, primers, and final output. 
+    # - write_intermediate_steps: whether to save intermediate results (True/False)
+    # - dir_output: directory path where output files will be stored
+    # - n_jobs: number of CPU cores/threads to use for parallel tasks
+    pipeline = SeqFishPlusProbeDesigner(
+            write_intermediate_steps=True,
+            dir_output="output_seqfishplus_probe_designer",
+            n_jobs=2,
+        )
+
+    # Optional: If you need to customize certain developer parameters (for debugging, advanced usage, etc.),
+    # call set_developer_parameters(...) with any overrides. By default, the pipeline uses internal defaults.
+    pipeline.set_developer_parameters(...)
+
+
+    ##### Design Target Probes #####
+    # We first generate probes that hybridize specifically to target genes sequences.
+    # The pipeline will generate multiple candidate sets (n_sets) and return them as part of the probe database.
+    target_probe_database = pipeline.design_target_probes(
+        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
+        files_fasta_reference_database_targe_probe=...,         # List of FASTA files for specificity reference 
+        gene_ids=...,                                           # List of gene symbols or identifiers
+        target_probe_length_min=28,
+        target_probe_length_max=28,
+        target_probe_isoform_consensus=100,                      
+        target_probe_GC_content_min=45,
+        target_probe_GC_content_opt=55,
+        target_probe_GC_content_max=65,
+        target_probe_homopolymeric_base_n={"A": 5, "T": 5, "C": 5, "G": 5},
+        target_probe_T_secondary_structure=76,                  
+        target_probe_secondary_structures_threshold_deltaG=0,   
+        target_probe_GC_weight=1,                               
+        target_probe_UTR_weight=10,                               
+        set_size_opt=24,                                        
+        set_size_min=24,                                        
+        distance_between_target_probes=2,                       
+        n_sets=100,                                             
+    )
+
+    ##### Design Readout Probes #####
+    # After we have generated valid target probes, we design short "readout probes" (barcodes) used in SeqFISH+ imaging.
+    # A codebook is generated to map each gene to a unique barcode pattern.
+    # The readout probe table contains the actual sequences and associated metadata for these probes.
+    codebook, readout_probe_table = pipeline.design_readout_probes(
+        n_genes=len(target_probe_database.database),
+        files_fasta_reference_database_readout_probe=...,          # List of FASTA files for specificity reference
+        readout_probe_length=15,
+        readout_probe_base_probabilities={"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
+        readout_probe_GC_content_min=40,
+        readout_probe_GC_content_max=60,
+        readout_probe_homopolymeric_base_n={"G": 3},
+        n_barcode_rounds=4,
+        n_pseudocolors=20,
+        channels_ids=["Alexa488", "Cy3b", "Alexa647"],
+    )
+
+    ##### Combine Target and Readout Probes into Encoding Probes #####
+    # Merges the target probe database with the codebook/readout information to create the final
+    # encoding probe database, which associates each target region with its readout sequences.
+    encoding_probe_database = pipeline.design_encoding_probe(
+        target_probe_database=target_probe_database,
+        codebook=codebook,
+        readout_probe_table=readout_probe_table,
+    )
+
+    ##### Design Primers #####
+    # After we have generated valid encoding probes, we design primer sequences used for amplification.
+    # The reverse primer sequence has to be provided to design the forward primer.
+    reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
+        encoding_probe_database=encoding_probe_database,
+        files_fasta_reference_database_primer=...,
+        reverse_primer_sequence="CCCTATAGTGAGTCGTATTA",
+        primer_length=20,
+        primer_base_probabilities={"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
+        primer_GC_content_min=50,
+        primer_GC_content_max=65,
+        primer_number_GC_GCclamp=1,
+        primer_number_three_prime_base_GCclamp=2,
+        primer_homopolymeric_base_n={"A": 4, "T": 4, "C": 4, "G": 4},
+        primer_max_len_selfcomplement=6,
+        primer_max_len_complement_reverse_primer=5,
+        primer_Tm_min=60,
+        primer_Tm_max=75,
+        primer_T_secondary_structure=76,
+        primer_secondary_structures_threshold_deltaG=0,
+    )
+
+    ##### Generate Final Output #####
+    # The pipeline can now generate its final outputs, such as:
+    # - Final encoding probe sequences
+    # - The chosen forward/reverse primers
+    # - Codebooks and metadata for the designed sets
+    # - Intermediate files if write_intermediate_steps=True
+    # 'top_n_sets' specifies how many of the best scoring probe sets to keep.
+    pipeline.generate_output(
+        encoding_probe_database=encoding_probe_database,
+        reverse_primer_sequence=reverse_primer_sequence,
+        forward_primer_sequence=forward_primer_sequence,
+        top_n_sets=3,
+    )
 
 Pipeline Description
 -----------------------
-
-.. image:: ../_static/pipeline_seqfishplus.jpg
 
 The pipeline has four major steps:
 
@@ -47,6 +155,8 @@ The pipeline has four major steps:
 3) probe set selection for each gene (green), and
 
 4) final probe sequence generation (yellow).
+
+.. image:: ../_static/pipeline_seqfishplus.jpg
 
 For the probe generation step, the user has to provide a FASTA file with genomic sequences which is used as reference for the generation of probe sequences. 
 The probe sequences are generated using the ``OligoSequenceGenerator``. 
@@ -84,8 +194,8 @@ The output is stored in two separate files:
 - ``seqfish_plus_probes_order.yml``: contains for each probe the sequences of the seqfish+ probe and the detection oligo.
 - ``seqfish_plus_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
 
-All default parameters can be found in the ``seqfish_plus_probe_designer.yaml`` config file provided along the repository.
+All default parameters can be found in the `seqfish_plus_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/seqfish_plus_probe_designer.yaml>`__ config file provided along the repository.
 
 .. [1] Mekki, I., Campi, F., Kuemmerle, L. B., ... & Barros de Andrade e Sousa, L. (2023). Oligo Designer Toolsuite. Zenodo, https://doi.org/10.5281/zenodo.7823048 
-.. [2] Kuemmerle, L. B., Luecken, M. D., Firsova, A. B., Barros de Andrade e Sousa, L., Straßer, L., Heumos, L., ... & Theis, F. J. (2022). Probe set selection for targeted spatial transcriptomics. bioRxiv, 2022-08. https://doi.org/10.1101/2022.08.16.504115 
+.. [2] Kuemmerle, L. B., Luecken, M. D., Firsova, A. B., Barros de Andrade e Sousa, L., Straßer, L., Mekki, I. I., ... & Theis, F. J. (2024). Probe set selection for targeted spatial transcriptomics. Nature methods, 1-11. https://doi.org/10.1038/s41592-024-02496-z  
 .. [3] Eng, C. H. L., Lawson, M., Zhu, Q., Dries, R., Koulena, N., Takei, Y., ... & Cai, L. (2019). Transcriptome-scale super-resolved imaging in tissues by RNA seqFISH+. Nature, 568(7751), 235-239. https://doi.org/10.1038/s41586-019-1049-y

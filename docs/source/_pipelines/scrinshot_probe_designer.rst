@@ -6,13 +6,10 @@ A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and
 The gene-specific arms of padlock probes are around 20nt long each, thus the total length of the gene-specific sequence of each padlock is around 40nt.
 
 If you are using the SCRINSHOT Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
-
-
-Usage
--------
+The SCRINSHOT Probe Design Pipeline follows the design steps listed in [3].
 
 Command-Line Call
-^^^^^^^^^^^^^^^^^^^
+------------------
 
 To create SCRINSHOT probes you can run the pipeline with 
 
@@ -30,7 +27,7 @@ The logging file will have the format: ``log_scrinshot_probe_designer_{year}-{mo
 
 
 Python API
-^^^^^^^^^^^^^^^^^^^
+------------------
 
 TBD
 
@@ -85,6 +82,6 @@ The output is stored in two separate files:
 All default parameters can be found in the ``scrinshot_probe_designer.yaml`` config file provided along the repository.
 
 .. [1] Mekki, I., Campi, F., Kuemmerle, L. B., ... & Barros de Andrade e Sousa, L. (2023). Oligo Designer Toolsuite. Zenodo, https://doi.org/10.5281/zenodo.7823048 
-.. [2] Kuemmerle, L. B., Luecken, M. D., Firsova, A. B., Barros de Andrade e Sousa, L., Straßer, L., Heumos, L., ... & Theis, F. J. (2022). Probe set selection for targeted spatial transcriptomics. bioRxiv, 2022-08. https://doi.org/10.1101/2022.08.16.504115 
+.. [2] Kuemmerle, L. B., Luecken, M. D., Firsova, A. B., Barros de Andrade e Sousa, L., Straßer, L., Mekki, I. I., ... & Theis, F. J. (2024). Probe set selection for targeted spatial transcriptomics. Nature methods, 1-11. https://doi.org/10.1038/s41592-024-02496-z  
 .. [3] Sountoulidis, A., Liontos, A., Nguyen, H. P., Firsova, A. B., Fysikopoulos, A., Qian, X., ... & Samakovlis, C. (2020). SCRINSHOT enables spatial mapping of cell states in tissue sections with single-cell resolution. PLoS biology, 18(11), e3000675. https://doi.org/10.1371/journal.pbio.3000675
 

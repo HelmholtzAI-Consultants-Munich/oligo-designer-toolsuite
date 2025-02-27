@@ -8,11 +8,8 @@ Therefore, the user has to define the species, annotation release and taxon (onl
 The genomic regions are stored in a memory efficient format, which eliminates duplicated sequences stemming from common exons of different gene isoforms, 
 while preserving the isoform information. The user can choose from a pre-defined list of genomic regions, i.e. intergenic, gene, CDS, exon, intron, 3’ UTR, 5’ UTR and exon-exon junctions. 
 
-Usage 
--------
-
 Command-Line Call
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 To create sequences of genomic regions from NCBI annotations you can run the pipeline with 
 
