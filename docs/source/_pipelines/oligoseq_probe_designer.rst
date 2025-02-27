@@ -99,7 +99,7 @@ The pipeline has four major steps:
 4) final probe sequence generation (yellow).
 
 
-.. image:: ./_static/pipeline_oligoseq.jpg
+.. image:: ../_static/pipeline_oligoseq.jpg
    :align: right
    :alt: Oligo-Seq Design Pipeline
    :width: 200px
