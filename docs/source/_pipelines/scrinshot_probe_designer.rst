@@ -9,7 +9,7 @@ transcripts at single-cell resolution, enabling highly multiplexed and spatially
 Padlock probes contain two variable gene-specific 5’- and 3’- arms and a stable backbone sequence of 53 nucleotides (nt) which is subdivided in four parts. 
 Circularized padlock probe is hybridized to the complementary sequence of the corresponding mRNA
 
-.. image:: ../_static/pipeline_scrinshot.jpg
+.. image:: ../_static/scrinshot_probes.png
     :width: 500px
     :align: center
 
