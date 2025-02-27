@@ -9,6 +9,8 @@ A SeqFISH+ probe is a flourescent probe that contains a 28-nt gene-specific sequ
 single T-nucleotide spacers between readout and gene-specific regions, and two 20-nt PCR primer binding sites. 
 The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
+.. image:: ../_static/pipeline_seqfishplus_probes.png
+
 If you are using the SeqFISH+ Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
 The SeqFISH+ Probe Design Pipeline follows the design steps listed in [3].
 
