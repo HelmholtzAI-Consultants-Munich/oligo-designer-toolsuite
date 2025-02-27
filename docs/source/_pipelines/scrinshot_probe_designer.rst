@@ -133,6 +133,7 @@ The pipeline has four major steps:
     :width: 500px
     :align: center
 
+
 For the probe generation step, the user has to provide a FASTA file with genomic sequences which is used as reference for the generation of probe sequences. 
 The probe sequences are generated using the ``OligoSequenceGenerator``. 
 Therefore, the user has to define the probe length (can be given as a range), and optionally provide a list of gene identifiers (matching the gene identifiers of the annotation file) for which probes should be generated. 

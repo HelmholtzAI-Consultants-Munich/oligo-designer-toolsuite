@@ -21,7 +21,7 @@
    _getting_started/build_a_custom_pipeline.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: PIPELINES
 
    _pipelines/genomic_region_generator

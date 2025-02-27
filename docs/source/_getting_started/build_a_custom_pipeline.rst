@@ -10,12 +10,8 @@ required processing steps.
 This section demonstrates how to use the Oligo Designer Toolsuite to develop 
 a custom oligo design pipeline.
 
-.. toctree::
-   :hidden:
-   :maxdepth: 1
-   :caption: Setup
-
-   _tutorials/0-setup
+**Setup:** Before getting started, you must install the Oligo Designer Toolsuite Python package. 
+A step-by-step installation guide is available `here <https://oligo-designer-toolsuite.readthedocs.io/en/latest/_getting_started/installation.html>`_.
 
 .. toctree::
    :hidden:
