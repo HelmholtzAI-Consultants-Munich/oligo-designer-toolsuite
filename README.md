@@ -2,7 +2,7 @@
 
 # *Oligo Designer Toolsuite* - Lightweight Development of Custom Oligo Design Pipelines
 
-[![Documentation Status](https://readthedocs.org/projects/oligo-designer-toolsuite/badge/?version=latest)](https://oligo-designer-toolsuite.readthedocs.io/en/latest/?badge=latest)
+[![Docs](https://img.shields.io/badge/docs-latest-blue?style=flat&logo=readthedocs)](https://designer.readthedocs.io/en/latest/)
 [![PyPI](https://img.shields.io/pypi/v/oligo-designer-toolsuite.svg)](https://pypi.org/project/oligo-designer-toolsuite)
 [![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/stargazers)
