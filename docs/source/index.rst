@@ -13,7 +13,7 @@
    :end-before: <!-- LINK INTRODUCTION END -->
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: GETTING STARTED
 
    _getting_started/installation.rst

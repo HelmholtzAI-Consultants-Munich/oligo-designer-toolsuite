@@ -10,23 +10,12 @@ required processing steps.
 This section demonstrates how to use the Oligo Designer Toolsuite to develop 
 a custom oligo design pipeline.
 
-Setup
------
-Before getting started, you must install the Oligo Designer Toolsuite Python package. 
-A step-by-step installation guide is available 
-`here <https://oligo-designer-toolsuite.readthedocs.io/en/latest/_getting_started/installation.html>`_.
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Setup
 
-
-
-.. nblinkgallery::
-   :caption: Tutorials
-   :name: rst-link-gallery
-
-   _tutorials/1-oligo-sequences-generation
-   _tutorials/2-oligo-database
-   _tutorials/3-property-filters
-   _tutorials/4-specificity-filters
-   _tutorials/5-oligoset-generation
+   _tutorials/0-setup
 
 .. toctree::
    :hidden:
@@ -38,3 +27,14 @@ A step-by-step installation guide is available
    _tutorials/3-property-filters
    _tutorials/4-specificity-filters
    _tutorials/5-oligoset-generation
+
+.. nblinkgallery::
+   :caption: Tutorials
+   :name: rst-link-gallery
+
+   _tutorials/1-oligo-sequences-generation
+   _tutorials/2-oligo-database
+   _tutorials/3-property-filters
+   _tutorials/4-specificity-filters
+   _tutorials/5-oligoset-generation
+
