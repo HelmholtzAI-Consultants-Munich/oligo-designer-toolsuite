@@ -13,7 +13,7 @@
    :end-before: <!-- LINK INTRODUCTION END -->
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: GETTING STARTED
 
    _getting_started/installation.rst
@@ -21,7 +21,7 @@
    _getting_started/build_a_custom_pipeline.rst
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: PIPELINES
 
    _pipelines/genomic_region_generator
