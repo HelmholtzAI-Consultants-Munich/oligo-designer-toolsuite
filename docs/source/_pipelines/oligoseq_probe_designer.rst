@@ -104,6 +104,7 @@ The pipeline has four major steps:
 
 .. image:: ../_static/pipeline_oligoseq.jpg
     :width: 500px
+    :align: center
 
 
 For the probe generation step, the user has to provide a FASTA file with genomic sequences which is used as reference for the generation of probe sequences. 

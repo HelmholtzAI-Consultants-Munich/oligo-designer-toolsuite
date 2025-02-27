@@ -16,8 +16,18 @@ Before getting started, you must install the Oligo Designer Toolsuite Python pac
 A step-by-step installation guide is available 
 `here <https://oligo-designer-toolsuite.readthedocs.io/en/latest/_getting_started/installation.html>`_.
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+
+   _tutorials/1-oligo-sequences-generation
+   _tutorials/2-oligo-database
+   _tutorials/3-property-filters
+   _tutorials/4-specificity-filters
+   _tutorials/5-oligoset-generation
+
 .. nblinkgallery::
-   :caption:Tutorials
+   :caption: Tutorials
    :name: rst-link-gallery
 
    _tutorials/1-oligo-sequences-generation
