@@ -9,6 +9,7 @@
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
+[![Documentation Status](https://readthedocs.org/projects/oligo-designer-toolsuite/badge/?version=latest)](https://oligo-designer-toolsuite.readthedocs.io/en/latest/?badge=latest)
 
 [📃 Documentation]
 
