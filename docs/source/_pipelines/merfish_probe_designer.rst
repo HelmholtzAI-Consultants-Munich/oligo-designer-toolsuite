@@ -9,6 +9,8 @@ A MERFISH encoding probe is a fluorescent probe that contains a 30-nt targeting 
 two 20-nt barcode sequences, which are read out by fluorescent secondary readout probes, single A-nucleotide spacers between readout and gene-specific regions, 
 and two 20-nt PCR primer binding sites. The specific readout sequences contained by an encoding probe are determined by the binary barcode assigned to that RNA.
 
+.. image:: ../_static/pipeline_merfish_probes.png
+
 If you are using the MERFISH Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
 The MERFISH Probe Design Pipeline follows the design steps listed in [3].
 
