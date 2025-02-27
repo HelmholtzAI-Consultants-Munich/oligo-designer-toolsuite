@@ -17,10 +17,10 @@ A step-by-step installation guide is available
 `here <https://oligo-designer-toolsuite.readthedocs.io/en/latest/_getting_started/installation.html>`_.
 
 
-.. toctree::
-   :hidden:
-   :maxdepth: 1
+
+.. nblinkgallery::
    :caption: Tutorials
+   :name: rst-link-gallery
 
    _tutorials/1-oligo-sequences-generation
    _tutorials/2-oligo-database
@@ -28,9 +28,10 @@ A step-by-step installation guide is available
    _tutorials/4-specificity-filters
    _tutorials/5-oligoset-generation
 
-.. nblinkgallery::
+.. toctree::
+   :hidden:
+   :maxdepth: 1
    :caption: Tutorials
-   :name: rst-link-gallery
 
    _tutorials/1-oligo-sequences-generation
    _tutorials/2-oligo-database

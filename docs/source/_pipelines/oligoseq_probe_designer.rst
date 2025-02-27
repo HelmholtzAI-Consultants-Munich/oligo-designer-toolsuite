@@ -102,7 +102,7 @@ The pipeline has four major steps:
 .. image:: ../_static/pipeline_oligoseq.jpg
    :align: right
    :alt: Oligo-Seq Design Pipeline
-   :width: 200px
+   :width: 400px
 
 For the probe generation step, the user has to provide a FASTA file with genomic sequences which is used as reference for the generation of probe sequences. 
 The probe sequences are generated using the ``OligoSequenceGenerator``. 
