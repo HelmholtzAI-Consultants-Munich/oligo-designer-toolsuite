@@ -10,8 +10,6 @@ Padlock probes contain two variable gene-specific 5’- and 3’- arms and a sta
 Circularized padlock probe is hybridized to the complementary sequence of the corresponding mRNA
 
 .. image:: ../_static/pipeline_scrinshot_probes.png
-    :width: 500px
-    :align: center
 
 If you are using the SCRINSHOT Probe Design Pipeline, consider citing the Oligo Designer Toolsuite package [1] and in addition Kuemmerle et al. [2]
 The SCRINSHOT Probe Design Pipeline follows the design steps listed in [3].
