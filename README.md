@@ -2,18 +2,14 @@
 
 # *Oligo Designer Toolsuite* - Lightweight Development of Custom Oligo Design Pipelines
 
-[![TestUbuntuX64](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_ubuntu_x64.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_ubuntu_x64.yml)
-[![TestMacOsArm64](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_macos_arm64.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_macos_arm64.yml)
+[![Documentation Status](https://readthedocs.org/projects/oligo-designer-toolsuite/badge/?version=latest)](https://oligo-designer-toolsuite.readthedocs.io/en/latest/?badge=latest)
 [![PyPI](https://img.shields.io/pypi/v/oligo-designer-toolsuite.svg)](https://pypi.org/project/oligo-designer-toolsuite)
-[![codecov](https://codecov.io/gh/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/branch/main/graph/badge.svg)](https://codecov.io/gh/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite)
+[![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DOI](https://zenodo.org/badge/397343029.svg)](https://zenodo.org/badge/latestdoi/397343029)
-[![Documentation Status](https://readthedocs.org/projects/oligo-designer-toolsuite/badge/?version=latest)](https://oligo-designer-toolsuite.readthedocs.io/en/latest/?badge=latest)
-
-[📃 Documentation]
-
-[📃 Documentation]: https://oligo-designer-toolsuite.readthedocs.io/
+[![TestUbuntuX64](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_ubuntu_x64.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_ubuntu_x64.yml)
+[![TestMacOsArm64](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_macos_arm64.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/actions/workflows/test_macos_arm64.yml)
+[![codecov](https://codecov.io/gh/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/branch/main/graph/badge.svg)](https://codecov.io/gh/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite)
 
 <!-- LINK INTRODUCTION START -->
 
