@@ -35,9 +35,6 @@ For a complete explanation of all function parameters, refer to the API document
     ##### Initialize Probe Designer Pipeline #####
     # We create an instance of the OligoSeqProbeDesigner class. This pipeline handles all steps 
     # required to design probes for oligo-seq experiments, including target probes and final output. 
-    # - write_intermediate_steps: whether to save intermediate results (True/False)
-    # - dir_output: directory path where output files will be stored
-    # - n_jobs: number of CPU cores/threads to use for parallel tasks
     pipeline = OligoSeqProbeDesigner(
         write_intermediate_steps=True,
         dir_output="output_oligo_seq_probe_designer",
@@ -80,8 +77,8 @@ For a complete explanation of all function parameters, refer to the API document
     )
 
     ##### Generate Final Output #####
-    # Once the oligo database is complete, generate_output() compiles 
-    # final reports and stores the top N probe sets. 
+    # The pipeline then generates its final outputs for the 'top_n_sets'
+    # best scoring probe sets to keep. 
     pipeline.generate_output(oligo_database=oligo_database, top_n_sets=3)
 
 

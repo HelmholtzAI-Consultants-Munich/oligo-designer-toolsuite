@@ -45,9 +45,6 @@ For a complete explanation of all function parameters, refer to the API document
     # We create an instance of the ScrinshotProbeDesigner class. This pipeline handles
     # all steps required to design probes for SCRINSHOT experiments, including target probes,
     # readout probes, primers, and final output. 
-    # - write_intermediate_steps: whether to save intermediate results (True/False)
-    # - dir_output: directory path where output files will be stored
-    # - n_jobs: number of CPU cores/threads to use for parallel tasks
     pipeline = ScrinshotProbeDesigner(
             write_intermediate_steps=True,
             dir_output="output_merfish_probe_designer",
@@ -90,6 +87,9 @@ For a complete explanation of all function parameters, refer to the API document
         n_sets=100,                                             
     )
 
+    ##### Design Detection Oligos #####
+    # Generate short 'detection oligos' that hybridize to a region of the padlock probe, 
+    # These oligos must conform to specified length, Tm, and base composition rules.
     oligo_database = pipeline.design_detection_oligos(
         oligo_database=oligo_database,
         detection_oligo_length_min=15,
@@ -99,17 +99,17 @@ For a complete explanation of all function parameters, refer to the API document
         detection_oligo_Tm_opt=56,
     )
 
+    ##### Design Padlock Backbone #####
+    # This step finalizes the design of the padlock backbone portion, 
+    # incorporating any additional structural or sequence elements 
+    # required for SCRINSHOT probe circularization and ligation.
     oligo_database = pipeline.design_padlock_backbone(
         oligo_database=oligo_database
     )
 
     ##### Generate Final Output #####
-    # The pipeline can now generate its final outputs, such as:
-    # - Final encoding probe sequences
-    # - The chosen forward/reverse primers
-    # - Codebooks and metadata for the designed sets
-    # - Intermediate files if write_intermediate_steps=True
-    # 'top_n_sets' specifies how many of the best scoring probe sets to keep.
+    # The pipeline then generates its final outputs for the 'top_n_sets'
+    # best scoring probe sets to keep.
     pipeline.generate_output(
         oligo_database=oligo_database,
         top_n_sets=3,
