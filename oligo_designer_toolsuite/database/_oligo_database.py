@@ -685,6 +685,18 @@ class OligoDatabase:
     # Getter Functions
     ############################################
 
+    def get_attribute_list(self) -> list[str]:
+        """Retrieves a list of attribute names stored in the database.
+
+        :return: A list of attribute names stored in the database.
+        :rtype: list[str]
+        """
+        region_id = next(iter(self.database.values()))
+        oligo_id = next(iter(region_id.values()))
+        attributes = list(oligo_id.keys())
+
+        return attributes
+
     def get_regionid_list(self) -> list[str]:
         """
         Retrieves a list of all region IDs present in the database.

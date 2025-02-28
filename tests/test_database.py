@@ -288,6 +288,18 @@ class TestOligoDatabase(unittest.TestCase):
             len(REGION_IDS) - 1 + 1  # one region removed but one added from random seqs
         ), "error: wrong number of regions in database"
 
+    def test_get_attribute_list(self):
+        self.oligo_database.load_database_from_table(
+            file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
+            region_ids=None,
+            database_overwrite=True,
+        )
+
+        list_attributes = self.oligo_database.get_attribute_list()
+        print(list_attributes)
+        assert len(list_attributes) == 13, "error: wrong number of attributes in database"
+        assert "oligo" in list_attributes, "error: missing attribute"
+
     def test_get_oligoid_list(self):
         self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
