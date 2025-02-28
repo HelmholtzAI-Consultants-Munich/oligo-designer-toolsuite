@@ -45,9 +45,6 @@ For a complete explanation of all function parameters, refer to the API document
     # We create an instance of the MerfishProbeDesigner class. This pipeline handles
     # all steps required to design probes for MERFISH experiments, including target probes,
     # readout probes, primers, and final output. 
-    # - write_intermediate_steps: whether to save intermediate results (True/False)
-    # - dir_output: directory path where output files will be stored
-    # - n_jobs: number of CPU cores/threads to use for parallel tasks
     pipeline = MerfishProbeDesigner(
             write_intermediate_steps=True,
             dir_output="output_merfish_probe_designer",
@@ -139,12 +136,8 @@ For a complete explanation of all function parameters, refer to the API document
     )
 
     ##### Generate Final Output #####
-    # The pipeline can now generate its final outputs, such as:
-    # - Final encoding probe sequences
-    # - The chosen forward/reverse primers
-    # - Codebooks and metadata for the designed sets
-    # - Intermediate files if write_intermediate_steps=True
-    # 'top_n_sets' specifies how many of the best scoring probe sets to keep.
+    # The pipeline then generates its final outputs for the 'top_n_sets'
+    # best scoring probe sets to keep.
     pipeline.generate_output(
         encoding_probe_database=encoding_probe_database,
         reverse_primer_sequence=reverse_primer_sequence,
