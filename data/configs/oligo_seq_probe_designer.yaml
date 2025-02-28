@@ -39,8 +39,9 @@ target_probe_homopolymeric_base_n: # minimum number of nucleotides to consider i
   T: 6
   C: 6
   G: 6
-target_probe_max_len_selfcomplement: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
+target_probe_max_len_selfcomplement: 10 # the maximum length of self-complementary sequence allowed to avoid homodimer formation.
 target_probe_hybridization_probability_threshold: 0.001 #the lower the threshold the more stringent the filter
+target_probe_read_len_sequencing_bias: 20 # minimum length of sequencing reads.The first x bases of an oligo should not match the x bases of another oligo to account for shorter sequencing reads that would align to multiple positions.
 target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
 target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
 set_size_min: 3 # minimum size of oligo sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes

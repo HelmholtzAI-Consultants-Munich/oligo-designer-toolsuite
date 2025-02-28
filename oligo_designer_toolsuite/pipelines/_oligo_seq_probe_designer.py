@@ -44,6 +44,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatchFilter,
     HybridizationProbabilityFilter,
     RemoveByLargerRegionPolicy,
+    RemoveAllPolicy,
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
@@ -791,8 +792,11 @@ class TargetProbeDesigner:
 
         ##### specificity filters #####
         # removing duplicated oligos from the region with the most oligos
-        exact_matches = ExactMatchFilter(policy=RemoveByLargerRegionPolicy(), filter_name="exact_match")
+        # this step can be redundant with the hybridization probability filter
+        # but improves runtuíme as it pre-filters such sequences
+        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match")
 
+        # remove oligos that potentially cross-hybridize with other oligos in the set
         cross_hybridization_aligner = _get_alignment_method(
             alignment_method=cross_hybridization_alignment_method,
             search_parameters=cross_hybridization_search_parameters,
@@ -806,6 +810,8 @@ class TargetProbeDesigner:
             dir_output=self.dir_output,
         )
 
+        # uses an alignment method to check for off-target hits wrt to reference sequences
+        # and refines those hits with a hybridization probability model
         hybridization_probability_aligner = _get_alignment_method(
             alignment_method=hybridization_probability_alignment_method,
             search_parameters=hybridization_probability_search_parameters,
@@ -818,6 +824,7 @@ class TargetProbeDesigner:
             dir_output=self.dir_output,
         )
 
+        # run all filters specified above
         filters = [exact_matches, cross_hybridization, hybridization_probability]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
@@ -837,6 +844,8 @@ class TargetProbeDesigner:
         ]:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
+
+        # run an extra check
 
         return oligo_database
 
