@@ -44,6 +44,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatchFilter,
     HybridizationProbabilityFilter,
     RemoveByLargerRegionPolicy,
+    RemoveAllPolicy,
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
@@ -791,7 +792,7 @@ class TargetProbeDesigner:
 
         ##### specificity filters #####
         # removing duplicated oligos from the region with the most oligos
-        exact_matches = ExactMatchFilter(policy=RemoveByLargerRegionPolicy(), filter_name="exact_match")
+        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match")
 
         cross_hybridization_aligner = _get_alignment_method(
             alignment_method=cross_hybridization_alignment_method,
