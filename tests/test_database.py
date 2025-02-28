@@ -625,3 +625,33 @@ class TestOligoAttributes(unittest.TestCase):
         assert detect_oligo_even == "AGGGAATCGAAT", "error: wrong detection oligo even calculated"
         assert detect_oligo_long_left == None, "error: wrong detection oligo left calculated"
         assert detect_oligo_long_right == None, "error: wrong detection oligo right calculated"
+
+    def test_calculate_shortened_sequence(self):
+        # check if it works for oligos
+        sequence_type = "oligo"
+
+        oligo_database = self.oligo_attributes.calculate_shortened_sequence(
+            self.oligo_database,
+            sequence_length=10,
+            sequence_type=sequence_type,
+        )
+
+        sequence_short_oligo = oligo_database.get_oligo_attribute_value(
+            attribute=f"{sequence_type}_short", flatten=True, region_id="region_1", oligo_id="region_1::2"
+        )
+
+        # check if it works for targets
+        sequence_type = "target"
+
+        oligo_database = self.oligo_attributes.calculate_shortened_sequence(
+            self.oligo_database,
+            sequence_length=5,
+            sequence_type=sequence_type,
+        )
+
+        sequence_short_target = oligo_database.get_oligo_attribute_value(
+            attribute=f"{sequence_type}_short", flatten=True, region_id="region_1", oligo_id="region_1::2"
+        )
+
+        assert sequence_short_oligo == "GGCTAGGGAA", "error: wrong short sequence calculated"
+        assert sequence_short_target == "CTCTA", "error: wrong short sequence calculated"

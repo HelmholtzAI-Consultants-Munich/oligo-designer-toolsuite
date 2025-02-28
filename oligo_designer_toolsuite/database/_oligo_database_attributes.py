@@ -948,3 +948,25 @@ class OligoAttributes:
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
+
+    def calculate_shortened_sequence(
+        self,
+        oligo_database: OligoDatabase,
+        sequence_length: int,
+        sequence_type: _TYPES_SEQ = "oligo",
+        region_ids: Union[str, List[str]] = None,
+    ) -> OligoDatabase:
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
+
+        for region_id in region_ids:
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+
+                sequence_short = sequence[:sequence_length]
+                new_oligo_attribute[oligo_id] = {f"{sequence_type}_short": sequence_short}
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
+
+        return oligo_database
