@@ -68,6 +68,7 @@ For a complete explanation of all function parameters, refer to the API document
         target_probe_homopolymeric_base_n={"A": 6, "T": 6, "C": 6, "G": 6},
         target_probe_max_len_selfcomplement=10,
         target_probe_hybridization_probability_threshold=0.001,
+        target_probe_read_length_bias=20,
         target_probe_GC_weight=1,
         target_probe_Tm_weight=1,
         set_size_min=3,
@@ -119,6 +120,7 @@ Next, the probes are checked for off-target binding with any other region of a p
 Off-target regions are sequences of the background reference (e.g. transcriptome or genome) which match the probe region with a certain degree of homology but are not located within the gene region of the probe. 
 Those off-target regions are identified with the ``BlastNFilter`` or ``BowtieFilter`` (users choice) and further refined using the ``HybridizationProbabilityFilter`` which calculates the probability of the probe hybridizing to the identified potential off-target sequences.  
 Probes with a hybridization probability greater than the user-defined trheshold are removed from the database. Refining the alignment hits with the ``HybridizationProbabilityFilter`` helps to retain more probes in the database.
+In addition, we account for length biases during sequencing, where some oligos may not be sequences to their full length. Because these truncated reads can match other oligos and create alignment ambiguities, we exclude any oligos whose first x bases match.
 
 In the third step of the pipeline, the best sets of non-overlapping probes are identified for each gene. 
 The ``OligosetGeneratorIndependentSet`` class is used to generate ranked, non-overlapping probe sets where each probe and probe set is scored according to a protocol dependent scoring function, i.e. by weighted GC content and melting temperature score, of the probes in the set. 
