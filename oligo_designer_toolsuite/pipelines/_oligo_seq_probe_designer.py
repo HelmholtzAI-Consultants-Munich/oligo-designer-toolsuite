@@ -292,6 +292,7 @@ class OligoSeqProbeDesigner:
         target_probe_homopolymeric_base_n: dict = {"A": 6, "T": 6, "C": 6, "G": 6},
         target_probe_max_len_selfcomplement: int = 10,
         target_probe_hybridization_probability_threshold: float = 0.001,
+        target_probe_read_length_bias: int = 20,
         target_probe_GC_weight: float = 1,
         target_probe_Tm_weight: float = 1,
         set_size_min: int = 3,
@@ -341,6 +342,9 @@ class OligoSeqProbeDesigner:
         :type target_probe_max_len_selfcomplement: int, optional
         :param target_probe_hybridization_probability_threshold: Threshold for hybridization probability, defaults to 0.001.
         :type target_probe_hybridization_probability_threshold: float, optional
+        :param target_probe_read_length_bias: Minimum length of sequencing reads to account for shorter sequencing reads,
+            i.e. first <target_probe_read_length_bias> bases of an oligo should not match the <target_probe_read_length_bias> bases of another oligo
+        :type target_probe_read_length_bias: int
         :param target_probe_GC_weight: Weight for GC content in set scoring, defaults to 1.
         :type target_probe_GC_weight: float, optional
         :param target_probe_Tm_weight: Weight for melting temperature in set scoring, defaults to 1.
@@ -404,6 +408,7 @@ class OligoSeqProbeDesigner:
             hybridization_probability_search_parameters=self.target_probe_hybridization_probability_search_parameters,
             hybridization_probability_hit_parameters=self.target_probe_hybridization_probability_hit_parameters,
             hybridization_probability_threshold=target_probe_hybridization_probability_threshold,
+            target_probe_read_length_bias=target_probe_read_length_bias,
         )
         check_content_oligo_database(oligo_database)
 
@@ -607,6 +612,9 @@ class TargetProbeDesigner:
             database_overwrite=True,
             region_ids=gene_ids,
         )
+        oligo_database = self.oligo_attributes_calculator.calculate_reverse_complement_sequence(
+            oligo_database=oligo_database, sequence_type="target", sequence_type_reverse_complement="oligo"
+        )
 
         ##### pre-filter oligo database for certain attributes #####
         oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(
@@ -732,6 +740,7 @@ class TargetProbeDesigner:
         hybridization_probability_search_parameters: dict,
         hybridization_probability_hit_parameters: dict,
         hybridization_probability_threshold: float,
+        target_probe_read_length_bias: int,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on sequence specificity to remove sequences that
@@ -755,6 +764,9 @@ class TargetProbeDesigner:
         :type hybridization_probability_hit_parameters: dict
         :param hybridization_probability_threshold: Threshold for hybridization probability filtering.
         :type hybridization_probability_threshold: float
+        :param target_probe_read_length_bias: Minimum length of sequencing reads to account for shorter sequencing reads,
+            i.e. first <target_probe_read_length_bias> bases of an oligo should not match the <target_probe_read_length_bias> bases of another oligo
+        :type target_probe_read_length_bias: int
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
@@ -791,6 +803,22 @@ class TargetProbeDesigner:
         )
 
         ##### specificity filters #####
+        # remove sequences that could cause read ength biases because the first
+        # <target_probe_read_length_bias> bases of both sequences match
+        oligo_database = self.oligo_attributes_calculator.calculate_shortened_sequence(
+            oligo_database=oligo_database,
+            sequence_length=target_probe_read_length_bias,
+            sequence_type="oligo",
+        )
+
+        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match_read_length_bias")
+        specificity_filter = SpecificityFilter(filters=[exact_matches])
+        oligo_database = specificity_filter.apply(
+            sequence_type="oligo_short",
+            oligo_database=oligo_database,
+            n_jobs=self.n_jobs,
+        )
+
         # removing duplicated oligos from the region with the most oligos
         # this step can be redundant with the hybridization probability filter
         # but improves runtuíme as it pre-filters such sequences
@@ -844,8 +872,6 @@ class TargetProbeDesigner:
         ]:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
-
-        # run an extra check
 
         return oligo_database
 
@@ -1118,6 +1144,7 @@ def main():
         target_probe_hybridization_probability_threshold=config[
             "target_probe_hybridization_probability_threshold"
         ],
+        target_probe_read_length_bias=config["target_probe_read_length_bias"],
         target_probe_GC_weight=config["target_probe_GC_weight"],
         target_probe_Tm_weight=config["target_probe_Tm_weight"],
         set_size_min=config["set_size_min"],
