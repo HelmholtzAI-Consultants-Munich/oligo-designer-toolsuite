@@ -118,7 +118,7 @@ For a complete explanation of all function parameters, refer to the API document
     # The reverse primer sequence has to be provided to design the forward primer.
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
         encoding_probe_database=encoding_probe_database,
-        files_fasta_reference_database_primer=...,
+        files_fasta_reference_database_primer=...,                  # List of FASTA files for specificity reference 
         reverse_primer_sequence="CCCTATAGTGAGTCGTATTA",
         primer_length=20,
         primer_base_probabilities={"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25},
