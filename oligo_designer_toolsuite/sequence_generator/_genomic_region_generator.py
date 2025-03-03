@@ -141,7 +141,9 @@ class CustomGenomicRegionGenerator:
         Generates gene sequences based on gene annotations. These sequences are then saved in a FASTA file.
 
         Output Format (per sequence):
-        >{gene_id}::source={source};species={species};annotation_release={annotation_release};genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id}::{chromosome}:{start}-{end}({strand})
+        >{gene_id}::source={source};species={species};annotation_release={annotation_release};
+        genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id}
+        ::{chromosome}:{start}-{end}({strand})
 
         sequence
 
@@ -193,7 +195,8 @@ class CustomGenomicRegionGenerator:
         These sequences are then saved in a FASTA file.
 
         Output Format (per sequence):
-        >{intergenic_region_id}::source={source};species={species};annotation_release={annotation_release};genome_assembly={genome_assembly};regiontype={regiontype}::{chromosome}:{start}-{end}({strand})
+        >{intergenic_region_id}::source={source};species={species};annotation_release={annotation_release};
+        genome_assembly={genome_assembly};regiontype={regiontype}::{chromosome}:{start}-{end}({strand})
 
         sequence
 
@@ -383,7 +386,10 @@ class CustomGenomicRegionGenerator:
         These sequences are then saved in a FASTA file.
 
         Output Format (per sequence):
-        >{gene_id}::source={source};species={species};annotation_release={annotation_release};genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},exon_number={exon_number_x};transcript_id={transcript_id_b},exon_number={exon_number_y};number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
+        >{gene_id}::source={source};species={species};annotation_release={annotation_release};
+        genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
+        exon_number={exon_number_x};transcript_id={transcript_id_b},exon_number={exon_number_y};
+        number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
         sequence
 
         :param collapse_duplicated_regions: Whether to collapse duplicated regions into a single entry, defauls to True.
@@ -452,7 +458,10 @@ class CustomGenomicRegionGenerator:
         These sequences are then saved in a FASTA file.
 
         Output Format (per sequence):
-        >{gene_id}::source={source};species={species};annotation_release={annotation_release};genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},intron_number={intron_number_x};transcript_id={transcript_id_b},intron_number={intron_number_y};number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
+        >{gene_id}::source={source};species={species};annotation_release={annotation_release};
+        genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
+        intron_number={intron_number_x};transcript_id={transcript_id_b},intron_number={intron_number_y};
+        number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
         sequence
 
         :param collapse_duplicated_regions: Whether to collapse duplicated regions into a single entry, defauls to True.
@@ -586,7 +595,10 @@ class CustomGenomicRegionGenerator:
         These sequences are then saved in a FASTA file.
 
         Output Format (per sequence):
-        >{gene_id}::source={source};species={species};annotation_release={annotation_release};genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},exon_number={exon_number_x};transcript_id={transcript_id_b},exon_number={exon_number_y};number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
+        >{gene_id}::source={source};species={species};annotation_release={annotation_release};
+        genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
+        exon_number={exon_number_x};transcript_id={transcript_id_b},exon_number={exon_number_y};
+        number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
         sequence
 
         :param collapse_duplicated_regions: Whether to collapse duplicated regions into a single entry, defauls to True.
@@ -661,7 +673,10 @@ class CustomGenomicRegionGenerator:
         These sequences are then saved in a FASTA file.
 
         Output Format (per sequence):
-        >{gene_id}::source={source};species={species};annotation_release={annotation_release};genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},exon_number={exon_number_x};transcript_id={transcript_id_b},exon_number={exon_number_y};number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
+        >{gene_id}::source={source};species={species};annotation_release={annotation_release};
+        genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
+        exon_number={exon_number_x};transcript_id={transcript_id_b},exon_number={exon_number_y};
+        number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
         sequence
 
         :param five_prime: Boolean flag indicating whether to include 5' UTR sequences. Defaults to True.
@@ -794,7 +809,10 @@ class CustomGenomicRegionGenerator:
         These sequences are then saved in a FASTA file.
 
         Output Format (per sequence):
-        >{gene_id}::source={source};species={species};annotation_release={annotation_release};genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},exon_number={exon_number_x__JUNC__exon_number_y};transcript_id={transcript_id_b},exon_number={exon_number_y__JUNC__exon_number_z};number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
+        >{gene_id}::source={source};species={species};annotation_release={annotation_release};
+        genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
+        exon_number={exon_number_x__JUNC__exon_number_y};transcript_id={transcript_id_b},
+        exon_number={exon_number_y__JUNC__exon_number_z};number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
         sequence
 
         :param block_size: The size of the sequence block used to generate junctions between exons. This parameter determines the length of the sequence blocks flanking the junctions.
