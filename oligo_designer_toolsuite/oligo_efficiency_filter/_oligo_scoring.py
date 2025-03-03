@@ -74,7 +74,7 @@ class GCOligoScoring(OligoScoringBase):
     """
     A class for scoring oligonucleotides based on their GC content.
 
-        :math:`score = |GC_opt} - GC_{oligo}|`
+        :math:`score = |GC_{opt} - GC_{oligo}|`
 
     The `GCOligoScoring` class calculates the score for an oligo by evaluating the difference between
     its actual GC content and a predefined optimal GC content. The smaller the difference,
