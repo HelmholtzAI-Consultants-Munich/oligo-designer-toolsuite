@@ -9,6 +9,10 @@ Module contents
 .. autosummary::
 
    GenomicRegionGenerator
+   OligoSeqProbeDesigner
+   ScrinshotProbeDesigner
+   SeqFishPlusProbeDesigner
+   MerfishProbeDesigner
 
    {% for name in oligo_designer_toolsuite.pipelines.classes %}
      {{ name }}
