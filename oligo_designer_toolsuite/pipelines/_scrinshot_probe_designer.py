@@ -802,6 +802,9 @@ class TargetProbeDesigner:
             sequence_type="target",
             region_ids=gene_ids,
         )
+        oligo_database = self.oligo_attributes_calculator.calculate_reverse_complement_sequence(
+            oligo_database=oligo_database, sequence_type="target", sequence_type_reverse_complement="oligo"
+        )
 
         ##### pre-filter oligo database for certain attributes #####
         oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(

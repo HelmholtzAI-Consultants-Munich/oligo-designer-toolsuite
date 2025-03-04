@@ -120,9 +120,8 @@ class OligoDatabase:
         Loads oligonucleotide data from one or more FASTA files into the database, optionally overwriting the existing database.
 
         This function reads sequences from FASTA file(s) and adds them to the OligoDatabase, either as 'oligo' or
-        'target' sequence and computes the reverse compliment sequence for the other sequence type. It parses the
-        headers of the FASTA entries to extract oligo ttribute information, and assigns unique IDs to the oligos within
-        each region.
+        'target' sequence. It parses the headers of the FASTA entries to extract oligo attribute information,
+        and assigns unique IDs to the oligos within each region.
 
         The header of each sequence must start with '>' and contain the following information:
         region_id, additional_information (optional) and coordinates (chrom, start, end, strand),
@@ -181,11 +180,7 @@ class OligoDatabase:
                     i = 1
                     for oligo_sequence, oligo_attributes in sequences_region.items():
                         oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
-                        oligo_sequence_reverse_complement = str(Seq(oligo_sequence).reverse_complement())
-                        oligo_seq_info = {
-                            sequence_type: oligo_sequence,
-                            sequence_type_reverse_complement: oligo_sequence_reverse_complement,
-                        } | oligo_attributes
+                        oligo_seq_info = {sequence_type: oligo_sequence} | oligo_attributes
                         database_region[region][oligo_id] = oligo_seq_info
                         i += 1
 
@@ -210,8 +205,6 @@ class OligoDatabase:
         assert (
             sequence_type in options
         ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-
-        sequence_type_reverse_complement = options[0] if options[0] != sequence_type else options[1]
 
         # Clear database if it should be overwritten
         if database_overwrite:
@@ -684,6 +677,18 @@ class OligoDatabase:
     ############################################
     # Getter Functions
     ############################################
+
+    def get_attribute_list(self) -> list[str]:
+        """Retrieves a list of attribute names stored in the database.
+
+        :return: A list of attribute names stored in the database.
+        :rtype: list[str]
+        """
+        region_id = next(iter(self.database.values()))
+        oligo_id = next(iter(region_id.values()))
+        attributes = list(oligo_id.keys())
+
+        return attributes
 
     def get_regionid_list(self) -> list[str]:
         """
