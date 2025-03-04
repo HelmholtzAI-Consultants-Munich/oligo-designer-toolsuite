@@ -4,8 +4,8 @@
 
 from typing import List, Union, Tuple
 
-from Bio.Seq import Seq
-from Bio.SeqUtils import MeltingTemp, gc_fraction
+from Bio.SeqUtils import MeltingTemp as mt
+from Bio.SeqUtils import Seq, gc_fraction
 from seqfold import dg
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
@@ -65,107 +65,6 @@ class OligoAttributes:
                 new_oligo_attribute[oligo_id] = {
                     "length": length,
                 }
-        oligo_database.update_oligo_attributes(new_oligo_attribute)
-
-        return oligo_database
-
-    @staticmethod
-    def _calculate_shortened_sequence(sequence: str, sequence_length: int, reverse: bool) -> int:
-        """Calculate the shortened sequence of an oligonucleotide sequence.
-
-        :param sequence: The nucleotide sequence.
-        :type sequence: str
-        :param sequence_length: The desired length for the shortened sequence.
-        :type sequence_length: int
-        :param reverse: If True, the shortened sequence is taken from the end of the sequence, otherwise from the beginning.
-        :type reverse: bool
-        :return: The shortened sequence.
-        :rtype: str
-        """
-        return sequence[:sequence_length] if not reverse else sequence[-sequence_length:]
-
-    def calculate_shortened_sequence(
-        self,
-        oligo_database: OligoDatabase,
-        sequence_length: int,
-        sequence_type: _TYPES_SEQ = "oligo",
-        region_ids: Union[str, List[str]] = None,
-        reverse: bool = False,
-    ) -> OligoDatabase:
-        """Calculate and update the shortened oligonucleotide sequences for the specified regions of the OligoDatabase.
-
-        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
-        :type oligo_database: OligoDatabase
-        :param sequence_length: The desired length for the shortened sequence.
-        :type sequence_length: int
-        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
-        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
-        :type region_ids: Union[str, List[str]], optional
-        :param reverse: If True, the shortened sequence is taken from the end of the sequence, otherwise from the beginning, defaults to False.
-        :type reverse: bool, optional
-        :return: The updated OligoDatabase with the calculated attribute.
-        :rtype: OligoDatabase
-        """
-        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
-        new_oligo_attribute = {}
-
-        for region_id in region_ids:
-            for oligo_id in oligo_database.database[region_id].keys():
-                sequence = oligo_database.get_oligo_attribute_value(
-                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
-                )
-
-                sequence_short = self._calculate_shortened_sequence(
-                    sequence=sequence, sequence_length=sequence_length, reverse=reverse
-                )
-                new_oligo_attribute[oligo_id] = {f"{sequence_type}_short": sequence_short}
-        oligo_database.update_oligo_attributes(new_oligo_attribute)
-
-        return oligo_database
-
-    @staticmethod
-    def _calculate_reverse_complement_sequence(sequence: str) -> int:
-        """Calculate the reverse complemented sequence of an oligonucleotide sequence.
-
-        :param sequence: The nucleotide sequence.
-        :type sequence: str
-        :return: The reverse complemented sequence.
-        :rtype: str
-        """
-        return str(Seq(sequence).reverse_complement())
-
-    def calculate_reverse_complement_sequence(
-        self,
-        oligo_database: OligoDatabase,
-        sequence_type: _TYPES_SEQ,
-        sequence_type_reverse_complement: _TYPES_SEQ,
-        region_ids: Union[str, List[str]] = None,
-    ) -> OligoDatabase:
-        """Calculate and update the reverse complement of oligonucleotide sequences for the specified regions of the OligoDatabase.
-
-        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
-        :type oligo_database: OligoDatabase
-        :param sequence_type: The type of sequence to be used for attribute calculation.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param sequence_type_reverse_complement: The type of sequence of the reverse complement.
-        :type sequence_type_reverse_complement: int
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
-        :type region_ids: Union[str, List[str]], optional
-        :return: The updated OligoDatabase with the calculated attribute.
-        :rtype: OligoDatabase
-        """
-        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
-        new_oligo_attribute = {}
-
-        for region_id in region_ids:
-            for oligo_id in oligo_database.database[region_id].keys():
-                sequence = oligo_database.get_oligo_attribute_value(
-                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
-                )
-
-                sequence_rc = self._calculate_reverse_complement_sequence(sequence=sequence)
-                new_oligo_attribute[oligo_id] = {sequence_type_reverse_complement: sequence_rc}
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
@@ -511,11 +410,11 @@ class OligoAttributes:
         :return: The calculated melting temperature (Tm) in degrees Celsius, rounded to two decimal places.
         :rtype: float
         """
-        TmNN = MeltingTemp.Tm_NN(sequence, **Tm_parameters)
+        TmNN = mt.Tm_NN(sequence, **Tm_parameters)
         if Tm_salt_correction_parameters is not None:
-            TmNN += MeltingTemp.salt_correction(**Tm_salt_correction_parameters, seq=sequence)
+            TmNN += mt.salt_correction(**Tm_salt_correction_parameters, seq=sequence)
         if Tm_chem_correction_parameters is not None:
-            TmNN = MeltingTemp.chem_correction(TmNN, **Tm_chem_correction_parameters)
+            TmNN = mt.chem_correction(TmNN, **Tm_chem_correction_parameters)
         TmNN = round(TmNN, 2)
         return TmNN
 
