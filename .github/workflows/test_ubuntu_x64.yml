@@ -82,7 +82,7 @@ jobs:
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
-        coverage run -m pytest tests/test_oligo_specificity_filter.py --disable-warnings
+        coverage run -m pytest --disable-warnings
         coverage xml -i
       env:
         PLATFORM: ${{ matrix.os }}
