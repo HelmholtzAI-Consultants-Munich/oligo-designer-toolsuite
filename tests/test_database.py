@@ -501,9 +501,21 @@ class TestOligoAttributes(unittest.TestCase):
             self.oligo_database,
             sequence_length=10,
             sequence_type=sequence_type,
+            reverse=False,
         )
 
         sequence_short_oligo = oligo_database.get_oligo_attribute_value(
+            attribute=f"{sequence_type}_short", flatten=True, region_id="region_1", oligo_id="region_1::2"
+        )
+
+        oligo_database = self.oligo_attributes.calculate_shortened_sequence(
+            self.oligo_database,
+            sequence_length=10,
+            sequence_type=sequence_type,
+            reverse=True,
+        )
+
+        sequence_short_oligo_reverse_read = oligo_database.get_oligo_attribute_value(
             attribute=f"{sequence_type}_short", flatten=True, region_id="region_1", oligo_id="region_1::2"
         )
 
@@ -514,14 +526,27 @@ class TestOligoAttributes(unittest.TestCase):
             self.oligo_database,
             sequence_length=5,
             sequence_type=sequence_type,
+            reverse=False,
         )
 
         sequence_short_target = oligo_database.get_oligo_attribute_value(
             attribute=f"{sequence_type}_short", flatten=True, region_id="region_1", oligo_id="region_1::2"
         )
 
+        oligo_database = self.oligo_attributes.calculate_shortened_sequence(
+            self.oligo_database,
+            sequence_length=5,
+            sequence_type=sequence_type,
+            reverse=True,
+        )
+
+        sequence_short_target_reverse_read = oligo_database.get_oligo_attribute_value(
+            attribute=f"{sequence_type}_short", flatten=True, region_id="region_1", oligo_id="region_1::2"
+        )
         assert sequence_short_oligo == "GGCTAGGGAA", "error: wrong short sequence calculated"
         assert sequence_short_target == "CTCTA", "error: wrong short sequence calculated"
+        assert sequence_short_oligo_reverse_read == "TCCAATAGAG", "error: wrong short sequence calculated"
+        assert sequence_short_target_reverse_read == "TAGCC", "error: wrong short sequence calculated"
 
     def test_calculate_num_targeted_transcripts(self):
         oligo_database = self.oligo_attributes.calculate_num_targeted_transcripts(self.oligo_database)
