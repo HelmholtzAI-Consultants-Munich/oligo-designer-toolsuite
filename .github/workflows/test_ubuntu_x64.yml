@@ -75,6 +75,7 @@ jobs:
         conda activate test-env
         python -m pip install --upgrade pip
         pip install pytest
+        pip install coverage
         pip install -e .
 
     - name: Test with pytest and codecov
