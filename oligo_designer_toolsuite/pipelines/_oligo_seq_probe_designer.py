@@ -822,7 +822,7 @@ class TargetProbeDesigner:
 
         # removing duplicated oligos from the region with the most oligos
         # this step can be redundant with the hybridization probability filter
-        # but improves runtuíme as it pre-filters such sequences
+        # but improves runtime as it pre-filters such sequences
         exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match")
 
         # remove oligos that potentially cross-hybridize with other oligos in the set

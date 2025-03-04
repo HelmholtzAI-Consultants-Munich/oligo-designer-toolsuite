@@ -812,7 +812,8 @@ class CustomGenomicRegionGenerator:
         >{gene_id}::source={source};species={species};annotation_release={annotation_release};
         genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
         exon_number={exon_number_x__JUNC__exon_number_y};transcript_id={transcript_id_b},
-        exon_number={exon_number_y__JUNC__exon_number_z};number_total_transcripts={number_total_transcripts}::{chromosome}:{start}-{end}({strand})
+        exon_number={exon_number_y__JUNC__exon_number_z};number_total_transcripts={number_total_transcripts}
+        ::{chromosome}:{start}-{end}({strand})
         sequence
 
         :param block_size: The size of the sequence block used to generate junctions between exons. This parameter determines the length of the sequence blocks flanking the junctions.

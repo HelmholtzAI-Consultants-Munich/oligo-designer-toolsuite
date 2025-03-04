@@ -1,1 +1,4 @@
 graft data
+prune tests
+prune docs
+prune tutorials
