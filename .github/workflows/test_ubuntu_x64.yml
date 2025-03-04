@@ -82,3 +82,19 @@ jobs:
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
         pytest --disable-warnings
+
+    - name: Test with pytest and codecov
+      run: |
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate test-env
+        coverage run -m pytest --log-cli-level=INFO tests/test_oligo_specificity_filter.py --disable-warnings --continue-on-collection-errors || true
+        coverage xml -i
+      env:
+        PLATFORM: ${{ matrix.os }}
+      
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        files: oligo_designer_toolsuite/coverage.xml
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
