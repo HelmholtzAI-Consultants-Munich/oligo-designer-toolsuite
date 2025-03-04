@@ -78,16 +78,13 @@ jobs:
         pip install -e .
         
     - name: Test with pytest
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate test-env
-        pytest --disable-warnings
+
 
     - name: Test with pytest and codecov
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
-        coverage run -m pytest --log-cli-level=INFO tests/test_oligo_specificity_filter.py --disable-warnings --continue-on-collection-errors || true
+        coverage run -m pytest tests/test_oligo_specificity_filter.py --disable-warnings
         coverage xml -i
       env:
         PLATFORM: ${{ matrix.os }}
