@@ -803,12 +803,13 @@ class TargetProbeDesigner:
         )
 
         ##### specificity filters #####
-        # remove sequences that could cause read ength biases because the first
+        # remove sequences that could cause read length biases because the first
         # <target_probe_read_length_bias> bases of both sequences match
         oligo_database = self.oligo_attributes_calculator.calculate_shortened_sequence(
             oligo_database=oligo_database,
             sequence_length=target_probe_read_length_bias,
             sequence_type="oligo",
+            reverse=False,
         )
 
         exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match_read_length_bias")
@@ -821,7 +822,7 @@ class TargetProbeDesigner:
 
         # removing duplicated oligos from the region with the most oligos
         # this step can be redundant with the hybridization probability filter
-        # but improves runtuíme as it pre-filters such sequences
+        # but improves runtime as it pre-filters such sequences
         exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match")
 
         # remove oligos that potentially cross-hybridize with other oligos in the set

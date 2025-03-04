@@ -10,6 +10,7 @@ readme = { file = "README.md" }
 
 [tool.setuptools_scm]
 write_to = "oligo_designer_toolsuite/_version.py"
+local_scheme = "no-local-version"
 
 [project]
 name = "oligo-designer-toolsuite"

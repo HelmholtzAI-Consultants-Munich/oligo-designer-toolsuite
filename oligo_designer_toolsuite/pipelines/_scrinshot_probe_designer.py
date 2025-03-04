@@ -46,6 +46,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     CrossHybridizationFilter,
     ExactMatchFilter,
     RemoveByLargerRegionPolicy,
+    RemoveAllPolicy,
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
@@ -992,7 +993,7 @@ class TargetProbeDesigner:
         ##### exact match filter #####
         # removing duplicated probes from the region with the most probes
         # exectute seperately before specificity filter to compute ligation side for less oligos
-        exact_matches = ExactMatchFilter(policy=RemoveByLargerRegionPolicy(), filter_name="exact_match")
+        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match")
         filters = [exact_matches]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(

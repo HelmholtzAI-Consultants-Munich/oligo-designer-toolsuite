@@ -70,17 +70,19 @@ class OligoAttributes:
         return oligo_database
 
     @staticmethod
-    def _calculate_shortened_sequence(sequence: str, sequence_length: int) -> int:
+    def _calculate_shortened_sequence(sequence: str, sequence_length: int, reverse: bool) -> int:
         """Calculate the shortened sequence of an oligonucleotide sequence.
 
         :param sequence: The nucleotide sequence.
         :type sequence: str
         :param sequence_length: The desired length for the shortened sequence.
         :type sequence_length: int
+        :param reverse: If True, the shortened sequence is taken from the end of the sequence, otherwise from the beginning.
+        :type reverse: bool
         :return: The shortened sequence.
         :rtype: str
         """
-        return sequence[:sequence_length]
+        return sequence[:sequence_length] if not reverse else sequence[-sequence_length:]
 
     def calculate_shortened_sequence(
         self,
@@ -88,6 +90,7 @@ class OligoAttributes:
         sequence_length: int,
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
+        reverse: bool = False,
     ) -> OligoDatabase:
         """Calculate and update the shortened oligonucleotide sequences for the specified regions of the OligoDatabase.
 
@@ -99,6 +102,8 @@ class OligoAttributes:
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
+        :param reverse: If True, the shortened sequence is taken from the end of the sequence, otherwise from the beginning, defaults to False.
+        :type reverse: bool, optional
         :return: The updated OligoDatabase with the calculated attribute.
         :rtype: OligoDatabase
         """
@@ -112,7 +117,7 @@ class OligoAttributes:
                 )
 
                 sequence_short = self._calculate_shortened_sequence(
-                    sequence=sequence, sequence_length=sequence_length
+                    sequence=sequence, sequence_length=sequence_length, reverse=reverse
                 )
                 new_oligo_attribute[oligo_id] = {f"{sequence_type}_short": sequence_short}
         oligo_database.update_oligo_attributes(new_oligo_attribute)

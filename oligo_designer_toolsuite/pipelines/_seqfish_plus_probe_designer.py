@@ -52,6 +52,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     ExactMatchFilter,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
+    RemoveAllPolicy,
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
@@ -1139,7 +1140,7 @@ class TargetProbeDesigner:
         )
 
         ##### exact match filter #####
-        exact_matches = ExactMatchFilter(policy=RemoveByLargerRegionPolicy(), filter_name="oligo_exact_match")
+        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="oligo_exact_match")
 
         ##### specificity filters #####
         specificity = BlastNFilter(
@@ -1475,10 +1476,8 @@ class ReadoutProbeDesigner:
         )
 
         ##### specificity filters #####
-        # removing duplicated oligos from the region with the most oligos
-        exact_matches = ExactMatchFilter(
-            policy=RemoveByDegreePolicy(), filter_name="readout_probes_exact_match"
-        )
+        # removing duplicated oligos
+        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="readout_probes_exact_match")
 
         # BlastN Filter
         specificity = BlastNFilter(
