@@ -99,7 +99,7 @@ primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary st
 ### -----------------------------------------------
 # Specificity filter with BlastN
 target_probe_specificity_blastn_search_parameters:
-  perc_identity: 100
+  perc_identity: 100 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   word_size: 7
   dust: "no"
@@ -110,7 +110,7 @@ target_probe_specificity_blastn_hit_parameters:
   min_alignment_length: 15 # can be turned into coverage
 # Crosshybridization filter with BlastN
 target_probe_cross_hybridization_blastn_search_parameters:
-  perc_identity: 80
+  perc_identity: 80 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed
   word_size: 7
   dust: "no"
@@ -130,7 +130,7 @@ heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos
 readout_probe_initial_num_sequences: 100000 # if not enough readout probes can be generated, increase this number
 # Specificity filter with BlastN
 readout_probe_specificity_blastn_search_parameters:
-  perc_identity: 100
+  perc_identity: 100 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   word_size: 7
   dust: "no"
@@ -141,7 +141,7 @@ readout_probe_specificity_blastn_hit_parameters:
   min_alignment_length: 10 # can be turned into coverage
 # Crosshybridization filter with BlastN
 readout_probe_cross_hybridization_blastn_search_parameters:
-  perc_identity: 100
+  perc_identity: 100 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed
   word_size: 7
   dust: "no"
@@ -156,7 +156,7 @@ readout_probe_cross_hybridization_blastn_hit_parameters:
 primer_initial_num_sequences: 1000000 # if no primer can be generated, increase this number
 # Specificity filter with BlastN against reference
 primer_specificity_refrence_blastn_search_parameters:
-  perc_identity: 100
+  perc_identity: 100 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   word_size: 7
   dust: "no"
@@ -167,7 +167,7 @@ primer_specificity_refrence_blastn_hit_parameters:
   min_alignment_length: 14 # can be turned into coverage
 # Specificity filter with BlastN against encoding rpobes
 primer_specificity_encoding_probes_blastn_search_parameters:
-  perc_identity: 100
+  perc_identity: 100 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   word_size: 7
   dust: "no"
