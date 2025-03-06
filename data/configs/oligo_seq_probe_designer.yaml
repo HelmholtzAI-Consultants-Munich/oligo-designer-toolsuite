@@ -59,7 +59,7 @@ n_sets: 100 # Maximum number of sets to report
 target_probe_hybridization_probability_alignment_method: blastn # options: blastn, bowtie
 # Specificity filter with BlastN
 target_probe_hybridization_probability_blastn_search_parameters:
-  perc_identity: 80
+  perc_identity: 80 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   word_size: 10
 target_probe_hybridization_probability_blastn_hit_parameters:
@@ -73,7 +73,7 @@ target_probe_hybridization_probability_bowtie_hit_parameters: # No hit parameter
 target_probe_cross_hybridization_alignment_method: blastn # options: blastn, bowtie
 # Crosshybridization filter with BlastN
 target_probe_cross_hybridization_blastn_search_parameters:
-  perc_identity: 80
+  perc_identity: 80 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed
   word_size: 10
 target_probe_cross_hybridization_blastn_hit_parameters:
