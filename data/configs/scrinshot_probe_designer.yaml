@@ -63,7 +63,7 @@ detection_oligo_Tm_opt: 56 # optimal melting temperature of detection probe
 ### -----------------------------------------------
 # Specificity filter with BlastN
 target_probe_specificity_blastn_search_parameters:
-  perc_identity: 80
+  perc_identity: 80 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   word_size: 10
   dust: "no"
@@ -74,7 +74,7 @@ target_probe_specificity_blastn_hit_parameters:
   coverage: 50 # can be turned into min_alignment_length
 # Crosshybridization filter with BlastN
 target_probe_cross_hybridization_blastn_search_parameters:
-  perc_identity: 80
+  perc_identity: 80 # the higher the percent identity is, the more significant the match
   strand: "minus" # this parameter is fixed
   word_size: 10
   dust: "no"
