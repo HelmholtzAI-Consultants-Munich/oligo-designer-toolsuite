@@ -3,9 +3,9 @@
 ############################################
 
 import os
+from subprocess import Popen
 
 from Bio import SeqIO
-from subprocess import Popen
 
 ############################################
 # Collection of utility functions

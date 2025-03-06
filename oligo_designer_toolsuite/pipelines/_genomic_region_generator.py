@@ -10,10 +10,7 @@ from pathlib import Path
 
 import yaml
 
-from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
-    base_log_parameters,
-)
+from oligo_designer_toolsuite.pipelines._utils import base_log_parameters, base_parser
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,

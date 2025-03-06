@@ -4,10 +4,12 @@
 
 import os
 import random
-from typing import Union, List
 from pathlib import Path
-from joblib import Parallel, delayed
+from typing import List, Union
+
 from Bio.SeqRecord import SeqRecord
+from joblib import Parallel, delayed
+
 from oligo_designer_toolsuite.utils import FastaParser
 
 from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename

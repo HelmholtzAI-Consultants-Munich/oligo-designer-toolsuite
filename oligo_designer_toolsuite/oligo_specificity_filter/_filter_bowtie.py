@@ -4,7 +4,7 @@
 
 import os
 import subprocess
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
 import pandas as pd
 from Bio import SeqIO
