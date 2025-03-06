@@ -1232,7 +1232,7 @@ class TargetProbeDesigner:
         # We change the processing dependent on the required number of probes in the probe sets
         # For small sets, we don't pre-filter and find the initial set by iterating
         # through all possible generated sets, which is faster than the max clique approximation.
-        if set_size_min < 15:
+        if set_size_opt < 15:
             pre_filter = False
             clique_init_approximation = False
             selection_policy = GraphBasedSelectionPolicy(
@@ -1253,7 +1253,7 @@ class TargetProbeDesigner:
 
         # For medium sized sets, we don't pre-filter but we apply the max clique approximation
         # to find an initial probe set faster.
-        if set_size_min > 15:
+        elif 15 < set_size_opt < 30:
             pre_filter = False
             clique_init_approximation = True
             selection_policy = GraphBasedSelectionPolicy(
@@ -1275,7 +1275,7 @@ class TargetProbeDesigner:
         # For large sets, we apply the pre-filter which removes all probes from the
         # graph that are only part of cliques which are smaller than the minimum set size
         # and we apply the Greedy Selection Policy istead of the graph-based selection policy.
-        if set_size_min > 30:
+        else:
             pre_filter = True
             selection_policy = GreedySelectionPolicy(
                 set_scoring=set_scoring,
