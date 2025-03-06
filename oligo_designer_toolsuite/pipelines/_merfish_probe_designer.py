@@ -2,23 +2,21 @@
 # imports
 ############################################
 
-import os
-import yaml
-import shutil
 import logging
+import os
+import shutil
 import warnings
+from datetime import datetime
+from itertools import combinations
+from pathlib import Path
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-
-from typing import List, Tuple
-from pathlib import Path
-from datetime import datetime
-from itertools import combinations
-from scipy.spatial.distance import hamming
-
-from Bio.SeqUtils import Seq
+import yaml
 from Bio.SeqUtils import MeltingTemp as mt
+from Bio.SeqUtils import Seq
+from scipy.spatial.distance import hamming
 
 from oligo_designer_toolsuite.database import (
     OligoAttributes,
@@ -30,40 +28,40 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     WeightedIsoformTmGCOligoScoring,
 )
 from oligo_designer_toolsuite.oligo_property_filter import (
-    SoftMaskedSequenceFilter,
+    ComplementFilter,
+    GCClampFilter,
+    GCContentFilter,
     HardMaskedSequenceFilter,
     HomopolymericRunsFilter,
-    GCContentFilter,
-    GCClampFilter,
     MeltingTemperatureNNFilter,
-    SelfComplementFilter,
-    ComplementFilter,
-    SecondaryStructureFilter,
     PropertyFilter,
+    SecondaryStructureFilter,
+    SelfComplementFilter,
+    SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
-    HomogeneousPropertyOligoSetGenerator,
-    OligosetGeneratorIndependentSet,
     GraphBasedSelectionPolicy,
     GreedySelectionPolicy,
+    HomogeneousPropertyOligoSetGenerator,
+    OligosetGeneratorIndependentSet,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
     CrossHybridizationFilter,
     ExactMatchFilter,
+    RemoveAllPolicy,
     RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
-    RemoveAllPolicy,
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
     base_log_parameters,
-    pipeline_step_basic,
+    base_parser,
     check_content_oligo_database,
+    pipeline_step_basic,
 )
-from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
+from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences
 
 ############################################
 # Merfish Probe Designer

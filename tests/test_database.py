@@ -3,10 +3,11 @@
 ############################################
 
 import os
-import yaml
 import shutil
 import unittest
+
 import pandas as pd
+import yaml
 
 from oligo_designer_toolsuite.database import (
     OligoAttributes,

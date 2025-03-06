@@ -3,8 +3,8 @@
 ############################################
 
 from typing import get_args
-from Bio.SeqUtils import Seq
 
+from Bio.SeqUtils import Seq
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 

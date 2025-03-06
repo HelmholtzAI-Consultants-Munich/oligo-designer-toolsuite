@@ -2,15 +2,13 @@
 # imports
 ############################################
 
-import os
-import sys
 import inspect
 import logging
+import sys
 import warnings
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from oligo_designer_toolsuite.database import OligoDatabase
-
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 ############################################
 # Utils functions
@@ -80,7 +78,6 @@ def get_oligo_length_min_max_from_database(oligo_database: dict):
 
 
 def pipeline_step_basic(step_name: str):
-
     def decorator(function):
         def wrapper(*args, **kwargs):
             logging.info(f"Parameters {step_name}:")
@@ -101,7 +98,6 @@ def pipeline_step_basic(step_name: str):
 
 
 def pipeline_step_advanced(step_name: str):
-
     def decorator(function):
         def wrapper(*args, **kwargs):
             logging.info(f"Parameters {step_name}:")

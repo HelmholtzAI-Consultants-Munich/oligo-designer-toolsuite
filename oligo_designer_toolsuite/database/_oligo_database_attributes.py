@@ -2,7 +2,7 @@
 # imports
 ############################################
 
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
 from Bio.Seq import Seq
 from Bio.SeqUtils import MeltingTemp, gc_fraction

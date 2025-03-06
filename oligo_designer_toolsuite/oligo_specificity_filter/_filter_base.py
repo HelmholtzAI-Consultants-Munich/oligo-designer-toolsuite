@@ -6,10 +6,9 @@ import os
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
 import pandas as pd
-from Bio import Seq
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 

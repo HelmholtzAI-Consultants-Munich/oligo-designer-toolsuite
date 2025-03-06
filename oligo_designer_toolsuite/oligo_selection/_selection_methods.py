@@ -3,7 +3,6 @@
 ############################################
 
 from abc import abstractmethod
-from typing import List
 
 import networkx as nx
 import numpy as np

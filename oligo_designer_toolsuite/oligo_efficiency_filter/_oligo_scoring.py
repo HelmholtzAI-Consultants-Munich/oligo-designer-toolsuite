@@ -3,10 +3,10 @@
 ############################################
 
 from abc import ABC, abstractmethod
+from typing import Tuple
 
 import pandas as pd
 
-from typing import Tuple
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
 
@@ -139,8 +139,8 @@ class WeightedGCUtrScoring(OligoScoringBase):
     def __init__(
         self,
         GC_content_opt: float,
-        GC_weight: float = 1,
-        UTR_weight: float = 10,
+        GC_weight: float,
+        UTR_weight: float,
     ) -> None:
         """Constructor for the WeightedGCUtrScoring class."""
         self.GC_content_opt = GC_content_opt
@@ -213,6 +213,10 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
     :type Tm_parameters: dict
+    :param Tm_weight: The weight assigned to the Tm scoring component.
+    :type Tm_weight: float
+    :param GC_weight: The weight assigned to the GC content scoring component.
+    :type GC_weight: float
     :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation (optional).
         For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
@@ -221,10 +225,6 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
     :type Tm_chem_correction_parameters: dict, optional
-    :param Tm_weight: The weight assigned to the Tm scoring component.
-    :type Tm_weight: float
-    :param GC_weight: The weight assigned to the GC content scoring component.
-    :type GC_weight: float
     """
 
     def __init__(
@@ -236,10 +236,10 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         GC_content_opt: float,
         GC_content_max: float,
         Tm_parameters: dict,
+        Tm_weight: float,
+        GC_weight: float,
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
-        Tm_weight: float = 1,
-        GC_weight: float = 1,
     ) -> None:
         """Constructor for the WeightedTmGCOligoScoring class."""
         self.Tm_min = Tm_min
@@ -321,8 +321,8 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         :rtype: function
         """
 
-        dif_max = max_val - opt_val
-        dif_min = opt_val - min_val
+        dif_max = abs(max_val - opt_val)
+        dif_min = abs(opt_val - min_val)
         if dif_max == dif_min:
             return lambda dif: abs(dif) / dif_max
         else:
@@ -356,6 +356,12 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
     :type Tm_parameters: dict
+    :param isoform_weight: Weight given to the isoform consensus in the scoring.
+    :type isoform_weight: float
+    :param Tm_weight: Weight given to the melting temperature in the scoring.
+    :type Tm_weight: float
+    :param GC_weight: Weight given to the GC content in the scoring.
+    :type GC_weight: float
     :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation (optional).
         For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
@@ -364,12 +370,6 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
     :type Tm_chem_correction_parameters: dict, optional
-    :param isoform_weight: Weight given to the isoform consensus in the scoring.
-    :type isoform_weight: float
-    :param Tm_weight: Weight given to the melting temperature in the scoring.
-    :type Tm_weight: float
-    :param GC_weight: Weight given to the GC content in the scoring.
-    :type GC_weight: float
     """
 
     def __init__(
@@ -381,11 +381,11 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         GC_content_opt: float,
         GC_content_max: float,
         Tm_parameters: dict,
+        isoform_weight: float,
+        Tm_weight: float,
+        GC_weight: float,
         Tm_salt_correction_parameters: dict = None,
         Tm_chem_correction_parameters: dict = None,
-        isoform_weight: float = 2,
-        Tm_weight: float = 1,
-        GC_weight: float = 1,
     ) -> None:
         """Constructor for the WeightedIsoformTmGCOligoScoring class."""
         self.Tm_min = Tm_min
@@ -456,3 +456,106 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
             + self.isoform_weight * isoform_consensus
         )
         return score
+
+
+class WeightedIsoformTmGCOligoScoringTargetedExons(WeightedIsoformTmGCOligoScoring):
+    r"""
+    A class for scoring oligonucleotides based on melting temperature (Tm), GC content, isoform consensus, and targeted exons.
+
+    This class extends `WeightedIsoformTmGCOligoScoring` by incorporating targeted exons into the scoring criteria.
+    It adds an additional weight if the oligo targets an exon in `targeted_exons`.
+
+    The score is calculated as:
+
+    .. math::
+
+        \text{score} =
+        \begin{cases}
+            score_\text{WeightedIsoformTmGCOligoScoring} + w_{\text{targeted_exons}}, & \text{if oligo is in a targeted exon} \\
+            score_\text{WeightedIsoformTmGCOligoScoring}, & \text{otherwise}
+        \end{cases}
+
+
+    :param Tm_min: Minimum acceptable melting temperature.
+    :type Tm_min: float
+    :param Tm_opt: Optimal melting temperature.
+    :type Tm_opt: float
+    :param Tm_max: Maximum acceptable melting temperature.
+    :type Tm_max: float
+    :param GC_content_min: Minimum acceptable GC content.
+    :type GC_content_min: float
+    :param GC_content_opt: Optimal GC content.
+    :type GC_content_opt: float
+    :param GC_content_max: Maximum acceptable GC content.
+    :type GC_content_max: float
+    :param Tm_parameters: Parameters for calculating the melting temperature.
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+    :type Tm_parameters: dict
+    :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation (optional).
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
+    :param targeted_exons: List of targeted exons.
+    :type targeted_exons: list
+    :param isoform_weight: Weight given to the isoform consensus in the scoring.
+    :type isoform_weight: float
+    :param Tm_weight: Weight given to the melting temperature in the scoring.
+    :type Tm_weight: float
+    :param GC_weight: Weight given to the GC content in the scoring.
+    :type GC_weight: float
+    :param targeted_exons_weight: Weight assigned to the targeted exons in the scoring (default: 2). Set this parameter to 4 to make the presence of the oligo in targeted exons critically important, 0 for not at all.
+    :type targeted_exons_weight: float
+    :type Tm_salt_correction_parameters: dict, optional
+    :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation (optional).
+        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
+    :type Tm_chem_correction_parameters: dict, optional
+    """
+
+    def __init__(
+        self,
+        Tm_min: float,
+        Tm_opt: float,
+        Tm_max: float,
+        GC_content_min: float,
+        GC_content_opt: float,
+        GC_content_max: float,
+        Tm_parameters: dict,
+        targeted_exons: list,
+        isoform_weight: float,
+        Tm_weight: float,
+        GC_weight: float,
+        targeted_exons_weight: float,
+        Tm_salt_correction_parameters: dict = None,
+        Tm_chem_correction_parameters: dict = None,
+    ):
+        super().__init__(
+            Tm_min,
+            Tm_opt,
+            Tm_max,
+            GC_content_min,
+            GC_content_opt,
+            GC_content_max,
+            Tm_parameters,
+            isoform_weight,
+            Tm_weight,
+            GC_weight,
+            Tm_salt_correction_parameters,
+            Tm_chem_correction_parameters,
+        )
+        self.targeted_exons_weight = targeted_exons_weight
+        self.targeted_exons = targeted_exons
+
+    def get_score(
+        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
+    ) -> float:
+        exon_numbers = oligo_database.get_oligo_attribute_value(
+            "exon_number", flatten=True, region_id=region_id, oligo_id=oligo_id
+        )
+        if exon_numbers is None:
+            in_targeted_exons = False
+        else:
+            in_targeted_exons = any(item in self.targeted_exons for item in exon_numbers)
+        return super().get_score(
+            oligo_database, region_id, oligo_id, sequence_type
+        ) + self.targeted_exons_weight * (not in_targeted_exons)

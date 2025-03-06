@@ -4,7 +4,7 @@
 
 import os
 from pathlib import Path
-from typing import Union, List
+from typing import List, Union
 
 from Bio import SeqIO
 

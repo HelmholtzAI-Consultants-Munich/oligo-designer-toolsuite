@@ -3,13 +3,14 @@
 ############################################
 
 import warnings
-
 from typing import Union, get_args
+
 from effidict import LRUPickleDict
 
-from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID, _TYPES_SEQ
-from ._checkers_and_helpers import check_if_list_of_lists
+from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
+
 from .._constants import _TYPES_SEQ
+from ._checkers_and_helpers import check_if_list_of_lists
 
 ############################################
 # Collection of utility functions

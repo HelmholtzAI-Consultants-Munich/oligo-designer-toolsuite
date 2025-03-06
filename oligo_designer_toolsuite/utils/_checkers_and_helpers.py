@@ -2,12 +2,13 @@
 # imports
 ############################################
 
-import os
 import csv
-import yaml
+import os
 import time
 import uuid
 import warnings
+
+import yaml
 
 ############################################
 # Collection of utility functions

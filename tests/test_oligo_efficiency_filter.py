@@ -10,14 +10,14 @@ from Bio.SeqUtils import MeltingTemp as mt
 from pandas import Series
 
 from oligo_designer_toolsuite.database import OligoDatabase
-
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
+    AverageSetScoring,
     GCOligoScoring,
+    LowestSetScoring,
     WeightedGCUtrScoring,
     WeightedIsoformTmGCOligoScoring,
+    WeightedIsoformTmGCOligoScoringTargetedExons,
     WeightedTmGCOligoScoring,
-    LowestSetScoring,
-    AverageSetScoring,
 )
 
 ############################################
@@ -70,7 +70,7 @@ class TestOligoScoring(unittest.TestCase):
         self.sequence_type = "oligo"
 
         self.score_gc = GCOligoScoring(GC_content_opt=43.75)
-        self.score_weighted_gc_utr = WeightedGCUtrScoring(GC_content_opt=43.75)
+        self.score_weighted_gc_utr = WeightedGCUtrScoring(GC_content_opt=43.75, GC_weight=1, UTR_weight=10)
         self.score_weighted_gc_tm = WeightedTmGCOligoScoring(
             Tm_min=50,
             Tm_opt=65,
@@ -79,7 +79,9 @@ class TestOligoScoring(unittest.TestCase):
             GC_content_opt=50,
             GC_content_max=75,
             Tm_parameters=TM_PARAMETERS,
-        )
+            Tm_weight=1,
+            GC_weight=1,
+            )
         self.score_weighted_isoform_gc_tm = WeightedIsoformTmGCOligoScoring(
             Tm_min=50,
             Tm_opt=65,
@@ -88,6 +90,23 @@ class TestOligoScoring(unittest.TestCase):
             GC_content_opt=50,
             GC_content_max=75,
             Tm_parameters=TM_PARAMETERS,
+            Tm_weight=1,
+            GC_weight=1,
+            isoform_weight=2
+        )
+        self.score_weighted_isoform_gc_tm_targeted_exons = WeightedIsoformTmGCOligoScoringTargetedExons(
+            Tm_min=50,
+            Tm_opt=65,
+            Tm_max=70,
+            GC_content_min=25,
+            GC_content_opt=50,
+            GC_content_max=75,
+            Tm_parameters=TM_PARAMETERS,
+            targeted_exons=["21", "4"],
+            Tm_weight=1,
+            GC_weight=1,
+            isoform_weight=2,
+            targeted_exons_weight=2,
         )
 
     def tearDown(self):
@@ -135,6 +154,24 @@ class TestOligoScoring(unittest.TestCase):
         )
 
         assert abs(oligo_score - 0.74666) < 1e-5, "Weighted isoform GC-Tm score failed!"
+
+    def test_weighted_isoform_GC_Tm_score_targeted_exons(self):
+        oligo_score_not_in_targeted = self.score_weighted_isoform_gc_tm_targeted_exons.get_score(
+            oligo_database=self.oligo_database,
+            region_id="region_1",
+            oligo_id="region_1::1",
+            sequence_type=self.sequence_type,
+        )
+
+        oligo_score_in_targeted = self.score_weighted_isoform_gc_tm_targeted_exons.get_score(
+            oligo_database=self.oligo_database,
+            region_id="region_1",
+            oligo_id="region_1::2",
+            sequence_type=self.sequence_type,
+        )
+
+        assert abs(oligo_score_in_targeted - 0.74666) < 1e-5, "Weighted isoform GC-Tm score failed!"
+        assert abs(oligo_score_not_in_targeted - 2.74666) < 1e-5, "Weighted isoform GC-Tm score failed!"
 
 
 class TestSetScoring(unittest.TestCase):

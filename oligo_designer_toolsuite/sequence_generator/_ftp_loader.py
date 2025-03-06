@@ -2,21 +2,19 @@
 # imports
 ############################################
 
+import gzip
+import itertools
 import os
 import re
-import gzip
 import shutil
-import itertools
-import pandas as pd
-
 from ftplib import FTP, error_perm
 from pathlib import Path
-from typing import Literal, get_args, Tuple
+from typing import Tuple, get_args
 
+import pandas as pd
 from Bio import SeqIO
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
-
 
 ############################################
 # FTP Classes

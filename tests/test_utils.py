@@ -5,29 +5,27 @@
 import os
 import shutil
 import unittest
-import warnings
-import pandas as pd
-
 from pathlib import Path
+
+import pandas as pd
 from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import FastaParser, GffParser
 from oligo_designer_toolsuite.utils import (
+    FastaParser,
+    GffParser,
     check_if_dna_sequence,
     check_if_key_exists,
     check_if_list,
     check_if_list_of_lists,
-    check_tsv_format,
-    generate_unique_filename,
-)
-from oligo_designer_toolsuite.utils import (
-    merge_databases,
-    collapse_attributes_for_duplicated_sequences,
-    format_oligo_attributes,
     check_if_region_in_database,
+    check_tsv_format,
+    collapse_attributes_for_duplicated_sequences,
     flatten_attribute_list,
+    format_oligo_attributes,
+    generate_unique_filename,
+    merge_databases,
 )
 
 ############################################
