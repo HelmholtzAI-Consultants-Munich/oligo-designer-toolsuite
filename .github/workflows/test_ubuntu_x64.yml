@@ -83,7 +83,7 @@ jobs:
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
         coverage run -m pytest --disable-warnings
-        coverage xml -i
+        coverage xml -i --omit="oligo_designer_toolsuite/pipelines"
       env:
         PLATFORM: ${{ matrix.os }}
       
