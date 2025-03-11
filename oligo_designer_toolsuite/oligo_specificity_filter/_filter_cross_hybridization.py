@@ -43,7 +43,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         policy: FilterPolicyBase,
         alignment_method: AlignmentSpecificityFilter,
         database_name_reference: str = "db_reference",
-        filter_name: str = "crosshybridization_filter",
+        filter_name: str = "cross_hybridization_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the CrossHybridizationFilter class."""
@@ -118,6 +118,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         """
         file_reference = oligo_database.write_database_to_fasta(
             filename=f"db_reference_{self.filter_name}",
+            dir_output=self.dir_output_reference,
             save_description=False,
             region_ids=None,
             sequence_type=sequence_type,
@@ -125,6 +126,7 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         reference_database = ReferenceDatabase(
             database_name=self.database_name_reference, dir_output=self.dir_output_reference
         )
+
         reference_database.load_database_from_fasta(files_fasta=file_reference, database_overwrite=True)
 
         os.remove(file_reference)

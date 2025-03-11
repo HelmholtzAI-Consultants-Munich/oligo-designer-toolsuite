@@ -153,6 +153,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         file_oligo_database = oligo_database.write_database_to_fasta(
             filename=f"oligo_database_blast_{region_name}",
+            dir_output=self.dir_output,
             save_description=False,
             region_ids=region_ids,
             sequence_type=sequence_type,
