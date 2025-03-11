@@ -115,7 +115,7 @@ class OligoSequenceGenerator:
         self,
         files_fasta_in: list[str],
         length_interval_sequences: tuple,
-        split_region: int = 0,
+        split_region: int = 1,
         region_ids: Union[str, List[str]] = None,
         n_jobs: int = 1,
     ) -> list:
