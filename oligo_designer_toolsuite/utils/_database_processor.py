@@ -7,9 +7,8 @@ import warnings
 from typing import Union, get_args
 from effidict import LRUPickleDict
 
-from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID, _TYPES_SEQ
+from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 from ._checkers_and_helpers import check_if_list_of_lists
-from .._constants import _TYPES_SEQ
 
 ############################################
 # Collection of utility functions
@@ -17,7 +16,11 @@ from .._constants import _TYPES_SEQ
 
 
 def merge_databases(
-    database1: dict, database2: dict, dir_cache_files: str, lru_db_max_in_memory: int
+    database1: dict,
+    database2: dict,
+    sequence_type: _TYPES_SEQ,
+    dir_cache_files: str,
+    lru_db_max_in_memory: int,
 ) -> dict:
     """
     Merges two oligo databases by combining their content based on sequence keys,
@@ -27,6 +30,8 @@ def merge_databases(
     :type database1: dict
     :param database2: The second database to be merged.
     :type database2: dict
+    :param sequence_type: The type of sequence being loaded, must be one of the predefined sequence types, i.e. "oligo" or "target".
+    :type sequence_type: _TYPES_SEQ["oligo", "target"]
     :param dir_cache_files: Directory to store cache files used for merging.
     :type dir_cache_files: str
     :param lru_db_max_in_memory: Maximum number of entries to keep in memory for the LRU (Least Recently Used) cache.
@@ -35,7 +40,7 @@ def merge_databases(
     :rtype: dict
     """
 
-    def _get_sequence_as_key(database: dict, regions: list) -> dict:
+    def _get_sequence_as_key(database: dict, regions: list, sequence_type: _TYPES_SEQ) -> dict:
         """
         Converts oligo sequences to dictionary keys, grouping oligo attributes by sequence for each specified region.
 
@@ -43,6 +48,8 @@ def merge_databases(
         :type database: dict
         :param regions: List of regions within the database to process.
         :type regions: list
+        :param sequence_type: The type of sequence being loaded, must be one of the predefined sequence types, i.e. "oligo" or "target".
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: A dictionary with sequences as keys and oligo attributes as values.
         :rtype: dict
         """
@@ -54,8 +61,8 @@ def merge_databases(
             database_modified[region] = {}
             database_region = database[region]
             for oligo_id, oligo_attributes in database_region.items():
-                oligo_sequence = oligo_attributes["oligo"]
-                oligo_attributes.pop("oligo")
+                oligo_sequence = oligo_attributes[sequence_type]
+                oligo_attributes.pop(sequence_type)
                 database_modified[region][oligo_sequence] = oligo_attributes
         return database_modified
 
@@ -92,8 +99,8 @@ def merge_databases(
         database_merged[region] = {}
 
     # only loop over entries that have keys in both dicts
-    db1_sequences_as_keys = _get_sequence_as_key(database1, regions_intersection)
-    db2_sequences_as_keys = _get_sequence_as_key(database2, regions_intersection)
+    db1_sequences_as_keys = _get_sequence_as_key(database1, regions_intersection, sequence_type)
+    db2_sequences_as_keys = _get_sequence_as_key(database2, regions_intersection, sequence_type)
 
     database_merged = _add_database_content(database_merged, db1_sequences_as_keys)
     database_merged = _add_database_content(database_merged, db2_sequences_as_keys)
@@ -109,7 +116,7 @@ def merge_databases(
         i = 1
         for oligo_sequence, oligo_attributes in database_merged_region.items():
             oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
-            oligo_seq_info = {"oligo": oligo_sequence} | oligo_attributes
+            oligo_seq_info = {sequence_type: oligo_sequence} | oligo_attributes
             database_concat[region][oligo_id] = oligo_seq_info
             i += 1
 
