@@ -375,7 +375,7 @@ class OligoSeqProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_probes_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
             print(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_property(
@@ -395,7 +395,7 @@ class OligoSeqProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
             print(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_specificity(
@@ -413,7 +413,7 @@ class OligoSeqProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
             print(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.create_oligo_sets(
@@ -441,7 +441,7 @@ class OligoSeqProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
+            dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
             dir_probesets = oligo_database.write_oligosets_to_table()
             print(
                 f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database} and probeset table in directory {dir_probesets}"
@@ -615,7 +615,6 @@ class TargetProbeDesigner:
         oligo_database = self.oligo_attributes_calculator.calculate_reverse_complement_sequence(
             oligo_database=oligo_database, sequence_type="target", sequence_type_reverse_complement="oligo"
         )
-
         ##### pre-filter oligo database for certain attributes #####
         oligo_database = self.oligo_attributes_calculator.calculate_isoform_consensus(
             oligo_database=oligo_database
@@ -624,6 +623,13 @@ class TargetProbeDesigner:
             attribute_name="isoform_consensus",
             attribute_thr=isoform_consensus,
             remove_if_smaller_threshold=True,
+        )
+        # add junctions in plus and minus strand direction to targeted exons list
+        targeted_exons = sorted(targeted_exons)
+        targeted_exons = (
+            targeted_exons
+            + [f"{i}__JUNC__{j}" for i, j in zip(targeted_exons, targeted_exons[1:])]
+            + [f"{j}__JUNC__{i}" for i, j in zip(targeted_exons, targeted_exons[1:])]
         )
         oligo_database.filter_database_by_attribute_category(
             attribute_name="exon_number",
@@ -775,21 +781,21 @@ class TargetProbeDesigner:
             alignment_method,
             search_parameters,
             hit_parameters,
-            filter_name_specification: str = "",
+            filter_name,
         ):
             if alignment_method == "blastn":
                 return BlastNFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
-                    filter_name="blast_" + filter_name_specification,
+                    filter_name=filter_name,
                 )
             elif alignment_method == "bowtie":
                 return BowtieFilter(
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
-                    filter_name="bowtie_" + filter_name_specification,
+                    filter_name=filter_name,
                 )
             else:
                 raise ValueError(f"The alignment method {alignment_method} is not supported.")
@@ -830,7 +836,7 @@ class TargetProbeDesigner:
             alignment_method=cross_hybridization_alignment_method,
             search_parameters=cross_hybridization_search_parameters,
             hit_parameters=cross_hybridization_hit_parameters,
-            filter_name_specification="cross_hybridization",
+            filter_name="cross_hybridization_filter",
         )
         cross_hybridization = CrossHybridizationFilter(
             policy=RemoveByLargerRegionPolicy(),
@@ -845,7 +851,7 @@ class TargetProbeDesigner:
             alignment_method=hybridization_probability_alignment_method,
             search_parameters=hybridization_probability_search_parameters,
             hit_parameters=hybridization_probability_hit_parameters,
-            filter_name_specification="hybridization_probability",
+            filter_name="hybridization_probability_filter",
         )
         hybridization_probability = HybridizationProbabilityFilter(
             alignment_method=hybridization_probability_aligner,
@@ -854,7 +860,16 @@ class TargetProbeDesigner:
         )
 
         # run all filters specified above
-        filters = [exact_matches, cross_hybridization, hybridization_probability]
+        filters = [exact_matches, cross_hybridization]
+        specificity_filter = SpecificityFilter(filters=filters)
+        oligo_database = specificity_filter.apply(
+            sequence_type="oligo",
+            oligo_database=oligo_database,
+            reference_database=reference_database,
+            n_jobs=self.n_jobs,
+        )
+
+        filters = [hybridization_probability]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             sequence_type="oligo",

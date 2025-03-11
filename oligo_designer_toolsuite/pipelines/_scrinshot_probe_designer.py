@@ -387,7 +387,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_probes_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
             print(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_property(
@@ -411,7 +411,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
             print(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_specificity(
@@ -433,7 +433,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
             print(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.create_oligo_sets(
@@ -462,7 +462,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
+            dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
             dir_probesets = oligo_database.write_oligosets_to_table()
             print(
                 f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database} and probeset table in directory {dir_probesets}"

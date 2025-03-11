@@ -416,7 +416,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_target_probes_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_target_probes_initial")
             print(f"Saved target probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_property(
@@ -430,7 +430,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_target_probes_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_target_probes_property_filter")
             print(f"Saved target probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_specificity(
@@ -444,7 +444,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_target_probes_specificity_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_target_probes_specificity_filter")
             print(f"Saved target probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.create_oligo_sets(
@@ -464,7 +464,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="4_db_target_probes_sets")
+            dir_database = oligo_database.save_database(name_database="4_db_target_probes_sets")
             dir_oligosets = oligo_database.write_oligosets_to_table()
             print(
                 f"Saved target probe database for step 4 (Specificity Filters) in directory {dir_database} and sets table in directory {dir_oligosets}"
@@ -523,7 +523,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_readout_probes_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
             print(f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = readout_probe_designer.filter_by_property(
@@ -535,7 +535,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_readout_probes_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_readout_probes_property_filter")
             print(f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = readout_probe_designer.filter_by_specificity(
@@ -549,7 +549,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_readout_probes_specificty_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_readout_probes_specificty_filter")
             print(
                 f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
             )
@@ -721,7 +721,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_primers_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_primers_initial")
             print(f"Saved primer database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = primer_designer.filter_by_property(
@@ -745,7 +745,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_primer_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_primer_property_filter")
             print(f"Saved primer database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = primer_designer.filter_by_specificity(
@@ -760,7 +760,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_primer_specificty_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
             print(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
 
         min_dif_Tm = 100
