@@ -19,7 +19,6 @@ from Bio import SeqIO
 from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
 from oligo_designer_toolsuite.utils import GffParser
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
@@ -411,7 +410,7 @@ class CustomGenomicRegionGenerator:
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -549,7 +548,7 @@ class CustomGenomicRegionGenerator:
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}intron_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}intron_number="
             + annotation["intron_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -619,7 +618,7 @@ class CustomGenomicRegionGenerator:
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -759,9 +758,9 @@ class CustomGenomicRegionGenerator:
         annotation["add_inf"] = (
             "gene_id="
             + annotation["gene_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}transcript_id="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -972,7 +971,7 @@ class CustomGenomicRegionGenerator:
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         # generate regions -> taken from exon junction regions

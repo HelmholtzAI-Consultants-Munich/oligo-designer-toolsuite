@@ -15,7 +15,6 @@ from Bio import SeqIO
 from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
 
 from ._checkers_and_helpers import check_if_list
@@ -406,6 +405,7 @@ class FastaParser:
                         coordinates.setdefault("strand", []).append(
                             header_coordinate.split("(")[1].split(")")[0]
                         )
+
             else:
                 info_list = header_entry
                 # the additional info field should be parsed, save information in dict
@@ -414,15 +414,12 @@ class FastaParser:
                         info_list = info_list.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST)
 
                         for infos in info_list:
-                            key_values = infos.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS)
+                            key, value = infos.split("=")
 
-                            for key_value in key_values:
-                                key, value = key_value.split("=")
-
-                                if key in additional_info:
-                                    additional_info[key].append(value)
-                                else:
-                                    additional_info[key] = [value]
+                            if key in additional_info:
+                                additional_info[key].append(value)
+                            else:
+                                additional_info[key] = [value]
 
                     else:
                         key, value = info_list.split("=")
