@@ -512,6 +512,46 @@ class OligoDatabase:
 
         return file_fasta
 
+    def write_database_to_bed(
+        self,
+        filename: str = "db_oligo",
+        dir_output: str = None,
+        region_ids: Union[str, List[str]] = None,
+    ) -> str:
+        """
+        Write the oligo database to a BED file format.
+
+        This function exports oligo sequences with their genomic coordinates to a BED file,
+        which can be used for downstream analysis.
+
+        :param filename: Name of the output BED file (without extension). Default is "db_oligo".
+        :type filename: str
+        :param dir_output: Directory for saving output files.
+        :type dir_output: str
+        :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
+        :type region_ids: Union[str, List[str]], optional
+        :return: The path to the saved BED file.
+        :rtype: str
+        """
+        # Check formatting
+        region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
+
+        dir_output = dir_output if dir_output else self.dir_output
+        file_bed = os.path.join(dir_output, f"{filename}.bed")
+
+        attribute_table = self.get_oligo_attribute_table(
+            attributes=["chromosome", "start", "end", "strand"], flatten=True, region_ids=region_ids
+        )
+        attribute_table_extended = attribute_table.explode(
+            ["chromosome", "start", "end", "strand"], ignore_index=True
+        )
+        attribute_table_extended["score"] = "."
+        attribute_table_extended[["chromosome", "start", "end", "oligo_id", "score", "strand"]].to_csv(
+            file_bed, sep="\t", header=False, index=False
+        )
+
+        return file_bed
+
     def write_database_to_table(
         self,
         attributes: Union[str, List[str]],
@@ -555,13 +595,7 @@ class OligoDatabase:
                         oligo_attribute = self.database[region_id][oligo_id][attribute]
                         if flatten_attribute:
                             oligo_attribute = flatten_attribute_list(oligo_attribute)
-                            oligo_attribute = list(
-                                set(
-                                    oligo_attribute
-                                    if isinstance(oligo_attribute, list)
-                                    else [oligo_attribute]
-                                )
-                            )
+                            oligo_attribute = list(set(oligo_attribute))
                             entry[attribute] = (
                                 str(oligo_attribute).replace("'", "").replace("[", "").replace("]", "")
                             )
@@ -843,6 +877,24 @@ class OligoDatabase:
         :return: A DataFrame with oligo IDs and the corresponding attribute values.
         :rtype: pd.DataFrame
         """
+
+        def _check_if_list_length_one(x):
+            """
+            Check if an element is of type list and if the list contains only one element.
+            """
+            if (not isinstance(x, list)) or (len(x) <= 1):
+                return True
+            return False
+
+        def _flatten_if_list(x):
+            """
+            Flatten lists with only one element, i.e. if x is a list of length 1, return that single element.
+            If x is an empty list, return None.
+            """
+            if isinstance(x, list):
+                return x[0] if x else None
+            return x
+
         # Check formatting
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
         attributes = [attributes] if isinstance(attributes, str) else attributes
@@ -850,28 +902,33 @@ class OligoDatabase:
         attributes_dict = {}
 
         for region_id in region_ids:
-            region_db = self.database[region_id]
-            for oligo_id, oligo_attributes in region_db.items():
-                key = (region_id, oligo_id)
-                if key not in attributes_dict:
-                    attributes_dict[key] = {
-                        "region_id": region_id,
-                        "oligo_id": oligo_id,
-                    }
+            if region_id in self.database.keys():
+                region_db = self.database[region_id]
+                for oligo_id, oligo_attributes in region_db.items():
+                    key = (region_id, oligo_id)
+                    if key not in attributes_dict:
+                        attributes_dict[key] = {
+                            "region_id": region_id,
+                            "oligo_id": oligo_id,
+                        }
 
-                # Retrieve each requested attribute
-                for attribute in attributes:
-                    if attribute not in oligo_attributes:
-                        val = None
-                    elif flatten:
-                        val = flatten_attribute_list(oligo_attributes[attribute])
-                    else:
-                        val = oligo_attributes[attribute]
-                    attributes_dict[key][attribute] = val
+                    # Retrieve each requested attribute
+                    for attribute in attributes:
+                        if attribute not in oligo_attributes:
+                            val = None
+                        elif flatten:
+                            val = flatten_attribute_list(oligo_attributes[attribute])
+                        else:
+                            val = oligo_attributes[attribute]
+                        attributes_dict[key][attribute] = val
 
         # Convert the dict-of-dicts to a DataFrame
         attributes_table = pd.DataFrame.from_dict(attributes_dict, orient="index")
         attributes_table = attributes_table.reset_index(drop=True)
+
+        # If all lists in the dataframe only contain one element, flatten all list entries
+        if attributes_table.map(_check_if_list_length_one).all().all():
+            attributes_table = attributes_table.map(_flatten_if_list)
 
         return attributes_table
 
@@ -905,6 +962,8 @@ class OligoDatabase:
             attribute_value = None
         elif flatten:
             attribute_value = flatten_attribute_list(self.database[region_id][oligo_id][attribute])
+            if attribute_value and len(attribute_value) == 1:
+                attribute_value = attribute_value[0]
         else:
             attribute_value = self.database[region_id][oligo_id][attribute]
 
