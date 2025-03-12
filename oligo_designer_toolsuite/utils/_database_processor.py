@@ -8,7 +8,7 @@ from typing import Union, get_args
 from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
-from ._checkers_and_helpers import check_if_list_of_lists
+from ._checkers_and_helpers import check_if_list, check_if_list_of_lists
 
 ############################################
 # Collection of utility functions
@@ -214,5 +214,5 @@ def flatten_attribute_list(attribute: list) -> Union[list, str, int, float, bool
         for item in (sublist if isinstance(sublist, list) else [sublist])
     ]
     if len(flattened_attribute_list) == 1:
-        return flattened_attribute_list[0]
-    return flattened_attribute_list
+        return check_if_list(flattened_attribute_list[0])
+    return check_if_list(flattened_attribute_list)

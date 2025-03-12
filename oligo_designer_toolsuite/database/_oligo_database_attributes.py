@@ -182,7 +182,7 @@ class OligoAttributes:
         :rtype: int
         """
         # make sure that transcript id one level list
-        return len(set(check_if_list(flatten_attribute_list(transcript_id))))
+        return len(set(flatten_attribute_list(transcript_id)))
 
     def calculate_num_targeted_transcripts(
         self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None
