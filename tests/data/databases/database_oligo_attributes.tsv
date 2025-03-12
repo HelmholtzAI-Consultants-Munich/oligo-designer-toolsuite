@@ -1,5 +1,5 @@
 region_id	oligo_id	oligo	target	test_attribute	ligation_site	chromosome	start	end	strand	regiontype	gene_id	transcript_id	exon_number	number_total_transcripts
-region_1	region_1::1	ATGCCCCAATGGATGACGAT	ATCGTCATCCATTGGGGCAT	red	10	['16']	[[70289456], [70252793]]	[[70289485], [70252823]]	['-']	['exon']	[['region_1'], ['region_1']]	[['NM_001605.3'], ['XM_047433666.1']]	[['1'], ['1']]	['2']
+region_1	region_1::1	ATGCCCCAATGGATGACGAT	ATCGTCATCCATTGGGGCAT	red	10	[['16'],['16']]	[[70289456], [70252793]]	[[70289485], [70252823]]	[['-'],['-']]	['exon']	[['region_1'], ['region_1']]	[['NM_001605.3'], ['XM_047433666.1']]	[['1'], ['1']]	['2']
 region_1	region_1::2	GGCTAGGGAATCGAATGGTTCCAATAGAG	CTCTATTGGAACCATTCGATTCCCTAGCC	blue	10	['16']	[70289456]	[70289485]	['-']	['exon']	['region_1', 'region_1']	['NM_001605.3', 'XM_047433666.1']	['1', '1']	['2']
 region_1	region_1::3	CTCACTCGACTCTTACACAGTCATA	TATGACTGTGTAAGAGTCGAGTGAG	red	10	['16']	[70289456]	[70289485]	['-']	['exon']	['region_1', 'region_1']	['NM_001605.3', 'XM_047433666.1']	['1', '1']	['2']
 region_1	region_1::4	TATAACCCTGAGGAGGTATACCTAG	CTAGGTATACCTCCTCAGGGTTATA	red	10	['16']	[70252793]	[70252823]	['-']	['exon']	['region_1']	['NM_001605.3']	['21']	['2']

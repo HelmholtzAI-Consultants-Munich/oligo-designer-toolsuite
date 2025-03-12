@@ -72,7 +72,9 @@ class TestExactMatchFilter(unittest.TestCase):
             dir_output=self.tmp_path,
         )
         self.oligo_database.load_database_from_table(
-            FILE_DATABASE_OLIGOS_EXACT_MATCH, database_overwrite=True
+            FILE_DATABASE_OLIGOS_EXACT_MATCH,
+            database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
     def tearDown(self):
@@ -134,7 +136,9 @@ class AlignmentFilterTestBase:
             database_name="db_oligo_alignment_filters_match",
             dir_output=self.tmp_path,
         )
-        self.oligo_database_match.load_database_from_table(database_file_match, database_overwrite=True)
+        self.oligo_database_match.load_database_from_table(
+            database_file_match, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         self.oligo_database_nomatch = OligoDatabase(
             min_oligos_per_region=2,
@@ -142,7 +146,9 @@ class AlignmentFilterTestBase:
             database_name="db_oligo_alignment_filters_nomatch",
             dir_output=self.tmp_path,
         )
-        self.oligo_database_nomatch.load_database_from_table(database_file_nomatch, database_overwrite=True)
+        self.oligo_database_nomatch.load_database_from_table(
+            database_file_nomatch, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         self.reference_database = ReferenceDatabase(
             database_name="db_reference_alignment_filters", dir_output=self.tmp_path
@@ -258,7 +264,9 @@ class TestCrossHybridizationFilter(unittest.TestCase):
                 database_name="db_oligo_crosshybridization_filters_solution_larger_region_{i}",
                 dir_output=self.tmp_path,
             )
-            solution.load_database_from_table(solution_file, database_overwrite=True)
+            solution.load_database_from_table(
+                solution_file, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+            )
             self.expected_oligos_larger_region.append(solution.database)
 
         self.expected_oligos_degree = []
@@ -269,7 +277,9 @@ class TestCrossHybridizationFilter(unittest.TestCase):
                 database_name="db_oligo_crosshybridization_filters_solution_degree_{i}",
                 dir_output=self.tmp_path,
             )
-            solution.load_database_from_table(solution_file, database_overwrite=True)
+            solution.load_database_from_table(
+                solution_file, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+            )
             self.expected_oligos_degree.append(solution.database)
 
     def tearDown(self):
@@ -282,7 +292,9 @@ class TestCrossHybridizationFilter(unittest.TestCase):
             database_name="db_oligo_crosshybridization_filters",
             dir_output=self.tmp_path,
         )
-        oligos.load_database_from_table(file_database, database_overwrite=True)
+        oligos.load_database_from_table(
+            file_database, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
         return oligos
 
     def _apply_filter_and_assert(self, filter_instance, expected_oligos):
@@ -392,10 +404,13 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         )
         self.filter.model = DummyAPI()
         self.database = OligoDatabase(dir_output=self.tmp_path)
-        self.database.load_database_from_table(FILE_DATABASE_OLIGOS_AI, database_overwrite=True)
+        self.database.load_database_from_table(
+            FILE_DATABASE_OLIGOS_AI, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
         self.reference_database.load_database_from_fasta(
-            files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
+            files_fasta=FILE_DATABASE_REFERENCE,
+            database_overwrite=True,
         )
         self.file_reference = self.reference_database.write_database_to_fasta(filename="db_reference")
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BLAST_AI, sep="\t")
@@ -592,10 +607,13 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         )
         self.filter.model = DummyAPI()
         self.database = OligoDatabase(dir_output=self.tmp_path)
-        self.database.load_database_from_table(FILE_DATABASE_OLIGOS_AI, database_overwrite=True)
+        self.database.load_database_from_table(
+            FILE_DATABASE_OLIGOS_AI, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
         self.reference_database = ReferenceDatabase(dir_output=self.tmp_path)
         self.reference_database.load_database_from_fasta(
-            files_fasta=FILE_DATABASE_REFERENCE, database_overwrite=True
+            files_fasta=FILE_DATABASE_REFERENCE,
+            database_overwrite=True,
         )
         self.file_reference = self.reference_database.write_database_to_fasta(filename="db_reference_bowtie")
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BOWTIE_AI, sep="\t")

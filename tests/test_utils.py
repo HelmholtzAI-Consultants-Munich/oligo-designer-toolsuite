@@ -181,6 +181,7 @@ class TestDatabaseProcessor(unittest.TestCase):
         oligo_database_merged = merge_databases(
             self.oligo_database1.database,
             self.oligo_database2.database,
+            sequence_type="oligo",
             dir_cache_files=self.oligo_database1._dir_cache_files,
             lru_db_max_in_memory=self.oligo_database1.lru_db_max_in_memory,
         )
@@ -242,13 +243,17 @@ class TestDatabaseProcessor(unittest.TestCase):
             "chromosome": [["10"]],
             "start": [[1000], [1020]],
             "end": [[2000]],
-            "strand": [["+"]],
+            "strand": [["+", "+"], ["-"]],
         }
 
-        assert (
-            flatten_attribute_list(oligo_attributes["chromosome"]) == "10"
-        ), "error: attribute not flattened"
-        assert flatten_attribute_list(oligo_attributes["strand"]) == "+", "error: attribute not flattened"
+        assert flatten_attribute_list(oligo_attributes["chromosome"]) == [
+            "10"
+        ], "error: attribute not flattened"
+        assert flatten_attribute_list(oligo_attributes["strand"]) == [
+            "+",
+            "+",
+            "-",
+        ], "error: attribute not flattened"
         assert flatten_attribute_list(oligo_attributes["start"]) == [
             1000,
             1020,

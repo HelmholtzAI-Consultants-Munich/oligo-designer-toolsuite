@@ -66,7 +66,9 @@ class TestOligoScoring(unittest.TestCase):
             database_name="test_oligo_database",
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_database_from_table(FILE_DATABASE, region_ids=None, database_overwrite=True)
+        self.oligo_database.load_database_from_table(
+            FILE_DATABASE, region_ids=None, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
         self.sequence_type = "oligo"
 
         self.score_gc = GCOligoScoring(GC_content_opt=43.75)
