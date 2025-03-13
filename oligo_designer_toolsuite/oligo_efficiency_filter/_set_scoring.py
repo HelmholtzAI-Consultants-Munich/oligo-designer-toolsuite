@@ -2,10 +2,10 @@
 # imports
 ############################################
 
-import pandas as pd
-
 from abc import ABC, abstractmethod
 from typing import Tuple
+
+import pandas as pd
 
 ############################################
 # Set Scoring Classes

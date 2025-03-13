@@ -7,9 +7,8 @@ import shutil
 import unittest
 
 import pandas as pd
-
-from scipy.sparse import csr_matrix
 from Bio.SeqUtils import MeltingTemp as mt
+from scipy.sparse import csr_matrix
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
@@ -17,9 +16,9 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     WeightedTmGCOligoScoring,
 )
 from oligo_designer_toolsuite.oligo_selection import (
-    OligosetGeneratorIndependentSet,
-    HomogeneousPropertyOligoSetGenerator,
     GraphBasedSelectionPolicy,
+    HomogeneousPropertyOligoSetGenerator,
+    OligosetGeneratorIndependentSet,
 )
 
 ############################################

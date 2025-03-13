@@ -3,11 +3,12 @@ This module provides different evaluation strategies for oligonucleotides and th
 """
 
 from ._oligo_scoring import (
-    OligoScoringBase,
     GCOligoScoring,
+    OligoScoringBase,
     WeightedGCUtrScoring,
-    WeightedTmGCOligoScoring,
     WeightedIsoformTmGCOligoScoring,
+    WeightedIsoformTmGCOligoScoringTargetedExons,
+    WeightedTmGCOligoScoring,
 )
 from ._set_scoring import AverageSetScoring, LowestSetScoring, SetScoringBase
 
@@ -17,6 +18,7 @@ __all__ = [
     "WeightedGCUtrScoring",
     "WeightedTmGCOligoScoring",
     "WeightedIsoformTmGCOligoScoring",
+    "WeightedIsoformTmGCOligoScoringTargetedExons",
     "SetScoringBase",
     "LowestSetScoring",
     "AverageSetScoring",

@@ -59,7 +59,7 @@ n_barcode_rounds: 4 # number of barcoding rounds
 n_pseudocolors: 20 # number of pseudocolors
 channels_ids: # names of fluorescent channels
   - Alexa488
-  - Cy3b 
+  - Cy3b
   - Alexa647
 
 
@@ -89,7 +89,7 @@ primer_max_len_complement_reverse_primer: 5
 primer_Tm_min: 60
 primer_Tm_max: 75
 primer_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature 
+primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 
 ############################
 ### DEVELOPER PARAMETERS ###
