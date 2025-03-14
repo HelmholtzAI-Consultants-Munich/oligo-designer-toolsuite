@@ -22,6 +22,7 @@ from ._sequence_parser import FastaParser, GffParser
 from ._sequence_processor import (
     get_complement_regions,
     get_sequence_from_annotation,
+    get_intersection,
     append_nucleotide_to_sequences,
 )
 
@@ -42,5 +43,6 @@ __all__ = [
     "flatten_attribute_list",
     "get_complement_regions",
     "get_sequence_from_annotation",
+    "get_intersection",
     "append_nucleotide_to_sequences",
 ]
