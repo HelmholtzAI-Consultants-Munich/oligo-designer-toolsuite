@@ -9,14 +9,13 @@ import numpy as np
 import pandas as pd
 
 from abc import abstractmethod
-from typing import List, Union, Tuple
+from typing import Union, Tuple
 from Bio import SeqIO
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
 
-from ..utils._checkers_and_helpers import check_if_list
 from ..utils._sequence_processor import get_sequence_from_annotation
 
 ############################################
@@ -125,7 +124,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         oligo_database: OligoDatabase,
         file_index: str,
         sequence_type: _TYPES_SEQ,
-        region_ids: Union[str, List[str]] = None,
+        region_id: str,
     ) -> pd.DataFrame:
         """
         Runs a BLAST search for the specified oligo sequences against a ReferenceDatabase.
@@ -140,25 +139,19 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :type file_index: str
         :param sequence_type: The type of sequence to be used for the filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
-        :type region_ids: Union[str, List[str]], optional
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: A DataFrame containing the BLAST search results.
         :rtype: pd.DataFrame
         """
-        region_ids = check_if_list(region_ids)
-        if region_ids:
-            region_name = "_".join(region_ids)
-        else:
-            region_name = "all_regions"
-
         file_oligo_database = oligo_database.write_database_to_fasta(
-            filename=f"oligo_database_blast_{region_name}",
+            filename=f"oligo_database_blast_{region_id}",
             dir_output=self.dir_output,
             save_description=False,
-            region_ids=region_ids,
+            region_ids=region_id,
             sequence_type=sequence_type,
         )
-        file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_name}.txt")
+        file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_id}.txt")
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
@@ -197,7 +190,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         oligo_database: OligoDatabase,  # not utilized in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
-        region_ids: Union[str, List[str]],  # not utilized in this filter
+        region_id: str,  # not utilized in this filter
     ) -> pd.DataFrame:
         """
         Identifies significant hits from BLAST search results based on alignment length or coverage.
@@ -212,8 +205,8 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Whether to include hits from the same region as the query.
         :type consider_hits_from_input_region: bool
-        :param region_ids: List of region IDs to process (not utilized in this filter).
-        :type region_ids: Union[str, List[str]]
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: A DataFrame containing the filtered BLAST search hits.
         :rtype: pd.DataFrame
         """
@@ -534,7 +527,7 @@ class BlastNSeedregionFilterBase(BlastNFilter):
 
     @abstractmethod
     def _add_seed_region_information(
-        self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_ids: Union[str, List[str]]
+        self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_id: str
     ) -> pd.DataFrame:
         """
         An abstract method to add seed region information to BLAST search results.
@@ -546,8 +539,8 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         :type oligo_database: OligoDatabase
         :param search_results: The DataFrame containing the results of the BLAST search.
         :type search_results: pd.DataFrame
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
-        :type region_ids: Union[str, List[str]]
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: The BLAST search results with added seed region information.
         :rtype: pd.DataFrame
         """
@@ -557,7 +550,7 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         oligo_database: OligoDatabase,
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
-        region_ids: Union[str, List[str]],
+        region_id: str,
     ) -> pd.DataFrame:
         """
         Finds and filters hits from BLAST search results based on alignment length, coverage, and seed region information.
@@ -571,8 +564,8 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Whether to include hits from the same region as the input sequence.
         :type consider_hits_from_input_region: bool
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
-        :type region_ids: Union[str, List[str]]
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: Filtered BLAST search results containing significant hits.
         :rtype: pd.DataFrame
         """
@@ -590,7 +583,7 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         search_results["min_alignment_length"] = min_alignment_length
 
         search_results = self._add_seed_region_information(
-            oligo_database=oligo_database, search_results=search_results, region_ids=region_ids
+            oligo_database=oligo_database, search_results=search_results, region_id=region_id
         )
 
         # if seedregion not given
@@ -683,7 +676,7 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         self.seedregion_end = seedregion_end
 
     def _add_seed_region_information(
-        self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_ids
+        self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_id: str
     ) -> pd.DataFrame:
         """
         Adds seed region information to the BLAST search results.
@@ -695,22 +688,22 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         :type oligo_database: OligoDatabase
         :param search_results: The DataFrame containing the results of the BLAST search.
         :type search_results: pd.DataFrame
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
-        :type region_ids: Union[str, List[str]]
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: The BLAST search results with added seed region information.
         :rtype: pd.DataFrame
         """
         oligo_attributes_calculator = OligoAttributes()
         oligo_database = oligo_attributes_calculator.calculate_seedregion(
             oligo_database=oligo_database,
-            region_ids=region_ids,
+            region_ids=region_id,
             start=self.seedregion_start,
             end=self.seedregion_end,
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute_table("seedregion_start", region_ids),
-            right=oligo_database.get_oligo_attribute_table("seedregion_end", region_ids),
+            left=oligo_database.get_oligo_attribute_table("seedregion_start", region_id),
+            right=oligo_database.get_oligo_attribute_table("seedregion_end", region_id),
             on="oligo_id",
         )
         search_results = pd.merge(
@@ -779,7 +772,7 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         self.seedregion_size = seedregion_size
 
     def _add_seed_region_information(
-        self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_ids: Union[str, List[str]]
+        self, oligo_database: OligoDatabase, search_results: pd.DataFrame, region_id: str
     ) -> pd.DataFrame:
         """
         Adds seed region information to the BLASTN search results based on the ligation site.
@@ -791,19 +784,19 @@ class BlastNSeedregionLigationsiteFilter(BlastNSeedregionFilterBase):
         :type oligo_database: OligoDatabase
         :param search_results: The DataFrame containing the results of the BLASTN search.
         :type search_results: pd.DataFrame
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed.
-        :type region_ids: Union[str, List[str]]
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: The BLAST search results with added seed region information.
         :rtype: pd.DataFrame
         """
         oligo_attributes_calculator = OligoAttributes()
         oligo_database = oligo_attributes_calculator.calculate_seedregion_ligationsite(
-            oligo_database=oligo_database, region_ids=region_ids, seedregion_size=self.seedregion_size
+            oligo_database=oligo_database, region_ids=region_id, seedregion_size=self.seedregion_size
         )
 
         seedregion = pd.merge(
-            left=oligo_database.get_oligo_attribute_table("seedregion_start", region_ids),
-            right=oligo_database.get_oligo_attribute_table("seedregion_end", region_ids),
+            left=oligo_database.get_oligo_attribute_table("seedregion_start", region_id),
+            right=oligo_database.get_oligo_attribute_table("seedregion_end", region_id),
             on="oligo_id",
         )
         search_results = pd.merge(

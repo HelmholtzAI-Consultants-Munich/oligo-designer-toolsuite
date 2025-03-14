@@ -118,7 +118,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         oligo_database: OligoDatabase,
         file_index: str,
         sequence_type: _TYPES_SEQ,
-        region_ids: Union[str, List[str]] = None,
+        region_id: str,
     ) -> pd.DataFrame:
         """
         Runs a Bowtie search against a reference index using sequences from the oligo database.
@@ -132,24 +132,18 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :type file_index: str
         :param sequence_type: The type of sequence to be used for the filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
-        :type region_ids: Union[str, List[str]], optional
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: A DataFrame containing the Bowtie search results.
         :rtype: pd.DataFrame
         """
-        region_ids = check_if_list(region_ids)
-        if region_ids:
-            region_name = "_".join(region_ids)
-        else:
-            region_name = "all_regions"
-
         file_oligo_database = oligo_database.write_database_to_fasta(
-            filename=f"oligo_database_bowtie_{region_name}",
+            filename=f"oligo_database_bowtie_{region_id}",
             save_description=False,
-            region_ids=region_ids,
+            region_ids=region_id,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(self.dir_output, f"bowtie_results_{region_name}.txt")
+        file_bowtie_results = os.path.join(self.dir_output, f"bowtie_results_{region_id}.txt")
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
@@ -187,7 +181,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         oligo_database: OligoDatabase,  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
-        region_ids: Union[str, List[str]],  # not used in this filter
+        region_id: str,  # not used in this filter
     ) -> pd.DataFrame:
         """
         Filters Bowtie search results based on whether the query and reference sequences come from different regions.
@@ -202,8 +196,8 @@ class BowtieFilter(AlignmentSpecificityFilter):
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Whether to include hits from the same region as the query.
         :type consider_hits_from_input_region: bool
-        :param region_ids: List of region IDs to process (not utilized in this filter).
-        :type region_ids: Union[str, List[str]]
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: A DataFrame containing the filtered Bowtie search hits.
         :rtype: pd.DataFrame
         """
@@ -398,7 +392,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         oligo_database: OligoDatabase,
         file_index: str,
         sequence_type: _TYPES_SEQ,
-        region_ids: Union[str, List[str]] = None,
+        region_id: str,
     ) -> pd.DataFrame:
         """
         Runs a Bowtie2 search against a reference index using sequences from the OligoDatabase.
@@ -412,24 +406,19 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         :type file_index: str
         :param sequence_type: The type of sequence to be used for the filter calculations.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
-        :type region_ids: Union[str, List[str]], optional
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: A DataFrame containing the Bowtie2 search results.
         :rtype: pd.DataFrame
         """
-        region_ids = check_if_list(obj=region_ids)
-        if region_ids:
-            region_name = "_".join(region_ids)
-        else:
-            region_name = "all_regions"
 
         file_oligo_database = oligo_database.write_database_to_fasta(
-            filename=f"oligo_database_bowtie2_{region_name}",
+            filename=f"oligo_database_bowtie2_{region_id}",
             save_description=False,
-            region_ids=region_ids,
+            region_ids=region_id,
             sequence_type=sequence_type,
         )
-        file_bowtie_results = os.path.join(self.dir_output, f"bowtie2_results_{region_name}.txt")
+        file_bowtie_results = os.path.join(self.dir_output, f"bowtie2_results_{region_id}.txt")
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
@@ -469,7 +458,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         oligo_database: OligoDatabase,  # not used in this filter
         search_results: pd.DataFrame,
         consider_hits_from_input_region: bool,
-        region_ids: Union[str, List[str]],  # not used in this filter
+        region_id: str,  # not used in this filter
     ) -> pd.DataFrame:
         """
         Filters Bowtie2 search results based on whether the query and reference sequences come from different regions.
@@ -484,8 +473,8 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         :type search_results: pd.DataFrame
         :param consider_hits_from_input_region: Whether to include hits from the same region as the query.
         :type consider_hits_from_input_region: bool
-        :param region_ids: List of region IDs to process (not utilized in this filter).
-        :type region_ids: Union[str, List[str]]
+        :param region_id: Region ID to process.
+        :type region_id: str
         :return: A DataFrame containing the filtered Bowtie2 search hits.
         :rtype: pd.DataFrame
         """

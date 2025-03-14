@@ -46,9 +46,9 @@ class ExactMatchFilter(SpecificityFilterBase):
 
     def apply(
         self,
-        oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,  # not utilized in this filter
         sequence_type: _TYPES_SEQ,
+        oligo_database: OligoDatabase,
+        reference_database: ReferenceDatabase = None,  # not utilized in this filter
         n_jobs: int = 1,
     ) -> OligoDatabase:
         """
@@ -58,12 +58,12 @@ class ExactMatchFilter(SpecificityFilterBase):
         It then uses the provided policy to determine how these exact matches should be handled.
         The filter operates in parallel across regions in the OligoDatabase to improve performance.
 
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
         :param reference_database: The ReferenceDatabase used for alignment (not utilized in this filter).
         :type reference_database: ReferenceDatabase
-        :param sequence_type: The type of sequence to be used for the filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of parallel jobs to use for processing.
         :type n_jobs: int
         :return: The filtered OligoDatabase with exact matching sequences removed.
