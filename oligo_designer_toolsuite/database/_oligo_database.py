@@ -4,6 +4,7 @@
 
 import os
 import pickle
+import warnings
 from pathlib import Path
 from typing import List, Union, get_args
 
@@ -522,7 +523,8 @@ class OligoDatabase:
         Write the oligo database to a BED file format.
 
         This function exports oligo sequences with their genomic coordinates to a BED file,
-        which can be used for downstream analysis.
+        which can be used for downstream analysis. Entries which contain None for either
+        chromosome, start, end or strand will be removed before the content is written to BED file.
 
         :param filename: Name of the output BED file (without extension). Default is "db_oligo".
         :type filename: str
@@ -539,13 +541,25 @@ class OligoDatabase:
         dir_output = dir_output if dir_output else self.dir_output
         file_bed = os.path.join(dir_output, f"{filename}.bed")
 
+        # retrieve relevant information from database
         attribute_table = self.get_oligo_attribute_table(
             attributes=["chromosome", "start", "end", "strand"], flatten=True, region_ids=region_ids
         )
+
+        # remove rows that contain None
+        mask = attribute_table.isnull().any(axis=1)
+        attribute_table = attribute_table[~mask]
+
+        if mask.sum() > 0:
+            warnings.warn(f"Removing {mask.sum()} row(s) containing None/NaN values.", UserWarning)
+
+        # expand rows which contain lists for chr, start, end, strand columns into seperate rows
         attribute_table_extended = attribute_table.explode(
             ["chromosome", "start", "end", "strand"], ignore_index=True
         )
         attribute_table_extended["score"] = "."
+
+        # save tabel content as BED file
         attribute_table_extended[["chromosome", "start", "end", "oligo_id", "score", "strand"]].to_csv(
             file_bed, sep="\t", header=False, index=False
         )
