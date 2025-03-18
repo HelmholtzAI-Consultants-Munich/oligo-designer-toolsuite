@@ -84,19 +84,12 @@ class TestOligosetGeneratorIndependentSet(unittest.TestCase):
             Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORR,
         )
         self.set_scoring = LowestSetScoring(ascending=True)
-        # self.selection_policy = GraphBasedSelectionPolicy(
-        #     set_scoring=self.set_scoring,
-        #     pre_filter=False,
-        #     n_attempts=100000,
-        #     heuristic=True,
-        #     heuristic_n_attempts=100,
-        # )
-        self.selection_policy = GreedySelectionPolicy(
+        self.selection_policy = GraphBasedSelectionPolicy(
             set_scoring=self.set_scoring,
-            score_criteria=self.set_scoring.score_1,
             pre_filter=False,
-            penalty=0.01,
-            n_attempts=100,
+            n_attempts=100000,
+            heuristic=True,
+            heuristic_n_attempts=100,
         )
 
         self.oligoset_generator = OligosetGeneratorIndependentSet(
@@ -283,35 +276,103 @@ class TestHomogeneousPropertyOligoSetGenerator(unittest.TestCase):
             }, f"The columns of the oligosets are not correct! got {set(oligos_database.oligosets[gene].columns)}"
 
 
-
+class TestOligoSelectionPolicy(unittest.TestCase):
     def setUp(self):
-        region_id = "AGRN" # We only test for one region (this region is small enough for the purposes of the tests)
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_selection")
+        self.region_id = "AGRN" # We only test for one region (this region is small enough for the purposes of the tests)
 
-        oligo_database = OligoDatabase(
+        self.oligo_database = OligoDatabase(
             min_oligos_per_region=2,
             write_regions_with_insufficient_oligos=True,
-            dir_output="lol"
+            dir_output=self.tmp_path,
         )
-        oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
-        set_scoring = LowestSetScoring(ascending=True)
+        self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
+        self.set_scoring = LowestSetScoring(ascending=True)
 
-        selection_policy = GreedySelectionPolicy(set_scoring=set_scoring, score_criteria=set_scoring.score_1, pre_filter=True)
-
-        oligo_scoring = WeightedGCUtrScoring(50)
-        oligo_database, oligos_scores = oligo_scoring.apply(
-            oligo_database=oligo_database,
-            region_id=region_id,
+        self.oligo_scoring = WeightedTmGCOligoScoring(
+            Tm_min=52,
+            Tm_opt=60,
+            Tm_max=67,
+            GC_content_min=40,
+            GC_content_opt=50,
+            GC_content_max=60,
+            Tm_parameters=TM_PARAMETERS,
+            Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORR,
+        )
+        self.oligo_database, self.oligos_scores = self.oligo_scoring.apply(
+            oligo_database=self.oligo_database,
+            region_id=self.region_id,
             sequence_type="oligo",
         )
 
         # sort oligos by score
-        oligos_scores.sort_values(ascending=True, inplace=True)
+        self.oligos_scores.sort_values(ascending=True, inplace=True)
+
+        oligo_generator = OligosetGeneratorIndependentSet(selection_policy=None, oligos_scoring = self.oligo_scoring, set_scoring=self.set_scoring)
+        # create the overlapping matrix
+        self.non_overlap_matrix, self.non_overlap_matrix_ids = oligo_generator._get_non_overlap_matrix(
+            oligo_database=self.oligo_database, region_id=self.region_id
+        )
 
     def tearDown(self) -> None:
-        pass
+        shutil.rmtree(self.tmp_path)
+
 
     def test_graph_based_selection_policy(self):
-        pass
+        selection_policy = GraphBasedSelectionPolicy(
+            set_scoring=self.set_scoring, 
+            pre_filter=True
+        )
+        oligosets = selection_policy.apply(
+            oligos_scores=self.oligos_scores,
+            non_overlap_matrix=self.non_overlap_matrix,
+            non_overlap_matrix_ids=self.non_overlap_matrix_ids,
+            set_size_opt=5,
+            set_size_min=3,
+            n_sets=2,
+        )
+
+        true_oligosets =  pd.DataFrame(
+            {
+                "oligoset_id": [0, 1],
+                "oligo_0": ["AGRN_pid258", "AGRN_pid258"],
+                "oligo_1": ["AGRN_pid77", "AGRN_pid77"],
+                "oligo_2": ["AGRN_pid285", "AGRN_pid288"],
+                "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
+                "set_score_worst": [1.017, 1.017],
+                "set_score_sum": [2.3142, 2.3142],
+            }
+        )
+
+        assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
 
     def test_greedy_selection_policy(self):
-        pass
+        selection_policy = GreedySelectionPolicy(
+            set_scoring=self.set_scoring, 
+            score_criteria=self.set_scoring.score_1, 
+            pre_filter=True
+        )
+        oligosets = selection_policy.apply(
+            oligos_scores=self.oligos_scores,
+            non_overlap_matrix=self.non_overlap_matrix,
+            non_overlap_matrix_ids=self.non_overlap_matrix_ids,
+            set_size_opt=5,
+            set_size_min=3,
+            n_sets=2,
+        )
+        
+        true_oligosets =  pd.DataFrame(
+            {
+                "oligoset_id": [0, 1],
+                "oligo_0": ["AGRN_pid258", "AGRN_pid261"],
+                "oligo_1": ["AGRN_pid288", "AGRN_pid285"],
+                "oligo_2": ["AGRN_pid77", "AGRN_pid77"],
+                "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
+                "set_score_worst": [1.017, 1.017],
+                "set_score_sum": [2.3142, 2.4285],
+            }
+        )
+
+        assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
+
+
