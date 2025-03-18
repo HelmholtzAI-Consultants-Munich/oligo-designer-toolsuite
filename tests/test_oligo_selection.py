@@ -7,19 +7,19 @@ import shutil
 import unittest
 
 import pandas as pd
-
-from scipy.sparse import csr_matrix
 from Bio.SeqUtils import MeltingTemp as mt
+from scipy.sparse import csr_matrix
 
-from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.database import OligoDatabase, OligoAttributes
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     LowestSetScoring,
     WeightedTmGCOligoScoring,
 )
 from oligo_designer_toolsuite.oligo_selection import (
-    OligosetGeneratorIndependentSet,
-    HomogeneousPropertyOligoSetGenerator,
     GraphBasedSelectionPolicy,
+    GreedySelectionPolicy,
+    HomogeneousPropertyOligoSetGenerator,
+    OligosetGeneratorIndependentSet,
 )
 
 ############################################
@@ -84,12 +84,19 @@ class TestOligosetGeneratorIndependentSet(unittest.TestCase):
             Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORR,
         )
         self.set_scoring = LowestSetScoring(ascending=True)
-        self.selection_policy = GraphBasedSelectionPolicy(
+        # self.selection_policy = GraphBasedSelectionPolicy(
+        #     set_scoring=self.set_scoring,
+        #     pre_filter=False,
+        #     n_attempts=100000,
+        #     heuristic=True,
+        #     heuristic_n_attempts=100,
+        # )
+        self.selection_policy = GreedySelectionPolicy(
             set_scoring=self.set_scoring,
+            score_criteria=self.set_scoring.score_1,
             pre_filter=False,
-            n_attempts=100000,
-            heuristic=True,
-            heuristic_n_attempts=100,
+            penalty=0.01,
+            n_attempts=100,
         )
 
         self.oligoset_generator = OligosetGeneratorIndependentSet(
@@ -242,17 +249,69 @@ class TestHomogeneousPropertyOligoSetGenerator(unittest.TestCase):
         )
         self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
 
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_GC_content(self.oligo_database)
+        oligo_database = oligo_attributes.calculate_TmNN(oligo_database, TM_PARAMETERS)
+
         self.oligoset_generator = HomogeneousPropertyOligoSetGenerator(
             set_size=5,
-            properties=["GC_content"],
+            properties={"GC_content": 1, "TmNN": 1},
         )
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_path)
 
     def test_oligoset_generation(self):
-        # TODO: add tests
+        # ⚠️ The function is not stable and the results are not always the same (depends on n_combinations)
+        # As a result, we only test the format
+        oligos_database = self.oligoset_generator.apply(
+            self.oligo_database, n_sets=2, n_combinations=1000, n_jobs=1
+        )
+        
+        gene_ids = {"PLEKHN1", "MIB2", "UBE2J2", "DVL1", "AGRN", "LOC112268402_1"}
+        assert gene_ids == set(oligos_database.oligosets.keys()), "The calculated oligosets regions are not correct!"
+        for gene in oligos_database.oligosets.keys():
+            assert len(oligos_database.oligosets[gene]) == 2, "The number of oligosets is not correct!"
+            assert set(oligos_database.oligosets[gene].columns) == {
+                "oligoset_id",
+                "oligo_0",
+                "oligo_1",
+                "oligo_2",
+                "oligo_3",
+                "oligo_4",
+                "set_score",
+            }, f"The columns of the oligosets are not correct! got {set(oligos_database.oligosets[gene].columns)}"
+
+
+
+    def setUp(self):
+        region_id = "AGRN" # We only test for one region (this region is small enough for the purposes of the tests)
+
+        oligo_database = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output="lol"
+        )
+        oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
+        set_scoring = LowestSetScoring(ascending=True)
+
+        selection_policy = GreedySelectionPolicy(set_scoring=set_scoring, score_criteria=set_scoring.score_1, pre_filter=True)
+
+        oligo_scoring = WeightedGCUtrScoring(50)
+        oligo_database, oligos_scores = oligo_scoring.apply(
+            oligo_database=oligo_database,
+            region_id=region_id,
+            sequence_type="oligo",
+        )
+
+        # sort oligos by score
+        oligos_scores.sort_values(ascending=True, inplace=True)
+
+    def tearDown(self) -> None:
         pass
 
+    def test_graph_based_selection_policy(self):
+        pass
 
-# TODO: add tests for selection policies
+    def test_greedy_selection_policy(self):
+        pass
