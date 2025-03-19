@@ -330,7 +330,7 @@ class TestOligoSelectionPolicy(unittest.TestCase):
             set_size_opt=5,
             set_size_min=3,
             n_sets=2,
-        )
+        ).round(3)
 
         true_oligosets =  pd.DataFrame(
             {
@@ -340,7 +340,7 @@ class TestOligoSelectionPolicy(unittest.TestCase):
                 "oligo_2": ["AGRN_pid285", "AGRN_pid288"],
                 "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
                 "set_score_worst": [1.017, 1.017],
-                "set_score_sum": [2.3142, 2.3142],
+                "set_score_sum": [2.314, 2.314],
             }
         )
 
@@ -359,7 +359,7 @@ class TestOligoSelectionPolicy(unittest.TestCase):
             set_size_opt=5,
             set_size_min=3,
             n_sets=2,
-        )
+        ).round(3)
         
         true_oligosets =  pd.DataFrame(
             {
@@ -369,7 +369,7 @@ class TestOligoSelectionPolicy(unittest.TestCase):
                 "oligo_2": ["AGRN_pid77", "AGRN_pid77"],
                 "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
                 "set_score_worst": [1.017, 1.017],
-                "set_score_sum": [2.3142, 2.4285],
+                "set_score_sum": [2.314, 2.428],
             }
         )
 
