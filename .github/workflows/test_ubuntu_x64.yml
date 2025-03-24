@@ -81,4 +81,4 @@ jobs:
       run: |
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate test-env
-        pytest --disable-warnings tests/test_oligo_selection.py 
+        pytest --disable-warnings 
