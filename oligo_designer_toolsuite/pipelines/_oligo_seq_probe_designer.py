@@ -43,6 +43,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     CrossHybridizationFilter,
     ExactMatchFilter,
     HybridizationProbabilityFilter,
+    VariantsFilter,
     RemoveByLargerRegionPolicy,
     RemoveAllPolicy,
     SpecificityFilter,
@@ -275,6 +276,7 @@ class OligoSeqProbeDesigner:
         self,
         files_fasta_target_probe_database: list,
         files_fasta_reference_database_targe_probe: list,
+        files_vcf_reference_database_target_probe: list,
         gene_ids: list = None,
         target_probe_length_min: int = 26,
         target_probe_length_max: int = 30,
@@ -308,6 +310,8 @@ class OligoSeqProbeDesigner:
         :type files_fasta_target_probe_database: list
         :param files_fasta_reference_database_targe_probe: FASTA files containing the reference database.
         :type files_fasta_reference_database_targe_probe: list
+        :param files_vcf_reference_database_target_probe: VCF files containing the reference database.
+        :type files_vcf_reference_database_target_probe: list
         :param gene_ids: List of gene IDs to target, or None to target all genes.
         :type gene_ids: list, optional
         :param target_probe_length_min: Minimum length of target probes, defaults to 26.
@@ -401,6 +405,7 @@ class OligoSeqProbeDesigner:
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
             files_fasta_reference_database=files_fasta_reference_database_targe_probe,
+            files_vcf_reference_database=files_vcf_reference_database_target_probe,
             cross_hybridization_alignment_method=self.target_probe_cross_hybridization_alignment_method,
             cross_hybridization_search_parameters=self.target_probe_cross_hybridization_search_parameters,
             cross_hybridization_hit_parameters=self.target_probe_cross_hybridization_hit_parameters,
@@ -469,6 +474,7 @@ class OligoSeqProbeDesigner:
             "oligo",
             "target",
             "length",
+            "SNP_filter",
             "GC_content",
             "TmNN",
             "num_targeted_transcripts",
@@ -739,6 +745,7 @@ class TargetProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         files_fasta_reference_database: List[str],
+        files_vcf_reference_database: List[str],
         cross_hybridization_alignment_method: str,
         cross_hybridization_search_parameters: dict,
         cross_hybridization_hit_parameters: dict,
@@ -756,6 +763,8 @@ class TargetProbeDesigner:
         :type oligo_database: OligoDatabase
         :param files_fasta_reference_database: List of FASTA files for the reference database.
         :type files_fasta_reference_database: List[str]
+        :param files_vcf_reference_database: List of VCF files for the reference database.
+        :type files_vcf_reference_database: List[str]
         :param cross_hybridization_alignment_method: Alignment method for cross-hybridization analysis.
         :type cross_hybridization_alignment_method: str
         :param cross_hybridization_search_parameters: Search parameters for cross-hybridization analysis.
@@ -779,12 +788,14 @@ class TargetProbeDesigner:
 
         def _get_alignment_method(
             alignment_method,
+            sequence_type,
             search_parameters,
             hit_parameters,
             filter_name,
         ):
             if alignment_method == "blastn":
                 return BlastNFilter(
+                    sequence_type=sequence_type,
                     search_parameters=search_parameters,
                     hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
@@ -792,8 +803,8 @@ class TargetProbeDesigner:
                 )
             elif alignment_method == "bowtie":
                 return BowtieFilter(
+                    sequence_type=sequence_type,
                     search_parameters=search_parameters,
-                    hit_parameters=hit_parameters,
                     dir_output=self.dir_output,
                     filter_name=filter_name,
                 )
@@ -802,10 +813,17 @@ class TargetProbeDesigner:
 
         ##### define reference database #####
         reference_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
+            database_name=f"{self.subdir_db_reference}_sequences", dir_output=self.dir_output
         )
-        reference_database.load_database_from_fasta(
-            files_fasta=files_fasta_reference_database, database_overwrite=False
+        reference_database.load_database_from_file(
+            files=files_fasta_reference_database, file_type="fasta", database_overwrite=False
+        )
+
+        reference_database_variants = ReferenceDatabase(
+            database_name=f"{self.subdir_db_reference}_variants", dir_output=self.dir_output
+        )
+        reference_database_variants.load_database_from_file(
+            files=files_vcf_reference_database, file_type="vcf", database_overwrite=False
         )
 
         ##### specificity filters #####
@@ -818,69 +836,70 @@ class TargetProbeDesigner:
             reverse=False,
         )
 
-        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match_read_length_bias")
-        specificity_filter = SpecificityFilter(filters=[exact_matches])
-        oligo_database = specificity_filter.apply(
-            sequence_type="oligo_short",
-            oligo_database=oligo_database,
-            n_jobs=self.n_jobs,
+        exact_matches_short = ExactMatchFilter(
+            sequence_type="oligo_short", policy=RemoveAllPolicy(), filter_name="exact_match_read_length_bias"
         )
 
         # removing duplicated oligos from the region with the most oligos
         # this step can be redundant with the hybridization probability filter
         # but improves runtime as it pre-filters such sequences
-        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match")
+        exact_matches = ExactMatchFilter(
+            sequence_type="oligo", policy=RemoveAllPolicy(), filter_name="exact_match"
+        )
 
         # remove oligos that potentially cross-hybridize with other oligos in the set
         cross_hybridization_aligner = _get_alignment_method(
+            sequence_type="oligo",
             alignment_method=cross_hybridization_alignment_method,
             search_parameters=cross_hybridization_search_parameters,
             hit_parameters=cross_hybridization_hit_parameters,
             filter_name="cross_hybridization_filter",
         )
+        cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
         cross_hybridization = CrossHybridizationFilter(
+            sequence_type="oligo",
             policy=RemoveByLargerRegionPolicy(),
             alignment_method=cross_hybridization_aligner,
-            database_name_reference=self.subdir_db_reference,
+            filter_name="cross_hybridization_filter",
             dir_output=self.dir_output,
         )
 
         # uses an alignment method to check for off-target hits wrt to reference sequences
         # and refines those hits with a hybridization probability model
         hybridization_probability_aligner = _get_alignment_method(
+            sequence_type="oligo",
             alignment_method=hybridization_probability_alignment_method,
             search_parameters=hybridization_probability_search_parameters,
             hit_parameters=hybridization_probability_hit_parameters,
             filter_name="hybridization_probability_filter",
         )
+        hybridization_probability_aligner.set_reference_database(reference_database=reference_database)
         hybridization_probability = HybridizationProbabilityFilter(
             alignment_method=hybridization_probability_aligner,
             threshold=hybridization_probability_threshold,
+            filter_name="hybridization_probability_filter",
             dir_output=self.dir_output,
         )
 
-        # run all filters specified above
-        filters = [exact_matches, cross_hybridization]
-        specificity_filter = SpecificityFilter(filters=filters)
-        oligo_database = specificity_filter.apply(
-            sequence_type="oligo",
-            oligo_database=oligo_database,
-            reference_database=reference_database,
-            n_jobs=self.n_jobs,
-        )
+        variants = VariantsFilter(remove_hits=False, filter_name="SNP_filter", dir_output=self.dir_output)
+        variants.set_reference_database(reference_database=reference_database_variants)
 
-        filters = [hybridization_probability]
+        # run all filters specified above
+        filters = [
+            exact_matches_short,
+            exact_matches,
+            cross_hybridization,
+            hybridization_probability,
+            variants,
+        ]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
-            sequence_type="oligo",
             oligo_database=oligo_database,
-            reference_database=reference_database,
             n_jobs=self.n_jobs,
         )
 
         # remove all directories of intermediate steps
         for directory in [
-            reference_database.dir_output,
             cross_hybridization_aligner.dir_output,
             cross_hybridization.dir_output,
             hybridization_probability_aligner.dir_output,
@@ -1139,6 +1158,7 @@ def main():
     oligo_database = pipeline.design_target_probes(
         files_fasta_target_probe_database=config["files_fasta_target_probe_database"],
         files_fasta_reference_database_targe_probe=config["files_fasta_reference_database_targe_probe"],
+        files_vcf_reference_database_target_probe=config["files_vcf_reference_database_target_probe"],
         gene_ids=gene_ids,
         target_probe_length_min=config["target_probe_length_min"],
         target_probe_length_max=config["target_probe_length_max"],

@@ -18,6 +18,8 @@ files_fasta_target_probe_database: # fasta file with sequences form which the ol
 files_fasta_reference_database_targe_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+files_vcf_reference_database_target_probe:
+  - data/annotations/custom_GCF_000001405.40.chr16.vcf
 target_probe_length_min: 26 #min length of oligos
 target_probe_length_max: 30 #max length of oligos
 target_probe_split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
