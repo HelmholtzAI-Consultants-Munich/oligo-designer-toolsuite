@@ -37,7 +37,7 @@ class FilterPolicyBase(ABC):
         :type oligo_pair_hits: pd.DataFrame
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :return: A dictionary mapping each region to a list of oligos that should be kept based on the policy.
+        :return: A dictionary mapping each region to a list of oligos that should be removed based on the policy.
         :rtype: dict
         """
 
@@ -86,7 +86,7 @@ class RemoveAllPolicy(FilterPolicyBase):
         :type oligo_pair_hits: pd.DataFrame
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :return: A dictionary mapping each region to a list of oligos that should be kept based on the policy.
+        :return: A dictionary mapping each region to a list of oligos that should be removed based on the policy.
         :rtype: dict
         """
         oligos_with_hits = {region: [] for region in oligo_database.database.keys()}
@@ -129,7 +129,7 @@ class RemoveByLargerRegionPolicy(FilterPolicyBase):
         :type oligo_pair_hits: pd.DataFrame
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :return: A dictionary mapping each region to a list of oligos that should be kept based on the policy.
+        :return: A dictionary mapping each region to a list of oligos that should be removed based on the policy.
         :rtype: dict
         """
         graph = nx.from_edgelist(oligo_pair_hits)
@@ -171,7 +171,7 @@ class RemoveByDegreePolicy(FilterPolicyBase):
         :type oligo_pair_hits: pd.DataFrame
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :return: A dictionary mapping each region to a list of oligos that should be kept based on the policy.
+        :return: A dictionary mapping each region to a list of oligos that should be removed based on the policy.
         :rtype: dict
         """
         graph = nx.from_edgelist(oligo_pair_hits)
