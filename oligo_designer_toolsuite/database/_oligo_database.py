@@ -609,7 +609,8 @@ class OligoDatabase:
                         oligo_attribute = self.database[region_id][oligo_id][attribute]
                         if flatten_attribute:
                             oligo_attribute = flatten_attribute_list(oligo_attribute)
-                            oligo_attribute = list(set(oligo_attribute))
+                            if oligo_attribute:
+                                oligo_attribute = list(set(oligo_attribute))
                             entry[attribute] = (
                                 str(oligo_attribute).replace("'", "").replace("[", "").replace("]", "")
                             )
