@@ -13,7 +13,7 @@ from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import FastaParser, GffParser
+from oligo_designer_toolsuite.utils import FastaParser, GffParser, VCFParser
 from oligo_designer_toolsuite.utils import (
     check_if_dna_sequence,
     check_if_key_exists,
@@ -37,6 +37,7 @@ from oligo_designer_toolsuite.utils import (
 FILE_GFF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
 FILE_GTF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
 FILE_FASTA = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
+FILE_VCF = "tests/data/annotations/custom_GCF_000001405.40.chr16.vcf"
 FILE_TSV = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
 FILE_PICKLE = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16_gtf.pickle"
 FILE_NCBI_EXONS = "tests/data/genomic_regions/sequences_ncbi_exons.fna"
@@ -296,16 +297,61 @@ class TestGffParser(unittest.TestCase):
 
 class TestFastaParser(unittest.TestCase):
     def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_fasta_parser")
+        Path(self.tmp_path).mkdir(parents=True, exist_ok=True)
+
         self.parser = FastaParser()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
 
     def test_check_fasta_format(self):
         """Test parsing fasta file."""
         try:
-            self.parser.check_fasta_format(FILE_FASTA)
+            out = self.parser.check_fasta_format(FILE_FASTA)
+            assert (
+                out == True
+            ), f"error: checker: check_fasta_format should have passed with file {FILE_FASTA}"
         except Exception as e:
             assert (
                 False
             ), f"error: checker: check_fasta_format raised an exception: {e}, with file {FILE_FASTA}"
+
+        try:
+            out = self.parser.check_fasta_format(FILE_GFF)
+            assert (
+                out == False
+            ), f"error: checker: check_fasta_format did not raise an exception with file {FILE_GFF}"
+        except Exception as e:
+            pass  # should go into this case
+
+    def test_is_coordinate(self):
+        """Test coordinate check with regular expression."""
+        entry_true = "17:15-20(+)"
+        entry_false1 = "17:15(-)"
+        entry_false2 = "17:15-20"
+        entry_false3 = "15-20(-)"
+
+        assert (
+            self.parser.is_coordinate(entry_true) == True
+        ), f"error: {entry_true} should be recognized as coordinate."
+        assert (
+            self.parser.is_coordinate(entry_false1) == False
+        ), f"error: {entry_false1} should not be recognized as coordinate."
+        assert (
+            self.parser.is_coordinate(entry_false2) == False
+        ), f"error: {entry_false2} should not be recognized as coordinate."
+        assert (
+            self.parser.is_coordinate(entry_false3) == False
+        ), f"error: {entry_false3} should not be recognized as coordinate."
+
+    def test_get_fasta_regions(self):
+        """Test if the parser extracts fasta regions correctly."""
+        expected_result = ["16"]
+        result = self.parser.get_fasta_regions(FILE_FASTA)
+        assert (
+            result == expected_result
+        ), f"error: fasta regions not correctly extracted. Expected ['16'] got {result}"
 
     def test_read_fasta_sequences_existing_regions(self):
         """Test parsing fasta file."""
@@ -321,14 +367,6 @@ class TestFastaParser(unittest.TestCase):
             result[0].dbxrefs == []
         ), f"error: the dbxrefs should be an empty list instead of {result[0].dbxrefs}"
 
-    def test_get_fasta_regions(self):
-        """Test if the parser extracts fasta regions correctly."""
-        expected_result = ["16"]
-        result = self.parser.get_fasta_regions(FILE_FASTA)
-        assert (
-            result == expected_result
-        ), f"error: fasta regions not correctly extracted. Expected ['16'] got {result}"
-
     def test_parse_fasta_header(self):
         """Test if the parser extracts fasta header correctly."""
         header = "ARPG3::transcript_id=XM4581;exon_id=XM4581_exon1::16:70265537-70265662(-)"
@@ -342,3 +380,78 @@ class TestFastaParser(unittest.TestCase):
             "transcript_id": ["XM4581"],
             "exon_id": ["XM4581_exon1"],
         }, f"error: wrong additional information parsed: {additional_information}"
+
+    def test_write_fasta_sequences(self):
+        """Test if sequences are correctly written to fasta file."""
+        file_out = os.path.join(self.tmp_path, "output.fna")
+
+        fasta_sequences = self.parser.read_fasta_sequences(FILE_FASTA)
+        self.parser.write_fasta_sequences(fasta_sequences=fasta_sequences, file_out=file_out)
+
+        try:
+            self.parser.check_fasta_format(file=file_out)
+        except Exception as e:
+            assert False, f"error: raised an exception: {e}, with written file."
+
+    def test_merge_fasta_files(self):
+        """Test if fasta files are merged correctly."""
+        file_out = os.path.join(self.tmp_path, "output_merged.fna")
+
+        self.parser.merge_fasta_files(
+            files_in=[FILE_FASTA, FILE_NCBI_EXONS], file_out=file_out, overwrite=True
+        )
+
+        try:
+            self.parser.check_fasta_format(file=file_out)
+        except Exception as e:
+            assert False, f"error: raised an exception: {e}, with merged files."
+
+
+class TestVCFParser(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_vcf_parser")
+        Path(self.tmp_path).mkdir(parents=True, exist_ok=True)
+
+        self.parser = VCFParser()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_path)
+
+    def test_check_vcf_format(self):
+        """Test parsing fasta file."""
+        try:
+            out = self.parser.check_vcf_format(FILE_VCF)
+            assert out == True, f"error: checker: check_fasta_format should have passed with file {FILE_VCF}"
+        except Exception as e:
+            assert False, f"error: checker: check_fasta_format raised an exception: {e}, with file {FILE_VCF}"
+
+        try:
+            out = self.parser.check_vcf_format(FILE_GFF)
+            assert (
+                out == False
+            ), f"error: checker: check_fasta_format did not raise an exception with file {FILE_GFF}"
+        except Exception as e:
+            pass  # should go into this case
+
+    def test_read_vcf_variants(self):
+        variants, vcf_in = self.parser.read_vcf_variants(FILE_VCF)
+
+        variant_type = variants[0].INFO.get("VC")
+        variant_id = variants[0].ID
+
+        assert variant_type == "SNV", f"error: wrong variant {variant_type} loaded."
+        assert variant_id == "rs931559949", f"error: wrong variant {variant_id} loaded."
+
+    def test_write_vcf_variants(self):
+        file_out = os.path.join(self.tmp_path, "variants.vcf")
+
+        variants, vcf_in = self.parser.read_vcf_variants(FILE_VCF)
+        self.parser.write_vcf_variants(vcf_variants=variants, vcf_in=vcf_in, file_out=file_out)
+
+        assert self.parser.check_vcf_format(file_out) == True, "error: vcf file stored in wrong format"
+
+    def test_merge_vcf_files(self):
+        file_out = os.path.join(self.tmp_path, "variants_merged.vcf")
+        self.parser.merge_vcf_files(files_in=[FILE_VCF, FILE_VCF], file_out=file_out)
+
+        assert self.parser.check_vcf_format(file_out) == True, "error: vcf file stored in wrong format"

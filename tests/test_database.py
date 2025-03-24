@@ -14,7 +14,7 @@ from oligo_designer_toolsuite.database import (
     ReferenceDatabase,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import FastaParser, check_tsv_format
+from oligo_designer_toolsuite.utils import FastaParser, VCFParser, check_tsv_format
 
 ############################################
 # setup
@@ -22,6 +22,7 @@ from oligo_designer_toolsuite.utils import FastaParser, check_tsv_format
 
 # Global Parameters
 FILE_NCBI_EXONS = "tests/data/genomic_regions/sequences_ncbi_exons.fna"
+FILE_VARIANTS = "tests/data/annotations/custom_GCF_000001405.40.chr16.vcf"
 FILE_DATABASE_OLIGO_ATTRIBUTES = "tests/data/databases/database_oligo_attributes.tsv"
 
 REGION_IDS = [
@@ -43,10 +44,24 @@ class TestReferenceDatabase(unittest.TestCase):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_reference_database")
 
         self.fasta_parser = FastaParser()
+        self.vcf_parser = VCFParser()
 
-        self.reference = ReferenceDatabase(database_name="test_reference_database", dir_output=self.tmp_path)
-        self.reference.load_database_from_fasta(files_fasta=[FILE_NCBI_EXONS], database_overwrite=False)
-        self.reference.load_database_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=True)
+        self.reference_fasta = ReferenceDatabase(
+            database_name="test_reference_database_fasta", dir_output=self.tmp_path
+        )
+        self.reference_fasta.load_database_from_file(
+            files=[FILE_NCBI_EXONS], file_type="fasta", database_overwrite=False
+        )
+        self.reference_fasta.load_database_from_file(
+            files=FILE_NCBI_EXONS, file_type="fasta", database_overwrite=True
+        )
+
+        self.reference_vcf = ReferenceDatabase(
+            database_name="test_reference_database_vcf", dir_output=self.tmp_path
+        )
+        self.reference_vcf.load_database_from_file(
+            files=FILE_VARIANTS, file_type="vcf", database_overwrite=True
+        )
 
     def tearDown(self):
         try:
@@ -55,14 +70,22 @@ class TestReferenceDatabase(unittest.TestCase):
             pass
 
     def test_write_database(self):
-        file_fasta_database = self.reference.write_database_to_fasta(filename="filtered_databse")
+        file_fasta_database = self.reference_fasta.write_database_to_file(filename="ref_db_filtered_fasta")
         assert (
             self.fasta_parser.check_fasta_format(file_fasta_database) == True
         ), f"error: wrong file format for database in {file_fasta_database}"
 
+        file_vcf_database = self.reference_vcf.write_database_to_file(filename="ref_db_filtered_vcf")
+        assert (
+            self.vcf_parser.check_vcf_format(file_vcf_database) == True
+        ), f"error: wrong file format for database in {file_vcf_database}"
+
     def test_filter_database_by_region(self):
-        self.reference.filter_database_by_region(region_ids="AARS1", keep_region=False)
-        for entry in self.reference.database:
+        self.reference_fasta.filter_database_by_region(region_ids="AARS1", keep_region=False)
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(
+            file_fasta_in=self.reference_fasta.database_file
+        )
+        for entry in fasta_sequences:
             (
                 region,
                 _,
@@ -71,10 +94,15 @@ class TestReferenceDatabase(unittest.TestCase):
             assert region != "AARS1", f"error: this region {region} should be filtered out."
 
     def test_filter_database_by_attribute_category(self):
-        self.reference.filter_database_by_attribute_category(
-            attribute_name="gene_id", attribute_category="AARS1", keep_if_equals_category=False
+        self.reference_fasta.filter_database_by_attribute_category(
+            attribute_name="gene_id",
+            attribute_category="AARS1",
+            keep_if_equals_category=False,
         )
-        for entry in self.reference.database:
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(
+            file_fasta_in=self.reference_fasta.database_file
+        )
+        for entry in fasta_sequences:
             (
                 region,
                 _,
