@@ -7,19 +7,19 @@ import shutil
 import unittest
 
 import pandas as pd
-
-from scipy.sparse import csr_matrix
 from Bio.SeqUtils import MeltingTemp as mt
+from scipy.sparse import csr_matrix
 
-from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.database import OligoDatabase, OligoAttributes
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     LowestSetScoring,
     WeightedTmGCOligoScoring,
 )
 from oligo_designer_toolsuite.oligo_selection import (
-    OligosetGeneratorIndependentSet,
-    HomogeneousPropertyOligoSetGenerator,
     GraphBasedSelectionPolicy,
+    GreedySelectionPolicy,
+    HomogeneousPropertyOligoSetGenerator,
+    OligosetGeneratorIndependentSet,
 )
 
 ############################################
@@ -242,17 +242,137 @@ class TestHomogeneousPropertyOligoSetGenerator(unittest.TestCase):
         )
         self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
 
+        oligo_attributes = OligoAttributes()
+        oligo_database = oligo_attributes.calculate_GC_content(self.oligo_database)
+        oligo_database = oligo_attributes.calculate_TmNN(oligo_database, TM_PARAMETERS)
+
         self.oligoset_generator = HomogeneousPropertyOligoSetGenerator(
             set_size=5,
-            properties=["GC_content"],
+            properties={"GC_content": 1, "TmNN": 1},
         )
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_path)
 
     def test_oligoset_generation(self):
-        # TODO: add tests
-        pass
+        # ⚠️ The function is not stable and the results are not always the same (depends on n_combinations)
+        # As a result, we only test the format
+        oligos_database = self.oligoset_generator.apply(
+            self.oligo_database, n_sets=2, n_combinations=1000, n_jobs=1
+        )
+        
+        gene_ids = {"PLEKHN1", "MIB2", "UBE2J2", "DVL1", "AGRN", "LOC112268402_1"}
+        assert gene_ids == set(oligos_database.oligosets.keys()), "The calculated oligosets regions are not correct!"
+        for gene in oligos_database.oligosets.keys():
+            assert len(oligos_database.oligosets[gene]) == 2, "The number of oligosets is not correct!"
+            assert set(oligos_database.oligosets[gene].columns) == {
+                "oligoset_id",
+                "oligo_0",
+                "oligo_1",
+                "oligo_2",
+                "oligo_3",
+                "oligo_4",
+                "set_score",
+            }, f"The columns of the oligosets are not correct! got {set(oligos_database.oligosets[gene].columns)}"
 
 
-# TODO: add tests for selection policies
+class TestOligoSelectionPolicy(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_selection")
+        self.region_id = "AGRN" # We only test for one region (this region is small enough for the purposes of the tests)
+
+        self.oligo_database = OligoDatabase(
+            min_oligos_per_region=2,
+            write_regions_with_insufficient_oligos=True,
+            dir_output=self.tmp_path,
+        )
+        self.oligo_database.load_database_from_table(FILE_DATABASE, database_overwrite=True)
+        self.set_scoring = LowestSetScoring(ascending=True)
+
+        self.oligo_scoring = WeightedTmGCOligoScoring(
+            Tm_min=52,
+            Tm_opt=60,
+            Tm_max=67,
+            GC_content_min=40,
+            GC_content_opt=50,
+            GC_content_max=60,
+            Tm_parameters=TM_PARAMETERS,
+            Tm_chem_correction_parameters=TM_PARAMETERS_CHEM_CORR,
+        )
+        self.oligo_database, self.oligos_scores = self.oligo_scoring.apply(
+            oligo_database=self.oligo_database,
+            region_id=self.region_id,
+            sequence_type="oligo",
+        )
+
+        # sort oligos by score
+        self.oligos_scores.sort_values(ascending=True, inplace=True)
+
+        oligo_generator = OligosetGeneratorIndependentSet(selection_policy=None, oligos_scoring = self.oligo_scoring, set_scoring=self.set_scoring)
+        # create the overlapping matrix
+        self.non_overlap_matrix, self.non_overlap_matrix_ids = oligo_generator._get_non_overlap_matrix(
+            oligo_database=self.oligo_database, region_id=self.region_id
+        )
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+
+    def test_graph_based_selection_policy(self):
+        selection_policy = GraphBasedSelectionPolicy(
+            set_scoring=self.set_scoring, 
+            pre_filter=True
+        )
+        oligosets = selection_policy.apply(
+            oligos_scores=self.oligos_scores,
+            non_overlap_matrix=self.non_overlap_matrix,
+            non_overlap_matrix_ids=self.non_overlap_matrix_ids,
+            set_size_opt=5,
+            set_size_min=3,
+            n_sets=2,
+        ).round(3)
+
+        true_oligosets =  pd.DataFrame(
+            {
+                "oligoset_id": [0, 1],
+                "oligo_0": ["AGRN_pid258", "AGRN_pid258"],
+                "oligo_1": ["AGRN_pid77", "AGRN_pid77"],
+                "oligo_2": ["AGRN_pid285", "AGRN_pid288"],
+                "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
+                "set_score_worst": [1.017, 1.017],
+                "set_score_sum": [2.314, 2.314],
+            }
+        )
+
+        assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
+
+    def test_greedy_selection_policy(self):
+        selection_policy = GreedySelectionPolicy(
+            set_scoring=self.set_scoring, 
+            score_criteria=self.set_scoring.score_1, 
+            pre_filter=True
+        )
+        oligosets = selection_policy.apply(
+            oligos_scores=self.oligos_scores,
+            non_overlap_matrix=self.non_overlap_matrix,
+            non_overlap_matrix_ids=self.non_overlap_matrix_ids,
+            set_size_opt=5,
+            set_size_min=3,
+            n_sets=2,
+        ).round(3)
+        
+        true_oligosets =  pd.DataFrame(
+            {
+                "oligoset_id": [0, 1],
+                "oligo_0": ["AGRN_pid258", "AGRN_pid261"],
+                "oligo_1": ["AGRN_pid288", "AGRN_pid285"],
+                "oligo_2": ["AGRN_pid77", "AGRN_pid77"],
+                "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
+                "set_score_worst": [1.017, 1.017],
+                "set_score_sum": [2.314, 2.428],
+            }
+        )
+
+        assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
+
+
