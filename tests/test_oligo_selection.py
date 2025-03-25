@@ -377,7 +377,7 @@ class TestOligoSelectionPolicy(unittest.TestCase):
         print("Columns equal:", true_oligosets.columns.equals(oligosets.columns))
         print("Data types:\n", true_oligosets.dtypes, "\n", oligosets.dtypes)
 
-        diff = true_oligosets.compare(oligosets, keep_shape=True, keep_equal=False)
+        diff = true_oligosets.compare(oligosets, keep_shape=False, keep_equal=False)
         diff_non_nan = diff.dropna(how="all")
         print(diff_non_nan)
 
