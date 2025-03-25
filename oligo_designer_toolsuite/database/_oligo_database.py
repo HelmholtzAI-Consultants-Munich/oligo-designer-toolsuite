@@ -340,7 +340,7 @@ class OligoDatabase:
         :type dir_database: str
         :param database_overwrite: If True, the existing database will be overwritten.
         :type database_overwrite: bool
-        :param merge_databases_on_sequence_type: The sequence type on which two databases should be merged on if database_overwrite = False,
+        :param merge_databases_on_sequence_type: The sequence type on which two databases should be merged on (if database_overwrite = False),
                 must be one of the predefined sequence types, i.e. "oligo" or "target".
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, defaults to None.
