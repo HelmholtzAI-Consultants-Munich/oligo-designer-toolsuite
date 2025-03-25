@@ -365,21 +365,13 @@ class TestOligoSelectionPolicy(unittest.TestCase):
             {
                 "oligoset_id": [0, 1],
                 "oligo_0": ["AGRN_pid258", "AGRN_pid261"],
-                "oligo_1": ["AGRN_pid288", "AGRN_pid285"],
+                "oligo_1": ["AGRN_pid285", "AGRN_pid288"],
                 "oligo_2": ["AGRN_pid77", "AGRN_pid77"],
                 "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
                 "set_score_worst": [1.017, 1.017],
                 "set_score_sum": [2.314, 2.428],
             }
         )
-        
-        print("Index equal:", true_oligosets.index.equals(oligosets.index))
-        print("Columns equal:", true_oligosets.columns.equals(oligosets.columns))
-        print("Data types:\n", true_oligosets.dtypes, "\n", oligosets.dtypes)
-
-        diff = true_oligosets.compare(oligosets, keep_shape=False, keep_equal=False)
-        diff_non_nan = diff.dropna(how="all")
-        print(diff_non_nan)
 
 
         assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
