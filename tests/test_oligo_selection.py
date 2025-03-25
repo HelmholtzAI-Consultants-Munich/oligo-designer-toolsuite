@@ -384,6 +384,9 @@ class TestOligoSelectionPolicy(unittest.TestCase):
                 "set_score_sum": [2.314, 2.428],
             }
         )
+        print(true_oligosets_1.compare(oligosets, keep_shape=False, keep_equal=False))
+        print(true_oligosets_2.compare(oligosets, keep_shape=False, keep_equal=False))
+
 
 
         assert true_oligosets_1.equals(oligosets) or true_oligosets_2.equals(oligosets), "The oligosets are not computed correctly!"
