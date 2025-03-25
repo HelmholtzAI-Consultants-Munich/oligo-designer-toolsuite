@@ -372,13 +372,14 @@ class TestOligoSelectionPolicy(unittest.TestCase):
                 "set_score_sum": [2.314, 2.428],
             }
         )
+        
+        print("Index equal:", true_oligosets.index.equals(oligosets.index))
+        print("Columns equal:", true_oligosets.columns.equals(oligosets.columns))
+        print("Data types:\n", true_oligosets.dtypes, "\n", oligosets.dtypes)
 
-        print("Expected:")
-        print(true_oligosets)
-        print("\nActual:")
-        print(oligosets)
-        print("\nDifference:")
-        print(true_oligosets.compare(oligosets, keep_shape=True, keep_equal=False))
+        diff = true_oligosets.compare(oligosets, keep_shape=True, keep_equal=False)
+        diff_non_nan = diff.dropna(how="all")
+        print(diff_non_nan)
 
 
         assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
