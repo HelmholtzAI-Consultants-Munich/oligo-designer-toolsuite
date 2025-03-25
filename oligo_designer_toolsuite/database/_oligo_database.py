@@ -19,15 +19,15 @@ from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID
 from oligo_designer_toolsuite.utils import (
-    FastaParser,
     CustomYamlDumper,
+    FastaParser,
     check_if_list,
     check_if_region_in_database,
     check_tsv_format,
     collapse_attributes_for_duplicated_sequences,
+    flatten_attribute_list,
     format_oligo_attributes,
     merge_databases,
-    flatten_attribute_list,
 )
 
 CustomYamlDumper.add_representer(list, CustomYamlDumper.represent_list)

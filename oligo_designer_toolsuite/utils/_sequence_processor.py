@@ -3,9 +3,9 @@
 ############################################
 
 import os
+from subprocess import Popen
 
 from Bio import SeqIO
-from subprocess import Popen
 
 from ._checkers_and_helpers import check_if_list
 

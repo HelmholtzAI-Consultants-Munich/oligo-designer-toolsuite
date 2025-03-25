@@ -2,10 +2,10 @@
 # imports
 ############################################
 
-import os
 import copy
-import warnings
+import os
 import random
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -20,14 +20,13 @@ from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
 )
-from oligo_designer_toolsuite.utils import GffParser
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
+from oligo_designer_toolsuite.utils import GffParser
 
 from ..utils._sequence_processor import (
     get_complement_regions,
     get_sequence_from_annotation,
 )
-
 
 ############################################
 # Genomic Region Generator Classes

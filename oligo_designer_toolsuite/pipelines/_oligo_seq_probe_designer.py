@@ -8,7 +8,7 @@ import shutil
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 import yaml
 from Bio.SeqUtils import MeltingTemp as mt
@@ -46,13 +46,14 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     VariantsFilter,
     RemoveByLargerRegionPolicy,
     RemoveAllPolicy,
+    RemoveByLargerRegionPolicy,
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
-    base_parser,
     base_log_parameters,
-    pipeline_step_basic,
+    base_parser,
     check_content_oligo_database,
+    pipeline_step_basic,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 

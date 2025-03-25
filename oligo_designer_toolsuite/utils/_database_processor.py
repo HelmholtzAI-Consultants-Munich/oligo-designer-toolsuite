@@ -3,8 +3,8 @@
 ############################################
 
 import warnings
-
 from typing import Union, get_args
+
 from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ, SEPARATOR_OLIGO_ID

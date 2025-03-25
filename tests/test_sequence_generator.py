@@ -5,11 +5,10 @@
 import os
 import shutil
 import unittest
-
-from pathlib import Path
 from abc import abstractmethod
+from pathlib import Path
 
-from oligo_designer_toolsuite.database import OligoDatabase, OligoAttributes
+from oligo_designer_toolsuite.database import OligoAttributes, OligoDatabase
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
     FtpLoaderEnsembl,
@@ -86,7 +85,6 @@ class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
 
 
 class FTPLoaderFilesBase:
-
     def setUp(self):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader")
         self.loader = self.setup_ftp_loader()

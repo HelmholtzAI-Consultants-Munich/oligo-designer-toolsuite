@@ -14,12 +14,13 @@ from ._checkers_and_helpers import (
 from ._database_processor import (
     check_if_region_in_database,
     collapse_attributes_for_duplicated_sequences,
+    flatten_attribute_list,
     format_oligo_attributes,
     merge_databases,
-    flatten_attribute_list,
 )
 from ._sequence_parser import FastaParser, GffParser, VCFParser
 from ._sequence_processor import (
+    append_nucleotide_to_sequences,
     get_complement_regions,
     get_sequence_from_annotation,
     get_intersection,

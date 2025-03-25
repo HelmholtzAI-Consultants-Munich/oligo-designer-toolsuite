@@ -3,13 +3,15 @@
 ############################################
 
 import os
-import warnings
 import subprocess
+import warnings
+from abc import abstractmethod
+from typing import Tuple, Union
+
 import numpy as np
 import pandas as pd
 
 from abc import abstractmethod
-from typing import Union, Tuple
 from Bio import SeqIO
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
