@@ -342,6 +342,7 @@ class TestOligoSelectionPolicy(unittest.TestCase):
                 "set_score_worst": [1.017, 1.017],
                 "set_score_sum": [2.314, 2.314],
             }
+        )
 
         true_oligosets_2 =  pd.DataFrame(
             {
