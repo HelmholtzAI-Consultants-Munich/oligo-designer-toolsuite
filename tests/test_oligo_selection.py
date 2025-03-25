@@ -373,6 +373,14 @@ class TestOligoSelectionPolicy(unittest.TestCase):
             }
         )
 
+        print("Expected:")
+        print(true_oligosets)
+        print("\nActual:")
+        print(oligosets)
+        print("\nDifference:")
+        print(true_oligosets.compare(oligosets, keep_shape=True, keep_equal=False))
+
+
         assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
 
 
