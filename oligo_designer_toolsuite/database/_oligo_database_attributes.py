@@ -2,7 +2,7 @@
 # imports
 ############################################
 
-from typing import List, Tuple, Union
+from typing import List, Union, Tuple
 
 from Bio.Seq import Seq
 from Bio.SeqUtils import MeltingTemp, gc_fraction
@@ -168,6 +168,48 @@ class OligoAttributes:
                 else:
                     sequence_rc = None
                 new_oligo_attribute[oligo_id] = {sequence_type_reverse_complement: sequence_rc}
+        oligo_database.update_oligo_attributes(new_oligo_attribute)
+
+        return oligo_database
+
+    @staticmethod
+    def _calc_split_sequence(sequence: str, split_start_end: list) -> List[str]:
+        split_sequences = []
+        for start_end in split_start_end:
+            split_sequences.append(sequence[start_end[0] : start_end[1]])
+
+        return split_sequences
+
+    def calculate_split_sequence(
+        self,
+        oligo_database: OligoDatabase,
+        split_start_end: List[tuple],
+        split_names: List[str],
+        sequence_type: _TYPES_SEQ,
+        region_ids: Union[str, List[str]] = None,
+    ) -> OligoDatabase:
+
+        if len(split_start_end) != len(split_names):
+            raise ValueError(
+                "{len(split_names)} names given for {len(split_lengths)} split sequences. Must give name for each split sequence."
+            )
+
+        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        new_oligo_attribute = {}
+
+        for region_id in region_ids:
+            for oligo_id in oligo_database.database[region_id].keys():
+                sequence = oligo_database.get_oligo_attribute_value(
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+                )
+                if sequence:
+                    split_sequences = self._calc_split_sequence(
+                        sequence=sequence, split_start_end=split_start_end
+                    )
+                    attributes = dict(zip(split_names, split_sequences))
+                else:
+                    attributes = dict.fromkeys(split_names, None)
+                new_oligo_attribute[oligo_id] = attributes
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
         return oligo_database
