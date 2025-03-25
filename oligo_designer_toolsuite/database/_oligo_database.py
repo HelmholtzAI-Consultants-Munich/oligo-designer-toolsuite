@@ -893,23 +893,17 @@ class OligoDatabase:
         :rtype: pd.DataFrame
         """
 
-        def _check_if_list_length_one(x):
-            """
-            Check if an element is of type list and if the list contains only one element.
-            """
-            if (not isinstance(x, list)) or (len(x) <= 1):
-                return True
-            return False
-
-        def _flatten_if_list(x):
-            """
-            Flatten lists with only one element, i.e. if x is a list of length 1, return that single element.
+        def _flatten_if_one(x):
+        """
+        Flatten lists with only one element, i.e. if x is a list of length 1, return that single element.
             If x is an empty list, return None.
             """
             if isinstance(x, list):
-                return x[0] if x else None
+                if len(x) == 1:
+                    return x[0]
+                elif len(x) == 0:
+                    return None
             return x
-
         # Check formatting
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
         attributes = [attributes] if isinstance(attributes, str) else attributes
