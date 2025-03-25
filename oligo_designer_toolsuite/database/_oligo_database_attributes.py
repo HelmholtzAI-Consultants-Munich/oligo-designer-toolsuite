@@ -163,8 +163,10 @@ class OligoAttributes:
                 sequence = oligo_database.get_oligo_attribute_value(
                     attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-
-                sequence_rc = self._calculate_reverse_complement_sequence(sequence=sequence)
+                if sequence:
+                    sequence_rc = self._calculate_reverse_complement_sequence(sequence=sequence)
+                else:
+                    sequence_rc = None
                 new_oligo_attribute[oligo_id] = {sequence_type_reverse_complement: sequence_rc}
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
@@ -180,7 +182,7 @@ class OligoAttributes:
         :rtype: int
         """
         # make sure that transcript id one level list
-        return len(set(check_if_list(flatten_attribute_list(transcript_id))))
+        return len(set(flatten_attribute_list(transcript_id)))
 
     def calculate_num_targeted_transcripts(
         self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None

@@ -3,12 +3,14 @@
 ############################################
 
 import os
+from typing import get_args
+
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
-    AlignmentSpecificityFilter,
     SpecificityFilterBase,
+    SpecificityFilterAlignment,
 )
 
 from ._policies import FilterPolicyBase
@@ -26,12 +28,12 @@ class CrossHybridizationFilter(SpecificityFilterBase):
     i.e. in the case of cross-hybridization, the ReferenceDatabase consists of all sequences in the OligoDatabase.
     The filter removes sequences that show potential cross-hybridization, based on the provided filtering policy.
 
+    :param sequence_type: The type of sequence to be used for the filter calculations.
+    :type sequence_type: _TYPES_SEQ["oligo", "target"]
     :param policy: The policy that defines how to handle oligonucleotides that meet or violate the cross-hybridization criteria.
     :type policy: FilterPolicyBase
     :param alignment_method: The alignment method used to identify potential cross-hybridization with reference sequences (i.e. OligoDatabase sequences).
-    :type alignment_method: AlignmentSpecificityFilter
-    :param database_name_reference: The name of the tmp file for the saved ReferenceDatabase (i.e. OligoDatabase sequences).
-    :type database_name_reference: str
+    :type alignment_method: SpecificityFilterAlignment
     :param filter_name: Name of the filter for identification purposes.
     :type filter_name: str
     :param dir_output: Directory to store output files and temporary data.
@@ -40,26 +42,55 @@ class CrossHybridizationFilter(SpecificityFilterBase):
 
     def __init__(
         self,
+        sequence_type: _TYPES_SEQ,
         policy: FilterPolicyBase,
-        alignment_method: AlignmentSpecificityFilter,
-        database_name_reference: str = "db_reference",
-        filter_name: str = "crosshybridization_filter",
+        alignment_method: SpecificityFilterAlignment,
+        filter_name: str = "cross_hybridization_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the CrossHybridizationFilter class."""
         super().__init__(filter_name, dir_output)
 
-        self.database_name_reference = database_name_reference
-        self.dir_output_reference = dir_output
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
 
+        self.sequence_type = sequence_type
         self.policy = policy
         self.alignment_method = alignment_method
+        self.alignment_method.sequence_type = sequence_type  # make sure sequence_types match
+        self.reference_database = None
+
+    def set_reference_database(self, oligo_database: OligoDatabase) -> None:
+        """
+        Creates a ReferenceDatabase for cross-hybridization filtering based on the sequences in the provided OligoDatabase.
+
+        This function generates a FASTA file from the OligoDatabase, which is then loaded into a new ReferenceDatabase object.
+        The ReferenceDatabase is used to identify potential cross-hybridization with the oligo sequences.
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        """
+        file_reference = oligo_database.write_database_to_fasta(
+            filename=f"db_oligos_{self.filter_name}",
+            dir_output=self.dir_output,
+            save_description=False,
+            region_ids=None,
+            sequence_type=self.sequence_type,
+        )
+        self.reference_database = ReferenceDatabase(
+            database_name=f"db_reference_{self.filter_name}", dir_output=self.dir_output
+        )
+        self.reference_database.load_database_from_file(
+            files=file_reference, file_type="fasta", database_overwrite=True
+        )
+        self.alignment_method.set_reference_database(self.reference_database)
+        os.remove(file_reference)
 
     def apply(
         self,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,  # not utilized in this filter
-        sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> OligoDatabase:
         """
@@ -70,10 +101,6 @@ class CrossHybridizationFilter(SpecificityFilterBase):
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param reference_database: The ReferenceDatabase used for alignment (not utilized in this filter but instead a ReferenceDatabase is created from the OligoDatabase).
-        :type reference_database: ReferenceDatabase
-        :param sequence_type: The type of sequence to be used for the filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of parallel jobs to use for processing.
         :type n_jobs: int
         :return: The filtered OligoDatabase with potential cross-hybridizing sequences removed.
@@ -81,52 +108,17 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         """
         region_ids = list(oligo_database.database.keys())
 
-        reference_database = self._create_reference_database(
-            sequence_type=sequence_type, oligo_database=oligo_database
-        )
+        self.set_reference_database(oligo_database=oligo_database)
         oligo_pair_hits = self.alignment_method.get_oligo_pair_hits(
-            sequence_type=sequence_type,
             oligo_database=oligo_database,
-            reference_database=reference_database,
             n_jobs=n_jobs,
         )
         oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 
-        for region_id in region_ids:
-            self._filter_hits_from_database(
-                oligo_database=oligo_database,
-                region_id=region_id,
-                oligos_with_hits=oligos_with_hits[region_id],
-            )
+        self._filter_hits_from_database(
+            oligo_database=oligo_database,
+            region_ids=region_ids,
+            oligos_with_hits=oligos_with_hits,
+        )
+
         return oligo_database
-
-    def _create_reference_database(
-        self, sequence_type: _TYPES_SEQ, oligo_database: OligoDatabase
-    ) -> ReferenceDatabase:
-        """
-        Creates a ReferenceDatabase for cross-hybridization filtering based on the sequences in the provided OligoDatabase.
-
-        This function generates a FASTA file from the OligoDatabase, which is then loaded into a new ReferenceDatabase object.
-        The ReferenceDatabase is used to identify potential cross-hybridization with the oligo sequences.
-
-        :param sequence_type: The type of sequence to be used for the filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
-        :type oligo_database: OligoDatabase
-        :return: A ReferenceDatabase containing the sequences from the OligoDatabase.
-        :rtype: ReferenceDatabase
-        """
-        file_reference = oligo_database.write_database_to_fasta(
-            filename=f"db_reference_{self.filter_name}",
-            save_description=False,
-            region_ids=None,
-            sequence_type=sequence_type,
-        )
-        reference_database = ReferenceDatabase(
-            database_name=self.database_name_reference, dir_output=self.dir_output_reference
-        )
-        reference_database.load_database_from_fasta(files_fasta=file_reference, database_overwrite=True)
-
-        os.remove(file_reference)
-
-        return reference_database

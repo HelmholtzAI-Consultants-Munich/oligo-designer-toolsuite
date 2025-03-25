@@ -4,6 +4,7 @@
 
 import logging
 import os
+import yaml
 import shutil
 import warnings
 from datetime import datetime
@@ -413,7 +414,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_target_probes_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_target_probes_initial")
             print(f"Saved target probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_property(
@@ -427,7 +428,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_target_probes_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_target_probes_property_filter")
             print(f"Saved target probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_specificity(
@@ -441,7 +442,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_target_probes_specificity_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_target_probes_specificity_filter")
             print(f"Saved target probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.create_oligo_sets(
@@ -461,7 +462,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="4_db_target_probes_sets")
+            dir_database = oligo_database.save_database(name_database="4_db_target_probes_sets")
             dir_oligosets = oligo_database.write_oligosets_to_table()
             print(
                 f"Saved target probe database for step 4 (Specificity Filters) in directory {dir_database} and sets table in directory {dir_oligosets}"
@@ -520,7 +521,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_readout_probes_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
             print(f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = readout_probe_designer.filter_by_property(
@@ -532,7 +533,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_readout_probes_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_readout_probes_property_filter")
             print(f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = readout_probe_designer.filter_by_specificity(
@@ -546,7 +547,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_readout_probes_specificty_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_readout_probes_specificty_filter")
             print(
                 f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
             )
@@ -718,7 +719,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_primers_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_primers_initial")
             print(f"Saved primer database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = primer_designer.filter_by_property(
@@ -742,7 +743,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_primer_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_primer_property_filter")
             print(f"Saved primer database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = primer_designer.filter_by_specificity(
@@ -757,7 +758,7 @@ class SeqFishPlusProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_primer_specificty_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
             print(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
 
         min_dif_Tm = 100
@@ -1132,46 +1133,52 @@ class TargetProbeDesigner:
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
-        reference_database.load_database_from_fasta(
-            files_fasta=files_fasta_reference_database, database_overwrite=False
+        reference_database.load_database_from_file(
+            files=files_fasta_reference_database, file_type="fasta", database_overwrite=False
         )
 
         ##### exact match filter #####
-        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="oligo_exact_match")
+        exact_matches = ExactMatchFilter(
+            sequence_type="oligo", policy=RemoveAllPolicy(), filter_name="oligo_exact_match"
+        )
 
         ##### specificity filters #####
         specificity = BlastNFilter(
+            sequence_type="oligo",
+            remove_hits=True,
             search_parameters=specificity_blastn_search_parameters,
             hit_parameters=specificity_blastn_hit_parameters,
             filter_name="oligo_blastn_specificity",
             dir_output=self.dir_output,
         )
+        specificity.set_reference_database(reference_database=reference_database)
 
         cross_hybridization_aligner = BlastNFilter(
+            sequence_type="oligo",
+            remove_hits=True,
             search_parameters=cross_hybridization_blastn_search_parameters,
             hit_parameters=cross_hybridization_blastn_hit_parameters,
             filter_name="oligo_blastn_crosshybridization",
             dir_output=self.dir_output,
         )
+        cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
         cross_hybridization = CrossHybridizationFilter(
+            sequence_type="oligo",
             policy=RemoveByLargerRegionPolicy(),
             alignment_method=cross_hybridization_aligner,
-            database_name_reference=self.subdir_db_reference,
+            filter_name="oligo_blastn_crosshybridization",
             dir_output=self.dir_output,
         )
 
         filters = [exact_matches, specificity, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
-            sequence_type="oligo",
             oligo_database=oligo_database,
-            reference_database=reference_database,
             n_jobs=self.n_jobs,
         )
 
         # remove all directories of intermediate steps
         for directory in [
-            reference_database.dir_output,
             cross_hybridization_aligner.dir_output,
             cross_hybridization.dir_output,
             specificity.dir_output,
@@ -1468,47 +1475,53 @@ class ReadoutProbeDesigner:
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
-        reference_database.load_database_from_fasta(
-            files_fasta=files_fasta_reference_database, database_overwrite=False
+        reference_database.load_database_from_file(
+            files=files_fasta_reference_database, file_type="fasta", database_overwrite=False
         )
 
         ##### specificity filters #####
         # removing duplicated oligos
-        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="readout_probes_exact_match")
+        exact_matches = ExactMatchFilter(
+            sequence_type="oligo", policy=RemoveAllPolicy(), filter_name="readout_probes_exact_match"
+        )
 
         # BlastN Filter
         specificity = BlastNFilter(
+            sequence_type="oligo",
             search_parameters=specificity_blastn_search_parameters,
             hit_parameters=specificity_blastn_hit_parameters,
             filter_name="readout_probes_blastn_specificity",
             dir_output=self.dir_output,
         )
+        specificity.set_reference_database(reference_database=reference_database)
 
         # Cross-Hybridization Filter
         cross_hybridization_aligner = BlastNFilter(
+            sequence_type="oligo",
             search_parameters=cross_hybridization_blastn_search_parameters,
             hit_parameters=cross_hybridization_blastn_hit_parameters,
             filter_name="readout_probes_blastn_crosshybridization",
             dir_output=self.dir_output,
         )
+        cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
+
         cross_hybridization = CrossHybridizationFilter(
+            sequence_type="oligo",
             policy=RemoveByDegreePolicy(),
             alignment_method=cross_hybridization_aligner,
-            database_name_reference=self.subdir_db_reference,
+            filter_name="readout_probes_blastn_crosshybridization",
             dir_output=self.dir_output,
         )
 
         filters = [exact_matches, specificity, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
-            sequence_type="oligo",
             oligo_database=oligo_database,
-            reference_database=reference_database,
             n_jobs=self.n_jobs,
         )
 
+        # remove all directories of intermediate steps
         for directory in [
-            reference_database.dir_output,
             specificity.dir_output,
             cross_hybridization_aligner.dir_output,
             cross_hybridization.dir_output,
@@ -1856,51 +1869,44 @@ class PrimerDesigner:
         reference_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
-        reference_database.load_database_from_fasta(
-            files_fasta=files_fasta_reference_database, database_overwrite=True
+        reference_database.load_database_from_file(
+            files=files_fasta_reference_database, file_type="fasta", database_overwrite=True
         )
         # BlastN Filter
         specificity_refrence = BlastNFilter(
+            sequence_type="oligo",
             search_parameters=specificity_refrence_blastn_search_parameters,
             hit_parameters=specificity_refrence_blastn_hit_parameters,
             filter_name="primer_blastn_specificity_reference",
             dir_output=self.dir_output,
         )
-
-        specificity_filter_reference = SpecificityFilter(filters=[specificity_refrence])
-        oligo_database = specificity_filter_reference.apply(
-            sequence_type="oligo",
-            oligo_database=oligo_database,
-            reference_database=reference_database,
-            n_jobs=self.n_jobs,
-        )
+        specificity_refrence.set_reference_database(reference_database=reference_database)
 
         ##### specificity filters against encoding probes #####
         encoding_probes_database = ReferenceDatabase(
             database_name=self.subdir_db_reference, dir_output=self.dir_output
         )
-        encoding_probes_database.load_database_from_fasta(
-            files_fasta=file_fasta_encoding_probes_database, database_overwrite=True
+        encoding_probes_database.load_database_from_file(
+            files=file_fasta_encoding_probes_database, file_type="fasta", database_overwrite=True
         )
         # BlastN Filter
         specificity_encoding_probes = BlastNFilter(
+            sequence_type="oligo",
             search_parameters=specificity_encoding_probes_blastn_search_parameters,
             hit_parameters=specificity_encoding_probes_blastn_hit_parameters,
             filter_name="primer_blastn_specificity_encoding_probes",
             dir_output=self.dir_output,
         )
+        specificity_encoding_probes.set_reference_database(reference_database=encoding_probes_database)
 
-        specificity_filter_encoding_probes = SpecificityFilter(filters=[specificity_encoding_probes])
-        oligo_database = specificity_filter_encoding_probes.apply(
-            sequence_type="oligo",
+        specificity_filter = SpecificityFilter(filters=[specificity_refrence, specificity_encoding_probes])
+        oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
-            reference_database=encoding_probes_database,
             n_jobs=self.n_jobs,
         )
 
+        # remove all directories of intermediate steps
         for directory in [
-            reference_database.dir_output,
-            encoding_probes_database.dir_output,
             specificity_refrence.dir_output,
             specificity_encoding_probes.dir_output,
         ]:

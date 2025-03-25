@@ -7,6 +7,8 @@ from subprocess import Popen
 
 from Bio import SeqIO
 
+from ._checkers_and_helpers import check_if_list
+
 ############################################
 # Collection of utility functions
 ############################################
@@ -70,6 +72,30 @@ def get_complement_regions(file_bed_in: str, file_chromosome_length: str, file_b
     cmd += " -i " + file_bed_in
     cmd += " -g " + file_chromosome_length
     cmd += " -L "
+    cmd += " > " + file_bed_out
+
+    process = Popen(cmd, shell=True).wait()
+
+
+def get_intersection(file_A: str, file_B: list, file_bed_out: str):
+    """
+    Compute the intersection between genomic regions in two BED files.
+
+    This function uses `bedtools intersect` to find overlapping regions between the input BED files.
+    The output is saved in a specified BED file.
+
+    :param file_A: Path to the first BED file.
+    :type file_A: str
+    :param file_B: List of paths to the second BED file(s).
+    :type file_B: list
+    :param file_bed_out: Path to the output BED file where the intersection results will be saved.
+    :type file_bed_out: str
+    """
+    file_B = check_if_list(file_B)
+
+    cmd = "bedtools intersect -wa -wb -bed"
+    cmd += " -a " + file_A
+    cmd += " -b " + " ".join(file_B)
     cmd += " > " + file_bed_out
 
     process = Popen(cmd, shell=True).wait()

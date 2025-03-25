@@ -10,7 +10,7 @@ from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite._constants import _TYPES_SEQ
-from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
+from oligo_designer_toolsuite.database import OligoDatabase, OligoAttributes
 from oligo_designer_toolsuite.oligo_specificity_filter import SpecificityFilterBase
 
 from ._policies import FilterPolicyBase, RemoveAllPolicy
@@ -27,6 +27,8 @@ class ExactMatchFilter(SpecificityFilterBase):
     The `ExactMatchFilter` class is designed to apply a specific policy to oligonucleotides that have exact sequence matches in the OligoDatabase.
     This filter can be used to remove or handle exact matches based on the provided policy.
 
+    :param sequence_type: The type of sequence to be used for the filter calculations.
+    :type sequence_type: _TYPES_SEQ["oligo", "target"]
     :param policy: The policy to apply to exact matches. If not provided, a default policy (`RemoveAllPolicy`) will be used.
     :type policy: FilterPolicyBase
     :param filter_name: Name of the filter for identification purposes.
@@ -35,10 +37,17 @@ class ExactMatchFilter(SpecificityFilterBase):
 
     def __init__(
         self,
+        sequence_type: _TYPES_SEQ,
         policy: FilterPolicyBase = None,
         filter_name: str = "exact_match_filter",
     ) -> None:
         """Constructor for the ExactMatches class."""
+        options = get_args(_TYPES_SEQ)
+        assert (
+            sequence_type in options
+        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+        self.sequence_type = sequence_type
+
         if not policy:
             policy = RemoveAllPolicy()
         self.policy = policy
@@ -47,8 +56,6 @@ class ExactMatchFilter(SpecificityFilterBase):
     def apply(
         self,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,  # not utilized in this filter
-        sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> OligoDatabase:
         """
@@ -60,23 +67,19 @@ class ExactMatchFilter(SpecificityFilterBase):
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param reference_database: The ReferenceDatabase used for alignment (not utilized in this filter).
-        :type reference_database: ReferenceDatabase
-        :param sequence_type: The type of sequence to be used for the filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of parallel jobs to use for processing.
         :type n_jobs: int
         :return: The filtered OligoDatabase with exact matching sequences removed.
         :rtype: OligoDatabase
         """
         # extract all the sequences
-        sequences = oligo_database.get_sequence_list(sequence_type=sequence_type)
+        sequences = oligo_database.get_sequence_list(sequence_type=self.sequence_type)
         search_results = self._get_duplicated_sequences(sequences)
 
         # get mapping from sequence to oligo_id
         # use same sequence as sequence_type
         sequence_oligoids_mapping = oligo_database.get_sequence_oligoid_mapping(
-            sequence_type=sequence_type, sequence_to_upper=True
+            sequence_type=self.sequence_type, sequence_to_upper=True
         )
 
         region_ids = list(oligo_database.database.keys())
@@ -88,7 +91,6 @@ class ExactMatchFilter(SpecificityFilterBase):
                     search_results=search_results,
                     sequence_oligoids_mapping=sequence_oligoids_mapping,
                     consider_hits_from_input_region=False,
-                    sequence_type=sequence_type,
                     region_id=region_id,
                 )
                 for region_id in region_ids
@@ -98,19 +100,16 @@ class ExactMatchFilter(SpecificityFilterBase):
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
         oligos_with_hits = self.policy.apply(oligo_pair_hits=oligo_pair_hits, oligo_database=oligo_database)
 
-        for region_id in region_ids:
-            self._filter_hits_from_database(
-                oligo_database=oligo_database,
-                region_id=region_id,
-                oligos_with_hits=oligos_with_hits[region_id],
-            )
+        self._filter_hits_from_database(
+            oligo_database=oligo_database,
+            region_ids=region_ids,
+            oligos_with_hits=oligos_with_hits,
+        )
         return oligo_database
 
     def get_oligo_pair_hits(
         self,
         oligo_database: OligoDatabase,
-        reference_database: ReferenceDatabase,  # not utilized in this filter
-        sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> list:
         """
@@ -121,23 +120,20 @@ class ExactMatchFilter(SpecificityFilterBase):
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param reference_database: The ReferenceDatabase used for alignment (not utilized in this filter).
-        :type reference_database: ReferenceDatabase
-        :param sequence_type: The type of sequence to be used for the filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of parallel jobs to use for processing.
         :type n_jobs: int
         :return: A list of tuples representing oligo pairs that have exact matches.
         :rtype: list
         """
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-        sequence_type_reverse_complement = options[0] if options[0] != sequence_type else options[1]
+        sequence_type_reverse_complement = f"{self.sequence_type}_rc"
+        oligo_database = OligoAttributes().calculate_reverse_complement_sequence(
+            oligo_database=oligo_database,
+            sequence_type=self.sequence_type,
+            sequence_type_reverse_complement=sequence_type_reverse_complement,
+        )
 
         # extract all the sequences
-        sequences = oligo_database.get_sequence_list(sequence_type=sequence_type)
+        sequences = oligo_database.get_sequence_list(sequence_type=self.sequence_type)
         sequences_rc = oligo_database.get_sequence_list(sequence_type=sequence_type_reverse_complement)
         search_results = self._get_duplicated_sequences(sequences + sequences_rc)
 
@@ -151,7 +147,6 @@ class ExactMatchFilter(SpecificityFilterBase):
         with joblib_progress(description=f"Specificity Filter: {name}", total=len(region_ids)):
             table_hits = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._run_filter)(
-                    sequence_type=sequence_type,
                     region_id=region_id,
                     oligo_database=oligo_database,
                     search_results=search_results,
@@ -195,7 +190,6 @@ class ExactMatchFilter(SpecificityFilterBase):
         search_results: List,
         sequence_oligoids_mapping: dict,
         consider_hits_from_input_region: bool,
-        sequence_type: _TYPES_SEQ,
         region_id: str,
     ) -> pd.DataFrame:
         """
@@ -212,8 +206,6 @@ class ExactMatchFilter(SpecificityFilterBase):
         :type sequence_oligoids_mapping: dict
         :param consider_hits_from_input_region: Flag indicating whether to consider hits from the same region as the input sequences.
         :type consider_hits_from_input_region: bool
-        :param sequence_type: The type of sequence to be used for the filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param region_id: Region ID to process.
         :type region_id: str
         :return: A DataFrame containing the oligo ID pairs for sequences that matched the search results.
@@ -222,7 +214,7 @@ class ExactMatchFilter(SpecificityFilterBase):
         database_region = oligo_database.database[region_id]
         hit_dict = {}
         for oligo_id in database_region.keys():
-            oligo_seq = database_region[oligo_id][sequence_type].upper()
+            oligo_seq = database_region[oligo_id][self.sequence_type].upper()
             if oligo_seq in search_results:
                 # find all reverse complements with the same sequence
                 if oligo_seq in sequence_oligoids_mapping:

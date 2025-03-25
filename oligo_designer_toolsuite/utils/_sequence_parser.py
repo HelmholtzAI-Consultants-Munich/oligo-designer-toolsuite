@@ -7,15 +7,16 @@ import math
 import os
 import pickle
 import re
-from typing import List, Tuple, Union
+from subprocess import Popen
+from typing import List, Union, Tuple
 
 import pandas as pd
 from Bio import SeqIO
+from cyvcf2 import VCF, Writer
 
 from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
 
 from ._checkers_and_helpers import check_if_list
@@ -307,7 +308,7 @@ class FastaParser:
         :return: True if the string matches the coordinate pattern, otherwise False.
         :rtype: bool
         """
-        pattern = r"\S+:\S+-\S+\(.*\)"
+        pattern = r"(\d+):(\d+)-(\d+)\(.*\)"
         return bool(re.match(pattern, entry))
 
     def get_fasta_regions(self, file_fasta_in: str) -> list:
@@ -406,6 +407,7 @@ class FastaParser:
                         coordinates.setdefault("strand", []).append(
                             header_coordinate.split("(")[1].split(")")[0]
                         )
+
             else:
                 info_list = header_entry
                 # the additional info field should be parsed, save information in dict
@@ -414,15 +416,12 @@ class FastaParser:
                         info_list = info_list.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST)
 
                         for infos in info_list:
-                            key_values = infos.split(SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS)
+                            key, value = infos.split("=")
 
-                            for key_value in key_values:
-                                key, value = key_value.split("=")
-
-                                if key in additional_info:
-                                    additional_info[key].append(value)
-                                else:
-                                    additional_info[key] = [value]
+                            if key in additional_info:
+                                additional_info[key].append(value)
+                            else:
+                                additional_info[key] = [value]
 
                     else:
                         key, value = info_list.split("=")
@@ -431,6 +430,18 @@ class FastaParser:
                     additional_info = info_list
 
         return region, additional_info, coordinates
+
+    def write_fasta_sequences(self, fasta_sequences: list, file_out: str) -> None:
+        """
+        Write a list of fasta sequences to an output file.
+
+        :param fasta_sequences: List of fasta sequences to be written.
+        :type fasta_sequences: list
+        :param file_out: Path to the output fasta file.
+        :type file_out: str
+        """
+        with open(file_out, "w") as handle_fasta:
+            SeqIO.write(fasta_sequences, handle_fasta, "fasta")
 
     def merge_fasta_files(self, files_in: list, file_out: str, overwrite: bool = False) -> None:
         """
@@ -448,8 +459,115 @@ class FastaParser:
         """
         files_in = check_if_list(files_in)
         file_out_mode = "w" if overwrite else "a"
-        with open(file_out, file_out_mode) as out:
+        with open(file_out, file_out_mode) as handle_fasta:
             for file_in in files_in:
-                if os.path.isfile(file_in):
-                    with open(file_in, "r") as in_f:
-                        out.write(in_f.read())
+                seq_record = SeqIO.index(file_in, "fasta")
+                for idx in seq_record:
+                    SeqIO.write(seq_record[idx], handle_fasta, "fasta")
+
+
+############################################
+# VCF Parser Class
+############################################
+
+
+class VCFParser:
+    """
+    A parser for handling VCF (Variant Call Format) files, including reading, writing,
+    merging, and verifying VCF file formats.
+    """
+
+    def __init__(self) -> None:
+        """Constructor for the VCFParser class."""
+
+    def check_vcf_format(self, file: str) -> bool:
+        """
+        Check if the provided file is a valid VCF file.
+
+        :param file: Path to the VCF file to check.
+        :type file: str
+        :return: True if the file is a valid VCF file, raises an exception otherwise.
+        :rtype: bool
+        :raises ValueError: If the file is missing or has an incorrect VCF format.
+        """
+
+        def _check_vcf_content(file) -> bool:
+            vcf = VCF(file)
+            return any(vcf)  # False when `vcf` is empty, i.e. wasn't a vcf file
+
+        if os.path.exists(file):
+            if not _check_vcf_content(file):
+                raise ValueError("VCF file has incorrect format!")
+            else:
+                return True
+        else:
+            raise ValueError("VCF file does not exist!")
+
+    def read_vcf_variants(self, file: str) -> list:
+        """
+        Read variants from a VCF file.
+
+        :param file: Path to the VCF file to read.
+        :type file: str
+        :return: A list of variant records and the VCF file handler.
+        :rtype: list
+        :raises ValueError: If the VCF file is not correctly formatted.
+        """
+        self.check_vcf_format(file)
+
+        variants = []
+
+        vcf_in = VCF(file)
+        variants.extend(list(vcf_in))
+        vcf_in.close()
+
+        return variants, vcf_in
+
+    def write_vcf_variants(self, vcf_variants: list, vcf_in: str, file_out: str) -> None:
+        """
+        Write a list of VCF variants to an output file.
+
+        :param vcf_variants: List of variant records to be written.
+        :type vcf_variants: list
+        :param vcf_in: VCF file handler used for formatting.
+        :type vcf_in: str
+        :param file_out: Path to the output VCF file.
+        :type file_out: str
+        """
+        vcf_out = Writer(file_out, vcf_in)
+        for variant in vcf_variants:
+            vcf_out.write_record(variant)
+        vcf_out.close()
+
+    def merge_vcf_files(self, files_in: list, file_out: str) -> None:
+        """
+        Merge multiple VCF files into a single VCF file.
+
+        :param files_in: List of input VCF files to be merged.
+        :type files_in: list
+        :param file_out: Path to the output merged VCF file.
+        :type file_out: str
+        """
+
+        cmd = "bcftools merge --force-single --output-type v"
+        cmd += " -o " + file_out
+        for file_vcf in files_in:
+            _, ext = os.path.splitext(file_vcf)
+            if ext == ".vcf":
+                file_vcf_compressed = f"{file_vcf}.gz"
+                cmd_compress = "bcftools view -O z "
+                cmd_compress += "-o " + file_vcf_compressed
+                cmd_compress += " " + file_vcf
+                process = Popen(cmd_compress, shell=True).wait()
+
+                file_vcf = file_vcf_compressed
+
+            cmd_sort = "bcftools sort " + file_vcf + " -Oz -o " + file_vcf
+            process = Popen(cmd_sort, shell=True).wait()
+
+            cmd_index = "bcftools index " + file_vcf
+            process = Popen(cmd_index, shell=True).wait()
+
+            cmd += " " + file_vcf
+
+        process = Popen(cmd, shell=True).wait()

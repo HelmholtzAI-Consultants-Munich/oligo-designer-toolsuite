@@ -4,6 +4,7 @@
 
 import os
 import pickle
+import warnings
 from pathlib import Path
 from typing import List, Union, get_args
 
@@ -189,6 +190,7 @@ class OligoDatabase:
                     self.database = merge_databases(
                         database1=self.database,
                         database2=database_region,
+                        sequence_type=sequence_type,
                         dir_cache_files=self._dir_cache_files,
                         lru_db_max_in_memory=self.lru_db_max_in_memory,
                     )
@@ -232,6 +234,7 @@ class OligoDatabase:
         self,
         file_database: str,
         database_overwrite: bool,
+        merge_databases_on_sequence_type: _TYPES_SEQ,
         region_ids: Union[str, List[str]] = None,
     ) -> None:
         """
@@ -248,6 +251,9 @@ class OligoDatabase:
         :type file_database: str
         :param database_overwrite: If True, the existing database will be overwritten.
         :type database_overwrite: bool
+        :param merge_databases_on_sequence_type: The sequence type on which two databases should be merged on if database_overwrite = False,
+                must be one of the predefined sequence types, i.e. "oligo" or "target".
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         """
@@ -302,6 +308,7 @@ class OligoDatabase:
             database_tmp2 = merge_databases(
                 database1=self.database,
                 database2=database_tmp2,
+                sequence_type=merge_databases_on_sequence_type,
                 dir_cache_files=self._dir_cache_files,
                 lru_db_max_in_memory=self.lru_db_max_in_memory,
             )
@@ -321,6 +328,7 @@ class OligoDatabase:
         self,
         dir_database: str,
         database_overwrite: bool,
+        merge_databases_on_sequence_type: _TYPES_SEQ,
         region_ids: Union[str, List[str]] = None,
     ) -> None:
         """
@@ -332,6 +340,9 @@ class OligoDatabase:
         :type dir_database: str
         :param database_overwrite: If True, the existing database will be overwritten.
         :type database_overwrite: bool
+        :param merge_databases_on_sequence_type: The sequence type on which two databases should be merged on (if database_overwrite = False),
+                must be one of the predefined sequence types, i.e. "oligo" or "target".
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param region_ids: List of region IDs to load. If None, all regions in the FASTA files are loaded, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         """
@@ -361,6 +372,7 @@ class OligoDatabase:
                 self.database = merge_databases(
                     database1=self.database,
                     database2={region_id: database_region},
+                    sequence_type=merge_databases_on_sequence_type,
                     dir_cache_files=self._dir_cache_files,
                     lru_db_max_in_memory=self.lru_db_max_in_memory,
                 )
@@ -406,14 +418,17 @@ class OligoDatabase:
 
     def save_database(
         self,
-        dir_database: str = "db_oligo",
+        name_database: str = "db_oligo",
+        dir_output: str = None,
         region_ids: Union[str, List[str]] = None,
     ) -> str:
         """
         Saves the current database and associated oligosets as pickl files into a specified directory.
 
-        :param dir_database: Directory path where the database files should be saved. Default is "db_oligo".
-        :type dir_database: str
+        :param name_database: Directory path where the database files should be saved. Default is "db_oligo".
+        :type name_database: str
+        :param dir_output: Directory for saving output files.
+        :type dir_output: str
         :param region_ids: List of region IDs to save. If None, all regions in the database are saved, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The directory path where the database was saved.
@@ -422,7 +437,10 @@ class OligoDatabase:
         # Check formatting
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
 
-        dir_database = os.path.join(self.dir_output, dir_database)
+        if dir_output:
+            dir_database = os.path.join(dir_output, name_database)
+        else:
+            dir_database = os.path.join(self.dir_output, name_database)
         Path(dir_database).mkdir(parents=True, exist_ok=True)
 
         for region_id in region_ids:
@@ -446,6 +464,7 @@ class OligoDatabase:
         sequence_type: _TYPES_SEQ,
         save_description: bool,
         filename: str = "db_oligo",
+        dir_output: str = None,
         region_ids: Union[str, List[str]] = None,
     ) -> str:
         """
@@ -457,6 +476,8 @@ class OligoDatabase:
         :type save_description: bool
         :param filename: The base name of the output FASTA file, defaults to "db_oligo".
         :type filename: str
+        :param dir_output: Directory for saving output files.
+        :type dir_output: str
         :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The path to the saved FASTA file.
@@ -471,7 +492,8 @@ class OligoDatabase:
         # Check formatting
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
 
-        file_fasta = os.path.join(self.dir_output, f"{filename}.fna")
+        dir_output = dir_output if dir_output else self.dir_output
+        file_fasta = os.path.join(dir_output, f"{filename}.fna")
         output_fasta = []
 
         with open(file_fasta, "w") as handle_fasta:
@@ -491,11 +513,65 @@ class OligoDatabase:
 
         return file_fasta
 
+    def write_database_to_bed(
+        self,
+        filename: str = "db_oligo",
+        dir_output: str = None,
+        region_ids: Union[str, List[str]] = None,
+    ) -> str:
+        """
+        Write the oligo database to a BED file format.
+
+        This function exports oligo sequences with their genomic coordinates to a BED file,
+        which can be used for downstream analysis. Entries which contain None for either
+        chromosome, start, end or strand will be removed before the content is written to BED file.
+
+        :param filename: Name of the output BED file (without extension). Default is "db_oligo".
+        :type filename: str
+        :param dir_output: Directory for saving output files.
+        :type dir_output: str
+        :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
+        :type region_ids: Union[str, List[str]], optional
+        :return: The path to the saved BED file.
+        :rtype: str
+        """
+        # Check formatting
+        region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
+
+        dir_output = dir_output if dir_output else self.dir_output
+        file_bed = os.path.join(dir_output, f"{filename}.bed")
+
+        # retrieve relevant information from database
+        attribute_table = self.get_oligo_attribute_table(
+            attributes=["chromosome", "start", "end", "strand"], flatten=True, region_ids=region_ids
+        )
+
+        # remove rows that contain None
+        mask = attribute_table.isnull().any(axis=1)
+        attribute_table = attribute_table[~mask]
+
+        if mask.sum() > 0:
+            warnings.warn(f"Removing {mask.sum()} row(s) containing None/NaN values.", UserWarning)
+
+        # expand rows which contain lists for chr, start, end, strand columns into seperate rows
+        attribute_table_extended = attribute_table.explode(
+            ["chromosome", "start", "end", "strand"], ignore_index=True
+        )
+        attribute_table_extended["score"] = "."
+
+        # save tabel content as BED file
+        attribute_table_extended[["chromosome", "start", "end", "oligo_id", "score", "strand"]].to_csv(
+            file_bed, sep="\t", header=False, index=False
+        )
+
+        return file_bed
+
     def write_database_to_table(
         self,
         attributes: Union[str, List[str]],
         flatten_attribute: bool,
         filename: str = "oligo_database_table",
+        dir_output: str = None,
         region_ids: list[str] = None,
     ) -> str:
         """
@@ -509,6 +585,8 @@ class OligoDatabase:
         :type flatten_attribute: bool
         :param filename: The base name of the output TSV file, defaults to "oligo_database_table".
         :type filename: str
+        :param dir_output: Directory for saving output files.
+        :type dir_output: str
         :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The path to the saved TSV file.
@@ -518,7 +596,8 @@ class OligoDatabase:
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
         attributes = check_if_list(attributes)
 
-        file_table = os.path.join(os.path.dirname(self.dir_output), f"{filename}.tsv")
+        dir_output = dir_output if dir_output else self.dir_output
+        file_table = os.path.join(os.path.dirname(dir_output), f"{filename}.tsv")
 
         first_entry = True
         for region_id in region_ids:
@@ -530,13 +609,8 @@ class OligoDatabase:
                         oligo_attribute = self.database[region_id][oligo_id][attribute]
                         if flatten_attribute:
                             oligo_attribute = flatten_attribute_list(oligo_attribute)
-                            oligo_attribute = list(
-                                set(
-                                    oligo_attribute
-                                    if isinstance(oligo_attribute, list)
-                                    else [oligo_attribute]
-                                )
-                            )
+                            if oligo_attribute:
+                                oligo_attribute = list(set(oligo_attribute))
                             entry[attribute] = (
                                 str(oligo_attribute).replace("'", "").replace("[", "").replace("]", "")
                             )
@@ -555,6 +629,7 @@ class OligoDatabase:
         top_n_sets: int,
         ascending: bool,
         filename: str = "oligosets",
+        dir_output: str = None,
         region_ids: list[str] = None,
     ) -> str:
         """
@@ -570,6 +645,8 @@ class OligoDatabase:
         :type ascending: bool
         :param filename: Base name for the output YAML file, defaults to "oligosets".
         :type filename: str
+        :param dir_output: Directory for saving output files.
+        :type dir_output: str
         :param region_ids: List of region IDs to write. If None, all regions in the database are written, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: Path to the saved YAML file.
@@ -610,7 +687,8 @@ class OligoDatabase:
                     oligo_id_yaml = f"Oligo {oligo_idx + 1}"
                     yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
 
-        file_yaml = os.path.join(os.path.dirname(self.dir_output), f"{filename}.yml")
+        dir_output = dir_output if dir_output else self.dir_output
+        file_yaml = os.path.join(os.path.dirname(dir_output), f"{filename}.yml")
 
         with open(file_yaml, "w") as handle:
             yaml.dump(yaml_dict, handle, Dumper=CustomYamlDumper, default_flow_style=False, sort_keys=False)
@@ -799,7 +877,7 @@ class OligoDatabase:
         return sequence_oligoids_mapping
 
     def get_oligo_attribute_table(
-        self, attribute: str, flatten: bool, region_ids: Union[str, List[str]] = None
+        self, attributes: str, flatten: bool, region_ids: Union[str, List[str]] = None
     ) -> pd.DataFrame:
         """
         Generates a DataFrame containing oligo IDs and the specified attribute for each oligo,
@@ -814,24 +892,53 @@ class OligoDatabase:
         :return: A DataFrame with oligo IDs and the corresponding attribute values.
         :rtype: pd.DataFrame
         """
+
+        def _flatten_if_one(x):
+        """
+        Flatten lists with only one element, i.e. if x is a list of length 1, return that single element.
+            If x is an empty list, return None.
+            """
+            if isinstance(x, list):
+                if len(x) == 1:
+                    return x[0]
+                elif len(x) == 0:
+                    return None
+            return x
         # Check formatting
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
+        attributes = [attributes] if isinstance(attributes, str) else attributes
 
-        oligo_ids = []
-        attributes = []
+        attributes_dict = {}
 
         for region_id in region_ids:
-            database_region = self.database[region_id]
-            for oligo_id, oligo_attributes in database_region.items():
-                oligo_ids.append(oligo_id)
-                if attribute not in oligo_attributes:
-                    attributes.append(None)
-                elif flatten:
-                    attributes.append(flatten_attribute_list(oligo_attributes[attribute]))
-                else:
-                    attributes.append(oligo_attributes[attribute])
+            if region_id in self.database.keys():
+                region_db = self.database[region_id]
+                for oligo_id, oligo_attributes in region_db.items():
+                    key = (region_id, oligo_id)
+                    if key not in attributes_dict:
+                        attributes_dict[key] = {
+                            "region_id": region_id,
+                            "oligo_id": oligo_id,
+                        }
 
-        return pd.DataFrame({"oligo_id": oligo_ids, attribute: attributes})
+                    # Retrieve each requested attribute
+                    for attribute in attributes:
+                        if attribute not in oligo_attributes:
+                            val = None
+                        elif flatten:
+                            val = flatten_attribute_list(oligo_attributes[attribute])
+                        else:
+                            val = oligo_attributes[attribute]
+                        attributes_dict[key][attribute] = val
+
+        # Convert the dict-of-dicts to a DataFrame
+        attributes_table = pd.DataFrame.from_dict(attributes_dict, orient="index")
+        attributes_table = attributes_table.reset_index(drop=True)
+
+        # If all lists in the dataframe only contain one element, flatten all list entries
+        attributes_table = attributes_table.map(_flatten_if_one)
+
+        return attributes_table
 
     def get_oligo_attribute_value(
         self, attribute: str, flatten: bool, region_id: str, oligo_id: str
@@ -863,6 +970,8 @@ class OligoDatabase:
             attribute_value = None
         elif flatten:
             attribute_value = flatten_attribute_list(self.database[region_id][oligo_id][attribute])
+            if attribute_value and len(attribute_value) == 1:
+                attribute_value = attribute_value[0]
         else:
             attribute_value = self.database[region_id][oligo_id][attribute]
 

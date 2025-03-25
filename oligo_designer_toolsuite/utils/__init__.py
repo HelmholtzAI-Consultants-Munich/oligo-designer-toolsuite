@@ -18,16 +18,19 @@ from ._database_processor import (
     format_oligo_attributes,
     merge_databases,
 )
-from ._sequence_parser import FastaParser, GffParser
+from ._sequence_parser import FastaParser, GffParser, VCFParser
 from ._sequence_processor import (
     append_nucleotide_to_sequences,
     get_complement_regions,
     get_sequence_from_annotation,
+    get_intersection,
+    append_nucleotide_to_sequences,
 )
 
 __all__ = [
     "FastaParser",
     "GffParser",
+    "VCFParser",
     "CustomYamlDumper",
     "check_if_dna_sequence",
     "check_if_key_exists",
@@ -42,5 +45,6 @@ __all__ = [
     "flatten_attribute_list",
     "get_complement_regions",
     "get_sequence_from_annotation",
+    "get_intersection",
     "append_nucleotide_to_sequences",
 ]

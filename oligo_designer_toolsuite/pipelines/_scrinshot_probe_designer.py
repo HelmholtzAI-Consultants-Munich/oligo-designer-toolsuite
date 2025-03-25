@@ -387,7 +387,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="1_db_probes_initial")
+            dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
             print(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_property(
@@ -411,7 +411,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="2_db_probes_property_filter")
+            dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
             print(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_specificity(
@@ -433,7 +433,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="3_db_probes_specificity_filter")
+            dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
             print(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.create_oligo_sets(
@@ -462,7 +462,7 @@ class ScrinshotProbeDesigner:
         check_content_oligo_database(oligo_database)
 
         if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(dir_database="4_db_probes_probesets")
+            dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
             dir_probesets = oligo_database.write_oligosets_to_table()
             print(
                 f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database} and probeset table in directory {dir_probesets}"
@@ -982,24 +982,16 @@ class TargetProbeDesigner:
         :return: The filtered oligo database.
         :rtype: OligoDatabase
         """
-        ##### define reference database #####
-        reference_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
-        )
-        reference_database.load_database_from_fasta(
-            files_fasta=files_fasta_reference_database, database_overwrite=False
-        )
-
         ##### exact match filter #####
         # removing duplicated probes from the region with the most probes
         # exectute seperately before specificity filter to compute ligation side for less oligos
-        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="exact_match")
+        exact_matches = ExactMatchFilter(
+            sequence_type="oligo", policy=RemoveAllPolicy(), filter_name="exact_match"
+        )
         filters = [exact_matches]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
-            sequence_type="oligo",
             oligo_database=oligo_database,
-            reference_database=reference_database,
             n_jobs=self.n_jobs,
         )
 
@@ -1015,48 +1007,60 @@ class TargetProbeDesigner:
             Tm_salt_correction_parameters=Tm_salt_correction_parameters,
         )
 
+        ##### define reference database #####
+        reference_database = ReferenceDatabase(
+            database_name=self.subdir_db_reference, dir_output=self.dir_output
+        )
+        reference_database.load_database_from_file(
+            files=files_fasta_reference_database, file_type="fasta", database_overwrite=True
+        )
+
         ##### specificity filters #####
         cross_hybridization_aligner = BlastNFilter(
+            sequence_type="oligo",
             search_parameters=cross_hybridization_blastn_search_parameters,
             hit_parameters=cross_hybridization_blastn_hit_parameters,
             filter_name="blastn_crosshybridization",
             dir_output=self.dir_output,
         )
+        cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
         cross_hybridization = CrossHybridizationFilter(
+            sequence_type="oligo",
             policy=RemoveByLargerRegionPolicy(),
             alignment_method=cross_hybridization_aligner,
-            database_name_reference=self.subdir_db_reference,
+            filter_name="blastn_crosshybridization",
             dir_output=self.dir_output,
         )
 
         if ligation_region_size > 0:
             specificity = BlastNSeedregionLigationsiteFilter(
                 seedregion_size=ligation_region_size,
+                sequence_type="oligo",
                 search_parameters=specificity_blastn_search_parameters,
                 hit_parameters=specificity_blastn_hit_parameters,
                 filter_name="blastn_specificity",
                 dir_output=self.dir_output,
             )
+            specificity.set_reference_database(reference_database=reference_database)
         else:
             specificity = BlastNFilter(
+                sequence_type="oligo",
                 search_parameters=specificity_blastn_search_parameters,
                 hit_parameters=specificity_blastn_hit_parameters,
                 filter_name="blastn_specificity",
                 dir_output=self.dir_output,
             )
+            specificity.set_reference_database(reference_database=reference_database)
 
         filters = [specificity, cross_hybridization]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
-            sequence_type="oligo",
             oligo_database=oligo_database,
-            reference_database=reference_database,
             n_jobs=self.n_jobs,
         )
 
         # remove all directories of intermediate steps
         for directory in [
-            reference_database.dir_output,
             cross_hybridization_aligner.dir_output,
             cross_hybridization.dir_output,
             specificity.dir_output,

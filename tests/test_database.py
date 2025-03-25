@@ -15,7 +15,7 @@ from oligo_designer_toolsuite.database import (
     ReferenceDatabase,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import FastaParser, check_tsv_format
+from oligo_designer_toolsuite.utils import FastaParser, VCFParser, check_tsv_format
 
 ############################################
 # setup
@@ -23,6 +23,7 @@ from oligo_designer_toolsuite.utils import FastaParser, check_tsv_format
 
 # Global Parameters
 FILE_NCBI_EXONS = "tests/data/genomic_regions/sequences_ncbi_exons.fna"
+FILE_VARIANTS = "tests/data/annotations/custom_GCF_000001405.40.chr16.vcf"
 FILE_DATABASE_OLIGO_ATTRIBUTES = "tests/data/databases/database_oligo_attributes.tsv"
 
 REGION_IDS = [
@@ -44,10 +45,24 @@ class TestReferenceDatabase(unittest.TestCase):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_reference_database")
 
         self.fasta_parser = FastaParser()
+        self.vcf_parser = VCFParser()
 
-        self.reference = ReferenceDatabase(database_name="test_reference_database", dir_output=self.tmp_path)
-        self.reference.load_database_from_fasta(files_fasta=[FILE_NCBI_EXONS], database_overwrite=False)
-        self.reference.load_database_from_fasta(files_fasta=FILE_NCBI_EXONS, database_overwrite=True)
+        self.reference_fasta = ReferenceDatabase(
+            database_name="test_reference_database_fasta", dir_output=self.tmp_path
+        )
+        self.reference_fasta.load_database_from_file(
+            files=[FILE_NCBI_EXONS], file_type="fasta", database_overwrite=False
+        )
+        self.reference_fasta.load_database_from_file(
+            files=FILE_NCBI_EXONS, file_type="fasta", database_overwrite=True
+        )
+
+        self.reference_vcf = ReferenceDatabase(
+            database_name="test_reference_database_vcf", dir_output=self.tmp_path
+        )
+        self.reference_vcf.load_database_from_file(
+            files=FILE_VARIANTS, file_type="vcf", database_overwrite=True
+        )
 
     def tearDown(self):
         try:
@@ -56,14 +71,22 @@ class TestReferenceDatabase(unittest.TestCase):
             pass
 
     def test_write_database(self):
-        file_fasta_database = self.reference.write_database_to_fasta(filename="filtered_databse")
+        file_fasta_database = self.reference_fasta.write_database_to_file(filename="ref_db_filtered_fasta")
         assert (
             self.fasta_parser.check_fasta_format(file_fasta_database) == True
         ), f"error: wrong file format for database in {file_fasta_database}"
 
+        file_vcf_database = self.reference_vcf.write_database_to_file(filename="ref_db_filtered_vcf")
+        assert (
+            self.vcf_parser.check_vcf_format(file_vcf_database) == True
+        ), f"error: wrong file format for database in {file_vcf_database}"
+
     def test_filter_database_by_region(self):
-        self.reference.filter_database_by_region(region_ids="AARS1", keep_region=False)
-        for entry in self.reference.database:
+        self.reference_fasta.filter_database_by_region(region_ids="AARS1", keep_region=False)
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(
+            file_fasta_in=self.reference_fasta.database_file
+        )
+        for entry in fasta_sequences:
             (
                 region,
                 _,
@@ -72,10 +95,15 @@ class TestReferenceDatabase(unittest.TestCase):
             assert region != "AARS1", f"error: this region {region} should be filtered out."
 
     def test_filter_database_by_attribute_category(self):
-        self.reference.filter_database_by_attribute_category(
-            attribute_name="gene_id", attribute_category="AARS1", keep_if_equals_category=False
+        self.reference_fasta.filter_database_by_attribute_category(
+            attribute_name="gene_id",
+            attribute_category="AARS1",
+            keep_if_equals_category=False,
         )
-        for entry in self.reference.database:
+        fasta_sequences = self.fasta_parser.read_fasta_sequences(
+            file_fasta_in=self.reference_fasta.database_file
+        )
+        for entry in fasta_sequences:
             (
                 region,
                 _,
@@ -137,24 +165,34 @@ class TestOligoDatabase(unittest.TestCase):
 
     def test_load_database_from_table(self):
         self.oligo_database.load_database_from_table(
-            FILE_DATABASE_OLIGO_ATTRIBUTES, region_ids=["region_1", "region_2"], database_overwrite=True
+            FILE_DATABASE_OLIGO_ATTRIBUTES,
+            region_ids=["region_1", "region_2"],
+            database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         assert len(self.oligo_database.database) == 2, "error: wrong number of sequences loaded into database"
 
     def test_load_save_database(self):
-        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+        self.oligo_database.load_database_from_table(
+            FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         dir_database = self.oligo_database.save_database(
-            region_ids=["region_1", "region_2"], dir_database="database_region1_region2"
+            region_ids=["region_1", "region_2"], name_database="database_region1_region2"
         )
-        self.oligo_database.load_database(dir_database, database_overwrite=True)
+        self.oligo_database.load_database(
+            dir_database, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         assert len(self.oligo_database.database.keys()) == 2, "error: wrong number regions saved and loaded"
 
     def test_write_database_to_fasta(self):
         self.oligo_database.load_database_from_table(
-            FILE_DATABASE_OLIGO_ATTRIBUTES, region_ids=["region_1", "region_2"], database_overwrite=True
+            FILE_DATABASE_OLIGO_ATTRIBUTES,
+            region_ids=["region_1", "region_2"],
+            database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
         file_fasta = self.oligo_database.write_database_to_fasta(
             sequence_type="oligo", save_description=True, filename="database_region1_region2"
@@ -169,7 +207,9 @@ class TestOligoDatabase(unittest.TestCase):
         ), f"error: wrong number of regions stored in {file_fasta}"
 
     def test_write_database_to_table(self):
-        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+        self.oligo_database.load_database_from_table(
+            FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         file_database = self.oligo_database.write_database_to_table(
             attributes=["test_attribute", "ligation_site", "chromosome", "start", "end", "strand"],
@@ -178,7 +218,9 @@ class TestOligoDatabase(unittest.TestCase):
             region_ids=["region_1", "region_2"],
         )
 
-        self.oligo_database.load_database_from_table(file_database, database_overwrite=True)
+        self.oligo_database.load_database_from_table(
+            file_database, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         assert check_tsv_format(file_database) == True, f"error: wrong file format"
         assert len(self.oligo_database.database.keys()) == 2, "error: wrong number regions saved and loaded"
@@ -196,7 +238,9 @@ class TestOligoDatabase(unittest.TestCase):
             region_ids=["region_1", "region_2"],
         )
 
-        self.oligo_database.load_database_from_table(file_database, database_overwrite=True)
+        self.oligo_database.load_database_from_table(
+            file_database, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         assert check_tsv_format(file_database) == True, f"error: wrong file format"
         assert len(self.oligo_database.database.keys()) == 2, "error: wrong number regions saved and loaded"
@@ -207,9 +251,33 @@ class TestOligoDatabase(unittest.TestCase):
             == "red"
         ), f"error: wrong attribute stored in {file_database}"
 
+    def test_write_database_to_bed(self):
+        self.oligo_database.load_database_from_table(
+            FILE_DATABASE_OLIGO_ATTRIBUTES,
+            region_ids=["region_1", "region_2"],
+            database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
+        )
+
+        file_bed = self.oligo_database.write_database_to_bed(
+            filename="database_region1_region2_bed", region_ids=["region_1", "region_2"]
+        )
+
+        assert check_tsv_format(file_bed) == True, f"error: wrong file format"
+
+        bed_table = pd.read_csv(
+            file_bed, sep="\t", names=["chromosome", "start", "end", "name", "score", "strand"]
+        )
+
+        assert bed_table.loc[0, "start"] == 70289456
+        assert bed_table.loc[0, "end"] == 70289485
+
     def test_write_oligosets_to_yaml(self):
         self.oligo_database.load_database_from_table(
-            FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True, region_ids="region_1"
+            FILE_DATABASE_OLIGO_ATTRIBUTES,
+            database_overwrite=True,
+            region_ids="region_1",
+            merge_databases_on_sequence_type="oligo",
         )
 
         oligoset = pd.DataFrame(
@@ -256,7 +324,10 @@ class TestOligoDatabase(unittest.TestCase):
 
     def test_write_oligosets_to_table(self):
         self.oligo_database.load_database_from_table(
-            FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True, region_ids="region_1"
+            FILE_DATABASE_OLIGO_ATTRIBUTES,
+            database_overwrite=True,
+            region_ids="region_1",
+            merge_databases_on_sequence_type="oligo",
         )
 
         oligoset = pd.DataFrame(
@@ -294,10 +365,11 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         list_attributes = self.oligo_database.get_attribute_list()
-        print(list_attributes)
+
         assert len(list_attributes) == 13, "error: wrong number of attributes in database"
         assert "oligo" in list_attributes, "error: missing attribute"
 
@@ -306,6 +378,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         list_oligoids = self.oligo_database.get_oligoid_list()
@@ -317,6 +390,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         list_sequences = self.oligo_database.get_sequence_list(sequence_type="oligo")
@@ -328,6 +402,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         mapping = self.oligo_database.get_oligoid_sequence_mapping(sequence_type="oligo")
@@ -343,6 +418,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         mapping = self.oligo_database.get_sequence_oligoid_mapping(sequence_type="oligo")
@@ -353,16 +429,20 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
-        attribute = self.oligo_database.get_oligo_attribute_table(attribute="test_attribute", flatten=True)
+        attribute = self.oligo_database.get_oligo_attribute_table(attributes="test_attribute", flatten=True)
 
-        assert len(attribute["test_attribute"].unique()) == 2, "error: wrong attribute returned"
+        assert (
+            len(attribute.explode("test_attribute")["test_attribute"].unique()) == 2
+        ), "error: wrong attribute returned"
 
     def test_get_oligo_attribute_value(self):
         self.oligo_database.load_database_from_table(
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
         attribute1 = self.oligo_database.get_oligo_attribute_value(
             attribute="test_attribute", flatten=True, region_id="region_1", oligo_id="region_1::5"
@@ -379,6 +459,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids="region_3",
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
         new_attribute = {
             "region_3::1": {"GC_content": 63},
@@ -388,7 +469,7 @@ class TestOligoDatabase(unittest.TestCase):
             "region_3::5": {"GC_content": 40},
         }
         self.oligo_database.update_oligo_attributes(new_attribute)
-        attribute = self.oligo_database.get_oligo_attribute_table(attribute="GC_content", flatten=True)
+        attribute = self.oligo_database.get_oligo_attribute_table(attributes="GC_content", flatten=True)
 
         assert len(attribute) == 5, "error: attribute not correctly updated"
 
@@ -397,6 +478,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         self.oligo_database.filter_database_by_region(remove_region=True, region_ids="region_3")
@@ -414,6 +496,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids="region_3",
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
         new_attribute = {
             "region_3::1": {"GC_content": 63},
@@ -439,6 +522,7 @@ class TestOligoDatabase(unittest.TestCase):
             file_database=FILE_DATABASE_OLIGO_ATTRIBUTES,
             region_ids=None,
             database_overwrite=True,
+            merge_databases_on_sequence_type="oligo",
         )
 
         self.oligo_database.filter_database_by_attribute_category(
@@ -457,7 +541,9 @@ class TestOligoAttributes(unittest.TestCase):
             database_name="test_oligo_attributes",
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_database_from_table(FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True)
+        self.oligo_database.load_database_from_table(
+            FILE_DATABASE_OLIGO_ATTRIBUTES, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        )
 
         self.oligo_attributes = OligoAttributes()
 

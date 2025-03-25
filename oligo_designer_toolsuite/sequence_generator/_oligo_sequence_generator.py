@@ -13,6 +13,7 @@ from joblib import Parallel, delayed
 from oligo_designer_toolsuite.utils import FastaParser
 
 from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename
+from .._constants import SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_FASTA_HEADER_FIELDS_LIST
 
 ############################################
 # Oligo Database Class
@@ -108,7 +109,7 @@ class OligoSequenceGenerator:
         with open(file_fasta_out, "w") as handle_fasta:
             for i, seq in enumerate(sequences_set):
                 handle_fasta.write(
-                    f">{name_sequences}::regiontype=random_sequence;region_id={name_sequences}_{i}\n{seq}\n"
+                    f">{name_sequences}{SEPARATOR_FASTA_HEADER_FIELDS}regiontype=random_sequence;region_id={name_sequences}_{i}\n{seq}\n"
                 )
         return file_fasta_out
 
@@ -116,7 +117,7 @@ class OligoSequenceGenerator:
         self,
         files_fasta_in: list[str],
         length_interval_sequences: tuple,
-        split_region: int = 0,
+        split_region: int = 1,
         region_ids: Union[str, List[str]] = None,
         n_jobs: int = 1,
     ) -> list:
@@ -130,7 +131,7 @@ class OligoSequenceGenerator:
         :type files_fasta_in: list[str]
         :param length_interval_sequences: A tuple specifying the range (min, max) of sequence lengths to generate.
         :type length_interval_sequences: tuple
-        :param split_region: The number of bases required on each side of a split sequence (e.g. exon junctions) to include it. Default is 0.
+        :param split_region: The number of bases required on each side of a split sequence (e.g. exon junctions) to include it. Default is 1.
         :type split_region: int
         :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
@@ -214,9 +215,8 @@ class OligoSequenceGenerator:
                         start_seq = min(seq_start_end)  # 1-base index
                         end_seq = max(seq_start_end)
 
-                        header = f"{region}::{additional_info}::{chromosome}:{start_seq}-{end_seq}({strand})"
-
                         if not split_sequence:
+                            header = f"{region}{SEPARATOR_FASTA_HEADER_FIELDS}{additional_info}{SEPARATOR_FASTA_HEADER_FIELDS}{chromosome}:{start_seq}-{end_seq}({strand})"
                             handle_fasta.write(f">{header}\n{seq}\n")
 
                         # if split sequence, only consider cases where we have at least x bases on each side of the split sequence
@@ -225,6 +225,19 @@ class OligoSequenceGenerator:
                             if (split_distance > sequence_length) and (
                                 start_seq not in excluded_coordinates and end_seq not in excluded_coordinates
                             ):
+                                # Collect and sort all relevant coordinates for split regions
+                                all_coordinates = sorted(
+                                    [start_seq, end_seq]
+                                    + [c for c in coordinates["start"] if start_seq < c < end_seq]
+                                    + [c for c in coordinates["end"] if start_seq < c < end_seq]
+                                )
+
+                                # Build the header strings, pairing adjacent coordinates
+                                header_coordinates = [
+                                    f"{chromosome}:{all_coordinates[i]}-{all_coordinates[i+1]}({strand})"
+                                    for i in range(0, len(all_coordinates), 2)
+                                ]
+                                header = f"{region}{SEPARATOR_FASTA_HEADER_FIELDS}{additional_info}{SEPARATOR_FASTA_HEADER_FIELDS}{SEPARATOR_FASTA_HEADER_FIELDS_LIST.join(header_coordinates)})"
                                 handle_fasta.write(f">{header}\n{seq}\n")
 
             return file_fasta_region
