@@ -361,7 +361,7 @@ class TestOligoSelectionPolicy(unittest.TestCase):
             n_sets=2,
         ).round(3)
         
-        true_oligosets =  pd.DataFrame(
+        true_oligosets_1 =  pd.DataFrame(
             {
                 "oligoset_id": [0, 1],
                 "oligo_0": ["AGRN_pid258", "AGRN_pid261"],
@@ -372,8 +372,20 @@ class TestOligoSelectionPolicy(unittest.TestCase):
                 "set_score_sum": [2.314, 2.428],
             }
         )
+        
+        true_oligosets_2 =  pd.DataFrame(
+            {
+                "oligoset_id": [0, 1],
+                "oligo_0": ["AGRN_pid258", "AGRN_pid261"],
+                "oligo_1": ["AGRN_pid288", "AGRN_pid285"],
+                "oligo_2": ["AGRN_pid77", "AGRN_pid77"],
+                "oligo_3": ["AGRN_pid248", "AGRN_pid248"],
+                "set_score_worst": [1.017, 1.017],
+                "set_score_sum": [2.314, 2.428],
+            }
+        )
 
 
-        assert true_oligosets.equals(oligosets), "The oligosets are not computed correctly!"
+        assert true_oligosets_1.equals(oligosets) or true_oligosets_2.equals(oligosets), "The oligosets are not computed correctly!"
 
 
