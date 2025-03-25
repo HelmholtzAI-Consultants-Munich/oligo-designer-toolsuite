@@ -936,8 +936,7 @@ class OligoDatabase:
         attributes_table = attributes_table.reset_index(drop=True)
 
         # If all lists in the dataframe only contain one element, flatten all list entries
-        if attributes_table.map(_check_if_list_length_one).all().all():
-            attributes_table = attributes_table.map(_flatten_if_list)
+        attributes_table = attributes_table.map(_flatten_if_one)
 
         return attributes_table
 
