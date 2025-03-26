@@ -112,7 +112,7 @@ class CycleHCRProbeDesigner:
             "soft_masking": "false",
             "max_target_seqs": 10,
         },
-        target_probe_cross_hybridization_blastn_hit_parameters: dict = {"min_alignment_length": 17},
+        target_probe_cross_hybridization_blastn_hit_parameters: dict = {"coverage": 50},
         target_probe_Tm_parameters: dict = {
             "check": True,
             "strict": True,
@@ -293,43 +293,54 @@ class CycleHCRProbeDesigner:
         :return: Tuple containing the readout probe table and the codebook.
         :rtype: Tuple[pd.DataFrame, pd.DataFrame]
         """
-        
-        
+
         def _create_readout_table(channels_to_files):
             readout_probes_rows = []
             for channel_id, filename in channels_to_files.items():
                 sequences_file_df = pd.read_csv(filename)
 
                 for _, row in sequences_file_df.iterrows():
-                    readout_probes_rows.append({
-                        'channel': channel_id,
-                        'readout_probe_id': f"readout_probe::{row['Probe']}::{row['L/R']}",
-                        'readout_probe_sequence': row['Initiator Sequence']
-                    })
-                    
+                    readout_probes_rows.append(
+                        {
+                            "channel": channel_id,
+                            "readout_probe_id": f"readout_probe::{row['Probe']}::{row['L/R']}",
+                            "readout_probe_sequence": row["Initiator Sequence"],
+                        }
+                    )
+
             readout_probes_table = pd.DataFrame(readout_probes_rows)
-            readout_probes_table['bit'] = readout_probes_table.index
-            readout_probes_table['bit'] = readout_probes_table['bit'].apply(lambda x: f"bit_{x}")
-            
-            readout_probes_table = readout_probes_table[['bit'] + [ col for col in readout_probes_table.columns if col != 'bit']]
+            readout_probes_table["bit"] = readout_probes_table.index
+            readout_probes_table["bit"] = readout_probes_table["bit"].apply(lambda x: f"bit_{x}")
+
+            readout_probes_table = readout_probes_table[
+                ["bit"] + [col for col in readout_probes_table.columns if col != "bit"]
+            ]
             return readout_probes_table
-        
+
         def _create_codebook(readout_probes_table):
             readout_probes_table = readout_probes_table.copy()
-            readout_probes_table["L/R"] = readout_probes_table["readout_probe_id"].apply(lambda x: x.split("::")[-1])
-            readout_probes_table["probe_num"] = readout_probes_table["readout_probe_id"].apply(lambda x: x.split("::")[1])
-            readout_probes_table["bit_num"] = readout_probes_table["bit"].apply(lambda x: int(x.split("_")[-1]))
+            readout_probes_table["L/R"] = readout_probes_table["readout_probe_id"].apply(
+                lambda x: x.split("::")[-1]
+            )
+            readout_probes_table["probe_num"] = readout_probes_table["readout_probe_id"].apply(
+                lambda x: x.split("::")[1]
+            )
+            readout_probes_table["bit_num"] = readout_probes_table["bit"].apply(
+                lambda x: int(x.split("_")[-1])
+            )
 
-            readout_probes_table_L = readout_probes_table[readout_probes_table['L/R'] == 'L']
-            readout_probes_table_R = readout_probes_table[readout_probes_table['L/R'] == 'R']
+            readout_probes_table_L = readout_probes_table[readout_probes_table["L/R"] == "L"]
+            readout_probes_table_R = readout_probes_table[readout_probes_table["L/R"] == "R"]
 
-            combinations_df = readout_probes_table_L.merge(readout_probes_table_R, on='channel')
-            combinations_df = combinations_df[['bit_num_x', 'bit_num_y', 'probe_num_x', 'probe_num_y']]
-            
-            combinations_df["probe_num_x-y"] = combinations_df["probe_num_x"].astype(int) - combinations_df["probe_num_y"].astype(int)
+            combinations_df = readout_probes_table_L.merge(readout_probes_table_R, on="channel")
+            combinations_df = combinations_df[["bit_num_x", "bit_num_y", "probe_num_x", "probe_num_y"]]
+
+            combinations_df["probe_num_x-y"] = combinations_df["probe_num_x"].astype(int) - combinations_df[
+                "probe_num_y"
+            ].astype(int)
             combinations_df["probe_num_x-y"] = combinations_df["probe_num_x-y"].abs()
             combinations_df = combinations_df.sort_values(by="probe_num_x-y", ascending=True)
-            
+
             bit_num_x = combinations_df["bit_num_x"].tolist()
             bit_num_y = combinations_df["bit_num_y"].tolist()
 
@@ -339,16 +350,17 @@ class CycleHCRProbeDesigner:
                 entry[x] = 1
                 entry[y] = 1
                 codebook_rows.append(entry)
-            
-            
-            codebook = pd.DataFrame(codebook_rows, columns=readout_probes_table['bit'].tolist())
-            
-            return codebook
-        
-        readout_probes_table = _create_readout_table(channels_to_files)
-        codebook = _create_codebook(readout_probes_table) 
 
-        return readout_probes_table, codebook
+            codebook = pd.DataFrame(codebook_rows, columns=readout_probes_table["bit"].tolist())
+
+            return codebook
+
+        readout_probe_table = _create_readout_table(channels_to_files)
+        codebook = _create_codebook(readout_probe_table)
+
+        readout_probe_table.set_index("bit", inplace=True)
+
+        return codebook, readout_probe_table
 
     def design_encoding_probe(
         self,
@@ -435,17 +447,17 @@ class CycleHCRProbeDesigner:
             "start",
             "end",
             "strand",
-            "sequence_cyclehcr_probe",
-            "sequence_encoding_probe",
-            "sequence_readout_probe_1",
-            "sequence_readout_probe_2",
+            "sequence_cyclehcr_probe_L",
+            "sequence_cyclehcr_probe_R",
+            "sequence_encoding_probe_L",
+            "sequence_encoding_probe_R",
+            "sequence_readout_probe_L",
+            "sequence_readout_probe_R",
             "sequence_forward_primer",
             "sequence_reverse_primer",
             "sequence_target",
-            "sequence_target_probe",
-            "length",
-            "GC_content",
-            "target_probe_isoform_consensus",
+            "TmNN_oligo_pair_L",
+            "TmNN_oligo_pair_R",
         ],
     ) -> None:
 
@@ -475,11 +487,19 @@ class CycleHCRProbeDesigner:
                 }
         encoding_probe_database.update_oligo_attributes(new_probe_attributes_primer)
 
-        encoding_probe_database = self.oligo_attributes_calculator.calculate_oligo_length(
-            oligo_database=encoding_probe_database
+        encoding_probe_database = self.oligo_attributes_calculator.calculate_TmNN(
+            oligo_database=encoding_probe_database,
+            Tm_parameters=self.target_probe_Tm_parameters,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
+            sequence_type="oligo_pair_L",
         )
-        encoding_probe_database = self.oligo_attributes_calculator.calculate_GC_content(
-            oligo_database=encoding_probe_database, sequence_type="oligo"
+        encoding_probe_database = self.oligo_attributes_calculator.calculate_TmNN(
+            oligo_database=encoding_probe_database,
+            Tm_parameters=self.target_probe_Tm_parameters,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
+            sequence_type="oligo_pair_R",
         )
         encoding_probe_database = self.oligo_attributes_calculator.calculate_num_targeted_transcripts(
             oligo_database=encoding_probe_database
@@ -514,20 +534,26 @@ class CycleHCRProbeDesigner:
                 yaml_dict_order[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
                     yaml_dict_order[region_id][oligoset_id][oligo_id] = {
-                        "sequence_cyclehcr_probe": encoding_probe_database.get_oligo_attribute_value(
-                            attribute="sequence_cyclehcr_probe",
+                        "sequence_cyclehcr_probe_L": encoding_probe_database.get_oligo_attribute_value(
+                            attribute="sequence_cyclehcr_probe_L",
                             region_id=region_id,
                             oligo_id=oligo_id,
                             flatten=True,
                         ),
-                        "sequence_readout_probe_1": encoding_probe_database.get_oligo_attribute_value(
-                            attribute="sequence_readout_probe_1",
+                        "sequence_cyclehcr_probe_R": encoding_probe_database.get_oligo_attribute_value(
+                            attribute="sequence_cyclehcr_probe_R",
                             region_id=region_id,
                             oligo_id=oligo_id,
                             flatten=True,
                         ),
-                        "sequence_readout_probe_2": encoding_probe_database.get_oligo_attribute_value(
-                            attribute="sequence_readout_probe_2",
+                        "sequence_readout_probe_L": encoding_probe_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_L",
+                            region_id=region_id,
+                            oligo_id=oligo_id,
+                            flatten=True,
+                        ),
+                        "sequence_readout_probe_R": encoding_probe_database.get_oligo_attribute_value(
+                            attribute="sequence_readout_probe_R",
                             region_id=region_id,
                             oligo_id=oligo_id,
                             flatten=True,
@@ -596,7 +622,7 @@ class TargetProbeDesigner:
         oligo_database.load_database_from_fasta(
             files_fasta=oligo_fasta_file,
             database_overwrite=True,
-            sequence_type="oligo",
+            sequence_type="target",
             region_ids=gene_ids,
         )
         ##### calculate probe pairs
@@ -617,7 +643,7 @@ class TargetProbeDesigner:
             oligo_database=oligo_database,
             split_start_end=split_start_end,
             split_names=["oligo_pair_L", "spacer", "oligo_pair_R"],
-            sequence_type="oligo",
+            sequence_type="target",
         )
 
         ##### pre-filter oligo database for certain attributes #####
@@ -625,7 +651,7 @@ class TargetProbeDesigner:
             oligo_database=oligo_database
         )
         oligo_database.filter_database_by_attribute_threshold(
-            attribute_name="target_probe_isoform_consensus",
+            attribute_name="isoform_consensus",
             attribute_thr=isoform_consensus,
             remove_if_smaller_threshold=True,
         )
@@ -748,7 +774,7 @@ class TargetProbeDesigner:
         specificity_filter = SpecificityFilter(filters=[exact_matches, specificity])
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
-            sequence_type="oligo",
+            sequence_type="target",
             n_jobs=self.n_jobs,
         )
 
@@ -908,7 +934,7 @@ class TargetProbeDesigner:
         )
         oligo_database = probeset_generator.apply(
             oligo_database=oligo_database,
-            sequence_type="oligo",
+            sequence_type="target",
             set_size_opt=set_size_opt,
             set_size_min=set_size_min,
             n_sets=n_sets,
@@ -1144,54 +1170,28 @@ def main():
         n_sets=config["n_sets"],
     )
 
-    # codebook, readout_probe_table = pipeline.design_readout_probes(
-    #     n_genes=len(target_probe_database.database),
-    #     files_fasta_reference_database_readout_probe=config["files_fasta_reference_database_readout_probe"],
-    #     readout_probe_length=config["readout_probe_length"],
-    #     readout_probe_base_probabilities=config["readout_probe_base_probabilities"],
-    #     readout_probe_GC_content_min=config["readout_probe_GC_content_min"],
-    #     readout_probe_GC_content_max=config["readout_probe_GC_content_max"],
-    #     readout_probe_homopolymeric_base_n=config["readout_probe_homopolymeric_base_n"],
-    #     readout_probe_set_size=config["readout_probe_set_size"],
-    #     readout_probe_homogeneous_properties_weights=config["readout_probe_homogeneous_properties_weights"],
-    #     n_bits=config["n_bits"],
-    #     min_hamming_dist=config["min_hamming_dist"],
-    #     hamming_weight=config["hamming_weight"],
-    #     channels_ids=config["channels_ids"],
-    # )
+    codebook, readout_probe_table = pipeline.design_readout_probes(
+        channels_to_files=config["readout_probe_sequences"]
+    )
 
-    # encoding_probe_database = pipeline.design_encoding_probe(
-    #     target_probe_database=target_probe_database,
-    #     codebook=codebook,
-    #     readout_probe_table=readout_probe_table,
-    #     linker_sequence=config["linker_sequence"]
-    # )
+    encoding_probe_database = pipeline.design_encoding_probe(
+        target_probe_database=target_probe_database,
+        codebook=codebook,
+        readout_probe_table=readout_probe_table,
+        linker_sequence=config["linker_sequence"],
+    )
 
-    # reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
-    #     encoding_probe_database=encoding_probe_database,
-    #     files_fasta_reference_database_primer=config["files_fasta_reference_database_primer"],
-    #     reverse_primer_sequence=config["reverse_primer_sequence"],
-    #     primer_length=config["primer_length"],
-    #     primer_base_probabilities=config["primer_base_probabilities"],
-    #     primer_GC_content_min=config["primer_GC_content_min"],
-    #     primer_GC_content_max=config["primer_GC_content_max"],
-    #     primer_number_GC_GCclamp=config["primer_number_GC_GCclamp"],
-    #     primer_number_three_prime_base_GCclamp=config["primer_number_three_prime_base_GCclamp"],
-    #     primer_homopolymeric_base_n=config["primer_homopolymeric_base_n"],
-    #     primer_max_len_selfcomplement=config["primer_max_len_selfcomplement"],
-    #     primer_max_len_complement_reverse_primer=config["primer_max_len_complement_reverse_primer"],
-    #     primer_Tm_min=config["primer_Tm_min"],
-    #     primer_Tm_max=config["primer_Tm_max"],
-    #     primer_T_secondary_structure=config["primer_T_secondary_structure"],
-    #     primer_secondary_structures_threshold_deltaG=config["primer_secondary_structures_threshold_deltaG"],
-    # )
+    reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
+        forward_primer_sequence=config["forward_primer_sequence"],
+        reverse_primer_sequence=config["reverse_primer_sequence"],
+    )
 
-    # pipeline.generate_output(
-    #     encoding_probe_database=encoding_probe_database,
-    #     reverse_primer_sequence=reverse_primer_sequence,
-    #     forward_primer_sequence=forward_primer_sequence,
-    #     top_n_sets=config["top_n_sets"],
-    # )
+    pipeline.generate_output(
+        encoding_probe_database=encoding_probe_database,
+        reverse_primer_sequence=reverse_primer_sequence,
+        forward_primer_sequence=forward_primer_sequence,
+        top_n_sets=config["top_n_sets"],
+    )
 
     print("--------------END PIPELINE--------------")
 
