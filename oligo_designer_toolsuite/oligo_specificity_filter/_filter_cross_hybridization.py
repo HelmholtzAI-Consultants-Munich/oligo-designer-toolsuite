@@ -112,14 +112,10 @@ class CrossHybridizationFilter(SpecificityFilterBase):
         if not self.sequence_type_reference:
             self.sequence_type_reference = sequence_type
 
-        print(self.dir_output)
-
         region_ids = list(oligo_database.database.keys())
 
         reference_database = self.set_reference_database(oligo_database=oligo_database)
         self.alignment_method.set_reference_database(reference_database=reference_database)
-
-        print(self.alignment_method.reference_database.database_file)
 
         oligo_pair_hits = self.alignment_method.get_oligo_pair_hits(
             oligo_database=oligo_database,
