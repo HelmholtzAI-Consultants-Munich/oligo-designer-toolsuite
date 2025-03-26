@@ -26,32 +26,28 @@ from oligo_designer_toolsuite.database import (
     ReferenceDatabase,
 )
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
-    LowestSetScoring,
-    WeightedIsoformTmGCOligoScoring,
+    AverageSetScoring,
+    WeightedIsoformTmScoring,
 )
 from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
     HardMaskedSequenceFilter,
     HomopolymericRunsFilter,
     GCContentFilter,
-    GCClampFilter,
     MeltingTemperatureNNFilter,
-    SelfComplementFilter,
-    ComplementFilter,
     SecondaryStructureFilter,
     PropertyFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
-    HomogeneousPropertyOligoSetGenerator,
     OligosetGeneratorIndependentSet,
     GraphBasedSelectionPolicy,
     GreedySelectionPolicy,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
+    BlastNSeedregionSiteFilter,
     CrossHybridizationFilter,
     ExactMatchFilter,
-    RemoveByDegreePolicy,
     RemoveByLargerRegionPolicy,
     RemoveAllPolicy,
     SpecificityFilter,
@@ -62,7 +58,6 @@ from oligo_designer_toolsuite.pipelines._utils import (
     pipeline_step_basic,
     check_content_oligo_database,
 )
-from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
@@ -104,14 +99,14 @@ class CycleHCRProbeDesigner:
         self,
         target_probe_specificity_blastn_search_parameters: dict = {
             "perc_identity": 80,
-            "strand": "minus",
+            "strand": "plus",
             "word_size": 10,
             "dust": "no",
             "soft_masking": "false",
             "max_target_seqs": 10,
             "max_hsps": 1000,
         },
-        target_probe_specificity_blastn_hit_parameters: dict = {"min_alignment_length": 17},
+        target_probe_specificity_blastn_hit_parameters: dict = {"coverage": 50},
         target_probe_cross_hybridization_blastn_search_parameters: dict = {
             "perc_identity": 80,
             "strand": "minus",
@@ -126,15 +121,15 @@ class CycleHCRProbeDesigner:
             "strict": True,
             "c_seq": None,
             "shift": 0,
-            "nn_table": "DNA_NN4",
+            "nn_table": "DNA_NN3",
             "tmm_table": "DNA_TMM1",
             "imm_table": "DNA_IMM1",
             "de_table": "DNA_DE1",
-            "dnac1": 5,
-            "dnac2": 0,
+            "dnac1": 25,
+            "dnac2": 25,
             "selfcomp": False,
-            "saltcorr": 5,
-            "Na": 300,
+            "saltcorr": 0,
+            "Na": 50,
             "K": 0,
             "Tris": 0,
             "Mg": 0,
@@ -190,9 +185,9 @@ class CycleHCRProbeDesigner:
         files_fasta_reference_database_targe_probe: List[str],
         gene_ids: list = None,
         target_probe_isoform_consensus: float = 0,
-        target_probe_left_probe_sequence_length: int = 45,
+        target_probe_L_probe_sequence_length: int = 45,
         target_probe_gap_sequence_length: int = 2,
-        target_probe_right_probe_sequence_length: int = 45,
+        target_probe_R_probe_sequence_length: int = 45,
         target_probe_GC_content_min: float = 43,
         target_probe_GC_content_max: float = 63,
         target_probe_Tm_min: float = 66,
@@ -200,6 +195,7 @@ class CycleHCRProbeDesigner:
         target_probe_homopolymeric_base_n: dict = {"A": 5, "T": 5, "C": 5, "G": 5},
         target_probe_T_secondary_structure: float = 76,
         target_probe_secondary_structures_threshold_deltaG: float = 0,
+        target_probe_junction_region_size: int = 13,
         target_probe_Tm_weight: float = 1,
         target_probe_isoform_weight: float = 2,
         set_size_opt: int = 50,
@@ -212,9 +208,9 @@ class CycleHCRProbeDesigner:
 
         oligo_database = target_probe_designer.create_oligo_database(
             gene_ids=gene_ids,
-            target_probe_left_probe_sequence_length=target_probe_left_probe_sequence_length,
+            target_probe_L_probe_sequence_length=target_probe_L_probe_sequence_length,
             target_probe_gap_sequence_length=target_probe_gap_sequence_length,
-            target_probe_right_probe_sequence_length=target_probe_right_probe_sequence_length,
+            target_probe_R_probe_sequence_length=target_probe_R_probe_sequence_length,
             files_fasta_oligo_database=files_fasta_target_probe_database,
             min_oligos_per_gene=set_size_min,
             isoform_consensus=target_probe_isoform_consensus,
@@ -225,70 +221,66 @@ class CycleHCRProbeDesigner:
             dir_database = oligo_database.save_database(name_database="1_db_target_probes_initial")
             print(f"Saved target probe database for step 1 (Create Database) in directory {dir_database}")
 
-        # oligo_database = target_probe_designer.filter_by_property(
-        #     oligo_database=oligo_database,
-        #     GC_content_min=target_probe_GC_content_min,
-        #     GC_content_max=target_probe_GC_content_max,
-        #     Tm_min=target_probe_Tm_min,
-        #     Tm_max=target_probe_Tm_max,
-        #     homopolymeric_base_n=target_probe_homopolymeric_base_n,
-        #     T_secondary_structure=target_probe_T_secondary_structure,
-        #     secondary_structures_threshold_deltaG=target_probe_secondary_structures_threshold_deltaG,
-        #     Tm_parameters=self.target_probe_Tm_parameters,
-        #     Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
-        #     Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
-        # )
-        # check_content_oligo_database(oligo_database)
+        oligo_database = target_probe_designer.filter_by_property(
+            oligo_database=oligo_database,
+            GC_content_min=target_probe_GC_content_min,
+            GC_content_max=target_probe_GC_content_max,
+            Tm_min=target_probe_Tm_min,
+            Tm_max=target_probe_Tm_max,
+            homopolymeric_base_n=target_probe_homopolymeric_base_n,
+            T_secondary_structure=target_probe_T_secondary_structure,
+            secondary_structures_threshold_deltaG=target_probe_secondary_structures_threshold_deltaG,
+            Tm_parameters=self.target_probe_Tm_parameters,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
+        )
+        check_content_oligo_database(oligo_database)
 
-        # if self.write_intermediate_steps:
-        #     dir_database = oligo_database.save_database(name_database="2_db_target_probes_property_filter")
-        #     print(f"Saved target probe database for step 2 (Property Filters) in directory {dir_database}")
+        if self.write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_target_probes_property_filter")
+            print(f"Saved target probe database for step 2 (Property Filters) in directory {dir_database}")
 
-        # oligo_database = target_probe_designer.filter_by_specificity(
-        #     oligo_database=oligo_database,
-        #     files_fasta_reference_database=files_fasta_reference_database_targe_probe,
-        #     specificity_blastn_search_parameters=self.target_probe_specificity_blastn_search_parameters,
-        #     specificity_blastn_hit_parameters=self.target_probe_specificity_blastn_hit_parameters,
-        #     cross_hybridization_blastn_search_parameters=self.target_probe_cross_hybridization_blastn_search_parameters,
-        #     cross_hybridization_blastn_hit_parameters=self.target_probe_cross_hybridization_blastn_hit_parameters,
-        # )
-        # check_content_oligo_database(oligo_database)
+        oligo_database = target_probe_designer.filter_by_specificity(
+            oligo_database=oligo_database,
+            files_fasta_reference_database=files_fasta_reference_database_targe_probe,
+            junction_region_size=target_probe_junction_region_size,
+            junction_site=target_probe_L_probe_sequence_length + target_probe_gap_sequence_length // 2,
+            specificity_blastn_search_parameters=self.target_probe_specificity_blastn_search_parameters,
+            specificity_blastn_hit_parameters=self.target_probe_specificity_blastn_hit_parameters,
+            cross_hybridization_blastn_search_parameters=self.target_probe_cross_hybridization_blastn_search_parameters,
+            cross_hybridization_blastn_hit_parameters=self.target_probe_cross_hybridization_blastn_hit_parameters,
+        )
+        check_content_oligo_database(oligo_database)
 
-        # if self.write_intermediate_steps:
-        #     dir_database = oligo_database.save_database(name_database="3_db_target_probes_specificity_filter")
-        #     print(f"Saved target probe database for step 3 (Specificity Filters) in directory {dir_database}")
+        if self.write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_target_probes_specificity_filter")
+            print(f"Saved target probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
-        # oligo_database = target_probe_designer.create_oligo_sets(
-        #     oligo_database=oligo_database,
-        #     isoform_weight=target_probe_isoform_weight,
-        #     GC_content_min=target_probe_GC_content_min,
-        #     GC_content_opt=target_probe_GC_content_opt,
-        #     GC_content_max=target_probe_GC_content_max,
-        #     GC_weight=target_probe_GC_weight,
-        #     Tm_min=target_probe_Tm_min,
-        #     Tm_opt=target_probe_Tm_opt,
-        #     Tm_max=target_probe_Tm_max,
-        #     Tm_weight=target_probe_Tm_weight,
-        #     Tm_parameters=self.target_probe_Tm_parameters,
-        #     Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
-        #     Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
-        #     set_size_opt=set_size_opt,
-        #     set_size_min=set_size_min,
-        #     distance_between_oligos=distance_between_target_probes,
-        #     n_sets=n_sets,
-        #     max_graph_size=self.max_graph_size,
-        #     n_attempts=self.n_attempts,
-        #     heuristic=self.heuristic,
-        #     heuristic_n_attempts=self.heuristic_n_attempts,
-        # )
-        # check_content_oligo_database(oligo_database)
+        oligo_database = target_probe_designer.create_oligo_sets(
+            oligo_database=oligo_database,
+            isoform_weight=target_probe_isoform_weight,
+            Tm_max=target_probe_Tm_max,
+            Tm_weight=target_probe_Tm_weight,
+            Tm_parameters=self.target_probe_Tm_parameters,
+            Tm_chem_correction_parameters=self.target_probe_Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=self.target_probe_Tm_salt_correction_parameters,
+            set_size_opt=set_size_opt,
+            set_size_min=set_size_min,
+            distance_between_oligos=distance_between_target_probes,
+            n_sets=n_sets,
+            max_graph_size=self.max_graph_size,
+            n_attempts=self.n_attempts,
+            heuristic=self.heuristic,
+            heuristic_n_attempts=self.heuristic_n_attempts,
+        )
+        check_content_oligo_database(oligo_database)
 
-        # if self.write_intermediate_steps:
-        #     dir_database = oligo_database.save_database(name_database="4_db_target_probes_sets")
-        #     dir_oligosets = oligo_database.write_oligosets_to_table()
-        #     print(
-        #         f"Saved target probe database for step 4 (Specificity Filters) in directory {dir_database} and sets table in directory {dir_oligosets}"
-        #     )
+        if self.write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="4_db_target_probes_sets")
+            dir_oligosets = oligo_database.write_oligosets_to_table()
+            print(
+                f"Saved target probe database for step 4 (Specificity Filters) in directory {dir_database} and sets table in directory {dir_oligosets}"
+            )
 
         return oligo_database
 
@@ -340,6 +332,7 @@ class CycleHCRProbeDesigner:
         target_probe_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
+        linker_sequence: str,
     ) -> OligoDatabase:
 
         region_ids = list(target_probe_database.database.keys())
@@ -347,7 +340,6 @@ class CycleHCRProbeDesigner:
         codebook.index = region_ids + [
             f"unassigned_barcode_{i+1}" for i in range(len(codebook.index) - len(region_ids))
         ]
-        # codebook = codebook.iloc[: len(region_ids)]
 
         codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t")
         readout_probe_table.to_csv(os.path.join(self.dir_output, "readout_probes.tsv"), sep="\t")
@@ -361,27 +353,31 @@ class CycleHCRProbeDesigner:
 
             for probe_id in target_probe_database.database[region_id].keys():
 
-                sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
-                sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
+                sequence_readout_probe_L = readout_probe_sequences.iloc[0]
+                sequence_readout_probe_R = readout_probe_sequences.iloc[1]
 
                 new_probe_attributes_encoding_probe[probe_id] = {
                     "barcode": barcode,
                     "sequence_target": target_probe_database.get_oligo_attribute_value(
                         attribute="target", region_id=region_id, oligo_id=probe_id, flatten=True
                     ),
-                    "sequence_target_probe": target_probe_database.get_oligo_attribute_value(
-                        attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
+                    "sequence_target_probe_L": target_probe_database.get_oligo_attribute_value(
+                        attribute="oligo_pair_L", region_id=region_id, oligo_id=probe_id, flatten=True
                     ),
-                    "sequence_readout_probe_1": sequence_readout_probe_1,
-                    "sequence_readout_probe_2": sequence_readout_probe_2,
-                    "sequence_encoding_probe": (
-                        str(Seq(sequence_readout_probe_1).reverse_complement())
-                        + "A"
-                        + target_probe_database.get_oligo_attribute_value(
-                            attribute="oligo", region_id=region_id, oligo_id=probe_id, flatten=True
-                        )
-                        + "A"
-                        + str(Seq(sequence_readout_probe_2).reverse_complement())
+                    "sequence_target_probe_R": target_probe_database.get_oligo_attribute_value(
+                        attribute="oligo_pair_R", region_id=region_id, oligo_id=probe_id, flatten=True
+                    ),
+                    "sequence_readout_probe_L": sequence_readout_probe_L,
+                    "sequence_readout_probe_R": sequence_readout_probe_R,
+                    "sequence_encoding_probe_L": target_probe_database.get_oligo_attribute_value(
+                        attribute="oligo_pair_L", region_id=region_id, oligo_id=probe_id, flatten=True
+                    )
+                    + linker_sequence
+                    + sequence_readout_probe_L,
+                    "sequence_encoding_probe_R": sequence_readout_probe_R
+                    + linker_sequence
+                    + target_probe_database.get_oligo_attribute_value(
+                        attribute="oligo_pair_R", region_id=region_id, oligo_id=probe_id, flatten=True
                     ),
                 }
 
@@ -535,9 +531,9 @@ class TargetProbeDesigner:
     def create_oligo_database(
         self,
         gene_ids: list,
-        target_probe_left_probe_sequence_length: int,
+        target_probe_L_probe_sequence_length: int,
         target_probe_gap_sequence_length: int,
-        target_probe_right_probe_sequence_length: int,
+        target_probe_R_probe_sequence_length: int,
         files_fasta_oligo_database: list[str],
         min_oligos_per_gene: int,
         isoform_consensus: float,
@@ -545,9 +541,9 @@ class TargetProbeDesigner:
 
         ##### creating the oligo sequences #####
         oligo_length = (
-            target_probe_left_probe_sequence_length
+            target_probe_L_probe_sequence_length
             + target_probe_gap_sequence_length
-            + target_probe_right_probe_sequence_length
+            + target_probe_R_probe_sequence_length
         )
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
@@ -574,22 +570,22 @@ class TargetProbeDesigner:
         )
         ##### calculate probe pairs
         split_start_end = [
-            (0, target_probe_left_probe_sequence_length),
+            (0, target_probe_L_probe_sequence_length),
             (
-                target_probe_left_probe_sequence_length,
-                target_probe_left_probe_sequence_length + target_probe_gap_sequence_length,
+                target_probe_L_probe_sequence_length,
+                target_probe_L_probe_sequence_length + target_probe_gap_sequence_length,
             ),
             (
-                target_probe_left_probe_sequence_length + target_probe_gap_sequence_length,
-                target_probe_left_probe_sequence_length
+                target_probe_L_probe_sequence_length + target_probe_gap_sequence_length,
+                target_probe_L_probe_sequence_length
                 + target_probe_gap_sequence_length
-                + target_probe_right_probe_sequence_length,
+                + target_probe_R_probe_sequence_length,
             ),
         ]
         oligo_database = self.oligo_attributes_calculator.calculate_split_sequence(
             oligo_database=oligo_database,
             split_start_end=split_start_end,
-            split_names=["target_sequence_left", "spacer", "target_sequence_right"],
+            split_names=["oligo_pair_L", "spacer", "oligo_pair_R"],
             sequence_type="oligo",
         )
 
@@ -626,8 +622,8 @@ class TargetProbeDesigner:
     ) -> OligoDatabase:
 
         # define the filters
+        # soft_masked_sequences = SoftMaskedSequenceFilter()
         hard_masked_sequences = HardMaskedSequenceFilter()
-        soft_masked_sequences = SoftMaskedSequenceFilter()
         gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
         melting_temperature = MeltingTemperatureNNFilter(
             Tm_min=Tm_min,
@@ -645,8 +641,8 @@ class TargetProbeDesigner:
         )
 
         filters = [
+            # soft_masked_sequences,
             hard_masked_sequences,
-            soft_masked_sequences,
             homopolymeric_runs,
             gc_content,
             melting_temperature,
@@ -659,12 +655,12 @@ class TargetProbeDesigner:
         # filter the database
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
-            sequence_type="oligo",
+            sequence_type="oligo_pair_L",
             n_jobs=self.n_jobs,
         )
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
-            sequence_type="oligo",
+            sequence_type="oligo_pair_R",
             n_jobs=self.n_jobs,
         )
 
@@ -675,6 +671,8 @@ class TargetProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         files_fasta_reference_database: List[str],
+        junction_region_size: int,
+        junction_site: int,
         specificity_blastn_search_parameters: dict,
         specificity_blastn_hit_parameters: dict,
         cross_hybridization_blastn_search_parameters: dict,
@@ -689,50 +687,91 @@ class TargetProbeDesigner:
             files=files_fasta_reference_database, file_type="fasta", database_overwrite=False
         )
 
-        ##### exact match filter #####
-        exact_matches = ExactMatchFilter(
-            sequence_type="oligo", policy=RemoveAllPolicy(), filter_name="oligo_exact_match"
-        )
+        ##### define specificity filters #####
+        exact_matches = ExactMatchFilter(policy=RemoveAllPolicy(), filter_name="oligo_exact_match")
 
-        ##### specificity filters #####
-        specificity = BlastNFilter(
-            sequence_type="oligo",
-            remove_hits=True,
-            search_parameters=specificity_blastn_search_parameters,
-            hit_parameters=specificity_blastn_hit_parameters,
-            filter_name="oligo_blastn_specificity",
-            dir_output=self.dir_output,
-        )
-        specificity.set_reference_database(reference_database=reference_database)
+        if junction_region_size > 0:
+            oligo_ids = oligo_database.get_oligoid_list()
+            oligo_database.update_oligo_attributes(
+                new_oligo_attribute={oligo_id: {"junction_site": junction_site} for oligo_id in oligo_ids}
+            )
+            specificity = BlastNSeedregionSiteFilter(
+                seedregion_size=junction_region_size,
+                seedregion_site_name="junction_site",
+                search_parameters=specificity_blastn_search_parameters,
+                hit_parameters=specificity_blastn_hit_parameters,
+                filter_name="blastn_specificity",
+                dir_output=self.dir_output,
+            )
+            specificity.set_reference_database(reference_database=reference_database)
+        else:
+            specificity = BlastNFilter(
+                search_parameters=specificity_blastn_search_parameters,
+                hit_parameters=specificity_blastn_hit_parameters,
+                filter_name="blastn_specificity",
+                dir_output=self.dir_output,
+            )
+            specificity.set_reference_database(reference_database=reference_database)
 
-        cross_hybridization_aligner = BlastNFilter(
-            sequence_type="oligo",
-            remove_hits=True,
-            search_parameters=cross_hybridization_blastn_search_parameters,
-            hit_parameters=cross_hybridization_blastn_hit_parameters,
-            filter_name="oligo_blastn_crosshybridization",
-            dir_output=self.dir_output,
-        )
-        cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
-        cross_hybridization = CrossHybridizationFilter(
-            sequence_type="oligo",
-            policy=RemoveByLargerRegionPolicy(),
-            alignment_method=cross_hybridization_aligner,
-            filter_name="oligo_blastn_crosshybridization",
-            dir_output=self.dir_output,
-        )
-
-        filters = [exact_matches, specificity, cross_hybridization]
-        specificity_filter = SpecificityFilter(filters=filters)
+        ##### run specificity filters #####
+        specificity_filter = SpecificityFilter(filters=[exact_matches, specificity])
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
+            sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
 
-        # remove all directories of intermediate steps
+        ##### define cross hybridization filter #####
+        cross_hybridization_aligner_oligo_pair_L = BlastNFilter(
+            remove_hits=True,
+            search_parameters=cross_hybridization_blastn_search_parameters,
+            hit_parameters=cross_hybridization_blastn_hit_parameters,
+            filter_name="blastn_crosshybridization",
+            dir_output=self.dir_output,
+        )
+        cross_hybridization_oligo_pair_L = CrossHybridizationFilter(
+            policy=RemoveByLargerRegionPolicy(),
+            alignment_method=cross_hybridization_aligner_oligo_pair_L,
+            sequence_type_reference="oligo_pair_L",
+            filter_name="blastn_crosshybridization",
+            dir_output=self.dir_output,
+        )
+        cross_hybridization_aligner_oligo_pair_R = BlastNFilter(
+            remove_hits=True,
+            search_parameters=cross_hybridization_blastn_search_parameters,
+            hit_parameters=cross_hybridization_blastn_hit_parameters,
+            filter_name="blastn_crosshybridization",
+            dir_output=self.dir_output,
+        )
+        cross_hybridization_oligo_pair_R = CrossHybridizationFilter(
+            policy=RemoveByLargerRegionPolicy(),
+            alignment_method=cross_hybridization_aligner_oligo_pair_R,
+            sequence_type_reference="oligo_pair_R",
+            filter_name="blastn_crosshybridization",
+            dir_output=self.dir_output,
+        )
+
+        ##### run cross hybridization filter #####
+        specificity_filter = SpecificityFilter(
+            filters=[cross_hybridization_oligo_pair_L, cross_hybridization_oligo_pair_R]
+        )
+        oligo_database = specificity_filter.apply(
+            oligo_database=oligo_database,
+            sequence_type="oligo_pair_L",
+            n_jobs=self.n_jobs,
+        )
+        oligo_database = specificity_filter.apply(
+            oligo_database=oligo_database,
+            sequence_type="oligo_pair_R",
+            n_jobs=self.n_jobs,
+        )
+
+        ##### remove all directories of intermediate steps #####
         for directory in [
-            cross_hybridization_aligner.dir_output,
-            cross_hybridization.dir_output,
+            cross_hybridization_aligner_oligo_pair_L.dir_output,
+            cross_hybridization_aligner_oligo_pair_R.dir_output,
+            cross_hybridization_oligo_pair_L.dir_output,
+            cross_hybridization_oligo_pair_R.dir_output,
             specificity.dir_output,
         ]:
             if os.path.exists(directory):
@@ -745,12 +784,6 @@ class TargetProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         isoform_weight: float,
-        GC_content_min: float,
-        GC_content_opt: float,
-        GC_content_max: float,
-        GC_weight: float,
-        Tm_min: float,
-        Tm_opt: float,
         Tm_max: float,
         Tm_weight: float,
         Tm_parameters: dict,
@@ -766,7 +799,8 @@ class TargetProbeDesigner:
         heuristic_n_attempts: int,
     ) -> Tuple[OligoDatabase, str, str]:
 
-        set_scoring = LowestSetScoring(ascending=True)
+        # the higher the score the better, because we want to have on average oligos with high melting temperatures
+        set_scoring = AverageSetScoring(ascending=False)
 
         # We change the processing dependent on the required number of probes in the probe sets
         # For small sets, we don't pre-filter and find the initial set by iterating
@@ -825,19 +859,13 @@ class TargetProbeDesigner:
             )
             base_log_parameters({"pre_filter": pre_filter, "selection_policy": "Greedy"})
 
-        oligos_scoring = WeightedIsoformTmGCOligoScoring(
-            Tm_min=Tm_min,
-            Tm_opt=Tm_opt,
-            Tm_max=Tm_max,
-            GC_content_min=GC_content_min,
-            GC_content_opt=GC_content_opt,
-            GC_content_max=GC_content_max,
+        oligos_scoring = WeightedIsoformTmScoring(
+            Tm_content_opt=Tm_max,
+            Tm_weight=Tm_weight,
+            isoform_weight=isoform_weight,
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
             Tm_salt_correction_parameters=Tm_salt_correction_parameters,
-            isoform_weight=isoform_weight,
-            Tm_weight=Tm_weight,
-            GC_weight=GC_weight,
         )
 
         probeset_generator = OligosetGeneratorIndependentSet(
@@ -1064,9 +1092,9 @@ def main():
         files_fasta_reference_database_targe_probe=config["files_fasta_reference_database_targe_probe"],
         gene_ids=gene_ids,
         target_probe_isoform_consensus=config["target_probe_isoform_consensus"],
-        target_probe_left_probe_sequence_length=config["target_probe_left_probe_sequence_length"],
+        target_probe_L_probe_sequence_length=config["target_probe_L_probe_sequence_length"],
         target_probe_gap_sequence_length=config["target_probe_gap_sequence_length"],
-        target_probe_right_probe_sequence_length=config["target_probe_right_probe_sequence_length"],
+        target_probe_R_probe_sequence_length=config["target_probe_R_probe_sequence_length"],
         target_probe_GC_content_min=config["target_probe_GC_content_min"],
         target_probe_GC_content_max=config["target_probe_GC_content_max"],
         target_probe_Tm_min=config["target_probe_Tm_min"],
@@ -1076,6 +1104,7 @@ def main():
         target_probe_secondary_structures_threshold_deltaG=config[
             "target_probe_secondary_structures_threshold_deltaG"
         ],
+        target_probe_junction_region_size=config["target_probe_junction_region_size"],
         target_probe_Tm_weight=config["target_probe_Tm_weight"],
         target_probe_isoform_weight=config["target_probe_isoform_weight"],
         set_size_opt=config["set_size_opt"],
@@ -1104,6 +1133,7 @@ def main():
     #     target_probe_database=target_probe_database,
     #     codebook=codebook,
     #     readout_probe_table=readout_probe_table,
+    #     linker_sequence=config["linker_sequence"]
     # )
 
     # reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
