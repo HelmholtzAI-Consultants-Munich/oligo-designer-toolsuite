@@ -150,7 +150,7 @@ Those probes are removed from the database to ensure uniqueness of probes for ea
 Cross-hybridizing probes are identified with the ``CrossHybridizationFilter`` that uses a BlastN alignment search to identify similar sequences and removes those hits with the ``RemoveByBiggerRegionPolicy`` that sequentially removes the probes from the genes that have the bigger probe sets.
 Next, the probes are checked for off-target binding with any other region of a provided background reference.
 Off-target regions are sequences of the background reference (e.g. transcriptome or genome) which match the probe region with a certain degree of homology but are not located within the gene region of the probe.
-Those off-target regions are identified with the ``BlastNSeedregionLigationsiteFilter`` that removes probes where a BlastN alignment search found off-target sequence matches with a certain coverage and similarity, for which the user has to define thresholds.
+Those off-target regions are identified with the ``BlastNSeedregionSiteFilter`` that removes probes where a BlastN alignment search found off-target sequence matches with a certain coverage and similarity, for which the user has to define thresholds.
 The coverage of the region around the ligation site of the probe by the matching off-target sequence is used as an additional filtering criterion.
 
 In the third step of the pipeline, the best sets of non-overlapping probes are identified for each gene.

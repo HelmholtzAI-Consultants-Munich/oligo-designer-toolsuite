@@ -14,7 +14,7 @@ Module contents
    ExactMatchFilter
    BlastNFilter
    BlastNSeedregionFilter
-   BlastNSeedregionLigationsiteFilter
+   BlastNSeedregionSiteFilter
    BowtieFilter
    Bowtie2Filter
    CrossHybridizationFilter
