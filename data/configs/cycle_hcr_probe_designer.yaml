@@ -44,8 +44,10 @@ n_sets: 100 # maximum number of sets to generate
 
 ### Readout Probe Parameters
 ### -----------------------------------------------
-files_fasta_readout_probe_database:
-- 
+readout_probe_sequences:
+  488: "data/predefined_sequences/cycleHCR/readout_probes/LR_seqs_488.csv"
+  546: "data/predefined_sequences/cycleHCR/readout_probes/LR_seqs_546.csv"
+  647: "data/predefined_sequences/cycleHCR/readout_probes/LR_seqs_647.csv"
 
 
 ### Primer Parameters
