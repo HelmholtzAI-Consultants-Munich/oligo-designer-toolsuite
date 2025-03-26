@@ -185,6 +185,74 @@ class WeightedGCUtrScoring(OligoScoringBase):
         return score
 
 
+class WeightedIsoformTmScoring(OligoScoringBase):
+
+    def __init__(
+        self,
+        Tm_content_opt: float,
+        Tm_weight: float,
+        isoform_weight: float,
+        Tm_parameters: dict,
+        Tm_salt_correction_parameters: dict = None,
+        Tm_chem_correction_parameters: dict = None,
+    ) -> None:
+        """Constructor for the WeightedIsoformTmScoring class."""
+        self.Tm_content_opt = Tm_content_opt
+        self.Tm_weight = Tm_weight
+        self.isoform_weight = isoform_weight
+
+        self.Tm_parameters = Tm_parameters
+        self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
+        self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
+
+    def get_score(
+        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: _TYPES_SEQ
+    ) -> float:
+        """
+        Calculates the weighted score for a given nucleotide based on its GC content and whether it originates
+        from a UTR (Untranslated Region).
+
+        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :type oligo_database: OligoDatabase
+        :param region_id: Region ID to process.
+        :type region_id: str
+        :param region_id: Oligo ID to process.
+        :type region_id: str
+        :param sequence_type: The type of sequence to be used for score calculation.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :return: The calculated score based on the weighted difference from optimal GC content and UTR consideration.
+        :rtype: float
+        """
+        sequence = oligo_database.get_oligo_attribute_value(
+            attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
+        transcript_id = oligo_database.get_oligo_attribute_value(
+            attribute="transcript_id", region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
+        number_transcripts = oligo_database.get_oligo_attribute_value(
+            attribute="number_transcripts", region_id=region_id, oligo_id=oligo_id, flatten=True
+        )
+        if transcript_id and number_transcripts:
+            # isoform consensus is given in % (0-100), hence we have to devide by 100
+            # we use 1 - isoform consensus as score because here the lower the score the better
+            isoform_consensus = 1 - (
+                OligoAttributes._calc_isoform_consensus(transcript_id, number_transcripts) / 100
+            )
+        else:
+            # if information on available, don't consider isoform consensus in scoring
+            isoform_consensus = 0
+
+        Tm_oligo = OligoAttributes._calc_TmNN(
+            sequence=sequence,
+            Tm_parameters=self.Tm_parameters,
+            Tm_salt_correction_parameters=self.Tm_salt_correction_parameters,
+            Tm_chem_correction_parameters=self.Tm_chem_correction_parameters,
+        )
+
+        score = self.Tm_weight * abs(self.Tm_content_opt - Tm_oligo) + self.isoform_weight * isoform_consensus
+        return score
+
+
 class WeightedTmGCOligoScoring(OligoScoringBase):
     """
     A class used to score oligonucleotides based on their melting temperature (Tm) and GC content.
