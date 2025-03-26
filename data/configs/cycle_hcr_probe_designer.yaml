@@ -7,7 +7,7 @@
 n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 dir_output: output_cyclehcr_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
-top_n_sets: 3 #maximum number of sets to report in padlock_probes.yaml and "padlock_probes_order.yaml"
+top_n_sets: 1 #maximum number of sets to report in padlock_probes.yaml and "padlock_probes_order.yaml"
 
 
 ### Target Probe Parameters
@@ -37,10 +37,10 @@ target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the second
 target_probe_junction_region_size: 13 # size of the seed region around the junction site for blast seed region filter; set to 0 if junction region should not be considered for blast search
 target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score, where score in abs(Tm_max - Tm_probe)
 target_probe_isoform_weight: 10 # weight of the isoform consensus of the probe in the efficiency score, where score is between 0 and 1
-set_size_min: 2 # minimum size of probe sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
-set_size_opt: 5 # optimal size of probe sets
+set_size_min: 10 # minimum size of probe sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
+set_size_opt: 25 # optimal size of probe sets
 distance_between_target_probes: 2 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
-n_sets: 100 # maximum number of sets to generate
+n_sets: 30 # maximum number of sets to generate
 linker_sequence: TT # linker sequence between readout probe and target sequence
 
 ### Readout Probe Parameters

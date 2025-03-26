@@ -408,8 +408,8 @@ class CycleHCRProbeDesigner:
                         attribute="oligo_pair_L", region_id=region_id, oligo_id=probe_id, flatten=True
                     )
                     + linker_sequence
-                    + sequence_readout_probe_L,
-                    "sequence_encoding_probe_R": sequence_readout_probe_R
+                    + str(Seq(sequence_readout_probe_L).reverse_complement()),
+                    "sequence_encoding_probe_R": str(Seq(sequence_readout_probe_R).reverse_complement())
                     + linker_sequence
                     + target_probe_database.get_oligo_attribute_value(
                         attribute="oligo_pair_R", region_id=region_id, oligo_id=probe_id, flatten=True
@@ -450,7 +450,9 @@ class CycleHCRProbeDesigner:
             "sequence_cyclehcr_probe_L",
             "sequence_cyclehcr_probe_R",
             "sequence_encoding_probe_L",
+            "sequence_encoding_probe_L_rc",
             "sequence_encoding_probe_R",
+            "sequence_encoding_probe_R_rc",
             "sequence_readout_probe_L",
             "sequence_readout_probe_R",
             "sequence_forward_primer",
@@ -484,6 +486,26 @@ class CycleHCRProbeDesigner:
                         flatten=True,
                     )
                     + reverse_primer_sequence,
+                    "sequence_encoding_probe_L_rc": str(
+                        Seq(
+                            encoding_probe_database.get_oligo_attribute_value(
+                                attribute="sequence_encoding_probe_L",
+                                region_id=region_id,
+                                oligo_id=probe_id,
+                                flatten=True,
+                            )
+                        ).reverse_complement()
+                    ),
+                    "sequence_encoding_probe_R_rc": str(
+                        Seq(
+                            encoding_probe_database.get_oligo_attribute_value(
+                                attribute="sequence_encoding_probe_R",
+                                region_id=region_id,
+                                oligo_id=probe_id,
+                                flatten=True,
+                            )
+                        ).reverse_complement()
+                    ),
                 }
         encoding_probe_database.update_oligo_attributes(new_probe_attributes_primer)
 
@@ -560,7 +582,7 @@ class CycleHCRProbeDesigner:
                         ),
                     }
 
-        with open(os.path.join(self.dir_output, "cyclehcr_probes_order.yml"), "w") as outfile:
+        with open(os.path.join(self.dir_output, "cyclehcr_probes_order"), "w") as outfile:
             yaml.dump(yaml_dict_order, outfile, default_flow_style=False, sort_keys=False)
 
         logging.info("--------------END PIPELINE--------------")
