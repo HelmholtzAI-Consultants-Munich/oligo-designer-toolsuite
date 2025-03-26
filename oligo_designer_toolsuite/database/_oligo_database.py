@@ -672,7 +672,7 @@ class OligoDatabase:
             for idx, oligoset in oligosets_region_oligos.iterrows():
                 oligoset_id = f"Oligoset {idx + 1}"
                 yaml_dict[region_id][oligoset_id] = {
-                    "Oligoset Score": oligosets_region_scores.iloc[idx].to_dict(),
+                    "Oligoset Score": oligosets_region_scores.loc[idx].to_dict(),
                 }
 
                 for oligo_idx, oligo_id in enumerate(oligoset):
