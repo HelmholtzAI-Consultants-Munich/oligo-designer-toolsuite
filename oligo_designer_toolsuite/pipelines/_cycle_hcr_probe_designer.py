@@ -289,16 +289,13 @@ class CycleHCRProbeDesigner:
 
         return oligo_database
 
-    def generate_readout_probes_from_file(
+    def design_readout_probes(
         self,
-        oligo_database: OligoDatabase,
         channels_to_files: dict,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Generate readout probes from files containing readout probe sequences.
 
-        :param oligo_database: OligoDatabase object containing the target probe sequences.
-        :type oligo_database: OligoDatabase
         :param channels_to_files: Dictionary containing the channel IDs as keys and the file paths as values.
         :type channels_to_files: dict
         :return: Tuple containing the readout probe table and the codebook.
@@ -325,7 +322,7 @@ class CycleHCRProbeDesigner:
             readout_probes_table = readout_probes_table[['bit'] + [ col for col in readout_probes_table.columns if col != 'bit']]
             return readout_probes_table
         
-        def _create_codebook(readout_probes_table, region_ids):
+        def _create_codebook(readout_probes_table):
             readout_probes_table = readout_probes_table.copy()
             readout_probes_table["L/R"] = readout_probes_table["readout_probe_id"].apply(lambda x: x.split("::")[-1])
             readout_probes_table["probe_num"] = readout_probes_table["readout_probe_id"].apply(lambda x: x.split("::")[1])
@@ -355,11 +352,9 @@ class CycleHCRProbeDesigner:
             codebook = pd.DataFrame(codebook_rows, columns=readout_probes_table['bit'].tolist())
             
             return codebook
-
         
-        region_ids = oligo_database.database.keys()
         readout_probes_table = _create_readout_table(channels_to_files)
-        codebook = _create_codebook(readout_probes_table, region_ids) 
+        codebook = _create_codebook(readout_probes_table) 
 
         return readout_probes_table, codebook
 
