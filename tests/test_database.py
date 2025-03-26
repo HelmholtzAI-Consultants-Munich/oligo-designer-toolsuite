@@ -678,9 +678,9 @@ class TestOligoAttributes(unittest.TestCase):
 
         assert (seedregion_start == 8) and (seedregion_end == 12), "error: wrong seedregion calculated"
 
-    def test_calculate_seedregion_ligationsite(self):
-        oligo_database = self.oligo_attributes.calculate_seedregion_ligationsite(
-            self.oligo_database, seedregion_size=5
+    def test_calculate_seedregion_site(self):
+        oligo_database = self.oligo_attributes.calculate_seedregion_site(
+            self.oligo_database, seedregion_size=5, seedregion_site_name="ligation_site"
         )
 
         seedregion_start = oligo_database.get_oligo_attribute_value(

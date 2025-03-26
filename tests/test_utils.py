@@ -141,7 +141,7 @@ class TestDatabaseProcessor(unittest.TestCase):
         self.tmp_path = os.path.join(os.getcwd(), "tmp_oligo_sequence_generator")
         Path(self.tmp_path).mkdir(parents=True, exist_ok=True)
 
-        self.oligo_sequence_generator = OligoSequenceGenerator()
+        self.oligo_sequence_generator = OligoSequenceGenerator(dir_output=self.tmp_path)
         file_fasta_exons = self.oligo_sequence_generator.create_sequences_sliding_window(
             files_fasta_in=FILE_NCBI_EXONS,
             length_interval_sequences=(100, 100),
@@ -149,7 +149,7 @@ class TestDatabaseProcessor(unittest.TestCase):
         )
 
         # create two database with identical entries
-        self.oligo_database1 = OligoDatabase()
+        self.oligo_database1 = OligoDatabase(dir_output=self.tmp_path)
         self.oligo_database1.load_database_from_fasta(
             files_fasta=file_fasta_exons,
             database_overwrite=True,
@@ -161,7 +161,7 @@ class TestDatabaseProcessor(unittest.TestCase):
             remove_region=False, oligo_ids=["AARS1::1", "AARS1::2", "AARS1::3"]
         )
 
-        self.oligo_database2 = OligoDatabase()
+        self.oligo_database2 = OligoDatabase(dir_output=self.tmp_path)
         self.oligo_database2.load_database_from_fasta(
             files_fasta=file_fasta_exons,
             database_overwrite=True,
