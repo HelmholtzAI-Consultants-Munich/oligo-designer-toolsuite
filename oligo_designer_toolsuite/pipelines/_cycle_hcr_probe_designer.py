@@ -460,17 +460,17 @@ class CycleHCRProbeDesigner:
                 new_probe_attributes_primer[probe_id] = {
                     "sequence_reverse_primer": reverse_primer_sequence,
                     "sequence_forward_primer": forward_primer_sequence,
-                    "sequence_cyclehcr_probe_left": forward_primer_sequence
+                    "sequence_cyclehcr_probe_L": forward_primer_sequence
                     + encoding_probe_database.get_oligo_attribute_value(
-                        attribute="sequence_encoding_probe_left",
+                        attribute="sequence_encoding_probe_L",
                         region_id=region_id,
                         oligo_id=probe_id,
                         flatten=True,
                     )
                     + reverse_primer_sequence,
-                    "sequence_cyclehcr_probe_rights": forward_primer_sequence
+                    "sequence_cyclehcr_probe_R": forward_primer_sequence
                     + encoding_probe_database.get_oligo_attribute_value(
-                        attribute="sequence_encoding_probe_right",
+                        attribute="sequence_encoding_probe_R",
                         region_id=region_id,
                         oligo_id=probe_id,
                         flatten=True,
