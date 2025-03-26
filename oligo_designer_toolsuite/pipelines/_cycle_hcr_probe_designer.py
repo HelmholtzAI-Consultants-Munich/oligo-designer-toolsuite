@@ -8,14 +8,11 @@ import shutil
 import logging
 import warnings
 
-import numpy as np
 import pandas as pd
 
 from typing import List, Tuple
 from pathlib import Path
 from datetime import datetime
-from itertools import combinations
-from scipy.spatial.distance import hamming
 
 from Bio.SeqUtils import Seq
 from Bio.SeqUtils import MeltingTemp as mt
@@ -286,46 +283,72 @@ class CycleHCRProbeDesigner:
 
     def design_readout_probes(
         self,
-        n_genes: int,
-        files_fasta_reference_database_readout_probe: List[str],
-        readout_probe_length: int = 20,
-        readout_probe_base_probabilities: dict = {"A": 0.25, "C": 0.00, "G": 0.50, "T": 0.25},
-        readout_probe_GC_content_min: float = 40,
-        readout_probe_GC_content_max: float = 50,
-        readout_probe_homopolymeric_base_n: dict = {"G": 3},
-        readout_probe_set_size: int = 16,
-        readout_probe_homogeneous_properties_weights: dict = {"TmNN": 1, "GC_content": 1},
-        n_bits: int = 16,
-        min_hamming_dist: int = 4,
-        hamming_weight: int = 4,
-        channels_ids: list = ["Alexa488", "Cy3b", "Alexa647"],
+        channels_to_files: dict,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Generate readout probes from files containing readout probe sequences.
 
-        readout_probe_designer = ReadoutProbeDesigner(
-            dir_output=self.dir_output,
-            n_jobs=self.n_jobs,
-        )
-        oligo_database = readout_probe_designer.create_oligo_database(
-            oligo_length=readout_probe_length,
-            oligo_base_probabilities=readout_probe_base_probabilities,
-            initial_num_sequences=self.readout_probe_initial_num_sequences,
-        )
-        check_content_oligo_database(oligo_database)
+        :param channels_to_files: Dictionary containing the channel IDs as keys and the file paths as values.
+        :type channels_to_files: dict
+        :return: Tuple containing the readout probe table and the codebook.
+        :rtype: Tuple[pd.DataFrame, pd.DataFrame]
+        """
+        
+        
+        def _create_readout_table(channels_to_files):
+            readout_probes_rows = []
+            for channel_id, filename in channels_to_files.items():
+                sequences_file_df = pd.read_csv(filename)
 
-        codebook = readout_probe_designer.generate_codebook(
-            n_regions=n_genes,
-            n_bits=n_bits,
-            min_hamming_dist=min_hamming_dist,
-            hamming_weight=hamming_weight,
-        )
+                for _, row in sequences_file_df.iterrows():
+                    readout_probes_rows.append({
+                        'channel': channel_id,
+                        'readout_probe_id': f"readout_probe::{row['Probe']}::{row['L/R']}",
+                        'readout_probe_sequence': row['Initiator Sequence']
+                    })
+                    
+            readout_probes_table = pd.DataFrame(readout_probes_rows)
+            readout_probes_table['bit'] = readout_probes_table.index
+            readout_probes_table['bit'] = readout_probes_table['bit'].apply(lambda x: f"bit_{x}")
+            
+            readout_probes_table = readout_probes_table[['bit'] + [ col for col in readout_probes_table.columns if col != 'bit']]
+            return readout_probes_table
+        
+        def _create_codebook(readout_probes_table):
+            readout_probes_table = readout_probes_table.copy()
+            readout_probes_table["L/R"] = readout_probes_table["readout_probe_id"].apply(lambda x: x.split("::")[-1])
+            readout_probes_table["probe_num"] = readout_probes_table["readout_probe_id"].apply(lambda x: x.split("::")[1])
+            readout_probes_table["bit_num"] = readout_probes_table["bit"].apply(lambda x: int(x.split("_")[-1]))
 
-        readout_probe_table = readout_probe_designer.create_readout_probe_table(
-            readout_probe_database=oligo_database,
-            channels_ids=channels_ids,
-            n_bits=n_bits,
-        )
+            readout_probes_table_L = readout_probes_table[readout_probes_table['L/R'] == 'L']
+            readout_probes_table_R = readout_probes_table[readout_probes_table['L/R'] == 'R']
 
-        return codebook, readout_probe_table
+            combinations_df = readout_probes_table_L.merge(readout_probes_table_R, on='channel')
+            combinations_df = combinations_df[['bit_num_x', 'bit_num_y', 'probe_num_x', 'probe_num_y']]
+            
+            combinations_df["probe_num_x-y"] = combinations_df["probe_num_x"].astype(int) - combinations_df["probe_num_y"].astype(int)
+            combinations_df["probe_num_x-y"] = combinations_df["probe_num_x-y"].abs()
+            combinations_df = combinations_df.sort_values(by="probe_num_x-y", ascending=True)
+            
+            bit_num_x = combinations_df["bit_num_x"].tolist()
+            bit_num_y = combinations_df["bit_num_y"].tolist()
+
+            codebook_rows = []
+            for x, y in zip(bit_num_x, bit_num_y):
+                entry = [0] * len(readout_probes_table)
+                entry[x] = 1
+                entry[y] = 1
+                codebook_rows.append(entry)
+            
+            
+            codebook = pd.DataFrame(codebook_rows, columns=readout_probes_table['bit'].tolist())
+            
+            return codebook
+        
+        readout_probes_table = _create_readout_table(channels_to_files)
+        codebook = _create_codebook(readout_probes_table) 
+
+        return readout_probes_table, codebook
 
     def design_encoding_probe(
         self,
@@ -433,9 +456,17 @@ class CycleHCRProbeDesigner:
                 new_probe_attributes_primer[probe_id] = {
                     "sequence_reverse_primer": reverse_primer_sequence,
                     "sequence_forward_primer": forward_primer_sequence,
-                    "sequence_cyclehcr_probe": forward_primer_sequence
+                    "sequence_cyclehcr_probe_L": forward_primer_sequence
                     + encoding_probe_database.get_oligo_attribute_value(
-                        attribute="sequence_encoding_probe",
+                        attribute="sequence_encoding_probe_L",
+                        region_id=region_id,
+                        oligo_id=probe_id,
+                        flatten=True,
+                    )
+                    + reverse_primer_sequence,
+                    "sequence_cyclehcr_probe_R": forward_primer_sequence
+                    + encoding_probe_database.get_oligo_attribute_value(
+                        attribute="sequence_encoding_probe_R",
                         region_id=region_id,
                         oligo_id=probe_id,
                         flatten=True,
