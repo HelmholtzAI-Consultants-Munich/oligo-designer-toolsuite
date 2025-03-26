@@ -8,7 +8,7 @@ from ._filter_exact_matches import ExactMatchFilter
 from ._filter_blastn import (
     BlastNFilter,
     BlastNSeedregionFilter,
-    BlastNSeedregionLigationsiteFilter,
+    BlastNSeedregionSiteFilter,
 )
 from ._filter_bowtie import BowtieFilter, Bowtie2Filter
 from ._filter_cross_hybridization import (
@@ -28,7 +28,7 @@ __all__ = [
     "ExactMatchFilter",
     "BlastNFilter",
     "BlastNSeedregionFilter",
-    "BlastNSeedregionLigationsiteFilter",
+    "BlastNSeedregionSiteFilter",
     "BowtieFilter",
     "Bowtie2Filter",
     "CrossHybridizationFilter",

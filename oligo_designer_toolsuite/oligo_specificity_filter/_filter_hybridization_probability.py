@@ -13,7 +13,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilterAlignment,
     BlastNFilter,
     BlastNSeedregionFilter,
-    BlastNSeedregionLigationsiteFilter,
+    BlastNSeedregionSiteFilter,
 )
 
 ############################################
@@ -85,6 +85,7 @@ class HybridizationProbabilityFilter(SpecificityFilterReference):
     def apply(
         self,
         oligo_database: OligoDatabase,
+        sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> OligoDatabase:
         """
@@ -96,11 +97,15 @@ class HybridizationProbabilityFilter(SpecificityFilterReference):
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of parallel jobs to use for processing.
         :type n_jobs: int
         :return: The filtered OligoDatabase with off-targets removed.
         :rtype: OligoDatabase
         """
+        self.alignment_method.sequence_type = sequence_type
+
         # When applying the filter we don't want to consider hits within the same region
         consider_hits_from_input_region = False
 
@@ -222,7 +227,7 @@ class HybridizationProbabilityFilter(SpecificityFilterReference):
         if type(self.alignment_method) in [
             BlastNFilter,
             BlastNSeedregionFilter,
-            BlastNSeedregionLigationsiteFilter,
+            BlastNSeedregionSiteFilter,
         ]:
             self.alignment_method.names_search_output = [
                 "query",

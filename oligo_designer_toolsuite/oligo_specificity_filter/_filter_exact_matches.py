@@ -27,8 +27,6 @@ class ExactMatchFilter(SpecificityFilterBase):
     The `ExactMatchFilter` class is designed to apply a specific policy to oligonucleotides that have exact sequence matches in the OligoDatabase.
     This filter can be used to remove or handle exact matches based on the provided policy.
 
-    :param sequence_type: The type of sequence to be used for the filter calculations.
-    :type sequence_type: _TYPES_SEQ["oligo", "target"]
     :param policy: The policy to apply to exact matches. If not provided, a default policy (`RemoveAllPolicy`) will be used.
     :type policy: FilterPolicyBase
     :param filter_name: Name of the filter for identification purposes.
@@ -37,25 +35,21 @@ class ExactMatchFilter(SpecificityFilterBase):
 
     def __init__(
         self,
-        sequence_type: _TYPES_SEQ,
         policy: FilterPolicyBase = None,
         filter_name: str = "exact_match_filter",
     ) -> None:
         """Constructor for the ExactMatches class."""
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
-        self.sequence_type = sequence_type
 
         if not policy:
             policy = RemoveAllPolicy()
         self.policy = policy
         self.filter_name = filter_name
+        self.sequence_type = None
 
     def apply(
         self,
         oligo_database: OligoDatabase,
+        sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> OligoDatabase:
         """
@@ -67,11 +61,15 @@ class ExactMatchFilter(SpecificityFilterBase):
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :param n_jobs: The number of parallel jobs to use for processing.
         :type n_jobs: int
         :return: The filtered OligoDatabase with exact matching sequences removed.
         :rtype: OligoDatabase
         """
+        self.sequence_type = sequence_type
+
         # extract all the sequences
         sequences = oligo_database.get_sequence_list(sequence_type=self.sequence_type)
         search_results = self._get_duplicated_sequences(sequences)
@@ -110,6 +108,7 @@ class ExactMatchFilter(SpecificityFilterBase):
     def get_oligo_pair_hits(
         self,
         oligo_database: OligoDatabase,
+        sequence_type: _TYPES_SEQ,
         n_jobs: int = 1,
     ) -> list:
         """
@@ -120,11 +119,15 @@ class ExactMatchFilter(SpecificityFilterBase):
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
+        :param sequence_type: The type of sequence to be used for the filter calculations.
+        :type sequence_type: _TYPES_SEQ["oligo", "target"]r[]
         :param n_jobs: The number of parallel jobs to use for processing.
         :type n_jobs: int
         :return: A list of tuples representing oligo pairs that have exact matches.
         :rtype: list
         """
+        self.sequence_type = sequence_type
+
         sequence_type_reverse_complement = f"{self.sequence_type}_rc"
         oligo_database = OligoAttributes().calculate_reverse_complement_sequence(
             oligo_database=oligo_database,

@@ -46,8 +46,6 @@ class BowtieFilter(SpecificityFilterAlignment):
     The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available
     refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
-    :param sequence_type: The type of sequence to be used for the filter calculations.
-    :type sequence_type: _TYPES_SEQ["oligo", "target"]
     :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
     :type remove_hits: bool
     :param search_parameters: Parameters to configure the Bowtie search.
@@ -62,7 +60,6 @@ class BowtieFilter(SpecificityFilterAlignment):
 
     def __init__(
         self,
-        sequence_type: _TYPES_SEQ,
         remove_hits: bool = True,
         search_parameters: dict = {},
         names_search_output: list = [
@@ -79,7 +76,7 @@ class BowtieFilter(SpecificityFilterAlignment):
         dir_output: str = "output",
     ) -> None:
         """Constructor for the BowtieFilter class."""
-        super().__init__(sequence_type, remove_hits, filter_name, dir_output)
+        super().__init__(remove_hits, filter_name, dir_output)
 
         self.search_parameters = search_parameters
         self.names_search_output = names_search_output
@@ -316,8 +313,6 @@ class Bowtie2Filter(SpecificityFilterAlignment):
     The hits returned by Bowtie2 can be further filtered using machine learning models. For more information regarding which filters are available
     refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
-    :param sequence_type: The type of sequence to be used for the filter calculations.
-    :type sequence_type: _TYPES_SEQ["oligo", "target"]
     :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
     :type remove_hits: bool
     :param search_parameters: Parameters to configure the Bowtie2 search.
@@ -332,7 +327,6 @@ class Bowtie2Filter(SpecificityFilterAlignment):
 
     def __init__(
         self,
-        sequence_type: _TYPES_SEQ,
         remove_hits: bool = True,
         search_parameters: dict = {},
         names_search_output: list = [
@@ -352,7 +346,7 @@ class Bowtie2Filter(SpecificityFilterAlignment):
         dir_output: str = "output",
     ) -> None:
         """Constructor for the Bowtie2Filter class."""
-        super().__init__(sequence_type, remove_hits, filter_name, dir_output)
+        super().__init__(remove_hits, filter_name, dir_output)
 
         self.search_parameters = search_parameters
         self.names_search_output = names_search_output
