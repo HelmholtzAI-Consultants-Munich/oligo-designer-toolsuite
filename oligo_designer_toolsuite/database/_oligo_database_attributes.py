@@ -410,16 +410,16 @@ class OligoAttributes:
         return oligo_database
 
     @staticmethod
-    def _calc_seedregion_ligationsite(
-        sequence: str, ligation_site: int, seedregion_size: int
+    def _calculate_seedregion_site(
+        sequence: str, seedregion_site: int, seedregion_size: int
     ) -> Tuple[int, int]:
-        """Calculate the start and end positions of the seed region around a ligation site for a nucleotide sequence.
-        The seed region is defined symmetrically around the ligation site, considering the provided `seedregion_size`.
+        """Calculate the start and end positions of the seed region around a seed region site for a nucleotide sequence.
+        The seed region is defined symmetrically around the seed region site, considering the provided `seedregion_size`.
 
         :param sequence: The nucleotide sequence.
         :type sequence: str
-        :param ligation_site: The position of the ligation site within the sequence.
-        :type ligation_site: int
+        :param seedregion_site: The position of the seed region site within the sequence.
+        :type seedregion_site: int
         :param seedregion_size: The size of the seed region to be calculated.
         :type seedregion_size: int
         :return: A tuple containing the start and end positions of the seed region.
@@ -427,30 +427,33 @@ class OligoAttributes:
         """
         length = len(sequence)
 
-        seedregion_start = int(max(0, ligation_site - (seedregion_size - 1)))
+        seedregion_start = int(max(0, seedregion_site - (seedregion_size - 1)))
         seedregion_end = int(
             min(
                 length,
-                ligation_site + seedregion_size,
+                seedregion_site + seedregion_size,
             )
         )
         return seedregion_start, seedregion_end
 
-    def calculate_seedregion_ligationsite(
+    def calculate_seedregion_site(
         self,
         oligo_database: OligoDatabase,
         seedregion_size: int,
+        seedregion_site_name: str,
         sequence_type: _TYPES_SEQ = "oligo",
         region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
-        """Calculate and update the seed region around the ligation site for each oligonucleotide for the
-        specified regions of the OligoDatabase. If the required information for `_calc_seedregion_ligationsite`
+        """Calculate and update the seed region around the seeed region site for each oligonucleotide for the
+        specified regions of the OligoDatabase. If the required information for `_calc_seedregion_seedregion_site`
         is not available, the 'seedregion_start' and 'seedregion_end' attributes are set to None.
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
-        :param seedregion_size: The size of the seed region to be calculated around the ligation site.
+        :param seedregion_size: The size of the seed region to be calculated around the seed region site.
         :type seedregion_size: int
+        :param seedregion_site_name: The attribute name of the seed region site stored in the OligoDatabase.
+        :type seedregion_site_name: str
         :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
         :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
@@ -466,13 +469,13 @@ class OligoAttributes:
                 sequence = oligo_database.get_oligo_attribute_value(
                     attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-                ligation_site = oligo_database.get_oligo_attribute_value(
-                    attribute="ligation_site", region_id=region_id, oligo_id=oligo_id, flatten=True
+                seedregion_site = oligo_database.get_oligo_attribute_value(
+                    attribute=seedregion_site_name, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
-                if ligation_site:
+                if seedregion_site:
                     # oligo and target have always same length
-                    seedregion_start, seedregion_end = self._calc_seedregion_ligationsite(
-                        sequence=sequence, ligation_site=ligation_site, seedregion_size=seedregion_size
+                    seedregion_start, seedregion_end = self._calculate_seedregion_site(
+                        sequence=sequence, seedregion_site=seedregion_site, seedregion_size=seedregion_size
                     )
                 else:
                     seedregion_start = seedregion_end = None
