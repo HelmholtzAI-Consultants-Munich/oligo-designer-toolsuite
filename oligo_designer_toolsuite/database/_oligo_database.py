@@ -894,8 +894,8 @@ class OligoDatabase:
         """
 
         def _flatten_if_one(x):
-        """
-        Flatten lists with only one element, i.e. if x is a list of length 1, return that single element.
+            """
+            Flatten lists with only one element, i.e. if x is a list of length 1, return that single element.
             If x is an empty list, return None.
             """
             if isinstance(x, list):
@@ -904,6 +904,7 @@ class OligoDatabase:
                 elif len(x) == 0:
                     return None
             return x
+
         # Check formatting
         region_ids = check_if_list(region_ids) if region_ids else self.database.keys()
         attributes = [attributes] if isinstance(attributes, str) else attributes
