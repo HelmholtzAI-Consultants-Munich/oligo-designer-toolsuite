@@ -40,12 +40,17 @@ class OligoAttributes:
         return len(sequence)
 
     def calculate_oligo_length(
-        self, oligo_database: OligoDatabase, region_ids: Union[str, List[str]] = None
+        self,
+        oligo_database: OligoDatabase,
+        sequence_type: _TYPES_SEQ = "oligo",
+        region_ids: Union[str, List[str]] = None,
     ) -> OligoDatabase:
         """Calculate and update the length of oligonucleotides for the specified regions of the OligoDatabase.
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
         :type oligo_database: OligoDatabase
+        :param sequence_type: The type of sequence to be used for attribute calculation, defaults to "oligo".
+        :type sequence_type: _TYPES_SEQ["oligo", "target"], optional
         :param region_ids: List of region IDs to process. If None, all regions in the database are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :return: The updated OligoDatabase with the calculated attribute.
@@ -59,11 +64,11 @@ class OligoAttributes:
             for oligo_id in oligo_database.database[region_id].keys():
                 # oligo and target have always same length
                 sequence = oligo_database.get_oligo_attribute_value(
-                    attribute="oligo", region_id=region_id, oligo_id=oligo_id, flatten=True
+                    attribute=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
                 )
                 length = self._calc_oligo_length(sequence=sequence)
                 new_oligo_attribute[oligo_id] = {
-                    "length": length,
+                    f"length_{sequence_type}": length,
                 }
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
@@ -526,7 +531,7 @@ class OligoAttributes:
                 )
                 GC_content = self._calc_GC_content(sequence=sequence)
                 new_oligo_attribute[oligo_id] = {
-                    "GC_content": GC_content,
+                    f"GC_content_{sequence_type}": GC_content,
                 }
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
@@ -613,7 +618,7 @@ class OligoAttributes:
                     Tm_chem_correction_parameters=Tm_chem_correction_parameters,
                 )
                 new_oligo_attribute[oligo_id] = {
-                    "TmNN": TmNN,
+                    f"TmNN_{sequence_type}": TmNN,
                 }
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
@@ -710,7 +715,7 @@ class OligoAttributes:
                 sequence_rev = sequence[::-1]
                 len_overlap = self._calc_length_complement(sequence1=sequence, sequence2=sequence_rev)
                 new_oligo_attribute[oligo_id] = {
-                    "length_selfcomplement": len_overlap,
+                    f"length_selfcomplement_{sequence_type}": len_overlap,
                 }
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
@@ -746,7 +751,7 @@ class OligoAttributes:
                 )
                 len_overlap = self._calc_length_complement(sequence1=sequence, sequence2=comparison_sequence)
                 new_oligo_attribute[oligo_id] = {
-                    f"length_complement_{comparison_sequence}": len_overlap,
+                    f"length_complement_{sequence_type}_{comparison_sequence}": len_overlap,
                 }
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
@@ -795,7 +800,7 @@ class OligoAttributes:
                 )
                 DG_secondary_structure = self._calc_DG_secondary_structure(sequence=sequence, T=T)
                 new_oligo_attribute[oligo_id] = {
-                    "DG_secondary_structure": DG_secondary_structure,
+                    f"DG_secondary_structure_{sequence_type}": DG_secondary_structure,
                 }
         oligo_database.update_oligo_attributes(new_oligo_attribute)
 
