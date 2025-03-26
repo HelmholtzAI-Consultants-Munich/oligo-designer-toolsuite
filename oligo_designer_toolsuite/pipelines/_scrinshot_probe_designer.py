@@ -42,7 +42,7 @@ from oligo_designer_toolsuite.oligo_selection import (
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
-    BlastNSeedregionLigationsiteFilter,
+    BlastNSeedregionSiteFilter,
     CrossHybridizationFilter,
     ExactMatchFilter,
     RemoveAllPolicy,
@@ -1033,9 +1033,9 @@ class TargetProbeDesigner:
         )
 
         if ligation_region_size > 0:
-            specificity = BlastNSeedregionLigationsiteFilter(
+            specificity = BlastNSeedregionSiteFilter(
                 seedregion_size=ligation_region_size,
-                sequence_type="oligo",
+                seedregion_site_name="ligation_site",
                 search_parameters=specificity_blastn_search_parameters,
                 hit_parameters=specificity_blastn_hit_parameters,
                 filter_name="blastn_specificity",
