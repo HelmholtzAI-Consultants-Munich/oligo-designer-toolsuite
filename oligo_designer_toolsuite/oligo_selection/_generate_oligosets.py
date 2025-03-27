@@ -104,7 +104,7 @@ class OligosetGeneratorIndependentSet:
             Parallel(
                 n_jobs=n_jobs, prefer="threads", require="sharedmem"
             )(  # there should be an explicit return
-                delayed(self._get_oligo_set_for_gene)(
+                delayed(self._get_oligo_set_for_region)(
                     oligo_database, region_id, sequence_type, set_size_opt, set_size_min, n_sets
                 )
                 for region_id in region_ids
@@ -113,7 +113,7 @@ class OligosetGeneratorIndependentSet:
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="oligoset generation")
         return oligo_database
 
-    def _get_oligo_set_for_gene(
+    def _get_oligo_set_for_region(
         self,
         oligo_database: OligoDatabase,
         region_id: str,
@@ -123,7 +123,7 @@ class OligosetGeneratorIndependentSet:
         n_sets: int,
     ) -> None:
         """
-        Computes the oligo set for a specific gene region by scoring, filtering, and selecting oligos.
+        Computes the oligo set for a specific region by scoring, filtering, and selecting oligos.
         This includes generating a proximity matrix and applying a selection policy to create the optimal oligo set.
 
         :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
