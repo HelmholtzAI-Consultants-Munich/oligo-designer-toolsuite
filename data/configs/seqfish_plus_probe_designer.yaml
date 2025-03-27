@@ -31,7 +31,6 @@ target_probe_homopolymeric_base_n: # minimum number of nucleotides to consider i
   C: 5
   G: 5
 target_probe_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
 target_probe_UTR_weight: 10 # weight of the Tm of the probe in the efficiency score
 set_size_min: 24 # minimum size of probe sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
@@ -89,7 +88,6 @@ primer_max_len_complement_reverse_primer: 5
 primer_Tm_min: 60
 primer_Tm_max: 75
 primer_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 
 ############################
 ### DEVELOPER PARAMETERS ###
@@ -97,6 +95,8 @@ primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary st
 
 ### Target Probe Parameters
 ### -----------------------------------------------
+# Parameters for property filters
+target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 # Specificity filter with BlastN
 target_probe_specificity_blastn_search_parameters:
   perc_identity: 100
@@ -154,6 +154,25 @@ readout_probe_cross_hybridization_blastn_hit_parameters:
 ### Primer Parameters
 ### -----------------------------------------------
 primer_initial_num_sequences: 1000000 # if no primer can be generated, increase this number
+# Parameters for property filters
+# The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
+# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+primer_Tm_parameters:
+    nn_table: DNA_NN4 # SantaLucia (2004) taken from Moffitt (2016)
+    tmm_table: DNA_TMM1 #default
+    imm_table: DNA_IMM1 #default
+    de_table: DNA_DE1 #default
+    dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
+    dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
+    saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
+    Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
+    K: 0 #[mM] default
+    Tris: 0 #[mM] default
+    Mg: 0 #[mM] default
+    dNTPs: 0 #[mM] default
+primer_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
+primer_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
+primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 # Specificity filter with BlastN against reference
 primer_specificity_refrence_blastn_search_parameters:
   perc_identity: 100
@@ -176,21 +195,3 @@ primer_specificity_encoding_probes_blastn_search_parameters:
   max_hsps: 1000
 primer_specificity_encoding_probes_blastn_hit_parameters:
   min_alignment_length: 11 # can be turned into coverage
-# Parameters for Melting Temperature
-# The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
-# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-primer_Tm_parameters:
-    nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
-    tmm_table: DNA_TMM1 #default
-    imm_table: DNA_IMM1 #default
-    de_table: DNA_DE1 #default
-    dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
-    dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
-    saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
-    Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
-    K: 0 #[mM] default
-    Tris: 0 #[mM] default
-    Mg: 0 #[mM] default
-    dNTPs: 0 #[mM] default
-primer_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
-primer_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below

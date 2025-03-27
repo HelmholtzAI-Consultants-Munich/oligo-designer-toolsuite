@@ -35,7 +35,6 @@ target_probe_Tm_min: 50 # minimum melting temperature of oligos
 target_probe_Tm_opt: 60 # max and min values are defiend above
 target_probe_Tm_max: 70 # maximum melting temperature of oligos
 target_probe_secondary_structures_T: 37 # temperature to compute the secondary structure free energy
-target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 target_probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
   A: 6
   T: 6
@@ -58,6 +57,31 @@ n_sets: 100 # Maximum number of sets to report
 
 ### Target Probe Parameters
 ### -----------------------------------------------
+# Parameters for property filters
+# The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
+# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+target_probe_Tm_parameters:
+  nn_table: DNA_NN3
+  tmm_table: DNA_TMM1
+  imm_table: DNA_IMM1
+  de_table: DNA_DE1
+  dnac1: 50 #[nM]
+  dnac2: 0 #[nM]
+  saltcorr: 7
+  Na: 1000 #[mM] #1M from probeArray paper
+  K: 0 #[mM]
+  Tris: 0 #[mM]
+  Mg: 0 #[mM]
+  dNTPs: 0 #[mM]
+target_probe_Tm_chem_correction_parameters:
+  DMSO: 0
+  DMSOfactor: 0.75
+  fmd: 20
+  fmdfactor: 0.65
+  fmdmethod: 1
+  GC: null
+target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
+target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 # Specificity filter
 target_probe_hybridization_probability_alignment_method: blastn # options: blastn, bowtie
 # Specificity filter with BlastN
@@ -91,27 +115,3 @@ max_graph_size: 5000 # maximum number of oligos that are taken into consisderati
 n_attempts: 100000 # number of attempts to find the optimal set of oligos
 heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
 heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
-# Parameters for Melting Temperature
-# The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
-# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-target_probe_Tm_parameters:
-  nn_table: DNA_NN3
-  tmm_table: DNA_TMM1
-  imm_table: DNA_IMM1
-  de_table: DNA_DE1
-  dnac1: 50 #[nM]
-  dnac2: 0 #[nM]
-  saltcorr: 7
-  Na: 1000 #[mM] #1M from probeArray paper
-  K: 0 #[mM]
-  Tris: 0 #[mM]
-  Mg: 0 #[mM]
-  dNTPs: 0 #[mM]
-target_probe_Tm_chem_correction_parameters:
-  DMSO: 0
-  DMSOfactor: 0.75
-  fmd: 20
-  fmdfactor: 0.65
-  fmdmethod: 1
-  GC: null
-target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
