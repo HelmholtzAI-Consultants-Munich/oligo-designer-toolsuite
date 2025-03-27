@@ -7,8 +7,10 @@ import yaml
 import shutil
 import logging
 import warnings
+import itertools
 
 import pandas as pd
+import numpy as np
 
 from typing import List, Tuple
 from pathlib import Path
@@ -283,82 +285,35 @@ class CycleHCRProbeDesigner:
 
     def design_readout_probes(
         self,
-        channels_to_files: dict,
+        n_regions: int,
+        file_readout_probe_table: str,
+        file_codebook: str,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """
-        Generate readout probes from files containing readout probe sequences.
 
-        :param channels_to_files: Dictionary containing the channel IDs as keys and the file paths as values.
-        :type channels_to_files: dict
-        :return: Tuple containing the readout probe table and the codebook.
-        :rtype: Tuple[pd.DataFrame, pd.DataFrame]
-        """
-
-        def _create_readout_table(channels_to_files):
-            readout_probes_rows = []
-            for channel_id, filename in channels_to_files.items():
-                sequences_file_df = pd.read_csv(filename)
-
-                for _, row in sequences_file_df.iterrows():
-                    readout_probes_rows.append(
-                        {
-                            "channel": channel_id,
-                            "readout_probe_id": f"readout_probe::{row['Probe']}::{row['L/R']}",
-                            "readout_probe_sequence": row["Initiator Sequence"],
-                        }
-                    )
-
-            readout_probes_table = pd.DataFrame(readout_probes_rows)
-            readout_probes_table["bit"] = readout_probes_table.index
-            readout_probes_table["bit"] = readout_probes_table["bit"].apply(lambda x: f"bit_{x}")
-
-            readout_probes_table = readout_probes_table[
-                ["bit"] + [col for col in readout_probes_table.columns if col != "bit"]
-            ]
-            return readout_probes_table
-
-        def _create_codebook(readout_probes_table):
-            readout_probes_table = readout_probes_table.copy()
-            readout_probes_table["L/R"] = readout_probes_table["readout_probe_id"].apply(
-                lambda x: x.split("::")[-1]
+        readout_probe_designer = ReadoutProbeDesigner(
+            dir_output=self.dir_output,
+            n_jobs=self.n_jobs,
+        )
+        if file_readout_probe_table:
+            readout_probe_table, n_channels, n_readout_probes_LR = (
+                readout_probe_designer.load_readout_probe_table(
+                    file_readout_probe_table=file_readout_probe_table
+                )
             )
-            readout_probes_table["probe_num"] = readout_probes_table["readout_probe_id"].apply(
-                lambda x: x.split("::")[1]
+            logging.info(
+                f"Loaded readout probes table from file and retrieved {n_channels} channels and {n_readout_probes_LR} L and R readout probes."
             )
-            readout_probes_table["bit_num"] = readout_probes_table["bit"].apply(
-                lambda x: int(x.split("_")[-1])
+        else:
+            raise ValueError("Generation of readout probe table not implemented!")
+
+        if file_codebook:
+            raise ValueError("Loading of codeboook not implemented!")
+        else:
+            codebook = readout_probe_designer.generate_codebook(
+                n_regions=n_regions,
+                n_channels=n_channels,
+                n_readout_probes_LR=n_readout_probes_LR,
             )
-
-            readout_probes_table_L = readout_probes_table[readout_probes_table["L/R"] == "L"]
-            readout_probes_table_R = readout_probes_table[readout_probes_table["L/R"] == "R"]
-
-            combinations_df = readout_probes_table_L.merge(readout_probes_table_R, on="channel")
-            combinations_df = combinations_df[["bit_num_x", "bit_num_y", "probe_num_x", "probe_num_y"]]
-
-            combinations_df["probe_num_x-y"] = combinations_df["probe_num_x"].astype(int) - combinations_df[
-                "probe_num_y"
-            ].astype(int)
-            combinations_df["probe_num_x-y"] = combinations_df["probe_num_x-y"].abs()
-            combinations_df = combinations_df.sort_values(by="probe_num_x-y", ascending=True)
-
-            bit_num_x = combinations_df["bit_num_x"].tolist()
-            bit_num_y = combinations_df["bit_num_y"].tolist()
-
-            codebook_rows = []
-            for x, y in zip(bit_num_x, bit_num_y):
-                entry = [0] * len(readout_probes_table)
-                entry[x] = 1
-                entry[y] = 1
-                codebook_rows.append(entry)
-
-            codebook = pd.DataFrame(codebook_rows, columns=readout_probes_table["bit"].tolist())
-
-            return codebook
-
-        readout_probe_table = _create_readout_table(channels_to_files)
-        codebook = _create_codebook(readout_probe_table)
-
-        readout_probe_table.set_index("bit", inplace=True)
 
         return codebook, readout_probe_table
 
@@ -422,9 +377,26 @@ class CycleHCRProbeDesigner:
 
     def design_primers(
         self,
-        forward_primer_sequence: str = "TAATACGACTCACTATAGCGTCATC",
-        reverse_primer_sequence: str = "CGACACCGAACGTGCGACAA",
+        forward_primer_sequence: str,
+        reverse_primer_sequence: str,
     ):
+
+        primer_designer = PrimerDesigner(
+            dir_output=self.dir_output,
+            n_jobs=self.n_jobs,
+        )
+
+        if forward_primer_sequence:
+            forward_primer_sequence = forward_primer_sequence
+        else:
+            # generate forward primers
+            raise ValueError("Forward primer generation not implemented!")
+
+        if reverse_primer_sequence:
+            reverse_primer_sequence = reverse_primer_sequence
+        else:
+            # generate reverse primers
+            raise ValueError("Reverse primer generation not implemented!")
 
         return reverse_primer_sequence, forward_primer_sequence
 
@@ -534,7 +506,7 @@ class CycleHCRProbeDesigner:
             attributes=attributes,
             top_n_sets=top_n_sets,
             ascending=True,
-            filename="cyclehcr_probes.yml",
+            filename="cyclehcr_probes",
         )
 
         # write a second file that only contains order information
@@ -582,7 +554,7 @@ class CycleHCRProbeDesigner:
                         ),
                     }
 
-        with open(os.path.join(self.dir_output, "cyclehcr_probes_order"), "w") as outfile:
+        with open(os.path.join(self.dir_output, "cyclehcr_probes_order.yml"), "w") as outfile:
             yaml.dump(yaml_dict_order, outfile, default_flow_style=False, sort_keys=False)
 
         logging.info("--------------END PIPELINE--------------")
@@ -782,7 +754,6 @@ class TargetProbeDesigner:
                 filter_name="blastn_specificity",
                 dir_output=self.dir_output,
             )
-            specificity.set_reference_database(reference_database=reference_database)
         else:
             specificity = BlastNFilter(
                 search_parameters=specificity_blastn_search_parameters,
@@ -790,7 +761,7 @@ class TargetProbeDesigner:
                 filter_name="blastn_specificity",
                 dir_output=self.dir_output,
             )
-            specificity.set_reference_database(reference_database=reference_database)
+        specificity.set_reference_database(reference_database=reference_database)
 
         ##### run specificity filters #####
         specificity_filter = SpecificityFilter(filters=[exact_matches, specificity])
@@ -884,7 +855,7 @@ class TargetProbeDesigner:
         # We change the processing dependent on the required number of probes in the probe sets
         # For small sets, we don't pre-filter and find the initial set by iterating
         # through all possible generated sets, which is faster than the max clique approximation.
-        if set_size_min < 15:
+        if set_size_opt < 10:
             pre_filter = False
             clique_init_approximation = False
             selection_policy = GraphBasedSelectionPolicy(
@@ -905,7 +876,7 @@ class TargetProbeDesigner:
 
         # For medium sized sets, we don't pre-filter but we apply the max clique approximation
         # to find an initial probe set faster.
-        if set_size_min > 15:
+        elif 10 < set_size_opt < 30:
             pre_filter = False
             clique_init_approximation = True
             selection_policy = GraphBasedSelectionPolicy(
@@ -927,7 +898,7 @@ class TargetProbeDesigner:
         # For large sets, we apply the pre-filter which removes all probes from the
         # graph that are only part of cliques which are smaller than the minimum set size
         # and we apply the Greedy Selection Policy istead of the graph-based selection policy.
-        if set_size_min > 30:
+        else:
             pre_filter = True
             selection_policy = GreedySelectionPolicy(
                 set_scoring=set_scoring,
@@ -982,67 +953,72 @@ class ReadoutProbeDesigner:
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
-        self.subdir_db_oligos = "db_readout_probes"
-        self.subdir_db_reference = "db_reference"
 
         self.n_jobs = n_jobs
-        self.oligo_attributes_calculator = OligoAttributes()
 
-    @pipeline_step_basic(step_name="Readout Probe Generation - Create Oligo Database")
-    def create_oligo_database(
-        self,
-    ) -> OligoDatabase:
+    def generate_codebook(self, n_regions: int, n_channels: int, n_readout_probes_LR: int) -> pd.DataFrame:
 
-        oligo_database = OligoDatabase(
-            min_oligos_per_region=0,
-            write_regions_with_insufficient_oligos=False,
-            lru_db_max_in_memory=self.n_jobs * 2 + 2,
-            database_name=self.subdir_db_oligos,
-            dir_output=self.dir_output,
-            n_jobs=1,
-        )
-        return oligo_database
-
-    @pipeline_step_basic(step_name="Readout Probe Generation - Property Filters")
-    def filter_by_property(
-        self,
-        oligo_database: OligoDatabase,
-    ) -> OligoDatabase:
-
-        return oligo_database
-
-    @pipeline_step_basic(step_name="Readout Probe Generation - Specificity Filters")
-    def filter_by_specificity(
-        self,
-        oligo_database: OligoDatabase,
-    ) -> OligoDatabase:
-
-        return oligo_database
-
-    @pipeline_step_basic(step_name="Readout Probe Generation - Set Selection")
-    def create_oligo_sets(
-        self,
-        oligo_database: OligoDatabase,
-    ) -> OligoDatabase:
-
-        return oligo_database
-
-    def generate_codebook(
-        self,
-    ) -> pd.DataFrame:
+        def _generate_barcode(combination: set, codebook_size: int) -> list:
+            index1 = ((n_channels * 2) * combination[0]) + (2 * combination[2])
+            index2 = ((n_channels * 2) * combination[1]) + (2 * combination[2]) + 1
+            barcode = np.zeros(codebook_size, dtype=np.int8)
+            barcode[[index1, index2]] = 1
+            return barcode
 
         codebook = []
+        codebook_size = n_channels * n_readout_probes_LR * 2
+
+        combinations = list(
+            itertools.product(
+                list(range(n_readout_probes_LR)), list(range(n_readout_probes_LR)), list(range(n_channels))
+            )
+        )
+        combinations = sorted(combinations, key=lambda t: (0 if t[0] == t[1] else 1, t[1]))
+        codebook_size_max = len(combinations)
+
+        if codebook_size_max < (2 * n_regions):
+            raise ValueError(
+                f"The number of valid barcodes ({codebook_size_max}) is lower than the required number of readout probes ({2 * n_regions}) for {n_regions} regions. Consider increasing the number of L/R readout probes."
+            )
+
+        for combination in combinations[:n_regions]:
+            barcode = _generate_barcode(
+                combination=combination,
+                codebook_size=codebook_size,
+            )
+            codebook.append(barcode)
+
+        codebook = pd.DataFrame(codebook, columns=[f"bit_{i+1}" for i in range(codebook_size)])
+        codebook
 
         return codebook
 
-    def create_readout_probe_table(
-        self,
-        readout_probe_database: OligoDatabase,
-    ) -> pd.DataFrame:
+    def load_readout_probe_table(self, file_readout_probe_table: str):
 
-        readout_probe_table = []
+        required_cols = ["channel", "readout_probe_id", "readout_probe_sequence", "L/R"]
 
-        return readout_probe_table
+        readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
+
+        # Check if all required columns exist in readout_probe_table
+        cols = set(readout_probe_table.columns)
+        if not set(required_cols).issubset(cols):
+            missing = set(required_cols) - cols
+            raise ValueError(f"Missing columns: {missing}")
+
+        if "bit" not in readout_probe_table.columns:
+            readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel"])
+            readout_probe_table.reset_index(inplace=True, drop=True)
+            readout_probe_table["bit"] = "bit_" + (readout_probe_table.index + 1).astype(str)
+
+        readout_probe_table.set_index("bit", inplace=True)
+        readout_probe_table = readout_probe_table[required_cols]
+
+        n_channels = len(readout_probe_table["channel"].unique())
+        n_readout_probes_R = readout_probe_table["L/R"].value_counts()["R"]
+        n_readout_probes_L = readout_probe_table["L/R"].value_counts()["L"]
+        n_readout_probes_LR = int(min([n_readout_probes_R, n_readout_probes_L]) / n_channels)
+
+        return readout_probe_table, n_channels, n_readout_probes_LR
 
 
 ############################################
@@ -1061,43 +1037,7 @@ class PrimerDesigner:
 
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
-        self.subdir_db_oligos = "db_primer"
-        self.subdir_db_reference = "db_reference"
-
         self.n_jobs = n_jobs
-
-    @pipeline_step_basic(step_name="Primer Generation - Create Oligo Database")
-    def create_oligo_database(
-        self,
-    ) -> OligoDatabase:
-
-        ##### creating the primer database #####
-        oligo_database = OligoDatabase(
-            min_oligos_per_region=0,
-            write_regions_with_insufficient_oligos=False,
-            lru_db_max_in_memory=self.n_jobs * 2 + 2,
-            database_name=self.subdir_db_oligos,
-            dir_output=self.dir_output,
-            n_jobs=1,
-        )
-
-        return oligo_database
-
-    @pipeline_step_basic(step_name="Primer Generation - Property Filters")
-    def filter_by_property(
-        self,
-        oligo_database: OligoDatabase,
-    ) -> OligoDatabase:
-
-        return oligo_database
-
-    @pipeline_step_basic(step_name="Primer Generation - Specificity Filters")
-    def filter_by_specificity(
-        self,
-        oligo_database: OligoDatabase,
-    ) -> OligoDatabase:
-
-        return oligo_database
 
 
 ############################################
@@ -1193,7 +1133,9 @@ def main():
     )
 
     codebook, readout_probe_table = pipeline.design_readout_probes(
-        channels_to_files=config["readout_probe_sequences"]
+        n_regions=len(target_probe_database.database),
+        file_readout_probe_table=config["file_readout_probe_table"],
+        file_codebook=config["file_codebook"],
     )
 
     encoding_probe_database = pipeline.design_encoding_probe(
