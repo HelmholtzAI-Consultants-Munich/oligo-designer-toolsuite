@@ -308,7 +308,7 @@ class FastaParser:
         :return: True if the string matches the coordinate pattern, otherwise False.
         :rtype: bool
         """
-        pattern = r"(\d+):(\d+)-(\d+)\(.*\)"
+        pattern = r"(\S+):(\d+)-(\d+)\(.*\)"
         return bool(re.match(pattern, entry))
 
     def get_fasta_regions(self, file_fasta_in: str) -> list:
