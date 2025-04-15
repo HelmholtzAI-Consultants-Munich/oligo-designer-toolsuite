@@ -283,7 +283,7 @@ class ScrinshotProbeDesigner:
     def design_target_probes(
         self,
         files_fasta_target_probe_database: list,
-        files_fasta_reference_database_targe_probe: list,
+        files_fasta_reference_database_target_probe: list,
         gene_ids: list = None,
         target_probe_length_min: int = 40,
         target_probe_length_max: int = 45,
@@ -317,8 +317,8 @@ class ScrinshotProbeDesigner:
 
         :param files_fasta_target_probe_database: List of FASTA files containing sequences for the target probe database.
         :type files_fasta_target_probe_database: list
-        :param files_fasta_reference_database_targe_probe: List of FASTA files for the reference database used in specificity filtering.
-        :type files_fasta_reference_database_targe_probe: list
+        :param files_fasta_reference_database_target_probe: List of FASTA files for the reference database used in specificity filtering.
+        :type files_fasta_reference_database_target_probe: list
         :param gene_ids: List of gene IDs to target, or None to target all genes.
         :type gene_ids: list, optional
         :param target_probe_length_min: Minimum length for target probes, defaults to 40.
@@ -416,7 +416,7 @@ class ScrinshotProbeDesigner:
 
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_targe_probe,
+            files_fasta_reference_database=files_fasta_reference_database_target_probe,
             specificity_blastn_search_parameters=self.target_probe_specificity_blastn_search_parameters,
             specificity_blastn_hit_parameters=self.target_probe_specificity_blastn_hit_parameters,
             cross_hybridization_blastn_search_parameters=self.target_probe_cross_hybridization_blastn_search_parameters,
@@ -1647,7 +1647,7 @@ def main():
     oligo_database = pipeline.design_target_probes(
         gene_ids=gene_ids,
         files_fasta_target_probe_database=config["files_fasta_target_probe_database"],
-        files_fasta_reference_database_targe_probe=config["files_fasta_reference_database_targe_probe"],
+        files_fasta_reference_database_target_probe=config["files_fasta_reference_database_target_probe"],
         target_probe_length_min=config["target_probe_length_min"],
         target_probe_length_max=config["target_probe_length_max"],
         target_probe_isoform_consensus=config["target_probe_isoform_consensus"],

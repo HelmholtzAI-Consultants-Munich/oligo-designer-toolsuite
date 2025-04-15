@@ -432,7 +432,7 @@ class MerfishProbeDesigner:
     def design_target_probes(
         self,
         files_fasta_target_probe_database: list[str],
-        files_fasta_reference_database_targe_probe: List[str],
+        files_fasta_reference_database_target_probe: List[str],
         gene_ids: list = None,
         target_probe_length_min: int = 30,
         target_probe_length_max: int = 30,
@@ -460,8 +460,8 @@ class MerfishProbeDesigner:
 
         :param files_fasta_target_probe_database: List of input FASTA files for the target probe database.
         :type files_fasta_target_probe_database: list[str]
-        :param files_fasta_reference_database_targe_probe: List of input FASTA files for the reference database.
-        :type files_fasta_reference_database_targe_probe: List[str]
+        :param files_fasta_reference_database_target_probe: List of input FASTA files for the reference database.
+        :type files_fasta_reference_database_target_probe: List[str]
         :param gene_ids: List of gene IDs to target, or None to target all genes.
         :type gene_ids: list, optional
         :param target_probe_length_min: Minimum length for target probes. Default is 30.
@@ -543,7 +543,7 @@ class MerfishProbeDesigner:
 
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_targe_probe,
+            files_fasta_reference_database=files_fasta_reference_database_target_probe,
             specificity_blastn_search_parameters=self.target_probe_specificity_blastn_search_parameters,
             specificity_blastn_hit_parameters=self.target_probe_specificity_blastn_hit_parameters,
             cross_hybridization_blastn_search_parameters=self.target_probe_cross_hybridization_blastn_search_parameters,
@@ -2222,7 +2222,7 @@ def main():
     ##### design probes #####
     target_probe_database = pipeline.design_target_probes(
         files_fasta_target_probe_database=config["files_fasta_target_probe_database"],
-        files_fasta_reference_database_targe_probe=config["files_fasta_reference_database_targe_probe"],
+        files_fasta_reference_database_target_probe=config["files_fasta_reference_database_target_probe"],
         gene_ids=gene_ids,
         target_probe_length_min=config["target_probe_length_min"],
         target_probe_length_max=config["target_probe_length_max"],
