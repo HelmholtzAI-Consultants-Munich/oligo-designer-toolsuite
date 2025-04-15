@@ -9,14 +9,13 @@ dir_output: output_seqfishplus_probe_designer # name of the directory where the 
 write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
 top_n_sets: 3 #maximum number of sets to report in padlock_probes.yaml and "padlock_probes_order.yaml"
 
-
 ### Target Probe Parameters
 ### -----------------------------------------------
 file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the probe sequences, leave empty if all the genes are used
 files_fasta_target_probe_database: # fasta file with sequences form which the probes should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/cds_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/utr_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-files_fasta_reference_database_targe_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+files_fasta_reference_database_target_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
   - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
   - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 target_probe_length_min: 28 #min length of probe
@@ -39,7 +38,6 @@ set_size_opt: 24 # optimal size of probe sets
 distance_between_target_probes: 2 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
 n_sets: 100 # maximum number of sets to generate
 
-
 ### Readout Probe Parameters
 ### -----------------------------------------------
 files_fasta_reference_database_readout_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
@@ -59,9 +57,8 @@ n_barcode_rounds: 4 # number of barcoding rounds
 n_pseudocolors: 20 # number of pseudocolors
 channels_ids: # names of fluorescent channels
   - Alexa488
-  - Cy3b 
+  - Cy3b
   - Alexa647
-
 
 ### Primer Parameters
 ### -----------------------------------------------
@@ -89,7 +86,7 @@ primer_max_len_complement_reverse_primer: 5
 primer_Tm_min: 60
 primer_Tm_max: 75
 primer_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature 
+primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 
 ############################
 ### DEVELOPER PARAMETERS ###
@@ -124,7 +121,6 @@ n_attempts: 100000 # number of attempts to find the optimal set of oligos
 heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
 heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
 
-
 ### Readout Probe Parameters
 ### -----------------------------------------------
 readout_probe_initial_num_sequences: 100000 # if not enough readout probes can be generated, increase this number
@@ -149,7 +145,6 @@ readout_probe_cross_hybridization_blastn_search_parameters:
   max_target_seqs: 10
 readout_probe_cross_hybridization_blastn_hit_parameters:
   min_alignment_length: 10 # can be turned into coverage
-
 
 ### Primer Parameters
 ### -----------------------------------------------
@@ -180,17 +175,17 @@ primer_specificity_encoding_probes_blastn_hit_parameters:
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 primer_Tm_parameters:
-    nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
-    tmm_table: DNA_TMM1 #default
-    imm_table: DNA_IMM1 #default
-    de_table: DNA_DE1 #default
-    dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
-    dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
-    saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
-    Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
-    K: 0 #[mM] default
-    Tris: 0 #[mM] default
-    Mg: 0 #[mM] default
-    dNTPs: 0 #[mM] default
+  nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
+  tmm_table: DNA_TMM1 #default
+  imm_table: DNA_IMM1 #default
+  de_table: DNA_DE1 #default
+  dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
+  dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
+  saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
+  Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
+  K: 0 #[mM] default
+  Tris: 0 #[mM] default
+  Mg: 0 #[mM] default
+  dNTPs: 0 #[mM] default
 primer_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
 primer_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
