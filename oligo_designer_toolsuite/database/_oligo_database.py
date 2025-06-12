@@ -851,7 +851,7 @@ class OligoDatabase:
             raise ValueError(f"Region {region_id} does not exist.")
 
         if not oligo_id in self.database[region_id]:
-            raise ValueError(f"Region {oligo_id} does not exist.")
+            raise ValueError(f"Oligo {oligo_id} does not exist.")
 
         oligo_attributes = self.database[region_id][oligo_id]
         if attribute not in oligo_attributes:
