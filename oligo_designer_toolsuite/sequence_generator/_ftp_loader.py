@@ -196,8 +196,9 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             file_readme = self._download(self.ftp_link, "pub/", "current_README")
             with open(file_readme, "r") as handle:
                 for line in handle:
-                    if line.startswith("The current release is"):
-                        self.annotation_release = line.strip().split("Ensembl ")[1]
+                    # assumes that a line in the format 'Ensembl Release 114 Databases.' is present
+                    if line.startswith("Ensembl Release"):
+                        self.annotation_release = line.strip().split(" ")[2]
             os.remove(file_readme)
 
         if file_type.casefold() == "fasta".casefold():
