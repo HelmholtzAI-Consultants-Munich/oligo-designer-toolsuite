@@ -97,7 +97,7 @@ class GffParser:
         )
 
         info_df = self._info_to_df(extra_info_file, chunk_size=chunk_size)
-        csv_df = pd.read_csv(csv_file, sep="\t", names=self.GFF_HEADER, header=None)
+        csv_df = pd.read_csv(csv_file, sep="\t", names=self.GFF_HEADER, header=None, dtype={"seqid": "string"})
 
         csv_df.reset_index(inplace=True, drop=True)
         info_df.reset_index(inplace=True, drop=True)
