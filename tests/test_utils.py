@@ -12,10 +12,10 @@ from effidict import LRUPickleDict
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import FastaParser, GffParser, VCFParser
 from oligo_designer_toolsuite.utils import (
     FastaParser,
     GffParser,
+    VCFParser,
     check_if_dna_sequence,
     check_if_key_exists,
     check_if_list,
@@ -35,6 +35,7 @@ from oligo_designer_toolsuite.utils import (
 
 FILE_GFF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gff"
 FILE_GTF = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
+FILE_GTF_COMPLEX = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16_KI270728-1.gtf"
 FILE_FASTA = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 FILE_VCF = "tests/data/annotations/custom_GCF_000001405.40.chr16.vcf"
 FILE_TSV = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf.tsv"
@@ -288,6 +289,15 @@ class TestGffParser(unittest.TestCase):
         result = self.parser.parse_annotation_from_gff(FILE_GTF, target_lines=10)
         assert result.shape[1] == 20, "error: GTF dataframe not correctly loaded"
 
+    def test_parse_annotation_from_gtf_no_duplicates(self):
+        """Test when parsing GTF annotation chromosomes are not read in as both integers and strings."""
+        result = self.parser.parse_annotation_from_gff(FILE_GTF_COMPLEX)
+        self.assertListEqual(
+            result["seqid"].unique().tolist(),
+            ["16", "KI270728.1"],
+            "error: GTF parsing does not generate unique chromosome values",
+        )
+
     def test_load_annotation_from_pickle_file(self):
         """Test loading annotation from a pickle file."""
         result = self.parser.load_annotation_from_pickle(FILE_PICKLE)
@@ -321,7 +331,7 @@ class TestFastaParser(unittest.TestCase):
             assert (
                 out == False
             ), f"error: checker: check_fasta_format did not raise an exception with file {FILE_GFF}"
-        except Exception as e:
+        except Exception:
             pass  # should go into this case
 
     def test_is_coordinate(self):
@@ -429,7 +439,7 @@ class TestVCFParser(unittest.TestCase):
             assert (
                 out == False
             ), f"error: checker: check_fasta_format did not raise an exception with file {FILE_GFF}"
-        except Exception as e:
+        except Exception:
             pass  # should go into this case
 
     def test_read_vcf_variants(self):
