@@ -12,8 +12,11 @@ from joblib import Parallel, delayed
 
 from oligo_designer_toolsuite.utils import FastaParser
 
+from .._constants import (
+    SEPARATOR_FASTA_HEADER_FIELDS,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST,
+)
 from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename
-from .._constants import SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_FASTA_HEADER_FIELDS_LIST
 
 ############################################
 # Oligo Database Class
@@ -118,6 +121,7 @@ class OligoSequenceGenerator:
         files_fasta_in: list[str],
         length_interval_sequences: tuple,
         split_region: int = 1,
+        stride: int = 1,
         region_ids: Union[str, List[str]] = None,
         n_jobs: int = 1,
     ) -> list:
@@ -133,6 +137,8 @@ class OligoSequenceGenerator:
         :type length_interval_sequences: tuple
         :param split_region: The number of bases required on each side of a split sequence (e.g. exon junctions) to include it. Default is 1.
         :type split_region: int
+        :param stride: The step size for the sliding window. Default is 1, meaning that the window moves to every base.
+        :type stride: int
         :param region_ids: List of region IDs to process. If None, all regions in the OligoDatabase are processed, defaults to None.
         :type region_ids: Union[str, List[str]], optional
         :param n_jobs: Number of parallel jobs to run. Default is 1.
@@ -142,7 +148,7 @@ class OligoSequenceGenerator:
         """
 
         def get_sliding_window_sequence(
-            entry: SeqRecord, length_interval_sequences: tuple, split_region: int
+            entry: SeqRecord, length_interval_sequences: tuple, split_region: int, stride: int
         ) -> str:
             """
             Generates sequences using a sliding window approach from a given DNA sequence.
@@ -157,6 +163,8 @@ class OligoSequenceGenerator:
             :type length_interval_sequences: tuple
             :param split_region: The number of bases required on each side of a split sequence to include it.
             :type split_region: int
+            :param stride: The step size for the sliding window.
+            :type stride: int
             :return: The file path to the generated FASTA file containing the sliding window sequences.
             :rtype: str
             """
@@ -202,14 +210,18 @@ class OligoSequenceGenerator:
                     # generate sequences with sliding window and write to fasta file (use lock to ensure that hat only one process can write to the file at any given time)
                     if len(entry_sequence) < sequence_length:
                         continue
-                    num_sequences = len(entry_sequence) - (sequence_length - 1)
-                    sequences = [entry_sequence[i : i + sequence_length] for i in range(num_sequences)]
+                    # calculate start positions for the sliding window
+                    range_start_positions = range(0, len(entry_sequence) - sequence_length + 1, stride)
+                    sequences = [
+                        entry_sequence[curr_start_position : curr_start_position + sequence_length]
+                        for curr_start_position in range_start_positions
+                    ]
 
-                    for i in range(num_sequences):
+                    for i, curr_start_position in enumerate(range_start_positions):
                         seq = sequences[i]
                         seq_start_end = [
-                            list_of_coordinates[i],
-                            list_of_coordinates[(i + sequence_length - 1)],
+                            list_of_coordinates[curr_start_position],
+                            list_of_coordinates[(curr_start_position + sequence_length - 1)],
                         ]
                         # sort coordinates for oligos on minus strand
                         start_seq = min(seq_start_end)  # 1-base index
@@ -269,7 +281,7 @@ class OligoSequenceGenerator:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
             files_fasta_oligos = Parallel(n_jobs=n_jobs)(
-                delayed(get_sliding_window_sequence)(entry, length_interval_sequences, split_region)
+                delayed(get_sliding_window_sequence)(entry, length_interval_sequences, split_region, stride)
                 for entry in fasta_sequences
             )
             for region_id in region_ids:
