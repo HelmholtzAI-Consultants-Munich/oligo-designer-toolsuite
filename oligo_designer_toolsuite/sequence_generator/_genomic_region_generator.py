@@ -2,10 +2,10 @@
 # imports
 ############################################
 
-import os
 import copy
-import warnings
+import os
 import random
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -21,14 +21,13 @@ from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
-from oligo_designer_toolsuite.utils import GffParser
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
+from oligo_designer_toolsuite.utils import GffParser
 
 from ..utils._sequence_processor import (
     get_complement_regions,
     get_sequence_from_annotation,
 )
-
 
 ############################################
 # Genomic Region Generator Classes
@@ -134,7 +133,7 @@ class CustomGenomicRegionGenerator:
             "block_sizes",
             "blockStarts",
         ]
-        self.FILE_INFO = f"source-{self.files_source}_species-{self.species}_annotation_release-{self.annotation_release}_genome_assemly-{self.genome_assembly}"
+        self.FILE_INFO = f"source__{self.files_source}__species__{self.species}__annotation_release__{self.annotation_release}__genome_assemly__{self.genome_assembly}"
 
     def get_sequence_gene(self) -> str:
         """
@@ -180,7 +179,7 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"gene_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__gene.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -369,7 +368,7 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"intergenic_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__intergenic.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         os.remove(file_chromosome_length)
@@ -442,7 +441,10 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"exon_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output,
+            f"{collapse_duplicated_regions}__{self.FILE_INFO}__annotation_type__exon__collapse_duplicated.fna",
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -579,7 +581,10 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"intron_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output,
+            f"{self.FILE_INFO}__annotation_type__intron__collapse_duplicated__{collapse_duplicated_regions}.fna",
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -650,7 +655,10 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"cds_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output,
+            f"{self.FILE_INFO}__annotation_type__cds__collapse_duplicated__{collapse_duplicated_regions}.fna",
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -789,7 +797,10 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"utr_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output,
+            f"{self.FILE_INFO}__annotation_type__utr__five_prime__{five_prime}__three_prime__{three_prime}__collapse_duplicated__{collapse_duplicated_regions}.fna",
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -1006,7 +1017,10 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED12_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"exon_exon_junction_annotation_{self.FILE_INFO}.fna")
+        file_fasta = os.path.join(
+            self.dir_output,
+            f"{self.FILE_INFO}__annotation_type__exon_exon_junction__block_size__{block_size}__collapse_duplicated__{collapse_duplicated_regions}.fna",
+        )
         self._get_sequence_from_annotation(annotation, file_fasta)
 
         del annotation
