@@ -4,6 +4,7 @@
 
 import os
 import random
+import warnings
 from pathlib import Path
 from typing import List, Union
 
@@ -12,8 +13,11 @@ from joblib import Parallel, delayed
 
 from oligo_designer_toolsuite.utils import FastaParser
 
+from .._constants import (
+    SEPARATOR_FASTA_HEADER_FIELDS,
+    SEPARATOR_FASTA_HEADER_FIELDS_LIST,
+)
 from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename
-from .._constants import SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_FASTA_HEADER_FIELDS_LIST
 
 ############################################
 # Oligo Database Class
@@ -288,5 +292,17 @@ class OligoSequenceGenerator:
             for file_fasta_oligos in files_fasta_oligos:
                 if os.path.isfile(file_fasta_oligos):
                     os.remove(file_fasta_oligos)
+
+        # check if any oligos were created here instead of in get_sliding_window_sequence, because
+        # the same region can be present in multiple input fasta files (files_fasta_in), e.g. genes and exon-exon-junctions.
+        # Therefore, the final output files are checked
+        for one_file in list(file_fasta_out):
+            if os.path.getsize(one_file) == 0:
+                warnings.warn(
+                    f"No oligos were created for region {os.path.basename(one_file).replace('.fna','')}. "
+                    "This can happen if the input sequences are shorter than the specified minimum oligo length."
+                )
+                file_fasta_out.remove(one_file)
+                os.remove(one_file)
 
         return sorted(list(file_fasta_out))
