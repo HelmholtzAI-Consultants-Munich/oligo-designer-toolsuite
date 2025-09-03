@@ -61,8 +61,8 @@ class OligoScoringBase(ABC):
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
-        :param region_id: Oligo ID to process.
-        :type region_id: str
+        :param oligo_id: Oligo ID to process.
+        :type oligo_id: str
         :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The computed score of the nucleotide.
@@ -103,8 +103,8 @@ class GCOligoScoring(OligoScoringBase):
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
-        :param region_id: Oligo ID to process.
-        :type region_id: str
+        :param oligo_id: Oligo ID to process.
+        :type oligo_id: str
         :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The absolute difference between the optimal GC content and the GC content of the nucleotide sequence.
@@ -158,8 +158,8 @@ class WeightedGCUtrScoring(OligoScoringBase):
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
-        :param region_id: Oligo ID to process.
-        :type region_id: str
+        :param oligo_id: Oligo ID to process.
+        :type oligo_id: str
         :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the weighted difference from optimal GC content and UTR consideration.
@@ -266,8 +266,8 @@ class WeightedTmGCOligoScoring(OligoScoringBase):
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
-        :param region_id: Oligo ID to process.
-        :type region_id: str
+        :param oligo_id: Oligo ID to process.
+        :type oligo_id: str
         :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the weighted difference from optimal GC content and Tm.
@@ -414,8 +414,8 @@ class WeightedIsoformTmGCOligoScoring(WeightedTmGCOligoScoring):
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
-        :param region_id: Oligo ID to process.
-        :type region_id: str
+        :param oligo_id: Oligo ID to process.
+        :type oligo_id: str
         :param sequence_type: The type of sequence to be used for score calculation.
         :type sequence_type: _TYPES_SEQ["oligo", "target"]
         :return: The calculated score based on the Tm, GC content, and isoform consensus.
