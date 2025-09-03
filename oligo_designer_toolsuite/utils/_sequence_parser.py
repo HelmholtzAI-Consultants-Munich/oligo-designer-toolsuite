@@ -186,7 +186,7 @@ class GffParser:
         for i, info in enumerate(infos, 1):
             # It should be key="value".
             try:
-                key, _, value = re.split(self.R_KEYVALUE, info, 1)
+                key, _, value = re.split(self.R_KEYVALUE, info, maxsplit=1)
                 key = key.strip("\"'")
                 if key in self.GFF_HEADER:
                     key = f"attribe_{key}"
