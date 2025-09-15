@@ -179,9 +179,9 @@ class AlignmentFilterTestBase:
 class TestBlastFilter(AlignmentFilterTestBase, unittest.TestCase):
     def setup_filter(self):
         blastn_search_parameters = {
-            "perc_identity": 80,
-            "strand": "plus",
-            "word_size": 10,
+            "-perc_identity": 80,
+            "-strand": "plus",
+            "-word_size": 10,
         }
         hit_parameters = {"coverage": 50}
 
@@ -207,9 +207,9 @@ class TestBowtie2Filter(AlignmentFilterTestBase, unittest.TestCase):
 class TestBlastNSeedregionLigationsiteFilter(AlignmentFilterTestBase, unittest.TestCase):
     def setup_filter(self):
         blastn_search_parameters = {
-            "perc_identity": 80,
-            "strand": "plus",
-            "word_size": 10,
+            "-perc_identity": 80,
+            "-strand": "plus",
+            "-word_size": 10,
         }
         hit_parameters = {"coverage": 50}
         seedregion_size = 10
@@ -241,9 +241,9 @@ class TestCrossHybridizationFilter(unittest.TestCase):
 
         # Blast parameters
         self.blastn_search_parameters_crosshyb = {
-            "perc_identity": 80,
-            "strand": "minus",
-            "word_size": 10,
+            "-perc_identity": 80,
+            "-strand": "minus",
+            "-word_size": 10,
         }
         self.hit_parameters_crosshyb = {"coverage": 50}
 
@@ -375,9 +375,9 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_path = os.path.join(os.getcwd(), "tmp_output_hybridization_probability_filter_blast")
         blastn_search_parameters = {
-            "perc_identity": 80,
-            "strand": "both",
-            "word_size": 10,
+            "-perc_identity": 80,
+            "-strand": "both",
+            "-word_size": 10,
         }
         hit_parameters = {"coverage": 50}
         self.alignment_filter = BlastNFilter(

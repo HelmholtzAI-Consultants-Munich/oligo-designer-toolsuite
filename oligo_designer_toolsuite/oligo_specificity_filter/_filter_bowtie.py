@@ -153,11 +153,11 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
-            cmd_parameters += f" -{parameter} {value}"
+            cmd_parameters += f" {parameter} {value}"
 
         cmd = "bowtie" + " -x " + file_index + " -f"  # fasta file is input
         # return all alignments only if the number of alignments is not specified
-        if "k" not in self.search_parameters.keys():
+        if "-k" not in self.search_parameters.keys():
             cmd += " -a"
         cmd += cmd_parameters + " " + file_oligo_database + " " + file_bowtie_results
         process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
@@ -426,11 +426,11 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
-            cmd_parameters += f" -{parameter} {value}"
+            cmd_parameters += f" {parameter} {value}"
 
         cmd = "bowtie2 --quiet" + " --no-hd --no-unal" + " -x " + file_index + " -f"  # fast file is input
         # return all alignments only if the number of alignments is not specified
-        if "k" not in self.search_parameters.keys():
+        if "-k" not in self.search_parameters.keys():
             cmd += " -a"
         cmd += cmd_parameters + " -U " + file_oligo_database + " -S " + file_bowtie_results
         process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
