@@ -4,7 +4,7 @@
 
 import os
 import subprocess
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
 import pandas as pd
 from Bio import SeqIO
@@ -153,20 +153,13 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
-            cmd_parameters += f" {parameter} {value}"
+            cmd_parameters += f" -{parameter} {value}"
 
-        cmd = (
-            "bowtie"
-            + " -x "
-            + file_index
-            + " -f"  # fasta file is input
-            + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
-            + cmd_parameters
-            + " "
-            + file_oligo_database
-            + " "
-            + file_bowtie_results
-        )
+        cmd = "bowtie" + " -x " + file_index + " -f"  # fasta file is input
+        # return all alignments only if the number of alignments is not specified
+        if "k" not in self.search_parameters.keys():
+            cmd += " -a"
+        cmd += cmd_parameters + " " + file_oligo_database + " " + file_bowtie_results
         process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
 
         # read the reuslts of the bowtie search
@@ -433,21 +426,13 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
         cmd_parameters = ""
         for parameter, value in self.search_parameters.items():
-            cmd_parameters += f" {parameter} {value}"
+            cmd_parameters += f" -{parameter} {value}"
 
-        cmd = (
-            "bowtie2 --quiet"
-            + " --no-hd --no-unal"
-            + " -x "
-            + file_index
-            + " -f"  # fast file is input
-            + " -a"  # report all alignments -> TODO: does this make sense or set e.g. -k 100
-            + cmd_parameters
-            + " -U "
-            + file_oligo_database
-            + " -S "
-            + file_bowtie_results
-        )
+        cmd = "bowtie2 --quiet" + " --no-hd --no-unal" + " -x " + file_index + " -f"  # fast file is input
+        # return all alignments only if the number of alignments is not specified
+        if "k" not in self.search_parameters.keys():
+            cmd += " -a"
+        cmd += cmd_parameters + " -U " + file_oligo_database + " -S " + file_bowtie_results
         process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
 
         # read the reuslts of the bowtie seatch
