@@ -6,7 +6,7 @@ import os
 import pickle
 import warnings
 from pathlib import Path
-from typing import List, Union, get_args
+from typing import List, Literal, Type, Union, get_args
 
 import pandas as pd
 import yaml
@@ -30,6 +30,8 @@ from oligo_designer_toolsuite.utils import (
     format_oligo_properties,
     merge_databases,
 )
+from oligo_designer_toolsuite.database._key_stores import KeyStore, make_keystore, KeystoreKind
+
 
 CustomYamlDumper.add_representer(list, CustomYamlDumper.represent_list)
 CustomYamlDumper.add_representer(dict, CustomYamlDumper.represent_dict)
@@ -71,6 +73,7 @@ class OligoDatabase:
         n_jobs: int = 1,
         database_name: str = "db_oligo",
         dir_output: str = "output",
+        keystore_type: KeystoreKind = 'effidict',
     ) -> None:
         """Constructor for the OligoDatabase class."""
 
@@ -87,15 +90,20 @@ class OligoDatabase:
 
         self.fasta_parser = FastaParser()
 
-        # Initialize databse object
-        backend = PickleBackend(storage_path=self._dir_cache_files)
-        strategy = LRUReplacement(disk_backend=backend, max_in_memory=self._max_entries_in_memory)
-        self.database = EffiDict(disk_backend=backend, replacement_strategy=strategy)
+        # Initialize database object
+        self.database: KeyStore = make_keystore(
+            kind=keystore_type,
+            path=Path(self._dir_cache_files),
+            inmemory_cache_size=self._max_entries_in_memory,
+        ) 
 
-        # will be used later in the generation of oligo sets
-        backend = PickleBackend(storage_path=self._dir_cache_files)
-        strategy = LRUReplacement(disk_backend=backend, max_in_memory=self._max_entries_in_memory)
-        self.oligosets = EffiDict(disk_backend=backend, replacement_strategy=strategy)
+        # will be used later in the generation of oligo sets 
+        self.oligosets: KeyStore = make_keystore(
+            kind=keystore_type,
+            path=Path(self._dir_cache_files),
+            inmemory_cache_size=self._max_entries_in_memory,
+        ) 
+        
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
