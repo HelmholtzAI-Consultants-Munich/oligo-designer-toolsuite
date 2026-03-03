@@ -39,10 +39,6 @@ class General(BaseModel):
             description="if true, writes the oligo sequences after each step of the pipeline into a csv file",
         ),
     ]
-    top_n_sets: Annotated[
-        PositiveInt,
-        Field(description="maximum number of sets to report in *_probes.yaml and *_probes_order.yaml"),
-    ]
 
 
 class OligoSetSelection(BaseModel):
@@ -63,24 +59,24 @@ class OligoSetSelection(BaseModel):
     diversification_fraction: Annotated[
         float,
         Field(
-            le=0,
-            ge=1,
+            ge=0,
+            le=1,
             description="Fraction of oligos to remove from the graph per attempt to create diversity in the set selection.",
         ),
     ]
     jaccard_opt: Annotated[
         float,
         Field(
-            le=0,
-            ge=1,
+            ge=0,
+            le=1,
             description="Optimal maximum Jaccard overlap allowed between selected sets. Lower values enforce more diversity between sets.",
         ),
     ]
     jaccard_step: Annotated[
         float,
         Field(
-            le=0,
-            ge=1,
+            ge=0,
+            le=1,
             description="Step size used to relax the Jaccard constraint when not enough sets are found.",
         ),
     ]

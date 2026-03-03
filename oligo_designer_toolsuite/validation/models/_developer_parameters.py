@@ -29,8 +29,16 @@ class TargetProbeDev(BaseModel):
             description="Parameters for filtering BLASTN hits during specificity analysis. Use either coverage or min_alignment_length."
         ),
     ]
-    cross_hybridization_blastn_search_parameters: Annotated[BlastnSearchParameters, Field(description="")]
-    cross_hybridization_blastn_hit_parameters: BlastnHitParameters
+    cross_hybridization_blastn_search_parameters: Annotated[
+        BlastnSearchParameters,
+        Field(description="Parameters for BLASTN searches used in cross-hybridization filtering."),
+    ]
+    cross_hybridization_blastn_hit_parameters: Annotated[
+        BlastnHitParameters,
+        Field(
+            description="Parameters for filtering BLASTN hits in cross-hybridization searches. Use either coverage or min_alignment_length."
+        ),
+    ]
 
 
 class TargetProbeDevCycleHCR(TargetProbeDev):
@@ -214,7 +222,17 @@ class PrimerDevFish(BaseModel):
     ]
 
 
+class PrimerDevSeqFishPlus(PrimerDevFish):
+    secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
+
+
 class DeveloperParametersMerfish(DeveloperParametersBase):
     target_probe: TargetProbeDevMerfish
     readout_probe: ReadoutProbeDevMerfish
     primer: PrimerDevFish
+
+
+class DeveloperParametersSeqFishPlus(DeveloperParametersBase):
+    target_probe: TargetProbeDev
+    readout_probe: ReadoutProbeDevFish
+    primer: PrimerDevSeqFishPlus

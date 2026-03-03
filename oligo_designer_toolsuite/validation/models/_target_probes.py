@@ -105,13 +105,13 @@ class TargetProbeCycleHCR(TargetProbeBase):
         ),
     ]
     Tm_weight: Annotated[
-        float,
+        WeightT,
         Field(
             description="Weight assigned to melting temperature (Tm) in the probe scoring function. Higher values prioritize probes with Tm closer to the optimal value (Tm_max). This weight is used in combination with isoform_weight to calculate a composite score for each probe.",
         ),
     ]
     isoform_weight: Annotated[
-        float,
+        WeightT,
         Field(
             description="Weight assigned to isoform consensus in the probe scoring function. Higher values prioritize probes with higher isoform consensus values (probes that are conserved across multiple transcript isoforms). This weight is used in combination with Tm_weight to calculate a composite score for each probe.",
         ),
@@ -135,8 +135,41 @@ class TargetProbeMerfish(TargetProbeBase):
     Tm_opt: TmOptT
     Tm_max: TmMaxT
 
-    T_secondary_structure: TSecondaryStructureT = 76
+    T_secondary_structure: TSecondaryStructureT
 
-    GC_weight: WeightT = 1
-    Tm_weight: WeightT = 1
-    isoform_weight: WeightT = 2
+    GC_weight: Annotated[
+        WeightT,
+        Field(
+            description="Weight assigned to GC content in the scoring function.",
+        ),
+    ]
+    Tm_weight: Annotated[
+        WeightT,
+        Field(
+            description="Weight assigned to melting temperature (Tm) in the probe scoring function. Higher values prioritize probes with Tm closer to the optimal value (Tm_max). This weight is used in combination with isoform_weight to calculate a composite score for each probe.",
+        ),
+    ]
+    isoform_weight: WeightT
+
+
+class TargetProbeSeqFishPlus(TargetProbeBase):
+
+    GC_content_opt: GCContentOptT
+
+    length_min: LengthMinT
+    length_max: LengthMaxT
+
+    T_secondary_structure: TSecondaryStructureT
+
+    GC_weight: Annotated[
+        WeightT,
+        Field(
+            description="Weight assigned to GC content in the scoring function.",
+        ),
+    ]
+    UTR_weight: Annotated[
+        WeightT,
+        Field(
+            description="Weight assigned to untranslated region (UTR) targeting in the scoring function. Probes that target UTRs are prioritized.",
+        ),
+    ]

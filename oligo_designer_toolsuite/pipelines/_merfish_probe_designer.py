@@ -384,7 +384,7 @@ class MerfishProbeDesigner:
             of barcodes required in the codebook.
         :type region_ids: list[str]
         :param config: Pydantic model of configuration parameters for readout probes.
-        :type config: ReadoutProbeDevMerfish
+        :type config: ReadoutProbeMerfish
         :param developer_param: Pydantic model of advanced configuration parameters for readout probes.
         :type developer_param: ReadoutProbeDevMerfish
         :rtype: tuple[pd.DataFrame, pd.DataFrame]

@@ -99,3 +99,19 @@ class ReadoutProbeMerfish(ReadoutProbeFish):
             description="Fixed Hamming weight (number of active bits, value 1) for each barcode. All barcodes will have exactly this many bits set to 1."
         ),
     ]
+
+
+class ReadoutProbeSeqFishPlus(ReadoutProbeFish):
+
+    n_barcode_rounds: Annotated[
+        PositiveInt,
+        Field(
+            description="Number of barcode rounds in the encoding scheme. This determines how many rounds of barcoding are used, and each round requires readout probes."
+        ),
+    ]
+    n_pseudocolors: Annotated[
+        PositiveInt,
+        Field(
+            description="Number of pseudocolors to use in the barcoding scheme. Pseudocolors expand the barcode space by allowing multiple states per round. The final round includes a checksum pseudocolor."
+        ),
+    ]

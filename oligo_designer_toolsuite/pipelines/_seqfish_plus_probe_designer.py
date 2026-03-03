@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from Bio.SeqUtils import Seq
+from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
@@ -56,11 +57,43 @@ from oligo_designer_toolsuite.pipelines._utils import (
     check_content_oligo_database,
     format_sequence,
     pipeline_step_basic,
-    preprocess_tm_parameters,
     setup_logging,
+    write_config_to_yaml,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences
+from oligo_designer_toolsuite.validation._types import (
+    DNAT,
+    FilesFastaDatabaseT,
+    FilesFastaReferenceDatabaseT,
+    GCContentMaxT,
+    GCContentMinT,
+    SecondaryStructuresThresholdDeltaGT,
+    TmMaxT,
+    TmMinT,
+    TSecondaryStructureT,
+)
+from oligo_designer_toolsuite.validation.models._developer_parameters import (
+    PrimerDevSeqFishPlus,
+    ReadoutProbeDevFish,
+    TargetProbeDev,
+)
+from oligo_designer_toolsuite.validation.models._general import (
+    BaseProbabilities,
+    BlastnHitParameters,
+    BlastnSearchParameters,
+    HomopolymerThresholds,
+    OligoSetSelection,
+    TmChemCorrectionParameters,
+    TmParameters,
+    TmSaltCorrectionParameters,
+)
+from oligo_designer_toolsuite.validation.models._primer import PrimerFish
+from oligo_designer_toolsuite.validation.models._readout_probes import ReadoutProbeSeqFishPlus
+from oligo_designer_toolsuite.validation.models._target_probes import TargetProbeSeqFishPlus
+from oligo_designer_toolsuite.validation.models.config_pipelines import (
+    SeqFishPlusDesignerConfig,
+)
 
 ############################################
 # SeqFISH Plus Probe Designer
@@ -186,35 +219,9 @@ class SeqFishPlusProbeDesigner:
         self,
         # Step 1: Create Database Parameters
         region_ids: list[str] | None,
-        files_fasta_target_probe_database: list[str],
-        target_probe_length_min: int,
-        target_probe_length_max: int,
-        target_probe_isoform_consensus: float,
-        # Step 2: Property Filter Parameters
-        target_probe_GC_content_min: float,
-        target_probe_GC_content_opt: float,
-        target_probe_GC_content_max: float,
-        target_probe_homopolymeric_base_n: dict[str, int],
-        target_probe_T_secondary_structure: float,
-        target_probe_secondary_structures_threshold_deltaG: float,
-        # Step 3: Specificity Filter Parameters
-        files_fasta_reference_database_target_probe: list[str],
-        target_probe_specificity_blastn_search_parameters: dict,
-        target_probe_specificity_blastn_hit_parameters: dict,
-        target_probe_cross_hybridization_blastn_search_parameters: dict,
-        target_probe_cross_hybridization_blastn_hit_parameters: dict,
-        # Step 4: Probe Scoring and Set Selection Parameters
-        target_probe_GC_weight: float,
-        target_probe_UTR_weight: float,
-        set_size_opt: int,
-        set_size_min: int,
-        distance_between_target_probes: int,
-        n_sets: int,
-        n_attempts_graph: int,
-        n_attempts_clique_enum: int,
-        diversification_fraction: float,
-        jaccard_opt: float,
-        jaccard_step: float,
+        config: TargetProbeSeqFishPlus,
+        developer_param: TargetProbeDev,
+        oligo_set_selection: OligoSetSelection,
     ) -> OligoDatabase:
         """
         Design target probes for SeqFISH+ experiments through a multi-step pipeline.
@@ -236,95 +243,12 @@ class SeqFishPlusProbeDesigner:
         :param region_ids: List of gene identifiers (e.g., gene IDs) to target for probe design. If None,
             all genes present in the input FASTA files will be used.
         :type region_ids: list[str] | None
-        :param files_fasta_target_probe_database: List of paths to FASTA files containing sequences
-            from which target probes will be generated. These files should contain genomic regions
-            of interest (e.g., exons, exon-exon junctions).
-        :type files_fasta_target_probe_database: list[str]
-        :param target_probe_length_min: Minimum length (in nucleotides) for target probe sequences.
-        :type target_probe_length_min: int
-        :param target_probe_length_max: Maximum length (in nucleotides) for target probe sequences.
-        :type target_probe_length_max: int
-        :param target_probe_isoform_consensus: Threshold for isoform consensus filtering (typically
-            between 0.0 and 1.0). Probes with isoform consensus values below this threshold will be
-            filtered out. This ensures that selected probes target sequences that are conserved across
-            multiple transcript isoforms.
-        :type target_probe_isoform_consensus: float
-
-        **Step 2: Property Filter Parameters**
-
-        :param target_probe_GC_content_min: Minimum acceptable GC content for target probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type target_probe_GC_content_min: float
-        :param target_probe_GC_content_opt: Optimal GC content for target probes, expressed as a fraction
-            between 0.0 and 1.0. Used in scoring to prioritize probes closer to this value.
-        :type target_probe_GC_content_opt: float
-        :param target_probe_GC_content_max: Maximum acceptable GC content for target probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type target_probe_GC_content_max: float
-        :param target_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length of
-            homopolymeric runs for each nucleotide base (keys: 'A', 'T', 'G', 'C').
-        :type target_probe_homopolymeric_base_n: dict[str, int]
-        :param target_probe_T_secondary_structure: Temperature in degrees Celsius at which to evaluate
-            secondary structure formation.
-        :type target_probe_T_secondary_structure: float
-        :param target_probe_secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for
-            secondary structure stability. Probes with secondary structures having deltaG values more
-            negative than this threshold will be filtered out.
-        :type target_probe_secondary_structures_threshold_deltaG: float
-
-        **Step 3: Specificity Filter Parameters**
-
-        :param files_fasta_reference_database_target_probe: List of paths to FASTA files containing
-            reference sequences used for specificity filtering. These files are used to identify
-            off-target binding sites (e.g., whole genome or transcriptome sequences).
-        :type files_fasta_reference_database_target_probe: list[str]
-        :param target_probe_specificity_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering.
-        :type target_probe_specificity_blastn_search_parameters: dict
-        :param target_probe_specificity_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches.
-        :type target_probe_specificity_blastn_hit_parameters: dict
-        :param target_probe_cross_hybridization_blastn_search_parameters: Dictionary of parameters for
-            BLASTN searches used in cross-hybridization filtering.
-        :type target_probe_cross_hybridization_blastn_search_parameters: dict
-        :param target_probe_cross_hybridization_blastn_hit_parameters: Dictionary of parameters for
-            filtering BLASTN hits in cross-hybridization searches.
-        :type target_probe_cross_hybridization_blastn_hit_parameters: dict
-
-        **Step 4: Probe Scoring and Set Selection Parameters**
-
-        :param target_probe_GC_weight: Weight assigned to GC content in the scoring function.
-        :type target_probe_GC_weight: float
-        :param target_probe_UTR_weight: Weight assigned to untranslated region (UTR) targeting in the
-            scoring function. Probes that target UTRs are prioritized.
-        :type target_probe_UTR_weight: float
-        :param set_size_opt: Optimal size (number of probes) for each oligo set. The set selection algorithm will
-            attempt to generate sets of this size, but may produce sets with fewer probes if constraints cannot be met.
-        :type set_size_opt: int
-        :param set_size_min: Minimum size (number of probes) required for each oligo set. Sets with fewer probes than
-            this value will be rejected, and regions that cannot generate sets meeting this minimum will be removed.
-        :type set_size_min: int
-        :param distance_between_target_probes: Minimum genomic distance (in nucleotides) required between probes
-            within the same set. This spacing constraint prevents probes from binding too close together, which could
-            lead to reduced hybridization efficiency.
-        :type distance_between_target_probes: int
-        :param n_sets: Number of oligo sets to generate per region. Multiple sets allow for redundancy and selection
-            of the best-performing set based on scoring criteria.
-        :type n_sets: int
-        :param n_attempts_graph: Number of randomized graph attempts. In each attempt, a fraction of nodes is randomly
-            removed from the compatibility graph to create diversity; more attempts increase diversity at the cost of runtime.
-        :type n_attempts_graph: int
-        :param n_attempts_clique_enum: Maximum number of cliques enumerated per graph attempt. Limits how many cliques
-            are explored before stopping enumeration for the current graph.
-        :type n_attempts_clique_enum: int
-        :param diversification_fraction: Fraction of oligos to remove at random per attempt to create diversity
-            between sets.
-        :type diversification_fraction: float
-        :param jaccard_opt: Optimal maximum Jaccard overlap between selected sets. Sets with overlap above this
-            value are discouraged when selecting multiple sets per region.
-        :type jaccard_opt: float
-        :param jaccard_step: Step size for relaxing Jaccard overlap when not enough sets are found.
-        :type jaccard_step: float
+        :param config: Pydantic model of configuration parameters for target probes.
+        :type config: TargetProbeSeqFishPlus
+        :param developer_param: Pydantic model of advanced configuration parameters for target probes.
+        :type developer_param: TargetProbeDev
+        :param oligo_set_selection:  Pydantic model of configuration parameters for oligo set selection.
+        :type oligo_set_selection: OligoSetSelection
         :return: An `OligoDatabase` object containing the designed target probes organized into sets.
             The database includes probe sequences, properties, and set assignments for each target gene.
         :rtype: OligoDatabase
@@ -333,11 +257,11 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database: OligoDatabase = target_probe_designer.create_oligo_database(
             region_ids=region_ids,
-            oligo_length_min=target_probe_length_min,
-            oligo_length_max=target_probe_length_max,
-            files_fasta_oligo_database=files_fasta_target_probe_database,
-            min_oligos_per_gene=set_size_min,
-            isoform_consensus=target_probe_isoform_consensus,
+            oligo_length_min=config.length_min,
+            oligo_length_max=config.length_max,
+            files_fasta_oligo_database=config.files_fasta_database,
+            min_oligos_per_gene=config.set_size_min,
+            isoform_consensus=config.isoform_consensus,
         )
 
         if self.write_intermediate_steps:
@@ -348,11 +272,11 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database = target_probe_designer.filter_by_property(
             oligo_database=oligo_database,
-            GC_content_min=target_probe_GC_content_min,
-            GC_content_max=target_probe_GC_content_max,
-            homopolymeric_base_n=target_probe_homopolymeric_base_n,
-            T_secondary_structure=target_probe_T_secondary_structure,
-            secondary_structures_threshold_deltaG=target_probe_secondary_structures_threshold_deltaG,
+            GC_content_min=config.GC_content_min,
+            GC_content_max=config.GC_content_max,
+            homopolymeric_base_n=config.homopolymeric_base_n,
+            T_secondary_structure=config.T_secondary_structure,
+            secondary_structures_threshold_deltaG=developer_param.secondary_structures_threshold_deltaG,
         )
 
         if self.write_intermediate_steps:
@@ -363,11 +287,11 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_target_probe,
-            specificity_blastn_search_parameters=target_probe_specificity_blastn_search_parameters,
-            specificity_blastn_hit_parameters=target_probe_specificity_blastn_hit_parameters,
-            cross_hybridization_blastn_search_parameters=target_probe_cross_hybridization_blastn_search_parameters,
-            cross_hybridization_blastn_hit_parameters=target_probe_cross_hybridization_blastn_hit_parameters,
+            files_fasta_reference_database=config.files_fasta_reference_database,
+            specificity_blastn_search_parameters=developer_param.specificity_blastn_search_parameters,
+            specificity_blastn_hit_parameters=developer_param.specificity_blastn_hit_parameters,
+            cross_hybridization_blastn_search_parameters=developer_param.cross_hybridization_blastn_search_parameters,
+            cross_hybridization_blastn_hit_parameters=developer_param.cross_hybridization_blastn_hit_parameters,
         )
 
         if self.write_intermediate_steps:
@@ -379,19 +303,19 @@ class SeqFishPlusProbeDesigner:
         oligo_database = target_probe_designer.create_oligo_sets(
             oligo_database=oligo_database,
             # Scoring Parameters
-            GC_weight=target_probe_GC_weight,
-            GC_content_opt=target_probe_GC_content_opt,
-            UTR_weight=target_probe_UTR_weight,
+            GC_weight=config.GC_weight,
+            GC_content_opt=config.GC_content_opt,
+            UTR_weight=config.UTR_weight,
             # Set Selection Parameters
-            set_size_opt=set_size_opt,
-            set_size_min=set_size_min,
-            distance_between_oligos=distance_between_target_probes,
-            n_sets=n_sets,
-            n_attempts_graph=n_attempts_graph,
-            n_attempts_clique_enum=n_attempts_clique_enum,
-            diversification_fraction=diversification_fraction,
-            jaccard_opt=jaccard_opt,
-            jaccard_step=jaccard_step,
+            set_size_opt=config.set_size_opt,
+            set_size_min=config.set_size_min,
+            distance_between_oligos=config.distance_between_target_probes,
+            n_sets=config.n_sets,
+            n_attempts_graph=oligo_set_selection.n_attempts_graph,
+            n_attempts_clique_enum=oligo_set_selection.n_attempts_clique_enum,
+            diversification_fraction=oligo_set_selection.diversification_fraction,
+            jaccard_opt=oligo_set_selection.jaccard_opt,
+            jaccard_step=oligo_set_selection.jaccard_step,
         )
 
         if self.write_intermediate_steps:
@@ -406,23 +330,8 @@ class SeqFishPlusProbeDesigner:
         self,
         # Step 1: Create Database Parameters
         region_ids: list[str],
-        readout_probe_length: int,
-        readout_probe_base_probabilities: dict[str, float],
-        readout_probe_initial_num_sequences: int,
-        # Step 2: Property Filter Parameters
-        readout_probe_GC_content_min: float,
-        readout_probe_GC_content_max: float,
-        readout_probe_homopolymeric_base_n: dict[str, int],
-        # Step 3: Specificity Filter Parameters
-        files_fasta_reference_database_readout_probe: list[str],
-        readout_probe_specificity_blastn_search_parameters: dict,
-        readout_probe_specificity_blastn_hit_parameters: dict,
-        readout_probe_cross_hybridization_blastn_search_parameters: dict,
-        readout_probe_cross_hybridization_blastn_hit_parameters: dict,
-        # Step 4: Codebook and Readout Probe Table Parameters
-        n_barcode_rounds: int,
-        n_pseudocolors: int,
-        channels_ids: list,
+        config: ReadoutProbeSeqFishPlus,
+        developer_param: ReadoutProbeDevFish,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Design readout probes and generate a codebook for SeqFISH+ experiments through a multi-step pipeline.
@@ -448,59 +357,10 @@ class SeqFishPlusProbeDesigner:
             codebook entries are to be generated. The number of regions determines the minimum number
             of barcodes required in the codebook.
         :type region_ids: list[str]
-        :param readout_probe_length: Length (in nucleotides) of each readout probe sequence.
-        :type readout_probe_length: int
-        :param readout_probe_base_probabilities: Dictionary specifying the probability of each nucleotide
-            base in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should
-            sum to 1.0 (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
-        :type readout_probe_base_probabilities: dict[str, float]
-        :param readout_probe_initial_num_sequences: Number of random sequences to generate initially
-            before filtering. Higher values provide more candidates but increase computation time.
-        :type readout_probe_initial_num_sequences: int
-
-        **Step 2: Property Filter Parameters**
-
-        :param readout_probe_GC_content_min: Minimum acceptable GC content for readout probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type readout_probe_GC_content_min: float
-        :param readout_probe_GC_content_max: Maximum acceptable GC content for readout probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type readout_probe_GC_content_max: float
-        :param readout_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length of
-            homopolymeric runs for each nucleotide base (keys: 'A', 'T', 'G', 'C').
-        :type readout_probe_homopolymeric_base_n: dict[str, int]
-
-        **Step 3: Specificity Filter Parameters**
-
-        :param files_fasta_reference_database_readout_probe: List of paths to FASTA files containing
-            reference sequences used for specificity filtering. These files are used to identify
-            off-target binding sites and potential cross-hybridization events.
-        :type files_fasta_reference_database_readout_probe: list[str]
-        :param readout_probe_specificity_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering.
-        :type readout_probe_specificity_blastn_search_parameters: dict
-        :param readout_probe_specificity_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches.
-        :type readout_probe_specificity_blastn_hit_parameters: dict
-        :param readout_probe_cross_hybridization_blastn_search_parameters: Dictionary of parameters for
-            BLASTN searches used in cross-hybridization filtering.
-        :type readout_probe_cross_hybridization_blastn_search_parameters: dict
-        :param readout_probe_cross_hybridization_blastn_hit_parameters: Dictionary of parameters for
-            filtering BLASTN hits in cross-hybridization searches.
-        :type readout_probe_cross_hybridization_blastn_hit_parameters: dict
-
-        **Step 4: Codebook and Readout Probe Table Parameters**
-
-        :param n_barcode_rounds: Number of barcode rounds for hybridization. Each round contributes to the
-            combinatorial barcode space.
-        :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors to use in the barcoding scheme. Pseudocolors
-            expand the barcode space by allowing multiple states per round.
-        :type n_pseudocolors: int
-        :param channels_ids: List of fluorescence channel identifiers (e.g., ['Alexa488', 'Cy3b', 'Alexa647'])
-            to which readout probes will be assigned. Readout probes are distributed across channels
-            in a round-robin fashion.
-        :type channels_ids: list
+        :param config: Pydantic model of configuration parameters for readout probes.
+        :type config: ReadoutProbeSeqFishPlus
+        :param developer_param: Pydantic model of advanced configuration parameters for readout probes.
+        :type developer_param: ReadoutProbeDevFish
         :return: A tuple containing:
             - **codebook** (pd.DataFrame): Binary barcode matrix with region IDs as index and bit columns
               (bit_1, bit_2, etc.) as data. Each row represents a region's barcode assignment.
@@ -514,9 +374,9 @@ class SeqFishPlusProbeDesigner:
             n_jobs=self.n_jobs,
         )
         oligo_database: OligoDatabase = readout_probe_designer.create_oligo_database(
-            oligo_length=readout_probe_length,
-            oligo_base_probabilities=readout_probe_base_probabilities,
-            initial_num_sequences=readout_probe_initial_num_sequences,
+            oligo_length=config.length,
+            oligo_base_probabilities=config.base_probabilities,
+            initial_num_sequences=developer_param.initial_num_sequences,
         )
 
         if self.write_intermediate_steps:
@@ -527,9 +387,9 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database = readout_probe_designer.filter_by_property(
             oligo_database=oligo_database,
-            GC_content_min=readout_probe_GC_content_min,
-            GC_content_max=readout_probe_GC_content_max,
-            homopolymeric_base_n=readout_probe_homopolymeric_base_n,
+            GC_content_min=config.GC_content_min,
+            GC_content_max=config.GC_content_max,
+            homopolymeric_base_n=config.homopolymeric_base_n,
         )
 
         if self.write_intermediate_steps:
@@ -540,11 +400,11 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database = readout_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_readout_probe,
-            specificity_blastn_search_parameters=readout_probe_specificity_blastn_search_parameters,
-            specificity_blastn_hit_parameters=readout_probe_specificity_blastn_hit_parameters,
-            cross_hybridization_blastn_search_parameters=readout_probe_cross_hybridization_blastn_search_parameters,
-            cross_hybridization_blastn_hit_parameters=readout_probe_cross_hybridization_blastn_hit_parameters,
+            files_fasta_reference_database=config.files_fasta_reference_database,
+            specificity_blastn_search_parameters=developer_param.specificity_blastn_search_parameters,
+            specificity_blastn_hit_parameters=developer_param.specificity_blastn_hit_parameters,
+            cross_hybridization_blastn_search_parameters=developer_param.cross_hybridization_blastn_search_parameters,
+            cross_hybridization_blastn_hit_parameters=developer_param.cross_hybridization_blastn_hit_parameters,
         )
 
         if self.write_intermediate_steps:
@@ -555,16 +415,16 @@ class SeqFishPlusProbeDesigner:
 
         codebook = readout_probe_designer.generate_codebook(
             region_ids=region_ids,
-            n_barcode_rounds=n_barcode_rounds,
-            n_pseudocolors=n_pseudocolors,
-            n_channels=len(channels_ids),
+            n_barcode_rounds=config.n_barcode_rounds,
+            n_pseudocolors=config.n_pseudocolors,
+            n_channels=len(config.channels_ids),
         )
 
         readout_probe_table = readout_probe_designer.create_readout_probe_table(
             readout_probe_database=oligo_database,
-            channels_ids=channels_ids,
-            n_barcode_rounds=n_barcode_rounds,
-            n_pseudocolors=n_pseudocolors,
+            channels_ids=config.channels_ids,
+            n_barcode_rounds=config.n_barcode_rounds,
+            n_pseudocolors=config.n_pseudocolors,
         )
 
         return codebook, readout_probe_table
@@ -675,33 +535,9 @@ class SeqFishPlusProbeDesigner:
 
     def design_primers(
         self,
-        # Step 1: Create Database Parameters
-        reverse_primer_sequence: str,
-        primer_length: int,
-        primer_base_probabilities: dict[str, float],
-        primer_initial_num_sequences: int,
-        # Step 2: Property Filter Parameters
-        primer_GC_content_min: float,
-        primer_GC_content_max: float,
-        primer_number_GC_GCclamp: int,
-        primer_number_three_prime_base_GCclamp: int,
-        primer_homopolymeric_base_n: dict[str, int],
-        primer_max_len_selfcomplement: int,
-        primer_max_len_complement_reverse_primer: int,
-        primer_Tm_min: float,
-        primer_Tm_max: float,
-        primer_T_secondary_structure: float,
-        primer_secondary_structures_threshold_deltaG: float,
-        primer_Tm_parameters: dict,
-        primer_Tm_chem_correction_parameters: dict | None,
-        primer_Tm_salt_correction_parameters: dict | None,
-        # Step 3: Specificity Filter Parameters
+        config: PrimerFish,
+        developer_param: PrimerDevSeqFishPlus,
         hybridization_probe_database: OligoDatabase,
-        files_fasta_reference_database_primer: list[str],
-        primer_specificity_refrence_blastn_search_parameters: dict,
-        primer_specificity_refrence_blastn_hit_parameters: dict,
-        primer_specificity_hybridization_probes_blastn_search_parameters: dict,
-        primer_specificity_hybridization_probes_blastn_hit_parameters: dict,
     ) -> tuple[str, str]:
         """
         Design forward and reverse primers for SeqFISH+ hybridization probes through a multi-step pipeline.
@@ -719,97 +555,14 @@ class SeqFishPlusProbeDesigner:
         The reverse primer sequence is provided as input, and the method designs a forward primer that
         matches its melting temperature for optimal PCR performance.
 
-        **Step 1: Create Database Parameters**
-
-        :param reverse_primer_sequence: DNA sequence of the reverse primer that will be used as a reference.
-            The forward primer will be selected to match this primer's melting temperature.
-        :type reverse_primer_sequence: str
-        :param primer_length: Length (in nucleotides) of each primer sequence to generate.
-        :type primer_length: int
-        :param primer_base_probabilities: Dictionary specifying the probability of each nucleotide base
-            in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should sum to 1.0
-            (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
-        :type primer_base_probabilities: dict[str, float]
-        :param primer_initial_num_sequences: Number of random sequences to generate initially before filtering.
-            Higher values provide more candidates but increase computation time.
-        :type primer_initial_num_sequences: int
-
-        **Step 2: Property Filter Parameters**
-
-        :param primer_GC_content_min: Minimum acceptable GC content for primers, expressed as a fraction
-            between 0.0 and 1.0.
-        :type primer_GC_content_min: float
-        :param primer_GC_content_max: Maximum acceptable GC content for primers, expressed as a fraction
-            between 0.0 and 1.0.
-        :type primer_GC_content_max: float
-        :param primer_number_GC_GCclamp: Minimum number of G or C nucleotides required within the specified
-            number of bases at the 3' end (GC clamp). This improves primer binding stability.
-        :type primer_number_GC_GCclamp: int
-        :param primer_number_three_prime_base_GCclamp: Number of bases from the 3' end to consider for
-            the GC clamp requirement.
-        :type primer_number_three_prime_base_GCclamp: int
-        :param primer_homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
-            runs for each nucleotide base (keys: 'A', 'T', 'G', 'C').
-        :type primer_homopolymeric_base_n: dict[str, int]
-        :param primer_max_len_selfcomplement: Maximum allowable length of self-complementary sequences.
-            Primers with longer self-complementary regions can form hairpins and reduce PCR efficiency.
-        :type primer_max_len_selfcomplement: int
-        :param primer_max_len_complement_reverse_primer: Maximum allowable length of complementarity to the
-            reverse primer sequence. This prevents the forward and reverse primers from binding to each other.
-        :type primer_max_len_complement_reverse_primer: int
-        :param primer_Tm_min: Minimum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type primer_Tm_min: float
-        :param primer_Tm_max: Maximum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type primer_Tm_max: float
-        :param primer_T_secondary_structure: Temperature in degrees Celsius at which to evaluate secondary
-            structure formation.
-        :type primer_T_secondary_structure: float
-        :param primer_secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for secondary
-            structure stability. Primers with secondary structures having deltaG values more negative than
-            this threshold will be filtered out.
-        :type primer_secondary_structures_threshold_deltaG: float
-        :param primer_Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) of primers
-            using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
-            Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
-            'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type primer_Tm_parameters: dict
-        :param primer_Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm calculation.
-            These parameters account for the effects of chemical additives (e.g., DMSO, formamide) on melting temperature.
-            Set to ``None`` to disable chemical correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
-            For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type primer_Tm_chem_correction_parameters: dict | None
-        :param primer_Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None`` to disable
-            salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type primer_Tm_salt_correction_parameters: dict | None
-
-        **Step 3: Specificity Filter Parameters**
-
+        :param config: Pydantic model of configuration parameters for primers.
+        :type config: PrimerFish
+        :param developer_param: Pydantic model of advanced configuration parameters for primers.
+        :type developer_param: PrimerDevSeqFishPlus
         :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization probes.
             This database is used to create a reference FASTA file for specificity filtering to ensure primers
             do not bind to the hybridization probes themselves.
         :type hybridization_probe_database: OligoDatabase
-        :param files_fasta_reference_database_primer: List of paths to FASTA files containing reference sequences
-            used for specificity filtering. These files are used to identify off-target binding sites (e.g.,
-            whole genome or transcriptome sequences).
-        :type files_fasta_reference_database_primer: list[str]
-        :param primer_specificity_refrence_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering against the reference database.
-        :type primer_specificity_refrence_blastn_search_parameters: dict
-        :param primer_specificity_refrence_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches against the reference database.
-            Primers with hits meeting these criteria are removed.
-        :type primer_specificity_refrence_blastn_hit_parameters: dict
-        :param primer_specificity_hybridization_probes_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering against the hybridization probes database.
-        :type primer_specificity_hybridization_probes_blastn_search_parameters: dict
-        :param primer_specificity_hybridization_probes_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches against the hybridization probes database. Primers with hits meeting these
-            criteria are removed.
-        :type primer_specificity_hybridization_probes_blastn_hit_parameters: dict
         :return: A tuple containing:
             - **reverse_primer_sequence** (str): The input reverse primer sequence (unchanged)
             - **forward_primer_sequence** (str): The selected forward primer sequence with melting temperature
@@ -828,9 +581,9 @@ class SeqFishPlusProbeDesigner:
             n_jobs=self.n_jobs,
         )
         oligo_database: OligoDatabase = primer_designer.create_oligo_database(
-            oligo_length=primer_length,
-            oligo_base_probabilities=primer_base_probabilities,
-            initial_num_sequences=primer_initial_num_sequences,
+            oligo_length=config.length,
+            oligo_base_probabilities=config.base_probabilities,
+            initial_num_sequences=developer_param.initial_num_sequences,
         )
 
         if self.write_intermediate_steps:
@@ -839,21 +592,21 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database = primer_designer.filter_by_property(
             oligo_database=oligo_database,
-            GC_content_min=primer_GC_content_min,
-            GC_content_max=primer_GC_content_max,
-            number_GC_GCclamp=primer_number_GC_GCclamp,
-            number_three_prime_base_GCclamp=primer_number_three_prime_base_GCclamp,
-            homopolymeric_base_n=primer_homopolymeric_base_n,
-            max_len_selfcomplement=primer_max_len_selfcomplement,
-            reverse_primer_sequence=reverse_primer_sequence,
-            max_len_complement=primer_max_len_complement_reverse_primer,
-            Tm_min=primer_Tm_min,
-            Tm_max=primer_Tm_max,
-            Tm_parameters=primer_Tm_parameters,
-            Tm_chem_correction_parameters=primer_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=primer_Tm_salt_correction_parameters,
-            T_secondary_structure=primer_T_secondary_structure,
-            secondary_structures_threshold_deltaG=primer_secondary_structures_threshold_deltaG,
+            GC_content_min=config.GC_content_min,
+            GC_content_max=config.GC_content_max,
+            number_GC_GCclamp=config.number_GC_GCclamp,
+            number_three_prime_base_GCclamp=config.number_three_prime_base_GCclamp,
+            homopolymeric_base_n=config.homopolymeric_base_n,
+            max_len_selfcomplement=config.max_len_selfcomplement,
+            reverse_primer_sequence=config.reverse_primer_sequence,
+            max_len_complement=config.max_len_complement_reverse_primer,
+            Tm_min=config.Tm_min,
+            Tm_max=config.Tm_max,
+            Tm_parameters=developer_param.Tm_parameters,
+            Tm_chem_correction_parameters=developer_param.Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=developer_param.Tm_salt_correction_parameters,
+            T_secondary_structure=config.T_secondary_structure,
+            secondary_structures_threshold_deltaG=developer_param.secondary_structures_threshold_deltaG,
         )
 
         if self.write_intermediate_steps:
@@ -862,12 +615,12 @@ class SeqFishPlusProbeDesigner:
 
         oligo_database = primer_designer.filter_by_specificity(
             oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_primer,
-            specificity_refrence_blastn_search_parameters=primer_specificity_refrence_blastn_search_parameters,
-            specificity_refrence_blastn_hit_parameters=primer_specificity_refrence_blastn_hit_parameters,
+            files_fasta_reference_database=config.files_fasta_reference_database,
+            specificity_reference_blastn_search_parameters=developer_param.specificity_reference_blastn_search_parameters,
+            specificity_reference_blastn_hit_parameters=developer_param.specificity_reference_blastn_hit_parameters,
             file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
-            specificity_hybridization_probes_blastn_search_parameters=primer_specificity_hybridization_probes_blastn_search_parameters,
-            specificity_hybridization_probes_blastn_hit_parameters=primer_specificity_hybridization_probes_blastn_hit_parameters,
+            specificity_hybridization_probes_blastn_search_parameters=developer_param.specificity_hybridization_probes_blastn_search_parameters,
+            specificity_hybridization_probes_blastn_hit_parameters=developer_param.specificity_hybridization_probes_blastn_hit_parameters,
         )
 
         if self.write_intermediate_steps:
@@ -878,10 +631,10 @@ class SeqFishPlusProbeDesigner:
 
         # calculate Tm for the reverse primer
         Tm_reverse_primer = calc_tm_nn(
-            sequence=reverse_primer_sequence,
-            Tm_parameters=primer_Tm_parameters,
-            Tm_chem_correction_parameters=primer_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=primer_Tm_salt_correction_parameters,
+            sequence=config.reverse_primer_sequence,
+            Tm_parameters=developer_param.Tm_parameters,
+            Tm_chem_correction_parameters=developer_param.Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=developer_param.Tm_salt_correction_parameters,
         )
 
         # iterate over all primers in the database to find the one with Tm closest to the reverse primer Tm
@@ -891,9 +644,9 @@ class SeqFishPlusProbeDesigner:
             for primer_properties in database_region.values():
                 Tm_forward_primer = calc_tm_nn(
                     sequence=primer_properties["oligo"],
-                    Tm_parameters=primer_Tm_parameters,
-                    Tm_chem_correction_parameters=primer_Tm_chem_correction_parameters,
-                    Tm_salt_correction_parameters=primer_Tm_salt_correction_parameters,
+                    Tm_parameters=developer_param.Tm_parameters,
+                    Tm_chem_correction_parameters=developer_param.Tm_chem_correction_parameters,
+                    Tm_salt_correction_parameters=developer_param.Tm_salt_correction_parameters,
                 )
                 dif_Tm = abs(Tm_forward_primer - Tm_reverse_primer)
                 if dif_Tm < min_dif_Tm:
@@ -902,7 +655,7 @@ class SeqFishPlusProbeDesigner:
 
         os.remove(file_fasta_hybridization_probes_database)
 
-        return reverse_primer_sequence, forward_primer_sequence
+        return config.reverse_primer_sequence, forward_primer_sequence
 
     def assemble_dna_template_probes(
         self,
@@ -1128,7 +881,7 @@ class TargetProbeDesigner:
         region_ids: list | None,
         oligo_length_min: int,
         oligo_length_max: int,
-        files_fasta_oligo_database: list[str],
+        files_fasta_oligo_database: FilesFastaDatabaseT,
         min_oligos_per_gene: int,
         isoform_consensus: float,
     ) -> OligoDatabase:
@@ -1225,11 +978,11 @@ class TargetProbeDesigner:
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
-        GC_content_min: float,
-        GC_content_max: float,
-        homopolymeric_base_n: dict[str, int],
-        T_secondary_structure: float,
-        secondary_structures_threshold_deltaG: float,
+        GC_content_min: GCContentMinT,
+        GC_content_max: GCContentMaxT,
+        homopolymeric_base_n: HomopolymerThresholds,
+        T_secondary_structure: TSecondaryStructureT,
+        secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on sequence properties to remove probes with undesirable
@@ -1311,11 +1064,11 @@ class TargetProbeDesigner:
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
-        files_fasta_reference_database: list[str],
-        specificity_blastn_search_parameters: dict,
-        specificity_blastn_hit_parameters: dict,
-        cross_hybridization_blastn_search_parameters: dict,
-        cross_hybridization_blastn_hit_parameters: dict,
+        files_fasta_reference_database: FilesFastaReferenceDatabaseT,
+        specificity_blastn_search_parameters: BlastnSearchParameters,
+        specificity_blastn_hit_parameters: BlastnHitParameters,
+        cross_hybridization_blastn_search_parameters: BlastnSearchParameters,
+        cross_hybridization_blastn_hit_parameters: BlastnHitParameters,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on sequence specificity to remove probes that bind
@@ -1581,7 +1334,7 @@ class ReadoutProbeDesigner:
     def create_oligo_database(
         self,
         oligo_length: int,
-        oligo_base_probabilities: dict,
+        oligo_base_probabilities: BaseProbabilities,
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
@@ -1641,9 +1394,9 @@ class ReadoutProbeDesigner:
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
-        GC_content_min: float,
-        GC_content_max: float,
-        homopolymeric_base_n: dict[str, int],
+        GC_content_min: GCContentMinT,
+        GC_content_max: GCContentMaxT,
+        homopolymeric_base_n: HomopolymerThresholds,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on sequence properties to remove probes with undesirable
@@ -1704,11 +1457,11 @@ class ReadoutProbeDesigner:
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
-        files_fasta_reference_database: list,
-        specificity_blastn_search_parameters: dict,
-        specificity_blastn_hit_parameters: dict,
-        cross_hybridization_blastn_search_parameters: dict,
-        cross_hybridization_blastn_hit_parameters: dict,
+        files_fasta_reference_database: FilesFastaReferenceDatabaseT,
+        specificity_blastn_search_parameters: BlastnSearchParameters,
+        specificity_blastn_hit_parameters: BlastnHitParameters,
+        cross_hybridization_blastn_search_parameters: BlastnSearchParameters,
+        cross_hybridization_blastn_hit_parameters: BlastnHitParameters,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on sequence specificity to remove probes that bind
@@ -2049,7 +1802,7 @@ class PrimerDesigner:
     def create_oligo_database(
         self,
         oligo_length: int,
-        oligo_base_probabilities: dict,
+        oligo_base_probabilities: BaseProbabilities,
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
@@ -2116,21 +1869,21 @@ class PrimerDesigner:
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
-        GC_content_min: float,
-        GC_content_max: float,
+        GC_content_min: GCContentMinT,
+        GC_content_max: GCContentMaxT,
         number_GC_GCclamp: int,
         number_three_prime_base_GCclamp: int,
-        homopolymeric_base_n: dict[str, int],
+        homopolymeric_base_n: HomopolymerThresholds,
         max_len_selfcomplement: int,
-        reverse_primer_sequence: str,
+        reverse_primer_sequence: DNAT,
         max_len_complement: int,
-        Tm_min: float,
-        Tm_max: float,
-        Tm_parameters: dict,
-        Tm_chem_correction_parameters: dict | None,
-        Tm_salt_correction_parameters: dict | None,
-        T_secondary_structure: float,
-        secondary_structures_threshold_deltaG: float,
+        Tm_min: TmMinT,
+        Tm_max: TmMaxT,
+        Tm_parameters: TmParameters,
+        Tm_chem_correction_parameters: TmChemCorrectionParameters | None,
+        Tm_salt_correction_parameters: TmSaltCorrectionParameters | None,
+        T_secondary_structure: TSecondaryStructureT,
+        secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on sequence properties to remove primers with undesirable
@@ -2265,12 +2018,12 @@ class PrimerDesigner:
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
-        files_fasta_reference_database: list[str],
-        specificity_refrence_blastn_search_parameters: dict,
-        specificity_refrence_blastn_hit_parameters: dict,
+        files_fasta_reference_database: FilesFastaReferenceDatabaseT,
+        specificity_reference_blastn_search_parameters: BlastnSearchParameters,
+        specificity_reference_blastn_hit_parameters: BlastnHitParameters,
         file_fasta_hybridization_probes_database: str,
-        specificity_hybridization_probes_blastn_search_parameters: dict,
-        specificity_hybridization_probes_blastn_hit_parameters: dict,
+        specificity_hybridization_probes_blastn_search_parameters: BlastnSearchParameters,
+        specificity_hybridization_probes_blastn_hit_parameters: BlastnHitParameters,
     ) -> OligoDatabase:
         """
         Filter the oligo database based on sequence specificity to remove primers that bind
@@ -2299,13 +2052,13 @@ class PrimerDesigner:
             sequences used for specificity filtering. These files are used to identify off-target
             binding sites (e.g., whole genome or transcriptome sequences).
         :type files_fasta_reference_database: list[str]
-        :param specificity_refrence_blastn_search_parameters: Dictionary of parameters for BLASTN
+        :param specificity_reference_blastn_search_parameters: Dictionary of parameters for BLASTN
             searches used in specificity filtering against the reference database.
-        :type specificity_refrence_blastn_search_parameters: dict
-        :param specificity_refrence_blastn_hit_parameters: Dictionary of parameters for filtering
+        :type specificity_reference_blastn_search_parameters: dict
+        :param specificity_reference_blastn_hit_parameters: Dictionary of parameters for filtering
             BLASTN hits in specificity searches against the reference database.
             Primers with hits meeting these criteria are removed.
-        :type specificity_refrence_blastn_hit_parameters: dict
+        :type specificity_reference_blastn_hit_parameters: dict
         :param file_fasta_hybridization_probes_database: Path to the FASTA file containing
             hybridization probe sequences. This file is used to create a reference database
             for specificity filtering to ensure primers do not bind to the hybridization probes themselves.
@@ -2329,13 +2082,13 @@ class PrimerDesigner:
             files=files_fasta_reference_database, file_type="fasta", database_overwrite=True
         )
         # BlastN Filter
-        specificity_refrence = BlastNFilter(
-            search_parameters=specificity_refrence_blastn_search_parameters,
-            hit_parameters=specificity_refrence_blastn_hit_parameters,
+        specificity_reference = BlastNFilter(
+            search_parameters=specificity_reference_blastn_search_parameters,
+            hit_parameters=specificity_reference_blastn_hit_parameters,
             filter_name="primer_blastn_specificity_reference",
             dir_output=self.dir_output,
         )
-        specificity_refrence.set_reference_database(reference_database=reference_database)
+        specificity_reference.set_reference_database(reference_database=reference_database)
 
         ##### specificity filters against hybridization probes #####
         hybridization_probes_database = ReferenceDatabase(
@@ -2356,7 +2109,7 @@ class PrimerDesigner:
         )
 
         specificity_filter = SpecificityFilter(
-            filters=[specificity_refrence, specificity_hybridization_probes]
+            filters=[specificity_reference, specificity_hybridization_probes]
         )
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
@@ -2366,7 +2119,7 @@ class PrimerDesigner:
 
         # remove all directories of intermediate steps
         for directory in [
-            specificity_refrence.dir_output,
+            specificity_reference.dir_output,
             specificity_hybridization_probes.dir_output,
         ]:
             if os.path.exists(directory):
@@ -2412,100 +2165,50 @@ def main() -> None:
 
     ##### read the config file #####
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config = SeqFishPlusDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        logging.error("Invalid configuration file:\n%s", e)
+        raise
+
+    # write used config
+    write_config_to_yaml(config=config, dir_output=config.general.dir_output)
 
     ##### read the genes file #####
-    if config["file_regions"] is None:
+    if config.target_probe.file_regions is None:
         warnings.warn(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
         )
         region_ids = None
     else:
-        with open(config["file_regions"]) as handle:
+        with open(config.target_probe.file_regions) as handle:
             lines = handle.readlines()
             # ensure that the list contains unique gene ids
             region_ids = list(set([line.rstrip() for line in lines]))
 
     ##### initialize probe designer pipeline #####
     pipeline = SeqFishPlusProbeDesigner(
-        write_intermediate_steps=config["write_intermediate_steps"],
-        dir_output=config["dir_output"],
-        n_jobs=config["n_jobs"],
+        write_intermediate_steps=config.general.write_intermediate_steps,
+        dir_output=config.general.dir_output,
+        n_jobs=config.general.n_jobs,
     )
 
     ##### design probes #####
     target_probe_database = pipeline.design_target_probes(
         # Step 1: Create Database Parameters
         region_ids=region_ids,
-        files_fasta_target_probe_database=config["files_fasta_target_probe_database"],
-        target_probe_length_min=config["target_probe_length_min"],
-        target_probe_length_max=config["target_probe_length_max"],
-        target_probe_isoform_consensus=config["target_probe_isoform_consensus"],
-        # Step 2: Property Filter Parameters
-        target_probe_GC_content_min=config["target_probe_GC_content_min"],
-        target_probe_GC_content_opt=config["target_probe_GC_content_opt"],
-        target_probe_GC_content_max=config["target_probe_GC_content_max"],
-        target_probe_homopolymeric_base_n=config["target_probe_homopolymeric_base_n"],
-        target_probe_T_secondary_structure=config["target_probe_T_secondary_structure"],
-        target_probe_secondary_structures_threshold_deltaG=config[
-            "target_probe_secondary_structures_threshold_deltaG"
-        ],
-        # Step 3: Specificity Filter Parameters
-        files_fasta_reference_database_target_probe=config["files_fasta_reference_database_target_probe"],
-        target_probe_specificity_blastn_search_parameters=config[
-            "target_probe_specificity_blastn_search_parameters"
-        ],
-        target_probe_specificity_blastn_hit_parameters=config[
-            "target_probe_specificity_blastn_hit_parameters"
-        ],
-        target_probe_cross_hybridization_blastn_search_parameters=config[
-            "target_probe_cross_hybridization_blastn_search_parameters"
-        ],
-        target_probe_cross_hybridization_blastn_hit_parameters=config[
-            "target_probe_cross_hybridization_blastn_hit_parameters"
-        ],
-        # Step 4: Probe Scoring and Set Selection Parameters
-        target_probe_GC_weight=config["target_probe_GC_weight"],
-        target_probe_UTR_weight=config["target_probe_UTR_weight"],
-        set_size_opt=config["set_size_opt"],
-        set_size_min=config["set_size_min"],
-        distance_between_target_probes=config["distance_between_target_probes"],
-        n_sets=config["n_sets"],
-        n_attempts_graph=config["n_attempts_graph"],
-        n_attempts_clique_enum=config["n_attempts_clique_enum"],
-        diversification_fraction=config["diversification_fraction"],
-        jaccard_opt=config["jaccard_opt"],
-        jaccard_step=config["jaccard_step"],
+        config=config.target_probe,
+        developer_param=config.developer_param.target_probe,
+        oligo_set_selection=config.developer_param.oligo_set_selection,
     )
 
     codebook, readout_probe_table = pipeline.design_readout_probes(
         # Step 1: Create Database Parameters
         region_ids=list(target_probe_database.database.keys()),
-        readout_probe_length=config["readout_probe_length"],
-        readout_probe_base_probabilities=config["readout_probe_base_probabilities"],
-        readout_probe_initial_num_sequences=config["readout_probe_initial_num_sequences"],
-        # Step 2: Property Filter Parameters
-        readout_probe_GC_content_min=config["readout_probe_GC_content_min"],
-        readout_probe_GC_content_max=config["readout_probe_GC_content_max"],
-        readout_probe_homopolymeric_base_n=config["readout_probe_homopolymeric_base_n"],
-        # Step 3: Specificity Filter Parameters
-        files_fasta_reference_database_readout_probe=config["files_fasta_reference_database_readout_probe"],
-        readout_probe_specificity_blastn_search_parameters=config[
-            "readout_probe_specificity_blastn_search_parameters"
-        ],
-        readout_probe_specificity_blastn_hit_parameters=config[
-            "readout_probe_specificity_blastn_hit_parameters"
-        ],
-        readout_probe_cross_hybridization_blastn_search_parameters=config[
-            "readout_probe_cross_hybridization_blastn_search_parameters"
-        ],
-        readout_probe_cross_hybridization_blastn_hit_parameters=config[
-            "readout_probe_cross_hybridization_blastn_hit_parameters"
-        ],
-        # Step 4: Codebook and Readout Probe Table Parameters
-        n_barcode_rounds=config["n_barcode_rounds"],
-        n_pseudocolors=config["n_pseudocolors"],
-        channels_ids=config["channels_ids"],
+        config=config.readout_probe,
+        developer_param=config.developer_param.readout_probe,
     )
 
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
@@ -2515,41 +2218,9 @@ def main() -> None:
     )
 
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
-        # Step 1: Create Database Parameters
-        reverse_primer_sequence=config["reverse_primer_sequence"],
-        primer_length=config["primer_length"],
-        primer_base_probabilities=config["primer_base_probabilities"],
-        primer_initial_num_sequences=config["primer_initial_num_sequences"],
-        # Step 2: Property Filter Parameters
-        primer_GC_content_min=config["primer_GC_content_min"],
-        primer_GC_content_max=config["primer_GC_content_max"],
-        primer_number_GC_GCclamp=config["primer_number_GC_GCclamp"],
-        primer_number_three_prime_base_GCclamp=config["primer_number_three_prime_base_GCclamp"],
-        primer_homopolymeric_base_n=config["primer_homopolymeric_base_n"],
-        primer_max_len_selfcomplement=config["primer_max_len_selfcomplement"],
-        primer_max_len_complement_reverse_primer=config["primer_max_len_complement_reverse_primer"],
-        primer_Tm_min=config["primer_Tm_min"],
-        primer_Tm_max=config["primer_Tm_max"],
-        primer_T_secondary_structure=config["primer_T_secondary_structure"],
-        primer_secondary_structures_threshold_deltaG=config["primer_secondary_structures_threshold_deltaG"],
-        primer_Tm_parameters=preprocess_tm_parameters(config["primer_Tm_parameters"]),
-        primer_Tm_chem_correction_parameters=config["primer_Tm_chem_correction_parameters"],
-        primer_Tm_salt_correction_parameters=config["primer_Tm_salt_correction_parameters"],
-        # Step 3: Specificity Filter Parameters
+        config=config.primer,
+        developer_param=config.developer_param.primer,
         hybridization_probe_database=hybridization_probe_database,
-        files_fasta_reference_database_primer=config["files_fasta_reference_database_primer"],
-        primer_specificity_refrence_blastn_search_parameters=config[
-            "primer_specificity_refrence_blastn_search_parameters"
-        ],
-        primer_specificity_refrence_blastn_hit_parameters=config[
-            "primer_specificity_refrence_blastn_hit_parameters"
-        ],
-        primer_specificity_hybridization_probes_blastn_search_parameters=config[
-            "primer_specificity_hybridization_probes_blastn_search_parameters"
-        ],
-        primer_specificity_hybridization_probes_blastn_hit_parameters=config[
-            "primer_specificity_hybridization_probes_blastn_hit_parameters"
-        ],
     )
 
     probe_database = pipeline.assemble_dna_template_probes(
