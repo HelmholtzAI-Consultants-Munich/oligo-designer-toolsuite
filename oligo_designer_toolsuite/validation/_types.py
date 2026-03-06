@@ -89,3 +89,19 @@ LengthMaxT = Annotated[
 ]
 
 FractionT = Annotated[float, Field(ge=0, le=1)]
+
+DirOutputT = Annotated[
+    str, Field(description="Name of the directory where the output files will be written.")
+]
+
+ExonExonJunctionBlockSizeT = Annotated[
+    NonNegativeInt,
+    Field(
+        ge=1,
+        description=(
+            "Block size (bp) around each exon–exon junction, i.e. +/- this many "
+            "bp around the junction. It does not make sense to set this larger "
+            "than the maximum oligo length."
+        ),
+    ),
+]

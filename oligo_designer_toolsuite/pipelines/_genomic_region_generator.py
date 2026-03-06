@@ -6,21 +6,12 @@ import inspect
 import logging
 import os
 from pathlib import Path
-from typing import Annotated, TypeAlias
 
 import yaml
-from pydantic import Field, TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from oligo_designer_toolsuite.pipelines._config_models import (
     GenomicRegions,
-    SourceParamsCustom,
-    SourceParamsEnsembl,
-    SourceParamsNcbi,
-)
-from oligo_designer_toolsuite.pipelines._config_pipelines import (
-    GenomicRegionGeneratorCustomConfig,
-    GenomicRegionGeneratorEnsemblConfig,
-    GenomicRegionGeneratorNcbiConfig,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
     base_log_parameters,
@@ -33,6 +24,8 @@ from oligo_designer_toolsuite.sequence_generator import (
     EnsemblGenomicRegionGenerator,
     NcbiGenomicRegionGenerator,
 )
+from oligo_designer_toolsuite.validation.models._general import SourceConfigs
+from oligo_designer_toolsuite.validation.models.config_pipelines import GenomicRegionConfig
 
 ############################################
 # Genomic Region Generator Functions
@@ -46,8 +39,6 @@ class GenomicRegionGenerator:
 
     :param dir_output: Directory path where output files will be saved.
     :type dir_output: str
-    :param config: Validated Pydantic model of the pipeline configuration
-    :type config: GenomicRegionBaseConfig
     """
 
     def __init__(self, dir_output: str) -> None:
@@ -65,7 +56,7 @@ class GenomicRegionGenerator:
 
     def load_annotations(
         self,
-        source_params: SourceParamsCustom | SourceParamsEnsembl | SourceParamsNcbi,
+        source_params: SourceConfigs,
     ) -> CustomGenomicRegionGenerator:
         """
         Loads annotations from the specified source (NCBI, Ensembl, or custom files).
@@ -75,7 +66,7 @@ class GenomicRegionGenerator:
             If source is 'ensembl', it should contain 'species' and 'annotation_release'.
             If source is 'custom', it should contain 'file_annotation', 'file_sequence', 'files_source',
             'species', 'annotation_release', and 'genome_assembly'.
-        :type source_params: SourceParamsCustom | SourceParamsEnsembl | SourceParamsNcbi
+        :type source_params: SourceConfigs
         :return: An instance of the corresponding region generator class based on the source.
         :rtype: CustomGenomicRegionGenerator
         """
@@ -92,30 +83,30 @@ class GenomicRegionGenerator:
         ) = None
 
         ##### loading annotations from different sources #####
-        if isinstance(source_params, SourceParamsNcbi):
+        if source_params.source == "ncbi":
             # dowload the fasta files formthe NCBI server
             region_generator = NcbiGenomicRegionGenerator(
-                taxon=source_params.taxon,
-                species=source_params.species,
-                annotation_release=source_params.annotation_release,
+                taxon=source_params.parameters.taxon,
+                species=source_params.parameters.species,
+                annotation_release=source_params.parameters.annotation_release,
                 dir_output=self.dir_output,
             )
-        elif isinstance(source_params, SourceParamsEnsembl):
+        elif source_params.source == "ensembl":
             # dowload the fasta files formthe NCBI server
             region_generator = EnsemblGenomicRegionGenerator(
-                species=source_params.species,
-                annotation_release=source_params.annotation_release,
+                species=source_params.parameters.species,
+                annotation_release=source_params.parameters.annotation_release,
                 dir_output=self.dir_output,
             )
-        elif isinstance(source_params, SourceParamsCustom):
+        elif source_params.source == "custom":
             # use already dowloaded files
             region_generator = CustomGenomicRegionGenerator(
-                annotation_file=source_params.file_annotation,
-                sequence_file=source_params.file_sequence,
-                files_source=source_params.files_source,
-                species=source_params.species,
-                annotation_release=source_params.annotation_release,
-                genome_assembly=source_params.genome_assembly,
+                annotation_file=source_params.parameters.file_annotation,
+                sequence_file=source_params.parameters.file_sequence,
+                files_source=source_params.parameters.files_source,
+                species=source_params.parameters.species,
+                annotation_release=source_params.parameters.annotation_release,
+                genome_assembly=source_params.parameters.genome_assembly,
                 dir_output=self.dir_output,
             )
 
@@ -196,17 +187,8 @@ def main() -> None:
     with open(args["config"], "r") as handle:
         config_raw = yaml.safe_load(handle)
 
-    # validate the configuration; set up a union to chose the appropriate validation model
-    # based on the source (custom/ncbi/ensembl)
-    ConfigUnionBase: TypeAlias = (
-        GenomicRegionGeneratorCustomConfig
-        | GenomicRegionGeneratorEnsemblConfig
-        | GenomicRegionGeneratorNcbiConfig
-    )
-    ConfigUnion = Annotated[ConfigUnionBase, Field(discriminator="source")]
-    adapter: TypeAdapter[ConfigUnionBase] = TypeAdapter(ConfigUnion)
     try:
-        config = adapter.validate_python(config_raw)
+        config = GenomicRegionConfig.model_validate(config_raw)
     except ValidationError as e:
         logging.error("Invalid configuration file:\n%s", e)
         raise
@@ -221,7 +203,7 @@ def main() -> None:
     # the `source_params` contain the information from which source the
     # genomic data comes from and `source` is not needed anymore
     region_generator = pipeline.load_annotations(
-        source_params=config.source_params,
+        source_params=config.source,
     )
 
     files_fasta = pipeline.generate_genomic_regions(

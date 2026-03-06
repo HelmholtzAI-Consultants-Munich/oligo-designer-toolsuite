@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, PositiveInt
+from typing import Annotated
 
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+
+from oligo_designer_toolsuite.validation._types import DirOutputT, ExonExonJunctionBlockSizeT
 from oligo_designer_toolsuite.validation.models._detection_probes import DetectionProbeScrinshot
 from oligo_designer_toolsuite.validation.models._developer_parameters import (
     DeveloperParametersCycleHCR,
@@ -10,7 +13,7 @@ from oligo_designer_toolsuite.validation.models._developer_parameters import (
     DeveloperParametersScrinshot,
     DeveloperParametersSeqFishPlus,
 )
-from oligo_designer_toolsuite.validation.models._general import General
+from oligo_designer_toolsuite.validation.models._general import General, GenomicRegions, SourceConfigs
 from oligo_designer_toolsuite.validation.models._primer import PrimerCycleHCR, PrimerFish, PrimerMerfish
 from oligo_designer_toolsuite.validation.models._readout_probes import (
     ReadoutProbeCycleHCR,
@@ -71,3 +74,17 @@ class ScrinshotProbeDesignerConfig(BaseModel):
     target_probe: TargetProbeScrinshot
     detection_probe: DetectionProbeScrinshot
     developer_param: DeveloperParametersScrinshot
+
+
+class GenomicRegionConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: PositiveInt
+    dir_output: DirOutputT
+    source: Annotated[SourceConfigs, Field(description="Parameters for genome and gene annotation.")]
+    genomic_regions: Annotated[
+        GenomicRegions,
+        Field(
+            description="List of genomic regions that should be generated, set the genomic regions you want to generate to true."
+        ),
+    ]
+    exon_exon_junction_block_size: ExonExonJunctionBlockSizeT

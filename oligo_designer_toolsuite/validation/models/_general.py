@@ -139,26 +139,6 @@ class TmParametersDetails(BaseModel):
         return self
 
 
-# class TmParameters(BaseModel):
-#     model_config = ConfigDict(extra="forbid")
-
-#     mode: Literal["biopython_defaults", "custom"] = Field(
-#         default="biopython_defaults",
-#         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.Tm_NN) be used or custom parameters?",
-#     )
-#     parameters: TmParametersDetails | None = Field(
-#         default=None, description="Required when mode='custom'. Must be omitted otherwise."
-#     )
-
-#     @model_validator(mode="after")
-#     def _check_mode_and_parameters(self) -> Self:
-#         if self.mode == "custom" and self.parameters is None:
-#             raise ValueError("TmParameters.parameters must be provided when mode='custom'.")
-#         if self.mode == "biopython_defaults" and self.parameters is not None:
-#             raise ValueError("TmParameters.parameters must be omitted when mode is 'biopython_defaults'.")
-#         return self
-
-
 class TmParametersBiopythonDefaults(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -866,3 +846,130 @@ HybridizationProbabilityFilterConfig = Annotated[
     HybridizationProbabilityFilterBlastnConfig | HybridizationProbabilityFilterBowtieConfig,
     Field(discriminator="alignment_method"),
 ]
+
+
+class GenomicRegions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    gene: Annotated[bool, Field(description="Generate gene regions.")]
+    intergenic: Annotated[bool, Field(description="Generate intergenic regions.")]
+    exon: Annotated[bool, Field(description="Generate exon regions.")]
+    exon_exon_junction: Annotated[bool, Field(description="Generate exon–exon junction regions.")]
+    utr: Annotated[bool, Field(description="Generate UTR regions.")]
+    cds: Annotated[bool, Field(description="Generate coding sequence (CDS) regions.")]
+    intron: Annotated[bool, Field(description="Generate intron regions.")]
+
+
+class SourceParamsCustom(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file_annotation: Annotated[
+        str,
+        Field(
+            description="GTF file with gene annotation",
+        ),
+    ]
+    file_sequence: Annotated[
+        str,
+        Field(
+            description="FASTA file with genome sequence",
+        ),
+    ]
+    files_source: Annotated[str | None, Field(description="original source of the genomic files")]
+    species: Annotated[
+        str | None,
+        Field(description="species of provided annotation, set to 'None' if unknown"),
+    ]
+    annotation_release: Annotated[
+        str | None,
+        Field(description="release number of provided annotation, set to 'None' if unknown"),
+    ]
+    genome_assembly: Annotated[
+        str | None,
+        Field(description="genome assembly of provided annotation, set to 'None' if unknown"),
+    ]
+
+
+class SourceParamsEnsembl(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    species: Annotated[str, Field(description="species of provided annotation")]
+    annotation_release: Annotated[str, Field(description="release number of provided annotation")]
+
+
+class SourceParamsNcbi(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    taxon: Annotated[
+        Literal[
+            "archaea",
+            "bacteria",
+            "fungi",
+            "invertebrate",
+            "metagenomes",
+            "plant",
+            "plants",
+            "protozoa",
+            "unkown",
+            "vertebrate_mammalian",
+            "vertebrate_other",
+            "viral",
+        ],
+        Field(description="taxon of the species"),
+    ]
+    species: Annotated[str, Field(description="species of provided annotation")]
+    annotation_release: Annotated[str, Field(description="release number of provided annotation")]
+
+
+class SourceCustom(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: Annotated[
+        Literal["custom"],
+        Field(
+            description="Indicate which annotation should be used. Possible values are 'ensembl', 'ncbi' or 'custom'."
+        ),
+    ]
+    parameters: Annotated[
+        SourceParamsCustom,
+        Field(
+            description="If a custom source, the metadata of the provided genome and annotation. If ensembl or ncbi, the parameters used to retrieve the genomic data."
+        ),
+    ]
+
+
+class SourceEnsembl(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: Annotated[
+        Literal["ensembl"],
+        Field(
+            description="Indicate which annotation should be used. Possible values are 'ensembl', 'ncbi' or 'custom'."
+        ),
+    ]
+    parameters: Annotated[
+        SourceParamsEnsembl,
+        Field(
+            description="If a custom source, the metadata of the provided genome and annotation. If ensembl or ncbi, the parameters used to retrieve the genomic data."
+        ),
+    ]
+
+
+class SourceNcbi(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: Annotated[
+        Literal["ncbi"],
+        Field(
+            description="Indicate which annotation should be used. Possible values are 'ensembl', 'ncbi' or 'custom'."
+        ),
+    ]
+    parameters: Annotated[
+        SourceParamsNcbi,
+        Field(
+            description="If a custom source, the metadata of the provided genome and annotation. If ensembl or ncbi, the parameters used to retrieve the genomic data."
+        ),
+    ]
+
+
+SourceConfigs = Annotated[SourceCustom | SourceEnsembl | SourceNcbi, Field(discriminator="source")]
