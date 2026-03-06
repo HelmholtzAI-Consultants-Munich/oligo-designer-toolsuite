@@ -10,9 +10,6 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from oligo_designer_toolsuite.pipelines._config_models import (
-    GenomicRegions,
-)
 from oligo_designer_toolsuite.pipelines._utils import (
     base_log_parameters,
     base_parser,
@@ -24,7 +21,7 @@ from oligo_designer_toolsuite.sequence_generator import (
     EnsemblGenomicRegionGenerator,
     NcbiGenomicRegionGenerator,
 )
-from oligo_designer_toolsuite.validation.models._general import SourceConfigs
+from oligo_designer_toolsuite.validation.models._general import GenomicRegions, SourceConfigs
 from oligo_designer_toolsuite.validation.models.config_pipelines import GenomicRegionConfig
 
 ############################################
