@@ -237,8 +237,12 @@ class DeveloperParametersMerfish(DeveloperParametersBase):
     primer: PrimerDevFish
 
 
+class TargetProbeDevSeqFishPlus(TargetProbeDev):
+    secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
+
+
 class DeveloperParametersSeqFishPlus(DeveloperParametersBase):
-    target_probe: TargetProbeDev
+    target_probe: TargetProbeDevSeqFishPlus
     readout_probe: ReadoutProbeDevFish
     primer: PrimerDevSeqFishPlus
 

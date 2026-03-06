@@ -75,7 +75,7 @@ class PadlockArmsFilter(BasePropertyFilter):
         determining if the sequence can form a valid padlock probe based on the specified parameters.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence meets the criteria for padlock probe arms, `False` otherwise.
         :rtype: bool
         """
@@ -167,7 +167,7 @@ class DetectionOligoFilter(BasePropertyFilter):
         siutable detection oligos based on length and thymine content.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence meets the criteria for detection oligonucleotides, `False` otherwise.
         :rtype: bool
         """

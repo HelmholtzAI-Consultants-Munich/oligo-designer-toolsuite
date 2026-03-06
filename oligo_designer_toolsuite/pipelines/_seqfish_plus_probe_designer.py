@@ -76,7 +76,7 @@ from oligo_designer_toolsuite.validation._types import (
 from oligo_designer_toolsuite.validation.models._developer_parameters import (
     PrimerDevSeqFishPlus,
     ReadoutProbeDevFish,
-    TargetProbeDev,
+    TargetProbeDevSeqFishPlus,
 )
 from oligo_designer_toolsuite.validation.models._general import (
     BaseProbabilities,
@@ -220,7 +220,7 @@ class SeqFishPlusProbeDesigner:
         # Step 1: Create Database Parameters
         region_ids: list[str] | None,
         config: TargetProbeSeqFishPlus,
-        developer_param: TargetProbeDev,
+        developer_param: TargetProbeDevSeqFishPlus,
         oligo_set_selection: OligoSetSelection,
     ) -> OligoDatabase:
         """
@@ -246,7 +246,7 @@ class SeqFishPlusProbeDesigner:
         :param config: Pydantic model of configuration parameters for target probes.
         :type config: TargetProbeSeqFishPlus
         :param developer_param: Pydantic model of advanced configuration parameters for target probes.
-        :type developer_param: TargetProbeDev
+        :type developer_param: TargetProbeDevSeqFishPlus
         :param oligo_set_selection:  Pydantic model of configuration parameters for oligo set selection.
         :type oligo_set_selection: OligoSetSelection
         :return: An `OligoDatabase` object containing the designed target probes organized into sets.
@@ -910,7 +910,7 @@ class TargetProbeDesigner:
         :param files_fasta_oligo_database: List of paths to FASTA files containing sequences from which
             target probes will be generated. These files should contain genomic regions of interest
             (e.g., exons, exon-exon junctions).
-        :type files_fasta_oligo_database: list[str]
+        :type files_fasta_oligo_database: FilesFastaDatabaseT
         :param min_oligos_per_gene: Minimum number of oligos required per region (gene) after filtering.
             Regions with fewer oligos than this threshold will be removed from the database.
         :type min_oligos_per_gene: int
@@ -1005,23 +1005,23 @@ class TargetProbeDesigner:
         :type oligo_database: OligoDatabase
         :param GC_content_min: Minimum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_min: float
+        :type GC_content_min: GCContentMinT
         :param GC_content_max: Maximum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_max: float
+        :type GC_content_max: GCContentMaxT
         :param homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
             runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
             run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
             identical bases.
-        :type homopolymeric_base_n: dict[str, int]
+        :type homopolymeric_base_n: HomopolymerThresholds
         :param T_secondary_structure: Temperature in degrees Celsius at which to evaluate secondary
             structure formation. Secondary structures that form at this temperature can interfere
             with probe binding.
-        :type T_secondary_structure: float
+        :type T_secondary_structure: TSecondaryStructureT
         :param secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for secondary
             structure stability. Probes with secondary structures having deltaG values more negative
             (more stable) than this threshold will be filtered out.
-        :type secondary_structures_threshold_deltaG: float
+        :type secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
         :return: A filtered `OligoDatabase` object containing only probes that pass all property filters.
             Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
@@ -1097,21 +1097,21 @@ class TargetProbeDesigner:
         :param files_fasta_reference_database: List of paths to FASTA files containing reference
             sequences against which specificity will be evaluated. These typically include the
             entire genome or transcriptome to identify off-target binding sites.
-        :type files_fasta_reference_database: list[str]
+        :type files_fasta_reference_database: FilesFastaReferenceDatabaseT
         :param specificity_blastn_search_parameters: Dictionary of parameters for BLASTN searches
             used in specificity filtering.
-        :type specificity_blastn_search_parameters: dict
+        :type specificity_blastn_search_parameters: BlastnSearchParameters
         :param specificity_blastn_hit_parameters: Dictionary of parameters for filtering BLASTN hits
             in specificity searches. Probes with hits meeting these criteria are removed.
-        :type specificity_blastn_hit_parameters: dict
+        :type specificity_blastn_hit_parameters: BlastnHitParameters
         :param cross_hybridization_blastn_search_parameters: Dictionary of parameters for BLASTN
             searches used in cross-hybridization filtering. These searches check if probes align to
             each other.
-        :type cross_hybridization_blastn_search_parameters: dict
+        :type cross_hybridization_blastn_search_parameters: BlastnSearchParameters
         :param cross_hybridization_blastn_hit_parameters: Dictionary of parameters for filtering
             BLASTN hits in cross-hybridization searches. Probes with cross-hybridization hits meeting these
             criteria are removed from the larger region.
-        :type cross_hybridization_blastn_hit_parameters: dict
+        :type cross_hybridization_blastn_hit_parameters: BlastnHitParameters
         :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
             and cross-hybridization filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
@@ -1349,7 +1349,7 @@ class ReadoutProbeDesigner:
         :param oligo_base_probabilities: Dictionary specifying the probability of each nucleotide
             base in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should
             sum to 1.0 (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
-        :type oligo_base_probabilities: dict
+        :type oligo_base_probabilities: BaseProbabilities
         :param initial_num_sequences: Number of random sequences to generate initially before filtering.
             Higher values provide more candidates but increase computation time.
         :type initial_num_sequences: int
@@ -1415,15 +1415,15 @@ class ReadoutProbeDesigner:
         :type oligo_database: OligoDatabase
         :param GC_content_min: Minimum acceptable GC content for readout probes, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_min: float
+        :type GC_content_min: GCContentMinT
         :param GC_content_max: Maximum acceptable GC content for readout probes, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_max: float
+        :type GC_content_max: GCContentMaxT
         :param homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
             runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
             run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
             identical bases.
-        :type homopolymeric_base_n: dict[str, int]
+        :type homopolymeric_base_n: HomopolymerThresholds
         :return: A filtered `OligoDatabase` object containing only probes that pass all property filters.
             Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
@@ -1490,24 +1490,24 @@ class ReadoutProbeDesigner:
         :param files_fasta_reference_database: List of paths to FASTA files containing reference
             sequences against which specificity will be evaluated. These typically include the
             entire genome or transcriptome to identify off-target binding sites.
-        :type files_fasta_reference_database: list
+        :type files_fasta_reference_database: FilesFastaReferenceDatabaseT
         :param specificity_blastn_search_parameters: Dictionary of parameters for BLASTN searches
             used in specificity filtering. Common parameters include: 'task', 'word_size', 'evalue',
             'max_target_seqs', 'num_threads', etc.
-        :type specificity_blastn_search_parameters: dict
+        :type specificity_blastn_search_parameters: BlastnSearchParameters
         :param specificity_blastn_hit_parameters: Dictionary of parameters for filtering BLASTN hits
             in specificity searches. Common parameters include: 'identity_min', 'alignment_length_min',
             'mismatches_max', 'gaps_max', etc. Probes with hits meeting these criteria are removed.
-        :type specificity_blastn_hit_parameters: dict
+        :type specificity_blastn_hit_parameters: BlastnHitParameters
         :param cross_hybridization_blastn_search_parameters: Dictionary of parameters for BLASTN
             searches used in cross-hybridization filtering. These searches check if probes align to
             each other. Common parameters are similar to `specificity_blastn_search_parameters`.
-        :type cross_hybridization_blastn_search_parameters: dict
+        :type cross_hybridization_blastn_search_parameters: BlastnSearchParameters
         :param cross_hybridization_blastn_hit_parameters: Dictionary of parameters for filtering
             BLASTN hits in cross-hybridization searches. Common parameters are similar to
             `specificity_blastn_hit_parameters`. Probes with cross-hybridization hits meeting these
             criteria are removed based on their degree of cross-hybridization.
-        :type cross_hybridization_blastn_hit_parameters: dict
+        :type cross_hybridization_blastn_hit_parameters: BlastnHitParameters
         :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
             and cross-hybridization filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
@@ -1821,7 +1821,7 @@ class PrimerDesigner:
         :param oligo_base_probabilities: Dictionary specifying the probability of each nucleotide base
             in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should sum to 1.0
             (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
-        :type oligo_base_probabilities: dict
+        :type oligo_base_probabilities: BaseProbabilities
         :param initial_num_sequences: Number of random sequences to generate initially before filtering.
             Higher values provide more candidates but increase computation time.
         :type initial_num_sequences: int
@@ -1910,10 +1910,10 @@ class PrimerDesigner:
         :type oligo_database: OligoDatabase
         :param GC_content_min: Minimum acceptable GC content for primers, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_min: float
+        :type GC_content_min: GCContentMinT
         :param GC_content_max: Maximum acceptable GC content for primers, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_max: float
+        :type GC_content_max: GCContentMaxT
         :param number_GC_GCclamp: Minimum number of G or C nucleotides required within the specified
             number of bases at the 3' end (GC clamp). This improves primer binding stability.
         :type number_GC_GCclamp: int
@@ -1924,46 +1924,46 @@ class PrimerDesigner:
             runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
             run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
             identical bases.
-        :type homopolymeric_base_n: dict[str, int]
+        :type homopolymeric_base_n: HomopolymerThresholds
         :param max_len_selfcomplement: Maximum allowable length of self-complementary sequences.
             Primers with longer self-complementary regions can form hairpins and reduce PCR efficiency.
         :type max_len_selfcomplement: int
         :param reverse_primer_sequence: DNA sequence of the reverse primer that will be used for
             complementarity filtering. This prevents the forward and reverse primers from binding to
             each other.
-        :type reverse_primer_sequence: str
+        :type reverse_primer_sequence: DNAT
         :param max_len_complement: Maximum allowable length of complementarity to the reverse primer
             sequence. This prevents the forward and reverse primers from binding to each other.
         :type max_len_complement: int
         :param Tm_min: Minimum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type Tm_min: float
+        :type Tm_min: TmMinT
         :param Tm_max: Maximum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type Tm_max: float
+        :type Tm_max: TmMaxT
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) of primers
-            using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
+            using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set `mode='biopython_defaults'`.
             Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
             'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm calculation.
             These parameters account for the effects of chemical additives (e.g., DMSO, formamide) on melting temperature.
-            Set to ``None`` to disable chemical correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
+            Set `mode='disabled'` to disable chemical correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters.
             For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None`` to disable
-            salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
+            These parameters account for the effects of salt concentration on melting temperature. Set `mode='disabled'` to disable
+            salt correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :param T_secondary_structure: Temperature in degrees Celsius at which to evaluate secondary
             structure formation. Secondary structures that form at this temperature can interfere
             with primer binding.
-        :type T_secondary_structure: float
+        :type T_secondary_structure: TSecondaryStructureT
         :param secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for secondary
             structure stability. Primers with secondary structures having deltaG values more negative
             (more stable) than this threshold will be filtered out.
-        :type secondary_structures_threshold_deltaG: float
+        :type secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
         :return: A filtered `OligoDatabase` object containing only primers that pass all property filters.
             Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
@@ -2051,25 +2051,25 @@ class PrimerDesigner:
         :param files_fasta_reference_database: List of paths to FASTA files containing reference
             sequences used for specificity filtering. These files are used to identify off-target
             binding sites (e.g., whole genome or transcriptome sequences).
-        :type files_fasta_reference_database: list[str]
+        :type files_fasta_reference_database: FilesFastaReferenceDatabaseT
         :param specificity_reference_blastn_search_parameters: Dictionary of parameters for BLASTN
             searches used in specificity filtering against the reference database.
-        :type specificity_reference_blastn_search_parameters: dict
+        :type specificity_reference_blastn_search_parameters: BlastnSearchParameters
         :param specificity_reference_blastn_hit_parameters: Dictionary of parameters for filtering
             BLASTN hits in specificity searches against the reference database.
             Primers with hits meeting these criteria are removed.
-        :type specificity_reference_blastn_hit_parameters: dict
+        :type specificity_reference_blastn_hit_parameters: BlastnHitParameters
         :param file_fasta_hybridization_probes_database: Path to the FASTA file containing
             hybridization probe sequences. This file is used to create a reference database
             for specificity filtering to ensure primers do not bind to the hybridization probes themselves.
         :type file_fasta_hybridization_probes_database: str
         :param specificity_hybridization_probes_blastn_search_parameters: Dictionary of parameters for BLASTN
             searches used in specificity filtering against the hybridization probes database.
-        :type specificity_hybridization_probes_blastn_search_parameters: dict
+        :type specificity_hybridization_probes_blastn_search_parameters: BlastnSearchParameters
         :param specificity_hybridization_probes_blastn_hit_parameters: Dictionary of parameters for filtering
             BLASTN hits in specificity searches against the hybridization probes database. Primers with hits meeting these
             criteria are removed.
-        :type specificity_hybridization_probes_blastn_hit_parameters: dict
+        :type specificity_hybridization_probes_blastn_hit_parameters: BlastnHitParameters
         :return: A filtered `OligoDatabase` object containing only primers that pass all specificity
             filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase

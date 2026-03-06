@@ -781,39 +781,39 @@ class TargetProbeDesigner:
         :type oligo_database: OligoDatabase
         :param GC_content_min: Minimum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_min: float
+        :type GC_content_min: GCContentMinT
         :param GC_content_max: Maximum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_max: float
+        :type GC_content_max: GCContentMinT
         :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Probes with calculated Tm below this value will be filtered out.
-        :type Tm_min: float
+        :type Tm_min: TmMinT
         :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Probes with calculated Tm above this value will be filtered out.
-        :type Tm_max: float
+        :type Tm_max: TmMaxT
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) using
-            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
+            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set `mode='biopython_defaults'`.
             Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
             'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation. These parameters account for the effects of chemical additives (e.g., DMSO,
-            formamide) on melting temperature. Set to ``None`` to disable chemical correction, or set to ``{}``
+            formamide) on melting temperature. Set `mode='disabled'` to disable chemical correction, or set `mode='biopython_defaults'`
             to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None``
-            to disable salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
+            These parameters account for the effects of salt concentration on melting temperature. Set `mode='disabled'`
+            to disable salt correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters.
             For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :param homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
             runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
             run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
             identical bases.
-        :type homopolymeric_base_n: dict[str, int]
+        :type homopolymeric_base_n: HomopolymerThresholds
         :param detect_oligo_length_min: Minimum length (in nucleotides) for detection oligo sequences
             that will be extracted from the probe, centered on the ligation site.
         :type detect_oligo_length_min: int
@@ -943,21 +943,21 @@ class TargetProbeDesigner:
         :param files_fasta_reference_database: List of paths to FASTA files containing reference
             sequences against which specificity will be evaluated. These typically include the
             entire genome or transcriptome to identify off-target binding sites.
-        :type files_fasta_reference_database: list[str]
+        :type files_fasta_reference_database: FilesFastaReferenceDatabaseT
         :param specificity_blastn_search_parameters: Dictionary of parameters for BLASTN searches
             used in specificity filtering.
-        :type specificity_blastn_search_parameters: dict
+        :type specificity_blastn_search_parameters: BlastnSearchParameters
         :param specificity_blastn_hit_parameters: Dictionary of parameters for filtering BLASTN hits
             in specificity searches. Probes with hits meeting these criteria are removed.
-        :type specificity_blastn_hit_parameters: dict
+        :type specificity_blastn_hit_parameters: BlastnHitParameters
         :param cross_hybridization_blastn_search_parameters: Dictionary of parameters for BLASTN
             searches used in cross-hybridization filtering. These searches check if probes align to
             each other.
-        :type cross_hybridization_blastn_search_parameters: dict
+        :type cross_hybridization_blastn_search_parameters: BlastnSearchParameters
         :param cross_hybridization_blastn_hit_parameters: Dictionary of parameters for filtering
             BLASTN hits in cross-hybridization searches. Probes with cross-hybridization hits meeting these
             criteria are removed from the larger region.
-        :type cross_hybridization_blastn_hit_parameters: dict
+        :type cross_hybridization_blastn_hit_parameters: BlastnHitParameters
         :param ligation_region_size: Size of the ligation region (in nucleotides) around the ligation
             site. If > 0, seed-based specificity filtering is applied: all probes where BLASTN hits
             cover the junction region are removed, regardless of the coverage threshold. If 0,
@@ -977,23 +977,23 @@ class TargetProbeDesigner:
         :type arm_Tm_max: float
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) using
             the nearest-neighbor method. Used for calculating padlock arm Tm values. For using
-            Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``. Common parameters include:
+            Bio.SeqUtils.MeltingTemp default parameters, set `mode='biopython_defaults'`. Common parameters include:
             'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K', 'Tris', 'Mg',
             'dNTPs', 'saltcorr', etc. For more information on parameters, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation. These parameters account for the effects of chemical additives (e.g., DMSO,
-            formamide) on melting temperature. Set to ``None`` to disable chemical correction, or set to ``{}``
+            formamide) on melting temperature. Set `mode='disabled'` to disable chemical correction, or set `mode='biopython_defaults'`
             to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None``
-            to disable salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
+            These parameters account for the effects of salt concentration on melting temperature. Set `mode='disabled'`
+            to disable salt correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters.
             For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
             and cross-hybridization filters. The database includes calculated padlock arm properties
             (ligation_site, sequence_padlock_arm1, sequence_padlock_arm2, etc.). Regions with insufficient
@@ -1142,44 +1142,44 @@ class TargetProbeDesigner:
         :type isoform_weight: float
         :param GC_content_min: Minimum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0. Used in scoring to penalize probes with GC content below this value.
-        :type GC_content_min: float
+        :type GC_content_min: GCContentMinT
         :param GC_content_opt: Optimal GC content for oligos, expressed as a fraction between 0.0
             and 1.0. Used in scoring to prioritize probes closer to this value.
-        :type GC_content_opt: float
+        :type GC_content_opt: GCContentOptT
         :param GC_content_max: Maximum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0. Used in scoring to penalize probes with GC content above this value.
-        :type GC_content_max: float
+        :type GC_content_max: GCContentMaxT
         :param GC_weight: Weight assigned to GC content in the scoring function.
         :type GC_weight: float
         :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Used in scoring to penalize probes with Tm below this value.
-        :type Tm_min: float
+        :type Tm_min: TmMinT
         :param Tm_opt: Optimal melting temperature (Tm) for oligos in degrees Celsius. Used in scoring
             to prioritize probes closer to this value.
-        :type Tm_opt: float
+        :type Tm_opt: TmOptT
         :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Used in scoring to penalize probes with Tm above this value.
-        :type Tm_max: float
+        :type Tm_max: TmMaxT
         :param Tm_weight: Weight assigned to melting temperature in the scoring function.
         :type Tm_weight: float
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) using
-            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
+            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set `mode='biopython_defaults'`.
             Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
             'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation. These parameters account for the effects of chemical additives (e.g., DMSO,
-            formamide) on melting temperature. Set to ``None`` to disable chemical correction, or set to ``{}``
+            formamide) on melting temperature. Set `mode='disabled'` to disable chemical correction, or set `mode='biopython_defaults'`
             to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None``
-            to disable salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
+            These parameters account for the effects of salt concentration on melting temperature. Set `mode='disabled'`
+            to disable salt correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters.
             For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :param set_size_opt: Optimal size (number of probes) for each oligo set. The set selection algorithm will
             attempt to generate sets of this size, but may produce sets with fewer probes if constraints cannot be met.
         :type set_size_opt: int
@@ -1348,24 +1348,24 @@ class DetectionOligoDesigner:
         :type U_distance: int
         :param Tm_opt: Optimal melting temperature (Tm) for detection oligos in degrees Celsius.
             The algorithm will select detection oligos with Tm closest to this value.
-        :type Tm_opt: float
+        :type Tm_opt: TmOptT
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) of detection
-            oligos using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
+            oligos using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set `mode='biopython_defaults'`.
             Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
             'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm calculation.
             These parameters account for the effects of chemical additives (e.g., DMSO, formamide) on melting temperature.
-            Set to ``None`` to disable chemical correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
+            Set `mode='disabled'` to disable chemical correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters.
             For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None`` to disable
-            salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
+            These parameters account for the effects of salt concentration on melting temperature. Set `mode='disabled'` to disable
+            salt correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :return: An updated `OligoDatabase` object containing the designed detection oligos. The
             database includes the following new sequence properties for each probe:
             - `sequence_detection_oligo`: The detection oligo sequence with uracil substitutions
@@ -1433,15 +1433,15 @@ class DetectionOligoDesigner:
         :param U_distance: Maximum distance (in nucleotides) allowed between uracil substitutions.
         :type U_distance: int
         :param Tm_opt: Optimal melting temperature (Tm) for detection oligos in degrees Celsius.
-        :type Tm_opt: float
+        :type Tm_opt: TmOptT
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm).
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation, or None to disable.
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm
             calculation, or None to disable.
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :return: None. The oligo_database is updated in-place with detection oligo properties.
         """
 
@@ -1561,13 +1561,13 @@ class DetectionOligoDesigner:
         :param Tm_opt: Optimal melting temperature (Tm) in degrees Celsius.
         :type Tm_opt: float
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm).
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation, or None to disable.
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm
             calculation, or None to disable.
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :return: The absolute difference between the calculated Tm and the optimal Tm, in degrees Celsius.
         :rtype: float
         """
@@ -1614,15 +1614,15 @@ class DetectionOligoDesigner:
             Variants with fewer thymines will be skipped.
         :type min_thymines: int
         :param Tm_opt: Optimal melting temperature (Tm) in degrees Celsius.
-        :type Tm_opt: float
+        :type Tm_opt: TmOptT
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm).
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation, or None to disable.
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm
             calculation, or None to disable.
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :return: A tuple containing:
             - **oligos** (list[str]): List of all valid shortened oligo variants
             - **Tm_dif** (list[float]): List of Tm differences (absolute difference from optimal)

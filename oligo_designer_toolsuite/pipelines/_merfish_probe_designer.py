@@ -1162,7 +1162,7 @@ class TargetProbeDesigner:
         :type specificity_blastn_search_parameters: BlastnSearchParameters
         :param specificity_blastn_hit_parameters:  Pydantic model of parameters for filtering BLASTN hits
             in specificity searches. Probes with hits meeting these criteria are removed.
-        :type specificity_blastn_hit_parameters: BlastnSearchParameters
+        :type specificity_blastn_hit_parameters: BlastnHitParameters
         :param cross_hybridization_blastn_search_parameters:  Pydantic model of parameters for BLASTN
             searches used in cross-hybridization filtering. These searches check if probes align to
             each other.
@@ -1170,7 +1170,7 @@ class TargetProbeDesigner:
         :param cross_hybridization_blastn_hit_parameters:  Pydantic model of parameters for filtering
             BLASTN hits in cross-hybridization searches. Probes with cross-hybridization hits meeting these
             criteria are removed from the larger region.
-        :type cross_hybridization_blastn_hit_parameters: BlastnSearchParameters
+        :type cross_hybridization_blastn_hit_parameters: BlastnHitParameters
         :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
             and cross-hybridization filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase

@@ -572,39 +572,39 @@ class TargetProbeDesigner:
         :type isoform_consensus: float
         :param GC_content_min: Minimum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_min: int
+        :type GC_content_min: GCContentMinT
         :param GC_content_max: Maximum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0.
-        :type GC_content_max: int
+        :type GC_content_max: GCContentMaxT
         :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Probes with calculated Tm below this value will be filtered out.
-        :type Tm_min: int
+        :type Tm_min: TmMinT
         :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Probes with calculated Tm above this value will be filtered out.
-        :type Tm_max: int
+        :type Tm_max: TmMaxT
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) using
-            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
+            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set `mode='biopython_defaults'`.
             Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
             'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation. These parameters account for the effects of chemical additives (e.g., DMSO,
-            formamide) on melting temperature. Set to ``None`` to disable chemical correction, or set to ``{}``
+            formamide) on melting temperature. Set `mode='disabled'` to disable chemical correction, or set `mode='biopython_defaults'`
             to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None``
-            to disable salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
+            These parameters account for the effects of salt concentration on melting temperature. Set `mode='disabled'`
+            to disable salt correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters.
             For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :param homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
             runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
             run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
             identical bases.
-        :type homopolymeric_base_n: dict[str, int]
+        :type homopolymeric_base_n: HomopolymerThresholds
         :param prohibited_sequences: List of sequences that are prohibited from being used in the probes.
             These sequences will be removed from the database.
         :type prohibited_sequences: list[str]
@@ -615,11 +615,11 @@ class TargetProbeDesigner:
         :param T_secondary_structure: Temperature in degrees Celsius at which to evaluate secondary
             structure formation. Secondary structures that form at this temperature can interfere
             with probe binding.
-        :type T_secondary_structure: float
+        :type T_secondary_structure: TSecondaryStructureT
         :param secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for secondary
             structure stability. Probes with secondary structures having deltaG values more negative
             (more stable) than this threshold will be filtered out.
-        :type secondary_structures_threshold_deltaG: float
+        :type secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
         :return: A filtered `OligoDatabase` object containing only probes that pass all property filters.
             Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
@@ -701,64 +701,68 @@ class TargetProbeDesigner:
         ),
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence specificity to remove probes that bind
-        non-specifically, cross-hybridize, overlap with variants, or have high hybridization probability.
+            Filter the oligo database based on sequence specificity to remove probes that bind
+            non-specifically, cross-hybridize, overlap with variants, or have high hybridization probability.
 
-        This method applies multiple types of specificity filters:
+            This method applies multiple types of specificity filters:
 
-        1. **Read length bias filtering**: Removes probes where the first N bases match exactly with
-           other probes. This prevents sequencing read length biases that could occur when multiple
-           probes share identical 5' ends.
+            1. **Read length bias filtering**: Removes probes where the first N bases match exactly with
+               other probes. This prevents sequencing read length biases that could occur when multiple
+               probes share identical 5' ends.
 
-        2. **Exact match filtering**: Removes all probes with exact sequence matches to probes of
-           other regions.
+            2. **Exact match filtering**: Removes all probes with exact sequence matches to probes of
+               other regions.
 
-        3. **Variant filtering**: Marks probes that overlap with known single nucleotide polymorphisms
-           (SNPs) or other variants from VCF files. Probes overlapping variants may have reduced
-           specificity and are flagged (not removed) for downstream analysis.
+            3. **Variant filtering**: Marks probes that overlap with known single nucleotide polymorphisms
+               (SNPs) or other variants from VCF files. Probes overlapping variants may have reduced
+               specificity and are flagged (not removed) for downstream analysis.
 
-        4. **Cross-hybridization filtering**: Removes probes that cross-hybridize with each other.
-           This is critical because if probes can bind to each other, they may form dimers instead
-           of binding to the target RNA. Probes from the larger genomic region are removed when
-           cross-hybridization is detected. The alignment method (BLASTN or Bowtie) can be selected.
+            4. **Cross-hybridization filtering**: Removes probes that cross-hybridize with each other.
+               This is critical because if probes can bind to each other, they may form dimers instead
+               of binding to the target RNA. Probes from the larger genomic region are removed when
+               cross-hybridization is detected. The alignment method (BLASTN or Bowtie) can be selected.
 
-        5. **Hybridization probability filtering**: Removes probes with high hybridization probability
-           to unintended targets in the reference database. This filter uses alignment-based methods
-           (BLASTN or Bowtie) to estimate the probability of non-specific binding and removes probes
-           above the specified threshold.
+            5. **Hybridization probability filtering**: Removes probes with high hybridization probability
+               to unintended targets in the reference database. This filter uses alignment-based methods
+               (BLASTN or Bowtie) to estimate the probability of non-specific binding and removes probes
+               above the specified threshold.
 
-        The reference databases are loaded from the provided FASTA and VCF files. Alignment methods
-        (BLASTN or Bowtie) can be selected independently for cross-hybridization and hybridization
-        probability filtering. Regions that do not meet the minimum oligo requirement after filtering
-        are removed from the database.
+            The reference databases are loaded from the provided FASTA and VCF files. Alignment methods
+            (BLASTN or Bowtie) can be selected independently for cross-hybridization and hybridization
+            probability filtering. Regions that do not meet the minimum oligo requirement after filtering
+            are removed from the database.
 
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain target probes with their
-            component sequences already calculated.
-        :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of paths to FASTA files containing reference
-            sequences against which specificity will be evaluated. These typically include the
-            entire genome or transcriptome to identify off-target binding sites.
-        :type files_fasta_reference_database: list[str]
-        :param files_vcf_reference_database: List of paths to VCF files containing variant
-            information used for filtering probes that overlap with known single nucleotide polymorphisms
-            (SNPs) or other variants. Probes overlapping variants are flagged (not removed) for
-            downstream analysis.
-        :type files_vcf_reference_database: list[str]
-        :param target_probe_read_length_bias: Number of nucleotides from the 5' end of probes to check
-            for read length bias. Probes where the first N bases match exactly with other probes are
-            removed to prevent sequencing read length biases.
-        :type target_probe_read_length_bias: int
-        :param cross_hybridization_parameters: Parameters for the alignment method to use for cross-hybridization
-            filtering.
-        :type cross_hybridization_parameters: CrossHybridizationProbabilityFilterBlastnConfig | CrossHybridizationProbabilityFilterBowtieConfig
-        :param hybridization_probability_parameters: Parameters for the alignment method to use for hybridization probability
-            filtering.
-        :type hybridization_probability_parameters: HybridizationProbabilityFilterBlastnConfig | HybridizationProbabilityFilterBowtieConfig
-        :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
-            filters. Probes overlapping variants are flagged but not removed. Regions with insufficient
-            oligos after filtering are removed.
-        :rtype: OligoDatabase
+            :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
+                and their associated properties. This database should contain target probes with their
+                component sequences already calculated.
+            :type oligo_database: OligoDatabase
+            :param files_fasta_reference_database: List of paths to FASTA files containing reference
+                sequences against which specificity will be evaluated. These typically include the
+                entire genome or transcriptome to identify off-target binding sites.
+            :type files_fasta_reference_database: FilesFastaReferenceDatabaseT
+            :param files_vcf_reference_database: List of paths to VCF files containing variant
+                information used for filtering probes that overlap with known single nucleotide polymorphisms
+                (SNPs) or other variants. Probes overlapping variants are flagged (not removed) for
+                downstream analysis.
+            :type files_vcf_reference_database: list[str]
+            :param target_probe_read_length_bias: Number of nucleotides from the 5' end of probes to check
+                for read length bias. Probes where the first N bases match exactly with other probes are
+                removed to prevent sequencing read length biases.
+            :type target_probe_read_length_bias: int
+            :param cross_hybridization_parameters: Parameters for the alignment method to use for cross-hybridization
+                filtering.
+            :type cross_hybridization_parameters: (
+            CrossHybridizationProbabilityFilterBlastnConfig | CrossHybridizationProbabilityFilterBowtieConfig
+        )
+            :param hybridization_probability_parameters: Parameters for the alignment method to use for hybridization probability
+                filtering.
+            :type hybridization_probability_parameters: (
+            HybridizationProbabilityFilterBlastnConfig | HybridizationProbabilityFilterBowtieConfig
+        )
+            :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
+                filters. Probes overlapping variants are flagged but not removed. Regions with insufficient
+                oligos after filtering are removed.
+            :rtype: OligoDatabase
         """
 
         def _get_alignment_method(
@@ -948,44 +952,44 @@ class TargetProbeDesigner:
         :type isoform_weight: float
         :param GC_content_min: Minimum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0. Used in scoring to penalize probes with GC content below this value.
-        :type GC_content_min: float
+        :type GC_content_min: GCContentMinT
         :param GC_content_opt: Optimal GC content for oligos, expressed as a fraction between 0.0
             and 1.0. Used in scoring to prioritize probes closer to this value.
-        :type GC_content_opt: float
+        :type GC_content_opt: GCContentOptT
         :param GC_content_max: Maximum acceptable GC content for oligos, expressed as a fraction
             between 0.0 and 1.0. Used in scoring to penalize probes with GC content above this value.
-        :type GC_content_max: float
+        :type GC_content_max: GCContentMaxT
         :param GC_weight: Weight assigned to GC content in the scoring function.
         :type GC_weight: float
         :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Used in scoring to penalize probes with Tm below this value.
-        :type Tm_min: float
+        :type Tm_min: TmMinT
         :param Tm_opt: Optimal melting temperature (Tm) for oligos in degrees Celsius. Used in scoring
             to prioritize probes closer to this value.
-        :type Tm_opt: float
+        :type Tm_opt: TmOptT
         :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos in degrees Celsius.
             Used in scoring to penalize probes with Tm above this value.
-        :type Tm_max: float
+        :type Tm_max: TmMaxT
         :param Tm_weight: Weight assigned to melting temperature in the scoring function.
         :type Tm_weight: float
         :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) using
-            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
+            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set `mode='biopython_defaults'`.
             Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
             'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
+        :type Tm_parameters: TmParameters
         :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
             calculation. These parameters account for the effects of chemical additives (e.g., DMSO,
-            formamide) on melting temperature. Set to ``None`` to disable chemical correction, or set to ``{}``
+            formamide) on melting temperature. Set `mode='disabled'` to disable chemical correction, or set `mode='biopython_defaults'`
             to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
+        :type Tm_chem_correction_parameters: TmChemCorrectionParameters | None
         :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None``
-            to disable salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
+            These parameters account for the effects of salt concentration on melting temperature. Set `mode='disabled'`
+            to disable salt correction, or set `mode='biopython_defaults'` to use Bio.SeqUtils.MeltingTemp default parameters.
             For more information, see:
             https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
+        :type Tm_salt_correction_parameters: TmSaltCorrectionParameters | None
         :param n_sets: Number of oligo sets to generate per region. Multiple sets allow for redundancy and selection
             of the best-performing set based on scoring criteria.
         :type n_sets: int

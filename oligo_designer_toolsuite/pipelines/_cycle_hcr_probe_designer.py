@@ -1700,7 +1700,7 @@ class PrimerDesigner:
         :param forward_primer_sequence: DNA sequence of the forward primer. Should be a string
             containing valid nucleotide characters (A, T, G, C). The sequence will be stripped
             of leading and trailing whitespace.
-        :type forward_primer_sequence: str
+        :type forward_primer_sequence: DNAT
         :return: The cleaned forward primer sequence with whitespace removed. The sequence is
             ready to be used in the CycleHCR pipeline for DNA template probe assembly.
         :rtype: str
@@ -1719,7 +1719,7 @@ class PrimerDesigner:
         :param reverse_primer_sequence: DNA sequence of the reverse primer. Should be a string
             containing valid nucleotide characters (A, T, G, C). The sequence will be stripped
             of leading and trailing whitespace.
-        :type reverse_primer_sequence: str
+        :type reverse_primer_sequence: DNAT
         :return: The cleaned reverse primer sequence with whitespace removed. The sequence is
             ready to be used in the CycleHCR pipeline for DNA template probe assembly.
         :rtype: str
