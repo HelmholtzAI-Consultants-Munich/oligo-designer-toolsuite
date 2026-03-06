@@ -2,105 +2,112 @@
 ### USER PARAMETERS ###
 #######################
 
-### General parameters
-### -----------------------------------------------
-n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
-write_intermediate_steps: true # if true, saves intermediate results after each step
+schema_version: 2
 
-### Target Probe Parameters
-### -----------------------------------------------
-file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
-files_fasta_target_probe_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-files_fasta_reference_database_target_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-files_vcf_reference_database_target_probe:
-  - data/annotations/custom_GCF_000001405.40.chr16.vcf
-target_probe_length_min: 26 #min length of oligos
-target_probe_length_max: 30 #max length of oligos
-target_probe_split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
+general:
+  n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
+  dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
+  write_intermediate_steps: true # if true, saves intermediate results after each step
 
-target_probe_isoform_consensus: 0 #min isoform consesnsus for oligos, i.e. how many transcripts of the total number of transcripts of a gene are covered by the oligo, given in %
-target_probe_GC_content_min: 45 # minimum GC content of oligos
-target_probe_GC_content_max: 65 # maximum GC content of oligos
-target_probe_Tm_min: 50 # minimum melting temperature of oligos
-target_probe_Tm_max: 70 # maximum melting temperature of oligos
-target_probe_secondary_structures_T: 37 # temperature to compute the secondary structure free energy
-target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
-target_probe_homopolymeric_base_n: {"A": 6, "T": 6, "C": 6, "G": 6} # minimum number of nucleotides to consider it a homopolymeric run per base
-target_probe_kmer_abundance_threshold: {3: 0.0469, 4: 0.0117, 5: 0.0029, 6: 0.00073} # The maximum abundance of a k-mer allowed. If a k-mer has an abundance greater than this threshold, all oligos containing this k-mer will be filtered out. This is a dictionary with the k-mer length as the key and the threshold as the value.
-target_probe_prohibited_sequences: ["TCT", "CTC"] # The sequences to prohibit in the oligos. If an oligo contains any of these sequences, it will be filtered out.
-target_probe_max_len_selfcomplement: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
-target_probe_read_length_bias: 20 # minimum length of sequencing reads. The first <target_probe_read_length_bias> bases of an oligo should not match the <target_probe_read_length_bias> bases of another oligo to account for shorter sequencing reads that would align to multiple positions.
-n_sets: 3 #number of sets to generate
-set_size_min: 3 # minimum size of oligo sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
-set_size_opt: 5 # optimal size of oligo sets
-distance_between_target_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
-uniform_distance_weight: 1 # weight of the uniform distance in the scoring function
-target_probe_isoform_weight: 1 # weight of the GC content of the probe in the efficiency score
-target_probe_targeted_exons_weight: 1 # weight of the Tm of the probe in the efficiency score
-target_probe_targeted_exons: ["1", "2", "3"] # the exons to target for the probe
-target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
-target_probe_GC_content_opt: 55 # max and min values are defiend above
-target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
-target_probe_Tm_opt: 60 # max and min values are defiend above
+target_probe:
+  file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+  files_fasta_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+    - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+    - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+    - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+    - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  files_vcf_reference_database:
+    - data/annotations/custom_GCF_000001405.40.chr16.vcf
+  length_min: 26 #min length of oligos
+  length_max: 30 #max length of oligos
+  split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
+  isoform_consensus: 0 #min isoform consesnsus for oligos, i.e. how many transcripts of the total number of transcripts of a gene are covered by the oligo, given in %
+  GC_content_min: 45 # minimum GC content of oligos
+  GC_content_max: 65 # maximum GC content of oligos
+  Tm_min: 50 # minimum melting temperature of oligos
+  Tm_max: 70 # maximum melting temperature of oligos
+  T_secondary_structure: 37 # temperature to compute the secondary structure free energy
+  secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
+  homopolymeric_base_n: {"A": 6, "T": 6, "C": 6, "G": 6} # minimum number of nucleotides to consider it a homopolymeric run per base
+  kmer_abundance_threshold: {3: 0.0469, 4: 0.0117, 5: 0.0029, 6: 0.00073} # The maximum abundance of a k-mer allowed. If a k-mer has an abundance greater than this threshold, all oligos containing this k-mer will be filtered out. This is a dictionary with the k-mer length as the key and the threshold as the value.
+  prohibited_sequences: ["TCT", "CTC"] # The sequences to prohibit in the oligos. If an oligo contains any of these sequences, it will be filtered out.
+  max_len_selfcomplement: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
+  read_length_bias: 20 # minimum length of sequencing reads. The first <read_length_bias> bases of an oligo should not match the <read_length_bias> bases of another oligo to account for shorter sequencing reads that would align to multiple positions.
+  n_sets: 3 #number of sets to generate
+  set_size_min: 3 # minimum size of oligo sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
+  set_size_opt: 5 # optimal size of oligo sets
+  distance_between_target_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
+  uniform_distance_weight: 1 # weight of the uniform distance in the scoring function
+  isoform_weight: 1 # weight of the GC content of the probe in the efficiency score
+  targeted_exons_weight: 1 # weight of the Tm of the probe in the efficiency score
+  targeted_exons: ["1", "2", "3"] # the exons to target for the probe
+  GC_weight: 1 # weight of the GC content of the probe in the efficiency score
+  GC_content_opt: 55 # max and min values are defiend above
+  Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
+  Tm_opt: 60 # max and min values are defiend above
 
 
 ############################
 ### DEVELOPER PARAMETERS ###
 ############################
 
-### Target Probe Parameters
-### -----------------------------------------------
-# Parameters for property filters
-# The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
-# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-target_probe_Tm_parameters:
-  nn_table: DNA_NN3
-  tmm_table: DNA_TMM1
-  imm_table: DNA_IMM1
-  de_table: DNA_DE1
-  dnac1: 50 #[nM]
-  dnac2: 0 #[nM]
-  saltcorr: 7
-  Na: 1000 #[mM] #1M from probeArray paper
-  K: 0 #[mM]
-  Tris: 0 #[mM]
-  Mg: 0 #[mM]
-  dNTPs: 0 #[mM]
-target_probe_Tm_chem_correction_parameters:
-  DMSO: 0
-  DMSOfactor: 0.75
-  fmd: 20
-  fmdfactor: 0.65
-  fmdmethod: 1
-  GC: null
-target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-# Specificity filter
-target_probe_hybridization_probability_alignment_method: blastn # options: blastn, bowtie
-target_probe_hybridization_probability_threshold: 0.001 #the lower the threshold the more stringent the filter
-# Specificity filter with BlastN
-target_probe_hybridization_probability_search_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used, e.g. -v: 3 and --nofw: ""
-  -perc_identity: 80
-  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  -word_size: 10
-target_probe_hybridization_probability_hit_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used
-  coverage: 50 # could be turned into min_alignment_length
-# Crosshybridization filter
-target_probe_cross_hybridization_alignment_method: blastn # options: blastn, bowtie
-# Crosshybridization filter with BlastN
-target_probe_cross_hybridization_search_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used, e.g. -v: 3 and --nofw: ""
-  -perc_identity: 80
-  -strand: "minus" # this parameter is fixed
-  -word_size: 10
-target_probe_cross_hybridization_hit_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used
-  coverage: 50 # could be turned into min_alignment_length
-# Parameters for the Oligo set selection
-n_attempts_graph: 50 # number of randomized graph attempts (diversification)
-n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
-diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
-jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
-jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found
+developer_param:
+  target_probe:
+    # Parameters for property filters
+    # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
+    # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
+    Tm_parameters:
+      mode: custom
+      parameters:
+        nn_table: DNA_NN3
+        tmm_table: DNA_TMM1
+        imm_table: DNA_IMM1
+        de_table: DNA_DE1
+        dnac1: 50 #[nM]
+        dnac2: 0 #[nM]
+        saltcorr: 7
+        Na: 1000 #[mM] #1M from probeArray paper
+        K: 0 #[mM]
+        Tris: 0 #[mM]
+        Mg: 0 #[mM]
+        dNTPs: 0 #[mM]
+    Tm_chem_correction_parameters:
+      mode: custom
+      parameters:
+        DMSO: 0
+        DMSOfactor: 0.75
+        fmd: 20
+        fmdfactor: 0.65
+        fmdmethod: 1
+        GC: null
+    Tm_salt_correction_parameters:
+      mode: disabled
+    # Specificity filter
+    hybridization_probability:
+      alignment_method: blastn # options: blastn, bowtie
+      threshold: 0.001 #the lower the threshold the more stringent the filter
+    # Specificity filter with BlastN
+      search_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used, e.g. -v: 3 and --nofw: ""
+        -perc_identity: 80
+        -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
+        -word_size: 10
+      hit_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used
+        coverage: 50 # could be turned into min_alignment_length
+    # Crosshybridization filter
+    cross_hybridization:
+      alignment_method: blastn # options: blastn, bowtie
+      # Crosshybridization filter with BlastN
+      search_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used, e.g. -v: 3 and --nofw: ""
+        -perc_identity: 80
+        -strand: "minus" # this parameter is fixed
+        -word_size: 10
+      hit_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used
+        coverage: 50 # could be turned into min_alignment_length
+  oligo_set_selection:
+    # Parameters for the Oligo set selection
+    n_attempts_graph: 50 # number of randomized graph attempts (diversification)
+    n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
+    diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
+    jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
+    jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found

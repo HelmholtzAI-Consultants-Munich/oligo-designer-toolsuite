@@ -6,11 +6,13 @@ from oligo_designer_toolsuite.validation._types import (
     DNAT,
     FilesFastaDatabaseT,
     FilesFastaReferenceDatabaseT,
+    FractionT,
     GCContentMaxT,
     GCContentMinT,
     GCContentOptT,
     LengthMaxT,
     LengthMinT,
+    SecondaryStructuresThresholdDeltaGT,
     TmMaxT,
     TmMinT,
     TmOptT,
@@ -173,3 +175,70 @@ class TargetProbeSeqFishPlus(TargetProbeBase):
             description="Weight assigned to untranslated region (UTR) targeting in the scoring function. Probes that target UTRs are prioritized.",
         ),
     ]
+
+
+class TargetProbeOligoSeq(TargetProbeBase):
+
+    files_vcf_reference_database: Annotated[
+        list[str],
+        Field(
+            description="List of paths to VCF files containing variant information used for filtering probes that overlap with known single nucleotide polymorphisms (SNPs) or other variants. Probes overlapping variants may have reduced specificity.",
+        ),
+    ]
+    length_min: LengthMinT
+    length_max: LengthMaxT
+    split_region: Annotated[
+        PositiveInt,
+        Field(
+            description="Size of regions (in nucleotides) to split large genomic regions into when generating probe candidates. This helps manage memory usage for very long sequences."
+        ),
+    ]
+    Tm_min: TmMinT
+    Tm_max: TmMaxT
+    T_secondary_structure: TSecondaryStructureT
+    secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
+    kmer_abundance_threshold: Annotated[
+        dict[PositiveInt, FractionT],
+        Field(
+            description="The maximum abundance of a k-mer allowed. If a k-mer has an abundance greater than this threshold, all oligos containing this k-mer will be filtered out. This is a dictionary with the k-mer length as the key and the threshold as the value."
+        ),
+    ]
+    prohibited_sequences: Annotated[
+        list[DNAT],
+        Field(
+            description="The sequences to prohibit in the oligos. If an oligo contains any of these sequences, it will be filtered out."
+        ),
+    ]
+    max_len_selfcomplement: Annotated[
+        NonNegativeInt,
+        Field(
+            description="Maximum allowable length of self-complementary sequences. Probes with longer self-complementary regions can form hairpins and reduce hybridization efficiency."
+        ),
+    ]
+    read_length_bias: Annotated[
+        NonNegativeInt,
+        Field(
+            description="Number of nucleotides from the 5' end of probes to check for read length bias. Probes where the first N bases match exactly with other probes are removed to prevent sequencing read length biases."
+        ),
+    ]
+    uniform_distance_weight: Annotated[
+        WeightT, Field(description="Weight assigned to uniform distance in the scoring function.")
+    ]
+    isoform_weight: Annotated[
+        WeightT, Field(description="Weight assigned to isoform consensus in the scoring function.")
+    ]
+    targeted_exons_weight: Annotated[
+        WeightT, Field(description="Weight assigned to targeted exons overlap in the scoring function.")
+    ]
+    targeted_exons: Annotated[
+        list[str],
+        Field(
+            description="List of exon identifiers that should be preferentially targeted by probes. Probes overlapping these exons receive higher scores."
+        ),
+    ]
+    GC_weight: Annotated[WeightT, Field(description="Weight assigned to GC content in the scoring function.")]
+    GC_content_opt: GCContentOptT
+    Tm_weight: Annotated[
+        WeightT, Field(description="WWeight assigned to melting temperature in the scoring function.")
+    ]
+    Tm_opt: TmOptT

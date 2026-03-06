@@ -87,3 +87,5 @@ LengthMinT = Annotated[
 LengthMaxT = Annotated[
     NonNegativeInt, Field(description="Maximum length (in nucleotides) for probe sequences.")
 ]
+
+FractionT = Annotated[float, Field(ge=0, le=1)]

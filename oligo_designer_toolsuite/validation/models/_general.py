@@ -2,6 +2,7 @@ from math import isclose
 from typing import Annotated, Literal
 
 from pydantic import (
+    AliasChoices,
     BaseModel,
     ConfigDict,
     Field,
@@ -11,6 +12,8 @@ from pydantic import (
     model_validator,
 )
 from typing_extensions import Self
+
+from oligo_designer_toolsuite.validation._types import FractionT
 
 
 class HomopolymerThresholds(BaseModel):
@@ -595,3 +598,271 @@ class OligoPropertyWeights(BaseModel):
     TmNN_oligo: float | None = Field(default=None)
     DG_secondary_structure_oligo: float | None = Field(default=None)
     length_selfcomplement_oligo: float | None = Field(default=None)
+
+
+class BowtieSearchParameters(BaseModel):
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
+
+    # don't allow any input options
+
+    v: int | None = Field(
+        default=None,
+        alias="-v",
+        description="Report alignments with at most <int> mismatches. -e and -l options are ignored and quality values have no effect on what alignments are valid. -v is mutually exclusive with -n.",
+    )
+    seedmms: int | None = Field(
+        default=None,
+        ge=0,
+        le=3,
+        alias="-n",
+        validation_alias=AliasChoices("-n", "--seedmms"),
+        description="Maximum number of mismatches permitted in the 'seed', i.e. the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2 or 3 and the default is 2. This option is mutually exclusive with the -v option.",
+    )
+    maqerr: NonNegativeInt | None = Field(
+        default=None,
+        alias="-e",
+        validation_alias=AliasChoices("-e", "--maqerr"),
+        description="Maximum permitted total of quality values at all mismatched read positions throughout the entire alignment, not just in the 'seed'. The default is 70. Like Maq, bowtie rounds quality values to the nearest 10 and saturates at 30; rounding can be disabled with --nomaqround.",
+    )
+    seedlen: NonNegativeInt | None = Field(
+        default=None,
+        ge=5,
+        alias="-l",
+        validation_alias=AliasChoices("-l", "--seedlen"),
+        description="The 'seed length'; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. bowtie is faster for larger values of -l.",
+    )
+    nomaqround: Literal[""] | None = Field(
+        default=None,
+        alias="--nomaqround",
+        description="Maq accepts quality values in the Phred quality scale, but internally rounds values to the nearest 10, with a maximum of 30. By default, bowtie also rounds this way. --nomaqround prevents this rounding in bowtie.",
+    )
+    nofw: Literal[""] | None = Field(
+        default=None,
+        alias="--nofw",
+        description=(
+            "If --nofw is specified, bowtie will not attempt to align against the forward reference strand."
+        ),
+    )
+    norc: Literal[""] | None = Field(
+        default=None,
+        alias="--norc",
+        description=(
+            "If --norc is specified, bowtie will not attempt to align against the reverse-complement reference strand."
+        ),
+    )
+    maxbts: PositiveInt | None = Field(
+        default=None,
+        alias="--maxbts",
+        description=(
+            "The maximum number of backtracks permitted when aligning a read in -n 2 or -n 3 mode (default: 125 without --best, 800 with --best). A 'backtrack' is the introduction of a speculative substitution into the alignment. Without this limit, the default parameters will sometimes require that bowtie try 100s or 1,000s of backtracks to align a read, especially if the read has many low-quality bases and/or has no valid alignments, slowing bowtie down significantly. However, this limit may cause some valid alignments to be missed. Higher limits yield greater sensitivity at the expensive of longer running times. See also: -y/--tryhard."
+        ),
+    )
+    tryhard: Literal[""] | None = Field(
+        default=None,
+        alias="-y",
+        validation_alias=AliasChoices("-y", "--tryhard"),
+        description=(
+            "Try as hard as possible to find valid alignments when they exist, including paired-end alignments. This is equivalent to specifying very high values for the --maxbts and --pairtries options. This mode is generally much slower than the default settings, but can be useful for certain problems. This mode is slower when (a) the reference is very repetitive, (b) the reads are low quality, or (c) not many reads have valid alignments."
+        ),
+    )
+    chunkmbs: PositiveInt | None = Field(
+        default=None,
+        alias="--chunkmbs",
+        description=(
+            "The number of megabytes of memory a given thread is given to store path descriptors in --best mode. Best-first search must keep track of many paths at once to ensure it is always extending the path with the lowest cumulative cost. Bowtie tries to minimize the memory impact of the descriptors, but they can still grow very large in some cases. If you receive an error message saying that chunk memory has been exhausted in --best mode, try adjusting this parameter up to dedicate more memory to the descriptors. Default: 64."
+        ),
+    )
+    reads_per_batch: PositiveInt | None = Field(
+        default=None,
+        alias="--reads-per-batch",
+        description=(
+            "Part of bowtie's batch parsing and used to specify the number of reads that bowtie will consume from the input file at once. Default: 16"
+        ),
+    )
+    k: PositiveInt | None = Field(
+        default=None,
+        alias="-k",
+        description=(
+            "Report up to <int> valid alignments per read or pair (default: 1). "
+            "Validity of alignments is determined by the alignment policy (combined effects of -n, -v, -l, and -e). "
+            "If more than one valid alignment exists and the --best and --strata options are specified, "
+            "then only those alignments belonging to the best alignment 'stratum' will be reported. "
+            "Bowtie is designed to be very fast for small -k but bowtie can become significantly slower as -k increases. "
+            "If you would like to use Bowtie for larger values of -k, consider building an index with a denser suffix-array sample, "
+            "i.e. specify a smaller -o/--offrate when invoking bowtie-build for the relevant index "
+            "(see the Performance tuning section for details)."
+        ),
+    )
+    all: Literal[""] | None = Field(
+        default=None,
+        alias="-a",
+        validation_alias=AliasChoices("-a", "--all"),
+        description=(
+            "Report all valid alignments per read or pair (default: off). "
+            "Validity of alignments is determined by the alignment policy (combined effects of -n, -v, -l, and -e). "
+            "If more than one valid alignment exists and the --best and --strata options are specified, "
+            "then only those alignments belonging to the best alignment 'stratum' will be reported. "
+            "Bowtie is designed to be very fast for small -k but bowtie can become significantly slower if -a/--all is specified. "
+            "If you would like to use Bowtie with -a, consider building an index with a denser suffix-array sample, "
+            "i.e. specify a smaller -o/--offrate when invoking bowtie-build for the relevant index "
+            "(see the Performance tuning section for details)."
+        ),
+    )
+    m: PositiveInt | None = Field(
+        default=None,
+        alias="-m",
+        description=(
+            "Suppress all alignments for a particular read or pair if more than <int> reportable alignments exist for it. "
+            "Reportable alignments are those that would be reported given the -n, -v, -l, -e, -k, -a, --best, and --strata options. "
+            "Default: no limit. Bowtie is designed to be very fast for small -m but bowtie can become significantly slower "
+            "for larger values of -m. If you would like to use Bowtie for larger values of -k, consider building an index "
+            "with a denser suffix-array sample, i.e. specify a smaller -o/--offrate when invoking bowtie-build for the relevant index "
+            "(see the Performance tuning section for details)."
+        ),
+    )
+    M: PositiveInt | None = Field(
+        default=None,
+        alias="-M",
+        description=(
+            "Behaves like -m except that if a read has more than <int> reportable alignments, one is reported at random. "
+            "In default output mode, the selected alignment's 7th column is set to <int>+1 to indicate the read has at least "
+            "<int>+1 valid alignments. In -S/--sam mode, the selected alignment is given a MAPQ (mapping quality) of 0 "
+            "and the XM:I field is set to <int>+1. This option requires --best; if specified without --best, "
+            "--best is enabled automatically."
+        ),
+    )
+    best: Literal[""] | None = Field(
+        default=None,
+        alias="--best",
+        description=(
+            "Make Bowtie guarantee that reported singleton alignments are 'best' in terms of stratum "
+            "(i.e. number of mismatches, or mismatches in the seed in the case of -n mode) and in terms of "
+            "the quality values at the mismatched position(s). Stratum always trumps quality; e.g. a 1-mismatch alignment "
+            "where the mismatched position has Phred quality 40 is preferred over a 2-mismatch alignment where the mismatched "
+            "positions both have Phred quality 10. When --best is not specified, Bowtie may report alignments that are "
+            "sub-optimal in terms of stratum and/or quality (though an effort is made to report the best alignment). "
+            "--best mode also removes all strand bias. Note that --best does not affect which alignments are considered "
+            "'valid' by bowtie, only which valid alignments are reported by bowtie. When --best is specified and multiple "
+            "hits are allowed (via -k or -a), the alignments for a given read are guaranteed to appear in best-to-worst "
+            "order in bowtie’s output. bowtie is somewhat slower when --best is specified."
+        ),
+    )
+    strata: Literal[""] | None = Field(
+        default=None,
+        alias="--strata",
+        description=(
+            "If many valid alignments exist and are reportable (e.g. are not disallowed via the -k option) "
+            "and they fall into more than one alignment 'stratum', report only those alignments that fall "
+            "into the best stratum. By default, Bowtie reports all reportable alignments regardless of "
+            "whether they fall into multiple strata. When --strata is specified, --best must also be specified."
+        ),
+    )
+    # don't allow any output parameters
+    # don't allow any SAM parameters
+    offrate: PositiveInt | None = Field(
+        default=None,
+        alias="-o",
+        validation_alias=AliasChoices("-o", "--offrate"),
+        description=(
+            "Override the offrate of the index with <int>. If <int> is greater than the offrate used to build the index, "
+            "then some row markings are discarded when the index is read into memory. This reduces the memory footprint "
+            "of the aligner but requires more time to calculate text offsets. <int> must be greater than the value used "
+            "to build the index."
+        ),
+    )
+    threads: PositiveInt | None = Field(
+        default=None,
+        alias="-p",
+        validation_alias=AliasChoices("-p", "--threads"),
+        description=(
+            "Launch <int> parallel search threads (default: 1). Threads will run on separate processors/cores and "
+            "synchronize when parsing reads and outputting alignments. Searching for alignments is highly parallel, "
+            "and speedup is fairly close to linear."
+        ),
+    )
+    reorder: Literal[""] | None = Field(
+        default=None,
+        alias="--reorder",
+        description=(
+            "Guarantees that output SAM records are printed in an order corresponding to the order of the reads in the "
+            "original input file, even when -p is set greater than 1. Specifying --reorder and setting -p greater than 1 "
+            "causes Bowtie to run somewhat slower than if --reorder were not specified. Has no effect if -p is set to 1, "
+            "since output order will naturally correspond to input order in that case. It is an error to specify "
+            "--reorder without the -S parameter. N.B. --reorder does not affect the outputs of --al/--max/--un."
+        ),
+    )
+    mm: Literal[""] | None = Field(
+        default=None,
+        alias="--mm",
+        description=(
+            "Use memory-mapped I/O to load the index, rather than normal C file I/O. Memory-mapping the index allows "
+            "many concurrent bowtie processes on the same computer to share the same memory image of the index "
+            "(i.e. you pay the memory overhead just once). This facilitates memory-efficient parallelization of bowtie "
+            "in situations where using -p is not possible."
+        ),
+    )
+    shmem: Literal[""] | None = Field(
+        default=None,
+        alias="--shmem",
+        description=(
+            "Use shared memory to load the index, rather than normal C file I/O. Using shared memory allows many "
+            "concurrent bowtie processes on the same computer to share the same memory image of the index "
+            "(i.e. you pay the memory overhead just once). This facilitates memory-efficient parallelization of bowtie "
+            "in situations where using -p is not desirable. Unlike --mm, --shmem installs the index into shared memory "
+            "permanently, or until the user deletes the shared memory chunks manually. See your operating system "
+            "documentation for details on how to manually list and remove shared memory chunks (on Linux and Mac OS X, "
+            "these commands are ipcs and ipcrm). You may also need to increase your OS's maximum shared-memory chunk "
+            "size to accommodate larger indexes; see your OS documentation."
+        ),
+    )
+
+
+class CrossHybridizationProbabilityFilterBlastnConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    alignment_method: Annotated[
+        Literal["blastn"],
+        Field(description="Which alignment method to use; options are 'blastn' or 'bowtie'."),
+    ]
+    search_parameters: BlastnSearchParameters
+    hit_parameters: BlastnHitParameters
+
+
+class CrossHybridizationProbabilityFilterBowtieConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    alignment_method: Annotated[
+        Literal["bowtie"],
+        Field(description="Which alignment method to use; options are 'blastn' or 'bowtie'."),
+    ]
+    search_parameters: BowtieSearchParameters
+
+
+CrossHybridizationProbabilityFilterConfig = Annotated[
+    CrossHybridizationProbabilityFilterBlastnConfig | CrossHybridizationProbabilityFilterBowtieConfig,
+    Field(discriminator="alignment_method"),
+]
+
+
+class HybridizationProbabilityFilterBlastnConfig(CrossHybridizationProbabilityFilterBlastnConfig):
+    threshold: Annotated[
+        FractionT,
+        Field(
+            description="Threshold for hybridization probability filtering. Probes with hybridization probabilities above this threshold are removed, as they may bind non-specifically."
+        ),
+    ]
+
+
+class HybridizationProbabilityFilterBowtieConfig(CrossHybridizationProbabilityFilterBowtieConfig):
+    threshold: Annotated[
+        FractionT,
+        Field(
+            description="Threshold for hybridization probability filtering. Probes with hybridization probabilities above this threshold are removed, as they may bind non-specifically."
+        ),
+    ]
+
+
+HybridizationProbabilityFilterConfig = Annotated[
+    HybridizationProbabilityFilterBlastnConfig | HybridizationProbabilityFilterBowtieConfig,
+    Field(discriminator="alignment_method"),
+]

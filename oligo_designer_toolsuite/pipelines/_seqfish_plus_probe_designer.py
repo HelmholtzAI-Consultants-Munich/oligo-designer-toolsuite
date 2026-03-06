@@ -92,7 +92,7 @@ from oligo_designer_toolsuite.validation.models._primer import PrimerFish
 from oligo_designer_toolsuite.validation.models._readout_probes import ReadoutProbeSeqFishPlus
 from oligo_designer_toolsuite.validation.models._target_probes import TargetProbeSeqFishPlus
 from oligo_designer_toolsuite.validation.models.config_pipelines import (
-    SeqFishPlusDesignerConfig,
+    SeqFishPlusProbeDesignerConfig,
 )
 
 ############################################
@@ -2168,7 +2168,7 @@ def main() -> None:
         config_raw = yaml.safe_load(handle)
 
     try:
-        config = SeqFishPlusDesignerConfig.model_validate(config_raw)
+        config = SeqFishPlusProbeDesignerConfig.model_validate(config_raw)
     except ValidationError as e:
         logging.error("Invalid configuration file:\n%s", e)
         raise

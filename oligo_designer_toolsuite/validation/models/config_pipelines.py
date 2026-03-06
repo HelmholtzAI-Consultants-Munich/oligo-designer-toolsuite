@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, PositiveInt
 from oligo_designer_toolsuite.validation.models._developer_parameters import (
     DeveloperParametersCycleHCR,
     DeveloperParametersMerfish,
+    DeveloperParametersOligoSeq,
     DeveloperParametersSeqFishPlus,
 )
 from oligo_designer_toolsuite.validation.models._general import General
@@ -17,6 +18,7 @@ from oligo_designer_toolsuite.validation.models._readout_probes import (
 from oligo_designer_toolsuite.validation.models._target_probes import (
     TargetProbeCycleHCR,
     TargetProbeMerfish,
+    TargetProbeOligoSeq,
     TargetProbeSeqFishPlus,
 )
 
@@ -41,7 +43,7 @@ class MerfishProbeDesignerConfig(BaseModel):
     developer_param: DeveloperParametersMerfish
 
 
-class SeqFishPlusDesignerConfig(BaseModel):
+class SeqFishPlusProbeDesignerConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: PositiveInt
     general: General
@@ -49,3 +51,11 @@ class SeqFishPlusDesignerConfig(BaseModel):
     readout_probe: ReadoutProbeSeqFishPlus
     primer: PrimerFish
     developer_param: DeveloperParametersSeqFishPlus
+
+
+class OligoSeqProbeDesignerConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: PositiveInt
+    general: General
+    target_probe: TargetProbeOligoSeq
+    developer_param: DeveloperParametersOligoSeq

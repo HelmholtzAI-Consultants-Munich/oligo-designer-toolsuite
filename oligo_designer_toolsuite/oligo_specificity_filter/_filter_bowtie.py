@@ -16,12 +16,38 @@ from oligo_designer_toolsuite._exceptions import (
 )
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
+from oligo_designer_toolsuite.validation.models._general import BowtieSearchParameters
 
 from ..utils._sequence_processor import get_sequence_from_annotation
 
 ############################################
 # Oligo Bowtie Filter Classes
 ############################################
+
+BOWTIE_ARGUMENT_MAPPING = {
+    "v": "-v",
+    "seedmms": "-n",
+    "maqerr": "-e",
+    "seedlen": "-l",
+    "nomaqround": "--nomaqround",
+    "nofw": "--nofw",
+    "norc": "--norc",
+    "maxbts": "--maxbts",
+    "tryhard": "-y",
+    "chunkmbs": "--chunkmbs",
+    "reads_per_batch": "--reads-per-batch",
+    "k": "-k",
+    "all": "-a",
+    "m": "-m",
+    "M": "-M",
+    "best": "--best",
+    "strata": "--strata",
+    "offrate": "-o",
+    "threads": "-p",
+    "reorder": "--reorder",
+    "mm": "--mm",
+    "shmem": "--shmem",
+}
 
 
 class BowtieFilter(AlignmentSpecificityFilter):
@@ -53,9 +79,9 @@ class BowtieFilter(AlignmentSpecificityFilter):
     :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
     :type remove_hits: bool
     :param search_parameters: Parameters to configure the Bowtie search.
-    :type search_parameters: dict
+    :type search_parameters: BowtieSearchParameters | None
     :param names_search_output: List of names for the Bowtie search output fields.
-    :type names_search_output: list
+    :type names_search_output: list | None
     :param filter_name: Name of the filter for identification purposes.
     :type filter_name: str
     :param dir_output: Directory path where output files will be saved.
@@ -65,25 +91,36 @@ class BowtieFilter(AlignmentSpecificityFilter):
     def __init__(
         self,
         remove_hits: bool = True,
-        search_parameters: dict = {},
-        names_search_output: list = [
-            "query",
-            "strand",
-            "reference",
-            "reference_start",
-            "query_sequence",
-            "read_quality",
-            "num_instances",
-            "mismatch_positions",
-        ],
+        search_parameters: BowtieSearchParameters | None = None,
+        names_search_output: list | None = None,
         filter_name: str = "bowtie_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the BowtieFilter class."""
         super().__init__(remove_hits, filter_name, dir_output)
 
-        self.search_parameters = search_parameters
-        self.names_search_output = names_search_output
+        if search_parameters is None:
+            self.search_parameters = {}
+        else:
+            search_parameters_clean = search_parameters.model_dump()
+            search_parameters_clean = {k: v for k, v in search_parameters_clean.items() if v is not None}
+            search_parameters_clean = {
+                BOWTIE_ARGUMENT_MAPPING[k]: v for k, v in search_parameters_clean.items()
+            }
+            self.search_parameters = search_parameters_clean
+        if names_search_output is None:
+            self.names_search_output = [
+                "query",
+                "strand",
+                "reference",
+                "reference_start",
+                "query_sequence",
+                "read_quality",
+                "num_instances",
+                "mismatch_positions",
+            ]
+        else:
+            self.names_search_output = list(names_search_output)
 
     def _create_reference(self, n_jobs: int) -> str:
         """

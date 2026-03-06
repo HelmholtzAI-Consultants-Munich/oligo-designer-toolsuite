@@ -2,10 +2,14 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
-from oligo_designer_toolsuite.validation._types import SecondaryStructuresThresholdDeltaGT
+from oligo_designer_toolsuite.validation._types import (
+    SecondaryStructuresThresholdDeltaGT,
+)
 from oligo_designer_toolsuite.validation.models._general import (
     BlastnHitParameters,
     BlastnSearchParameters,
+    CrossHybridizationProbabilityFilterConfig,
+    HybridizationProbabilityFilterConfig,
     OligoSetSelection,
     TmChemCorrectionParameters,
     TmParameters,
@@ -236,3 +240,38 @@ class DeveloperParametersSeqFishPlus(DeveloperParametersBase):
     target_probe: TargetProbeDev
     readout_probe: ReadoutProbeDevFish
     primer: PrimerDevSeqFishPlus
+
+
+class TargetProbeDevOligoSeq(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    Tm_parameters: Annotated[
+        TmParameters,
+        Field(
+            description="Parameters for calculating melting temperature (Tm) using the nearest-neighbor method. For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN"
+        ),
+    ]
+    Tm_chem_correction_parameters: Annotated[
+        TmChemCorrectionParameters,
+        Field(
+            description="Optional parameters for chemical correction.  For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction"
+        ),
+    ]
+    Tm_salt_correction_parameters: Annotated[
+        TmSaltCorrectionParameters,
+        Field(
+            description="Optional parameters to account for the effects of salt concentration on melting temperature. For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction"
+        ),
+    ]
+    hybridization_probability: Annotated[
+        HybridizationProbabilityFilterConfig,
+        Field(description="Parameters for hybridization probability filtering."),
+    ]
+    cross_hybridization: Annotated[
+        CrossHybridizationProbabilityFilterConfig,
+        Field(description="Parameters for cross-hybridization filtering."),
+    ]
+
+
+class DeveloperParametersOligoSeq(DeveloperParametersBase):
+    target_probe: TargetProbeDevOligoSeq
