@@ -5,6 +5,11 @@
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.oligo_property_calculator import calc_detect_oligo, calc_padlock_arms
 from oligo_designer_toolsuite.oligo_property_filter import BasePropertyFilter
+from oligo_designer_toolsuite.validation.models._general import (
+    TmChemCorrectionParameters,
+    TmParameters,
+    TmSaltCorrectionParameters,
+)
 
 ############################################
 # Padlock Filter Classes
@@ -27,17 +32,17 @@ class PadlockArmsFilter(BasePropertyFilter):
     :param arm_Tm_max: The maximum allowed melting temperature for the padlock arms.
     :type arm_Tm_max: float
     :param Tm_parameters: Parameters for calculating the melting temperature.
-        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        For using Bio.SeqUtils.MeltingTemp default parameters set `mode='biopython_defaults'`. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-    :type Tm_parameters: dict
+    :type Tm_parameters: TmParameters
     :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation (optional).
-        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        For using Bio.SeqUtils.MeltingTemp default parameters set `mode='biopython_defaults'`. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-    :type Tm_salt_correction_parameters: dict, optional
+    :type Tm_salt_correction_parameters: TmSaltCorrectionParameters, optional
     :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation (optional).
-        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        For using Bio.SeqUtils.MeltingTemp default parameters set `mode='biopython_defaults'`. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-    :type Tm_chem_correction_parameters: dict, optional
+    :type Tm_chem_correction_parameters: TmChemCorrectionParameters, optional
     """
 
     def __init__(
@@ -46,9 +51,9 @@ class PadlockArmsFilter(BasePropertyFilter):
         arm_Tm_dif_max: float,
         arm_Tm_min: float,
         arm_Tm_max: float,
-        Tm_parameters: dict,
-        Tm_salt_correction_parameters: dict | None = None,
-        Tm_chem_correction_parameters: dict | None = None,
+        Tm_parameters: TmParameters,
+        Tm_salt_correction_parameters: TmSaltCorrectionParameters | None = None,
+        Tm_chem_correction_parameters: TmChemCorrectionParameters | None = None,
     ) -> None:
         """Constructor for the PadlockArmsFilter class."""
         super().__init__()
@@ -113,17 +118,17 @@ class DetectionOligoFilter(BasePropertyFilter):
     :param arm_Tm_max: The maximum allowed melting temperature for the padlock arms.
     :type arm_Tm_max: float
     :param Tm_parameters: Parameters for calculating the melting temperature.
-        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        For using Bio.SeqUtils.MeltingTemp default parameters set `mode='biopython_defaults'`. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-    :type Tm_parameters: dict
+    :type Tm_parameters: TmParameters
     :param Tm_salt_correction_parameters: Parameters for salt correction in Tm calculation (optional).
-        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        For using Bio.SeqUtils.MeltingTemp default parameters set `mode='biopython_defaults'`. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-    :type Tm_salt_correction_parameters: dict, optional
+    :type Tm_salt_correction_parameters: TmSaltCorrectionParameters, optional
     :param Tm_chem_correction_parameters: Parameters for chemical correction in Tm calculation (optional).
-        For using Bio.SeqUtils.MeltingTemp default parameters set to ``{}``. For more information on parameters,
+        For using Bio.SeqUtils.MeltingTemp default parameters set `mode='biopython_defaults'`. For more information on parameters,
         see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-    :type Tm_chem_correction_parameters: dict, optional
+    :type Tm_chem_correction_parameters: TmChemCorrectionParameters, optional
     """
 
     def __init__(
@@ -135,9 +140,9 @@ class DetectionOligoFilter(BasePropertyFilter):
         arm_Tm_dif_max: float,
         arm_Tm_min: float,
         arm_Tm_max: float,
-        Tm_parameters: dict,
-        Tm_salt_correction_parameters: dict | None = None,
-        Tm_chem_correction_parameters: dict | None = None,
+        Tm_parameters: TmParameters,
+        Tm_salt_correction_parameters: TmSaltCorrectionParameters | None = None,
+        Tm_chem_correction_parameters: TmChemCorrectionParameters | None = None,
     ) -> None:
         """Constructor for the DetectionOligoFilter class."""
         super().__init__()

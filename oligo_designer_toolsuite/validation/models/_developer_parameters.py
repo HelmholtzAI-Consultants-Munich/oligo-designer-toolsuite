@@ -20,7 +20,6 @@ from oligo_designer_toolsuite.validation.models._general import (
 class TargetProbeDev(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
     specificity_blastn_search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
@@ -47,6 +46,7 @@ class TargetProbeDev(BaseModel):
 
 class TargetProbeDevCycleHCR(TargetProbeDev):
 
+    secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
     Tm_parameters: Annotated[
         TmParameters,
         Field(
@@ -91,6 +91,7 @@ class DeveloperParametersCycleHCR(DeveloperParametersBase):
 
 
 class TargetProbeDevMerfish(TargetProbeDev):
+    secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
     Tm_parameters: Annotated[
         TmParameters,
         Field(
@@ -275,3 +276,54 @@ class TargetProbeDevOligoSeq(BaseModel):
 
 class DeveloperParametersOligoSeq(DeveloperParametersBase):
     target_probe: TargetProbeDevOligoSeq
+
+
+class TargetProbeDevScrinshot(TargetProbeDev):
+    model_config = ConfigDict(extra="forbid")
+
+    Tm_parameters: Annotated[
+        TmParameters,
+        Field(
+            description="Parameters for calculating melting temperature (Tm) using the nearest-neighbor method. For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN"
+        ),
+    ]
+    Tm_chem_correction_parameters: Annotated[
+        TmChemCorrectionParameters,
+        Field(
+            description="Optional parameters for chemical correction.  For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction"
+        ),
+    ]
+    Tm_salt_correction_parameters: Annotated[
+        TmSaltCorrectionParameters,
+        Field(
+            description="Optional parameters to account for the effects of salt concentration on melting temperature. For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction"
+        ),
+    ]
+
+
+class DetectionProbeDevScrinshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    Tm_parameters: Annotated[
+        TmParameters,
+        Field(
+            description="Parameters for calculating melting temperature (Tm) using the nearest-neighbor method. For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN"
+        ),
+    ]
+    Tm_chem_correction_parameters: Annotated[
+        TmChemCorrectionParameters,
+        Field(
+            description="Optional parameters for chemical correction.  For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction"
+        ),
+    ]
+    Tm_salt_correction_parameters: Annotated[
+        TmSaltCorrectionParameters,
+        Field(
+            description="Optional parameters to account for the effects of salt concentration on melting temperature. For more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction"
+        ),
+    ]
+
+
+class DeveloperParametersScrinshot(DeveloperParametersBase):
+    target_probe: TargetProbeDevScrinshot
+    detection_probe: DetectionProbeDevScrinshot

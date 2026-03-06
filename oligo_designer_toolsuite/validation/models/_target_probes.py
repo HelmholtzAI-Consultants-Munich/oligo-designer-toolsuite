@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, PositiveInt
 
 from oligo_designer_toolsuite.validation._types import (
     DNAT,
@@ -242,3 +242,48 @@ class TargetProbeOligoSeq(TargetProbeBase):
         WeightT, Field(description="WWeight assigned to melting temperature in the scoring function.")
     ]
     Tm_opt: TmOptT
+
+
+class TargetProbeScrinshot(TargetProbeBase):
+
+    length_min: LengthMinT
+    length_max: LengthMaxT
+
+    GC_content_opt: GCContentOptT
+    Tm_min: TmMinT
+    Tm_opt: TmOptT
+    Tm_max: TmMaxT
+
+    padlock_arm_Tm_dif_max: Annotated[
+        NonNegativeInt,
+        Field(
+            description="Maximum allowed difference in melting temperature (in degrees Celsius) between the two padlock arms. This ensures balanced binding of both arms. The difference shouldn't be higher than 5. But the range is not super important, the lower the better"
+        ),
+    ]
+    padlock_arm_length_min: Annotated[
+        PositiveInt,
+        Field(
+            description="Minimum length (in nucleotides) for each padlock probe arm. Each arm must meet this requirement for the probe to pass filtering."
+        ),
+    ]
+    padlock_arm_Tm_min: Annotated[
+        NonNegativeFloat,
+        Field(description="Minimum acceptable melting temperature (Tm) for padlock arms in degrees Celsius."),
+    ]
+    padlock_arm_Tm_max: Annotated[
+        NonNegativeFloat,
+        Field(description="Maximum acceptable melting temperature (Tm) for padlock arms in degrees Celsius."),
+    ]
+    ligation_region_size: Annotated[
+        PositiveInt,
+        Field(
+            description="Size of the ligation region (in nucleotides) around the ligation site. This parameter is used for seed-based specificity filtering around the junction region where padlock arms meet."
+        ),
+    ]
+    isoform_weight: Annotated[
+        WeightT, Field(description="Weight assigned to isoform consensus in the scoring function.")
+    ]
+    GC_weight: Annotated[WeightT, Field(description="Weight assigned to GC content in the scoring function.")]
+    Tm_weight: Annotated[
+        WeightT, Field(description="WWeight assigned to melting temperature in the scoring function.")
+    ]
