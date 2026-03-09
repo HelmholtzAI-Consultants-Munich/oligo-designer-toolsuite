@@ -22,7 +22,7 @@ from oligo_designer_toolsuite.sequence_generator import (
     NcbiGenomicRegionGenerator,
 )
 from oligo_designer_toolsuite.validation.models._general import GenomicRegions, SourceConfigs
-from oligo_designer_toolsuite.validation.models.config_pipelines import GenomicRegionConfig
+from oligo_designer_toolsuite.validation.models.config_pipelines import GenomicRegionGeneratorConfig
 
 ############################################
 # Genomic Region Generator Functions
@@ -185,7 +185,7 @@ def main() -> None:
         config_raw = yaml.safe_load(handle)
 
     try:
-        config = GenomicRegionConfig.model_validate(config_raw)
+        config = GenomicRegionGeneratorConfig.model_validate(config_raw)
     except ValidationError as e:
         logging.error("Invalid configuration file:\n%s", e)
         raise

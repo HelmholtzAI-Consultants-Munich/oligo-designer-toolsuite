@@ -2,12 +2,6 @@
 The module provides a collection of comprehensive oligonucleotide design pipelines, each equipped with specific functionalities to facilitate efficient and targeted oligo synthesis for diverse applications.
 """
 
-from ._config_pipelines import (
-    CycleHCRProbeDesignerConfig,
-    GenomicRegionGeneratorCustomConfig,
-    GenomicRegionGeneratorEnsemblConfig,
-    GenomicRegionGeneratorNcbiConfig,
-)
 from ._cycle_hcr_probe_designer import CycleHCRProbeDesigner
 from ._genomic_region_generator import GenomicRegionGenerator
 from ._merfish_probe_designer import MerfishProbeDesigner
@@ -22,8 +16,4 @@ __all__ = [
     "SeqFishPlusProbeDesigner",
     "MerfishProbeDesigner",
     "CycleHCRProbeDesigner",
-    "GenomicRegionGeneratorCustomConfig",
-    "GenomicRegionGeneratorEnsemblConfig",
-    "GenomicRegionGeneratorNcbiConfig",
-    "CycleHCRProbeDesignerConfig",
 ]

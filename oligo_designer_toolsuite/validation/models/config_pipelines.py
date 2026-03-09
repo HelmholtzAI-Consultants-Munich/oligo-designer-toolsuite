@@ -76,7 +76,7 @@ class ScrinshotProbeDesignerConfig(BaseModel):
     developer_param: DeveloperParametersScrinshot
 
 
-class GenomicRegionConfig(BaseModel):
+class GenomicRegionGeneratorConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: PositiveInt
     dir_output: DirOutputT
