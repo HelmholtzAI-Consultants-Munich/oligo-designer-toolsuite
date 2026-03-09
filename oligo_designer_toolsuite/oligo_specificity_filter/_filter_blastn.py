@@ -99,6 +99,8 @@ class BlastNFilter(AlignmentSpecificityFilter):
                 "query_length",
             ]
         )
+        # Define default output format for blast search filter.
+        self.output_format = "6 qseqid sseqid length qstart qend qlen"
 
     def _create_reference(
         self,
@@ -184,9 +186,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             + os.path.join(self.dir_output, file_reference)
             + " "
             + cmd_parameters
-            # Define default output format for blast search filter. The fields are:
-            # query, reference, alignment_length, query_start, query_end, query_length
-            + ' -outfmt "6 qseqid sseqid length qstart qend qlen"'
+            + f' -outfmt "{self.output_format}"'
         )
         process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
 
