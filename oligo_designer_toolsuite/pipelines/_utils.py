@@ -8,6 +8,7 @@ import os
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, TypeVar, cast
 
 import yaml
@@ -280,6 +281,10 @@ def write_config_to_yaml(config: BaseModel, dir_output: str) -> None:
     :param dir_output: Path to write the file to.
     :type dir_output: str
     """
+
+    # create the output folder
+    dir_output = os.path.abspath(dir_output)
+    Path(dir_output).mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now()
     file_location = os.path.join(
