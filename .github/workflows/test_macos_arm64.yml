@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - main
-      - dev
     paths-ignore:
       - '.gitignore'
       - '.pre-commit-config.yaml'
@@ -21,6 +20,7 @@ on:
   pull_request:
     branches:
       - main
+      - dev
     paths-ignore:
       - '.gitignore'
       - '.pre-commit-config.yaml'
