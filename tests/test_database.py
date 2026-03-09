@@ -12,6 +12,7 @@ import yaml
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import FastaParser, VCFParser, check_tsv_format
+from oligo_designer_toolsuite.validation.models._general import BaseProbabilities
 
 ############################################
 # setup
@@ -160,7 +161,7 @@ class TestOligoDatabase(unittest.TestCase):
             length_sequences=30,
             num_sequences=100,
             name_sequences="random_sequences1",
-            base_alphabet_with_probability={"A": 0.1, "C": 0.3, "G": 0.4, "T": 0.2},
+            base_alphabet_with_probability=BaseProbabilities(A=0.1, C=0.3, G=0.4, T=0.2),
         )
         file_sliding_window = self.oligo_sequence_generator.create_sequences_sliding_window(
             files_fasta_in=FILE_NCBI_EXONS,

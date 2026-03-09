@@ -7,7 +7,6 @@ import shutil
 import unittest
 
 import pandas as pd
-from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite._exceptions import DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -26,6 +25,13 @@ from oligo_designer_toolsuite.oligo_selection import (
     HomogeneousPropertyOligoSelection,
     IndependentSetsOligoSelection,
 )
+from oligo_designer_toolsuite.validation.models._general import (
+    OligoPropertyWeights,
+    TmChemCorrectionParametersCustom,
+    TmChemCorrectionParametersDetails,
+    TmParametersCustom,
+    TmParametersDetails,
+)
 
 ############################################
 # Global Parameters
@@ -33,34 +39,38 @@ from oligo_designer_toolsuite.oligo_selection import (
 
 FILE_DATABASE = "tests/data/oligo_selection/oligos_info.tsv"
 
-TM_PARAMETERS = {
-    "check": True,  # default
-    "strict": True,  # default
-    "c_seq": None,  # default
-    "shift": 0,  # default
-    "nn_table": getattr(mt, "DNA_NN3"),
-    "tmm_table": getattr(mt, "DNA_TMM1"),
-    "imm_table": getattr(mt, "DNA_IMM1"),
-    "de_table": getattr(mt, "DNA_DE1"),
-    "dnac1": 50,  # [nM]
-    "dnac2": 0,  # [nM]
-    "selfcomp": False,  # default
-    "saltcorr": 7,  # Owczarzy et al. (2008)
-    "Na": 1.25,  # [mM]
-    "K": 75,  # [mM]
-    "Tris": 20,  # [mM]
-    "Mg": 10,  # [mM]
-    "dNTPs": 0,  # [mM] default
-}
+TM_PARAMETERS = TmParametersCustom(
+    parameters=TmParametersDetails(
+        check=True,
+        strict=True,
+        c_seq=None,
+        shift=0,
+        selfcomp=False,
+        nn_table="DNA_NN3",
+        tmm_table="DNA_TMM1",
+        imm_table="DNA_IMM1",
+        de_table="DNA_DE1",
+        dnac1=50,
+        dnac2=0,
+        saltcorr=7,
+        Na=1,
+        K=75,
+        Tris=20,
+        Mg=10,
+        dNTPs=0,
+    )
+)
 
-TM_PARAMETERS_CHEM_CORR = {
-    "DMSO": 0,  # default
-    "fmd": 20,
-    "DMSOfactor": 0.75,  # default
-    "fmdfactor": 0.65,  # default
-    "fmdmethod": 1,  # default
-    "GC": None,  # default
-}
+TM_PARAMETERS_CHEM_CORR = TmChemCorrectionParametersCustom(
+    mode="custom",
+    parameters=TmChemCorrectionParametersDetails(
+        DMSO=0,
+        fmd=20,
+        DMSOfactor=0.75,
+        fmdfactor=0.65,
+        fmdmethod=1,
+    ),
+)
 
 
 ############################################
@@ -420,7 +430,7 @@ class TestHomogeneousPropertyOligoSelection(unittest.TestCase):
         )
         self.oligoset_generator = HomogeneousPropertyOligoSelection(
             set_size=5,
-            properties={"GC_content_oligo": 1, "TmNN_oligo": 1},
+            properties=OligoPropertyWeights(GC_content_oligo=1, TmNN_oligo=1),
             n_combinations=1000,
         )
 
@@ -439,7 +449,7 @@ class TestHomogeneousPropertyOligoSelection(unittest.TestCase):
         oligo_database.oligosets = {}
         generator = HomogeneousPropertyOligoSelection(
             set_size=1,
-            properties={"GC_content_oligo": 1, "TmNN_oligo": 1},
+            properties=OligoPropertyWeights(GC_content_oligo=1, TmNN_oligo=1),
             n_combinations=10,
         )
         with self.assertRaises(DatabaseError):
@@ -462,7 +472,7 @@ class TestHomogeneousPropertyOligoSelection(unittest.TestCase):
         oligo_database.oligosets = {}
         generator = HomogeneousPropertyOligoSelection(
             set_size=5,
-            properties={"GC_content_oligo": 1, "TmNN_oligo": 1},
+            properties=OligoPropertyWeights(GC_content_oligo=1, TmNN_oligo=1),
             n_combinations=10,
         )
         result = generator.apply(

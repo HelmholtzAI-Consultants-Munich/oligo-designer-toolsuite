@@ -24,6 +24,7 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
     ShortenedSequenceProperty,
     TmNNProperty,
 )
+from oligo_designer_toolsuite.validation.models._general import TmParametersBiopythonDefaults
 
 ############################################
 # setup
@@ -218,7 +219,7 @@ class TestOligoProperties(unittest.TestCase):
         assert GC_content == 50, "error: wrong GC content calculated"
 
     def test_calculate_TmNN(self) -> None:
-        tm_nn_property = TmNNProperty(Tm_parameters={})
+        tm_nn_property = TmNNProperty(Tm_parameters=TmParametersBiopythonDefaults())
         calculator = PropertyCalculator(properties=[tm_nn_property])
         oligo_database = calculator.apply(oligo_database=self.oligo_database, sequence_type="oligo", n_jobs=1)
 
@@ -276,7 +277,7 @@ class TestOligoProperties(unittest.TestCase):
             arm_Tm_dif_max=15,
             arm_Tm_min=30,
             arm_Tm_max=80,
-            Tm_parameters={},
+            Tm_parameters=TmParametersBiopythonDefaults(),
         )
         calculator = PropertyCalculator(properties=[padlock_arms_property])
         oligo_database = calculator.apply(oligo_database=self.oligo_database, sequence_type="oligo", n_jobs=1)

@@ -18,10 +18,10 @@ from oligo_designer_toolsuite.validation._types import FractionT
 
 class HomopolymerThresholds(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    A: Annotated[PositiveInt | None, Field(default=None)]
-    T: Annotated[PositiveInt | None, Field(default=None)]
-    C: Annotated[PositiveInt | None, Field(default=None)]
-    G: Annotated[PositiveInt | None, Field(default=None)]
+    A: PositiveInt | None = None
+    T: PositiveInt | None = None
+    C: PositiveInt | None = None
+    G: PositiveInt | None = None
 
 
 class General(BaseModel):
@@ -88,6 +88,40 @@ class OligoSetSelection(BaseModel):
 class TmParametersDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # set default to None so that not all parameters need to be specified. When the parameters are passed
+    # to the io.SeqUtils.MeltingTemp.Tm_NN function, the model dump excluded parameters that are set to None
+    check: Annotated[
+        bool | None,
+        Field(default=None, description="Checks if the sequence is valid for the given method."),
+    ]
+    strict: Annotated[
+        bool | None,
+        Field(
+            default=None,
+            description="Do not allow base characters or neighbor duplex keys (e.g. 'AT/NA') that could not or not unambigiously be evaluated for the respective method.",
+        ),
+    ]
+    c_seq: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Complementary sequence. The sequence of the template/target in 3'->5' direction. c_seq is necessary for mismatch correction and dangling-ends correction. Both corrections will automatically be applied if mismatches or dangling ends are present.",
+        ),
+    ]
+    shift: Annotated[
+        int | None,
+        Field(
+            default=None,
+            description="Shift of the primer/probe sequence on the template/target sequence. The shift parameter is necessary to align seq and c_seq if they have different lengths or if they should have dangling ends.",
+        ),
+    ]
+    selfcomp: Annotated[
+        bool | None,
+        Field(
+            default=None,
+            description="Is the sequence self-complementary? If 'True' the primer is thought binding to itself, thus dnac2 is not considered.",
+        ),
+    ]
     nn_table: Annotated[
         Literal["DNA_NN1", "DNA_NN2", "DNA_NN3", "DNA_NN4"] | None,
         Field(default=None, description="Thermodynamic NN values."),
@@ -160,34 +194,28 @@ class TmParametersCustom(BaseModel):
     )
 
 
-TmParameters = Annotated[TmParametersBiopythonDefaults, TmParametersCustom, Field(discriminator="mode")]
+TmParameters = Annotated[TmParametersBiopythonDefaults | TmParametersCustom, Field(discriminator="mode")]
 
 
 class TmChemCorrectionParametersDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # defaults are from Bio.SeqUtils.MeltingTemp.chem_correction
-    DMSO: Annotated[float | None, Field(default=None, ge=0, le=100, description="Percent DMSO")]
-    DMSOfactor: Annotated[
-        float | None, Field(default=None, description="How much Tm should decrease per percent DMSO")
-    ]
-    fmd: Annotated[
-        float | None,
-        Field(default=None, description="Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2)."),
-    ]
-    fmdfactor: Annotated[
-        float | None, Field(default=None, description="How much Tm should decrease per percent formamide")
-    ]
-    fmdmethod: Annotated[
-        int | None,
-        Field(
-            default=None,
-            ge=1,
-            le=2,
-            description="Tm = Tm - factor(%formamide) (Default); Tm = Tm + (0.453(f(GC)) - 2.88) x [formamide]",
-        ),
-    ]
-    GC: Annotated[float | None, Field(default=None, ge=0, le=100, description="GC content in percent.")]
+    DMSO: float | None = Field(default=None, ge=0, le=100, description="Percent DMSO")
+    DMSOfactor: float | None = Field(default=None, description="How much Tm should decrease per percent DMSO")
+    fmd: float | None = Field(
+        default=None, description="Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2)."
+    )
+    fmdfactor: float | None = Field(
+        default=None, description="How much Tm should decrease per percent formamide"
+    )
+    fmdmethod: int | None = Field(
+        default=None,
+        ge=1,
+        le=2,
+        description="Tm = Tm - factor(%formamide) (Default); Tm = Tm + (0.453(f(GC)) - 2.88) x [formamide]",
+    )
+    GC: float | None = Field(default=None, ge=0, le=100, description="GC content in percent.")
 
     @model_validator(mode="after")
     def _check_fmd_vs_method(self) -> Self:
@@ -562,22 +590,16 @@ class BlastnSearchParameters(BaseModel):
 class BlastnHitParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    coverage: Annotated[
-        float | None,
-        Field(
-            default=None,
-            ge=0,
-            le=100,
-            description="Coverage in %, alternatively, min_alignment_length can be used",
-        ),
-    ]
-    min_alignment_length: Annotated[
-        NonNegativeInt | None,
-        Field(
-            default=None,
-            description="Number of nucleotides for alignment, alternatively, coverage can be used",
-        ),
-    ]
+    coverage: float | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Coverage in %, alternatively, min_alignment_length can be used",
+    )
+    min_alignment_length: NonNegativeInt | None = Field(
+        default=None,
+        description="Number of nucleotides for alignment, alternatively, coverage can be used",
+    )
 
     @model_validator(mode="after")
     def _check_mutually_exclusive(self) -> Self:

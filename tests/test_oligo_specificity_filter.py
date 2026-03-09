@@ -28,6 +28,11 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     RemoveByLargerRegionFilterPolicy,
     VariantsFilter,
 )
+from oligo_designer_toolsuite.validation.models._general import (
+    BlastnHitParameters,
+    BlastnSearchParameters,
+    BowtieSearchParameters,
+)
 
 ############################################
 # Setup
@@ -207,12 +212,12 @@ class AlignmentFilterTestBase:
 
 class TestBlastFilter(AlignmentFilterTestBase, unittest.TestCase):
     def _setup_filter(self) -> BlastNFilter:
-        blastn_search_parameters = {
-            "-perc_identity": 80,
-            "-strand": "plus",
-            "-word_size": 10,
-        }
-        hit_parameters = {"coverage": 50}
+        blastn_search_parameters = BlastnSearchParameters(
+            perc_identity=80,
+            strand="plus",
+            word_size=10,
+        )
+        hit_parameters = BlastnHitParameters(coverage=50)
 
         return BlastNFilter(
             search_parameters=blastn_search_parameters,
@@ -224,7 +229,7 @@ class TestBlastFilter(AlignmentFilterTestBase, unittest.TestCase):
 
 class TestBowtieFilter(AlignmentFilterTestBase, unittest.TestCase):
     def _setup_filter(self) -> BowtieFilter:
-        bowtie_search_parameters = {"-n": 3, "-l": 5}
+        bowtie_search_parameters = BowtieSearchParameters(seedmms=3, seedlen=5)
 
         return BowtieFilter(
             search_parameters=bowtie_search_parameters,
@@ -246,12 +251,12 @@ class TestBowtie2Filter(AlignmentFilterTestBase, unittest.TestCase):
 
 class TestBlastNSeedregionSiteFilter(AlignmentFilterTestBase, unittest.TestCase):
     def _setup_filter(self) -> BlastNSeedregionSiteFilter:
-        blastn_search_parameters = {
-            "-perc_identity": 80,
-            "-strand": "plus",
-            "-word_size": 10,
-        }
-        hit_parameters = {"coverage": 50}
+        blastn_search_parameters = BlastnSearchParameters(
+            perc_identity=80,
+            strand="plus",
+            word_size=10,
+        )
+        hit_parameters = BlastnHitParameters(coverage=50)
         seedregion_size = 10
 
         return BlastNSeedregionSiteFilter(
@@ -280,15 +285,15 @@ class TestCrossHybridizationFilter(unittest.TestCase):
         self.oligo_database_crosshyb_exactmatch = self._setup_database(FILE_DATABASE_OLIGOS_EXACT_MATCH)
 
         # Blast parameters
-        self.blastn_search_parameters_crosshyb = {
-            "-perc_identity": 80,
-            "-strand": "minus",
-            "-word_size": 10,
-        }
-        self.hit_parameters_crosshyb = {"coverage": 50}
+        self.blastn_search_parameters_crosshyb = BlastnSearchParameters(
+            perc_identity=80,
+            strand="minus",
+            word_size=10,
+        )
+        self.hit_parameters_crosshyb = BlastnHitParameters(coverage=50)
 
         # Bowtie parameters
-        self.bowtie_search_parameters_crosshyb = {"-n": 3, "-l": 5, "--nofw": ""}
+        self.bowtie_search_parameters_crosshyb = BowtieSearchParameters(seedmms=3, seedlen=5, nofw="")
 
         self.expected_oligos_larger_region = []
         for i, solution_file in enumerate(SOLUTIONS_LARGER_REGION):
@@ -536,12 +541,12 @@ class TestHybridizationProbabilityBalstn(unittest.TestCase):
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BLAST_AI, sep="\t")
         self.region_id = "region"
 
-        blastn_search_parameters = {
-            "-perc_identity": 80,
-            "-strand": "both",
-            "-word_size": 10,
-        }
-        hit_parameters = {"coverage": 50}
+        blastn_search_parameters = BlastnSearchParameters(
+            perc_identity=80,
+            strand="both",
+            word_size=10,
+        )
+        hit_parameters = BlastnHitParameters(coverage=50, min_alignment_length=None)
         self.alignment_filter = BlastNFilter(
             search_parameters=blastn_search_parameters,
             hit_parameters=hit_parameters,
@@ -751,7 +756,7 @@ class TestHybridizationProbabilityBowtie(unittest.TestCase):
         self.table_hits = pd.read_csv(FILE_TABLE_HITS_BOWTIE_AI, sep="\t")
         self.region_id = "region"
 
-        bowtie_search_parameters = {"-n": 3, "-l": 5}
+        bowtie_search_parameters = BowtieSearchParameters(seedmms=3, seedlen=5)
         self.alignment_filter = BowtieFilter(
             search_parameters=bowtie_search_parameters,
             dir_output=self.tmp_path,

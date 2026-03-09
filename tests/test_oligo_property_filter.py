@@ -7,7 +7,6 @@ import shutil
 import unittest
 
 from Bio.Seq import Seq
-from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import (
@@ -28,49 +27,67 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     ThreePrimeSequenceFilter,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
+from oligo_designer_toolsuite.validation.models._general import (
+    BaseProbabilities,
+    HomopolymerThresholds,
+    TmChemCorrectionParametersCustom,
+    TmChemCorrectionParametersDetails,
+    TmParametersBiopythonDefaults,
+    TmParametersCustom,
+    TmParametersDetails,
+    TmSaltCorrectionParametersCustom,
+    TmSaltCorrectionParametersDetails,
+)
 
 ############################################
 # setup
 ############################################
 
 # Global Parameters
-TM_PARAMETERS = {
-    "check": True,
-    "strict": True,
-    "c_seq": None,
-    "shift": 0,
-    "nn_table": getattr(mt, "DNA_NN3"),
-    "tmm_table": getattr(mt, "DNA_TMM1"),
-    "imm_table": getattr(mt, "DNA_IMM1"),
-    "de_table": getattr(mt, "DNA_DE1"),
-    "dnac1": 50,  # [nM]
-    "dnac2": 0,
-    "selfcomp": False,
-    "saltcorr": 7,
-    "Na": 50,  # [mM]
-    "K": 75,  # [mM]
-    "Tris": 20,  # [mM]
-    "Mg": 10,  # [mM]
-    "dNTPs": 0,
-}
+TM_PARAMETERS = TmParametersCustom(
+    parameters=TmParametersDetails(
+        check=True,
+        strict=True,
+        c_seq=None,
+        shift=0,
+        selfcomp=False,
+        nn_table="DNA_NN3",
+        tmm_table="DNA_TMM1",
+        imm_table="DNA_IMM1",
+        de_table="DNA_DE1",
+        dnac1=50,
+        dnac2=0,
+        saltcorr=7,
+        Na=50,
+        K=75,
+        Tris=20,
+        Mg=10,
+        dNTPs=0,
+    )
+)
 
-TM_PARAMETERS_CHEM_CORRECTION = {
-    "DMSO": 0,
-    "DMSOfactor": 0.75,
-    "fmdfactor": 0.65,
-    "fmdmethod": 1,
-    "GC": None,
-    "fmd": 20,
-}
+TM_PARAMETERS_CHEM_CORRECTION = TmChemCorrectionParametersCustom(
+    mode="custom",
+    parameters=TmChemCorrectionParametersDetails(
+        DMSO=0,
+        DMSOfactor=0.75,
+        fmdfactor=0.65,
+        fmdmethod=1,
+        fmd=20,
+    ),
+)
 
-TM_PARAMETERS_SALT_CORRECTION = {
-    "method": 7,
-    "Na": 50,  # [mM]
-    "K": 75,  # [mM]
-    "Tris": 20,  # [mM]
-    "Mg": 10,  # [mM]
-    "dNTPs": 0,
-}
+TM_PARAMETERS_SALT_CORRECTION = TmSaltCorrectionParametersCustom(
+    mode="custom",
+    parameters=TmSaltCorrectionParametersDetails(
+        method=7,
+        Na=50,
+        K=75,
+        Tris=20,
+        Mg=10,
+        dNTPs=0,
+    ),
+)
 
 ############################################
 # tests
@@ -129,7 +146,7 @@ class TestSequenceContentFilters(unittest.TestCase):
     def setUp(self) -> None:
         self.prohibited_sequence_filter_str = ProhibitedSequenceFilter(prohibited_sequences="ACT")
         self.prohibited_sequence_filter_list = ProhibitedSequenceFilter(prohibited_sequences=["ACT", "CCGC"])
-        self.homopolymeric_run_filter = HomopolymericRunsFilter(base_n={"A": 4, "C": 5})
+        self.homopolymeric_run_filter = HomopolymericRunsFilter(base_n=HomopolymerThresholds(A=4, C=5))
         self.three_prime_filter = ThreePrimeSequenceFilter(three_prime_sequence="TT", remove=False)
         self.five_prime_filter = FivePrimeSequenceFilter(five_prime_sequence="TT", remove=True)
 
@@ -239,7 +256,9 @@ class TestGCContentFilters(unittest.TestCase):
 class TestSequenceStructureFilters(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.Tm_filter_default = MeltingTemperatureNNFilter(Tm_min=52, Tm_max=67, Tm_parameters={})
+        self.Tm_filter_default = MeltingTemperatureNNFilter(
+            Tm_min=52, Tm_max=67, Tm_parameters=TmParametersBiopythonDefaults()
+        )
         self.Tm_filter_user = MeltingTemperatureNNFilter(
             Tm_min=52,
             Tm_max=67,
@@ -425,7 +444,7 @@ class TestPropertyFilter(unittest.TestCase):
             length_sequences=30,
             num_sequences=100,
             name_sequences="random_sequences1",
-            base_alphabet_with_probability={"A": 0.1, "C": 0.3, "G": 0.4, "T": 0.2},
+            base_alphabet_with_probability=BaseProbabilities(A=0.1, C=0.3, G=0.4, T=0.2),
         )
 
         oligos = OligoDatabase(

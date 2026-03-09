@@ -6,7 +6,6 @@ import os
 import shutil
 import unittest
 
-from Bio.SeqUtils import MeltingTemp as mt
 from pandas import Series
 from scipy.sparse import csr_matrix
 
@@ -24,6 +23,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     OverlapUTRScorer,
     UniformDistanceScorer,
 )
+from oligo_designer_toolsuite.validation.models._general import TmParametersCustom, TmParametersDetails
 
 ############################################
 # Global Parameters
@@ -31,25 +31,27 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 
 FILE_DATABASE = "tests/data/databases/database_oligo_efficiency.tsv"
 
-TM_PARAMETERS = {
-    "check": True,
-    "strict": True,
-    "c_seq": None,
-    "shift": 0,
-    "nn_table": getattr(mt, "DNA_NN3"),
-    "tmm_table": getattr(mt, "DNA_TMM1"),
-    "imm_table": getattr(mt, "DNA_IMM1"),
-    "de_table": getattr(mt, "DNA_DE1"),
-    "dnac1": 50,  # [nM]
-    "dnac2": 0,
-    "selfcomp": False,
-    "saltcorr": 7,
-    "Na": 50,  # [mM]
-    "K": 75,  # [mM]
-    "Tris": 20,  # [mM]
-    "Mg": 10,  # [mM]
-    "dNTPs": 0,
-}
+TM_PARAMETERS = TmParametersCustom(
+    parameters=TmParametersDetails(
+        check=True,
+        strict=True,
+        c_seq=None,
+        shift=0,
+        selfcomp=False,
+        nn_table="DNA_NN3",
+        tmm_table="DNA_TMM1",
+        imm_table="DNA_IMM1",
+        de_table="DNA_DE1",
+        dnac1=50,
+        dnac2=0,
+        saltcorr=7,
+        Na=50,
+        K=75,
+        Tris=20,
+        Mg=10,
+        dNTPs=0,
+    )
+)
 
 ############################################
 # Tests

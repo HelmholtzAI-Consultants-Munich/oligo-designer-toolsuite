@@ -21,6 +21,7 @@ from oligo_designer_toolsuite.sequence_generator import (
     OligoSequenceGenerator,
 )
 from oligo_designer_toolsuite.utils import FastaParser, check_if_dna_sequence
+from oligo_designer_toolsuite.validation.models._general import BaseProbabilities
 
 ############################################
 # Setup
@@ -304,7 +305,7 @@ class TestOligoSequenceGenerator(unittest.TestCase):
             length_sequences=30,
             num_sequences=100,
             name_sequences="random_sequences1",
-            base_alphabet_with_probability={"A": 0.1, "C": 0.3, "G": 0.4, "T": 0.2},
+            base_alphabet_with_probability=BaseProbabilities(A=0.1, C=0.3, G=0.4, T=0.2),
         )
         assert (
             self.fasta_parser.check_fasta_format(file_fasta_random_seqs1) == True
