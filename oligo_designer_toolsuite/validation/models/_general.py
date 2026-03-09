@@ -217,6 +217,7 @@ class TmChemCorrectionParametersDisabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["disabled"] = Field(
+        default="disabled",
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
     )
 
@@ -225,6 +226,7 @@ class TmChemCorrectionParametersBiopythonDefaults(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["biopython_defaults"] = Field(
+        default="biopython_defaults",
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
     )
 
@@ -233,6 +235,7 @@ class TmChemCorrectionParametersCustom(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["custom"] = Field(
+        default="custom",
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
     )
     parameters: TmChemCorrectionParametersDetails = Field(
@@ -278,6 +281,7 @@ class TmSaltCorrectionParametersDisabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["disabled"] = Field(
+        default="disabled",
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
     )
 
@@ -286,6 +290,7 @@ class TmSaltCorrectionParametersBiopythonDefaults(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["biopython_defaults"] = Field(
+        default="biopython_defaults",
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
     )
 
@@ -294,6 +299,7 @@ class TmSaltCorrectionParametersCustom(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["custom"] = Field(
+        default="custom",
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
     )
     parameters: TmSaltCorrectionParametersDetails = Field(
