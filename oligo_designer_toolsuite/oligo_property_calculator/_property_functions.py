@@ -10,8 +10,10 @@ from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.utils import cast_to_list, flatten_property_list
 from oligo_designer_toolsuite.validation.models._general import (
     TmChemCorrectionParameters,
+    TmChemCorrectionParametersDisabled,
     TmParameters,
     TmSaltCorrectionParameters,
+    TmSaltCorrectionParametersDisabled,
 )
 
 ############################################
@@ -70,9 +72,9 @@ def calc_tm_nn(
     if Tm_parameters is None:
         Tm_parameters = TmParameters(mode="biopython_defaults")
     if Tm_salt_correction_parameters is None:
-        Tm_salt_correction_parameters = TmSaltCorrectionParameters(mode="disabled")
+        Tm_salt_correction_parameters = TmSaltCorrectionParametersDisabled(mode="disabled")
     if Tm_chem_correction_parameters is None:
-        Tm_chem_correction_parameters = TmChemCorrectionParameters(mode="disabled")
+        Tm_chem_correction_parameters = TmChemCorrectionParametersDisabled(mode="disabled")
 
     if Tm_parameters.mode == "biopython_defaults":
         tm_params: dict = {}
@@ -84,13 +86,18 @@ def calc_tm_nn(
                 tm_params[key] = getattr(MeltingTemp, tm_params[key])
     TmNN: float = MeltingTemp.Tm_NN(sequence, **tm_params)
     if Tm_salt_correction_parameters.mode != "disabled":
-        TmNN += MeltingTemp.salt_correction(
-            **Tm_salt_correction_parameters.model_dump(exclude_none=True), seq=sequence
-        )
+        if Tm_salt_correction_parameters.mode == "biopython_defaults":
+            salt_params: dict = {}
+        elif Tm_salt_correction_parameters.mode == "custom":
+            salt_params = Tm_salt_correction_parameters.parameters.model_dump(exclude_none=True)
+        TmNN += MeltingTemp.salt_correction(**salt_params, seq=sequence)
+
     if Tm_chem_correction_parameters.mode != "disabled":
-        TmNN = MeltingTemp.chem_correction(
-            TmNN, **Tm_chem_correction_parameters.model_dump(exclude_none=True)
-        )
+        if Tm_chem_correction_parameters.mode == "biopython_defaults":
+            chem_params: dict = {}
+        elif Tm_chem_correction_parameters.mode == "custom":
+            chem_params = Tm_chem_correction_parameters.parameters.model_dump(exclude_none=True)
+        TmNN = MeltingTemp.chem_correction(TmNN, **chem_params)
     TmNN = round(TmNN, 2)
     return TmNN
 

@@ -213,26 +213,39 @@ class TmChemCorrectionParametersDetails(BaseModel):
         return self
 
 
-class TmChemCorrectionParameters(BaseModel):
+class TmChemCorrectionParametersDisabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["biopython_defaults", "custom", "disabled"] = Field(
-        default="disabled",
+    mode: Literal["disabled"] = Field(
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
     )
-    parameters: TmChemCorrectionParametersDetails | None = Field(
-        default=None, description="Required when mode='custom'. Must be omitted otherwise."
+
+
+class TmChemCorrectionParametersBiopythonDefaults(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["biopython_defaults"] = Field(
+        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
     )
 
-    @model_validator(mode="after")
-    def _check_mode_and_parameters(self) -> Self:
-        if self.mode == "custom" and self.parameters is None:
-            raise ValueError("TmChemCorrectionParameters.parameters must be provided when mode='custom'.")
-        if self.mode in ("biopython_defaults", "disabled") and self.parameters is not None:
-            raise ValueError(
-                "TmChemCorrectionParameters must be omitted when mode is 'biopython_defaults' or 'disabled'."
-            )
-        return self
+
+class TmChemCorrectionParametersCustom(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["custom"] = Field(
+        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
+    )
+    parameters: TmChemCorrectionParametersDetails = Field(
+        description="Required when mode='custom'. Must be omitted otherwise."
+    )
+
+
+TmChemCorrectionParameters = Annotated[
+    TmChemCorrectionParametersDisabled
+    | TmChemCorrectionParametersBiopythonDefaults
+    | TmChemCorrectionParametersCustom,
+    Field(discriminator="mode"),
+]
 
 
 class TmSaltCorrectionParametersDetails(BaseModel):
@@ -261,26 +274,39 @@ class TmSaltCorrectionParametersDetails(BaseModel):
         return self
 
 
-class TmSaltCorrectionParameters(BaseModel):
+class TmSaltCorrectionParametersDisabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["biopython_defaults", "custom", "disabled"] = Field(
-        default="disabled",
+    mode: Literal["disabled"] = Field(
         description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
     )
-    parameters: TmSaltCorrectionParametersDetails | None = Field(
-        default=None, description="Required when mode='custom'. Must be omitted otherwise."
+
+
+class TmSaltCorrectionParametersBiopythonDefaults(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["biopython_defaults"] = Field(
+        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
     )
 
-    @model_validator(mode="after")
-    def _check_mode_and_parameters(self) -> Self:
-        if self.mode == "custom" and self.parameters is None:
-            raise ValueError("TmSaltmCorrectionParameters.parameters must be provided when mode='custom'.")
-        if self.mode in ("biopython_defaults", "disabled") and self.parameters is not None:
-            raise ValueError(
-                "TmSaltCorrectionParameters must be omitted when mode is 'biopython_defaults' or 'disabled'."
-            )
-        return self
+
+class TmSaltCorrectionParametersCustom(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["custom"] = Field(
+        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
+    )
+    parameters: TmSaltCorrectionParametersDetails = Field(
+        description="Required when mode='custom'. Must be omitted otherwise."
+    )
+
+
+TmSaltCorrectionParameters = Annotated[
+    TmSaltCorrectionParametersDisabled
+    | TmSaltCorrectionParametersBiopythonDefaults
+    | TmSaltCorrectionParametersCustom,
+    Field(discriminator="mode"),
+]
 
 
 class BlastnSearchParameters(BaseModel):
