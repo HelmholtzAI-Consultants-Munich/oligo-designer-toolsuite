@@ -422,15 +422,7 @@ class CustomGenomicRegionGenerator:
             annotation = self._collapse_duplicated_regions(annotation)
 
         # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts(set(annotation["gene_id"]))
-        if number_total_transcripts is not None:
-            annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
-            annotation_transcript_inf = (
-                f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
-                + annotation["transcript_count"].astype("str")
-            )
-        else:
-            annotation_transcript_inf = ""
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["start"] = annotation["start_0base"]
@@ -639,15 +631,7 @@ class CustomGenomicRegionGenerator:
             annotation = self._collapse_duplicated_regions(annotation)
 
         # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts(set(annotation["gene_id"]))
-        if number_total_transcripts is not None:
-            annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
-            annotation_transcript_inf = (
-                f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
-                + annotation["transcript_count"].astype("str")
-            )
-        else:
-            annotation_transcript_inf = ""
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["start"] = annotation["start_0base"]
@@ -790,15 +774,7 @@ class CustomGenomicRegionGenerator:
             annotation = self._collapse_duplicated_regions(annotation)
 
         # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts(set(annotation["gene_id"]))
-        if number_total_transcripts is not None:
-            annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
-            annotation_transcript_inf = (
-                f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
-                + annotation["transcript_count"].astype("str")
-            )
-        else:
-            annotation_transcript_inf = ""
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["start"] = annotation["start_0base"]
@@ -1017,15 +993,7 @@ class CustomGenomicRegionGenerator:
             annotation = self._collapse_duplicated_regions(annotation)
 
         # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts(set(annotation["gene_id"]))
-        if number_total_transcripts is not None:
-            annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
-            annotation_transcript_inf = (
-                f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
-                + annotation["transcript_count"].astype("str")
-            )
-        else:
-            annotation_transcript_inf = ""
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["score"] = 0
@@ -1245,6 +1213,28 @@ class CustomGenomicRegionGenerator:
             number_total_transcripts_df = None
         finally:
             return number_total_transcripts_df
+
+    def _add_transcript_counts(self, annotation: pd.DataFrame) -> tuple[pd.DataFrame, str | pd.Series]:
+        """
+        Adds the transcript count for every gene to the annotation and generates a Series of strings for the BED header.
+
+        :param annotation: DataFrame with the annotation information.
+        :type annotation: pd.DataFrame
+        :return: Updated annotation DataFrame and Series with strings fro BED header
+        :rtype: DataFrame
+        """
+        # add transcript counts for each gene
+        number_total_transcripts = self._get_number_total_transcripts(set(annotation["gene_id"]))
+        if number_total_transcripts is not None:
+            annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
+            annotation_transcript_inf = (
+                f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
+                + annotation["transcript_count"].astype("str")
+            )
+        else:
+            annotation_transcript_inf = ""
+
+        return annotation, annotation_transcript_inf
 
 
 class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
