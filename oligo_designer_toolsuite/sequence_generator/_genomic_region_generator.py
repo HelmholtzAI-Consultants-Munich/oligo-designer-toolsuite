@@ -1293,12 +1293,10 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         if mode == "species":
             if taxon is None:
-                taxon = "vertebrate_mammalian"
-                warnings.warn(f"No taxon defined. Using default taxon {taxon}!")
+                raise ConfigurationError(f"No taxon defined.")
 
             if species is None:
-                species = "Homo_sapiens"
-                warnings.warn(f"No species defined. Using default species {species}!")
+                raise ConfigurationError(f"No species defined.")
 
             if annotation_release is None:
                 annotation_release = "current"
