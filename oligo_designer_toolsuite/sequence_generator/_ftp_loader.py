@@ -229,6 +229,8 @@ class FtpLoaderNCBI(BaseFtpLoader):
     It supports downloading, decompressing, and mapping chromosome names based on the specified taxon, species, and annotation release.
     The class also manages the correct retrieval paths and handles different versions and structures of NCBI directories.
 
+    :param mode: NCBI parameter mode. Supported values are "species" and "assembly".
+    :type mode: str | None
     :param taxon: The taxonomic group of the species (e.g., "vertebrate_mammalian").
     :type taxon: str | None
     :param species: The species name (e.g., "homo_sapiens").
@@ -259,16 +261,23 @@ class FtpLoaderNCBI(BaseFtpLoader):
         "viral": {"latest_assembly_versions"},
     }
     UNSUPPORTED_TAXA: set[str] = {"mitochondrion", "plasmids", "plastid"}
+    # Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory.
+    # 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'.
+    # 'latest_assembly_version' directory is available for all species and contains the latest assembly.
+    # 'reference' directory contains the reference genome. This is only available for a subset of species.
+    # 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_version'
     ALLOWED_ASSEMBLY_SOURCES: set[str] = {
         "auto",
         "annotation_releases",
         "latest_assembly_versions",
         "reference",
     }
+    ALLOWED_MODES: set[str] = {"species", "assembly"}
 
     def __init__(
         self,
         dir_output: str,
+        mode: str | None = None,
         taxon: str | None = None,
         species: str | None = None,
         annotation_release: str | None = None,
@@ -278,6 +287,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
     ) -> None:
         """Constructor for the FtpLoaderNCBI class."""
         super().__init__(dir_output)
+        self.mode = mode
         self.taxon = taxon
         self.species = species
         self.annotation_release = annotation_release
@@ -364,34 +374,37 @@ class FtpLoaderNCBI(BaseFtpLoader):
         return ftp_directory, ftp_file, ftp_file_chr_mapping
 
     def _validate_mode_and_normalize_params(self) -> bool:
-        has_direct_accession = bool(self.assembly_accession)
-        has_direct_name = bool(self.assembly_name)
-        has_direct_mode_params = has_direct_accession or has_direct_name
-        has_taxon_mode_params = any(
-            param is not None for param in (self.taxon, self.species, self.annotation_release)
-        )
+        if self.mode not in self.ALLOWED_MODES:
+            allowed_modes = ", ".join(sorted(self.ALLOWED_MODES))
+            raise ConfigurationError(
+                f"mode '{self.mode}' is not supported. Supported values are: {allowed_modes}."
+            )
 
-        if has_direct_mode_params:
+        if self.mode == "assembly":
+            has_direct_accession = bool(self.assembly_accession)
+            has_direct_name = bool(self.assembly_name)
             if not has_direct_accession or not has_direct_name:
                 raise ConfigurationError(
-                    "Both 'refseq_assembly_accession' and 'assembly_name' must be provided together."
+                    "In mode='assembly', both 'refseq_assembly_accession' and 'assembly_name' must be provided."
                 )
-            if has_taxon_mode_params:
+            if any(param is not None for param in (self.taxon, self.species, self.annotation_release)):
                 raise ConfigurationError(
-                    "Specify either taxon/species/assembly_source/annotation_release or "
-                    "refseq_assembly_accession/assembly_name, not both."
+                    "In mode='assembly', taxon/species/annotation_release must not be provided."
                 )
             if self.assembly_source != "auto":
                 raise ConfigurationError(
-                    "assembly_source cannot be set when using direct assembly mode "
-                    "(refseq_assembly_accession/assembly_name)."
+                    "In mode='assembly', assembly_source cannot be set and must remain 'auto'."
                 )
-            self.annotation_release = "current"
+            self.annotation_release = "unknown"
             return True
 
+        if bool(self.assembly_accession) or bool(self.assembly_name):
+            raise ConfigurationError(
+                "In mode='species', refseq_assembly_accession/assembly_name must not be provided."
+            )
         if self.taxon is None or self.species is None or self.annotation_release is None:
             raise ConfigurationError(
-                "For taxon/species mode, 'taxon', 'species', and 'annotation_release' must be provided."
+                "In mode='species', 'taxon', 'species', and 'annotation_release' must be provided."
             )
         return False
 

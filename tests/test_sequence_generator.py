@@ -111,21 +111,27 @@ class FTPLoaderDownloadBase:
 class TestFTPLoaderNCBICurrent(FTPLoaderDownloadBase, unittest.TestCase):
     def setup_ftp_loader(self) -> FtpLoaderNCBI:
         # Parameters
+        mode = "species"
         taxon = "vertebrate_mammalian"  # taxon the species belongs to
         species = "Homo_sapiens"
         annotation_release = "current"
 
-        return FtpLoaderNCBI(self.tmp_path, taxon, species, annotation_release)
+        return FtpLoaderNCBI(
+            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
+        )
 
 
 class TestFTPLoaderNCBICurrentProkaryotes(FTPLoaderDownloadBase, unittest.TestCase):
     def setup_ftp_loader(self) -> FtpLoaderNCBI:
         # Parameters
+        mode = "species"
         taxon = "bacteria"  # taxon the species belongs to
         species = "Actinomadura_yumaensis"
         annotation_release = "current"
 
-        return FtpLoaderNCBI(self.tmp_path, taxon, species, annotation_release)
+        return FtpLoaderNCBI(
+            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
+        )
 
 
 class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
@@ -149,6 +155,7 @@ class TestFTPLoaderNCBIModeValidation(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             FtpLoaderNCBI(
                 self.tmp_path,
+                mode="assembly",
                 refseq_assembly_accession="GCF_000001405.38",
             )
 
@@ -156,6 +163,7 @@ class TestFTPLoaderNCBIModeValidation(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             FtpLoaderNCBI(
                 self.tmp_path,
+                mode="assembly",
                 taxon="vertebrate_mammalian",
                 species="Homo_sapiens",
                 annotation_release="current",
@@ -166,10 +174,30 @@ class TestFTPLoaderNCBIModeValidation(unittest.TestCase):
     def test_direct_mode_accepts_valid_pair(self) -> None:
         loader = FtpLoaderNCBI(
             self.tmp_path,
+            mode="assembly",
             refseq_assembly_accession="GCF_000001405.38",
             assembly_name="GRCh38.p12",
         )
         assert loader is not None
+
+    def test_requires_explicit_mode(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                taxon="vertebrate_mammalian",
+                species="Homo_sapiens",
+                annotation_release="current",
+            )
+
+    def test_rejects_unknown_mode(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="unknown",
+                taxon="vertebrate_mammalian",
+                species="Homo_sapiens",
+                annotation_release="current",
+            )
 
 
 class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
@@ -183,6 +211,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
     def test_direct_mode_builds_expected_ncbi_all_path(self) -> None:
         loader = FtpLoaderNCBI(
             self.tmp_path,
+            mode="assembly",
             refseq_assembly_accession="GCF_000001405.38",
             assembly_name="GRCh38.p12",
         )
@@ -194,6 +223,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
     def test_direct_mode_rejects_invalid_accession_format(self) -> None:
         loader = FtpLoaderNCBI(
             self.tmp_path,
+            mode="assembly",
             refseq_assembly_accession="GCF_123",
             assembly_name="GRCh38.p12",
         )
@@ -202,12 +232,13 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
 
     def test_taxon_mode_requires_required_fields(self) -> None:
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(self.tmp_path, taxon="vertebrate_mammalian")
+            FtpLoaderNCBI(self.tmp_path, mode="species", taxon="vertebrate_mammalian")
 
     def test_unsupported_taxon_is_rejected(self) -> None:
         with self.assertRaises(ConfigurationError):
             FtpLoaderNCBI(
                 self.tmp_path,
+                mode="species",
                 taxon="mitochondrion",
                 species="Homo_sapiens",
                 annotation_release="current",
@@ -217,6 +248,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             FtpLoaderNCBI(
                 self.tmp_path,
+                mode="species",
                 taxon="foo_taxon",
                 species="Homo_sapiens",
                 annotation_release="current",
@@ -226,6 +258,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             FtpLoaderNCBI(
                 self.tmp_path,
+                mode="species",
                 taxon="viral",
                 species="SARS-CoV-2",
                 annotation_release="current",
@@ -236,6 +269,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             FtpLoaderNCBI(
                 self.tmp_path,
+                mode="species",
                 taxon="bacteria",
                 species="Actinomadura_yumaensis",
                 annotation_release="110",
@@ -245,6 +279,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
     def test_current_annotation_release_uses_first_entry(self) -> None:
         loader = FtpLoaderNCBI(
             self.tmp_path,
+            mode="species",
             taxon="vertebrate_mammalian",
             species="Homo_sapiens",
             annotation_release="current",
@@ -265,6 +300,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
     def test_non_annotation_source_uses_first_gcf_entry(self) -> None:
         loader = FtpLoaderNCBI(
             self.tmp_path,
+            mode="species",
             taxon="bacteria",
             species="Actinomadura_yumaensis",
             annotation_release="current",
@@ -284,6 +320,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
     def test_non_annotation_source_without_gcf_entry_raises(self) -> None:
         loader = FtpLoaderNCBI(
             self.tmp_path,
+            mode="species",
             taxon="bacteria",
             species="Actinomadura_yumaensis",
             annotation_release="current",
@@ -296,6 +333,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
     def test_resolve_assembly_metadata_falls_back_to_assembly_report(self) -> None:
         loader = FtpLoaderNCBI(
             self.tmp_path,
+            mode="species",
             taxon="bacteria",
             species="Xanthobacter_sp._SG618",
             annotation_release="current",
@@ -377,11 +415,14 @@ class FTPLoaderFilesBase:
 class TestFTPLoaderNCBIOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
     def setup_ftp_loader(self) -> FtpLoaderNCBI:
         # Parameters
+        mode = "species"
         taxon = "vertebrate_mammalian"  # taxon the species belongs to
         species = "Homo_sapiens"
         annotation_release = "110"
 
-        return FtpLoaderNCBI(self.tmp_path, taxon, species, annotation_release)
+        return FtpLoaderNCBI(
+            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
+        )
 
     def get_correct_metadata(self) -> tuple[str, str]:
         annotation_release = "NCBI_Homo_sapiens_Annotation_Release_110"
@@ -402,13 +443,19 @@ class TestFTPLoaderNCBIOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
 class TestFTPLoaderNCBIReference(FTPLoaderFilesBase, unittest.TestCase):
     def setup_ftp_loader(self) -> FtpLoaderNCBI:
         # Parameters
+        mode = "species"
         taxon = "vertebrate_mammalian"  # taxon the species belongs to
         species = "Homo_sapiens"
         annotation_release = "current"
         assembly_source = "reference"
 
         return FtpLoaderNCBI(
-            self.tmp_path, taxon, species, annotation_release, assembly_source=assembly_source
+            self.tmp_path,
+            mode=mode,
+            taxon=taxon,
+            species=species,
+            annotation_release=annotation_release,
+            assembly_source=assembly_source,
         )
 
     def get_correct_metadata(self) -> tuple[str, str]:
@@ -430,11 +477,15 @@ class TestFTPLoaderNCBIReference(FTPLoaderFilesBase, unittest.TestCase):
 class TestFTPLoaderNCBIAssemblyNumber(FTPLoaderFilesBase, unittest.TestCase):
     def setup_ftp_loader(self) -> FtpLoaderNCBI:
         # Parameters
+        mode = "assembly"
         refseq_assembly_accession = "GCF_000068585.1"
         assembly_name = "ASM6858v1"
 
         return FtpLoaderNCBI(
-            self.tmp_path, refseq_assembly_accession=refseq_assembly_accession, assembly_name=assembly_name
+            self.tmp_path,
+            mode=mode,
+            refseq_assembly_accession=refseq_assembly_accession,
+            assembly_name=assembly_name,
         )
 
     def get_correct_metadata(self) -> tuple[str, str]:

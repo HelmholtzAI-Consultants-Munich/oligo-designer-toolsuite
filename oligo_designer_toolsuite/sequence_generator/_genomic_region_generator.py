@@ -1255,6 +1255,8 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
     the assembly name can be specified directly. Only one mode can be used and the other parameters need to be set to
     None.
 
+    :param mode: How should be specified which genome to use? Options: 'species', 'assembly'
+    :type mode: str
     :param taxon: The taxonomic classification of the species, used to locate the appropriate NCBI files, defaults to "vertebrate_mammalian".
     :type taxon: str, optional
     :param species: The species name for which genomic regions will be generated, defaults to "Homo_sapiens".
@@ -1274,6 +1276,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
     def __init__(
         self,
+        mode: str | None = None,
         taxon: str | None = None,
         species: str | None = None,
         annotation_release: str | None = None,
@@ -1284,11 +1287,11 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
     ) -> None:
         """Constructor for the NcbiGenomicRegionGenerator class."""
         files_source = "NCBI"
-        has_direct_mode = refseq_assembly_accession is not None or assembly_name is not None
 
-        if has_direct_mode and assembly_source is None:
-            assembly_source = "auto"
-        elif not has_direct_mode:
+        if mode is None:
+            raise ConfigurationError("For source='ncbi', parameter 'mode' must be provided.")
+
+        if mode == "species":
             if taxon is None:
                 taxon = "vertebrate_mammalian"
                 warnings.warn(f"No taxon defined. Using default taxon {taxon}!")
@@ -1304,12 +1307,18 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
             if assembly_source is None:
                 assembly_source = "auto"
                 warnings.warn(f"No assembly source defined. Using default assembly source {assembly_source}!")
+        elif mode == "assembly":
+            if assembly_source is None:
+                assembly_source = "auto"
+        else:
+            raise ConfigurationError("For source='ncbi', mode must be either 'species' or 'assembly'.")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         ftp = FtpLoaderNCBI(
             self.dir_output,
+            mode=mode,
             taxon=taxon,
             species=species,
             annotation_release=annotation_release,
