@@ -309,7 +309,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
             "gtf": self._map_chr_names_gene_annotation,
             "fasta": self._map_chr_names_genome_sequence,
         }
-        self._is_direct_assembly_mode = self._validate_mode_and_normalize_params()
+        self._validate_mode_and_normalize_params()
         self._validate_taxon_and_source()
 
     def download_files(self, file_type: _TYPES_FILE) -> tuple[str, str, str]:
@@ -343,7 +343,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
         """
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        if self._is_direct_assembly_mode:
+        if self.mode == "assembly":
             ftp_directory = self._resolve_directory_from_direct_assembly()
             self._resolve_annotation_metadata(ftp_directory)
         else:
@@ -373,7 +373,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
 
         return ftp_directory, ftp_file, ftp_file_chr_mapping
 
-    def _validate_mode_and_normalize_params(self) -> bool:
+    def _validate_mode_and_normalize_params(self) -> None:
         if self.mode not in self.ALLOWED_MODES:
             allowed_modes = ", ".join(sorted(self.ALLOWED_MODES))
             raise ConfigurationError(
@@ -396,20 +396,18 @@ class FtpLoaderNCBI(BaseFtpLoader):
                     "In mode='assembly', assembly_source cannot be set and must remain 'auto'."
                 )
             self.annotation_release = "unknown"
-            return True
-
-        if bool(self.assembly_accession) or bool(self.assembly_name):
-            raise ConfigurationError(
-                "In mode='species', refseq_assembly_accession/assembly_name must not be provided."
-            )
-        if self.taxon is None or self.species is None or self.annotation_release is None:
-            raise ConfigurationError(
-                "In mode='species', 'taxon', 'species', and 'annotation_release' must be provided."
-            )
-        return False
+        elif self.mode == "species":
+            if bool(self.assembly_accession) or bool(self.assembly_name):
+                raise ConfigurationError(
+                    "In mode='species', refseq_assembly_accession/assembly_name must not be provided."
+                )
+            if self.taxon is None or self.species is None or self.annotation_release is None:
+                raise ConfigurationError(
+                    "In mode='species', 'taxon', 'species', and 'annotation_release' must be provided."
+                )
 
     def _validate_taxon_and_source(self) -> None:
-        if self._is_direct_assembly_mode:
+        if self.mode == "assembly":
             return
 
         if self.taxon is None:
