@@ -7,8 +7,12 @@ import shutil
 import unittest
 from abc import abstractmethod
 from pathlib import Path
-from typing import cast
+from typing import Any, Callable, cast
+from unittest.mock import patch
 
+from Bio import SeqIO
+
+from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_calculator import (
     LengthProperty,
@@ -22,6 +26,14 @@ from oligo_designer_toolsuite.sequence_generator import (
 )
 from oligo_designer_toolsuite.utils import FastaParser, check_if_dna_sequence
 
+from .expected_values_region_generator import (
+    EXPECTED_HEADER_VALUES_BACTERIA_NCBI,
+    EXPECTED_HEADER_VALUES_HUMAN_ENSEMBL,
+    EXPECTED_HEADER_VALUES_HUMAN_NCBI,
+    EXPECTED_HEADER_VALUES_MOUSE_NCBI,
+    RegionHeaderSpec,
+)
+
 ############################################
 # Setup
 ############################################
@@ -32,7 +44,7 @@ FILE_SEQUENCE_ENSEMBL = "tests/data/annotations/custom_Homo_sapiens.GRCh38.dna_s
 FILE_ANNOTATION_NCBI = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.gtf"
 FILE_SEQUENCE_NCBI = "tests/data/annotations/custom_GCF_000001405.40_GRCh38.p14_genomic_chr16.fna"
 
-METDATA_NCBI = {
+METADATA_NCBI = {
     "files_source": "NCBI",
     "species": "Homo_sapiens",
     "annotation_release": "110",
@@ -44,6 +56,28 @@ METADATA_ENSEMBL = {
     "species": "Homo_sapiens",
     "annotation_release": "108",
     "genome_assembly": "GRCh38",
+}
+
+FILE_ANNOTATION_MOUSE_NCBI = (
+    "tests/data/annotations/custom_GCF_000001635.26_GRCm38.p6_genomic_NC_000085.6.gtf"
+)
+FILE_SEQUENCE_MOUSE_NCBI = "tests/data/annotations/custom_GCF_000001635.26_GRCm38.p6_genomic_NC_000085.6.fna"
+
+METADATA_MOUSE_NCBI = {
+    "files_source": "NCBI",
+    "species": "Mus_musculus",
+    "annotation_release": "108.20200622",
+    "genome_assembly": "GRCm38.p6",
+}
+
+FILE_ANNOTATION_BACTERIA_NCBI = "tests/data/annotations/GCF_000068585.1_ASM6858v1_genomic.gtf"
+FILE_SEQUENCE_BACTERIA_NCBI = "tests/data/annotations/GCF_000068585.1_ASM6858v1_genomic.fna"
+
+METADATA_BACTERIA_NCBI = {
+    "files_source": "NCBI",
+    "species": "Chlamydia_trachomatis",
+    "annotation_release": "no_annotation_info",
+    "genome_assembly": "ASM6858v1",
 }
 
 FILE_NCBI_EXONS = "tests/data/genomic_regions/sequences_ncbi_exons.fna"
@@ -77,11 +111,27 @@ class FTPLoaderDownloadBase:
 class TestFTPLoaderNCBICurrent(FTPLoaderDownloadBase, unittest.TestCase):
     def setup_ftp_loader(self) -> FtpLoaderNCBI:
         # Parameters
+        mode = "species"
         taxon = "vertebrate_mammalian"  # taxon the species belongs to
         species = "Homo_sapiens"
         annotation_release = "current"
 
-        return FtpLoaderNCBI(self.tmp_path, taxon, species, annotation_release)
+        return FtpLoaderNCBI(
+            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
+        )
+
+
+class TestFTPLoaderNCBICurrentProkaryotes(FTPLoaderDownloadBase, unittest.TestCase):
+    def setup_ftp_loader(self) -> FtpLoaderNCBI:
+        # Parameters
+        mode = "species"
+        taxon = "bacteria"  # taxon the species belongs to
+        species = "Actinomadura_yumaensis"
+        annotation_release = "current"
+
+        return FtpLoaderNCBI(
+            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
+        )
 
 
 class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
@@ -91,6 +141,221 @@ class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
         annotation_release = "current"
 
         return FtpLoaderEnsembl(self.tmp_path, species, annotation_release)
+
+
+class TestFTPLoaderNCBIModeValidation(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader_mode_validation")
+        os.makedirs(self.tmp_path, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_direct_mode_requires_both_fields(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="assembly",
+                refseq_assembly_accession="GCF_000001405.38",
+            )
+
+    def test_direct_mode_rejects_taxon_mode_fields(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="assembly",
+                taxon="vertebrate_mammalian",
+                species="Homo_sapiens",
+                annotation_release="current",
+                refseq_assembly_accession="GCF_000001405.38",
+                assembly_name="GRCh38.p12",
+            )
+
+    def test_direct_mode_accepts_valid_pair(self) -> None:
+        loader = FtpLoaderNCBI(
+            self.tmp_path,
+            mode="assembly",
+            refseq_assembly_accession="GCF_000001405.38",
+            assembly_name="GRCh38.p12",
+        )
+        assert loader is not None
+
+    def test_requires_explicit_mode(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                taxon="vertebrate_mammalian",
+                species="Homo_sapiens",
+                annotation_release="current",
+            )
+
+    def test_rejects_unknown_mode(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="unknown",
+                taxon="vertebrate_mammalian",
+                species="Homo_sapiens",
+                annotation_release="current",
+            )
+
+
+class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader_unit_behavior")
+        os.makedirs(self.tmp_path, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_direct_mode_builds_expected_ncbi_all_path(self) -> None:
+        loader = FtpLoaderNCBI(
+            self.tmp_path,
+            mode="assembly",
+            refseq_assembly_accession="GCF_000001405.38",
+            assembly_name="GRCh38.p12",
+        )
+        assert (
+            loader._resolve_directory_from_direct_assembly()
+            == "genomes/all/GCF/000/001/405/GCF_000001405.38_GRCh38.p12/"
+        )
+
+    def test_direct_mode_rejects_invalid_accession_format(self) -> None:
+        loader = FtpLoaderNCBI(
+            self.tmp_path,
+            mode="assembly",
+            refseq_assembly_accession="GCF_123",
+            assembly_name="GRCh38.p12",
+        )
+        with self.assertRaises(ConfigurationError):
+            loader._resolve_directory_from_direct_assembly()
+
+    def test_taxon_mode_requires_required_fields(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(self.tmp_path, mode="species", taxon="vertebrate_mammalian")
+
+    def test_unsupported_taxon_is_rejected(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="species",
+                taxon="mitochondrion",
+                species="Homo_sapiens",
+                annotation_release="current",
+            )
+
+    def test_unknown_taxon_is_rejected(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="species",
+                taxon="foo_taxon",
+                species="Homo_sapiens",
+                annotation_release="current",
+            )
+
+    def test_assembly_source_incompatible_with_taxon_is_rejected(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="species",
+                taxon="viral",
+                species="SARS-CoV-2",
+                annotation_release="current",
+                assembly_source="annotation_releases",
+            )
+
+    def test_numeric_release_is_rejected_for_latest_assembly_versions(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            FtpLoaderNCBI(
+                self.tmp_path,
+                mode="species",
+                taxon="bacteria",
+                species="Actinomadura_yumaensis",
+                annotation_release="110",
+                assembly_source="latest_assembly_versions",
+            )
+
+    def test_current_annotation_release_uses_first_entry(self) -> None:
+        loader = FtpLoaderNCBI(
+            self.tmp_path,
+            mode="species",
+            taxon="vertebrate_mammalian",
+            species="Homo_sapiens",
+            annotation_release="current",
+            assembly_source="annotation_releases",
+        )
+        with patch.object(
+            loader,
+            "_list_ftp_entries",
+            return_value=["GCF_000001405.40-RS_2025_08", "GCF_009914755.1-RS_2025_08"],
+        ):
+            ftp_directory = loader._resolve_base_directory("annotation_releases")
+        assert loader.annotation_release == "GCF_000001405.40-RS_2025_08"
+        assert (
+            ftp_directory == "genomes/refseq/vertebrate_mammalian/Homo_sapiens/annotation_releases/"
+            "GCF_000001405.40-RS_2025_08/"
+        )
+
+    def test_non_annotation_source_uses_first_gcf_entry(self) -> None:
+        loader = FtpLoaderNCBI(
+            self.tmp_path,
+            mode="species",
+            taxon="bacteria",
+            species="Actinomadura_yumaensis",
+            annotation_release="current",
+            assembly_source="latest_assembly_versions",
+        )
+        with patch.object(
+            loader,
+            "_list_ftp_entries",
+            return_value=["README.txt", "GCF_003054545.1_ASM305454v1", "GCA_111111111.1_OTHER"],
+        ):
+            ftp_directory = loader._resolve_base_directory("latest_assembly_versions")
+        assert (
+            ftp_directory == "genomes/refseq/bacteria/Actinomadura_yumaensis/latest_assembly_versions/"
+            "GCF_003054545.1_ASM305454v1/"
+        )
+
+    def test_non_annotation_source_without_gcf_entry_raises(self) -> None:
+        loader = FtpLoaderNCBI(
+            self.tmp_path,
+            mode="species",
+            taxon="bacteria",
+            species="Actinomadura_yumaensis",
+            annotation_release="current",
+            assembly_source="latest_assembly_versions",
+        )
+        with patch.object(loader, "_list_ftp_entries", return_value=["README.txt", "GCA_123456789.1_OTHER"]):
+            with self.assertRaises(ConfigurationError):
+                loader._resolve_base_directory("latest_assembly_versions")
+
+    def test_resolve_assembly_metadata_falls_back_to_assembly_report(self) -> None:
+        loader = FtpLoaderNCBI(
+            self.tmp_path,
+            mode="species",
+            taxon="bacteria",
+            species="Xanthobacter_sp._SG618",
+            annotation_release="current",
+            assembly_source="reference",
+        )
+        assembly_report = os.path.join(self.tmp_path, "GCF_012932745.1_ASM1293274v1_assembly_report.txt")
+        with open(assembly_report, "w") as handle:
+            handle.write("# Assembly name: ASM1293274v1\n")
+            handle.write("# RefSeq assembly accession: GCF_012932745.1\n")
+
+        def _download_side_effect(ftp_link: str, ftp_directory: str, file_name: str) -> str:
+            if "README_" in file_name:
+                raise FileNotFoundError("README missing")
+            if "_assembly_report" in file_name:
+                return assembly_report
+            raise FileNotFoundError("No file")
+
+        with patch.object(loader, "_download", side_effect=_download_side_effect):
+            loader._resolve_assembly_metadata("dummy_dir/")
+
+        assert loader.assembly_name == "ASM1293274v1"
+        assert loader.assembly_accession == "GCF_012932745.1"
 
 
 class FTPLoaderFilesBase:
@@ -150,14 +415,17 @@ class FTPLoaderFilesBase:
 class TestFTPLoaderNCBIOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
     def setup_ftp_loader(self) -> FtpLoaderNCBI:
         # Parameters
+        mode = "species"
         taxon = "vertebrate_mammalian"  # taxon the species belongs to
         species = "Homo_sapiens"
         annotation_release = "110"
 
-        return FtpLoaderNCBI(self.tmp_path, taxon, species, annotation_release)
+        return FtpLoaderNCBI(
+            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
+        )
 
     def get_correct_metadata(self) -> tuple[str, str]:
-        annotation_release = "110"
+        annotation_release = "NCBI_Homo_sapiens_Annotation_Release_110"
         assembly_name = "GRCh38.p14"
 
         return annotation_release, assembly_name
@@ -170,6 +438,70 @@ class TestFTPLoaderNCBIOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
 
     def get_correct_fasta(self) -> str:
         return "GCF_000001405.40_GRCh38.p14_genomic.fna"
+
+
+class TestFTPLoaderNCBIReference(FTPLoaderFilesBase, unittest.TestCase):
+    def setup_ftp_loader(self) -> FtpLoaderNCBI:
+        # Parameters
+        mode = "species"
+        taxon = "vertebrate_mammalian"  # taxon the species belongs to
+        species = "Homo_sapiens"
+        annotation_release = "current"
+        assembly_source = "reference"
+
+        return FtpLoaderNCBI(
+            self.tmp_path,
+            mode=mode,
+            taxon=taxon,
+            species=species,
+            annotation_release=annotation_release,
+            assembly_source=assembly_source,
+        )
+
+    def get_correct_metadata(self) -> tuple[str, str]:
+        annotation_release = "GCF_000001405.40-RS_2025_08"
+        assembly_name = "GRCh38.p14"
+
+        return annotation_release, assembly_name
+
+    def get_correct_gff(self) -> str:
+        return "GCF_000001405.40_GRCh38.p14_genomic.gff"
+
+    def get_correct_gtf(self) -> str:
+        return "GCF_000001405.40_GRCh38.p14_genomic.gtf"
+
+    def get_correct_fasta(self) -> str:
+        return "GCF_000001405.40_GRCh38.p14_genomic.fna"
+
+
+class TestFTPLoaderNCBIAssemblyNumber(FTPLoaderFilesBase, unittest.TestCase):
+    def setup_ftp_loader(self) -> FtpLoaderNCBI:
+        # Parameters
+        mode = "assembly"
+        refseq_assembly_accession = "GCF_000068585.1"
+        assembly_name = "ASM6858v1"
+
+        return FtpLoaderNCBI(
+            self.tmp_path,
+            mode=mode,
+            refseq_assembly_accession=refseq_assembly_accession,
+            assembly_name=assembly_name,
+        )
+
+    def get_correct_metadata(self) -> tuple[str, str]:
+        annotation_release = "no_annotation_info"
+        assembly_name = "ASM6858v1"
+
+        return annotation_release, assembly_name
+
+    def get_correct_gff(self) -> str:
+        return "GCF_000068585.1_ASM6858v1_genomic.gff"
+
+    def get_correct_gtf(self) -> str:
+        return "GCF_000068585.1_ASM6858v1_genomic.gtf"
+
+    def get_correct_fasta(self) -> str:
+        return "GCF_000068585.1_ASM6858v1_genomic.fna"
 
 
 class TestFTPLoaderEnsemblOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
@@ -201,7 +533,10 @@ class TestFTPLoaderEnsemblOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
         assert Path(file_fasta).name == "Homo_sapiens.GRCh38.ncrna.fa", "error: wrong file downloaded"
 
 
-class GenomicRegionGeneratorBase:
+class GenomicRegionGeneratorBase(unittest.TestCase):
+    expected_generation_behavior: dict[str, str] = {}
+    expected_header_values: dict[str, RegionHeaderSpec] = {}
+
     def setUp(self) -> None:
         self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_region_generator")
         self.fasta_parser = FastaParser()
@@ -217,60 +552,106 @@ class GenomicRegionGeneratorBase:
     def setup_region_generator(self) -> CustomGenomicRegionGenerator:
         pass
 
+    def _run_generation_test(self, region_type: str, generator_func: Callable) -> None:
+        expected_generation_behavior = self.expected_generation_behavior[region_type]
+
+        if expected_generation_behavior == "error":
+            with self.assertRaises(ConfigurationError):
+                generator_func()
+            return
+
+        if expected_generation_behavior == "warning":
+            with self.assertWarns(Warning):
+                result = generator_func()
+        else:
+            result = generator_func()
+
+        expected_header_values = self.expected_header_values[region_type]
+
+        self.assertTrue(
+            self.fasta_parser.check_fasta_format(result), f"error: wrong file format for file: {result}"
+        )
+
+        if expected_header_values:
+            fasta_sequences = SeqIO.index(result, "fasta")
+            additional_info: dict[str, Any] = {}
+            for idx in fasta_sequences:
+                region, ai, coordinates = self.fasta_parser.parse_fasta_header(idx)
+                # in case parse_additional_info in parse_fasta_header is False, additional_info
+                # is returned as str and mypy complains about that, therefore cast here
+                additional_info = cast(dict[str, Any], ai)
+                if region == expected_header_values["region"]:
+                    break
+            for key, expected in expected_header_values["additional_info"].items():
+                with self.subTest(header_key=key):
+                    self.assertEqual(additional_info.get(key), expected)
+            for key, expected in expected_header_values["coordinates"].items():
+                with self.subTest(header_key=key):
+                    self.assertEqual(coordinates.get(key), expected)
+
     def test_gene(self) -> None:
-        genes = self.region_generator.get_sequence_gene()
-        assert (
-            self.fasta_parser.check_fasta_format(genes) == True
-        ), f"error: wrong file format for file: {genes}"
+        self._run_generation_test("gene", self.region_generator.get_sequence_gene)
 
     def test_exon(self) -> None:
-        exon = self.region_generator.get_sequence_exon()
-        assert (
-            self.fasta_parser.check_fasta_format(exon) == True
-        ), f"error: wrong file format for file: {exon}"
+        self._run_generation_test("exon", self.region_generator.get_sequence_exon)
 
     def test_exon_exon_junction(self) -> None:
-        exon_exon_junction = self.region_generator.get_sequence_exon_exon_junction(block_size=50)
-        assert (
-            self.fasta_parser.check_fasta_format(exon_exon_junction) == True
-        ), f"error: wrong file format for file: {exon_exon_junction}"
+        self._run_generation_test(
+            "exon_exon_junction", lambda: self.region_generator.get_sequence_exon_exon_junction(block_size=50)
+        )
 
     def test_CDS(self) -> None:
-        cds = self.region_generator.get_sequence_CDS()
-        assert self.fasta_parser.check_fasta_format(cds) == True, f"error: wrong file format for file: {cds}"
+        self._run_generation_test("CDS", self.region_generator.get_sequence_CDS)
 
     def test_UTR(self) -> None:
-        utr = self.region_generator.get_sequence_UTR(five_prime=True, three_prime=True)
-        assert self.fasta_parser.check_fasta_format(utr) == True, f"error: wrong file format for file: {utr}"
+        self._run_generation_test(
+            "UTR", lambda: self.region_generator.get_sequence_UTR(five_prime=True, three_prime=True)
+        )
 
     def test_intergenic(self) -> None:
-        intergenic = self.region_generator.get_sequence_intergenic()
-        assert (
-            self.fasta_parser.check_fasta_format(intergenic) == True
-        ), f"error: wrong file format for file: {intergenic}"
+        self._run_generation_test("intergenic", self.region_generator.get_sequence_intergenic)
 
-    def test_introns(self) -> None:
-        introns = self.region_generator.get_sequence_intron()
-        assert (
-            self.fasta_parser.check_fasta_format(introns) == True
-        ), f"error: wrong file format for file: {introns}"
+    def test_intron(self) -> None:
+        self._run_generation_test("intron", self.region_generator.get_sequence_intron)
 
 
-class TestGenomicRegionGeneratorNCBI(GenomicRegionGeneratorBase, unittest.TestCase):
+class TestGenomicRegionGeneratorNCBI(GenomicRegionGeneratorBase):
+    expected_generation_behavior = {
+        "gene": "pass",
+        "exon": "pass",
+        "exon_exon_junction": "pass",
+        "CDS": "pass",
+        "UTR": "pass",
+        "intergenic": "pass",
+        "intron": "pass",
+    }
+    expected_header_values = EXPECTED_HEADER_VALUES_HUMAN_NCBI
+
     def setup_region_generator(self) -> CustomGenomicRegionGenerator:
 
         return CustomGenomicRegionGenerator(
             FILE_ANNOTATION_NCBI,
             FILE_SEQUENCE_NCBI,
-            files_source=METDATA_NCBI["files_source"],
-            species=METDATA_NCBI["species"],
-            annotation_release=METDATA_NCBI["annotation_release"],
-            genome_assembly=METDATA_NCBI["genome_assembly"],
+            files_source=METADATA_NCBI["files_source"],
+            species=METADATA_NCBI["species"],
+            annotation_release=METADATA_NCBI["annotation_release"],
+            genome_assembly=METADATA_NCBI["genome_assembly"],
             dir_output=self.tmp_path,
         )
 
 
-class TestGenomicRegionGeneratorEnsembl(GenomicRegionGeneratorBase, unittest.TestCase):
+class TestGenomicRegionGeneratorEnsembl(GenomicRegionGeneratorBase):
+    expected_generation_behavior = {
+        "gene": "pass",
+        "exon": "pass",
+        "exon_exon_junction": "pass",
+        "CDS": "pass",
+        "UTR": "pass",
+        "intergenic": "pass",
+        "intron": "pass",
+    }
+    expected_header_values = EXPECTED_HEADER_VALUES_HUMAN_ENSEMBL
+
     def setup_region_generator(self) -> CustomGenomicRegionGenerator:
 
         return CustomGenomicRegionGenerator(
@@ -280,6 +661,56 @@ class TestGenomicRegionGeneratorEnsembl(GenomicRegionGeneratorBase, unittest.Tes
             species=METADATA_ENSEMBL["species"],
             annotation_release=METADATA_ENSEMBL["annotation_release"],
             genome_assembly=METADATA_ENSEMBL["genome_assembly"],
+            dir_output=self.tmp_path,
+        )
+
+
+class TestGenomicRegionGeneratorMouseNCBI(GenomicRegionGeneratorBase):
+    expected_generation_behavior = {
+        "gene": "pass",
+        "exon": "warning",
+        "exon_exon_junction": "warning",
+        "CDS": "warning",
+        "UTR": "warning",
+        "intergenic": "pass",
+        "intron": "pass",
+    }
+    expected_header_values = EXPECTED_HEADER_VALUES_MOUSE_NCBI
+
+    def setup_region_generator(self) -> CustomGenomicRegionGenerator:
+
+        return CustomGenomicRegionGenerator(
+            FILE_ANNOTATION_MOUSE_NCBI,
+            FILE_SEQUENCE_MOUSE_NCBI,
+            files_source=METADATA_MOUSE_NCBI["files_source"],
+            species=METADATA_MOUSE_NCBI["species"],
+            annotation_release=METADATA_MOUSE_NCBI["annotation_release"],
+            genome_assembly=METADATA_MOUSE_NCBI["genome_assembly"],
+            dir_output=self.tmp_path,
+        )
+
+
+class TestGenomicRegionGeneratorBacteriaNCBI(GenomicRegionGeneratorBase):
+    expected_generation_behavior = {
+        "gene": "pass",
+        "exon": "warning",
+        "exon_exon_junction": "error",
+        "CDS": "warning",
+        "UTR": "error",
+        "intergenic": "pass",
+        "intron": "error",
+    }
+    expected_header_values = EXPECTED_HEADER_VALUES_BACTERIA_NCBI
+
+    def setup_region_generator(self) -> CustomGenomicRegionGenerator:
+
+        return CustomGenomicRegionGenerator(
+            FILE_ANNOTATION_BACTERIA_NCBI,
+            FILE_SEQUENCE_BACTERIA_NCBI,
+            files_source=METADATA_BACTERIA_NCBI["files_source"],
+            species=METADATA_BACTERIA_NCBI["species"],
+            annotation_release=METADATA_BACTERIA_NCBI["annotation_release"],
+            genome_assembly=METADATA_BACTERIA_NCBI["genome_assembly"],
             dir_output=self.tmp_path,
         )
 

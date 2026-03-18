@@ -1,0 +1,403 @@
+from typing import Any, TypedDict
+
+
+class RegionHeaderSpec(TypedDict):
+    region: str
+    additional_info: dict[str, Any]
+    coordinates: dict[str, Any]
+
+
+EXPECTED_HEADER_VALUES_HUMAN_NCBI: dict[str, RegionHeaderSpec] = {
+    "gene": {
+        "region": "AARS1",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [110],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["gene"],
+            "gene_id": ["AARS1"],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [70252298], "end": [70289506], "strand": ["-"]},
+    },
+    "exon": {
+        "region": "AARS1",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [110],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["exon"],
+            "gene_id": ["AARS1"],
+            "transcript_id": ["NM_001605.3", "XM_047433666.1"],
+            "exon_number": [10, 10],
+            "number_total_transcripts": [2],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [70265538], "end": [70265662], "strand": ["-"]},
+    },
+    "exon_exon_junction": {
+        "region": "AARS1",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [110],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["exonexonjunction"],
+            "gene_id": ["AARS1"],
+            "transcript_id": ["NM_001605.3", "XM_047433666.1"],
+            "exon_number": ["10__JUNC__9", "10__JUNC__9"],
+            "number_total_transcripts": [2],
+        },
+        "coordinates": {
+            "chromosome": ["16", "16"],
+            "start": [70265613, 70267659],
+            "end": [70265662, 70267708],
+            "strand": ["-", "-"],
+        },
+    },
+    "CDS": {
+        "region": "AARS1",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [110],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["CDS"],
+            "gene_id": ["AARS1"],
+            "transcript_id": ["NM_001605.3", "XM_047433666.1"],
+            "exon_number": [10, 10],
+            "number_total_transcripts": [2],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [70265538], "end": [70265662], "strand": ["-"]},
+    },
+    "UTR": {
+        "region": "AARS1",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [110],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["five_prime_UTR"],
+            "gene_id": ["AARS1", "AARS1"],
+            "transcript_id": ["NM_001605.3", "XM_047433666.1"],
+            "exon_number": [1, 1],
+            "number_total_transcripts": [2],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [70289421], "end": [70289506], "strand": ["-"]},
+    },
+    "intergenic": {
+        "region": "InterRegMinus16_0",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [110],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["intergenic"],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [90210347], "end": [90338345], "strand": ["-"]},
+    },
+    "intron": {
+        "region": "AARS1",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [110],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["intron"],
+            "gene_id": ["AARS1"],
+            "transcript_id": ["NM_001605.3", "XM_047433666.1"],
+            "intron_number": ["intron_10", "intron_10"],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [70265103], "end": [70265537], "strand": ["-"]},
+    },
+}
+
+EXPECTED_HEADER_VALUES_HUMAN_ENSEMBL: dict[str, RegionHeaderSpec] = {
+    "gene": {
+        "region": "ENSG00000003249",
+        "additional_info": {
+            "source": ["Ensembl"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [108],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["gene"],
+            "gene_id": ["ENSG00000003249"],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [90004871], "end": [90019890], "strand": ["-"]},
+    },
+    "exon": {
+        "region": "ENSG00000003249",
+        "additional_info": {
+            "source": ["Ensembl"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [108],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["exon"],
+            "gene_id": ["ENSG00000003249"],
+            "transcript_id": ["ENST00000002501"],
+            "exon_number": [1],
+            "number_total_transcripts": [7],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [90019311], "end": [90019456], "strand": ["-"]},
+    },
+    "exon_exon_junction": {
+        "region": "ENSG00000003249",
+        "additional_info": {
+            "source": ["Ensembl"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [108],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["exonexonjunction"],
+            "gene_id": ["ENSG00000003249"],
+            "transcript_id": ["ENST00000002501"],
+            "exon_number": ["2__JUNC__1"],
+            "number_total_transcripts": [7],
+        },
+        "coordinates": {
+            "chromosome": ["16", "16"],
+            "start": [90009381, 90019311],
+            "end": [90009430, 90019360],
+            "strand": ["-", "-"],
+        },
+    },
+    "CDS": {
+        "region": "ENSG00000003249",
+        "additional_info": {
+            "source": ["Ensembl"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [108],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["CDS"],
+            "gene_id": ["ENSG00000003249"],
+            "transcript_id": ["ENST00000002501"],
+            "exon_number": [1],
+            "number_total_transcripts": [7],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [90019311], "end": [90019341], "strand": ["-"]},
+    },
+    "UTR": {
+        "region": "ENSG00000003249",
+        "additional_info": {
+            "source": ["Ensembl"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [108],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["five_prime_UTR"],
+            "gene_id": ["ENSG00000003249"],
+            "transcript_id": ["ENST00000002501"],
+            "exon_number": [1],
+            "number_total_transcripts": [7],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [90019342], "end": [90019456], "strand": ["-"]},
+    },
+    "intergenic": {
+        "region": "InterRegMinus16_0",
+        "additional_info": {
+            "source": ["Ensembl"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [108],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["intergenic"],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [90175866], "end": [90338345], "strand": ["-"]},
+    },
+    "intron": {
+        "region": "ENSG00000003249",
+        "additional_info": {
+            "source": ["Ensembl"],
+            "species": ["Homo_sapiens"],
+            "annotation_release": [108],
+            "genome_assembly": ["GRCh38"],
+            "regiontype": ["intron"],
+            "gene_id": ["ENSG00000003249"],
+            "transcript_id": ["ENST00000002501"],
+            "intron_number": ["intron_1"],
+        },
+        "coordinates": {"chromosome": ["16"], "start": [90009431], "end": [90019310], "strand": ["-"]},
+    },
+}
+
+EXPECTED_HEADER_VALUES_MOUSE_NCBI: dict[str, RegionHeaderSpec] = {
+    "gene": {
+        "region": "1110059E24Rik",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Mus_musculus"],
+            "annotation_release": [108.20200622],
+            "genome_assembly": ["GRCm38.p6"],
+            "regiontype": ["gene"],
+            "gene_id": ["1110059E24Rik"],
+        },
+        "coordinates": {
+            "chromosome": ["NC_000085.6"],
+            "start": [21597313],
+            "end": [21652791],
+            "strand": ["-"],
+        },
+    },
+    "exon": {
+        "region": "1110059E24Rik",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Mus_musculus"],
+            "annotation_release": [108.20200622],
+            "genome_assembly": ["GRCm38.p6"],
+            "regiontype": ["exon"],
+            "gene_id": ["1110059E24Rik"],
+            "transcript_id": ["NM_025423.2"],
+            "exon_number": [1],
+        },
+        "coordinates": {
+            "chromosome": ["NC_000085.6"],
+            "start": [21652607],
+            "end": [21652791],
+            "strand": ["-"],
+        },
+    },
+    "exon_exon_junction": {
+        "region": "1110059E24Rik",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Mus_musculus"],
+            "annotation_release": [108.20200622],
+            "genome_assembly": ["GRCm38.p6"],
+            "regiontype": ["exonexonjunction"],
+            "gene_id": ["1110059E24Rik"],
+            "transcript_id": ["NM_025423.2"],
+            "exon_number": ["2__JUNC__1"],
+        },
+        "coordinates": {
+            "chromosome": ["NC_000085.6", "NC_000085.6"],
+            "start": [21619166, 21652607],
+            "end": [21619215, 21652656],
+            "strand": ["-", "-"],
+        },
+    },
+    "CDS": {
+        "region": "1110059E24Rik",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Mus_musculus"],
+            "annotation_release": [108.20200622],
+            "genome_assembly": ["GRCm38.p6"],
+            "regiontype": ["CDS"],
+            "gene_id": ["1110059E24Rik"],
+            "transcript_id": ["NM_025423.2"],
+            "exon_number": [1],
+        },
+        "coordinates": {
+            "chromosome": ["NC_000085.6"],
+            "start": [21652607],
+            "end": [21652708],
+            "strand": ["-"],
+        },
+    },
+    "UTR": {
+        "region": "1110059E24Rik",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Mus_musculus"],
+            "annotation_release": [108.20200622],
+            "genome_assembly": ["GRCm38.p6"],
+            "regiontype": ["five_prime_UTR"],
+            "gene_id": ["1110059E24Rik"],
+            "transcript_id": ["NM_025423.2"],
+            "exon_number": [1],
+        },
+        "coordinates": {
+            "chromosome": ["NC_000085.6"],
+            "start": [21652709],
+            "end": [21652791],
+            "strand": ["-"],
+        },
+    },
+    "intergenic": {
+        "region": "InterRegMinusNC_000085.6_0",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Mus_musculus"],
+            "annotation_release": [108.20200622],
+            "genome_assembly": ["GRCm38.p6"],
+            "regiontype": ["intergenic"],
+        },
+        "coordinates": {
+            "chromosome": ["NC_000085.6"],
+            "start": [61305296],
+            "end": [61431566],
+            "strand": ["-"],
+        },
+    },
+    "intron": {
+        "region": "1110059E24Rik",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Mus_musculus"],
+            "annotation_release": [108.20200622],
+            "genome_assembly": ["GRCm38.p6"],
+            "regiontype": ["intron"],
+            "gene_id": ["1110059E24Rik"],
+            "transcript_id": ["NM_025423.2"],
+            "intron_number": ["intron_1"],
+        },
+        "coordinates": {
+            "chromosome": ["NC_000085.6"],
+            "start": [21619216],
+            "end": [21652606],
+            "strand": ["-"],
+        },
+    },
+}
+
+EXPECTED_HEADER_VALUES_BACTERIA_NCBI: dict[str, RegionHeaderSpec] = {
+    "gene": {
+        "region": "CTL_RS00005",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Chlamydia_trachomatis"],
+            "annotation_release": ["no_annotation_info"],
+            "genome_assembly": ["ASM6858v1"],
+            "regiontype": ["gene"],
+            "gene_id": ["CTL_RS00005"],
+        },
+        "coordinates": {"chromosome": ["NC_010287.1"], "start": [1], "end": [1017], "strand": ["+"]},
+    },
+    "exon": {
+        "region": "CTL_RS00025",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Chlamydia_trachomatis"],
+            "annotation_release": ["no_annotation_info"],
+            "genome_assembly": ["ASM6858v1"],
+            "regiontype": ["exon"],
+            "gene_id": ["CTL_RS00025"],
+            "transcript_id": ["unassigned_transcript_5"],
+            "exon_number": [1],
+            "number_total_transcripts": [1],
+        },
+        "coordinates": {"chromosome": ["NC_010287.1"], "start": [5166], "end": [5238], "strand": ["-"]},
+    },
+    "CDS": {
+        "region": "CTL_RS00005",
+        "additional_info": {
+            "source": ["NCBI"],
+            "species": ["Chlamydia_trachomatis"],
+            "annotation_release": ["no_annotation_info"],
+            "genome_assembly": ["ASM6858v1"],
+            "regiontype": ["CDS"],
+            "gene_id": ["CTL_RS00005"],
+            "transcript_id": ["unassigned_transcript_1"],
+            "exon_number": [1],
+        },
+        "coordinates": {"chromosome": ["NC_010287.1"], "start": [1], "end": [1014], "strand": ["+"]},
+    },
+    "intergenic": {
+        "region": "InterRegMinusNC_010287.1_0",
+        "additional_info": {
+            "species": ["Chlamydia_trachomatis"],
+            "annotation_release": ["no_annotation_info"],
+            "genome_assembly": ["ASM6858v1"],
+            "regiontype": ["intergenic"],
+        },
+        "coordinates": {"chromosome": ["NC_010287.1"], "start": [1038546], "end": [1038842], "strand": ["-"]},
+    },
+}
