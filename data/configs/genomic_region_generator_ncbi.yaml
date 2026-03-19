@@ -11,8 +11,8 @@ dir_output: output_genomic_region_generator_ncbi # name of the directory where t
 source:
   source: ncbi # required: indicate that ncbi annotation should be used
   # required: How do you want to specify which genome you want to use? Possible values are 'species' and 'assembly'.
-  # For 'species', source_params needs the arguments 'taxon', 'species', 'assembly_source' and 'annotation_release'.
-  # For 'assembly', source_params needs the arguments 'refseq_assembly_accession' and 'assembly_name'.
+  # For 'species', parameters needs the arguments 'taxon', 'species', 'assembly_source' and 'annotation_release'.
+  # For 'assembly', parameters needs the arguments 'refseq_assembly_accession' and 'assembly_name'.
   mode: species # required: How do you want to specify which genome you want to use? Possible values are 'species' and 'assembly'.
   parameters:
     # Mode 'species': set taxon/species/assembly_source/annotation_release

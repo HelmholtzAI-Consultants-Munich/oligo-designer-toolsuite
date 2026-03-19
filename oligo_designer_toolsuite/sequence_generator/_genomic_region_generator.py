@@ -24,6 +24,12 @@ from oligo_designer_toolsuite._constants import (
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
 from oligo_designer_toolsuite.utils import GffParser
+from oligo_designer_toolsuite.validation.models._general import (
+    SourceCustom,
+    SourceEnsembl,
+    SourceNcbi,
+    SourceParamsCustom,
+)
 
 from ..utils._sequence_processor import get_complement_regions, get_sequence_from_annotation
 
@@ -50,62 +56,32 @@ class CustomGenomicRegionGenerator:
     >ASR1::transcrip_id=XM456,exon_number=5::16:54552-54786(+)
     AGTTGACAGACCCCAGATTAAAGTGTGTCGCGCAACAC
 
-    :param annotation_file: The path to the annotation file (e.g., GFF).
-    :type annotation_file: str
-    :param sequence_file: The path to the corresponding sequence file (e.g., FASTA).
-    :type sequence_file: str
-    :param files_source: The source of the files (e.g., Ensembl, NCBI), defaults to "custom".
-    :type files_source: str, optional
-    :param species: The species name related to the annotation and sequence files, defaults to "unknown".
-    :type species: str, optional
-    :param annotation_release: The annotation release version, defaults to "unknown".
-    :type annotation_release: str, optional
-    :param genome_assembly: The genome assembly version, defaults to "unknown".
-    :type genome_assembly: str, optional
+    :param source_params: Parameters where the data is stored and additional meta information.
+    :type source_params: SourceCustom
     :param dir_output: Directory path where output files will be saved. Defaults to "output".
     :type dir_output: str, optional
     """
 
     def __init__(
         self,
-        annotation_file: str,
-        sequence_file: str,
-        files_source: str | None = None,
-        species: str | None = None,
-        annotation_release: str | None = None,
-        genome_assembly: str | None = None,
+        source_params: SourceCustom,
         dir_output: str = "output",
     ) -> None:
         """Constructor for the CustomGenomicRegionGenerator class."""
-        if files_source is None:
-            files_source = "custom"
-            warnings.warn(f"No source defined. Using default source {files_source}!")
-
-        if species is None:
-            species = "unknown"
-            warnings.warn(f"No species defined. Using default species {species}!")
-
-        if annotation_release is None:
-            annotation_release = "unknown"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
-
-        if genome_assembly is None:
-            genome_assembly = "unknown"
-            warnings.warn(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        self.files_source = files_source
-        self.species = species
-        self.annotation_release = annotation_release
-        self.genome_assembly = genome_assembly
-        self.annotation_file = annotation_file
+        self.files_source = source_params.parameters.files_source
+        self.species = source_params.parameters.species
+        self.annotation_release = source_params.parameters.annotation_release
+        self.genome_assembly = source_params.parameters.genome_assembly
+        self.annotation_file = source_params.parameters.file_annotation
         self.parsed_annotation_file = os.path.join(
             self.dir_output,
-            os.path.basename(f"{'.'.join(annotation_file.split('.')[:-1])}.pckl"),
+            os.path.basename(f"{'.'.join(source_params.parameters.file_annotation.split('.')[:-1])}.pckl"),
         )
-        self.sequence_file = sequence_file
+        self.sequence_file = source_params.parameters.file_sequence
 
         # load annotation file and store in pickel file
         self.gff_parser = GffParser()
@@ -1245,86 +1221,51 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
     the assembly name can be specified directly. Only one mode can be used and the other parameters need to be set to
     None.
 
-    :param mode: How should be specified which genome to use? Options: 'species', 'assembly'
-    :type mode: str
-    :param taxon: The taxonomic classification of the species, used to locate the appropriate NCBI files, defaults to "vertebrate_mammalian".
-    :type taxon: str, optional
-    :param species: The species name for which genomic regions will be generated, defaults to "Homo_sapiens".
-    :type species: str, optional
-    :param annotation_release: The version of the annotation release to use, defaults to "current".
-    :type annotation_release: str, optional
-    :param assembly_source: NCBI assembly source to use. Supported values are "auto", "annotation_releases",
-        "latest_assembly_versions", and "reference". Defaults to "auto".
-    :type assembly_source: str, optional
-    :param refseq_assembly_accession: Optional direct RefSeq assembly accession (e.g., "GCF_000001405.38").
-    :type refseq_assembly_accession: str | None, optional
-    :param assembly_name: Optional direct assembly name (e.g., "GRCh38.p12").
-    :type assembly_name: str | None, optional
+    :param source_params: Configuration parameters which annotation and sequence files should be downloaded.
+    :type source_params: SourceNcbi
     :param dir_output: Directory path where output files will be saved. Defaults to "output".
     :type dir_output: str, optional
     """
 
     def __init__(
         self,
-        mode: str | None = None,
-        taxon: str | None = None,
-        species: str | None = None,
-        annotation_release: str | None = None,
-        assembly_source: str | None = None,
-        refseq_assembly_accession: str | None = None,
-        assembly_name: str | None = None,
+        source_params: SourceNcbi,
         dir_output: str = "output",
     ) -> None:
         """Constructor for the NcbiGenomicRegionGenerator class."""
         files_source = "NCBI"
-
-        if mode is None:
-            raise ConfigurationError("For source='ncbi', parameter 'mode' must be provided.")
-
-        if mode == "species":
-            if taxon is None:
-                raise ConfigurationError(f"No taxon defined.")
-
-            if species is None:
-                raise ConfigurationError(f"No species defined.")
-
-            if annotation_release is None:
-                annotation_release = "current"
-                warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
-
-            if assembly_source is None:
-                assembly_source = "auto"
-                warnings.warn(f"No assembly source defined. Using default assembly source {assembly_source}!")
-        elif mode == "assembly":
-            if assembly_source is None:
-                assembly_source = "auto"
-        else:
-            raise ConfigurationError("For source='ncbi', mode must be either 'species' or 'assembly'.")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         ftp = FtpLoaderNCBI(
             self.dir_output,
-            mode=mode,
-            taxon=taxon,
-            species=species,
-            annotation_release=annotation_release,
-            assembly_source=assembly_source if assembly_source is not None else "auto",
-            refseq_assembly_accession=refseq_assembly_accession,
-            assembly_name=assembly_name,
+            source_params,
         )
         annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
         sequence_file, _, _ = ftp.download_files("fasta")
 
+        if source_params.mode == "species":
+            species = source_params.parameters.species
+        else:
+            species = "unknown"
+
+        custom_source_params = SourceParamsCustom(
+            file_annotation=annotation_file,
+            file_sequence=sequence_file,
+            files_source=files_source,
+            species=species,
+            annotation_release=annotation_release,
+            genome_assembly=genome_assembly,
+        )
+        # to keep the API of all RegionGenerators the same, also the CustomRegionGenerator
+        # takes the SourceCustom instead of SourceParamsCustom as input, even though it is
+        # not needed
+        custom_source = SourceCustom(source="custom", parameters=custom_source_params)
+
         super().__init__(
-            annotation_file,
-            sequence_file,
-            files_source,
-            species if species is not None else "unknown",
-            annotation_release,
-            genome_assembly,
-            dir_output,
+            source_params=custom_source,
+            dir_output=dir_output,
         )
 
 
@@ -1333,43 +1274,38 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
     This class generates custom genomic regions using data from Ensembl.
     It automates the process of downloading and processing annotation and sequence files for the specified species and annotation release.
 
-    :param species: The species name for which genomic regions will be generated, defaults to "homo_sapiens".
-    :type species: str, optional
-    :param annotation_release: The version of the annotation release to use, defaults to "current".
-    :type annotation_release: str, optional
+    :param source_params: Configuration parameters which annotation and sequence files should be downloaded.
+    :type source_params: SourceEnsembl
     :param dir_output: Directory path where output files will be saved. Defaults to "output".
     :type dir_output: str, optional
     """
 
     def __init__(
         self,
-        species: str | None = None,
-        annotation_release: str | None = None,
+        source_params: SourceEnsembl,
         dir_output: str = "output",
     ) -> None:
         """Constructor for the EnsemblGenomicRegionGenerator class."""
         files_source = "Ensemble"
-        if species is None:
-            species = "homo_sapiens"
-            warnings.warn(f"No species defined. Using default species {species}!")
-
-        if annotation_release is None:
-            annotation_release = "current"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ftp = FtpLoaderEnsembl(self.dir_output, species, annotation_release)
+        ftp = FtpLoaderEnsembl(self.dir_output, source_params)
         annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
         sequence_file, _, _ = ftp.download_files("fasta")
 
+        custom_source_params = SourceParamsCustom(
+            file_annotation=annotation_file,
+            file_sequence=sequence_file,
+            files_source=files_source,
+            species=source_params.parameters.species,
+            annotation_release=annotation_release,
+            genome_assembly=genome_assembly,
+        )
+        custom_source = SourceCustom(source="custom", parameters=custom_source_params)
+
         super().__init__(
-            annotation_file,
-            sequence_file,
-            files_source,
-            species,
-            annotation_release,
-            genome_assembly,
-            dir_output,
+            source_params=custom_source,
+            dir_output=dir_output,
         )

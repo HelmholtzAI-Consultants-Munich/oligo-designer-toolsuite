@@ -16,8 +16,14 @@ from typing import IO, get_args
 import pandas as pd
 from Bio import SeqIO
 
-from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
+from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ, SUPPORTED_TAXA_SOURCES
 from oligo_designer_toolsuite._exceptions import ConfigurationError
+from oligo_designer_toolsuite.validation.models._general import (
+    ResolvedFtpInfo,
+    SourceEnsembl,
+    SourceNcbi,
+    SourceParamsNcbiSpecies,
+)
 
 ############################################
 # FTP Classes
@@ -136,17 +142,15 @@ class FtpLoaderEnsembl(BaseFtpLoader):
 
     :param dir_output: Directory path where output files will be saved.
     :type dir_output: str
-    :param species: The species for which the genomic data is to be downloaded (e.g., 'human', 'mouse').
-    :type species: str
-    :param annotation_release: The Ensembl annotation release version (e.g., '104').
-    :type annotation_release: str
+    :param source_params: Pydantic model containing the parameters 'species' for which the genomic data is to be downloaded and 'annotation_release', the Ensembl annotation release version (e.g., '104').
+    :type source_params: SourceEnsembl
     """
 
-    def __init__(self, dir_output: str, species: str, annotation_release: str) -> None:
+    def __init__(self, dir_output: str, source_params: SourceEnsembl) -> None:
         """Constructor for the FtpLoaderEnsembl class."""
         super().__init__(dir_output)
-        self.species = species
-        self.annotation_release = annotation_release
+        self.species = source_params.parameters.species
+        self.annotation_release = source_params.parameters.annotation_release
         self.assembly_name = ""
         self.assembly_name_placeholder = "[^\\.]*"
 
@@ -229,72 +233,20 @@ class FtpLoaderNCBI(BaseFtpLoader):
     It supports downloading, decompressing, and mapping chromosome names based on the specified taxon, species, and annotation release.
     The class also manages the correct retrieval paths and handles different versions and structures of NCBI directories.
 
-    :param mode: NCBI parameter mode. Supported values are "species" and "assembly".
-    :type mode: str | None
-    :param taxon: The taxonomic group of the species (e.g., "vertebrate_mammalian").
-    :type taxon: str | None
-    :param species: The species name (e.g., "homo_sapiens").
-    :type species: str | None
-    :param annotation_release: The annotation release version to download (e.g., "109" or "current").
-    :type annotation_release: str | None
-    :param assembly_source: NCBI source selection. Supported values are "auto", "annotation_releases",
-        "latest_assembly_versions", and "reference".
-    :type assembly_source: str
-    :param refseq_assembly_accession: Optional direct RefSeq assembly accession (e.g., "GCF_000001405.38").
-    :type refseq_assembly_accession: str | None
-    :param assembly_name: Optional direct assembly name (e.g., "GRCh38.p12").
-    :type assembly_name: str | None
+    :param dir_output: Directory path where output files will be saved.
+    :type dir_output: str
+    :param source_params: Pydantic model containing the parameters to determine which genomic data is downloaded.
+    :type source_params: SourceNcbi
     """
-
-    SUPPORTED_TAXA_SOURCES: dict[str, set[str]] = {
-        "archaea": {"latest_assembly_versions", "reference"},
-        "bacteria": {"latest_assembly_versions", "reference"},
-        "fungi": {"latest_assembly_versions", "reference"},
-        "invertebrate": {"annotation_releases", "latest_assembly_versions", "reference"},
-        "metagenomes": {"latest_assembly_versions"},
-        "plant": {"annotation_releases", "latest_assembly_versions", "reference"},
-        "plants": {"annotation_releases", "latest_assembly_versions", "reference"},
-        "protozoa": {"latest_assembly_versions", "reference"},
-        "unknown": {"latest_assembly_versions"},
-        "vertebrate_mammalian": {"annotation_releases", "latest_assembly_versions", "reference"},
-        "vertebrate_other": {"annotation_releases", "latest_assembly_versions", "reference"},
-        "viral": {"latest_assembly_versions"},
-    }
-    UNSUPPORTED_TAXA: set[str] = {"mitochondrion", "plasmids", "plastid"}
-    # Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory.
-    # 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'.
-    # 'latest_assembly_version' directory is available for all species and contains the latest assembly.
-    # 'reference' directory contains the reference genome. This is only available for a subset of species.
-    # 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_version'
-    ALLOWED_ASSEMBLY_SOURCES: set[str] = {
-        "auto",
-        "annotation_releases",
-        "latest_assembly_versions",
-        "reference",
-    }
-    ALLOWED_MODES: set[str] = {"species", "assembly"}
 
     def __init__(
         self,
         dir_output: str,
-        mode: str | None = None,
-        taxon: str | None = None,
-        species: str | None = None,
-        annotation_release: str | None = None,
-        assembly_source: str = "auto",
-        refseq_assembly_accession: str | None = None,
-        assembly_name: str | None = None,
+        source_params: SourceNcbi,
     ) -> None:
         """Constructor for the FtpLoaderNCBI class."""
         super().__init__(dir_output)
-        self.mode = mode
-        self.taxon = taxon
-        self.species = species
-        self.annotation_release = annotation_release
-        self.annotation_release_from_ncbi = "no_annotation_info"
-        self.assembly_source = assembly_source
-        self.assembly_name = assembly_name if assembly_name is not None else ""
-        self.assembly_accession = refseq_assembly_accession if refseq_assembly_accession is not None else ""
+        self.source_params = source_params
 
         self.ftp_link = "ftp.ncbi.nlm.nih.gov"
 
@@ -309,8 +261,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
             "gtf": self._map_chr_names_gene_annotation,
             "fasta": self._map_chr_names_genome_sequence,
         }
-        self._validate_mode_and_normalize_params()
-        self._validate_taxon_and_source()
+        # self._validate_mode_and_normalize_params() TODO change annotation_release?
 
     def download_files(self, file_type: _TYPES_FILE) -> tuple[str, str, str]:
         """
@@ -323,33 +274,38 @@ class FtpLoaderNCBI(BaseFtpLoader):
         """
         self._check_file_type(file_type)
 
-        ftp_directory, ftp_file, ftp_file_chr_mapping = self._get_params(file_type)
+        ftp_directory, ftp_file, ftp_file_chr_mapping, resolved_info = self._get_params(file_type)
 
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
         dowloaded_file = self._download_and_decompress(self.ftp_link, ftp_directory, ftp_file)
 
         self.file_type_function[file_type](dowloaded_file, mapping)
 
-        return dowloaded_file, self.annotation_release_from_ncbi, self.assembly_name
+        return dowloaded_file, resolved_info.annotation_release_from_ncbi, resolved_info.assembly_name
 
-    def _get_params(self, file_type: _TYPES_FILE) -> tuple[str, str, str]:
+    def _get_params(self, file_type: _TYPES_FILE) -> tuple[str, str, str, ResolvedFtpInfo]:
         """
         Generates the necessary FTP directory paths and file names for downloading files from NCBI.
 
         :param file_type: The type of file to be downloaded.
         :type file_type: _TYPES_FILE ["gff", "gtf", "fasta"]
-        :return: A tuple containing the FTP directory path, the file name, and the chromosome name mapping file name.
+        :return: A tuple containing the FTP directory path, the file name, the chromosome name mapping file name, and the resolved info needed for FTP download.
         :rtype: tuple[str, str, str]
         """
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
+        resolved_info = ResolvedFtpInfo()
 
-        if self.mode == "assembly":
-            ftp_directory = self._resolve_directory_from_direct_assembly()
-            self._resolve_annotation_metadata(ftp_directory)
-        else:
+        if self.source_params.mode == "assembly":
+            resolved_info.assembly_accession = self.source_params.parameters.refseq_assembly_accession
+            resolved_info.assembly_name = self.source_params.parameters.assembly_name
+            resolved_info.annotation_release = "unknown"
+            ftp_directory = self._resolve_directory_from_direct_assembly(resolved_info)
+            self._resolve_annotation_metadata(ftp_directory, resolved_info)
+        elif self.source_params.mode == "species":
+            resolved_info.annotation_release = self.source_params.parameters.annotation_release
             source_subdir = self._resolve_source_subdir()
-            ftp_directory = self._resolve_base_directory(source_subdir)
-            self._resolve_assembly_metadata(ftp_directory)
+            ftp_directory = self._resolve_base_directory(source_subdir, resolved_info)
+            self._resolve_assembly_metadata(ftp_directory, resolved_info)
             # all the numeric annotations (up until 110) have the following directory structure:
             # /genomes/refseq/vertebrate_mammalian/Homo_sapiens/annotation_releases/110
             # |- GCF_000001405.40_GRCh38.p14/
@@ -365,105 +321,40 @@ class FtpLoaderNCBI(BaseFtpLoader):
             # ]- README_GCF_009914755.1-RS_2025_08
             # there the assembly accession & name was inferred from README_GCF_009914755.1-RS_2025_08 directly in
             # this directory and we don't need to change it anymore.
-            ftp_directory = self._resolve_assembly_directory(ftp_directory)
-            self._resolve_annotation_metadata(ftp_directory)
+            ftp_directory = self._resolve_assembly_directory(ftp_directory, resolved_info)
+            self._resolve_annotation_metadata(ftp_directory, resolved_info)
 
-        ftp_file = f"{self.assembly_accession}_{self.assembly_name}_{self.file_type_ending[file_type]}"
-        ftp_file_chr_mapping = f"{self.assembly_accession}_{self.assembly_name}_assembly_report.txt"
+        ftp_file = f"{resolved_info.assembly_accession}_{resolved_info.assembly_name}_{self.file_type_ending[file_type]}"
+        ftp_file_chr_mapping = (
+            f"{resolved_info.assembly_accession}_{resolved_info.assembly_name}_assembly_report.txt"
+        )
 
-        return ftp_directory, ftp_file, ftp_file_chr_mapping
-
-    def _validate_mode_and_normalize_params(self) -> None:
-        if self.mode not in self.ALLOWED_MODES:
-            allowed_modes = ", ".join(sorted(self.ALLOWED_MODES))
-            raise ConfigurationError(
-                f"mode '{self.mode}' is not supported. Supported values are: {allowed_modes}."
-            )
-
-        if self.mode == "assembly":
-            has_direct_accession = bool(self.assembly_accession)
-            has_direct_name = bool(self.assembly_name)
-            if not has_direct_accession or not has_direct_name:
-                raise ConfigurationError(
-                    "In mode='assembly', both 'refseq_assembly_accession' and 'assembly_name' must be provided."
-                )
-            if any(param is not None for param in (self.taxon, self.species, self.annotation_release)):
-                raise ConfigurationError(
-                    "In mode='assembly', taxon/species/annotation_release must not be provided."
-                )
-            if self.assembly_source != "auto":
-                raise ConfigurationError(
-                    "In mode='assembly', assembly_source cannot be set and must remain 'auto'."
-                )
-            self.annotation_release = "unknown"
-        elif self.mode == "species":
-            if bool(self.assembly_accession) or bool(self.assembly_name):
-                raise ConfigurationError(
-                    "In mode='species', refseq_assembly_accession/assembly_name must not be provided."
-                )
-            if self.taxon is None or self.species is None or self.annotation_release is None:
-                raise ConfigurationError(
-                    "In mode='species', 'taxon', 'species', and 'annotation_release' must be provided."
-                )
-
-    def _validate_taxon_and_source(self) -> None:
-        if self.mode == "assembly":
-            return
-
-        if self.taxon is None:
-            raise ConfigurationError("Taxon is not defined.")
-        if self.taxon in self.UNSUPPORTED_TAXA:
-            raise ConfigurationError(f"Taxon '{self.taxon}' is not supported for automated NCBI downloads.")
-        if self.taxon not in self.SUPPORTED_TAXA_SOURCES:
-            supported_taxa = ", ".join(sorted(self.SUPPORTED_TAXA_SOURCES))
-            raise ConfigurationError(
-                f"Taxon '{self.taxon}' is not supported. Supported taxa are: {supported_taxa}."
-            )
-        if self.assembly_source not in self.ALLOWED_ASSEMBLY_SOURCES:
-            allowed_sources = ", ".join(sorted(self.ALLOWED_ASSEMBLY_SOURCES))
-            raise ConfigurationError(
-                f"assembly_source '{self.assembly_source}' is not supported. "
-                f"Supported values are: {allowed_sources}."
-            )
-
-        available_sources = self.SUPPORTED_TAXA_SOURCES[self.taxon]
-        if self.assembly_source != "auto" and self.assembly_source not in available_sources:
-            supported_sources = ", ".join(sorted(available_sources))
-            raise ConfigurationError(
-                f"assembly_source '{self.assembly_source}' is not available for taxon '{self.taxon}'. "
-                f"Supported sources for this taxon are: {supported_sources}."
-            )
-
-        if self.annotation_release != "current" and (
-            self.assembly_source in {"latest_assembly_versions", "reference"}
-            or (self.assembly_source == "auto" and "annotation_releases" not in available_sources)
-        ):
-            raise ConfigurationError(
-                "A numeric annotation_release is only supported with assembly_source='annotation_releases'. "
-                "Use annotation_release='current' for latest_assembly_versions/reference."
-            )
+        return ftp_directory, ftp_file, ftp_file_chr_mapping, resolved_info
 
     def _resolve_source_subdir(self) -> str:
-        if self.taxon is None:
-            raise ConfigurationError("taxon cannot be none.")
-        available_sources = self.SUPPORTED_TAXA_SOURCES[self.taxon]
-        if self.assembly_source != "auto":
-            return self.assembly_source
+        # for type checker because we don't directly pass source_params
+        assert isinstance(self.source_params.parameters, SourceParamsNcbiSpecies)
+        available_sources = SUPPORTED_TAXA_SOURCES[self.source_params.parameters.taxon]
+        if self.source_params.parameters.assembly_source != "auto":
+            return self.source_params.parameters.assembly_source
         if "annotation_releases" in available_sources:
             return "annotation_releases"
         if "latest_assembly_versions" in available_sources:
             return "latest_assembly_versions"
         supported_sources = ", ".join(sorted(available_sources))
         raise ConfigurationError(
-            f"Taxon '{self.taxon}' has no supported automatic source. Available sources: {supported_sources}."
+            f"Taxon '{self.source_params.parameters.taxon}' has no supported automatic source. Available sources: {supported_sources}."
         )
 
-    def _resolve_base_directory(self, source_subdir: str) -> str:
-        if self.taxon is None or self.species is None:
-            raise ConfigurationError("Taxon/species are not defined.")
-        base_directory = f"genomes/refseq/{self.taxon}/{self.species}/{source_subdir}/"
+    def _resolve_base_directory(self, source_subdir: str, resolved_info: ResolvedFtpInfo) -> str:
+        # for type checker because we don't directly pass source_params
+        assert isinstance(self.source_params.parameters, SourceParamsNcbiSpecies)
+        base_directory = f"genomes/refseq/{self.source_params.parameters.taxon}/{self.source_params.parameters.species}/{source_subdir}/"
+        # leave this check here instead of pydantic model to avoid duplicating the check
+        # as the source_subdir needs to be calculated because it can be "auto"
+        # and at the moment, I don't want to have too much business logic in the pydantic model
         if source_subdir != "annotation_releases":
-            if self.annotation_release != "current":
+            if self.source_params.parameters.annotation_release != "current":
                 raise ConfigurationError(
                     "annotation_release must be 'current' when using assembly_source " f"'{source_subdir}'."
                 )
@@ -479,47 +370,33 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 )
             return f"{base_directory}{gcf_entry}/"
 
-        if self.annotation_release == "current":
+        if self.source_params.parameters.annotation_release == "current":
             current_directory = f"{base_directory}current/"
-            # inside current dir there is the directory containing the data for the lateest annotation release
+            # inside current dir there is the directory containing the data for the latest annotation release
             # in case there are several directories, use the first one
             entries = self._list_ftp_entries(current_directory)
             if not entries:
                 raise ConfigurationError(
                     f"Could not resolve current annotation release in '{current_directory}'."
                 )
-            self.annotation_release = entries[0]
-        return f"{base_directory}{self.annotation_release}/"
+            resolved_info.annotation_release = entries[0]
+        return f"{base_directory}{resolved_info.annotation_release}/"
 
-    def _resolve_directory_from_direct_assembly(self) -> str:
-        if not self.assembly_accession or not self.assembly_name:
-            raise ConfigurationError(
-                "Direct assembly mode requires both 'refseq_assembly_accession' and 'assembly_name'."
-            )
-        match = re.match(r"^(GCF)_(\d+)\.(\d+)$", self.assembly_accession)
-        if match is None:
-            raise ConfigurationError(
-                f"Invalid RefSeq assembly accession '{self.assembly_accession}'. "
-                "Expected format like 'GCF_000001405.38'."
-            )
-        accession_prefix = match.group(1)
-        accession_number = match.group(2)
-        if len(accession_number) != 9:
-            raise ConfigurationError(
-                f"Invalid RefSeq assembly accession '{self.assembly_accession}'. "
-                "Expected format like 'GCF_000001405.38'."
-            )
+    def _resolve_directory_from_direct_assembly(self, resolved_info: ResolvedFtpInfo) -> str:
+
+        match = re.match(r"^(GCF)_(\d{9})\.(\d+)$", resolved_info.assembly_accession)
+        # ignore type checker warnings here because pydantic model already checks that this
+        # pattern matches
+        accession_prefix = match.group(1)  # type: ignore [union-attr]
+        accession_number = match.group(2)  # type: ignore [union-attr]
         chunks = [accession_number[i : i + 3] for i in range(0, len(accession_number), 3)]
         grouped_number_path = "/".join(chunks)
         return (
             f"genomes/all/{accession_prefix}/{grouped_number_path}/"
-            f"{self.assembly_accession}_{self.assembly_name}/"
+            f"{resolved_info.assembly_accession}_{resolved_info.assembly_name}/"
         )
 
-    def _resolve_assembly_metadata(self, ftp_directory: str) -> None:
-        self.assembly_name = ""
-        self.assembly_accession = ""
-
+    def _resolve_assembly_metadata(self, ftp_directory: str, resolved_info: ResolvedFtpInfo) -> None:
         # all species where information about the used annotation is available
         # have a README_{annotation name} file; either in the directory that contains
         # the subdirectory with the data and also in the directory with all the data
@@ -527,17 +404,17 @@ class FtpLoaderNCBI(BaseFtpLoader):
         def parse_readme(handle: IO) -> None:
             for line in handle:
                 if line.startswith("ASSEMBLY NAME:"):
-                    self.assembly_name = line.strip().split("\t", 1)[1]
+                    resolved_info.assembly_name = line.strip().split("\t", 1)[1]
                 if line.startswith("ASSEMBLY ACCESSION:"):
-                    self.assembly_accession = line.strip().split("\t", 1)[1]
+                    resolved_info.assembly_accession = line.strip().split("\t", 1)[1]
                     break
 
         def parse_assembly_report(handle: IO) -> None:
             for line in handle:
                 if line.startswith("# Assembly name:"):
-                    self.assembly_name = line.split(":", 1)[1].strip()
+                    resolved_info.assembly_name = line.split(":", 1)[1].strip()
                 if line.startswith("# RefSeq assembly accession:"):
-                    self.assembly_accession = line.split(":", 1)[1].strip()
+                    resolved_info.assembly_accession = line.split(":", 1)[1].strip()
                     break
 
         candidates = [
@@ -553,7 +430,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
                         parser(handle)
                 finally:
                     os.remove(file_path)
-                if self.assembly_accession and self.assembly_name:
+                if resolved_info.assembly_accession and resolved_info.assembly_name:
                     success = True
                     break
             except FileNotFoundError:
@@ -565,7 +442,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 f"Could not resolve assembly metadata from '{ftp_directory}' on NCBI FTP."
             )
 
-    def _resolve_annotation_metadata(self, ftp_directory: str) -> None:
+    def _resolve_annotation_metadata(self, ftp_directory: str, resolved_info: ResolvedFtpInfo) -> None:
         """
         All species annotated with the NCBI Eukaryotic Genome Annotation Pipeline should have a
         README_{annotation name} file that contains the annotation name used by NCBI. In case
@@ -577,14 +454,14 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 for line in handle:
                     if line.startswith("ANNOTATION RELEASE NAME:"):
                         annotation_release_name = line.split(":", 1)[1].strip()
-                        self.annotation_release_from_ncbi = annotation_release_name.replace(" ", "_")
+                        resolved_info.annotation_release_from_ncbi = annotation_release_name.replace(" ", "_")
                         break
             os.remove(file_readme)
         except FileNotFoundError:
             warnings.warn("No annotation name information available from NCBI.")
 
-    def _resolve_assembly_directory(self, ftp_directory: str) -> str:
-        assembly_dir = f"{ftp_directory}{self.assembly_accession}_{self.assembly_name}"
+    def _resolve_assembly_directory(self, ftp_directory: str, resolved_info: ResolvedFtpInfo) -> str:
+        assembly_dir = f"{ftp_directory}{resolved_info.assembly_accession}_{resolved_info.assembly_name}"
         assembly_dir = assembly_dir.replace(" ", "_")
         ftp = FTP(self.ftp_link)
         ftp.login()

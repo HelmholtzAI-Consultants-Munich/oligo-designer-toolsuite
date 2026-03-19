@@ -82,29 +82,21 @@ class GenomicRegionGenerator:
 
         ##### loading annotations from different sources #####
         if source_params.source == "ncbi":
-            # dowload the fasta files formthe NCBI server
+            # dowload the fasta files from the NCBI server
             region_generator = NcbiGenomicRegionGenerator(
-                taxon=source_params.parameters.taxon,
-                species=source_params.parameters.species,
-                annotation_release=source_params.parameters.annotation_release,
+                source_params=source_params,
                 dir_output=self.dir_output,
             )
         elif source_params.source == "ensembl":
-            # dowload the fasta files formthe NCBI server
+            # dowload the fasta files from the NCBI server
             region_generator = EnsemblGenomicRegionGenerator(
-                species=source_params.parameters.species,
-                annotation_release=source_params.parameters.annotation_release,
+                source_params=source_params,
                 dir_output=self.dir_output,
             )
         elif source_params.source == "custom":
             # use already dowloaded files
             region_generator = CustomGenomicRegionGenerator(
-                annotation_file=source_params.parameters.file_annotation,
-                sequence_file=source_params.parameters.file_sequence,
-                files_source=source_params.parameters.files_source,
-                species=source_params.parameters.species,
-                annotation_release=source_params.parameters.annotation_release,
-                genome_assembly=source_params.parameters.genome_assembly,
+                source_params=source_params,
                 dir_output=self.dir_output,
             )
 

@@ -1,5 +1,6 @@
+import warnings
 from math import isclose
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     AliasChoices,
@@ -9,10 +10,14 @@ from pydantic import (
     NonNegativeInt,
     NonPositiveInt,
     PositiveInt,
+    ValidationInfo,
+    field_validator,
     model_validator,
 )
 from typing_extensions import Self
 
+from oligo_designer_toolsuite._constants import SUPPORTED_TAXA_SOURCES
+from oligo_designer_toolsuite.utils._checkers_and_helpers import ConfigurationError
 from oligo_designer_toolsuite.validation._types import FractionT
 
 
@@ -920,38 +925,69 @@ class SourceParamsCustom(BaseModel):
     file_annotation: Annotated[
         str,
         Field(
-            description="GTF file with gene annotation",
+            description="The path to the annotation file (e.g., GTF).",
         ),
     ]
     file_sequence: Annotated[
         str,
         Field(
-            description="FASTA file with genome sequence",
+            description="The path to the corresponding sequence file (e.g., FASTA).",
         ),
     ]
-    files_source: Annotated[str | None, Field(description="original source of the genomic files")]
+    files_source: Annotated[
+        str,
+        Field(
+            description="The original source of the files (e.g., Ensembl, NCBI), defaults to 'custom'.",
+            default="custom",
+        ),
+    ]
     species: Annotated[
-        str | None,
-        Field(description="species of provided annotation, set to 'None' if unknown"),
+        str,
+        Field(
+            description="The species name related to the annotation and sequence files, defaults to 'unknown'.",
+            default="unknown",
+        ),
     ]
     annotation_release: Annotated[
-        str | None,
-        Field(description="release number of provided annotation, set to 'None' if unknown"),
+        str,
+        Field(description="The annotation release version, defaults to 'unknown'.", default="unknown"),
     ]
     genome_assembly: Annotated[
-        str | None,
-        Field(description="genome assembly of provided annotation, set to 'None' if unknown"),
+        str,
+        Field(description="The genome assembly version, defaults to 'unknown'.", default="unknown"),
     ]
+
+    @field_validator(
+        "files_source",
+        "species",
+        "annotation_release",
+        "genome_assembly",
+        mode="before",
+    )
+    @classmethod
+    def replace_none_with_default(cls, v: Any, info: ValidationInfo) -> Any:
+        if v is None:
+            assert info.field_name is not None
+            default = cls.model_fields[info.field_name].default
+            warnings.warn(f"{info.field_name} is None. Using default '{default}'")
+            return default
+        return v
 
 
 class SourceParamsEnsembl(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    species: Annotated[str, Field(description="species of provided annotation")]
-    annotation_release: Annotated[str, Field(description="release number of provided annotation")]
+    species: Annotated[str, Field(description="The species of provided annotation.")]
+    annotation_release: Annotated[
+        str,
+        Field(
+            description="The version of the annotation release to use, defaults to 'current'.",
+            default="current",
+        ),
+    ]
 
 
-class SourceParamsNcbi(BaseModel):
+class SourceParamsNcbiSpecies(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     taxon: Annotated[
@@ -971,8 +1007,104 @@ class SourceParamsNcbi(BaseModel):
         ],
         Field(description="taxon of the species"),
     ]
-    species: Annotated[str, Field(description="species of provided annotation")]
-    annotation_release: Annotated[str, Field(description="release number of provided annotation")]
+    species: Annotated[str, Field(description="species of provided annotation in NCBI download format")]
+    assembly_source: Annotated[
+        Literal["auto", "annotation_releases", "latest_assembly_versions", "reference"],
+        Field(
+            description="Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory. 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'. 'latest_assembly_version' directory is available for all species and contains the latest assembly. 'reference' directory contains the reference genome. This is only available for a subset of species. 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_version'"
+        ),
+    ]
+    annotation_release: Annotated[
+        str,
+        Field(
+            description="release number of provided annotation (e.g., '109' or 'current'); use release number only with assembly_source=annotation_releases; otherwise set to 'current'"
+        ),
+    ]
+
+    @model_validator(mode="after")
+    def _check_supported_taxa_sources_and_annotation_release(self) -> Self:
+        available_sources = SUPPORTED_TAXA_SOURCES[self.taxon]
+        if self.assembly_source != "auto" and self.assembly_source not in available_sources:
+            supported_sources = ", ".join(sorted(available_sources))
+            raise ConfigurationError(
+                f"assembly_source '{self.assembly_source}' is not available for taxon '{self.taxon}'. "
+                f"Supported sources for this taxon are: {supported_sources}."
+            )
+        if self.annotation_release != "current" and (
+            self.assembly_source in {"latest_assembly_versions", "reference"}
+            or (self.assembly_source == "auto" and "annotation_releases" not in available_sources)
+        ):
+            raise ConfigurationError(
+                "A numeric annotation_release is only supported with assembly_source='annotation_releases'. "
+                "Use annotation_release='current' for latest_assembly_versions/reference."
+            )
+        return self
+
+
+class SourceNcbiSpecies(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: Annotated[
+        Literal["ncbi"],
+        Field(
+            description="Indicate which annotation should be used. Possible values are 'ensembl', 'ncbi' or 'custom'."
+        ),
+    ]
+
+    mode: Annotated[
+        Literal["species"],
+        Field(
+            description="How do you want to specify which genome you want to use? Possible values are 'species' and 'assembly'. For 'species', parameters needs the arguments 'taxon', 'species', 'assembly_source' and 'annotation_release'.  For 'assembly', parameters needs the arguments 'refseq_assembly_accession' and 'assembly_name'."
+        ),
+    ]
+
+    parameters: Annotated[
+        SourceParamsNcbiSpecies,
+        Field(
+            description="If a custom source, the metadata of the provided genome and annotation. If ensembl or ncbi, the parameters used to retrieve the genomic data."
+        ),
+    ]
+
+
+class SourceParamsNcbiAssembly(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refseq_assembly_accession: Annotated[
+        str,
+        Field(
+            description="RefSeq assembly accession number (e.g., 'GCF_000001405.38') of the specified assembly.",
+            pattern=r"^(GCF)_(\d{9})\.(\d+)$",
+        ),
+    ]
+    assembly_name: Annotated[str, Field(description="Name (e.g., 'GRCh38.p12') of the specified assembly.")]
+
+
+class SourceNcbiAssembly(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: Annotated[
+        Literal["ncbi"],
+        Field(
+            description="Indicate which annotation should be used. Possible values are 'ensembl', 'ncbi' or 'custom'."
+        ),
+    ]
+
+    mode: Annotated[
+        Literal["assembly"],
+        Field(
+            description="How do you want to specify which genome you want to use? Possible values are 'species' and 'assembly'."
+        ),
+    ]
+
+    parameters: Annotated[
+        SourceParamsNcbiAssembly,
+        Field(
+            description="If a custom source, the metadata of the provided genome and annotation. If ensembl or ncbi, the parameters used to retrieve the genomic data."
+        ),
+    ]
+
+
+SourceNcbi = Annotated[SourceNcbiSpecies | SourceNcbiAssembly, Field(discriminator="mode")]
 
 
 class SourceCustom(BaseModel):
@@ -1009,21 +1141,13 @@ class SourceEnsembl(BaseModel):
     ]
 
 
-class SourceNcbi(BaseModel):
+SourceConfigs = Annotated[SourceCustom | SourceEnsembl | SourceNcbi, Field(discriminator="source")]
+
+
+class ResolvedFtpInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    source: Annotated[
-        Literal["ncbi"],
-        Field(
-            description="Indicate which annotation should be used. Possible values are 'ensembl', 'ncbi' or 'custom'."
-        ),
-    ]
-    parameters: Annotated[
-        SourceParamsNcbi,
-        Field(
-            description="If a custom source, the metadata of the provided genome and annotation. If ensembl or ncbi, the parameters used to retrieve the genomic data."
-        ),
-    ]
-
-
-SourceConfigs = Annotated[SourceCustom | SourceEnsembl | SourceNcbi, Field(discriminator="source")]
+    assembly_name: str = ""
+    assembly_accession: str = ""
+    annotation_release: str = ""
+    annotation_release_from_ncbi: str = "no_annotation_info"
