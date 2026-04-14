@@ -216,7 +216,7 @@ class PrimerDevFish(BaseModel):
     specificity_hybridization_probes_blastn_search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
-            description="BLASTN search parameters for specificity filtering against the hybridization probes database.."
+            description="BLASTN search parameters for specificity filtering against the hybridization probes database."
         ),
     ]
     specificity_hybridization_probes_blastn_hit_parameters: Annotated[

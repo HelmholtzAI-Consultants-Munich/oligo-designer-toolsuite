@@ -103,7 +103,7 @@ class TmParametersDetails(BaseModel):
         bool | None,
         Field(
             default=None,
-            description="Do not allow base characters or neighbor duplex keys (e.g. 'AT/NA') that could not or not unambigiously be evaluated for the respective method.",
+            description="Do not allow base characters or neighbor duplex keys (e.g. 'AT/NA') that could not or not unambiguously be evaluated for the respective method.",
         ),
     ]
     c_seq: Annotated[

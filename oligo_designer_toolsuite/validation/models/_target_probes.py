@@ -285,5 +285,5 @@ class TargetProbeScrinshot(TargetProbeBase):
     ]
     GC_weight: Annotated[WeightT, Field(description="Weight assigned to GC content in the scoring function.")]
     Tm_weight: Annotated[
-        WeightT, Field(description="WWeight assigned to melting temperature in the scoring function.")
+        WeightT, Field(description="Weight assigned to melting temperature in the scoring function.")
     ]
