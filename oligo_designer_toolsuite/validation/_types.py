@@ -95,9 +95,8 @@ DirOutputT = Annotated[
 ]
 
 ExonExonJunctionBlockSizeT = Annotated[
-    NonNegativeInt,
+    PositiveInt,
     Field(
-        ge=1,
         description=(
             "Block size (bp) around each exon–exon junction, i.e. +/- this many "
             "bp around the junction. It does not make sense to set this larger "

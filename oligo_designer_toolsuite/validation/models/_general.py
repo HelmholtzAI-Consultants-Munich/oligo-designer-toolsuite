@@ -351,10 +351,6 @@ TmSaltCorrectionParameters = Annotated[
 class BlastnSearchParameters(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
 
-    # use exclude_if=lambda v: v is None on a Field level here and not exlcude_none during model dumpimg,
-    # because for other config arguments, the None is actually needed
-    # but for blastn we don't want to provide default parameters but have the defaults handled directly
-    # by blastn (as there can be quite complicated dependencies between arguments)
     # don't allow
     # -h
     # -help
@@ -922,6 +918,10 @@ class GenomicRegions(BaseModel):
 class SourceParamsCustom(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # the defaults are not directly assigned but with a validator to
+    # keep the warnings that were also in the previous code without
+    # pydantic models
+
     file_annotation: Annotated[
         str,
         Field(
@@ -1000,7 +1000,7 @@ class SourceParamsNcbiSpecies(BaseModel):
             "plant",
             "plants",
             "protozoa",
-            "unkown",
+            "unknown",
             "vertebrate_mammalian",
             "vertebrate_other",
             "viral",

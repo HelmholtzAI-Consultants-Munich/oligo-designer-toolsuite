@@ -64,9 +64,9 @@ class TargetProbeBase(BaseModel):
         ),
     ]
     distance_between_target_probes: Annotated[
-        NonNegativeInt,
+        int,
         Field(
-            description="how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x"
+            description="How much overlap should be allowed between oligos, e.g. if oligos can overlap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x."
         ),
     ]
     n_sets: Annotated[
@@ -239,7 +239,7 @@ class TargetProbeOligoSeq(TargetProbeBase):
     GC_weight: Annotated[WeightT, Field(description="Weight assigned to GC content in the scoring function.")]
     GC_content_opt: GCContentOptT
     Tm_weight: Annotated[
-        WeightT, Field(description="WWeight assigned to melting temperature in the scoring function.")
+        WeightT, Field(description="Weight assigned to melting temperature in the scoring function.")
     ]
     Tm_opt: TmOptT
 

@@ -30,7 +30,7 @@ class ReadoutProbeCycleHCR(BaseModel):
         ),
     ]
 
-    @field_validator("file_readout_probe_table")
+    @field_validator("file_readout_probe_table", "file_codebook")
     @classmethod
     def must_be_csv_or_tsv(cls, v: str | None) -> str | None:
         if v is None:
