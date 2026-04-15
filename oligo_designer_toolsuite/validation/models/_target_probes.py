@@ -82,7 +82,7 @@ class TargetProbeCycleHCR(TargetProbeBase):
     L_probe_sequence_length: Annotated[
         PositiveInt,
         Field(
-            description="Length of the left probe sequence in nucleotides. This is the 5' portion of the target probe that binds to the RNA. L + spacer + R sequence should equal the total probe length, e.g. 45 + 2 + 45 = 92",
+            description="Length of the left probe sequence in nucleotides. This is the 5' portion of the target probe that binds to the 3' end of the target RNA sequence. L + spacer + R sequence should equal the total probe length, e.g. 45 + 2 + 45 = 92",
         ),
     ]
     gap_sequence_length: Annotated[
@@ -94,7 +94,7 @@ class TargetProbeCycleHCR(TargetProbeBase):
     R_probe_sequence_length: Annotated[
         PositiveInt,
         Field(
-            description="Length of the right probe sequence in nucleotides. This is the 5' portion of the target probe that will bind to the RNA. L + spacer + R sequence should equal the total probe length, e.g. 45 + 2 + 45 = 92",
+            description="Length of the right probe sequence in nucleotides. This is the 3' portion of the target probe that binds to the 5' end of the target RNA sequence. L + spacer + R sequence should equal the total probe length, e.g. 45 + 2 + 45 = 92",
         ),
     ]
     Tm_min: TmMinT
