@@ -74,7 +74,7 @@ class ReadoutProbeFish(BaseModel):
 
 class ReadoutProbeMerfish(ReadoutProbeFish):
 
-    set_size: Annotated[PositiveInt, Field(default=16, description="total number of readout probes")]
+    set_size: Annotated[PositiveInt, Field(description="total number of readout probes")]
     homogeneous_properties_weights: Annotated[
         OligoPropertyWeights,
         Field(

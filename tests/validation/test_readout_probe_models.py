@@ -24,7 +24,7 @@ from oligo_designer_toolsuite.validation.models._readout_probes import (
 _BASE_FISH_FIELDS = dict(
     files_fasta_reference_database=["ref.fa"],
     length=20,
-    base_probabilities=BaseProbabilities(),
+    base_probabilities=BaseProbabilities(A=0.25, T=0.25, C=0.25, G=0.25),
     GC_content_min=40.0,
     GC_content_max=60.0,
     homopolymeric_base_n=HomopolymerThresholds(A=4, T=4, C=4, G=4),

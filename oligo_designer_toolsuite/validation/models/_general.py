@@ -36,7 +36,6 @@ class General(BaseModel):
     )
     dir_output: str = Field(description="name of the directory where the output files will be written")
     write_intermediate_steps: bool = Field(
-        default=True,
         description="if true, writes the oligo sequences after each step of the pipeline into a csv file",
     )
 
@@ -943,8 +942,7 @@ class SourceParamsEnsembl(BaseModel):
 
     species: str = Field(description="The species of provided annotation.")
     annotation_release: str = Field(
-        description="The version of the annotation release to use, defaults to 'current'.",
-        default="current",
+        description="The version of the annotation release to use, e.g. 'release-116'. Use 'current' to use the most recent annotation release."
     )
 
 
