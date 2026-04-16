@@ -31,22 +31,14 @@ class HomopolymerThresholds(BaseModel):
 
 class General(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    n_jobs: Annotated[
-        PositiveInt,
-        Field(
-            description="number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime"
-        ),
-    ]
-    dir_output: Annotated[
-        str, Field(description="name of the directory where the output files will be written")
-    ]
-    write_intermediate_steps: Annotated[
-        bool,
-        Field(
-            default=True,
-            description="if true, writes the oligo sequences after each step of the pipeline into a csv file",
-        ),
-    ]
+    n_jobs: PositiveInt = Field(
+        description="number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime"
+    )
+    dir_output: str = Field(description="name of the directory where the output files will be written")
+    write_intermediate_steps: bool = Field(
+        default=True,
+        description="if true, writes the oligo sequences after each step of the pipeline into a csv file",
+    )
 
 
 class OligoSetSelection(BaseModel):
@@ -95,80 +87,55 @@ class TmParametersDetails(BaseModel):
 
     # set default to None so that not all parameters need to be specified. When the parameters are passed
     # to the io.SeqUtils.MeltingTemp.Tm_NN function, the model dump excluded parameters that are set to None
-    check: Annotated[
-        bool | None,
-        Field(default=None, description="Checks if the sequence is valid for the given method."),
-    ]
-    strict: Annotated[
-        bool | None,
-        Field(
-            default=None,
-            description="Do not allow base characters or neighbor duplex keys (e.g. 'AT/NA') that could not or not unambiguously be evaluated for the respective method.",
-        ),
-    ]
-    c_seq: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="Complementary sequence. The sequence of the template/target in 3'->5' direction. c_seq is necessary for mismatch correction and dangling-ends correction. Both corrections will automatically be applied if mismatches or dangling ends are present.",
-        ),
-    ]
-    shift: Annotated[
-        int | None,
-        Field(
-            default=None,
-            description="Shift of the primer/probe sequence on the template/target sequence. The shift parameter is necessary to align seq and c_seq if they have different lengths or if they should have dangling ends.",
-        ),
-    ]
-    selfcomp: Annotated[
-        bool | None,
-        Field(
-            default=None,
-            description="Is the sequence self-complementary? If 'True' the primer is thought binding to itself, thus dnac2 is not considered.",
-        ),
-    ]
-    nn_table: Annotated[
-        Literal["DNA_NN1", "DNA_NN2", "DNA_NN3", "DNA_NN4"] | None,
-        Field(default=None, description="Thermodynamic NN values."),
-    ]
-    tmm_table: Annotated[
-        Literal["DNA_TMM1"] | None,
-        Field(default=None, description="Thermodynamic values for terminal mismatches."),
-    ]
-    imm_table: Annotated[
-        Literal["DNA_IMM1"] | None,
-        Field(
-            default=None,
-            description="Thermodynamic values for internal mismatches, may include insosine mismatches.",
-        ),
-    ]
-    de_table: Annotated[
-        Literal["DNA_DE1"] | None, Field(default=None, description="Thermodynamic values for dangling ends.")
-    ]
-    dnac1: Annotated[
-        NonNegativeInt | None,
-        Field(default=None, description="Concentration of the higher concentrated strand [nM]."),
-    ]
-    dnac2: Annotated[
-        NonNegativeInt | None,
-        Field(default=None, description="Concentration of the lower concentrated strand [nM]."),
-    ]
-    saltcorr: Annotated[
-        NonNegativeInt | None,
-        Field(
-            default=None,
-            ge=0,
-            le=7,
-            description="Salt correction method, see Bio.SeqUtils.MeltingTemp.salt_correction.",
-        ),
-    ]
-    Na: Annotated[NonNegativeInt | None, Field(default=None, description="Concentration of the ions [mM].")]
-    K: Annotated[NonNegativeInt | None, Field(default=None, description="Concentration of the ions [mM].")]
-    Tris: Annotated[NonNegativeInt | None, Field(default=None, description="Concentration of the ions [mM].")]
-    Mg: Annotated[NonNegativeInt | None, Field(default=None, description="Concentration of the ions [mM].")]
-    dNTPs: Annotated[
-        NonNegativeInt | None, Field(default=None, description="Concentration of the ions [mM].")
-    ]
+    check: bool | None = Field(
+        default=None, description="Checks if the sequence is valid for the given method."
+    )
+    strict: bool | None = Field(
+        default=None,
+        description="Do not allow base characters or neighbor duplex keys (e.g. 'AT/NA') that could not or not unambiguously be evaluated for the respective method.",
+    )
+    c_seq: str | None = Field(
+        default=None,
+        description="Complementary sequence. The sequence of the template/target in 3'->5' direction. c_seq is necessary for mismatch correction and dangling-ends correction. Both corrections will automatically be applied if mismatches or dangling ends are present.",
+    )
+    shift: int | None = Field(
+        default=None,
+        description="Shift of the primer/probe sequence on the template/target sequence. The shift parameter is necessary to align seq and c_seq if they have different lengths or if they should have dangling ends.",
+    )
+    selfcomp: bool | None = Field(
+        default=None,
+        description="Is the sequence self-complementary? If 'True' the primer is thought binding to itself, thus dnac2 is not considered.",
+    )
+    nn_table: Literal["DNA_NN1", "DNA_NN2", "DNA_NN3", "DNA_NN4"] | None = Field(
+        default=None, description="Thermodynamic NN values."
+    )
+    tmm_table: Literal["DNA_TMM1"] | None = Field(
+        default=None, description="Thermodynamic values for terminal mismatches."
+    )
+    imm_table: Literal["DNA_IMM1"] | None = Field(
+        default=None,
+        description="Thermodynamic values for internal mismatches, may include insosine mismatches.",
+    )
+    de_table: Literal["DNA_DE1"] | None = Field(
+        default=None, description="Thermodynamic values for dangling ends."
+    )
+    dnac1: NonNegativeInt | None = Field(
+        default=None, description="Concentration of the higher concentrated strand [nM]."
+    )
+    dnac2: NonNegativeInt | None = Field(
+        default=None, description="Concentration of the lower concentrated strand [nM]."
+    )
+    saltcorr: NonNegativeInt | None = Field(
+        default=None,
+        ge=0,
+        le=7,
+        description="Salt correction method, see Bio.SeqUtils.MeltingTemp.salt_correction.",
+    )
+    Na: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
+    K: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
+    Tris: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
+    Mg: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
+    dNTPs: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
 
     @model_validator(mode="after")
     def _at_least_one_parameter_provided(self) -> Self:
@@ -287,20 +254,17 @@ TmChemCorrectionParameters = Annotated[
 class TmSaltCorrectionParametersDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Na: Annotated[NonNegativeInt | None, Field(default=None, description="[mM] of ion")]
-    K: Annotated[NonNegativeInt | None, Field(default=None, description="[mM] of ion")]
-    Tris: Annotated[NonNegativeInt | None, Field(default=None, description="[mM] of ion")]
-    Mg: Annotated[NonNegativeInt | None, Field(default=None, description="[mM] of ion")]
-    dNTPs: Annotated[NonNegativeInt | None, Field(default=None, description="[mM] of ion")]
-    method: Annotated[
-        PositiveInt | None,
-        Field(
-            default=None,
-            ge=1,
-            le=7,
-            description="Correction method to be applied. Methods 1-4 correct Tm, method 5 corrects deltaS, methods 6 and 7 correct 1/Tm.",
-        ),
-    ]
+    Na: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
+    K: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
+    Tris: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
+    Mg: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
+    dNTPs: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
+    method: PositiveInt | None = Field(
+        default=None,
+        ge=1,
+        le=7,
+        description="Correction method to be applied. Methods 1-4 correct Tm, method 5 corrects deltaS, methods 6 and 7 correct 1/Tm.",
+    )
 
     @model_validator(mode="after")
     def _at_least_one_parameter_provided(self) -> Self:
@@ -977,14 +941,11 @@ class SourceParamsCustom(BaseModel):
 class SourceParamsEnsembl(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    species: Annotated[str, Field(description="The species of provided annotation.")]
-    annotation_release: Annotated[
-        str,
-        Field(
-            description="The version of the annotation release to use, defaults to 'current'.",
-            default="current",
-        ),
-    ]
+    species: str = Field(description="The species of provided annotation.")
+    annotation_release: str = Field(
+        description="The version of the annotation release to use, defaults to 'current'.",
+        default="current",
+    )
 
 
 class SourceParamsNcbiSpecies(BaseModel):
