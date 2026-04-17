@@ -250,7 +250,7 @@ class TestSourceConfigsUnion:
 
     def test_ensembl_source(self) -> None:
         obj = _SourceConfigsAdapter.validate_python(
-            {"source": "ensembl", "parameters": {"species": "homo_sapiens"}}
+            {"source": "ensembl", "parameters": {"species": "homo_sapiens", "annotation_release": "current"}}
         )
         assert isinstance(obj, SourceEnsembl)
 
@@ -267,7 +267,7 @@ class TestSourceConfigsUnion:
                 },
             }
         )
-        assert isinstance(obj, SourceEnsembl) is False
+        assert isinstance(obj, SourceNcbiSpecies)
 
     def test_ncbi_assembly_source(self) -> None:
         obj = _SourceConfigsAdapter.validate_python(
@@ -280,7 +280,7 @@ class TestSourceConfigsUnion:
                 },
             }
         )
-        assert obj.source == "ncbi"
+        assert isinstance(obj, SourceNcbiAssembly)
 
     def test_invalid_source_discriminator(self) -> None:
         with pytest.raises(ValidationError):
