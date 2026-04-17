@@ -261,7 +261,6 @@ class FtpLoaderNCBI(BaseFtpLoader):
             "gtf": self._map_chr_names_gene_annotation,
             "fasta": self._map_chr_names_genome_sequence,
         }
-        # self._validate_mode_and_normalize_params() TODO change annotation_release?
 
     def download_files(self, file_type: _TYPES_FILE) -> tuple[str, str, str]:
         """
@@ -350,14 +349,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
         # for type checker because we don't directly pass source_params
         assert isinstance(self.source_params.parameters, SourceParamsNcbiSpecies)
         base_directory = f"genomes/refseq/{self.source_params.parameters.taxon}/{self.source_params.parameters.species}/{source_subdir}/"
-        # leave this check here instead of pydantic model to avoid duplicating the check
-        # as the source_subdir needs to be calculated because it can be "auto"
-        # and at the moment, I don't want to have too much business logic in the pydantic model
         if source_subdir != "annotation_releases":
-            if self.source_params.parameters.annotation_release != "current":
-                raise ConfigurationError(
-                    "annotation_release must be 'current' when using assembly_source " f"'{source_subdir}'."
-                )
             entries = self._list_ftp_entries(base_directory)
             gcf_entry = next((entry for entry in entries if entry.startswith("GCF")), None)
             if gcf_entry is None:
