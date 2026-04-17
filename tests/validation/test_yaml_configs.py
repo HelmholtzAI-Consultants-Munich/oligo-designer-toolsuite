@@ -123,7 +123,7 @@ class TestCycleHCRYaml(unittest.TestCase):
         raw = _load("cycle_hcr_probe_designer.yaml")
         cfg = CycleHCRProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
-        assert cfg.general.n_jobs == 2
+        assert cfg.general.write_intermediate_steps is True
         assert cfg.target_probe.linker_sequence == "TT"
         assert cfg.primer.forward_primer_sequence == "TAATACGACTCACTATAGCGTCATC"
         assert cfg.primer.reverse_primer_sequence == "CGACACCGAACGTGCGACAA"
@@ -176,7 +176,7 @@ class TestMerfishYaml(unittest.TestCase):
         raw = _load("merfish_probe_designer.yaml")
         cfg = MerfishProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
-        assert cfg.general.n_jobs == 4
+        assert cfg.general.write_intermediate_steps is True
         assert cfg.target_probe.length_min == 30
         assert cfg.target_probe.length_max == 30
 
@@ -219,7 +219,7 @@ class TestOligoSeqYaml(unittest.TestCase):
         raw = _load("oligo_seq_probe_designer.yaml")
         cfg = OligoSeqProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
-        assert cfg.general.n_jobs == 4
+        assert cfg.general.write_intermediate_steps is True
 
     def test_no_readout_probe_key(self) -> None:
         """OligoSeq has no readout_probe; the YAML must not contain it either."""
@@ -300,7 +300,7 @@ class TestSeqFishPlusYaml(unittest.TestCase):
         raw = _load("seqfish_plus_probe_designer.yaml")
         cfg = SeqFishPlusProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
-        assert cfg.general.n_jobs == 4
+        assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
         raw = _load("seqfish_plus_probe_designer.yaml")
