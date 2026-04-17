@@ -66,8 +66,10 @@ class TestSourceParamsCustom:
 
 class TestSourceParamsEnsembl:
     def test_valid(self) -> None:
-        p = SourceParamsEnsembl(species="homo_sapiens")
-        assert p.annotation_release == "current"  # default
+        p = SourceParamsEnsembl(species="homo_sapiens", annotation_release="current")
+        assert (
+            p.annotation_release == "current"
+        )  # previous default value, now needs to be provided explicitly
 
     def test_valid_with_release(self) -> None:
         p = SourceParamsEnsembl(species="mus_musculus", annotation_release="109")
@@ -75,7 +77,7 @@ class TestSourceParamsEnsembl:
 
     def test_extra_field_forbidden(self) -> None:
         with pytest.raises(ValidationError):
-            SourceParamsEnsembl(species="homo_sapiens", unknown="x")  # type: ignore[call-arg]
+            SourceParamsEnsembl(species="homo_sapiens", annotation_release="current", unknown="x")  # type: ignore[call-arg]
 
 
 # ---------------------------------------------------------------------------
