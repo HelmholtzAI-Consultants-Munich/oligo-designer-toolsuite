@@ -43,11 +43,11 @@ jobs:
       max-parallel: 12
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup Conda
       uses: conda-incubator/setup-miniconda@v3
@@ -92,7 +92,7 @@ jobs:
         PLATFORM: ${{ matrix.os }}
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
+      uses: codecov/codecov-action@v6
       with:
         files: oligo_designer_toolsuite/coverage.xml
       env:
