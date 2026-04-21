@@ -644,7 +644,7 @@ class VCFParser:
             cmd_sort = "bcftools sort " + file_vcf + " -Oz -o " + file_vcf
             process = Popen(cmd_sort, shell=True).wait()
 
-            cmd_index = "bcftools index " + file_vcf
+            cmd_index = "bcftools index -f " + file_vcf
             process = Popen(cmd_index, shell=True).wait()
 
             cmd += " " + file_vcf
