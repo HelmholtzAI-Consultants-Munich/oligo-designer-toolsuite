@@ -74,7 +74,10 @@ class PropertyCalculator:
         """
         new_oligo_property: dict[str, dict[str, Any]] = {}
 
-        for oligo_id in oligo_database.database[region_id].keys():
+        # use list here to avoid race condition where the oligo_database gets updated in other thread
+        # and changes its size which leads to an error
+        # only oligo properties are updated and not oligos, therefore it shouldn't be a problem
+        for oligo_id in list(oligo_database.database[region_id].keys()):
             # Calculate all properties for this oligo
             for property_calc in self.properties:
                 property_result = property_calc.apply(
