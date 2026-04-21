@@ -61,7 +61,7 @@ In the first step, install the additional dependencies and in the second step, i
 
 ### Requirements
 
-This packages was tested for ***Python 3.10 - 3.13*** on ***Linux (x64)*** and ***MacOS (arm64)***.
+This packages was tested for ***Python 3.10 - 3.12*** on ***Linux (x64)*** and ***MacOS (arm64)***.
 
 For stable installation, we recommend to first setup a conda environment.
 
