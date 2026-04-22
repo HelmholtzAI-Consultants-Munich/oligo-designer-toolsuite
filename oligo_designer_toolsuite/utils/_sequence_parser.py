@@ -2,11 +2,11 @@
 # imports
 ############################################
 
+import subprocess
 import gzip
 import os
 import pickle
 import re
-from subprocess import Popen
 from typing import Any
 
 import pandas as pd
@@ -527,9 +527,8 @@ class FastaParser:
             os.remove(index_file)
 
         # Use samtools faidx to create the index (same tool that bedtools getfasta uses)
-        cmd = ["samtools", "faidx", file_fasta]
-        process = Popen(cmd)
-        process.wait()
+        args = ["samtools", "faidx", file_fasta]
+        process = subprocess.run(args)
 
         if process.returncode != 0:
             raise FileFormatError(
@@ -627,29 +626,27 @@ class VCFParser:
         # Track compressed files that need to be cleaned up
         compressed_files_to_cleanup: list[str] = []
 
-        cmd = "bcftools merge --force-single --output-type v"
-        cmd += " -o " + file_out
+        args = ["bcftools", "merge", "--force-single", "--output-type", "v", "-o", file_out]
         for file_vcf in files_in:
             _, ext = os.path.splitext(file_vcf)
             if ext == ".vcf":
                 file_vcf_compressed = f"{file_vcf}.gz"
                 compressed_files_to_cleanup.append(file_vcf_compressed)
-                cmd_compress = "bcftools view -O z "
-                cmd_compress += "-o " + file_vcf_compressed
-                cmd_compress += " " + file_vcf
-                process = Popen(cmd_compress, shell=True).wait()
+
+                args_compress = ["bcftools", "view", "-O", "z", "-o", file_vcf_compressed, file_vcf]
+                subprocess.run(args_compress, check=True)
 
                 file_vcf = file_vcf_compressed
 
-            cmd_sort = "bcftools sort " + file_vcf + " -Oz -o " + file_vcf
-            process = Popen(cmd_sort, shell=True).wait()
+            args_sort = ["bcftools", "sort", file_vcf, "-Oz", "-o", file_vcf]
+            subprocess.run(args_sort, check=True)
 
-            cmd_index = "bcftools index " + file_vcf
-            process = Popen(cmd_index, shell=True).wait()
+            args_index = ["bcftools", "index", "-f", file_vcf]
+            subprocess.run(args_index, check=True)
 
-            cmd += " " + file_vcf
+            args.append(file_vcf)
 
-        process = Popen(cmd, shell=True).wait()
+        subprocess.run(args, check=True)
 
         # Clean up compressed files and their index files
         for file_vcf_compressed in compressed_files_to_cleanup:

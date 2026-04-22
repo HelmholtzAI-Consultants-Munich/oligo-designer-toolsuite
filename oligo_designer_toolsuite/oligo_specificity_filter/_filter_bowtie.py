@@ -107,16 +107,18 @@ class BowtieFilter(AlignmentSpecificityFilter):
         )
 
         ## Create bowtie index
-        cmd = (
-            "bowtie-build --offrate 4"
-            + " --threads "
-            + str(n_jobs)
-            + " -f "
-            + file_reference
-            + " "
-            + file_reference
-        )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
+        args = [
+            "bowtie-build",
+            "--offrate",
+            "4",
+            "--threads",
+            str(n_jobs),
+            "-f",
+            file_reference,
+            file_reference,
+        ]
+
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         return file_reference
 
@@ -152,16 +154,26 @@ class BowtieFilter(AlignmentSpecificityFilter):
         )
         file_bowtie_results = os.path.join(self.dir_output, f"bowtie_results_{region_id}.txt")
 
-        cmd_parameters = ""
-        for parameter, value in self.search_parameters.items():
-            cmd_parameters += f" {parameter} {value}"
+        args = [
+            "bowtie",
+            "-x",
+            file_reference,  # fasta file is input
+            "-f",
+        ]
 
-        cmd = "bowtie" + " -x " + file_reference + " -f"  # fasta file is input
         # return all alignments only if the number of alignments is not specified
         if "-k" not in self.search_parameters.keys():
-            cmd += " -a"
-        cmd += cmd_parameters + " " + file_oligo_database + " " + file_bowtie_results
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
+            args.append("-a")
+
+        for parameter, value in self.search_parameters.items():
+            args.append(parameter)
+            if str(value) != "":
+                args.append(str(value))
+
+        args.append(file_oligo_database)
+        args.append(file_bowtie_results)
+
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         # read the reuslts of the bowtie search
         bowtie_results = self._read_search_output(
@@ -376,16 +388,20 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             filename=f"db_reference_{self.filter_name}",
             dir_output=self.dir_output,
         )
-        cmd = (
-            "bowtie2-build --quiet --offrate 4"
-            + " --threads "
-            + str(n_jobs)
-            + " -f "
-            + file_reference
-            + " "
-            + file_reference
-        )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
+
+        args = [
+            "bowtie2-build",
+            "--quiet",
+            "--offrate",
+            "4",
+            "--threads",
+            str(n_jobs),
+            "-f",
+            file_reference,
+            file_reference,
+        ]
+
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         return file_reference
 
@@ -421,16 +437,28 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         )
         file_bowtie_results = os.path.join(self.dir_output, f"bowtie2_results_{region_id}.txt")
 
-        cmd_parameters = ""
-        for parameter, value in self.search_parameters.items():
-            cmd_parameters += f" {parameter} {value}"
+        args = [
+            "bowtie2",
+            "--quiet",
+            "--no-hd",
+            "--no-unal",
+            "-x",
+            file_reference,  # fasta file is input
+            "-f",
+        ]
 
-        cmd = "bowtie2 --quiet" + " --no-hd --no-unal" + " -x " + file_reference + " -f"  # fast file is input
         # return all alignments only if the number of alignments is not specified
         if "-k" not in self.search_parameters.keys():
-            cmd += " -a"
-        cmd += cmd_parameters + " -U " + file_oligo_database + " -S " + file_bowtie_results
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output).wait()
+            args.append("-a")
+
+        for parameter, value in self.search_parameters.items():
+            args.append(parameter)
+            if str(value) != "":
+                args.append(str(value))
+
+        args.extend(["-U", file_oligo_database, "-S", file_bowtie_results])
+
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         # read the reuslts of the bowtie seatch
         bowtie_results = self._read_search_output(
