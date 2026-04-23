@@ -2,9 +2,9 @@
 # imports
 ############################################
 
+import subprocess
 import os
 from collections import Counter
-from subprocess import Popen
 
 from Bio import SeqIO
 
@@ -43,20 +43,17 @@ def get_sequence_from_annotation(
     :param name: Whether to use the name field and coordinates for the FASTA header, defaults to False.
     :type name: bool
     """
-    cmd = "bedtools getfasta"
-    cmd += " -fi " + file_reference_fasta
-    cmd += " -bed " + file_bed
-    cmd += " -fo " + file_fasta
+    args = ["bedtools", "getfasta", "-fi", file_reference_fasta, "-bed", file_bed, "-fo", file_fasta]
     if split:
-        cmd += " -split"
+        args.append("-split")
     if strand:
-        cmd += " -s"
+        args.append("-s")
     if nameOnly:
-        cmd += " -nameOnly"
+        args.append("-nameOnly")
     if name:
-        cmd += " -name"
+        args.append("-name")
 
-    process = Popen(cmd, shell=True).wait()
+    subprocess.run(args, check=True)
 
 
 def get_complement_regions(file_bed_in: str, file_chromosome_length: str, file_bed_out: str) -> None:
@@ -70,13 +67,11 @@ def get_complement_regions(file_bed_in: str, file_chromosome_length: str, file_b
     :param file_bed_out: Path to the output BED file where complement regions will be saved.
     :type file_bed_out: str
     """
-    cmd = "bedtools complement"
-    cmd += " -i " + file_bed_in
-    cmd += " -g " + file_chromosome_length
-    cmd += " -L "
-    cmd += " > " + file_bed_out
+    args = ["bedtools", "complement", "-i", file_bed_in, "-g", file_chromosome_length, "-L"]
 
-    process = Popen(cmd, shell=True).wait()
+    # redirect stdout to output file
+    with open(file_bed_out, "w") as f:
+        subprocess.run(args, stdout=f, check=True)
 
 
 def get_intersection(file_A: str, file_B: list[str] | str, file_bed_out: str) -> None:
@@ -93,14 +88,23 @@ def get_intersection(file_A: str, file_B: list[str] | str, file_bed_out: str) ->
     :param file_bed_out: Path to the output BED file where the intersection results will be saved.
     :type file_bed_out: str
     """
-    file_B = cast_to_list(file_B)
+    file_B: list[str] = cast_to_list(file_B)
 
-    cmd = "bedtools intersect -wa -wb -bed"
-    cmd += " -a " + file_A
-    cmd += " -b " + " ".join(file_B)
-    cmd += " > " + file_bed_out
+    args = [
+        "bedtools",
+        "intersect",
+        "-wa",
+        "-wb",
+        "-bed",
+        "-a",
+        file_A,
+        "-b",
+        *file_B,
+    ]
 
-    process = Popen(cmd, shell=True).wait()
+    # redirect stdout to output file
+    with open(file_bed_out, "w") as f:
+        subprocess.run(args, stdout=f, check=True)
 
 
 def append_nucleotide_to_sequences(input_fasta: str, nucleotide: str) -> str:
