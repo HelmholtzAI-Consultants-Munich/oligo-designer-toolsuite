@@ -187,6 +187,9 @@ class BlastNFilter(AlignmentSpecificityFilter):
                 if str(value) != "":
                     args.append(str(value))
 
+        args.append("-outfmt")
+        args.append(self.output_format)
+
         subprocess.run(args, cwd=self.dir_output, check=True)
 
         # read the reuslts of the blast seatch
