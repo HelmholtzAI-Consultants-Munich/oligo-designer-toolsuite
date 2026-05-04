@@ -157,7 +157,9 @@ class OligoDatabase:
 
             This function checks the format of a provided FASTA file and, if valid, reads the sequences.
             It then processes each sequence to extract regions, additional information, and coordinates from the headers.
-            The sequences are stored in a structured database, ensuring that any duplicated sequences within the same region are appropriately merged.
+            Oligo IDs are derived from coordinates when present: same genomic location (region, chrom, start, end, strand)
+            yields the same oligo_id and properties are merged; when coordinates are absent, an incremental id is used
+            and no merging is performed.
 
             :param file: The path to the FASTA file to be loaded.
             :type file: str
@@ -165,35 +167,47 @@ class OligoDatabase:
             """
             if self.fasta_parser.check_fasta_format(file):
                 fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
-                sequences: dict[str, dict[str, Any]] = {}
+                database_region: dict[str, dict[str, Any]] = {}
+                next_i_per_region: dict[str, int] = {}
+
                 for entry in fasta_sequences:
                     region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
-                    if isinstance(additional_info, str):
-                        oligo_properties = coordinates
-                    else:
-                        oligo_properties = coordinates | additional_info
+                    chrom = "".join(str(s) for s in coordinates["chromosome"])
+                    start = "".join(str(s) for s in coordinates["start"])
+                    end = "".join(str(s) for s in coordinates["end"])
+                    strand = "".join(str(s) for s in coordinates["strand"])
+                    has_coords = chrom and start and end and strand
+
+                    oligo_properties = coordinates
+                    if isinstance(additional_info, dict):
+                        oligo_properties.update(additional_info)
+
                     oligo_properties = format_oligo_properties(oligo_properties, self.database_sequence_types)
-                    if region in sequences:
-                        if entry.seq in sequences[region]:
-                            oligo_properties = collapse_properties_for_duplicated_sequences(
-                                oligo_properties1=sequences[region][entry.seq],
-                                oligo_properties2=oligo_properties,
-                                database_sequence_types=self.database_sequence_types,
-                            )
-                        sequences[region][str(entry.seq)] = oligo_properties
+
+                    if has_coords:
+                        oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{chrom}{start}{end}{strand}"
                     else:
-                        sequences[region] = {str(entry.seq): oligo_properties}
+                        next_i_per_region.setdefault(region, 1)
+                        oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{next_i_per_region[region]}"
+                        next_i_per_region[region] += 1
 
-                database_region: dict[str, dict[str, Any]] = {region: {} for region in sequences.keys()}
-                for region, sequences_region in sequences.items():
-                    i = 1
-                    for oligo_sequence, oligo_properties in sequences_region.items():
-                        oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
-                        oligo_seq_info = {sequence_type: oligo_sequence} | oligo_properties
+                    oligo_seq_info = {sequence_type: str(entry.seq)} | oligo_properties
+
+                    if region not in database_region:
+                        database_region[region] = {}
+                    if oligo_id in database_region[region]:
+                        print(f"Duplicate sequence found: {oligo_id}")
+                        print(f"Oligo properties 1: {database_region[region][oligo_id]}")
+                        print(f"Oligo properties 2: {oligo_seq_info}")
+                        database_region[region][oligo_id] = collapse_properties_for_duplicated_sequences(
+                            oligo_properties1=database_region[region][oligo_id],
+                            oligo_properties2=oligo_seq_info,
+                            database_sequence_types=self.database_sequence_types,
+                        )
+                        print(f"Oligo properties after collapse: {database_region[region][oligo_id]}")
+                    else:
                         database_region[region][oligo_id] = oligo_seq_info
-                        i += 1
 
-                # only merge if there are common keys
                 if len(set(self.database) & set(database_region)) > 0:
                     self.database = merge_databases(
                         database1=self.database,
@@ -204,7 +218,7 @@ class OligoDatabase:
                         max_entries_in_memory=self._max_entries_in_memory,
                     )
                 else:
-                    for region in database_region.keys():
+                    for region in database_region:
                         self.database[region] = database_region[region]
 
         # Check formatting

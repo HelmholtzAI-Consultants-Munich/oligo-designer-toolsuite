@@ -9,7 +9,7 @@ from effidict import EffiDict, LRUReplacement, PickleBackend
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 
-from ._checkers_and_helpers import cast_to_list, cast_to_list_of_lists
+from ._checkers_and_helpers import cast_to_list
 
 ############################################
 # Collection of utility functions
@@ -173,6 +173,7 @@ def collapse_properties_for_duplicated_sequences(
                     )
                 elif key not in database_sequence_types:
                     oligo_properties[key].extend(values)
+                    oligo_properties[key] = list(set(oligo_properties[key]))
 
     return oligo_properties
 
@@ -266,7 +267,7 @@ def format_oligo_properties(
     """
     for key, value in oligo_properties.items():
         if key not in database_sequence_types:
-            oligo_properties[key] = cast_to_list_of_lists(value)
+            oligo_properties[key] = cast_to_list(value)
     return oligo_properties
 
 

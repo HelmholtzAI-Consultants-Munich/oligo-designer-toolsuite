@@ -419,7 +419,7 @@ class FastaParser:
         :rtype: tuple[str, dict[str, list[Any]], dict[str, list[Any]]]
         """
         region: str = ""
-        additional_info: dict[str, list[Any]] | str = {}
+        additional_info: dict[str, list[Any]] | str = ""
         coordinates: dict[str, list[Any]] = {
             "chromosome": [None],
             "start": [None],
@@ -427,9 +427,9 @@ class FastaParser:
             "strand": [None],
         }
 
-        for header_entry in header.split(SEPARATOR_FASTA_HEADER_FIELDS):
+        for i, header_entry in enumerate(header.split(SEPARATOR_FASTA_HEADER_FIELDS)):
             header_entry = header_entry.strip()
-            if region == "":
+            if i == 0:
                 region = header_entry
 
             elif self.is_coordinate(header_entry):
