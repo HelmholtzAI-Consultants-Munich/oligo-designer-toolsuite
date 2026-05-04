@@ -125,9 +125,11 @@ class BlastNFilter(AlignmentSpecificityFilter):
             filename=f"db_reference_{self.filter_name}",
             dir_output=self.dir_output,
         )
+
         ## Create blast index
-        cmd = "makeblastdb -dbtype nucl" + " -out " + file_reference + " -in " + file_reference
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
+        args = ["makeblastdb", "-dbtype", "nucl", "-out", file_reference, "-in", file_reference]
+
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         return file_reference
 
@@ -165,30 +167,27 @@ class BlastNFilter(AlignmentSpecificityFilter):
         )
         file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_id}.txt")
 
-        cmd_parameters = ""
+        args = [
+            "blastn",
+            "-query",
+            file_oligo_database,
+            "-out",
+            file_blast_results,
+            "-db",
+            os.path.join(self.dir_output, file_reference),
+        ]
+
         for parameter, value in self.search_parameters:
             # as the default instantiated BlastnSearchParameter pydantic model has None as default values
             # for every parameter, test for None
             if value is not None:
                 # add leading - if parameter doesn't have it (because of pydantic config validation)
                 parameter = parameter if bool(re.match("^-", parameter)) else f"-{parameter}"
-                # add quotes if list of strings seperated by whitespace
-                value = f'"{value}"' if " " in str(value) else value
-                cmd_parameters += f" {parameter} {value}"
+                args.append(parameter)
+                if str(value) != "":
+                    args.append(str(value))
 
-        cmd = (
-            "blastn"
-            + " -query "
-            + file_oligo_database
-            + " -out "
-            + file_blast_results
-            + " -db "
-            + os.path.join(self.dir_output, file_reference)
-            + " "
-            + cmd_parameters
-            + f' -outfmt "{self.output_format}"'
-        )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         # read the reuslts of the blast seatch
         blast_results = self._read_search_output(
