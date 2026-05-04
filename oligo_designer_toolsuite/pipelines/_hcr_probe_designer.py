@@ -363,12 +363,12 @@ class HcrProbeDesigner:
                 "exon_number",
                 "sequence_target",
                 "sequence_linker",
-                "sequence_initiator_probe_L",
-                "sequence_initiator_probe_R",
+                "sequence_initiator_L",
+                "sequence_initiator_R",
                 "sequence_hybridization_probe_L",
                 "sequence_hybridization_probe_R",
-                "TmNN_sequence_target_L",
-                "TmNN_sequence_target_R",
+                "TmNN_oligo_L",
+                "TmNN_oligo_R",
                 "isoform_consensus",
             ]
 
@@ -847,8 +847,12 @@ class InitiatorDesigner:
                 f"Found columns that don't match: {non_bit_columns}"
             )
 
-        # Check for at least one data row (excluding empty rows)
-        codebook_clean = codebook.dropna(how="all")
+        # remove rows with any NaN
+        codebook_clean = codebook[codebook.notna().all(axis=1)]
+        # keep only rows with 0/1 values
+        codebook_clean = codebook_clean[codebook_clean.isin([0, 1]).all(axis=1)]
+        # keep only valid one-hot rows (exactly one "1")
+        codebook_clean = codebook_clean[(codebook_clean == 1).sum(axis=1) == 1]
         if len(codebook_clean) == 0:
             raise FileFormatError(f"Codebook file '{file_codebook}' must contain at least one row with data.")
 
@@ -893,7 +897,7 @@ def main() -> None:
     ##### read the genes file #####
     if config["file_regions"] is None:
         warnings.warn(
-            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
         gene_ids = None
     else:
