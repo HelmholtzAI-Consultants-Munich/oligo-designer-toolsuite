@@ -1086,42 +1086,23 @@ class TargetProbeDesigner:
 # Oligo-seq Designer Pipeline
 ############################################
 
-
-def main() -> None:
+def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
     """
-    Main entry point for running the Oligo-seq probe design pipeline.
+    Execute the Oligo-seq probe design pipeline.
 
-    This function orchestrates the complete Oligo-seq probe design workflow:
-    1. Parses command-line arguments using the base parser
-    2. Reads the configuration YAML file containing all pipeline parameters
-    3. Reads the gene IDs file (if provided) or uses all genes from FASTA files
-    4. Preprocesses melting temperature parameters for target probes
-    5. Preprocesses alignment method parameters for hybridization probability and cross-hybridization
+    1. Reads the gene IDs file (if provided) or uses all genes from FASTA files
+    2. Preprocesses melting temperature parameters for target probes
+    3. Preprocesses alignment method parameters for hybridization probability and cross-hybridization
        filtering (BLASTN or Bowtie)
-    6. Initializes the OligoSeqProbeDesigner pipeline
-    7. Designs target probes for specified genes
-    8. Generates output files (YAML, TSV, Excel, order file)
+    4. Initializes the OligoSeqProbeDesigner pipeline
+    5. Designs target probes for specified genes
+    6. Generates output files (YAML, TSV, Excel, order file)
 
-    The function is typically called from the command line:
-    ``oligo_seq_probe_designer --config <path_to_config.yaml>``
+    This function can be called directly if there already exists a valid pydantic model
 
-    Command-line arguments are parsed using `base_parser()`, which expects:
-    - `config`: Path to the YAML configuration file containing all pipeline parameters
+    :param config: Validated pipeline configuration.
+    :type config: ScrinshotProbeDesignerConfig
     """
-    logging.info("--------------START PIPELINE--------------")
-
-    args = base_parser()
-
-    ##### read the config file #####
-    with open(args["config"], "r") as handle:
-        config_raw = yaml.safe_load(handle)
-
-    try:
-        config = OligoSeqProbeDesignerConfig.model_validate(config_raw)
-    except ValidationError as e:
-        logging.error("Invalid configuration file:\n%s", e)
-        raise
-
     # write used config
     write_config_to_yaml(config=config, dir_output=config.general.dir_output)
 
@@ -1166,6 +1147,39 @@ def main() -> None:
     )
 
     pipeline.generate_output(oligo_database=oligo_database)
+
+
+def main() -> None:
+    """
+    Main entry point for running the Oligo-seq probe design pipeline.
+
+    This function orchestrates the complete Oligo-seq probe design workflow:
+    1. Parses command-line arguments using the base parser
+    2. Reads the configuration YAML file containing all pipeline parameters
+    3. calls the oligo_seq_probe_designer function, where the pipeline is executed
+    
+    The function is typically called from the command line:
+    ``oligo_seq_probe_designer --config <path_to_config.yaml>``
+
+
+    Command-line arguments are parsed using `base_parser()`, which expects:
+    - `config`: Path to the YAML configuration file containing all pipeline parameters
+    """
+    logging.info("--------------START PIPELINE--------------")
+
+    args = base_parser()
+
+    ##### read the config file #####
+    with open(args["config"], "r") as handle:
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config = OligoSeqProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        logging.error("Invalid configuration file:\n%s", e)
+        raise
+
+    oligo_seq_probe_designer(config)
 
     logging.info("--------------END PIPELINE--------------")
 
