@@ -1719,6 +1719,7 @@ class DetectionOligoDesigner:
 # SCRINSHOT Probe Designer Pipeline
 ############################################
 
+
 def scrinshot_probe_designer(config: ScrinshotProbeDesignerConfig) -> None:
     """
     Execute the SCRINSHOT probe design pipeline.
@@ -1778,11 +1779,8 @@ def scrinshot_probe_designer(config: ScrinshotProbeDesignerConfig) -> None:
 
     pipeline.generate_output(probe_database=probe_database)
 
-   
-
 
 def main() -> None:
-    
     """
     Main entry point for running the SCRINSHOT probe design pipeline.
 
@@ -1790,7 +1788,7 @@ def main() -> None:
     1. Parses command-line arguments using the base parser
     2. Reads the configuration YAML file containing all pipeline parameters
     3. calls the scrinshot_probe_designer function, where the pipeline is executed
-    
+
 
     The function is typically called from the command line:
     ``scrinshot_probe_designer --config <path_to_config.yaml>``
@@ -1815,7 +1813,6 @@ def main() -> None:
     scrinshot_probe_designer(config)
 
     logging.info("--------------END PIPELINE--------------")
-    
 
 
 if __name__ == "__main__":

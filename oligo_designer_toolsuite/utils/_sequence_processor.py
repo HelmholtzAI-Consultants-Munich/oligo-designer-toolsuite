@@ -2,8 +2,8 @@
 # imports
 ############################################
 
-import subprocess
 import os
+import subprocess
 from collections import Counter
 
 from Bio import SeqIO

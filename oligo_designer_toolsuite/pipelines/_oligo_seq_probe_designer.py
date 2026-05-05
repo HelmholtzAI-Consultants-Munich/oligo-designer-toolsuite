@@ -1086,6 +1086,7 @@ class TargetProbeDesigner:
 # Oligo-seq Designer Pipeline
 ############################################
 
+
 def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
     """
     Execute the Oligo-seq probe design pipeline.
@@ -1155,7 +1156,7 @@ def main() -> None:
     1. Parses command-line arguments using the base parser
     2. Reads the configuration YAML file containing all pipeline parameters
     3. calls the oligo_seq_probe_designer function, where the pipeline is executed
-    
+
     The function is typically called from the command line:
     ``oligo_seq_probe_designer --config <path_to_config.yaml>``
 

@@ -2313,8 +2313,8 @@ class PrimerDesigner:
 # Merfish Probe Designer Pipeline
 ############################################
 
-def merfish_probe_designer(config:MerfishProbeDesignerConfig) -> None:
 
+def merfish_probe_designer(config: MerfishProbeDesignerConfig) -> None:
     """
     Execute the MERFISH probe designer pipeline.
 
@@ -2402,7 +2402,7 @@ def main() -> None:
     1. Parses command-line arguments using the base parser
     2. Reads the configuration YAML file containing all pipeline parameters
     3. calls the merfish_probe_designer function, where the pipeline is executed
-    
+
 
     The function is typically called from the command line:
     ``merfish_probe_designer --config <path_to_config.yaml>``

@@ -1732,6 +1732,7 @@ class PrimerDesigner:
 # CycleHCR Probe Designer Pipeline
 ############################################
 
+
 def cycle_hcr_probe_designer(config: CycleHCRProbeDesignerConfig) -> None:
     """
     Main entry point for running the CylceHCR probe design pipeline.
@@ -1745,7 +1746,7 @@ def cycle_hcr_probe_designer(config: CycleHCRProbeDesignerConfig) -> None:
     7. Loads/validates forward and reverse primers for PCR amplification
     8. Assembles final DNA template probes with primers
     9. Generates output files (codebook, readout probe table, probe sequences, etc.)
-    
+
     :param config: Validated pipeline configuration.
     :type config: ScrinshotProbeDesignerConfig
     """
@@ -1810,6 +1811,7 @@ def cycle_hcr_probe_designer(config: CycleHCRProbeDesignerConfig) -> None:
         readout_probe_table=readout_probe_table,
     )
 
+
 def main() -> None:
     """
     Main entry point for running the CycleHCR probe design pipeline.
@@ -1818,7 +1820,7 @@ def main() -> None:
     1. Parses command-line arguments using the base parser
     2. Reads the configuration YAML file containing all pipeline parameters
     3. calls the cycle_hcr_probe_designer function, where the pipeline is executed
-    
+
 
     The function is typically called from the command line:
     ``cycle_hcr_probe_designer --config <path_to_config.yaml>``
