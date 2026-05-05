@@ -11,6 +11,8 @@ from typing import Callable, Iterable
 import numpy as np
 import pandas as pd
 
+from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
+
 pd.options.mode.chained_assignment = None
 
 from pathlib import Path
@@ -101,7 +103,7 @@ class CustomGenomicRegionGenerator:
         self.annotation_release = annotation_release
         self.genome_assembly = genome_assembly
         self.annotation_file = annotation_file
-        self.parsed_annotation_file = os.path.join(
+        self.parsed_annotation_file = safe_append_filename(
             self.dir_output,
             os.path.basename(f"{'.'.join(annotation_file.split('.')[:-1])}.pckl"),
         )
@@ -177,7 +179,7 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__gene.fna")
+        file_fasta = safe_append_filename(self.dir_output, f"{self.FILE_INFO}__annotation_type__gene.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -374,7 +376,9 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__intergenic.fna")
+        file_fasta = safe_append_filename(
+            self.dir_output, f"{self.FILE_INFO}__annotation_type__intergenic.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         os.remove(file_chromosome_length)
@@ -445,7 +449,7 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__exon.fna")
+        file_fasta = safe_append_filename(self.dir_output, f"{self.FILE_INFO}__annotation_type__exon.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -585,7 +589,7 @@ class CustomGenomicRegionGenerator:
         annotation = annotation[self.BED_HEADER]
 
         # get sequence from bed file
-        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__intron.fna")
+        file_fasta = safe_append_filename(self.dir_output, f"{self.FILE_INFO}__annotation_type__intron.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -654,7 +658,7 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__cds.fna")
+        file_fasta = safe_append_filename(self.dir_output, f"{self.FILE_INFO}__annotation_type__cds.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -800,7 +804,9 @@ class CustomGenomicRegionGenerator:
             ["utr"] + (["five_prime"] if five_prime else []) + (["three_prime"] if three_prime else [])
         )
 
-        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__{utr_suffix}.fna")
+        file_fasta = safe_append_filename(
+            self.dir_output, f"{self.FILE_INFO}__annotation_type__{utr_suffix}.fna"
+        )
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -1018,7 +1024,7 @@ class CustomGenomicRegionGenerator:
         )
         annotation = annotation[self.BED12_HEADER]
 
-        file_fasta = os.path.join(
+        file_fasta = safe_append_filename(
             self.dir_output,
             f"{self.FILE_INFO}__annotation_type__exon_exon_junction__block_size__{block_size}.fna",
         )
@@ -1175,7 +1181,7 @@ class CustomGenomicRegionGenerator:
 
         # save the annotation as bed file
         id = random.randint(0, 10000000)
-        file_bed = os.path.join(self.dir_output, f"annotation_{id}.bed")
+        file_bed = safe_append_filename(self.dir_output, f"annotation_{id}.bed")
         annotation.to_csv(file_bed, sep="\t", header=False, index=False)
 
         # create the fasta file

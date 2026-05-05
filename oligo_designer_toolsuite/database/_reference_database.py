@@ -10,6 +10,7 @@ from typing import Any, get_args
 from oligo_designer_toolsuite._constants import _TYPES_REF
 from oligo_designer_toolsuite._exceptions import DatabaseError
 from oligo_designer_toolsuite.utils import FastaParser, VCFParser, cast_to_list, remove_index_files
+from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 ############################################
 # Reference Database Class
@@ -107,13 +108,13 @@ class ReferenceDatabase:
         if self.database_type == "fasta":
             for file in files_in:
                 self.fasta_parser.check_fasta_format(file)
-            self.database_file = os.path.join(self.dir_output, f"tmp_{self.database_name}.fna")
+            self.database_file = safe_append_filename(self.dir_output, f"tmp_{self.database_name}.fna")
             self.fasta_parser.merge_fasta_files(
                 files_in=files_in, file_out=self.database_file, overwrite=True
             )
         elif self.database_type == "vcf":
             self.database_type = file_type
-            self.database_file = os.path.join(self.dir_output, f"tmp_{self.database_name}.vcf.gz")
+            self.database_file = safe_append_filename(self.dir_output, f"tmp_{self.database_name}.vcf.gz")
             self.vcf_parser.merge_vcf_files(files_in=files_in, file_out=self.database_file)
         else:
             raise DatabaseError(f"Database type {self.database_type} not supported.")
@@ -137,7 +138,7 @@ class ReferenceDatabase:
 
         if self.database_file:
             file_ending = "fna" if self.database_type == "fasta" else "vcf.gz"
-            file_database = os.path.join(dir_output, f"{filename}.{file_ending}")
+            file_database = safe_append_filename(dir_output, f"{filename}.{file_ending}")
             shutil.copy2(self.database_file, file_database)
             if self.database_type == "fasta":
                 self.fasta_parser.index_fasta_file(file_fasta=file_database)
@@ -242,7 +243,7 @@ class ReferenceDatabase:
             file_fasta_in=file, region_ids=regions_to_keep
         )
 
-        file_database_filtered = os.path.join(self.dir_output, f"{self.database_name}_filtered.fna")
+        file_database_filtered = safe_append_filename(self.dir_output, f"{self.database_name}_filtered.fna")
         self.fasta_parser.write_fasta_sequences(
             fasta_sequences=fasta_sequences_filtered, file_out=file_database_filtered
         )
@@ -288,7 +289,7 @@ class ReferenceDatabase:
                 ):
                     fasta_sequences_filtered.append(entry)
 
-        file_database_filtered = os.path.join(self.dir_output, f"{self.database_name}_filtered.fna")
+        file_database_filtered = safe_append_filename(self.dir_output, f"{self.database_name}_filtered.fna")
         self.fasta_parser.write_fasta_sequences(
             fasta_sequences=fasta_sequences_filtered, file_out=file_database_filtered
         )

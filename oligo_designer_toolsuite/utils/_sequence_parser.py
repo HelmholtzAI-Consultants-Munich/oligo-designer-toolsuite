@@ -2,11 +2,11 @@
 # imports
 ############################################
 
-import subprocess
 import gzip
 import os
 import pickle
 import re
+import subprocess
 from typing import Any
 
 import pandas as pd

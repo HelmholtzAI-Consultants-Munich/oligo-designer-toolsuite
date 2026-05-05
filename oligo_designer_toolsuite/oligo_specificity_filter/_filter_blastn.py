@@ -20,6 +20,7 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
     SeedregionSiteProperty,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
+from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 from ..utils._sequence_processor import get_sequence_from_annotation
 
@@ -157,7 +158,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             save_description=False,
             region_ids=region_id,
         )
-        file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_id}.txt")
+        file_blast_results = safe_append_filename(self.dir_output, f"blast_results_{region_id}.txt")
 
         args = [
             "blastn",
@@ -166,7 +167,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             "-out",
             file_blast_results,
             "-db",
-            os.path.join(self.dir_output, file_reference),
+            safe_append_filename(self.dir_output, file_reference),
         ]
 
         for parameter, value in self.search_parameters.items():
@@ -297,7 +298,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
         # additionally we store how muchpadding we have to do to have two seqeunces of the same length
         bed = self._remove_overflows(bed, file_reference)
-        file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
+        file_bed = safe_append_filename(self.dir_output, f"references_{region_id}.bed")
         bed.to_csv(
             file_bed,
             sep="\t",
@@ -306,7 +307,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             columns=["chr", "start", "end", "name", "score", "strand"],
         )
         # generate the fasta file
-        references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
+        references_fasta_file = safe_append_filename(self.dir_output, f"references_{region_id}.fasta")
         get_sequence_from_annotation(
             file_bed, file_reference, references_fasta_file, strand=True, nameOnly=True
         )

@@ -11,6 +11,7 @@ from oligo_designer_toolsuite._exceptions import ConfigurationError, DatabaseErr
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import ReferenceSpecificityFilter
 from oligo_designer_toolsuite.utils import get_intersection
+from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 ############################################
 # Oligo Variants Filter Class
@@ -143,7 +144,7 @@ class VariantsFilter(ReferenceSpecificityFilter):
         file_oligo_database = oligo_database.write_database_to_bed(
             filename=f"{region_id}.bed", dir_output=self.dir_output, region_ids=region_id
         )
-        file_bed_results = os.path.join(self.dir_output, f"bed_results_{region_id}.txt")
+        file_bed_results = safe_append_filename(self.dir_output, f"bed_results_{region_id}.txt")
 
         get_intersection(file_A=file_oligo_database, file_B=file_reference, file_bed_out=file_bed_results)
 
