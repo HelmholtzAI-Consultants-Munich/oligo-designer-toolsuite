@@ -92,11 +92,11 @@ target_probe_cross_hybridization_blastn_search_parameters:
 target_probe_cross_hybridization_blastn_hit_parameters:
   coverage: 90 # can be turned into min_alignment_length
 # Parameters for the Oligo set selection
-max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
-n_attempts: 100000 # number of attempts to find the optimal set of oligos
-heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
-heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
-
+n_attempts_graph: 50 # number of randomized graph attempts (diversification)
+n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
+diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
+jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
+jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found
 
 ### Initiator Parameters
 ### -----------------------------------------------
