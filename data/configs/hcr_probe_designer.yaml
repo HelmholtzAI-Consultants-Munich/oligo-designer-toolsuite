@@ -42,7 +42,7 @@ linker_sequence: AA # linker sequence between readout probe and target sequence
 
 ### Readout Probe Parameters
 ### -----------------------------------------------
-file_initiator_table: data/functional_oligos/hcr_initiators.tsv # csv/tsv file containing the initiator table with the columns "bit", "channel", "initiator_id", "initiator__sequence", "L/R"
+file_initiator_table: data/functional_oligos/hcr_initiators.tsv # csv/tsv file containing the initiator table with the columns "bit", "initiator_L_sequence", and "initiator_R_sequence"
 file_codebook: data/functional_oligos/hcr_codebook.tsv # optional, file containing the codebook, where columns = "bits" and rows = "region_id" and the entries represent the bit encoding in 0/1 for the bits used for each region
 
 
