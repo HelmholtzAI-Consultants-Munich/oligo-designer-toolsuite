@@ -13,7 +13,7 @@ from joblib import Parallel, delayed
 from oligo_designer_toolsuite.utils import FastaParser
 
 from .._constants import SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_FASTA_HEADER_FIELDS_LIST
-from ..utils._checkers_and_helpers import check_if_list, generate_unique_filename
+from ..utils._checkers_and_helpers import cast_to_list, generate_unique_filename
 
 ############################################
 # Oligo Database Class
@@ -262,12 +262,12 @@ class OligoSequenceGenerator:
 
             return file_fasta_region
 
-        files_fasta_in = check_if_list(files_fasta_in)
+        files_fasta_in = cast_to_list(files_fasta_in)
         for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
 
         if region_ids:
-            region_ids = check_if_list(region_ids)
+            region_ids = cast_to_list(region_ids)
         else:
             region_ids = [
                 region_id
@@ -288,7 +288,7 @@ class OligoSequenceGenerator:
         for file_fasta in files_fasta_in:
             self.fasta_parser.check_fasta_format(file_fasta)
             fasta_sequences = self.fasta_parser.read_fasta_sequences(file_fasta, region_ids)
-            files_fasta_oligos = Parallel(n_jobs=n_jobs)(
+            files_fasta_oligos = Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(get_sliding_window_sequence)(entry, length_interval_sequences, split_region, stride)
                 for entry in fasta_sequences
             )

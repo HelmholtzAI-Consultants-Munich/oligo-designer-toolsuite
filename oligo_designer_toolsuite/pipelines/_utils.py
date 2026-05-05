@@ -10,7 +10,10 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
 from typing import Any, Callable, TypeVar, cast
 
+from Bio.SeqUtils import MeltingTemp as mt
+
 from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.utils import count_kmer_abundance
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -264,3 +267,64 @@ def format_sequence(database: OligoDatabase, property: str, region_id: str, olig
     if not isinstance(value, str):
         raise ValueError(f"Expected string for {property}, got {type(value)}")
     return value
+
+
+def preprocess_tm_parameters(tm_parameters: dict[str, Any]) -> dict[str, Any]:
+    """
+    Preprocess melting temperature parameters by converting string table names to actual table objects.
+
+    This function modifies the tm_parameters dictionary in place, converting the string names
+    for nn_table, tmm_table, imm_table, and de_table to their corresponding table objects
+    from Bio.SeqUtils.MeltingTemp.
+
+    :param tm_parameters: Dictionary containing melting temperature parameters with string table names.
+    :type tm_parameters: dict[str, Any]
+    :return: The modified dictionary with table objects instead of string names.
+    :rtype: dict[str, Any]
+    """
+    tm_parameters["nn_table"] = getattr(mt, tm_parameters["nn_table"])
+    tm_parameters["tmm_table"] = getattr(mt, tm_parameters["tmm_table"])
+    tm_parameters["imm_table"] = getattr(mt, tm_parameters["imm_table"])
+    tm_parameters["de_table"] = getattr(mt, tm_parameters["de_table"])
+    return tm_parameters
+
+
+def get_highly_abundant_kmer_sequences(
+    files_fasta: str | list[str],
+    kmer_abundance_threshold: dict[int, float],
+) -> list[str]:
+    """
+    Get highly abundant k-mer sequences by identifying k-mers that exceed specified thresholds.
+
+    This function counts k-mer abundances in FASTA files and identifies k-mers that exceed
+    the specified abundance thresholds. These high-abundance k-mers are added to the list
+    of highly abundant k-mer sequences, which can be used to filter out sequences during probe design.
+
+    :param files_fasta: Path(s) to FASTA file(s) to analyze. Can be a single file path (str)
+                        or a list of file paths (list[str]).
+    :type files_fasta: str | list[str]
+    :param kmer_abundance_threshold: Dictionary mapping k-mer length (int) to maximum allowed
+                                     abundance threshold (float). K-mers exceeding this threshold
+                                     will be added to highly abundant k-mer sequences.
+    :type kmer_abundance_threshold: dict[int, float]
+    :return: List of highly abundant k-mer sequences containing identified high-abundance k-mers.
+    :rtype: list[str]
+    """
+    highly_abundant_kmer_sequences: list[str] = []
+
+    # Count k-mer abundances
+    kmer_abundance = count_kmer_abundance(
+        files_fasta=files_fasta,
+        k=list(kmer_abundance_threshold.keys()),
+    )
+
+    # Identify high-abundance k-mers and add them to highly abundant k-mer sequences
+    for k, v in kmer_abundance.items():
+        for kmer, abundance in v.items():
+            if abundance > kmer_abundance_threshold[k]:
+                logging.info(
+                    f"K-mer {kmer} has abundance {abundance} which is greater than the threshold {kmer_abundance_threshold[k]}"
+                )
+                highly_abundant_kmer_sequences.append(kmer)
+
+    return highly_abundant_kmer_sequences

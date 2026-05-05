@@ -2,11 +2,11 @@
 # imports
 ############################################
 
+import subprocess
 import gzip
 import os
 import pickle
 import re
-from subprocess import Popen
 from typing import Any
 
 import pandas as pd
@@ -19,7 +19,7 @@ from oligo_designer_toolsuite._constants import (
 )
 from oligo_designer_toolsuite._exceptions import FileFormatError
 
-from ._checkers_and_helpers import check_if_list
+from ._checkers_and_helpers import cast_to_list
 
 ############################################
 # GFF Parser Class
@@ -117,16 +117,16 @@ class GffParser:
         else:
             return dataframe
 
-    def load_annotation_from_pickle(self, file_pickel: str) -> Any:
+    def load_annotation_from_pickle(self, file_pickel: str) -> pd.DataFrame:
         """
         Loads a GFF annotation DataFrame from a pickle file.
 
         :param file_pickel: The path to the pickle file containing the GFF annotation DataFrame.
         :type file_pickel: str
         :return: The loaded DataFrame containing the GFF annotation.
-        :rtype: Any
+        :rtype: pd.DataFrame
         """
-        dataframe_gff = pickle.load(open(file_pickel, "rb"))
+        dataframe_gff: pd.DataFrame = pickle.load(open(file_pickel, "rb"))
 
         return dataframe_gff
 
@@ -498,13 +498,47 @@ class FastaParser:
         :param overwrite: Whether to overwrite the output file if it exists, defaults to False.
         :type overwrite: bool
         """
-        files_in = check_if_list(files_in)
+        files_in = cast_to_list(files_in)
         file_out_mode = "w" if overwrite else "a"
         with open(file_out, file_out_mode) as handle_fasta:
             for file_in in files_in:
                 seq_record = SeqIO.index(file_in, "fasta")
                 for idx in seq_record:
                     SeqIO.write(seq_record[idx], handle_fasta, "fasta")
+
+    def index_fasta_file(self, file_fasta: str) -> None:
+        """
+        Creates or refreshes the FASTA index file (.fai) for the given FASTA file.
+
+        This method ensures that a valid index exists for the FASTA file. Any existing index
+        will be removed before creating a new one. This is useful after overwriting a FASTA
+        file to ensure the index matches the new content.
+
+        :param file_fasta: Path to the FASTA file to index.
+        :type file_fasta: str
+        """
+        if not os.path.exists(file_fasta):
+            raise FileFormatError(f"FASTA file '{file_fasta}' does not exist.")
+
+        index_file = f"{file_fasta}.fai"
+
+        # Remove existing index
+        if os.path.exists(index_file):
+            os.remove(index_file)
+
+        # Use samtools faidx to create the index (same tool that bedtools getfasta uses)
+        args = ["samtools", "faidx", file_fasta]
+        process = subprocess.run(args)
+
+        if process.returncode != 0:
+            raise FileFormatError(
+                f"Failed to create FASTA index file '{index_file}' using samtools faidx. "
+                f"Please ensure samtools is installed and available in your PATH."
+            )
+
+        # Verify the index file was created
+        if not os.path.exists(index_file):
+            raise FileFormatError(f"Failed to create FASTA index file '{index_file}'.")
 
 
 ############################################
@@ -589,26 +623,37 @@ class VCFParser:
         :param file_out: Path to the output merged VCF file.
         :type file_out: str
         """
+        # Track compressed files that need to be cleaned up
+        compressed_files_to_cleanup: list[str] = []
 
-        cmd = "bcftools merge --force-single --output-type v"
-        cmd += " -o " + file_out
+        args = ["bcftools", "merge", "--force-single", "--output-type", "v", "-o", file_out]
         for file_vcf in files_in:
             _, ext = os.path.splitext(file_vcf)
             if ext == ".vcf":
                 file_vcf_compressed = f"{file_vcf}.gz"
-                cmd_compress = "bcftools view -O z "
-                cmd_compress += "-o " + file_vcf_compressed
-                cmd_compress += " " + file_vcf
-                process = Popen(cmd_compress, shell=True).wait()
+                compressed_files_to_cleanup.append(file_vcf_compressed)
+
+                args_compress = ["bcftools", "view", "-O", "z", "-o", file_vcf_compressed, file_vcf]
+                subprocess.run(args_compress, check=True)
 
                 file_vcf = file_vcf_compressed
 
-            cmd_sort = "bcftools sort " + file_vcf + " -Oz -o " + file_vcf
-            process = Popen(cmd_sort, shell=True).wait()
+            args_sort = ["bcftools", "sort", file_vcf, "-Oz", "-o", file_vcf]
+            subprocess.run(args_sort, check=True)
 
-            cmd_index = "bcftools index " + file_vcf
-            process = Popen(cmd_index, shell=True).wait()
+            args_index = ["bcftools", "index", "-f", file_vcf]
+            subprocess.run(args_index, check=True)
 
-            cmd += " " + file_vcf
+            args.append(file_vcf)
 
-        process = Popen(cmd, shell=True).wait()
+        subprocess.run(args, check=True)
+
+        # Clean up compressed files and their index files
+        for file_vcf_compressed in compressed_files_to_cleanup:
+            if os.path.exists(file_vcf_compressed):
+                os.remove(file_vcf_compressed)
+            # Remove index files for compressed files
+            for index_ext in [".csi", ".tbi"]:
+                index_file = f"{file_vcf_compressed}{index_ext}"
+                if os.path.exists(index_file):
+                    os.remove(index_file)

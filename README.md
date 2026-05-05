@@ -82,7 +82,7 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
-The additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+The additional tools need to be installed independently:
 
 ```
 conda install "blast>=2.15.0"
@@ -90,6 +90,7 @@ conda install "bedtools>=2.30"
 conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
 conda install "bcftools>=1.22"
+conda install "samtools>=1.22"
 ```
 
 All other required packages are automatically installed if installation is done via ```pip``` (see below).
@@ -119,13 +120,14 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
-The additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently. **BedTools**, **Bowtie** and **Bowtie2** can be installed via conda:
+The additional tools need to be installed independently:
 
 ```
 conda install "bedtools>=2.30"
 conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
 conda install "bcftools>=1.22"
+conda install "samtools>=1.22"
 ```
 
 To install the M Chip (arm64) version of Blast you need Homebrew, which can be installed as described [here](https://brew.sh/). Blast can then be installed via Homebrew:
@@ -157,7 +159,7 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
-The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+The following additional tools need to be installed independently:
 
 ```
 conda install "blast>=2.15.0"
@@ -165,6 +167,7 @@ conda install "bedtools>=2.30"
 conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
 conda install "bcftools>=1.22"
+conda install "samtools>=1.22"
 ```
 
 Since ```torch > 2.2.2``` installation is not provided anymore for Max Intel Chips (osx64 processor), we need to make sure to have ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
@@ -193,7 +196,7 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
-The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+The following additional tools need to be installed independently:
 
 ```
 conda install "blast>=2.15.0"
@@ -201,6 +204,7 @@ conda install "bedtools>=2.30"
 conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
 conda install "bcftools>=1.22"
+conda install "samtools>=1.22"
 ```
 
 Since ```torch > 2.2.2``` installation is not provided anymore for Mac Intel Chips (osx64 processor), we need to make sure to have ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:

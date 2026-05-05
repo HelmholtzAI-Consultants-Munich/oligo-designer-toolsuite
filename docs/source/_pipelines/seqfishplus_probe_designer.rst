@@ -129,13 +129,10 @@ For a complete explanation of all function parameters, refer to the API document
     )
 
     ##### Generate Final Output #####
-    # The pipeline then generates its final outputs for the 'top_n_sets'
-    # best scoring probe sets to keep.
     pipeline.generate_output(
-        encoding_probe_database=encoding_probe_database,
-        reverse_primer_sequence=reverse_primer_sequence,
-        forward_primer_sequence=forward_primer_sequence,
-        top_n_sets=3,
+        probe_database=encoding_probe_database,
+        codebook=codebook,
+        readout_probe_table=readout_probe_table,
     )
 
 Pipeline Description

@@ -9,25 +9,32 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from Bio.SeqUtils import MeltingTemp as mt
 from effidict import EffiDict, LRUReplacement, PickleBackend
 
 from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.pipelines._utils import (
+    get_highly_abundant_kmer_sequences,
+    preprocess_tm_parameters,
+)
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import (
     FastaParser,
     GffParser,
     VCFParser,
+    cast_to_list,
+    cast_to_list_of_lists,
     check_if_dna_sequence,
     check_if_key_exists,
-    check_if_list,
-    check_if_list_of_lists,
     check_if_region_in_database,
     check_tsv_format,
     collapse_properties_for_duplicated_sequences,
+    count_kmer_abundance,
     flatten_property_list,
     format_oligo_properties,
     generate_unique_filename,
     merge_databases,
+    remove_index_files,
 )
 
 ############################################
@@ -47,6 +54,41 @@ FILE_NCBI_EXONS = "tests/data/genomic_regions/sequences_ncbi_exons.fna"
 ############################################
 # Tests
 ############################################
+class TestPreprocessTmParameters(unittest.TestCase):
+    def test_converts_tables_from_strings(self) -> None:
+        tm_parameters = {
+            "nn_table": "DNA_NN3",
+            "tmm_table": "DNA_TMM1",
+            "imm_table": "DNA_IMM1",
+            "de_table": "DNA_DE1",
+            "Na": 1000,
+        }
+
+        processed = preprocess_tm_parameters(tm_parameters.copy())
+
+        assert processed["nn_table"] == mt.DNA_NN3, "error: nn_table not converted to MeltingTemp table"
+        assert processed["tmm_table"] == mt.DNA_TMM1, "error: tmm_table not converted to MeltingTemp table"
+        assert processed["imm_table"] == mt.DNA_IMM1, "error: imm_table not converted to MeltingTemp table"
+        assert processed["de_table"] == mt.DNA_DE1, "error: de_table not converted to MeltingTemp table"
+        assert processed["Na"] == 1000, "error: non-table parameters should remain unchanged"
+
+    def test_modifies_dictionary_in_place(self) -> None:
+        tm_parameters = {
+            "nn_table": "DNA_NN3",
+            "tmm_table": "DNA_TMM1",
+            "imm_table": "DNA_IMM1",
+            "de_table": "DNA_DE1",
+        }
+
+        processed = preprocess_tm_parameters(tm_parameters)
+
+        assert processed is tm_parameters, "error: tm_parameters should be modified in place"
+        assert processed["nn_table"] == mt.DNA_NN3, "error: nn_table not converted in place"
+        assert processed["tmm_table"] == mt.DNA_TMM1, "error: tmm_table not converted in place"
+        assert processed["imm_table"] == mt.DNA_IMM1, "error: imm_table not converted in place"
+        assert processed["de_table"] == mt.DNA_DE1, "error: de_table not converted in place"
+
+
 class TestCheckers(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_path = os.path.join(os.getcwd(), "tmp_utils")
@@ -102,35 +144,37 @@ class TestCheckers(unittest.TestCase):
             nested_database, "h"
         ), "Failed: Key 'h' should exist deep within nested_database"
 
-    def test_check_if_list_str(self) -> None:
-        """Test if check_if_list works correctly for a string."""
+    def test_cast_to_list_str(self) -> None:
+        """Test if cast_to_list works correctly for a string."""
         value = "test"
-        result = check_if_list(value)
-        assert result == [value], f"error: check_if_list failed. Expected: [{value}], got: {result}"
+        result = cast_to_list(value)
+        assert result == [value], f"error: cast_to_list failed. Expected: [{value}], got: {result}"
 
-    def test_check_if_list_list(self) -> None:
-        """Test if check_if_list works correctly for a list."""
+    def test_cast_to_list_list(self) -> None:
+        """Test if cast_to_list works correctly for a list."""
         value = ["test", ["test2"]]
-        result = check_if_list(value)
-        assert result == value, f"error: check_if_list failed. Expected: {value}, got: {result}"
+        result = cast_to_list(value)
+        assert result == value, f"error: cast_to_list failed. Expected: {value}, got: {result}"
 
-    def test_check_if_list_of_lists_str(self) -> None:
-        """Test if check_if_list works correctly for a string."""
+    def test_cast_to_list_of_lists_str(self) -> None:
+        """Test if cast_to_list_of_lists works correctly for a string."""
         value = "test"
-        result = check_if_list_of_lists(value)
-        assert result == [[value]], f"error: check_if_list failed. Expected: [[{value}]], got: {result}"
+        result = cast_to_list_of_lists(value)
+        assert result == [
+            [value]
+        ], f"error: cast_to_list_of_lists failed. Expected: [[{value}]], got: {result}"
 
-    def test_check_if_list_of_lists_list(self) -> None:
-        """Test if check_if_list works correctly for a list."""
+    def test_cast_to_list_of_lists_list(self) -> None:
+        """Test if cast_to_list_of_lists works correctly for a list."""
         value = ["test", ["test2"]]
-        result = check_if_list_of_lists(value)
-        assert result == [value], f"error: check_if_list failed. Expected: [{value}], got: {result}"
+        result = cast_to_list_of_lists(value)
+        assert result == [value], f"error: cast_to_list_of_lists failed. Expected: [{value}], got: {result}"
 
-    def test_check_if_list_of_lists_list_of_lists(self) -> None:
-        """Test if check_if_list works correctly for a list."""
+    def test_cast_to_list_of_lists_list_of_lists(self) -> None:
+        """Test if cast_to_list_of_lists works correctly for a list."""
         value = [["test", ["test2"]]]
-        result = check_if_list_of_lists(value)
-        assert result == value, f"error: check_if_list failed. Expected: {value}, got: {result}"
+        result = cast_to_list_of_lists(value)
+        assert result == value, f"error: cast_to_list_of_lists failed. Expected: {value}, got: {result}"
 
     def test_check_tsv_format(self) -> None:
         """Test if the parser extracts fasta header correctly."""
@@ -227,6 +271,20 @@ class TestDatabaseProcessor(unittest.TestCase):
         assert dict_merged["start"] == [[1000], [1020]], "error: different dicts should have been merged"
         assert dict_merged["end"] == [[2000], [2020]], "error: different dicts should have been merged"
         assert dict_merged["strand"] == [["+"], ["-"]], "error: different dicts should have been merged"
+
+    def test_collapse_properties_for_duplicated_sequences_warns_on_different_sequence_values(self) -> None:
+        """Test that a warning is issued when sequence type values differ between dictionaries."""
+        dict1 = {"oligo": "ATCGATCGATCG", "chromosome": [["10"]], "start": [[1000]]}
+        dict2 = {"oligo": "GCTAGCTAGCTA", "chromosome": [["10"]], "start": [[1000]]}
+
+        with self.assertWarns(UserWarning) as warning_context:
+            collapse_properties_for_duplicated_sequences(dict1, dict2, database_sequence_types=["oligo"])
+
+        self.assertIn(
+            "oligo",
+            str(warning_context.warning),
+            "error: warning should mention the key with different values",
+        )
 
     def test_format_oligo_properties(self) -> None:
         oligo_properties = {"chromosome": "10", "start": [1000], "end": [[2000]], "strand": [["+"], ["-"]]}
@@ -470,6 +528,49 @@ class TestFastaParser(unittest.TestCase):
         except Exception as e:
             assert False, f"error: raised an exception: {e}, with merged files."
 
+    def test_index_fasta_file_creates_index(self) -> None:
+        """Test that .fai file is created when indexing a FASTA file."""
+        file_fasta = os.path.join(self.tmp_path, "test_index.fna")
+        index_file = f"{file_fasta}.fai"
+
+        # Copy a test FASTA file
+        shutil.copy2(FILE_FASTA, file_fasta)
+
+        # Ensure index doesn't exist initially
+        if os.path.exists(index_file):
+            os.remove(index_file)
+
+        # Index the FASTA file
+        self.parser.index_fasta_file(file_fasta=file_fasta)
+
+        # Verify that the index file was created
+        assert os.path.exists(index_file), f"error: index file {index_file} should have been created"
+
+    def test_index_fasta_file_removes_stale_index(self) -> None:
+        """Test that existing stale index is removed before creating new one."""
+        file_fasta = os.path.join(self.tmp_path, "test_index_stale.fna")
+        index_file = f"{file_fasta}.fai"
+
+        # Copy a test FASTA file
+        shutil.copy2(FILE_FASTA, file_fasta)
+
+        # Create a stale index file (with dummy content)
+        with open(index_file, "w") as f:
+            f.write("stale_index_content\n")
+
+        # Verify stale index exists
+        assert os.path.exists(index_file), "error: stale index file should exist before test"
+
+        # Index the FASTA file (should remove stale index and create new one)
+        self.parser.index_fasta_file(file_fasta=file_fasta)
+
+        # Verify that a new index file was created (not the stale one)
+        assert os.path.exists(index_file), f"error: index file {index_file} should exist after indexing"
+        # Verify the index file is not the stale content
+        with open(index_file, "r") as f:
+            content = f.read()
+            assert "stale_index_content" not in content, "error: stale index content should have been removed"
+
 
 class TestVCFParser(unittest.TestCase):
     def setUp(self) -> None:
@@ -519,3 +620,344 @@ class TestVCFParser(unittest.TestCase):
         self.parser.merge_vcf_files(files_in=[FILE_VCF, FILE_VCF], file_out=file_out)
 
         assert self.parser.check_vcf_format(file_out) == True, "error: vcf file stored in wrong format"
+
+
+class TestCountKmerAbundance(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_count_kmer_abundance")
+        Path(self.tmp_path).mkdir(parents=True, exist_ok=True)
+
+        self.fasta_file_1 = os.path.join(self.tmp_path, "sequences1.fna")
+        with open(self.fasta_file_1, "w") as f:
+            f.write(">seq1\nAAGGGAAAAA\n>seq2\nACTGGATAATGCATGC\n>seq3\nTTTTTCCCTT\n")
+
+        self.fasta_file_2 = os.path.join(self.tmp_path, "sequences2.fna")
+        with open(self.fasta_file_2, "w") as f:
+            f.write(">seq1\nAAAAAAAAAA\n>seq2\nATGCATGCATGC\n>seq3\nTTTTTTTTTT\n")
+
+        self.file_empty = os.path.join(self.tmp_path, "empty.fna")
+        with open(self.file_empty, "w") as f:
+            f.write("")
+
+        self.file_lowercase = os.path.join(self.tmp_path, "test_lowercase.fna")
+        with open(self.file_lowercase, "w") as f:
+            f.write(">test_seq\n")
+            f.write("atcgatcg\n")
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_count_kmer_abundance_single_k_value(self) -> None:
+        """Test k-mer counting with single k value (int)."""
+        result = count_kmer_abundance(files_fasta=self.fasta_file_1, k=4)
+
+        assert 4 in result, "error: k=4 should be in result"
+        assert isinstance(result[4], dict), "error: result[4] should be a dictionary"
+        assert len(result) == 1, "error: should only have one k value in result"
+
+    def test_count_kmer_abundance_k_range(self) -> None:
+        """Test k-mer counting with k range (tuple)."""
+        result = count_kmer_abundance(files_fasta=self.fasta_file_1, k=(3, 5))
+
+        assert 3 in result, "error: k=3 should be in result"
+        assert 4 in result, "error: k=4 should be in result"
+        assert 5 in result, "error: k=5 should be in result"
+        assert len(result) == 3, "error: should have 3 k values in result (3, 4, 5)"
+
+    def test_count_kmer_abundance_k_list(self) -> None:
+        """Test k-mer counting with k list."""
+        result = count_kmer_abundance(files_fasta=self.fasta_file_1, k=[3, 5, 7])
+
+        assert 3 in result, "error: k=3 should be in result"
+        assert 5 in result, "error: k=5 should be in result"
+        assert 7 in result, "error: k=7 should be in result"
+        assert 4 not in result, "error: k=4 should not be in result"
+        assert len(result) == 3, "error: should have 3 k values in result"
+
+    def test_count_kmer_abundance_single_fasta_file(self) -> None:
+        """Test k-mer counting with single FASTA file."""
+        result = count_kmer_abundance(files_fasta=self.fasta_file_1, k=4)
+
+        assert 4 in result, "error: k=4 should be in result"
+        assert isinstance(result[4], dict), "error: result[4] should be a dictionary"
+        assert len(result[4]) > 0, "error: should have k-mers in result"
+
+    def test_count_kmer_abundance_multiple_fasta_files(self) -> None:
+        """Test k-mer counting with multiple FASTA files."""
+        result = count_kmer_abundance(files_fasta=[self.fasta_file_1, self.fasta_file_2], k=4)
+
+        assert 4 in result, "error: k=4 should be in result"
+        assert isinstance(result[4], dict), "error: result[4] should be a dictionary"
+        assert len(result[4]) > 0, "error: should have k-mers in result"
+
+    def test_count_kmer_abundance_fractional_abundance(self) -> None:
+        """Test that fractional abundances sum to 1.0."""
+        result = count_kmer_abundance(files_fasta=self.fasta_file_1, k=4)
+
+        assert 4 in result, "error: k=4 should be in result"
+        total_abundance = sum(result[4].values())
+        assert (
+            abs(total_abundance - 1.0) < 1e-10
+        ), f"error: fractional abundances should sum to 1.0, got {total_abundance}"
+
+    def test_count_kmer_abundance_sorting(self) -> None:
+        """Test that k-mers are sorted by abundance in descending order."""
+        result = count_kmer_abundance(files_fasta=self.fasta_file_1, k=4)
+
+        assert 4 in result, "error: k=4 should be in result"
+        abundances = list(result[4].values())
+        # Check that abundances are in descending order
+        for i in range(len(abundances) - 1):
+            assert (
+                abundances[i] >= abundances[i + 1]
+            ), f"error: abundances should be sorted in descending order, got {abundances[i]} < {abundances[i + 1]}"
+
+    def test_count_kmer_abundance_empty_fasta_file(self) -> None:
+        """Test k-mer counting with empty FASTA file."""
+        result = count_kmer_abundance(files_fasta=self.file_empty, k=4)
+
+        assert 4 in result, "error: k=4 should be in result"
+        assert len(result[4]) == 0, "error: empty file should result in empty k-mer dictionary"
+
+    def test_count_kmer_abundance_invalid_k_negative(self) -> None:
+        """Test that negative k values raise ValueError."""
+        try:
+            count_kmer_abundance(files_fasta=self.fasta_file_1, k=-1)
+            assert False, "error: should have raised ValueError for negative k"
+        except ValueError:
+            pass  # Expected
+
+    def test_count_kmer_abundance_invalid_k_tuple(self) -> None:
+        """Test that invalid tuple raises ValueError."""
+        try:
+            count_kmer_abundance(files_fasta=self.fasta_file_1, k=(5, 3))  # k_min > k_max
+            assert False, "error: should have raised ValueError for k_min > k_max"
+        except ValueError:
+            pass  # Expected
+
+        try:
+            count_kmer_abundance(files_fasta=self.fasta_file_1, k=(1, 2, 3))  # type: ignore
+            assert False, "error: should have raised ValueError for tuple with wrong length"
+        except ValueError:
+            pass  # Expected
+
+    def test_count_kmer_abundance_sequences_uppercase(self) -> None:
+        """Test that sequences are converted to uppercase."""
+        result = count_kmer_abundance(files_fasta=self.file_lowercase, k=4)
+
+        # Check that all k-mers are uppercase
+        for kmer in result[4].keys():
+            assert kmer.isupper(), f"error: k-mer {kmer} should be uppercase"
+        # Check that lowercase k-mer is not present, but uppercase version is
+        assert "atcg" not in result[4], "error: lowercase k-mer should not be present"
+        assert "ATCG" in result[4], "error: uppercase k-mer should be present"
+
+
+class TestGetHighlyAbundantKmerSequences(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_utils")
+        os.makedirs(self.tmp_path, exist_ok=True)
+
+        self.fasta_file = os.path.join(self.tmp_path, "kmer_example.fna")
+        with open(self.fasta_file, "w") as f:
+            f.write(">seq1\nAAAAAAAAAA\n>seq2\nATGCATGCATGC\n")
+
+        self.thresholds = {3: 0.4, 4: 0.3, 5: 0.3}
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_identifies_high_abundance_kmers(self) -> None:
+        kmers = get_highly_abundant_kmer_sequences(
+            files_fasta=self.fasta_file, kmer_abundance_threshold=self.thresholds
+        )
+        kmer_set = set(kmers)
+
+        assert {"AAA", "AAAA", "AAAAA"}.issubset(
+            kmer_set
+        ), "error: high-abundance k-mers should be identified"
+
+    def test_excludes_low_abundance_kmers(self) -> None:
+        kmers = get_highly_abundant_kmer_sequences(
+            files_fasta=str(self.fasta_file), kmer_abundance_threshold=self.thresholds
+        )
+        kmer_set = set(kmers)
+
+        assert "ATG" not in kmer_set, "error: low-abundance 3-mer should not be included"
+        assert "ATGC" not in kmer_set, "error: low-abundance 4-mer should not be included"
+        assert "ATGCA" not in kmer_set, "error: low-abundance 5-mer should not be included"
+
+
+class TestRemoveIndexFiles(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_remove_index_files")
+        Path(self.tmp_path).mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_remove_fai_files_fasta(self) -> None:
+        """Test removal of .fai files for FASTA."""
+        file_reference = os.path.join(self.tmp_path, "reference.fna")
+        index_file = os.path.join(self.tmp_path, "reference.fna.fai")
+
+        # Create reference file and index file
+        with open(file_reference, "w") as f:
+            f.write(">seq1\nATCGATCG\n")
+        with open(index_file, "w") as f:
+            f.write("dummy index content\n")
+
+        assert os.path.exists(index_file), "error: index file should exist before removal"
+        assert os.path.exists(file_reference), "error: reference file should exist"
+
+        remove_index_files(file_reference=file_reference, dir_output=self.tmp_path)
+
+        assert not os.path.exists(index_file), "error: .fai index file should have been removed"
+        assert os.path.exists(file_reference), "error: reference file should NOT be removed"
+
+    def test_remove_csi_tbi_files_vcf(self) -> None:
+        """Test removal of .csi and .tbi files for VCF."""
+        file_reference_1 = os.path.join(self.tmp_path, "reference.vcf.gz")
+        index_file_csi = os.path.join(self.tmp_path, "reference.vcf.gz.csi")
+
+        # Create reference file and index files
+        with open(file_reference_1, "w") as f:
+            f.write("##fileformat=VCFv4.3\n")
+
+        with open(index_file_csi, "w") as f:
+            f.write("dummy csi content\n")
+
+        assert os.path.exists(file_reference_1), "error: reference file should exist"
+        assert os.path.exists(index_file_csi), "error: .csi index file should exist before removal"
+
+        remove_index_files(file_reference=file_reference_1, dir_output=self.tmp_path)
+
+        assert os.path.exists(file_reference_1), "error: reference file should NOT be removed"
+        assert not os.path.exists(index_file_csi), "error: .csi index file should have been removed"
+
+        file_reference_2 = os.path.join(self.tmp_path, "reference.vcf")
+        index_file_tbi = os.path.join(self.tmp_path, "reference.vcf.tbi")
+
+        with open(file_reference_2, "w") as f:
+            f.write("##fileformat=VCFv4.3\n")
+        with open(index_file_tbi, "w") as f:
+            f.write("dummy tbi content\n")
+
+        assert os.path.exists(file_reference_2), "error: reference file should exist"
+        assert os.path.exists(index_file_tbi), "error: .tbi index file should exist before removal"
+
+        remove_index_files(file_reference=file_reference_2, dir_output=self.tmp_path)
+
+        assert os.path.exists(file_reference_2), "error: reference file should NOT be removed"
+        assert not os.path.exists(index_file_tbi), "error: .tbi index file should have been removed"
+
+    def test_remove_nhr_nin_nsq_files_blast(self) -> None:
+        """Test removal of .nhr, .nin, .nsq files for BLAST."""
+        file_reference = os.path.join(self.tmp_path, "reference.fna")
+        index_file_nhr = os.path.join(self.tmp_path, "reference.fna.nhr")
+        index_file_nin = os.path.join(self.tmp_path, "reference.fna.nin")
+        index_file_nsq = os.path.join(self.tmp_path, "reference.fna.nsq")
+
+        # Create reference file and index files
+        with open(file_reference, "w") as f:
+            f.write(">seq1\nATCGATCG\n")
+        with open(index_file_nhr, "w") as f:
+            f.write("dummy nhr content\n")
+        with open(index_file_nin, "w") as f:
+            f.write("dummy nin content\n")
+        with open(index_file_nsq, "w") as f:
+            f.write("dummy nsq content\n")
+
+        assert os.path.exists(index_file_nhr), "error: .nhr index file should exist before removal"
+        assert os.path.exists(index_file_nin), "error: .nin index file should exist before removal"
+        assert os.path.exists(index_file_nsq), "error: .nsq index file should exist before removal"
+        assert os.path.exists(file_reference), "error: reference file should exist"
+
+        remove_index_files(file_reference=file_reference, dir_output=self.tmp_path)
+
+        assert not os.path.exists(index_file_nhr), "error: .nhr index file should have been removed"
+        assert not os.path.exists(index_file_nin), "error: .nin index file should have been removed"
+        assert not os.path.exists(index_file_nsq), "error: .nsq index file should have been removed"
+        assert os.path.exists(file_reference), "error: reference file should NOT be removed"
+
+    def test_remove_ebwt_files_bowtie(self) -> None:
+        """Test removal of .ebwt files for Bowtie."""
+        file_reference = os.path.join(self.tmp_path, "reference.fna")
+        index_file_1 = os.path.join(self.tmp_path, "reference.fna.1.ebwt")
+        index_file_2 = os.path.join(self.tmp_path, "reference.fna.2.ebwt")
+        index_file_rev = os.path.join(self.tmp_path, "reference.fna.rev.1.ebwt")
+
+        # Create reference file and index files
+        with open(file_reference, "w") as f:
+            f.write(">seq1\nATCGATCG\n")
+        with open(index_file_1, "w") as f:
+            f.write("dummy ebwt content 1\n")
+        with open(index_file_2, "w") as f:
+            f.write("dummy ebwt content 2\n")
+        with open(index_file_rev, "w") as f:
+            f.write("dummy ebwt rev content\n")
+
+        assert os.path.exists(index_file_1), "error: .1.ebwt index file should exist before removal"
+        assert os.path.exists(index_file_2), "error: .2.ebwt index file should exist before removal"
+        assert os.path.exists(index_file_rev), "error: .rev.1.ebwt index file should exist before removal"
+        assert os.path.exists(file_reference), "error: reference file should exist"
+
+        remove_index_files(file_reference=file_reference, dir_output=self.tmp_path)
+
+        assert not os.path.exists(index_file_1), "error: .1.ebwt index file should have been removed"
+        assert not os.path.exists(index_file_2), "error: .2.ebwt index file should have been removed"
+        assert not os.path.exists(index_file_rev), "error: .rev.1.ebwt index file should have been removed"
+        assert os.path.exists(file_reference), "error: reference file should NOT be removed"
+
+    def test_remove_bt2_files_bowtie2(self) -> None:
+        """Test removal of .bt2 files for Bowtie2."""
+        file_reference = os.path.join(self.tmp_path, "reference.fna")
+        index_file_1 = os.path.join(self.tmp_path, "reference.fna.1.bt2")
+        index_file_2 = os.path.join(self.tmp_path, "reference.fna.2.bt2")
+        index_file_rev = os.path.join(self.tmp_path, "reference.fna.rev.1.bt2")
+
+        # Create reference file and index files
+        with open(file_reference, "w") as f:
+            f.write(">seq1\nATCGATCG\n")
+        with open(index_file_1, "w") as f:
+            f.write("dummy bt2 content 1\n")
+        with open(index_file_2, "w") as f:
+            f.write("dummy bt2 content 2\n")
+        with open(index_file_rev, "w") as f:
+            f.write("dummy bt2 rev content\n")
+
+        assert os.path.exists(index_file_1), "error: .1.bt2 index file should exist before removal"
+        assert os.path.exists(index_file_2), "error: .2.bt2 index file should exist before removal"
+        assert os.path.exists(index_file_rev), "error: .rev.1.bt2 index file should exist before removal"
+        assert os.path.exists(file_reference), "error: reference file should exist"
+
+        remove_index_files(file_reference=file_reference, dir_output=self.tmp_path)
+
+        assert not os.path.exists(index_file_1), "error: .1.bt2 index file should have been removed"
+        assert not os.path.exists(index_file_2), "error: .2.bt2 index file should have been removed"
+        assert not os.path.exists(index_file_rev), "error: .rev.1.bt2 index file should have been removed"
+        assert os.path.exists(file_reference), "error: reference file should NOT be removed"
+
+    def test_reference_file_not_removed(self) -> None:
+        """Test that reference file itself is NOT removed."""
+        file_reference = os.path.join(self.tmp_path, "reference.fna")
+        index_file = os.path.join(self.tmp_path, "reference.fna.fai")
+        other_file = os.path.join(self.tmp_path, "other_file.fna")
+
+        # Create reference file, index file, and another unrelated file
+        with open(file_reference, "w") as f:
+            f.write(">seq1\nATCGATCG\n")
+        with open(index_file, "w") as f:
+            f.write("dummy index content\n")
+        with open(other_file, "w") as f:
+            f.write(">seq2\nGCTAGCTA\n")
+
+        assert os.path.exists(file_reference), "error: reference file should exist"
+        assert os.path.exists(index_file), "error: index file should exist"
+        assert os.path.exists(other_file), "error: other file should exist"
+
+        remove_index_files(file_reference=file_reference, dir_output=self.tmp_path)
+
+        assert os.path.exists(file_reference), "error: reference file should NOT be removed"
+        assert not os.path.exists(index_file), "error: index file should have been removed"
+        assert os.path.exists(other_file), "error: unrelated file should NOT be removed"

@@ -9,7 +9,7 @@ from effidict import EffiDict, LRUReplacement, PickleBackend
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 
-from ._checkers_and_helpers import check_if_list, check_if_list_of_lists
+from ._checkers_and_helpers import cast_to_list, cast_to_list_of_lists
 
 ############################################
 # Collection of utility functions
@@ -235,14 +235,17 @@ def check_if_key_in_database(database: EffiDict, key: str, region_ids: str | lis
 
     # --- Case: region restriction ---
     if region_ids is not None:
-        region_ids = check_if_list(region_ids)
+        region_ids = cast_to_list(region_ids)
+        regions_found = False  # check if at least one region is found in the database
         for region_id in region_ids:
             if region_id not in database:
                 continue
+            else:
+                regions_found = True
             region_data = database[region_id]
             if not recursive_contains(region_data, key):
                 return False
-        return True
+        return regions_found
 
     # --- Case: no region restriction → any region may match ---
     return any(recursive_contains(region_data, key) for region_data in database.values())
@@ -263,7 +266,7 @@ def format_oligo_properties(
     """
     for key, value in oligo_properties.items():
         if key not in database_sequence_types:
-            oligo_properties[key] = check_if_list_of_lists(value)
+            oligo_properties[key] = cast_to_list_of_lists(value)
     return oligo_properties
 
 
@@ -282,5 +285,5 @@ def flatten_property_list(property: list[Any]) -> list[Any]:
         for item in (sublist if isinstance(sublist, list) else [sublist])
     ]
     if len(flattened_property_list) == 1:
-        return check_if_list(flattened_property_list[0])
-    return check_if_list(flattened_property_list)
+        return cast_to_list(flattened_property_list[0])
+    return cast_to_list(flattened_property_list)

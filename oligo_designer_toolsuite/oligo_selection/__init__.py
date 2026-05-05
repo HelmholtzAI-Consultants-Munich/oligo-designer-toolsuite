@@ -2,13 +2,12 @@
 This module provides different approaches for a strategic selection of optimal oligo sets for genomic regions, focusing on efficiency and scoring.
 """
 
-from ._generate_oligosets import HomogeneousPropertyOligoSetGenerator, OligosetGeneratorIndependentSet
-from ._selection_methods import GraphBasedSelectionPolicy, GreedySelectionPolicy, OligoSelectionPolicy
+from ._oligo_selection_base import BaseOligoSelection
+from ._oligo_selection_homogeneous_properties import HomogeneousPropertyOligoSelection
+from ._oligo_selection_independent_sets import IndependentSetsOligoSelection
 
 __all__ = [
-    "OligosetGeneratorIndependentSet",
-    "HomogeneousPropertyOligoSetGenerator",
-    "OligoSelectionPolicy",
-    "GreedySelectionPolicy",
-    "GraphBasedSelectionPolicy",
+    "BaseOligoSelection",
+    "IndependentSetsOligoSelection",
+    "HomogeneousPropertyOligoSelection",
 ]

@@ -20,6 +20,8 @@ class SetScoringBase(ABC):
     def __init__(self, ascending: bool) -> None:
         """Constructor for the SetScoringBase class."""
         self.ascending = ascending
+        self.score_1: str = ""
+        self.score_2: str = ""
 
     @abstractmethod
     def apply(self, oligo_set: pd.Series, n: int) -> tuple[list, dict]:
@@ -35,6 +37,16 @@ class SetScoringBase(ABC):
         :return: A tuple containing a list of selected oligo IDs and a dictionary of computed scores.
         :rtype: tuple[list, dict]
         """
+
+    @property
+    def score_names(self) -> list[str]:
+        """
+        Returns a list of the score names.
+
+        :return: A list of the score names.
+        :rtype: list[str]
+        """
+        return [s for s in (self.score_1, self.score_2) if s]
 
 
 class LowestSetScoring(SetScoringBase):

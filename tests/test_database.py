@@ -72,10 +72,34 @@ class TestReferenceDatabase(unittest.TestCase):
             self.fasta_parser.check_fasta_format(file_fasta_database) == True
         ), f"error: wrong file format for database in {file_fasta_database}"
 
+        # Verify that .fai index file is created when writing FASTA database
+        index_file = f"{file_fasta_database}.fai"
+        assert os.path.exists(index_file), f"error: .fai index file should be created at {index_file}"
+
         file_vcf_database = self.reference_vcf.write_database_to_file(filename="ref_db_filtered_vcf")
         assert (
             self.vcf_parser.check_vcf_format(file_vcf_database) == True
         ), f"error: wrong file format for database in {file_vcf_database}"
+
+    def test_load_database_from_file(self) -> None:
+        """Test that index files are removed when database_overwrite=True."""
+        # Create a temporary FASTA database with index file
+        file_fasta_new = os.path.join(self.tmp_path, "tmp_new_fasta.fna")
+        file_index_old = f"{self.reference_fasta.database_file}.fai"
+
+        with open(file_fasta_new, "w") as f:
+            f.write(">test_seq::test_info::chr1:100-200(+)\nATCGATCGATCG\n")
+        with open(file_index_old, "w") as f:
+            f.write("dummy index content\n")
+
+        self.reference_fasta.load_database_from_file(
+            files=file_fasta_new, file_type="fasta", database_overwrite=True
+        )
+
+        # Verify that the old index file was removed
+        assert not os.path.exists(
+            file_index_old
+        ), "error: old .fai index file should have been removed when database_overwrite=True"
 
     def test_filter_database_by_region(self) -> None:
         self.reference_fasta.filter_database_by_region(region_ids="AARS1", keep_region=False)
@@ -317,7 +341,6 @@ class TestOligoDatabase(unittest.TestCase):
                 "strand",
                 "transcript_id",
             ],
-            top_n_sets=2,
             ascending=True,
         )
 
@@ -367,7 +390,6 @@ class TestOligoDatabase(unittest.TestCase):
 
         self.oligo_database.write_ready_to_order_yaml(
             properties=["oligo", "target", "test_property"],
-            top_n_sets=2,
             ascending=True,
             filename="test_ready_to_order",
         )
@@ -418,7 +440,6 @@ class TestOligoDatabase(unittest.TestCase):
 
         self.oligo_database.write_oligosets_to_table(
             properties=["oligo", "target", "test_property"],
-            top_n_sets=3,
             ascending=True,
         )
 

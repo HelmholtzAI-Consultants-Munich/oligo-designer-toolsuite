@@ -88,5 +88,5 @@ class PropertyCalculator:
                     new_oligo_property[oligo_id] = {}
                 new_oligo_property[oligo_id].update(property_result)
 
-        # Update all oligo properties at once for this region
-        oligo_database.update_oligo_properties(new_oligo_property)
+        # Update only this region (avoids O(regions × total_oligos) full-database scan per worker)
+        oligo_database.update_oligo_properties(new_oligo_property, region_ids=region_id)

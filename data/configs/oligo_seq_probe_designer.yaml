@@ -7,7 +7,6 @@
 n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # if true, saves intermediate results after each step
-top_n_sets: 3 #maximum number of sets to report in padlock_probes.yaml and "padlock_probes_order.yaml"
 
 ### Target Probe Parameters
 ### -----------------------------------------------
@@ -23,34 +22,31 @@ files_vcf_reference_database_target_probe:
 target_probe_length_min: 26 #min length of oligos
 target_probe_length_max: 30 #max length of oligos
 target_probe_split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
-target_probe_targeted_exons:
-  - "1"
-  - "2"
-  - "3"
+
 target_probe_isoform_consensus: 0 #min isoform consesnsus for oligos, i.e. how many transcripts of the total number of transcripts of a gene are covered by the oligo, given in %
 target_probe_GC_content_min: 45 # minimum GC content of oligos
-target_probe_GC_content_opt: 55 # max and min values are defiend above
 target_probe_GC_content_max: 65 # maximum GC content of oligos
 target_probe_Tm_min: 50 # minimum melting temperature of oligos
-target_probe_Tm_opt: 60 # max and min values are defiend above
 target_probe_Tm_max: 70 # maximum melting temperature of oligos
 target_probe_secondary_structures_T: 37 # temperature to compute the secondary structure free energy
-target_probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
-  A: 6
-  T: 6
-  C: 6
-  G: 6
+target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
+target_probe_homopolymeric_base_n: {"A": 6, "T": 6, "C": 6, "G": 6} # minimum number of nucleotides to consider it a homopolymeric run per base
+target_probe_kmer_abundance_threshold: {3: 0.0469, 4: 0.0117, 5: 0.0029, 6: 0.00073} # The maximum abundance of a k-mer allowed. If a k-mer has an abundance greater than this threshold, all oligos containing this k-mer will be filtered out. This is a dictionary with the k-mer length as the key and the threshold as the value.
+target_probe_prohibited_sequences: ["TCT", "CTC"] # The sequences to prohibit in the oligos. If an oligo contains any of these sequences, it will be filtered out.
 target_probe_max_len_selfcomplement: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
-target_probe_hybridization_probability_threshold: 0.001 #the lower the threshold the more stringent the filter
 target_probe_read_length_bias: 20 # minimum length of sequencing reads. The first <target_probe_read_length_bias> bases of an oligo should not match the <target_probe_read_length_bias> bases of another oligo to account for shorter sequencing reads that would align to multiple positions.
-target_probe_isoform_weight: 1 # weight of the GC content of the probe in the efficiency score
-target_probe_targeted_exons_weight: 1 # weight of the Tm of the probe in the efficiency score
-target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
-target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
+n_sets: 3 #number of sets to generate
 set_size_min: 3 # minimum size of oligo sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
 set_size_opt: 5 # optimal size of oligo sets
 distance_between_target_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
-n_sets: 100 # Maximum number of sets to report
+uniform_distance_weight: 1 # weight of the uniform distance in the scoring function
+target_probe_isoform_weight: 1 # weight of the GC content of the probe in the efficiency score
+target_probe_targeted_exons_weight: 1 # weight of the Tm of the probe in the efficiency score
+target_probe_targeted_exons: ["1", "2", "3"] # the exons to target for the probe
+target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
+target_probe_GC_content_opt: 55 # max and min values are defiend above
+target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
+target_probe_Tm_opt: 60 # max and min values are defiend above
 
 
 ############################
@@ -83,37 +79,28 @@ target_probe_Tm_chem_correction_parameters:
   fmdmethod: 1
   GC: null
 target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 # Specificity filter
 target_probe_hybridization_probability_alignment_method: blastn # options: blastn, bowtie
+target_probe_hybridization_probability_threshold: 0.001 #the lower the threshold the more stringent the filter
 # Specificity filter with BlastN
-target_probe_hybridization_probability_blastn_search_parameters:
+target_probe_hybridization_probability_search_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used, e.g. -v: 3 and --nofw: ""
   -perc_identity: 80
   -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
   -word_size: 10
-target_probe_hybridization_probability_blastn_hit_parameters:
+target_probe_hybridization_probability_hit_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used
   coverage: 50 # could be turned into min_alignment_length
-# Specificity filter with Bowtie
-target_probe_hybridization_probability_bowtie_search_parameters:
-  -v: 3
-  --nofw: "" # this parameter is fixed, if reference is whole genome, consider using both strands (remove this parameter)
-target_probe_hybridization_probability_bowtie_hit_parameters: # No hit parameters available currently
 # Crosshybridization filter
 target_probe_cross_hybridization_alignment_method: blastn # options: blastn, bowtie
 # Crosshybridization filter with BlastN
-target_probe_cross_hybridization_blastn_search_parameters:
+target_probe_cross_hybridization_search_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used, e.g. -v: 3 and --nofw: ""
   -perc_identity: 80
   -strand: "minus" # this parameter is fixed
   -word_size: 10
-target_probe_cross_hybridization_blastn_hit_parameters:
+target_probe_cross_hybridization_hit_parameters: # BlastN parameters, change to bowtie parameters if bowtie is used
   coverage: 50 # could be turned into min_alignment_length
-# Crosshybridization filter with Bowtie
-target_probe_cross_hybridization_bowtie_search_parameters:
-  -v: 3
-  --nofw: "" # this parameter is fixed
-target_probe_cross_hybridization_bowtie_hit_parameters: # No hit parameters available currently
 # Parameters for the Oligo set selection
-max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
-n_attempts: 100000 # number of attempts to find the optimal set of oligos
-heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
-heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
+n_attempts_graph: 50 # number of randomized graph attempts (diversification)
+n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
+diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
+jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
+jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found

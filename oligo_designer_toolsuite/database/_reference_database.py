@@ -9,7 +9,7 @@ from typing import Any, get_args
 
 from oligo_designer_toolsuite._constants import _TYPES_REF
 from oligo_designer_toolsuite._exceptions import DatabaseError
-from oligo_designer_toolsuite.utils import FastaParser, VCFParser, check_if_list
+from oligo_designer_toolsuite.utils import FastaParser, VCFParser, cast_to_list, remove_index_files
 
 ############################################
 # Reference Database Class
@@ -80,11 +80,15 @@ class ReferenceDatabase:
         # Check if file type is correct
         options = get_args(_TYPES_REF)
         assert file_type in options, f"Sequence type not supported! '{file_type}' is not in {options}."
-        files = check_if_list(files)
+        files = cast_to_list(files)
 
         # remove all files if database should be overwritten
         if self.database_file is not None and database_overwrite:
-            os.remove(self.database_file)
+            # Remove the main database file
+            remove_index_files(file_reference=self.database_file, dir_output=self.dir_output)
+            if os.path.exists(self.database_file):
+                os.remove(self.database_file)
+
             self.database_file = None
             self.database_type = None
 
@@ -135,6 +139,8 @@ class ReferenceDatabase:
             file_ending = "fna" if self.database_type == "fasta" else "vcf.gz"
             file_database = os.path.join(dir_output, f"{filename}.{file_ending}")
             shutil.copy2(self.database_file, file_database)
+            if self.database_type == "fasta":
+                self.fasta_parser.index_fasta_file(file_fasta=file_database)
             return file_database
         else:
             raise DatabaseError("Database is empty. Nothing to be written to file.")
@@ -151,7 +157,7 @@ class ReferenceDatabase:
         :rtype: str
         :raises ValueError: If the database is empty or filtering is attempted on a non-FASTA database.
         """
-        region_ids = check_if_list(region_ids)
+        region_ids = cast_to_list(region_ids)
 
         if self.database_file:
             if self.database_type == "fasta":
@@ -187,7 +193,7 @@ class ReferenceDatabase:
         :rtype: str
         :raises ValueError: If the database is empty or filtering is attempted on a non-FASTA database.
         """
-        property_category = check_if_list(property_category)
+        property_category = cast_to_list(property_category)
 
         if self.database_file:
             if self.database_type == "fasta":
@@ -274,7 +280,7 @@ class ReferenceDatabase:
             if isinstance(properties, str):
                 continue
             if property_name in properties:
-                property_values = check_if_list(properties[property_name])
+                property_values = cast_to_list(properties[property_name])
                 if keep_if_equals_category and any(item in property_category for item in property_values):
                     fasta_sequences_filtered.append(entry)
                 elif not keep_if_equals_category and all(

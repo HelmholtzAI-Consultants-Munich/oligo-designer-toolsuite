@@ -3,7 +3,6 @@
 ############################################
 
 import os
-import re
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -14,7 +13,7 @@ from joblib_progress import joblib_progress
 from oligo_designer_toolsuite._constants import SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_OLIGO_ID
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
-from oligo_designer_toolsuite.utils import check_if_list
+from oligo_designer_toolsuite.utils import cast_to_list, remove_index_files
 
 ############################################
 # Oligo Specificity Filter Classes
@@ -88,7 +87,7 @@ class BaseSpecificityFilter(ABC):
         :param oligos_with_hits: A dictionary of regio_ids associated with oligo_ids that have been identified as hits and should be removed.
         :type oligos_with_hits: dict
         """
-        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        region_ids = cast_to_list(region_ids) if region_ids else oligo_database.database.keys()
 
         for region_id in region_ids:
             oligo_ids = list(oligo_database.database[region_id].keys())
@@ -119,7 +118,7 @@ class BaseSpecificityFilter(ABC):
         :param oligos_with_hits_properties: Dictionary mapping oligo IDs to properties related to their hits.
         :type oligos_with_hits_properties: dict
         """
-        region_ids = check_if_list(region_ids) if region_ids else oligo_database.database.keys()
+        region_ids = cast_to_list(region_ids) if region_ids else oligo_database.database.keys()
 
         for region_id in region_ids:
             oligo_ids = list(oligo_database.database[region_id].keys())
@@ -173,7 +172,7 @@ class ReferenceSpecificityFilter(BaseSpecificityFilter):
         self.reference_database = reference_database
 
     @abstractmethod
-    def create_reference(self, n_jobs: int) -> str:
+    def _create_reference(self, n_jobs: int) -> str:
         """
         Abstract method to write a reference database to file and create an index in case of alignment based methods.
 
@@ -183,20 +182,23 @@ class ReferenceSpecificityFilter(BaseSpecificityFilter):
         :rtype: str
         """
 
-    def remove_reference(self, file_reference: str) -> None:
+    def _remove_reference(self, file_reference: str) -> None:
         """
         Removes the reference files created for the filter.
+
+        This method removes the reference file and all associated index files.
+        For FASTA files, it removes .fai index files.
+        For VCF files, it removes .csi and .tbi index files.
+        For BLAST databases, it removes .nhr, .nin, .nsq index files.
+        For Bowtie/Bowtie2 indexes, it removes .ebwt and .bt2 index files.
 
         :param file_reference: The base name of the reference files to be removed.
         :type file_reference: str
         """
-        file_reference_basename = os.path.basename(file_reference)
-        regex = re.compile(file_reference_basename + "\\..*")
-        for root, _, files in os.walk(self.dir_output):
-            for file in files:
-                if regex.match(file):
-                    os.remove(os.path.join(root, file))
-        os.remove(file_reference)
+        remove_index_files(file_reference=file_reference, dir_output=self.dir_output)
+
+        if os.path.exists(file_reference):
+            os.remove(file_reference)
 
     def _read_search_output(
         self,
@@ -300,7 +302,7 @@ class AlignmentSpecificityFilter(ReferenceSpecificityFilter):
         # when applying filters we don't want to consider hits within the same region
         consider_hits_from_input_region = False
 
-        file_reference = self.create_reference(n_jobs=n_jobs)
+        file_reference = self._create_reference(n_jobs=n_jobs)
 
         # run search in parallel for each region
         region_ids = list(oligo_database.database.keys())
@@ -317,7 +319,7 @@ class AlignmentSpecificityFilter(ReferenceSpecificityFilter):
                 for region_id in region_ids
             )
 
-        self.remove_reference(file_reference)
+        self._remove_reference(file_reference)
 
         return oligo_database
 
@@ -347,7 +349,7 @@ class AlignmentSpecificityFilter(ReferenceSpecificityFilter):
         # when getting oligo pair hits we want to consider hits within the same region
         consider_hits_from_input_region = True
 
-        file_reference = self.create_reference(n_jobs=n_jobs)
+        file_reference = self._create_reference(n_jobs=n_jobs)
 
         region_ids = list(oligo_database.database.keys())
         name = " ".join(string.capitalize() for string in self.filter_name.split("_"))
@@ -366,7 +368,7 @@ class AlignmentSpecificityFilter(ReferenceSpecificityFilter):
         table_hits = pd.concat(table_hits, ignore_index=True)
         oligo_pair_hits = list(zip(table_hits["query"].values, table_hits["reference"].values))
 
-        self.remove_reference(file_reference)
+        self._remove_reference(file_reference)
 
         return oligo_pair_hits
 

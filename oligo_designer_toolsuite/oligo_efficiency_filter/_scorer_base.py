@@ -3,6 +3,7 @@
 ############################################
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 from oligo_designer_toolsuite.database import OligoDatabase
 
@@ -24,7 +25,12 @@ class BaseScorer(ABC):
 
     @abstractmethod
     def apply(
-        self, oligo_database: OligoDatabase, region_id: str, oligo_id: str, sequence_type: str
+        self,
+        oligo_database: OligoDatabase,
+        region_id: str,
+        oligo_id: str,
+        sequence_type: str,
+        **kwargs: dict[str, Any],
     ) -> float:
         """
         Evaluate a single oligonucleotide and return a score based on a specific scoring strategy.
@@ -40,6 +46,8 @@ class BaseScorer(ABC):
         :type oligo_id: str
         :param sequence_type: Type of sequence being processed.
         :type sequence_type: str
+        :param kwargs: Additional keyword arguments.
+        :type kwargs: dict[str, Any]
         :return: A float value representing the computed score for the specified oligo.
         :rtype: float
         """

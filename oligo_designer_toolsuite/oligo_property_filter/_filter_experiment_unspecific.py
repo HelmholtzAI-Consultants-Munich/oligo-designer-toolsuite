@@ -88,18 +88,18 @@ class ProhibitedSequenceFilter(BasePropertyFilter):
     This is particularly useful in contexts where certain sequences are known to cause issues or are otherwise undesirable.
     The prohibited sequences are case-insensitive and validated to ensure they are valid DNA sequences.
 
-    :param prohibited_sequence: A single prohibited sequence or a list of prohibited sequences to filter out.
-    :type prohibited_sequence: str | list[str]
+    :param prohibited_sequences: A single prohibited sequence or a list of prohibited sequences to filter out.
+    :type prohibited_sequences: str | list[str]
     """
 
-    def __init__(self, prohibited_sequence: str | list[str]) -> None:
+    def __init__(self, prohibited_sequences: str | list[str]) -> None:
         """Constructor for the ProhibitedSequenceFilter class."""
         super().__init__()
-        if not isinstance(prohibited_sequence, list):
-            prohibited_sequence = [prohibited_sequence]
-        self.prohibited_sequence = [s.upper() for s in prohibited_sequence]
+        if not isinstance(prohibited_sequences, list):
+            prohibited_sequences = [prohibited_sequences]
+        self.prohibited_sequences = [s.upper() for s in prohibited_sequences]
         # Check that the prohibited sequences are valid DNA sequences.
-        for s in self.prohibited_sequence:
+        for s in self.prohibited_sequences:
             if not check_if_dna_sequence(s):
                 raise ConfigurationError(
                     f"Prohibited sequence '{s}' is not a valid DNA sequence. "
@@ -117,7 +117,7 @@ class ProhibitedSequenceFilter(BasePropertyFilter):
         :return: `True` if the sequence does not contain any prohibited subsequences, `False` otherwise.
         :rtype: bool
         """
-        for s in self.prohibited_sequence:
+        for s in self.prohibited_sequences:
             if s in sequence.upper():
                 return False
         return True

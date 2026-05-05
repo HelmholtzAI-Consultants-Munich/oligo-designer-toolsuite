@@ -6,7 +6,6 @@ import csv
 import os
 import time
 import uuid
-import warnings
 from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
@@ -30,7 +29,8 @@ class CustomYamlDumper(yaml.SafeDumper):
 
     :param flow: Indicates if the current structure is in flow style.
     :type flow: bool
-
+    :param indentless: Indicates if the current structure should be indented.
+    :type indentless: bool
     :param data: The list or dictionary data to be represented in YAML format.
     :type data: list or dict
     """
@@ -67,8 +67,6 @@ def check_if_dna_sequence(seq: str, valid_characters: list[str] | None = None) -
         raise ConfigurationError(f"Valid characters must be single characters. Received: {valid_characters}.")
 
     valid_characters_upper = [char.upper() for char in valid_characters]
-    if not all(char.upper() in ["A", "C", "T", "G", "U"] for char in valid_characters_upper):
-        warnings.warn("Valid characters should be A, C, T, G, or U.")
 
     if seq == "":
         return False
@@ -98,7 +96,7 @@ def check_if_key_exists(nested_dict: dict[str, Any], key: str) -> bool:
     return False
 
 
-def check_if_list(obj: Any) -> list[Any]:
+def cast_to_list(obj: Any) -> list[Any]:
     """
     Ensures that the given object is returned as a list. Wraps non-list objects in a list.
 
@@ -111,7 +109,7 @@ def check_if_list(obj: Any) -> list[Any]:
     return [obj] if not isinstance(obj, list) else obj
 
 
-def check_if_list_of_lists(obj: Any) -> list[list[Any]]:
+def cast_to_list_of_lists(obj: Any) -> list[list[Any]]:
     """
     Ensures that the given object is returned as a list of lists.
 
@@ -133,7 +131,7 @@ def check_if_list_of_lists(obj: Any) -> list[list[Any]]:
         return [[obj]]
 
 
-def check_if_int(value: Any) -> int | None:
+def cast_to_int(value: Any) -> int | None:
     """
     Convert a value to int, handling lists and various types.
 
@@ -154,7 +152,7 @@ def check_if_int(value: Any) -> int | None:
         return int(value)
 
 
-def check_if_string(value: Any) -> str | None:
+def cast_to_string(value: Any) -> str | None:
     """
     Convert a value to string, handling lists and various types.
 

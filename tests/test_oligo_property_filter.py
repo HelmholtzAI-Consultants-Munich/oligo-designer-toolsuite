@@ -127,8 +127,8 @@ class TestMaskedSequenceFilters(unittest.TestCase):
 class TestSequenceContentFilters(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.prohibited_sequence_filter_str = ProhibitedSequenceFilter(prohibited_sequence="ACT")
-        self.prohibited_sequence_filter_list = ProhibitedSequenceFilter(prohibited_sequence=["ACT", "CCGC"])
+        self.prohibited_sequence_filter_str = ProhibitedSequenceFilter(prohibited_sequences="ACT")
+        self.prohibited_sequence_filter_list = ProhibitedSequenceFilter(prohibited_sequences=["ACT", "CCGC"])
         self.homopolymeric_run_filter = HomopolymericRunsFilter(base_n={"A": 4, "C": 5})
         self.three_prime_filter = ThreePrimeSequenceFilter(three_prime_sequence="TT", remove=False)
         self.five_prime_filter = FivePrimeSequenceFilter(five_prime_sequence="TT", remove=True)

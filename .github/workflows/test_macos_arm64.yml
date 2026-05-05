@@ -72,6 +72,7 @@ jobs:
         conda install -n test-env -y "bedtools>=2.30"
         conda install -n test-env -y "bowtie>=1.3.1"
         conda install -n test-env -y "bowtie2>=2.5"
+        conda install -n test-env -y "samtools>=1.22"
         brew install blast
 
     - name: Install pip dependencies
@@ -88,10 +89,12 @@ jobs:
         sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/oligo_seq_probe_designer.yaml
         sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/scrinshot_probe_designer.yaml
         sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/seqfish_plus_probe_designer.yaml
+        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/cycle_hcr_probe_designer.yaml
         cat data/configs/merfish_probe_designer.yaml
         cat data/configs/oligo_seq_probe_designer.yaml
         cat data/configs/scrinshot_probe_designer.yaml
         cat data/configs/seqfish_plus_probe_designer.yaml
+        cat data/configs/cycle_hcr_probe_designer.yaml
 
     - name: Test with pytest
       run: |

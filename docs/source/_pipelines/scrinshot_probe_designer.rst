@@ -111,12 +111,7 @@ For a complete explanation of all function parameters, refer to the API document
     )
 
     ##### Generate Final Output #####
-    # The pipeline then generates its final outputs for the 'top_n_sets'
-    # best scoring probe sets to keep.
-    pipeline.generate_output(
-        oligo_database=oligo_database,
-        top_n_sets=3,
-    )
+    pipeline.generate_output(probe_database=oligo_database)
 
 
 Pipeline Description

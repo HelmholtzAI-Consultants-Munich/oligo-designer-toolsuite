@@ -69,7 +69,7 @@ class HybridizationProbabilityFilter(ReferenceSpecificityFilter):
         self.threshold = threshold
         self.model = APIHybridizationProbability(ai_filter_path=ai_filter_path)
 
-    def create_reference(self, n_jobs: int) -> str:
+    def _create_reference(self, n_jobs: int) -> str:
         """
         Creates a reference file and builds an index for alignment-based search.
 
@@ -78,7 +78,7 @@ class HybridizationProbabilityFilter(ReferenceSpecificityFilter):
         :return: The name of the created reference file.
         :rtype: str
         """
-        file_reference = self.alignment_method.create_reference(n_jobs=n_jobs)
+        file_reference = self.alignment_method._create_reference(n_jobs=n_jobs)
 
         return file_reference
 
@@ -113,7 +113,7 @@ class HybridizationProbabilityFilter(ReferenceSpecificityFilter):
         consider_hits_from_input_region = False
 
         # create reference database / index
-        file_reference = self.create_reference(n_jobs=n_jobs)
+        file_reference = self._create_reference(n_jobs=n_jobs)
 
         # run search in parallel for each region
         region_ids = list(oligo_database.database.keys())
@@ -130,7 +130,7 @@ class HybridizationProbabilityFilter(ReferenceSpecificityFilter):
                 for region_id in region_ids
             )
 
-        self.remove_reference(file_reference)
+        self._remove_reference(file_reference)
 
         return oligo_database
 

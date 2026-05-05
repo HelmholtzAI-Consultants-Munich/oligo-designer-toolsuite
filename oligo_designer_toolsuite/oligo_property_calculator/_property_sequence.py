@@ -5,7 +5,7 @@
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_calculator import BaseProperty
-from oligo_designer_toolsuite.utils import check_if_int, check_if_string
+from oligo_designer_toolsuite.utils import cast_to_int, cast_to_string
 
 from ._property_functions import (
     calc_detect_oligo,
@@ -52,7 +52,7 @@ class LengthProperty(BaseProperty):
         :return: A dictionary containing the calculated length property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -90,7 +90,7 @@ class GCContentProperty(BaseProperty):
         :return: A dictionary containing the calculated GC content property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -149,7 +149,7 @@ class TmNNProperty(BaseProperty):
         :return: A dictionary containing the calculated Tm property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -196,7 +196,7 @@ class DGSecondaryStructureProperty(BaseProperty):
         :return: A dictionary containing the calculated ΔG property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -234,7 +234,7 @@ class LengthSelfComplementProperty(BaseProperty):
         :return: A dictionary containing the calculated self-complement length property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -276,7 +276,7 @@ class LengthComplementProperty(BaseProperty):
         :return: A dictionary containing the calculated complement length property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -321,7 +321,7 @@ class ShortenedSequenceProperty(BaseProperty):
         :return: A dictionary containing the calculated shortened sequence property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -366,7 +366,7 @@ class ReverseComplementSequenceProperty(BaseProperty):
         :return: A dictionary containing the calculated reverse complement sequence property.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -419,7 +419,7 @@ class SplitSequenceProperty(BaseProperty):
         :return: A dictionary containing the calculated split sequence properties.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -464,7 +464,7 @@ class SeedregionProperty(BaseProperty):
         :return: A dictionary containing the calculated seedregion start and end positions.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -519,12 +519,12 @@ class SeedregionSiteProperty(BaseProperty):
         :return: A dictionary containing the calculated seedregion start and end positions.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
         )
-        seedregion_site = check_if_int(
+        seedregion_site = cast_to_int(
             oligo_database.get_oligo_property_value(
                 property=self.seedregion_site_name, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -599,7 +599,7 @@ class PadlockArmsProperty(BaseProperty):
         :return: A dictionary containing the calculated arm temperatures and ligation site.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
@@ -669,12 +669,12 @@ class DetectOligoProperty(BaseProperty):
         :return: A dictionary containing the calculated detection oligo sequences.
         :rtype: dict
         """
-        sequence = check_if_string(
+        sequence = cast_to_string(
             oligo_database.get_oligo_property_value(
                 property=sequence_type, region_id=region_id, oligo_id=oligo_id, flatten=True
             )
         )
-        ligation_site = check_if_int(
+        ligation_site = cast_to_int(
             oligo_database.get_oligo_property_value(
                 property=self.ligation_site_name, region_id=region_id, oligo_id=oligo_id, flatten=True
             )

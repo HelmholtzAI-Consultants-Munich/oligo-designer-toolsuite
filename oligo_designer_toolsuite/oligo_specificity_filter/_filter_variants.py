@@ -56,7 +56,7 @@ class VariantsFilter(ReferenceSpecificityFilter):
         self.usecols_search_output = usecols_search_output
         self.names_search_output = names_search_output
 
-    def create_reference(
+    def _create_reference(
         self,
         n_jobs: int,  # not utilized in this filter
     ) -> str:
@@ -69,7 +69,7 @@ class VariantsFilter(ReferenceSpecificityFilter):
         :rtype: str
         """
         if self.reference_database is None:
-            raise DatabaseError("reference_database must be set before calling create_reference")
+            raise DatabaseError("reference_database must be set before calling _create_reference")
 
         file_reference = self.reference_database.write_database_to_file(
             filename=f"db_reference_{self.filter_name}",
@@ -98,7 +98,7 @@ class VariantsFilter(ReferenceSpecificityFilter):
         :return: The filtered OligoDatabase.
         :rtype: OligoDatabase
         """
-        file_reference = self.create_reference(n_jobs=n_jobs)
+        file_reference = self._create_reference(n_jobs=n_jobs)
 
         # run search in parallel for each region
         region_ids = list(oligo_database.database.keys())
@@ -114,7 +114,7 @@ class VariantsFilter(ReferenceSpecificityFilter):
                 for region_id in region_ids
             )
 
-        self.remove_reference(file_reference)
+        self._remove_reference(file_reference)
 
         return oligo_database
 
@@ -176,8 +176,8 @@ class VariantsFilter(ReferenceSpecificityFilter):
             )
         else:
             raise ConfigurationError(
-                f"Mode '{mode}' is not available. Choose mode=0 for removing hits from the database, "
-                f"or mode=1 for flagging the hits in the database."
+                f"Mode '{mode}' is not available. Choose mode=0 for flagging the hits in the database, "
+                f"or mode=1 for removing hits from the database."
             )
 
         # remove temporary files

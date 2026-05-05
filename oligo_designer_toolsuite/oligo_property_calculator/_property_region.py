@@ -5,7 +5,7 @@
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_calculator import BaseProperty
-from oligo_designer_toolsuite.utils import check_if_list
+from oligo_designer_toolsuite.utils import cast_to_list
 
 from ._property_functions import calc_isoform_consensus, calc_num_targeted_transcripts
 
@@ -44,7 +44,7 @@ class NumTargetedTranscriptsProperty(BaseProperty):
 
         if transcript_id:
             num_targeted_transcripts = calc_num_targeted_transcripts(
-                transcript_id=check_if_list(transcript_id)
+                transcript_id=cast_to_list(transcript_id)
             )
         else:
             num_targeted_transcripts = None
@@ -88,8 +88,8 @@ class IsoformConsensusProperty(BaseProperty):
 
         if transcript_id and number_total_transcripts:
             isoform_consensus = calc_isoform_consensus(
-                transcript_id=check_if_list(transcript_id),
-                number_total_transcripts=check_if_list(number_total_transcripts),
+                transcript_id=cast_to_list(transcript_id),
+                number_total_transcripts=cast_to_list(number_total_transcripts),
             )
         else:
             isoform_consensus = None

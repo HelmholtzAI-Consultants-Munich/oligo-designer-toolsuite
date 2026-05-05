@@ -94,7 +94,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         if "-outfmt" not in self.search_parameters.keys():
             self.search_parameters["-outfmt"] = "6 qseqid sseqid length qstart qend qlen"
 
-    def create_reference(
+    def _create_reference(
         self,
         n_jobs: int,  # not utilized in this filter
     ) -> str:
@@ -110,16 +110,18 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :rtype: str
         """
         if self.reference_database is None:
-            raise DatabaseError("reference_database must be set before calling create_reference")
+            raise DatabaseError("reference_database must be set before calling _create_reference")
 
         # write refrence database to fasta
         file_reference = self.reference_database.write_database_to_file(
             filename=f"db_reference_{self.filter_name}",
             dir_output=self.dir_output,
         )
+
         ## Create blast index
-        cmd = "makeblastdb -dbtype nucl" + " -out " + file_reference + " -in " + file_reference
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
+        args = ["makeblastdb", "-dbtype", "nucl", "-out", file_reference, "-in", file_reference]
+
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         return file_reference
 
@@ -157,24 +159,22 @@ class BlastNFilter(AlignmentSpecificityFilter):
         )
         file_blast_results = os.path.join(self.dir_output, f"blast_results_{region_id}.txt")
 
-        cmd_parameters = ""
-        for parameter, value in self.search_parameters.items():
-            # add quotes if list of strings seperated by whitespace
-            value = f'"{value}"' if " " in str(value) else value
-            cmd_parameters += f" {parameter} {value}"
+        args = [
+            "blastn",
+            "-query",
+            file_oligo_database,
+            "-out",
+            file_blast_results,
+            "-db",
+            os.path.join(self.dir_output, file_reference),
+        ]
 
-        cmd = (
-            "blastn"
-            + " -query "
-            + file_oligo_database
-            + " -out "
-            + file_blast_results
-            + " -db "
-            + os.path.join(self.dir_output, file_reference)
-            + " "
-            + cmd_parameters
-        )
-        process = subprocess.Popen(cmd, shell=True, cwd=self.dir_output, stdout=subprocess.DEVNULL).wait()
+        for parameter, value in self.search_parameters.items():
+            args.append(parameter)
+            if str(value) != "":
+                args.append(str(value))
+
+        subprocess.run(args, cwd=self.dir_output, check=True)
 
         # read the reuslts of the blast seatch
         blast_results = self._read_search_output(

@@ -7,7 +7,7 @@ from Bio.SeqUtils import MeltingTemp, gc_fraction
 from seqfold import dg
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
-from oligo_designer_toolsuite.utils import check_if_list, flatten_property_list
+from oligo_designer_toolsuite.utils import cast_to_list, flatten_property_list
 
 ############################################
 # Property Calculation Functions
@@ -469,7 +469,7 @@ def calc_isoform_consensus(transcript_id: list, number_total_transcripts: list) 
     total_transcripts = int(number_total_transcripts[0])
 
     # Count unique targeted transcripts
-    unique_transcript_ids = set(check_if_list(transcript_id))
+    unique_transcript_ids = set(cast_to_list(transcript_id))
     num_targeted = len(unique_transcript_ids)
 
     # Calculate percentage: (targeted / total) * 100

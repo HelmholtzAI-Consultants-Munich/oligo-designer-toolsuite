@@ -8,6 +8,7 @@ import unittest
 
 from Bio.SeqUtils import MeltingTemp as mt
 from pandas import Series
+from scipy.sparse import csr_matrix
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
@@ -21,6 +22,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     OligoScoring,
     OverlapTargetedExonsScorer,
     OverlapUTRScorer,
+    UniformDistanceScorer,
 )
 
 ############################################
@@ -77,7 +79,7 @@ class TestOligoScoring(unittest.TestCase):
 
         self.utr_scorer = OverlapUTRScorer(score_weight=10)
         self.exon_scorer = OverlapTargetedExonsScorer(targeted_exons=["21", "4"], score_weight=2)
-        self.isoform_consensus_scorer = IsoformConsensusScorer(normalize=True, score_weight=2)
+        self.isoform_consensus_scorer = IsoformConsensusScorer(score_weight=2)
         self.Tm_scorer = DeviationFromOptimalTmScorer(
             Tm_opt=57.55,
             Tm_parameters=TM_PARAMETERS,
@@ -104,6 +106,7 @@ class TestOligoScoring(unittest.TestCase):
             GC_content_max=80,
             score_weight=1,
         )
+        self.uniform_distance_scorer = UniformDistanceScorer(average_oligo_length=5.0, score_weight=1.0)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_path)
@@ -121,8 +124,8 @@ class TestOligoScoring(unittest.TestCase):
             oligo_id="region_1::2",
             sequence_type=self.sequence_type,
         )
-        assert oligo_score_wo_utr == 0, "error: scoring for region wo UTR incorrect."
-        assert oligo_score_wo_utr < oligo_score_with_utr, "error: UTR score incorrect."
+        assert oligo_score_with_utr == 0, "error: scoring for region wo UTR incorrect."
+        assert oligo_score_with_utr < oligo_score_wo_utr, "error: UTR score incorrect."
 
     def test_exon_scorer(self) -> None:
         oligo_score_wo_exon = self.exon_scorer.apply(
@@ -143,9 +146,9 @@ class TestOligoScoring(unittest.TestCase):
             oligo_id="region_1::3",
             sequence_type=self.sequence_type,
         )
-        assert oligo_score_wo_exon == 0, "error: scoring for region wo exon incorrect."
-        assert oligo_score_wo_exon < oligo_score_with_exon1, "error: exon score incorrect."
-        assert oligo_score_with_exon2 == 2, "error: exon score incorrect."
+        assert oligo_score_wo_exon == 2, "error: scoring for region wo exon incorrect."
+        assert oligo_score_wo_exon > oligo_score_with_exon1, "error: exon score incorrect."
+        assert oligo_score_with_exon2 == 0, "error: exon score incorrect."
 
     def test_isoform_consensus(self) -> None:
         oligo_score1 = self.isoform_consensus_scorer.apply(
@@ -155,16 +158,6 @@ class TestOligoScoring(unittest.TestCase):
             sequence_type=self.sequence_type,
         )
         assert oligo_score1 == 1, "error: scoring for isoform consensus incorrect."
-
-        self.isoform_consensus_scorer.normalize = False
-        self.isoform_consensus_scorer.score_weight = 1
-        oligo_score2 = self.isoform_consensus_scorer.apply(
-            oligo_database=self.oligo_database,
-            region_id="region_1",
-            oligo_id="region_1::2",
-            sequence_type=self.sequence_type,
-        )
-        assert oligo_score2 == 100, "error: scoring for isoform consensus incorrect."
 
     def test_Tm_scorer(self) -> None:
         oligo_score = self.Tm_scorer.apply(
@@ -202,20 +195,35 @@ class TestOligoScoring(unittest.TestCase):
         )
         assert oligo_score == 0.25, "error: scoring for GC content incorrect."
 
+    def test_uniform_distance_scorer(self) -> None:
+        # Three oligos with pairwise distances 5, 15, 5 -> dist_opt=5; oligo 1 with set [2,3] has d_min=5 -> score 0
+        matrix = csr_matrix([[0, 5, 15], [5, 0, 5], [15, 5, 0]])
+        ids = ["region_1::1", "region_1::2", "region_1::3"]
+        oligo_score = self.uniform_distance_scorer.apply(
+            oligo_database=self.oligo_database,
+            region_id="region_1",
+            oligo_id="region_1::1",
+            sequence_type=self.sequence_type,
+            non_overlap_matrix=matrix,
+            non_overlap_matrix_ids=ids,
+            set_oligo_ids=["region_1::2", "region_1::3"],
+            oligoset_size=3,
+        )
+        assert oligo_score == 0, "error: uniform distance scoring incorrect."
+
     def test_oligo_scoring(self) -> None:
         oligos_scoring = OligoScoring(
             scorers=[self.exon_scorer, self.isoform_consensus_scorer, self.Tm_scorer, self.GC_norm_scorer]
         )
-        oligos_scoring.apply(
-            oligo_database=self.oligo_database, region_id="region_1", sequence_type=self.sequence_type
+        oligo_scores = oligos_scoring.apply(
+            oligo_database=self.oligo_database,
+            region_id="region_1",
+            oligo_ids=["region_1::1", "region_1::2"],
+            sequence_type=self.sequence_type,
         )
 
-        assert (
-            self.oligo_database.database["region_1"]["region_1::1"]["oligo_score"] == 1.25
-        ), "error: wrong score computed for oligo region_1::1"
-        assert (
-            self.oligo_database.database["region_1"]["region_1::2"]["oligo_score"] == 2.25
-        ), "error: wrong score computed for oligo region_1::2"
+        assert oligo_scores.loc["region_1::1"] == 3.25, "error: wrong score computed for oligo region_1::1"
+        assert oligo_scores.loc["region_1::2"] == 0.25, "error: wrong score computed for oligo region_1::2"
 
 
 class TestSetScoring(unittest.TestCase):
