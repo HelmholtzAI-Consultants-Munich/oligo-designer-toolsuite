@@ -38,12 +38,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     PropertyFilter,
     SecondaryStructureFilter,
 )
-from oligo_designer_toolsuite.oligo_selection import (
-    GraphBasedSelectionPolicy,
-    GreedySelectionPolicy,
-    OligoSelectionPolicy,
-    OligosetGeneratorIndependentSet,
-)
+from oligo_designer_toolsuite.oligo_selection import IndependentSetsOligoSelection
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     AlignmentSpecificityFilter,
     BlastNFilter,
@@ -122,10 +117,11 @@ class HcrProbeDesigner:
         set_size_min: int,
         distance_between_target_probes: int,
         n_sets: int,
-        max_graph_size: int,
-        n_attempts: int,
-        heuristic: bool,
-        heuristic_n_attempts: int,
+        n_attempts_graph: int,
+        n_attempts_clique_enum: int,
+        diversification_fraction: float,
+        jaccard_opt: float,
+        jaccard_step: float,
     ) -> OligoDatabase:
 
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
@@ -190,10 +186,11 @@ class HcrProbeDesigner:
             set_size_min=set_size_min,
             distance_between_oligos=distance_between_target_probes,
             n_sets=n_sets,
-            max_graph_size=max_graph_size,
-            n_attempts=n_attempts,
-            heuristic=heuristic,
-            heuristic_n_attempts=heuristic_n_attempts,
+            n_attempts_graph=n_attempts_graph,
+            n_attempts_clique_enum=n_attempts_clique_enum,
+            diversification_fraction=diversification_fraction,
+            jaccard_opt=jaccard_opt,
+            jaccard_step=jaccard_step,
         )
 
         tm_nn_property: BaseProperty = TmNNProperty(
@@ -343,7 +340,6 @@ class HcrProbeDesigner:
         probe_database: OligoDatabase,
         codebook: pd.DataFrame,
         initiator_table: pd.DataFrame,
-        top_n_sets: int = 3,
         output_properties: list[str] | None = None,
     ) -> None:
 
@@ -378,7 +374,6 @@ class HcrProbeDesigner:
 
         probe_database.write_oligosets_to_yaml(
             properties=output_properties,
-            top_n_sets=top_n_sets,
             ascending=True,
             filename="hcr_probes",
         )
@@ -390,26 +385,12 @@ class HcrProbeDesigner:
                 "sequence_initiator_L",
                 "sequence_initiator_R",
             ],
-            top_n_sets=top_n_sets,
             ascending=True,
             filename="hcr_probes_order",
         )
 
         probe_database.write_oligosets_to_table(
-            properties=[
-                "region_id",
-                "oligoset_id",
-                "oligo_id",
-                "sequence_initiator_L",
-                "sequence_linker",
-                "sequence_oligo_L",
-                "sequence_oligo_R",
-                "sequence_linker",
-                "sequence_initiator_R",
-                "sequence_hybridization_probe_L",
-                "sequence_hybridization_probe_R",
-            ],
-            top_n_sets=top_n_sets,
+            properties=output_properties,
             ascending=True,
             filename="hcr_probes",
         )
@@ -722,91 +703,37 @@ class TargetProbeDesigner:
         set_size_min: int,
         distance_between_oligos: int,
         n_sets: int,
-        max_graph_size: int,
-        n_attempts: int,
-        heuristic: bool,
-        heuristic_n_attempts: int,
+        n_attempts_graph: int,
+        n_attempts_clique_enum: int,
+        diversification_fraction: float,
+        jaccard_opt: float,
+        jaccard_step: float,
     ) -> OligoDatabase:
 
         # Define all scorers
-        isoform_consensus_scorer = IsoformConsensusScorer(normalize=True, score_weight=isoform_weight)
+        isoform_consensus_scorer = IsoformConsensusScorer(score_weight=isoform_weight)
         oligos_scoring = OligoScoring(scorers=[isoform_consensus_scorer])
         set_scoring = AverageSetScoring(ascending=False)
 
-        # We change the processing dependent on the required number of probes in the probe sets
-        # For small sets, we don't pre-filter and find the initial set by iterating
-        # through all possible generated sets, which is faster than the max clique approximation.
-        selection_policy: OligoSelectionPolicy
-        if set_size_opt < 10:
-            pre_filter = False
-            clique_init_approximation = False
-            selection_policy = GraphBasedSelectionPolicy(
-                set_scoring=set_scoring,
-                pre_filter=pre_filter,
-                n_attempts=n_attempts,
-                heuristic=heuristic,
-                heuristic_n_attempts=heuristic_n_attempts,
-                clique_init_approximation=clique_init_approximation,
-            )
-            base_log_parameters(
-                {
-                    "pre_filter": pre_filter,
-                    "clique_init_approximation": clique_init_approximation,
-                    "selection_policy": "Graph-Based",
-                }
-            )
-
-        # For medium sized sets, we don't pre-filter but we apply the max clique approximation
-        # to find an initial probe set faster.
-        elif 10 < set_size_opt < 30:
-            pre_filter = False
-            clique_init_approximation = True
-            selection_policy = GraphBasedSelectionPolicy(
-                set_scoring=set_scoring,
-                pre_filter=pre_filter,
-                n_attempts=n_attempts,
-                heuristic=heuristic,
-                heuristic_n_attempts=heuristic_n_attempts,
-                clique_init_approximation=clique_init_approximation,
-            )
-            base_log_parameters(
-                {
-                    "pre_filter": pre_filter,
-                    "clique_init_approximation": clique_init_approximation,
-                    "selection_policy": "Graph-Based",
-                }
-            )
-
-        # For large sets, we apply the pre-filter which removes all probes from the
-        # graph that are only part of cliques which are smaller than the minimum set size
-        # and we apply the Greedy Selection Policy istead of the graph-based selection policy.
-        else:
-            pre_filter = True
-            selection_policy = GreedySelectionPolicy(
-                set_scoring=set_scoring,
-                score_criteria=set_scoring.score_1,
-                pre_filter=pre_filter,
-                penalty=0.01,
-                n_attempts=n_attempts,
-            )
-            base_log_parameters({"pre_filter": pre_filter, "selection_policy": "Greedy"})
-
-        probeset_generator = OligosetGeneratorIndependentSet(
-            selection_policy=selection_policy,
+        base_log_parameters({"Set Selection": "Independent Sets"})
+        oligoset_generator = IndependentSetsOligoSelection(
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
-            max_oligos=max_graph_size,
-            distance_between_oligos=distance_between_oligos,
-        )
-        oligo_database = probeset_generator.apply(
-            oligo_database=oligo_database,
-            sequence_type="oligo",
             set_size_opt=set_size_opt,
             set_size_min=set_size_min,
+            distance_between_oligos=distance_between_oligos,
+            n_attempts_graph=n_attempts_graph,
+            n_attempts_clique_enum=n_attempts_clique_enum,
+            diversification_fraction=diversification_fraction,
+            jaccard_opt=jaccard_opt,
+            jaccard_step=jaccard_step,
+        )
+        oligo_database = oligoset_generator.apply(
+            oligo_database=oligo_database,
+            sequence_type="oligo",
             n_sets=n_sets,
             n_jobs=self.n_jobs,
         )
-
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Oligo Selection")
         check_content_oligo_database(oligo_database)
 
@@ -953,16 +880,17 @@ def main() -> None:
         target_probe_cross_hybridization_blastn_hit_parameters=config[
             "target_probe_cross_hybridization_blastn_hit_parameters"
         ],
-        max_graph_size=config["max_graph_size"],
-        n_attempts=config["n_attempts"],
-        heuristic=config["heuristic"],
-        heuristic_n_attempts=config["heuristic_n_attempts"],
         target_probe_junction_region_size=config["target_probe_junction_region_size"],
         target_probe_isoform_weight=config["target_probe_isoform_weight"],
         set_size_opt=config["set_size_opt"],
         set_size_min=config["set_size_min"],
         distance_between_target_probes=config["distance_between_target_probes"],
         n_sets=config["n_sets"],
+        n_attempts_graph=config["n_attempts_graph"],
+        n_attempts_clique_enum=config["n_attempts_clique_enum"],
+        diversification_fraction=config["diversification_fraction"],
+        jaccard_opt=config["jaccard_opt"],
+        jaccard_step=config["jaccard_step"],
     )
 
     codebook, initiator_table = pipeline.design_initiators(
@@ -982,7 +910,6 @@ def main() -> None:
         probe_database=hybridization_probe_database,
         codebook=codebook,
         initiator_table=initiator_table,
-        top_n_sets=config["top_n_sets"],
     )
 
     logging.info("--------------END PIPELINE--------------")

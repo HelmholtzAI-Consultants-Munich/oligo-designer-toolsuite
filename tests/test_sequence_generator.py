@@ -5,7 +5,7 @@
 import os
 import shutil
 import unittest
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Callable, cast
 from unittest.mock import patch
@@ -533,7 +533,7 @@ class TestFTPLoaderEnsemblOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
         assert Path(file_fasta).name == "Homo_sapiens.GRCh38.ncrna.fa", "error: wrong file downloaded"
 
 
-class GenomicRegionGeneratorBase(unittest.TestCase):
+class GenomicRegionGeneratorBase(unittest.TestCase, ABC):
     expected_generation_behavior: dict[str, str] = {}
     expected_header_values: dict[str, RegionHeaderSpec] = {}
 
