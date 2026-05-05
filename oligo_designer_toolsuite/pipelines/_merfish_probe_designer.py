@@ -2313,44 +2313,26 @@ class PrimerDesigner:
 # Merfish Probe Designer Pipeline
 ############################################
 
+def merfish_probe_designer(config:MerfishProbeDesignerConfig) -> None:
 
-def main() -> None:
     """
-    Main entry point for running the MERFISH probe design pipeline.
+    Execute the MERFISH probe designer pipeline.
 
-    This function orchestrates the complete MERFISH probe design workflow:
-    1. Parses command-line arguments using the base parser
-    2. Reads the configuration YAML file containing all pipeline parameters
-    3. Reads the gene IDs file (if provided) or uses all genes from FASTA files
-    4. Preprocesses melting temperature parameters for target probes, readout probes, and primers
-    5. Initializes the MerfishProbeDesigner pipeline
-    6. Designs target probes for specified genes
-    7. Designs readout probes and generates the codebook
-    8. Assembles hybridization probes by combining target probes with readout probe barcodes
-    9. Designs forward and reverse primers for PCR amplification
-    10. Assembles final DNA template probes with primers
-    11. Generates output files (codebook, readout probe table, probe sequences, etc.)
+    1. Reads the gene IDs file (if provided) or uses all genes from FASTA files
+    2. Preprocesses melting temperature parameters for target probes, readout probes, and primers
+    3. Initializes the MerfishProbeDesigner pipeline
+    4. Designs target probes for specified genes
+    5. Designs readout probes and generates the codebook
+    6. Assembles hybridization probes by combining target probes with readout probe barcodes
+    7. Designs forward and reverse primers for PCR amplification
+    8. Assembles final DNA template probes with primers
+    9. Generates output files (codebook, readout probe table, probe sequences, etc.)
 
-    The function is typically called from the command line:
-    ``merfish_probe_designer --config <path_to_config.yaml>``
+    This function can be called directly if there already exists a valid pydantic model
 
-    Command-line arguments are parsed using `base_parser()`, which expects:
-    - `config`: Path to the YAML configuration file containing all pipeline parameters
+    :param config: Validated pipeline configuration.
+    :type config: MerfishProbeDesignerConfig
     """
-    logging.info("--------------START PIPELINE--------------")
-
-    args = base_parser()
-
-    ##### read the config file #####
-    with open(args["config"], "r") as handle:
-        config_raw = yaml.safe_load(handle)
-
-    try:
-        config = MerfishProbeDesignerConfig.model_validate(config_raw)
-    except ValidationError as e:
-        logging.error("Invalid configuration file:\n%s", e)
-        raise
-
     # write used config
     write_config_to_yaml(config=config, dir_output=config.general.dir_output)
 
@@ -2412,6 +2394,39 @@ def main() -> None:
         codebook=codebook,
         readout_probe_table=readout_probe_table,
     )
+
+
+def main() -> None:
+    """
+    Main entry point for running the MERFISH probe design pipeline.
+
+    This function orchestrates the complete MERFISH probe design workflow:
+    1. Parses command-line arguments using the base parser
+    2. Reads the configuration YAML file containing all pipeline parameters
+    3. calls the merfish_probe_designer function, where the pipeline is executed
+    
+
+    The function is typically called from the command line:
+    ``merfish_probe_designer --config <path_to_config.yaml>``
+
+    Command-line arguments are parsed using `base_parser()`, which expects:
+    - `config`: Path to the YAML configuration file containing all pipeline parameters
+    """
+    logging.info("--------------START PIPELINE--------------")
+
+    args = base_parser()
+
+    ##### read the config file #####
+    with open(args["config"], "r") as handle:
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config = MerfishProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        logging.error("Invalid configuration file:\n%s", e)
+        raise
+
+    merfish_probe_designer(config)
 
     logging.info("--------------END PIPELINE--------------")
 

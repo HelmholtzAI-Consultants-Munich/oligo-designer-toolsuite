@@ -1723,14 +1723,13 @@ def scrinshot_probe_designer(config: ScrinshotProbeDesignerConfig) -> None:
     """
     Execute the SCRINSHOT probe design pipeline.
 
-    This function orchestrates the complete SCRINSHOT probe design workflow:
-    3. Reads the gene IDs file (if provided) or uses all genes from FASTA files
-    4. Preprocesses melting temperature parameters for target probes and detection oligos
-    5. Initializes the ScrinshotProbeDesigner pipeline
-    6. Designs target probes for specified genes (padlock probe arms)
-    7. Designs detection oligos with uracil substitutions for optimal Tm
-    8. Assembles padlock probes by combining target probe arms with the composite backbone
-    9. Generates output files (YAML, TSV, Excel, order file)
+    1. Reads the gene IDs file (if provided) or uses all genes from FASTA files
+    2. Preprocesses melting temperature parameters for target probes and detection oligos
+    3. Initializes the ScrinshotProbeDesigner pipeline
+    4. Designs target probes for specified genes (padlock probe arms)
+    5. Designs detection oligos with uracil substitutions for optimal Tm
+    6. Assembles padlock probes by combining target probe arms with the composite backbone
+    7. Generates output files (YAML, TSV, Excel, order file)
 
     This function can be called directly if there already exists a valid pydantic model
 
