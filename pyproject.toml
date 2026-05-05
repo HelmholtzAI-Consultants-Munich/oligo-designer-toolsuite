@@ -69,6 +69,7 @@ scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_
 seqfish_plus_probe_designer = "oligo_designer_toolsuite.pipelines._seqfish_plus_probe_designer:main"
 merfish_probe_designer = "oligo_designer_toolsuite.pipelines._merfish_probe_designer:main"
 cycle_hcr_probe_designer = "oligo_designer_toolsuite.pipelines._cycle_hcr_probe_designer:main"
+hcr_probe_designer = "oligo_designer_toolsuite.pipelines._hcr_probe_designer:main"
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"

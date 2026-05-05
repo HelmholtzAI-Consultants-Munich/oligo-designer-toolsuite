@@ -1128,16 +1128,16 @@ class CustomGenomicRegionGenerator:
 
         return merged_annotation
 
-    def _get_annotation_region(self, annotation: pd.DataFrame) -> str:
+    def _get_annotation_region(self, annotation: pd.DataFrame) -> pd.Series:
         """
         Generates a formatted string representing the genomic region for each annotation entry.
 
         :param annotation: A DataFrame containing genomic annotations. It must include columns 'seqid', 'start_1base', 'end', and 'strand' to construct the region string.
         :type annotation: pd.DataFrame
         :return: A string formatted as 'seqid:start_1base-end(strand)' for each annotation entry.
-        :rtype: str
+        :rtype: pd.Series
         """
-        region: str = (
+        region: pd.Series = (
             annotation["seqid"].astype("str")
             + ":"
             + annotation["start_1base"].astype("str")
