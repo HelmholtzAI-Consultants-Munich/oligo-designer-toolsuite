@@ -129,7 +129,9 @@ class BlastNFilter(AlignmentSpecificityFilter):
         ## Create blast index
         args = ["makeblastdb", "-dbtype", "nucl", "-out", file_reference, "-in", file_reference]
 
-        subprocess.run(args, cwd=self.dir_output, check=True)
+        subprocess.run(
+            args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
 
         return file_reference
 
@@ -190,7 +192,9 @@ class BlastNFilter(AlignmentSpecificityFilter):
         args.append("-outfmt")
         args.append(self.output_format)
 
-        subprocess.run(args, cwd=self.dir_output, check=True)
+        subprocess.run(
+            args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
 
         # read the reuslts of the blast seatch
         blast_results = self._read_search_output(
