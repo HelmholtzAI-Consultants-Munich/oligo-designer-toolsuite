@@ -1731,8 +1731,6 @@ def scrinshot_probe_designer(config: ScrinshotProbeDesignerConfig) -> None:
     6. Assembles padlock probes by combining target probe arms with the composite backbone
     7. Generates output files (YAML, TSV, Excel, order file)
 
-    This function can be called directly if there already exists a valid pydantic model
-
     :param config: Validated pipeline configuration.
     :type config: ScrinshotProbeDesignerConfig
     """

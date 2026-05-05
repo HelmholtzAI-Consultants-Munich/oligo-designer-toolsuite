@@ -1098,8 +1098,6 @@ def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
     5. Designs target probes for specified genes
     6. Generates output files (YAML, TSV, Excel, order file)
 
-    This function can be called directly if there already exists a valid pydantic model
-
     :param config: Validated pipeline configuration.
     :type config: ScrinshotProbeDesignerConfig
     """

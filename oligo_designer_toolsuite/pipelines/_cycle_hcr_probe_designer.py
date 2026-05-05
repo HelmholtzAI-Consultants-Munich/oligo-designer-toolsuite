@@ -1746,8 +1746,6 @@ def cycle_hcr_probe_designer(config: CycleHCRProbeDesignerConfig) -> None:
     8. Assembles final DNA template probes with primers
     9. Generates output files (codebook, readout probe table, probe sequences, etc.)
     
-    This function can be called directly if there already exists a valid pydantic model
-
     :param config: Validated pipeline configuration.
     :type config: ScrinshotProbeDesignerConfig
     """

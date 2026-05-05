@@ -2149,8 +2149,6 @@ def seqfish_plus_probe_designer(config: SeqFishPlusProbeDesignerConfig) -> None:
     9. Assembles final DNA template probes with primers
     10. Generates output files (codebook, readout probe table, probe sequences, etc.)
 
-    This function can be called directly if there already exists a valid pydantic model
-
     :param config: Validated pipeline configuration.
     :type config: ScrinshotProbeDesignerConfig
     """
