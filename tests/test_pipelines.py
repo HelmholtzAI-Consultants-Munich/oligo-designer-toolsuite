@@ -35,6 +35,9 @@ CONFIG_MERFISH_PROBE_DESIGNER = "data/configs/merfish_probe_designer.yaml"
 SCRIPT_CYCLEHCR_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_cycle_hcr_probe_designer.py"
 CONFIG_CYCLEHCR_PROBE_DESIGNER = "data/configs/cycle_hcr_probe_designer.yaml"
 
+SCRIPT_HCR_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_hcr_probe_designer.py"
+CONFIG_HCR_PROBE_DESIGNER = "data/configs/hcr_probe_designer.yaml"
+
 ############################################
 # Tests
 ############################################
@@ -175,3 +178,19 @@ class TestCycleHCRProbeDesigner(PipelinesBase, unittest.TestCase):
 
     def setup_cmd_parameters(self) -> list[str]:
         return ["-c", os.path.abspath(CONFIG_CYCLEHCR_PROBE_DESIGNER)]
+
+
+class TestHCRProbeDesigner(PipelinesBase, unittest.TestCase):
+    def setup_output_dir(self) -> Any:
+        with open(CONFIG_HCR_PROBE_DESIGNER, "r") as handle:
+            config = yaml.safe_load(handle)
+        dir_output = config.get("dir_output")
+        if dir_output is None:
+            return tempfile.mkdtemp()
+        return os.path.abspath(dir_output)
+
+    def setup_script(self) -> str:
+        return os.path.abspath(SCRIPT_HCR_PROBE_DESIGNER)
+
+    def setup_cmd_parameters(self) -> list[str]:
+        return ["-c", os.path.abspath(CONFIG_HCR_PROBE_DESIGNER)]

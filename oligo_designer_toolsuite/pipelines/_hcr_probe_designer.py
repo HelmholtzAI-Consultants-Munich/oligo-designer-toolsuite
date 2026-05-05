@@ -848,12 +848,12 @@ class InitiatorDesigner:
             )
 
         # remove rows with any NaN
-        codebook_clean = codebook[codebook.notna().all(axis=1)]
+        codebook = codebook[codebook.notna().all(axis=1)]
         # keep only rows with 0/1 values
-        codebook_clean = codebook_clean[codebook_clean.isin([0, 1]).all(axis=1)]
+        codebook = codebook[codebook.isin([0, 1]).all(axis=1)]
         # keep only valid one-hot rows (exactly one "1")
-        codebook_clean = codebook_clean[(codebook_clean == 1).sum(axis=1) == 1]
-        if len(codebook_clean) == 0:
+        codebook = codebook[(codebook == 1).sum(axis=1) == 1]
+        if len(codebook) == 0:
             raise FileFormatError(f"Codebook file '{file_codebook}' must contain at least one row with data.")
 
         return codebook
