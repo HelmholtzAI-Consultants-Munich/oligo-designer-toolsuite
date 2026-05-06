@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
-from Bio.SeqUtils import MeltingTemp as mt
+from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import (
     FeatureNotImplementedError,
@@ -56,8 +56,31 @@ from oligo_designer_toolsuite.pipelines._utils import (
     format_sequence,
     pipeline_step_basic,
     setup_logging,
+    write_config_to_yaml,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
+from oligo_designer_toolsuite.validation._types import (
+    FilesFastaDatabaseT,
+    FilesFastaReferenceDatabaseT,
+    GCContentMaxT,
+    GCContentMinT,
+    SecondaryStructuresThresholdDeltaGT,
+    TmMaxT,
+    TmMinT,
+    TSecondaryStructureT,
+)
+from oligo_designer_toolsuite.validation.models._developer_parameters import TargetProbeDevHCR
+from oligo_designer_toolsuite.validation.models._general import (
+    BlastnHitParameters,
+    BlastnSearchParameters,
+    HomopolymerThresholds,
+    OligoSetSelection,
+    TmChemCorrectionParameters,
+    TmParameters,
+    TmSaltCorrectionParameters,
+)
+from oligo_designer_toolsuite.validation.models._target_probes import TargetProbeHCR
+from oligo_designer_toolsuite.validation.models.config_pipelines import HCRProbeDesignerConfig
 
 ############################################
 # HCR Probe Designer
@@ -67,8 +90,8 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 class HcrProbeDesigner:
     def __init__(
         self,
-        write_intermediate_steps: bool,
         dir_output: str,
+        write_intermediate_steps: bool,
         n_jobs: int,
     ) -> None:
         """Constructor for the HcrProbeDesigner class."""
@@ -90,50 +113,22 @@ class HcrProbeDesigner:
 
     def design_target_probes(
         self,
-        files_fasta_target_probe_database: list[str],
-        files_fasta_reference_database_target_probe: list[str],
         region_ids: list[str] | None,
-        target_probe_isoform_consensus: float,
-        target_probe_L_probe_sequence_length: int,
-        target_probe_gap_sequence_length: int,
-        target_probe_R_probe_sequence_length: int,
-        target_probe_GC_content_min: float,
-        target_probe_GC_content_max: float,
-        target_probe_Tm_min: float,
-        target_probe_Tm_max: float,
-        target_probe_Tm_parameters: dict,
-        target_probe_Tm_chem_correction_parameters: dict | None,
-        target_probe_Tm_salt_correction_parameters: dict | None,
-        target_probe_homopolymeric_base_n: dict,
-        target_probe_T_secondary_structure: float,
-        target_probe_secondary_structures_threshold_deltaG: float,
-        target_probe_specificity_blastn_search_parameters: dict,
-        target_probe_specificity_blastn_hit_parameters: dict,
-        target_probe_cross_hybridization_blastn_search_parameters: dict,
-        target_probe_cross_hybridization_blastn_hit_parameters: dict,
-        target_probe_junction_region_size: int,
-        target_probe_isoform_weight: float,
-        set_size_opt: int,
-        set_size_min: int,
-        distance_between_target_probes: int,
-        n_sets: int,
-        n_attempts_graph: int,
-        n_attempts_clique_enum: int,
-        diversification_fraction: float,
-        jaccard_opt: float,
-        jaccard_step: float,
+        config: TargetProbeHCR,
+        developer_param: TargetProbeDevHCR,
+        oligo_set_selection: OligoSetSelection,
     ) -> OligoDatabase:
 
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
 
         oligo_database: OligoDatabase = target_probe_designer.create_oligo_database(
             region_ids=region_ids,
-            target_probe_L_probe_sequence_length=target_probe_L_probe_sequence_length,
-            target_probe_gap_sequence_length=target_probe_gap_sequence_length,
-            target_probe_R_probe_sequence_length=target_probe_R_probe_sequence_length,
-            files_fasta_oligo_database=files_fasta_target_probe_database,
-            min_oligos_per_gene=set_size_min,
-            isoform_consensus=target_probe_isoform_consensus,
+            target_probe_L_probe_sequence_length=config.L_probe_sequence_length,
+            target_probe_gap_sequence_length=config.gap_sequence_length,
+            target_probe_R_probe_sequence_length=config.R_probe_sequence_length,
+            files_fasta_oligo_database=config.files_fasta_database,
+            min_oligos_per_gene=config.set_size_min,
+            isoform_consensus=config.isoform_consensus,
         )
 
         if self.write_intermediate_steps:
@@ -144,16 +139,16 @@ class HcrProbeDesigner:
 
         oligo_database = target_probe_designer.filter_by_property(
             oligo_database=oligo_database,
-            GC_content_min=target_probe_GC_content_min,
-            GC_content_max=target_probe_GC_content_max,
-            Tm_min=target_probe_Tm_min,
-            Tm_max=target_probe_Tm_max,
-            homopolymeric_base_n=target_probe_homopolymeric_base_n,
-            T_secondary_structure=target_probe_T_secondary_structure,
-            secondary_structures_threshold_deltaG=target_probe_secondary_structures_threshold_deltaG,
-            Tm_parameters=target_probe_Tm_parameters,
-            Tm_chem_correction_parameters=target_probe_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=target_probe_Tm_salt_correction_parameters,
+            GC_content_min=config.GC_content_min,
+            GC_content_max=config.GC_content_max,
+            Tm_min=config.Tm_min,
+            Tm_max=config.Tm_max,
+            homopolymeric_base_n=config.homopolymeric_base_n,
+            T_secondary_structure=config.T_secondary_structure,
+            secondary_structures_threshold_deltaG=developer_param.secondary_structures_threshold_deltaG,
+            Tm_parameters=developer_param.Tm_parameters,
+            Tm_chem_correction_parameters=developer_param.Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=developer_param.Tm_salt_correction_parameters,
         )
 
         if self.write_intermediate_steps:
@@ -164,13 +159,13 @@ class HcrProbeDesigner:
 
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_target_probe,
-            junction_region_size=target_probe_junction_region_size,
-            junction_site=target_probe_L_probe_sequence_length + target_probe_gap_sequence_length // 2,
-            specificity_blastn_search_parameters=target_probe_specificity_blastn_search_parameters,
-            specificity_blastn_hit_parameters=target_probe_specificity_blastn_hit_parameters,
-            cross_hybridization_blastn_search_parameters=target_probe_cross_hybridization_blastn_search_parameters,
-            cross_hybridization_blastn_hit_parameters=target_probe_cross_hybridization_blastn_hit_parameters,
+            files_fasta_reference_database=config.files_fasta_reference_database,
+            junction_region_size=config.junction_region_size,
+            junction_site=config.L_probe_sequence_length + config.gap_sequence_length // 2,
+            specificity_blastn_search_parameters=developer_param.specificity_blastn_search_parameters,
+            specificity_blastn_hit_parameters=developer_param.specificity_blastn_hit_parameters,
+            cross_hybridization_blastn_search_parameters=developer_param.cross_hybridization_blastn_search_parameters,
+            cross_hybridization_blastn_hit_parameters=developer_param.cross_hybridization_blastn_hit_parameters,
         )
 
         if self.write_intermediate_steps:
@@ -181,22 +176,22 @@ class HcrProbeDesigner:
 
         oligo_database = target_probe_designer.create_oligo_sets(
             oligo_database=oligo_database,
-            isoform_weight=target_probe_isoform_weight,
-            set_size_opt=set_size_opt,
-            set_size_min=set_size_min,
-            distance_between_oligos=distance_between_target_probes,
-            n_sets=n_sets,
-            n_attempts_graph=n_attempts_graph,
-            n_attempts_clique_enum=n_attempts_clique_enum,
-            diversification_fraction=diversification_fraction,
-            jaccard_opt=jaccard_opt,
-            jaccard_step=jaccard_step,
+            isoform_weight=config.isoform_weight,
+            set_size_opt=config.set_size_opt,
+            set_size_min=config.set_size_min,
+            distance_between_oligos=config.distance_between_target_probes,
+            n_sets=config.n_sets,
+            n_attempts_graph=oligo_set_selection.n_attempts_graph,
+            n_attempts_clique_enum=oligo_set_selection.n_attempts_clique_enum,
+            diversification_fraction=oligo_set_selection.diversification_fraction,
+            jaccard_opt=oligo_set_selection.jaccard_opt,
+            jaccard_step=oligo_set_selection.jaccard_step,
         )
 
         tm_nn_property: BaseProperty = TmNNProperty(
-            Tm_parameters=target_probe_Tm_parameters,
-            Tm_chem_correction_parameters=target_probe_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=target_probe_Tm_salt_correction_parameters,
+            Tm_parameters=developer_param.Tm_parameters,
+            Tm_chem_correction_parameters=developer_param.Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=developer_param.Tm_salt_correction_parameters,
         )
 
         calculator = PropertyCalculator(properties=[tm_nn_property])
@@ -241,7 +236,7 @@ class HcrProbeDesigner:
             codebook = initiator_designer.load_codebook(file_codebook=file_codebook)
         else:
             raise FeatureNotImplementedError(
-                "Generation of codebook is not yet implemented. " "Please provide a file_codebook parameter."
+                "Generation of codebook is not yet implemented. Please provide a file_codebook parameter."
             )
 
         # Check if all region_ids are in the codebook
@@ -368,7 +363,7 @@ class HcrProbeDesigner:
                 "isoform_consensus",
             ]
 
-        # write codebook and readout probe table
+        # write codebook and initiator table
         codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="region_id")
         initiator_table.to_csv(os.path.join(self.dir_output, "initiators.tsv"), sep="\t")
 
@@ -420,7 +415,7 @@ class TargetProbeDesigner:
         target_probe_L_probe_sequence_length: int,
         target_probe_gap_sequence_length: int,
         target_probe_R_probe_sequence_length: int,
-        files_fasta_oligo_database: list[str],
+        files_fasta_oligo_database: FilesFastaDatabaseT,
         min_oligos_per_gene: int,
         isoform_consensus: float,
     ) -> OligoDatabase:
@@ -514,16 +509,16 @@ class TargetProbeDesigner:
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
-        GC_content_min: float,
-        GC_content_max: float,
-        Tm_min: float,
-        Tm_max: float,
-        homopolymeric_base_n: dict,
-        T_secondary_structure: float,
-        secondary_structures_threshold_deltaG: float,
-        Tm_parameters: dict,
-        Tm_chem_correction_parameters: dict | None,
-        Tm_salt_correction_parameters: dict | None,
+        GC_content_min: GCContentMinT,
+        GC_content_max: GCContentMaxT,
+        Tm_min: TmMinT,
+        Tm_max: TmMaxT,
+        homopolymeric_base_n: HomopolymerThresholds,
+        T_secondary_structure: TSecondaryStructureT,
+        secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT,
+        Tm_parameters: TmParameters,
+        Tm_chem_correction_parameters: TmChemCorrectionParameters | None,
+        Tm_salt_correction_parameters: TmSaltCorrectionParameters | None,
     ) -> OligoDatabase:
 
         # define the filters
@@ -552,7 +547,7 @@ class TargetProbeDesigner:
             secondary_sctructure,
         ]
 
-        # initialize the preoperty filter class
+        # initialize the property filter class
         property_filter = PropertyFilter(filters=filters)
 
         # filter the database
@@ -578,13 +573,13 @@ class TargetProbeDesigner:
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
-        files_fasta_reference_database: list[str],
+        files_fasta_reference_database: FilesFastaReferenceDatabaseT,
         junction_region_size: int,
         junction_site: int,
-        specificity_blastn_search_parameters: dict,
-        specificity_blastn_hit_parameters: dict,
-        cross_hybridization_blastn_search_parameters: dict,
-        cross_hybridization_blastn_hit_parameters: dict,
+        specificity_blastn_search_parameters: BlastnSearchParameters,
+        specificity_blastn_hit_parameters: BlastnHitParameters,
+        cross_hybridization_blastn_search_parameters: BlastnSearchParameters,
+        cross_hybridization_blastn_hit_parameters: BlastnHitParameters,
     ) -> OligoDatabase:
 
         ##### define reference database #####
@@ -819,91 +814,55 @@ def main() -> None:
 
     ##### read the config file #####
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config = HCRProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        logging.error("Invalid configuration file:\n%s", e)
+        raise
+
+    # write used config
+    write_config_to_yaml(config=config, dir_output=config.general.dir_output)
 
     ##### read the genes file #####
-    if config["file_regions"] is None:
+    if config.target_probe.file_regions is None:
         warnings.warn(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
-        gene_ids = None
+        region_ids = None
     else:
-        with open(config["file_regions"]) as handle:
+        with open(config.target_probe.file_regions) as handle:
             lines = handle.readlines()
             # ensure that the list contains unique gene ids
-            gene_ids = list(set([line.rstrip() for line in lines]))
-
-    # preprocess melting temperature params
-    target_probe_Tm_parameters = config["target_probe_Tm_parameters"]
-    target_probe_Tm_parameters["nn_table"] = getattr(mt, target_probe_Tm_parameters["nn_table"])
-    target_probe_Tm_parameters["tmm_table"] = getattr(mt, target_probe_Tm_parameters["tmm_table"])
-    target_probe_Tm_parameters["imm_table"] = getattr(mt, target_probe_Tm_parameters["imm_table"])
-    target_probe_Tm_parameters["de_table"] = getattr(mt, target_probe_Tm_parameters["de_table"])
+            region_ids = list(set([line.rstrip() for line in lines]))
 
     ##### initialize probe designer pipeline #####
     pipeline = HcrProbeDesigner(
-        write_intermediate_steps=config["write_intermediate_steps"],
-        dir_output=config["dir_output"],
-        n_jobs=config["n_jobs"],
+        dir_output=config.general.dir_output,
+        write_intermediate_steps=config.general.write_intermediate_steps,
+        n_jobs=config.general.n_jobs,
     )
 
     ##### design probes #####
     target_probe_database = pipeline.design_target_probes(
-        region_ids=gene_ids,
-        files_fasta_target_probe_database=config["files_fasta_target_probe_database"],
-        files_fasta_reference_database_target_probe=config["files_fasta_reference_database_target_probe"],
-        target_probe_isoform_consensus=config["target_probe_isoform_consensus"],
-        target_probe_L_probe_sequence_length=config["target_probe_L_probe_sequence_length"],
-        target_probe_gap_sequence_length=config["target_probe_gap_sequence_length"],
-        target_probe_R_probe_sequence_length=config["target_probe_R_probe_sequence_length"],
-        target_probe_GC_content_min=config["target_probe_GC_content_min"],
-        target_probe_GC_content_max=config["target_probe_GC_content_max"],
-        target_probe_Tm_min=config["target_probe_Tm_min"],
-        target_probe_Tm_max=config["target_probe_Tm_max"],
-        target_probe_Tm_parameters=target_probe_Tm_parameters,
-        target_probe_Tm_chem_correction_parameters=config["target_probe_Tm_chem_correction_parameters"],
-        target_probe_Tm_salt_correction_parameters=config["target_probe_Tm_salt_correction_parameters"],
-        target_probe_homopolymeric_base_n=config["target_probe_homopolymeric_base_n"],
-        target_probe_T_secondary_structure=config["target_probe_T_secondary_structure"],
-        target_probe_secondary_structures_threshold_deltaG=config[
-            "target_probe_secondary_structures_threshold_deltaG"
-        ],
-        target_probe_specificity_blastn_search_parameters=config[
-            "target_probe_specificity_blastn_search_parameters"
-        ],
-        target_probe_specificity_blastn_hit_parameters=config[
-            "target_probe_specificity_blastn_hit_parameters"
-        ],
-        target_probe_cross_hybridization_blastn_search_parameters=config[
-            "target_probe_cross_hybridization_blastn_search_parameters"
-        ],
-        target_probe_cross_hybridization_blastn_hit_parameters=config[
-            "target_probe_cross_hybridization_blastn_hit_parameters"
-        ],
-        target_probe_junction_region_size=config["target_probe_junction_region_size"],
-        target_probe_isoform_weight=config["target_probe_isoform_weight"],
-        set_size_opt=config["set_size_opt"],
-        set_size_min=config["set_size_min"],
-        distance_between_target_probes=config["distance_between_target_probes"],
-        n_sets=config["n_sets"],
-        n_attempts_graph=config["n_attempts_graph"],
-        n_attempts_clique_enum=config["n_attempts_clique_enum"],
-        diversification_fraction=config["diversification_fraction"],
-        jaccard_opt=config["jaccard_opt"],
-        jaccard_step=config["jaccard_step"],
+        region_ids=region_ids,
+        config=config.target_probe,
+        developer_param=config.developer_param.target_probe,
+        oligo_set_selection=config.developer_param.oligo_set_selection,
     )
 
     codebook, initiator_table = pipeline.design_initiators(
         region_ids=list(target_probe_database.database.keys()),
-        file_initiator_table=config["file_initiator_table"],
-        file_codebook=config["file_codebook"],
+        file_initiator_table=config.initiator_probe.file_initiator_table,
+        file_codebook=config.initiator_probe.file_codebook,
     )
 
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
         target_probe_database=target_probe_database,
         codebook=codebook,
         initiator_table=initiator_table,
-        linker_sequence=config["linker_sequence"],
+        linker_sequence=config.target_probe.linker_sequence,
     )
 
     pipeline.generate_output(

@@ -8,6 +8,7 @@ from oligo_designer_toolsuite.validation._types import DirOutputT, ExonExonJunct
 from oligo_designer_toolsuite.validation.models._detection_probes import DetectionProbeScrinshot
 from oligo_designer_toolsuite.validation.models._developer_parameters import (
     DeveloperParametersCycleHCR,
+    DeveloperParametersHCR,
     DeveloperParametersMerfish,
     DeveloperParametersOligoSeq,
     DeveloperParametersScrinshot,
@@ -16,17 +17,28 @@ from oligo_designer_toolsuite.validation.models._developer_parameters import (
 from oligo_designer_toolsuite.validation.models._general import General, GenomicRegions, SourceConfigs
 from oligo_designer_toolsuite.validation.models._primer import PrimerCycleHCR, PrimerFish, PrimerMerfish
 from oligo_designer_toolsuite.validation.models._readout_probes import (
+    InitiatorProbeHCR,
     ReadoutProbeCycleHCR,
     ReadoutProbeMerfish,
     ReadoutProbeSeqFishPlus,
 )
 from oligo_designer_toolsuite.validation.models._target_probes import (
     TargetProbeCycleHCR,
+    TargetProbeHCR,
     TargetProbeMerfish,
     TargetProbeOligoSeq,
     TargetProbeScrinshot,
     TargetProbeSeqFishPlus,
 )
+
+
+class HCRProbeDesignerConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: PositiveInt
+    general: General
+    target_probe: TargetProbeHCR
+    initiator_probe: InitiatorProbeHCR
+    developer_param: DeveloperParametersHCR
 
 
 class CycleHCRProbeDesignerConfig(BaseModel):

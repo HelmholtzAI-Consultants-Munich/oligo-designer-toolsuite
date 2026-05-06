@@ -14,6 +14,32 @@ from oligo_designer_toolsuite.validation.models._general import (
 )
 
 
+class InitiatorProbeHCR(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file_initiator_table: Annotated[
+        str,
+        Field(
+            description="Path to a CSV/TSV file containing the initiator table. The file must include columns: 'bit', 'initiator_L_sequence', and 'initiator_R_sequence'.",
+        ),
+    ]
+    file_codebook: Annotated[
+        str,
+        Field(
+            description="Path to a CSV/TSV file containing an existing codebook. The codebook must have region IDs as the index, columns named 'bit_*' with 0/1 entries, and exactly one active bit per row.",
+        ),
+    ]
+
+    @field_validator("file_initiator_table", "file_codebook")
+    @classmethod
+    def must_be_csv_or_tsv(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not (v.endswith(".csv") or v.endswith(".tsv")):
+            raise ValueError("File must end with .csv or .tsv")
+        return v
+
+
 class ReadoutProbeCycleHCR(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

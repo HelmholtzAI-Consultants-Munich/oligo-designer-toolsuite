@@ -44,7 +44,7 @@ class TargetProbeDev(BaseModel):
     ]
 
 
-class TargetProbeDevCycleHCR(TargetProbeDev):
+class TargetProbeDevSplitProbeBase(TargetProbeDev):
 
     secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
     Tm_parameters: Annotated[
@@ -80,10 +80,22 @@ class TargetProbeDevCycleHCR(TargetProbeDev):
     ]
 
 
+class TargetProbeDevCycleHCR(TargetProbeDevSplitProbeBase):
+    pass
+
+
+class TargetProbeDevHCR(TargetProbeDevSplitProbeBase):
+    pass
+
+
 class DeveloperParametersBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     oligo_set_selection: OligoSetSelection
+
+
+class DeveloperParametersHCR(DeveloperParametersBase):
+    target_probe: TargetProbeDevHCR
 
 
 class DeveloperParametersCycleHCR(DeveloperParametersBase):

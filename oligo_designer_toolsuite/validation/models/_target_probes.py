@@ -77,7 +77,8 @@ class TargetProbeBase(BaseModel):
     ]
 
 
-class TargetProbeCycleHCR(TargetProbeBase):
+class TargetProbeSplitProbeBase(TargetProbeBase):
+    """Shared base for HCR and CycleHCR target probes (split L/R probe design)."""
 
     L_probe_sequence_length: Annotated[
         PositiveInt,
@@ -106,22 +107,31 @@ class TargetProbeCycleHCR(TargetProbeBase):
             description="Size of the junction region (in nucleotides) used for seed-based specificity filtering. If set to 0, full-length specificity filtering is used instead of seed-based filtering. When seed-based filtering is enabled, any probe with a BLASTN hit covering the junction region between the left and right probe halves will be removed, regardless of the alignment coverage percentage.",
         ),
     ]
-    Tm_weight: Annotated[
-        WeightT,
-        Field(
-            description="Weight assigned to melting temperature (Tm) in the probe scoring function. Higher values prioritize probes with Tm closer to the optimal value (Tm_max). This weight is used in combination with isoform_weight to calculate a composite score for each probe.",
-        ),
-    ]
     isoform_weight: Annotated[
         WeightT,
         Field(
-            description="Weight assigned to isoform consensus in the probe scoring function. Higher values prioritize probes with higher isoform consensus values (probes that are conserved across multiple transcript isoforms). This weight is used in combination with Tm_weight to calculate a composite score for each probe.",
+            description="Weight assigned to isoform consensus in the probe scoring function. Higher values prioritize probes with higher isoform consensus values (probes that are conserved across multiple transcript isoforms).",
         ),
     ]
     linker_sequence: Annotated[
         DNAT,
         Field(
-            description="DNA sequence used to link target probes and readout probes in the hybridization probe. This sequence is inserted between the target probe sequence and the readout probe sequence during assembly. Typically a short spacer sequence (e.g., 'TT').",
+            description="DNA sequence used to link target probes and initiator/readout probes in the hybridization probe. This sequence is inserted between the target probe sequence and the functional probe sequence during assembly. Typically a short spacer sequence (e.g., 'AA' or 'TT').",
+        ),
+    ]
+
+
+class TargetProbeHCR(TargetProbeSplitProbeBase):
+
+    pass
+
+
+class TargetProbeCycleHCR(TargetProbeSplitProbeBase):
+
+    Tm_weight: Annotated[
+        WeightT,
+        Field(
+            description="Weight assigned to melting temperature (Tm) in the probe scoring function. Higher values prioritize probes with Tm closer to the optimal value (Tm_max). This weight is used in combination with isoform_weight to calculate a composite score for each probe.",
         ),
     ]
 

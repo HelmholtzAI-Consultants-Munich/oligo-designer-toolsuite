@@ -1,6 +1,7 @@
 from oligo_designer_toolsuite.validation.models.config_pipelines import (
     CycleHCRProbeDesignerConfig,
     GenomicRegionGeneratorConfig,
+    HCRProbeDesignerConfig,
     MerfishProbeDesignerConfig,
     OligoSeqProbeDesignerConfig,
     ScrinshotProbeDesignerConfig,
@@ -8,6 +9,7 @@ from oligo_designer_toolsuite.validation.models.config_pipelines import (
 )
 
 __all__ = [
+    "HCRProbeDesignerConfig",
     "CycleHCRProbeDesignerConfig",
     "MerfishProbeDesignerConfig",
     "SeqFishPlusProbeDesignerConfig",
