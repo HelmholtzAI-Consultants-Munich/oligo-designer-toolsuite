@@ -75,7 +75,7 @@ from oligo_designer_toolsuite.validation._types import (
 )
 from oligo_designer_toolsuite.validation.models._developer_parameters import (
     PrimerDevSeqFishPlus,
-    ReadoutProbeDevFish,
+    ReadoutProbeDevSeqFishPlus,
     TargetProbeDevSeqFishPlus,
 )
 from oligo_designer_toolsuite.validation.models._general import (
@@ -88,7 +88,7 @@ from oligo_designer_toolsuite.validation.models._general import (
     TmParameters,
     TmSaltCorrectionParameters,
 )
-from oligo_designer_toolsuite.validation.models._primer import PrimerFish
+from oligo_designer_toolsuite.validation.models._primer import PrimerSeqFishPlus
 from oligo_designer_toolsuite.validation.models._readout_probes import ReadoutProbeSeqFishPlus
 from oligo_designer_toolsuite.validation.models._target_probes import TargetProbeSeqFishPlus
 from oligo_designer_toolsuite.validation.models.config_pipelines import (
@@ -331,7 +331,7 @@ class SeqFishPlusProbeDesigner:
         # Step 1: Create Database Parameters
         region_ids: list[str],
         config: ReadoutProbeSeqFishPlus,
-        developer_param: ReadoutProbeDevFish,
+        developer_param: ReadoutProbeDevSeqFishPlus,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Design readout probes and generate a codebook for SeqFISH+ experiments through a multi-step pipeline.
@@ -360,7 +360,7 @@ class SeqFishPlusProbeDesigner:
         :param config: Pydantic model of configuration parameters for readout probes.
         :type config: ReadoutProbeSeqFishPlus
         :param developer_param: Pydantic model of advanced configuration parameters for readout probes.
-        :type developer_param: ReadoutProbeDevFish
+        :type developer_param: ReadoutProbeDevSeqFishPlus
         :return: A tuple containing:
             - **codebook** (pd.DataFrame): Binary barcode matrix with region IDs as index and bit columns
               (bit_1, bit_2, etc.) as data. Each row represents a region's barcode assignment.
@@ -535,7 +535,7 @@ class SeqFishPlusProbeDesigner:
 
     def design_primers(
         self,
-        config: PrimerFish,
+        config: PrimerSeqFishPlus,
         developer_param: PrimerDevSeqFishPlus,
         hybridization_probe_database: OligoDatabase,
     ) -> tuple[str, str]:
@@ -556,7 +556,7 @@ class SeqFishPlusProbeDesigner:
         matches its melting temperature for optimal PCR performance.
 
         :param config: Pydantic model of configuration parameters for primers.
-        :type config: PrimerFish
+        :type config: PrimerSeqFishPlus
         :param developer_param: Pydantic model of advanced configuration parameters for primers.
         :type developer_param: PrimerDevSeqFishPlus
         :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization probes.

@@ -186,6 +186,10 @@ class ReadoutProbeDevMerfish(ReadoutProbeDevFish):
     ]
 
 
+class ReadoutProbeDevSeqFishPlus(ReadoutProbeDevFish):
+    pass
+
+
 class PrimerDevFish(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -239,6 +243,10 @@ class PrimerDevFish(BaseModel):
     ]
 
 
+class PrimerDevMerfish(PrimerDevFish):
+    pass
+
+
 class PrimerDevSeqFishPlus(PrimerDevFish):
     secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
 
@@ -246,7 +254,7 @@ class PrimerDevSeqFishPlus(PrimerDevFish):
 class DeveloperParametersMerfish(DeveloperParametersBase):
     target_probe: TargetProbeDevMerfish
     readout_probe: ReadoutProbeDevMerfish
-    primer: PrimerDevFish
+    primer: PrimerDevMerfish
 
 
 class TargetProbeDevSeqFishPlus(TargetProbeDev):
@@ -255,7 +263,7 @@ class TargetProbeDevSeqFishPlus(TargetProbeDev):
 
 class DeveloperParametersSeqFishPlus(DeveloperParametersBase):
     target_probe: TargetProbeDevSeqFishPlus
-    readout_probe: ReadoutProbeDevFish
+    readout_probe: ReadoutProbeDevSeqFishPlus
     primer: PrimerDevSeqFishPlus
 
 

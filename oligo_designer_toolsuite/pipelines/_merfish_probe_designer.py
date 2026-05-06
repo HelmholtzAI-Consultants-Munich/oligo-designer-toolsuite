@@ -83,7 +83,7 @@ from oligo_designer_toolsuite.validation._types import (
     TSecondaryStructureT,
 )
 from oligo_designer_toolsuite.validation.models._developer_parameters import (
-    PrimerDevFish,
+    PrimerDevMerfish,
     ReadoutProbeDevMerfish,
     TargetProbeDevMerfish,
 )
@@ -562,7 +562,7 @@ class MerfishProbeDesigner:
     def design_primers(
         self,
         config: PrimerMerfish,
-        developer_param: PrimerDevFish,
+        developer_param: PrimerDevMerfish,
         hybridization_probe_database: OligoDatabase,
     ) -> tuple[str, str]:
         """
@@ -584,7 +584,7 @@ class MerfishProbeDesigner:
         :param config: Pydantic model of configuration parameters for primers.
         :type config: PrimerMerfish
         :param developer_param: Pydantic model of advanced configuration parameters for primers.
-        :type developer_param: PrimerDevFish
+        :type developer_param: PrimerDevMerfish
         :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization probes.
             This database is used to create a reference FASTA file for specificity filtering to ensure primers
             do not bind to the hybridization probes themselves.

@@ -88,3 +88,7 @@ class PrimerFish(BaseModel):
 
 class PrimerMerfish(PrimerFish):
     secondary_structures_threshold_deltaG: SecondaryStructuresThresholdDeltaGT
+
+
+class PrimerSeqFishPlus(PrimerFish):
+    pass

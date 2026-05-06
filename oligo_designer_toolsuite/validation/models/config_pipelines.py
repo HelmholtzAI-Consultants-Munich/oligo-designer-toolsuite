@@ -15,7 +15,11 @@ from oligo_designer_toolsuite.validation.models._developer_parameters import (
     DeveloperParametersSeqFishPlus,
 )
 from oligo_designer_toolsuite.validation.models._general import General, GenomicRegions, SourceConfigs
-from oligo_designer_toolsuite.validation.models._primer import PrimerCycleHCR, PrimerFish, PrimerMerfish
+from oligo_designer_toolsuite.validation.models._primer import (
+    PrimerCycleHCR,
+    PrimerMerfish,
+    PrimerSeqFishPlus,
+)
 from oligo_designer_toolsuite.validation.models._readout_probes import (
     InitiatorProbeHCR,
     ReadoutProbeCycleHCR,
@@ -67,7 +71,7 @@ class SeqFishPlusProbeDesignerConfig(BaseModel):
     general: General
     target_probe: TargetProbeSeqFishPlus
     readout_probe: ReadoutProbeSeqFishPlus
-    primer: PrimerFish
+    primer: PrimerSeqFishPlus
     developer_param: DeveloperParametersSeqFishPlus
 
 
