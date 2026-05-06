@@ -757,26 +757,12 @@ class InitiatorDesigner:
 
         codebook = pd.read_csv(file_codebook, sep=None, engine="python", index_col="region_id")
 
-        # Check for at least one column
-        if len(codebook.columns) == 0:
-            raise FileFormatError(f"Codebook file '{file_codebook}' must contain at least one column.")
-
-        # Check that all columns start with "bit_"
-        non_bit_columns = [col for col in codebook.columns if not str(col).startswith("bit_")]
-        if len(non_bit_columns) > 0:
-            raise FileFormatError(
-                f"Codebook file '{file_codebook}' must have all columns named with 'bit_*'. "
-                f"Found columns that don't match: {non_bit_columns}"
-            )
-
         # remove rows with any NaN
         codebook = codebook[codebook.notna().all(axis=1)]
         # keep only rows with 0/1 values
         codebook = codebook[codebook.isin([0, 1]).all(axis=1)]
         # keep only valid one-hot rows (exactly one "1")
         codebook = codebook[(codebook == 1).sum(axis=1) == 1]
-        if len(codebook) == 0:
-            raise FileFormatError(f"Codebook file '{file_codebook}' must contain at least one row with data.")
 
         return codebook
 
@@ -785,15 +771,6 @@ class InitiatorDesigner:
         required_cols = ["bit", "initiator_L_sequence", "initiator_R_sequence"]
 
         initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
-
-        # Check if all required columns exist in readout_probe_table
-        cols = set(initiator_table.columns)
-        if not set(required_cols).issubset(cols):
-            missing = set(required_cols) - cols
-            raise FileFormatError(
-                f"Initiator table is missing required columns: {missing}. "
-                f"Required columns are: {required_cols}."
-            )
 
         initiator_table = initiator_table[required_cols]
         initiator_table = initiator_table.set_index("bit")

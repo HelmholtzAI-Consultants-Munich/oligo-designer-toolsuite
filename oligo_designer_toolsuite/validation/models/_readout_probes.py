@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
+import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator, model_validator
 
 from oligo_designer_toolsuite.validation._types import (
     FilesFastaReferenceDatabaseT,
@@ -38,6 +39,60 @@ class InitiatorProbeHCR(BaseModel):
         if not (v.endswith(".csv") or v.endswith(".tsv")):
             raise ValueError("File must end with .csv or .tsv")
         return v
+
+    @field_validator("file_codebook")
+    @classmethod
+    def validate_codebook_content(cls, v: str) -> str:
+        try:
+            codebook = pd.read_csv(v, sep=None, engine="python", index_col="region_id")
+        except Exception as e:
+            raise ValueError(f"Could not read codebook file '{v}': {e}")
+        if len(codebook.columns) == 0:
+            raise ValueError(f"Codebook file '{v}' must contain at least one column.")
+        non_bit_columns = [col for col in codebook.columns if not str(col).startswith("bit_")]
+        if non_bit_columns:
+            raise ValueError(
+                f"Codebook file '{v}' must have all columns named 'bit_*'. "
+                f"Found non-matching columns: {non_bit_columns}"
+            )
+        codebook = codebook[codebook.notna().all(axis=1)]
+        codebook = codebook[codebook.isin([0, 1]).all(axis=1)]
+        codebook = codebook[(codebook == 1).sum(axis=1) == 1]
+        if len(codebook) == 0:
+            raise ValueError(f"Codebook file '{v}' must contain at least one valid one-hot encoded row.")
+        return v
+
+    @field_validator("file_initiator_table")
+    @classmethod
+    def validate_initiator_table_content(cls, v: str) -> str:
+        required_cols = {"bit", "initiator_L_sequence", "initiator_R_sequence"}
+        try:
+            initiator_table = pd.read_csv(v, sep=None, engine="python")
+        except Exception as e:
+            raise ValueError(f"Could not read initiator table file '{v}': {e}")
+        missing = required_cols - set(initiator_table.columns)
+        if missing:
+            raise ValueError(
+                f"Initiator table '{v}' is missing required columns: {sorted(missing)}. "
+                f"Required columns are: {sorted(required_cols)}."
+            )
+        return v
+
+    @model_validator(mode="after")
+    def validate_initiator_bits_in_codebook(self) -> "InitiatorProbeHCR":
+        try:
+            codebook = pd.read_csv(self.file_codebook, sep=None, engine="python", index_col="region_id")
+            initiator_table = pd.read_csv(self.file_initiator_table, sep=None, engine="python")
+        except Exception:
+            return self
+        codebook_bits = set(codebook.columns)
+        initiator_bits = set(initiator_table["bit"].dropna().unique())
+        missing_bits = initiator_bits ^ codebook_bits
+        if missing_bits:
+            raise ValueError(
+                f"Initiator table references bit columns mismatch with codebook bits: {sorted(missing_bits)}."
+            )
+        return self
 
 
 class ReadoutProbeCycleHCR(BaseModel):
