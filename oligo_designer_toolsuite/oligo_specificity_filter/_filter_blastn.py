@@ -167,7 +167,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             "-out",
             file_blast_results,
             "-db",
-            safe_append_filename(self.dir_output, file_reference),
+            file_reference,
         ]
 
         for parameter, value in self.search_parameters.items():

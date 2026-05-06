@@ -220,11 +220,12 @@ def safe_append_filename(dir_path: str, file_name: str) -> str:
     :raises ConfigurationError: If the resulting path escapes the base directory or if the resolved file name does not match the provided file name.
     """
     base_dir = Path(dir_path)
-    resolved_path = (base_dir / file_name).resolve()
+    joined_path = base_dir / file_name
+    resolved_path = joined_path.resolve()
     if not resolved_path.parent == base_dir.resolve():
         raise ConfigurationError(
             f"Invalid file name: {file_name}. The resulting path escapes the base directory."
         )
     if not resolved_path.name == file_name:
         raise ConfigurationError(f"Invalid file name: {file_name}. The resolved file name does not match.")
-    return str(resolved_path)
+    return str(joined_path)
