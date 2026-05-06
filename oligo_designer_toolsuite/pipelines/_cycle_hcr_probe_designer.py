@@ -339,7 +339,7 @@ class CycleHCRProbeDesigner:
     def design_readout_probes(
         self,
         region_ids: list[str],
-        file_readout_probe_table: str | None,
+        file_readout_probe_table: str,
         file_codebook: str | None,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -364,7 +364,7 @@ class CycleHCRProbeDesigner:
             or None. The file must include columns: 'channel', 'readout_probe_id', 'L/R', and
             'readout_probe_sequence'. If a 'bit' column is not present, it will be automatically
             assigned. Cannot be None (generation of readout probe tables is not yet implemented).
-        :type file_readout_probe_table: str | None
+        :type file_readout_probe_table: str
         :param file_codebook: Path to a CSV/TSV file containing an existing codebook, or None to
             generate a new codebook. If provided, the codebook must have region IDs as the index
             and bit columns named 'bit_1', 'bit_2', etc. If None, a codebook will be automatically
