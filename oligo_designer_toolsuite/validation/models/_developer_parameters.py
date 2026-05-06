@@ -66,19 +66,6 @@ class TargetProbeDevSplitProbeBase(TargetProbeDev):
         ),
     ]
 
-    cross_hybridization_blastn_search_parameters: Annotated[
-        BlastnSearchParameters,
-        Field(
-            description="Pydantic model of BLASTN search parameters for cross-hybridization filtering. These parameters control how BLASTN searches are performed to identify potential cross-hybridization between left and right probe pairs within the same set."
-        ),
-    ]
-    cross_hybridization_blastn_hit_parameters: Annotated[
-        BlastnHitParameters,
-        Field(
-            description="Parameters for filtering BLASTN hits in cross-hybridization searches. Use either coverage or min_alignment_length. Probes with cross-hybridization hits meeting these criteria are removed from the larger region."
-        ),
-    ]
-
 
 class TargetProbeDevCycleHCR(TargetProbeDevSplitProbeBase):
     pass

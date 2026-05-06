@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from oligo_designer_toolsuite.validation.models.config_pipelines import (
     CycleHCRProbeDesignerConfig,
     GenomicRegionGeneratorConfig,
+    HCRProbeDesignerConfig,
     MerfishProbeDesignerConfig,
     OligoSeqProbeDesignerConfig,
     ScrinshotProbeDesignerConfig,
@@ -319,3 +320,54 @@ class TestSeqFishPlusYaml(unittest.TestCase):
         raw["not_a_field"] = "x"
         with self.assertRaises(ValidationError):
             SeqFishPlusProbeDesignerConfig.model_validate(raw)
+
+
+# ---------------------------------------------------------------------------
+# HCRProbeDesignerConfig
+# ---------------------------------------------------------------------------
+
+
+class TestHCRYaml(unittest.TestCase):
+    def test_parses(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HCRProbeDesignerConfig.model_validate(raw)
+        assert cfg.schema_version == 2
+        assert cfg.general.write_intermediate_steps is True
+        assert cfg.target_probe.linker_sequence == "AA"
+
+    def test_initiator_probe_file_extension(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HCRProbeDesignerConfig.model_validate(raw)
+        table = cfg.initiator_probe.file_initiator_table
+        assert table.endswith(".tsv") or table.endswith(".csv")
+
+    def test_developer_param_tm_mode(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HCRProbeDesignerConfig.model_validate(raw)
+        assert cfg.developer_param.target_probe.Tm_parameters.mode == "custom"
+        assert cfg.developer_param.target_probe.Tm_chem_correction_parameters.mode == "disabled"
+        assert cfg.developer_param.target_probe.Tm_salt_correction_parameters.mode == "disabled"
+
+    def test_developer_param_blastn_hit_uses_coverage(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HCRProbeDesignerConfig.model_validate(raw)
+        assert cfg.developer_param.target_probe.specificity_blastn_hit_parameters.coverage is not None
+        assert cfg.developer_param.target_probe.specificity_blastn_hit_parameters.min_alignment_length is None
+
+    def test_round_trip(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HCRProbeDesignerConfig.model_validate(raw)
+        cfg2 = HCRProbeDesignerConfig.model_validate(cfg.model_dump())
+        assert cfg == cfg2
+
+    def test_invalid_schema_version_zero(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        raw["schema_version"] = 0
+        with self.assertRaises(ValidationError):
+            HCRProbeDesignerConfig.model_validate(raw)
+
+    def test_extra_field_forbidden(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        raw["not_a_field"] = "x"
+        with self.assertRaises(ValidationError):
+            HCRProbeDesignerConfig.model_validate(raw)

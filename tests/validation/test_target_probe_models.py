@@ -8,9 +8,9 @@ from pydantic import ValidationError
 from oligo_designer_toolsuite.validation.models._general import HomopolymerThresholds
 from oligo_designer_toolsuite.validation.models._target_probes import (
     TargetProbeBase,
-    TargetProbeCycleHCR,
     TargetProbeOligoSeq,
     TargetProbeScrinshot,
+    TargetProbeSplitProbeBase,
 )
 
 # ---------------------------------------------------------------------------
@@ -31,7 +31,7 @@ _BASE_FIELDS = dict(
     n_sets=1,
 )
 
-_CYCLE_HCR_EXTRA = dict(
+_SPLIT_PROBE_EXTRA = dict(
     L_probe_sequence_length=25,
     gap_sequence_length=0,
     R_probe_sequence_length=25,
@@ -39,7 +39,6 @@ _CYCLE_HCR_EXTRA = dict(
     Tm_max=72.0,
     T_secondary_structure=37,
     junction_region_size=0,
-    Tm_weight=1.0,
     isoform_weight=1.0,
     linker_sequence="ATGCATGC",
 )
@@ -140,14 +139,16 @@ class TestTargetProbeBaseFields(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# TargetProbeCycleHCR — specific fields
+# TargetProbeSplitProbeBase — specific fields (don't additionally check
+# TargetProbeCycleHCR as the only extra field is a weight that I haven't tested
+# for any model)
 # ---------------------------------------------------------------------------
 
 
-class TestTargetProbeCycleHCR(unittest.TestCase):
-    def _make(self, **overrides: Any) -> TargetProbeCycleHCR:
-        fields = {**_BASE_FIELDS, **_CYCLE_HCR_EXTRA, **overrides}
-        return TargetProbeCycleHCR(**fields)
+class TestTargetProbeSplitProbeBase(unittest.TestCase):
+    def _make(self, **overrides: Any) -> TargetProbeSplitProbeBase:
+        fields = {**_BASE_FIELDS, **_SPLIT_PROBE_EXTRA, **overrides}
+        return TargetProbeSplitProbeBase(**fields)
 
     def test_valid(self) -> None:
         p = self._make()

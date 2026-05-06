@@ -1,6 +1,7 @@
 """Tests for readout probe models."""
 
 import unittest
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -11,6 +12,7 @@ from oligo_designer_toolsuite.validation.models._general import (
     OligoPropertyWeights,
 )
 from oligo_designer_toolsuite.validation.models._readout_probes import (
+    InitiatorProbeHCR,
     ReadoutProbeCycleHCR,
     ReadoutProbeFish,
     ReadoutProbeMerfish,
@@ -48,6 +50,12 @@ _SEQ_FISH_PLUS_EXTRA = dict(
     n_barcode_rounds=3,
     n_pseudocolors=4,
 )
+
+_REPO_ROOT = Path(__file__).parents[2]
+_DATA = _REPO_ROOT / "tests" / "data" / "functional_oligos"
+
+_CODEBOOK = str(_DATA / "hcr_codebook.tsv")
+_INITIATORS = str(_DATA / "hcr_initiators.tsv")
 
 
 # ---------------------------------------------------------------------------
@@ -165,3 +173,80 @@ class TestReadoutProbeSeqFishPlus(unittest.TestCase):
     def test_invalid_n_pseudocolors_zero(self) -> None:
         with self.assertRaises(ValidationError):
             self._make(n_pseudocolors=0)
+
+
+# ---------------------------------------------------------------------------
+# InitiatorProbeHCR
+# ---------------------------------------------------------------------------
+
+
+class TestInitiatorProbeHCR(unittest.TestCase):
+    def _make(self, **overrides: Any) -> InitiatorProbeHCR:
+        fields = dict(file_initiator_table=_INITIATORS, file_codebook=_CODEBOOK)
+        fields.update(overrides)
+        return InitiatorProbeHCR(**fields)
+
+    # ------------------------------------------------------------------
+    # Happy path
+    # ------------------------------------------------------------------
+
+    def test_valid(self) -> None:
+        m = self._make()
+        assert m.file_initiator_table == _INITIATORS
+        assert m.file_codebook == _CODEBOOK
+
+    # ------------------------------------------------------------------
+    # must_be_csv_or_tsv
+    # ------------------------------------------------------------------
+
+    def test_invalid_extension_codebook(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_codebook="codebook.xlsx")
+
+    def test_invalid_extension_initiator_table(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_initiator_table="initiators.xlsx")
+
+    # ------------------------------------------------------------------
+    # validate_codebook_content — structural checks
+    # ------------------------------------------------------------------
+
+    def test_codebook_with_na_values(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_codebook=str(_DATA / "hcr_codebook_NA.tsv"))
+
+    def test_codebook_with_non_binary_values(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_codebook=str(_DATA / "hcr_codebook_not_binary.tsv"))
+
+    def test_codebook_not_one_hot(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_codebook=str(_DATA / "hcr_codebook_not_one_hot.tsv"))
+
+    def test_codebook_file_not_found(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_codebook=str(_DATA / "nonexistent_codebook.tsv"))
+
+    # ------------------------------------------------------------------
+    # validate_initiator_table_content — required columns
+    # ------------------------------------------------------------------
+
+    def test_initiator_table_file_not_found(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_initiator_table=str(_DATA / "nonexistent_initiators.tsv"))
+
+    # ------------------------------------------------------------------
+    # validate_initiator_bits_in_codebook — cross-check
+    # ------------------------------------------------------------------
+
+    def test_initiator_bit_not_in_codebook(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(file_initiator_table=str(_DATA / "hcr_initiators_missing_bit.tsv"))
+
+    # ------------------------------------------------------------------
+    # extra fields
+    # ------------------------------------------------------------------
+
+    def test_extra_field_forbidden(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._make(unexpected="x")

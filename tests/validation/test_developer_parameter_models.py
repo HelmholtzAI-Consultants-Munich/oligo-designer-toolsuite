@@ -9,11 +9,15 @@ from oligo_designer_toolsuite.validation.models._developer_parameters import (
     DetectionProbeDevScrinshot,
     DeveloperParametersBase,
     PrimerDevFish,
+    PrimerDevSeqFishPlus,
     ReadoutProbeDevFish,
     ReadoutProbeDevMerfish,
     TargetProbeDev,
     TargetProbeDevMerfish,
     TargetProbeDevOligoSeq,
+    TargetProbeDevScrinshot,
+    TargetProbeDevSeqFishPlus,
+    TargetProbeDevSplitProbeBase,
 )
 
 # ---------------------------------------------------------------------------
@@ -99,6 +103,31 @@ _TARGET_PROBE_DEV_MERFISH_BASE = {
     "Tm_parameters": _TM_PARAMS,
     "Tm_chem_correction_parameters": _TM_CHEM,
     "Tm_salt_correction_parameters": _TM_SALT,
+}
+
+_TARGET_PROBE_DEV_SPLIT_PROBE_BASE = {
+    **_TARGET_PROBE_DEV_BASE,
+    "secondary_structures_threshold_deltaG": -1.0,
+    "Tm_parameters": _TM_PARAMS,
+    "Tm_chem_correction_parameters": _TM_CHEM,
+    "Tm_salt_correction_parameters": _TM_SALT,
+}
+
+_TARGET_PROBE_DEV_SCRINSHOT_BASE = {
+    **_TARGET_PROBE_DEV_BASE,
+    "Tm_parameters": _TM_PARAMS,
+    "Tm_chem_correction_parameters": _TM_CHEM,
+    "Tm_salt_correction_parameters": _TM_SALT,
+}
+
+_TARGET_PROBE_DEV_SEQ_FISH_PLUS_BASE = {
+    **_TARGET_PROBE_DEV_BASE,
+    "secondary_structures_threshold_deltaG": -1.0,
+}
+
+_PRIMER_SEQ_FISH_PLUS_BASE = {
+    **_PRIMER_FISH_BASE,
+    "secondary_structures_threshold_deltaG": -1.0,
 }
 
 
@@ -229,3 +258,51 @@ class TestDetectionProbeDevScrinshot(unittest.TestCase):
         with self.assertRaises(ValidationError):
             fields = {**_DETECTION_PROBE_DEV_SCRINSHOT_BASE, "unknown": 99}
             DetectionProbeDevScrinshot(**fields)
+
+
+# ---------------------------------------------------------------------------
+# TargetProbeDevSplitProbeBase
+# ---------------------------------------------------------------------------
+
+
+class TestTargetProbeDevSplitProbeBase(unittest.TestCase):
+    def test_extra_field_forbidden(self) -> None:
+        with self.assertRaises(ValidationError):
+            fields = {**_TARGET_PROBE_DEV_SPLIT_PROBE_BASE, "unknown": 99}
+            TargetProbeDevSplitProbeBase(**fields)
+
+
+# ---------------------------------------------------------------------------
+# TargetProbeDevScrinshot
+# ---------------------------------------------------------------------------
+
+
+class TestTargetProbeDevScrinshot(unittest.TestCase):
+    def test_extra_field_forbidden(self) -> None:
+        with self.assertRaises(ValidationError):
+            fields = {**_TARGET_PROBE_DEV_SCRINSHOT_BASE, "unknown": 99}
+            TargetProbeDevScrinshot(**fields)
+
+
+# ---------------------------------------------------------------------------
+# TargetProbeDevSeqFishPlus
+# ---------------------------------------------------------------------------
+
+
+class TestTargetProbeDevSeqFishPlus(unittest.TestCase):
+    def test_extra_field_forbidden(self) -> None:
+        with self.assertRaises(ValidationError):
+            fields = {**_TARGET_PROBE_DEV_SEQ_FISH_PLUS_BASE, "unknown": 99}
+            TargetProbeDevSeqFishPlus(**fields)
+
+
+# ---------------------------------------------------------------------------
+# PrimerDevSeqFishPlus
+# ---------------------------------------------------------------------------
+
+
+class TestPrimerDevSeqFishPlus(unittest.TestCase):
+    def test_extra_field_forbidden(self) -> None:
+        with self.assertRaises(ValidationError):
+            fields = {**_PRIMER_SEQ_FISH_PLUS_BASE, "unknown": 99}
+            PrimerDevSeqFishPlus(**fields)
