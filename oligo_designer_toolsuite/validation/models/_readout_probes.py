@@ -55,11 +55,17 @@ class InitiatorProbeHCR(BaseModel):
                 f"Codebook file '{v}' must have all columns named 'bit_*'. "
                 f"Found non-matching columns: {non_bit_columns}"
             )
-        codebook = codebook[codebook.notna().all(axis=1)]
-        codebook = codebook[codebook.isin([0, 1]).all(axis=1)]
-        codebook = codebook[(codebook == 1).sum(axis=1) == 1]
         if len(codebook) == 0:
-            raise ValueError(f"Codebook file '{v}' must contain at least one valid one-hot encoded row.")
+            raise ValueError(f"Codebook file '{v}' must contain at least one row.")
+        rows_with_nan = codebook.index[codebook.isna().any(axis=1)].tolist()
+        if rows_with_nan:
+            raise ValueError(f"Codebook file '{v}' has rows with missing values: {rows_with_nan}")
+        non_binary_rows = codebook.index[~codebook.isin([0, 1]).all(axis=1)].tolist()
+        if non_binary_rows:
+            raise ValueError(f"Codebook file '{v}' has rows with non-binary values: {non_binary_rows}")
+        non_one_hot_rows = codebook.index[(codebook == 1).sum(axis=1) != 1].tolist()
+        if non_one_hot_rows:
+            raise ValueError(f"Codebook file '{v}' has rows that are not one-hot encoded: {non_one_hot_rows}")
         return v
 
     @field_validator("file_initiator_table")
@@ -90,7 +96,7 @@ class InitiatorProbeHCR(BaseModel):
         missing_bits = initiator_bits ^ codebook_bits
         if missing_bits:
             raise ValueError(
-                f"Initiator table references bit columns mismatch with codebook bits: {sorted(missing_bits)}."
+                f"Initiator table bit columns that mismatch with codebook bits: {sorted(missing_bits)}."
             )
         return self
 
