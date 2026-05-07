@@ -2,11 +2,11 @@
 # imports
 ############################################
 
-import subprocess
 import gzip
 import os
 import pickle
 import re
+import subprocess
 from typing import Any
 
 import pandas as pd
@@ -634,19 +634,19 @@ class VCFParser:
                 compressed_files_to_cleanup.append(file_vcf_compressed)
 
                 args_compress = ["bcftools", "view", "-O", "z", "-o", file_vcf_compressed, file_vcf]
-                subprocess.run(args_compress, check=True)
+                subprocess.run(args_compress, check=True, stdout=subprocess.DEVNULL)
 
                 file_vcf = file_vcf_compressed
 
             args_sort = ["bcftools", "sort", file_vcf, "-Oz", "-o", file_vcf]
-            subprocess.run(args_sort, check=True)
+            subprocess.run(args_sort, check=True, stdout=subprocess.DEVNULL)
 
             args_index = ["bcftools", "index", "-f", file_vcf]
-            subprocess.run(args_index, check=True)
+            subprocess.run(args_index, check=True, stdout=subprocess.DEVNULL)
 
             args.append(file_vcf)
 
-        subprocess.run(args, check=True)
+        subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
         # Clean up compressed files and their index files
         for file_vcf_compressed in compressed_files_to_cleanup:
