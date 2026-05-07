@@ -2,8 +2,8 @@
 # imports
 ############################################
 
-import subprocess
 import os
+import subprocess
 from collections import Counter
 
 from Bio import SeqIO
@@ -53,7 +53,7 @@ def get_sequence_from_annotation(
     if name:
         args.append("-name")
 
-    subprocess.run(args, check=True)
+    subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
 def get_complement_regions(file_bed_in: str, file_chromosome_length: str, file_bed_out: str) -> None:
@@ -88,7 +88,7 @@ def get_intersection(file_A: str, file_B: list[str] | str, file_bed_out: str) ->
     :param file_bed_out: Path to the output BED file where the intersection results will be saved.
     :type file_bed_out: str
     """
-    file_B: list[str] = cast_to_list(file_B)
+    file_B_list: list[str] = cast_to_list(file_B)
 
     args = [
         "bedtools",
@@ -99,7 +99,7 @@ def get_intersection(file_A: str, file_B: list[str] | str, file_bed_out: str) ->
         "-a",
         file_A,
         "-b",
-        *file_B,
+        *file_B_list,
     ]
 
     # redirect stdout to output file

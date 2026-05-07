@@ -118,7 +118,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             file_reference,
         ]
 
-        subprocess.run(args, cwd=self.dir_output, check=True)
+        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
 
         return file_reference
 
@@ -173,7 +173,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         args.append(file_oligo_database)
         args.append(file_bowtie_results)
 
-        subprocess.run(args, cwd=self.dir_output, check=True)
+        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
 
         # read the reuslts of the bowtie search
         bowtie_results = self._read_search_output(
@@ -401,7 +401,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             file_reference,
         ]
 
-        subprocess.run(args, cwd=self.dir_output, check=True)
+        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
 
         return file_reference
 
@@ -458,7 +458,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
         args.extend(["-U", file_oligo_database, "-S", file_bowtie_results])
 
-        subprocess.run(args, cwd=self.dir_output, check=True)
+        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
 
         # read the reuslts of the bowtie seatch
         bowtie_results = self._read_search_output(
