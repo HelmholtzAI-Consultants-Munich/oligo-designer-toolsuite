@@ -30,7 +30,7 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
 ############################################
 
 # Global Parameters
-FILE_DATABASE_OLIGO_PROPERTIES = "tests/data/databases/database_oligo_properties.tsv"
+FILE_DATABASE_OLIGO_PROPERTIES = "tests/data/databases/database_oligo_properties.zip"
 
 ############################################
 # tests
@@ -47,9 +47,7 @@ class TestOligoProperties(unittest.TestCase):
             database_name="test_oligo_properties",
             dir_output=self.tmp_path,
         )
-        self.oligo_database.load_database_from_table(
-            FILE_DATABASE_OLIGO_PROPERTIES, database_overwrite=True, merge_databases_on_sequence_type="oligo"
-        )
+        self.oligo_database.load_database(FILE_DATABASE_OLIGO_PROPERTIES, database_overwrite=True)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_path)

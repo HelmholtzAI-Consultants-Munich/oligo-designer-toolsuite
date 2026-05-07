@@ -5,6 +5,7 @@
 import os
 import pickle
 import warnings
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -27,10 +28,11 @@ from oligo_designer_toolsuite.utils import (
     check_if_key_in_database,
     check_if_region_in_database,
     check_tsv_format,
-    collapse_properties_for_duplicated_sequences,
+    collapse_properties_for_duplicated_coordinates,
     flatten_property_list,
     format_oligo_properties,
     merge_databases,
+    sequence_to_id,
 )
 
 CustomYamlDumper.add_representer(list, CustomYamlDumper.represent_list)
@@ -168,51 +170,46 @@ class OligoDatabase:
             if self.fasta_parser.check_fasta_format(file):
                 fasta_sequences = self.fasta_parser.read_fasta_sequences(file, region_ids)
                 database_region: dict[str, dict[str, Any]] = {}
-                next_i_per_region: dict[str, int] = {}
 
                 for entry in fasta_sequences:
                     region, additional_info, coordinates = self.fasta_parser.parse_fasta_header(entry.id)
-                    chrom = "".join(str(s) for s in coordinates["chromosome"])
-                    start = "".join(str(s) for s in coordinates["start"])
-                    end = "".join(str(s) for s in coordinates["end"])
-                    strand = "".join(str(s) for s in coordinates["strand"])
-                    has_coords = chrom and start and end and strand
-
                     oligo_properties = coordinates
                     if isinstance(additional_info, dict):
                         oligo_properties.update(additional_info)
 
                     oligo_properties = format_oligo_properties(oligo_properties, self.database_sequence_types)
 
+                    chrom = "".join(str(s) for s in coordinates["chromosome"])
+                    start = "".join(str(s) for s in coordinates["start"])
+                    end = "".join(str(s) for s in coordinates["end"])
+                    strand = "".join(str(s) for s in coordinates["strand"])
+                    has_coords = chrom and start and end and strand
+
                     if has_coords:
                         oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{chrom}{start}{end}{strand}"
                     else:
-                        next_i_per_region.setdefault(region, 1)
-                        oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{next_i_per_region[region]}"
-                        next_i_per_region[region] += 1
+                        oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{sequence_to_id(str(entry.seq))}"
 
                     oligo_seq_info = {sequence_type: str(entry.seq)} | oligo_properties
 
                     if region not in database_region:
                         database_region[region] = {}
                     if oligo_id in database_region[region]:
-                        print(f"Duplicate sequence found: {oligo_id}")
-                        print(f"Oligo properties 1: {database_region[region][oligo_id]}")
-                        print(f"Oligo properties 2: {oligo_seq_info}")
-                        database_region[region][oligo_id] = collapse_properties_for_duplicated_sequences(
+                        database_region[region][oligo_id] = collapse_properties_for_duplicated_coordinates(
                             oligo_properties1=database_region[region][oligo_id],
                             oligo_properties2=oligo_seq_info,
                             database_sequence_types=self.database_sequence_types,
                         )
-                        print(f"Oligo properties after collapse: {database_region[region][oligo_id]}")
                     else:
                         database_region[region][oligo_id] = oligo_seq_info
+
+                    if additional_info["regiontype"] != ["exon"]:
+                        print(f"Oligo properties after collapse: {database_region[region][oligo_id]}")
 
                 if len(set(self.database) & set(database_region)) > 0:
                     self.database = merge_databases(
                         database1=self.database,
                         database2=database_region,
-                        sequence_type=sequence_type,
                         database_sequence_types=self.database_sequence_types,
                         dir_cache_files=self._dir_cache_files,
                         max_entries_in_memory=self._max_entries_in_memory,
@@ -253,7 +250,6 @@ class OligoDatabase:
         self,
         file_database: str,
         database_overwrite: bool,
-        merge_databases_on_sequence_type: str,
         region_ids: str | list[str] | None = None,
     ) -> None:
         """
@@ -270,9 +266,6 @@ class OligoDatabase:
         :type file_database: str
         :param database_overwrite: If True, the existing database will be overwritten.
         :type database_overwrite: bool
-        :param merge_databases_on_sequence_type: The sequence type on which two databases should be merged on if database_overwrite = False,
-                must be one of the predefined sequence types, i.e. "oligo" or "target".
-        :type sequence_type: str
         :param region_ids: Region identifier(s) to process. Can be a single region ID (str) or a list of region IDs (list[str]). If None, all regions in the database are processed, defaults to None.
         :type region_ids: str | list[str] | None, optional
         """
@@ -331,7 +324,6 @@ class OligoDatabase:
             database_tmp2 = merge_databases(
                 database1=self.database,
                 database2=database_tmp2,
-                sequence_type=merge_databases_on_sequence_type,
                 database_sequence_types=self.database_sequence_types,
                 dir_cache_files=self._dir_cache_files,
                 max_entries_in_memory=self._max_entries_in_memory,
@@ -350,9 +342,8 @@ class OligoDatabase:
 
     def load_database(
         self,
-        dir_database: str,
+        file_database: str,
         database_overwrite: bool,
-        merge_databases_on_sequence_type: str,
         region_ids: str | list[str] | None = None,
     ) -> None:
         """
@@ -360,18 +351,15 @@ class OligoDatabase:
         Each file in the folder represents a region in the database and contains the region ID,
         the oligo sequence and property information as well as the oligosets for this region.
 
-        :param dir_database: Path to the directory containing the pickled database files.
-        :type dir_database: str
+        :param file_database: Path to the ziped database file.
+        :type file_database: str
         :param database_overwrite: If True, the existing database will be overwritten.
         :type database_overwrite: bool
-        :param merge_databases_on_sequence_type: The sequence type on which two databases should be merged on (if database_overwrite = False),
-                must be one of the predefined sequence types, i.e. "oligo" or "target".
-        :type sequence_type: str
         :param region_ids: Region identifier(s) to process. Can be a single region ID (str) or a list of region IDs (list[str]). If None, all regions in the database are processed, defaults to None.
         :type region_ids: str | list[str] | None, optional
         """
 
-        def _load_database_file(file: str) -> None:
+        def _load_database_content(content: dict) -> None:
             """
             Loads a database file and integrates its content into the existing database and oligosets.
 
@@ -379,16 +367,14 @@ class OligoDatabase:
             If the region ID is already present in the current database, it merges the new data with the existing one.
             Otherwise, it adds the new region data to the database and oligosets.
 
-            :param file: The path to the database file to be loaded.
-            :type file: str
+            :param content: The content of the database file to be loaded.
+            :type content: dict
             :return: None
             """
             # extract region ID and content from the file
-            with open(file, "rb") as handle:
-                content = pickle.load(handle)
-                region_id = content["region_id"]
-                database_region = content["database_region"]
-                oligoset_region = content["oligoset_region"]
+            region_id = content["region_id"]
+            database_region = content["database_region"]
+            oligoset_region = content["oligoset_region"]
 
             # Only process selected regions
             if not region_ids or region_id in region_ids:
@@ -397,7 +383,6 @@ class OligoDatabase:
                     self.database = merge_databases(
                         database1=self.database,
                         database2={region_id: database_region},
-                        sequence_type=merge_databases_on_sequence_type,
                         database_sequence_types=self.database_sequence_types,
                         dir_cache_files=self._dir_cache_files,
                         max_entries_in_memory=self._max_entries_in_memory,
@@ -410,23 +395,24 @@ class OligoDatabase:
         # Check formatting
         region_ids = cast_to_list(region_ids) if region_ids else None
 
-        if not os.path.isdir(dir_database):
-            raise DatabaseError(f"Database directory '{dir_database}' does not exist.")
+        if not zipfile.is_zipfile(file_database):
+            raise DatabaseError(f"Database archive '{file_database}' does not exist or is not a zip file.")
 
         if database_overwrite:
             backend = PickleBackend(storage_path=self._dir_cache_files)
             strategy = LRUReplacement(disk_backend=backend, max_in_memory=self._max_entries_in_memory)
             self.database = EffiDict(disk_backend=backend, replacement_strategy=strategy)
 
-        # retrieve all files in the directory
-        path = os.path.abspath(dir_database)
-        files_database = [entry.path for entry in os.scandir(path) if entry.is_file()]
+        with zipfile.ZipFile(file_database, "r") as zip_file:
+            files_database = [
+                name for name in zip_file.namelist() if name.endswith(".pkl") and not name.endswith("/")
+            ]
 
-        # Load files parallel into database
-        with joblib_progress(description=f"Database Loading", total=len(files_database)):
-            Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
-                delayed(_load_database_file)(file_database) for file_database in files_database
-            )
+            with joblib_progress(description="Database Loading", total=len(files_database)):
+                for file_database in files_database:
+                    with zip_file.open(file_database, "r") as handle:
+                        content = pickle.load(handle)
+                    _load_database_content(content)
 
         # add this step to log regions which are not available in database
         if region_ids:
@@ -462,30 +448,28 @@ class OligoDatabase:
         # Check formatting
         region_ids = cast_to_list(region_ids) if region_ids else self.database.keys()
 
-        if dir_output:
-            dir_database = os.path.join(dir_output, name_database)
-        else:
-            dir_database = os.path.join(self.dir_output, name_database)
-        Path(dir_database).mkdir(parents=True, exist_ok=True)
+        output_dir = dir_output if dir_output else self.dir_output
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        file_database = os.path.join(output_dir, f"{name_database}.zip")
 
-        for region_id in region_ids:
-            database_region = self.database[region_id]
-            if self.oligosets and region_id in self.oligosets:
-                oligoset_region = self.oligosets[region_id]
-            else:
-                oligoset_region = None
-            file_output = os.path.join(dir_database, region_id)
-            with open(file_output, "wb") as file:
-                pickle.dump(
-                    {
-                        "region_id": region_id,
-                        "database_region": database_region,
-                        "oligoset_region": oligoset_region,
-                    },
-                    file,
-                )
+        with zipfile.ZipFile(file_database, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            for region_id in region_ids:
+                database_region = self.database[region_id]
 
-        return dir_database
+                if self.oligosets and region_id in self.oligosets:
+                    oligoset_region = self.oligosets[region_id]
+                else:
+                    oligoset_region = None
+
+                output = {
+                    "region_id": region_id,
+                    "database_region": database_region,
+                    "oligoset_region": oligoset_region,
+                }
+
+                zip_file.writestr(f"{region_id}.pkl", pickle.dumps(output))
+
+        return file_database
 
     def write_database_to_fasta(
         self,

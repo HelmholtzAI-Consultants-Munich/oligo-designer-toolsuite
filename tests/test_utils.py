@@ -28,7 +28,7 @@ from oligo_designer_toolsuite.utils import (
     check_if_key_exists,
     check_if_region_in_database,
     check_tsv_format,
-    collapse_properties_for_duplicated_sequences,
+    collapse_properties_for_duplicated_coordinates,
     count_kmer_abundance,
     flatten_property_list,
     format_oligo_properties,
@@ -253,32 +253,32 @@ class TestDatabaseProcessor(unittest.TestCase):
             [70265560],
         ], "error: properties incorrectly merged"
 
-    def test_collapse_properties_for_duplicated_sequences_dict_identical(self) -> None:
+    def test_collapse_properties_for_duplicated_coordinates_dict_identical(self) -> None:
         dict1 = {"chromosome": [["10"]], "start": [[1000]], "end": [[2000]], "strand": [["+"]]}
         dict2 = {"chromosome": [["10"]], "start": [[1000]], "end": [[2000]], "strand": [["+"]]}
 
-        dict_merged = collapse_properties_for_duplicated_sequences(dict1, dict2, database_sequence_types=[])
+        dict_merged = collapse_properties_for_duplicated_coordinates(dict1, dict2, database_sequence_types=[])
 
         assert dict_merged == dict1, "error: identical dict should not have duplicated elements"
 
-    def test_collapse_properties_for_duplicated_sequences_dict_different(self) -> None:
+    def test_collapse_properties_for_duplicated_coordinates_dict_different(self) -> None:
         dict1 = {"chromosome": [["10"]], "start": [[1000]], "end": [[2000]], "strand": [["+"]]}
         dict2 = {"chromosome": [["11"]], "start": [[1020]], "end": [[2020]], "strand": [["-"]]}
 
-        dict_merged = collapse_properties_for_duplicated_sequences(dict1, dict2, database_sequence_types=[])
+        dict_merged = collapse_properties_for_duplicated_coordinates(dict1, dict2, database_sequence_types=[])
 
         assert dict_merged["chromosome"] == [["10"], ["11"]], "error: different dicts should have been merged"
         assert dict_merged["start"] == [[1000], [1020]], "error: different dicts should have been merged"
         assert dict_merged["end"] == [[2000], [2020]], "error: different dicts should have been merged"
         assert dict_merged["strand"] == [["+"], ["-"]], "error: different dicts should have been merged"
 
-    def test_collapse_properties_for_duplicated_sequences_warns_on_different_sequence_values(self) -> None:
+    def test_collapse_properties_for_duplicated_coordinates_warns_on_different_sequence_values(self) -> None:
         """Test that a warning is issued when sequence type values differ between dictionaries."""
         dict1 = {"oligo": "ATCGATCGATCG", "chromosome": [["10"]], "start": [[1000]]}
         dict2 = {"oligo": "GCTAGCTAGCTA", "chromosome": [["10"]], "start": [[1000]]}
 
         with self.assertWarns(UserWarning) as warning_context:
-            collapse_properties_for_duplicated_sequences(dict1, dict2, database_sequence_types=["oligo"])
+            collapse_properties_for_duplicated_coordinates(dict1, dict2, database_sequence_types=["oligo"])
 
         self.assertIn(
             "oligo",
@@ -298,12 +298,12 @@ class TestDatabaseProcessor(unittest.TestCase):
         assert oligo_properties["end"] == [[2000]], "error: oligo property not correctly formatted"
         assert oligo_properties["strand"] == [["+"], ["-"]], "error: oligo property not correctly formatted"
 
-    def test_collapse_properties_for_duplicated_sequences_with_sequence_type(self) -> None:
-        """Test that sequence types are handled correctly in collapse_properties_for_duplicated_sequences."""
+    def test_collapse_properties_for_duplicated_coordinates_with_sequence_type(self) -> None:
+        """Test that sequence types are handled correctly in collapse_properties_for_duplicated_coordinates."""
         dict1 = {"oligo": "ATCG", "chromosome": [["10"]], "start": [[1000]]}
         dict2 = {"oligo": "ATCG", "chromosome": [["11"]], "start": [[1020]]}
 
-        dict_merged = collapse_properties_for_duplicated_sequences(
+        dict_merged = collapse_properties_for_duplicated_coordinates(
             dict1, dict2, database_sequence_types=["oligo"]
         )
 

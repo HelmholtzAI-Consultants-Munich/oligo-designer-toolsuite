@@ -2,12 +2,11 @@
 # imports
 ############################################
 
+import hashlib
 import warnings
 from typing import Any
 
 from effidict import EffiDict, LRUReplacement, PickleBackend
-
-from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 
 from ._checkers_and_helpers import cast_to_list
 
@@ -19,21 +18,18 @@ from ._checkers_and_helpers import cast_to_list
 def merge_databases(
     database1: EffiDict,
     database2: EffiDict,
-    sequence_type: str,
     database_sequence_types: list[str],
     dir_cache_files: str,
     max_entries_in_memory: int,
 ) -> EffiDict:
     """
-    Merges two oligo databases by combining their content based on sequence keys,
-    ensuring that sequences with the same oligo are merged, and avoiding duplicates.
+    Merges two oligo databases by combining their content based on regions and oligo IDs,
+    ensuring that oligos with the same oligo id are merged, and avoiding duplicates.
 
     :param database1: The first database to be merged.
     :type database1: EffiDict
     :param database2: The second database to be merged.
     :type database2: EffiDict
-    :param sequence_type: The sequence type key to use for merging (must be in database_sequence_types).
-    :type sequence_type: str
     :param database_sequence_types: List of sequence type keys in the database.
     :type database_sequence_types: list[str]
     :param dir_cache_files: Directory to store cache files used for merging.
@@ -43,106 +39,31 @@ def merge_databases(
     :return: The merged database.
     :rtype: EffiDict
     """
-    if sequence_type not in database_sequence_types:
-        raise ValueError(
-            f"sequence_type '{sequence_type}' must be in database_sequence_types. "
-            f"Current database_sequence_types: {database_sequence_types}"
-        )
-
-    def _get_sequence_as_key(database: EffiDict, regions: list[str], sequence_type: str) -> EffiDict:
-        """
-        Converts oligo sequences to dictionary keys, grouping oligo properties by sequence for each specified region.
-
-        :param database: The database containing sequences and their properties.
-        :type database: EffiDict
-        :param regions: List of regions within the database to process.
-        :type regions: list
-        :param sequence_type: The sequence type key to use for merging.
-        :type sequence_type: str
-        :return: A dictionary with sequences as keys and oligo properties as values.
-        :rtype: EffiDict
-        """
-        backend = PickleBackend(storage_path=dir_cache_files)
-        strategy = LRUReplacement(disk_backend=backend, max_in_memory=max_entries_in_memory)
-        database_modified = EffiDict(disk_backend=backend, replacement_strategy=strategy)
-
-        for region in regions:
-            database_modified[region] = {}
-            database_region = database[region]
-            for oligo_id, oligo_properties in database_region.items():
-                oligo_sequence = oligo_properties[sequence_type]
-                oligo_properties.pop(sequence_type)
-                database_modified[region][oligo_sequence] = oligo_properties
-        return database_modified
-
-    def _add_database_content(
-        database_merged_tmp: EffiDict, database_in_tmp: EffiDict, database_sequence_types: list[str]
-    ) -> EffiDict:
-        """
-        Merges oligo properties from two databases, ensuring sequences with the same oligo are combined and properties are updated.
-
-        :param database_merged_tmp: The dictionary to which content is added.
-        :type database_merged_tmp: EffiDict
-        :param database_in_tmp: The dictionary containing new content to merge.
-        :type database_in_tmp: EffiDict
-        :param database_sequence_types: List of sequence type keys in the database.
-        :type database_sequence_types: list[str]
-        :return: The updated dictionary with merged oligo properties.
-        :rtype: EffiDict
-        """
-        for region, database_region in database_in_tmp.items():
-            for oligo_sequence, oligo_properties in database_region.items():
-                if oligo_sequence in database_merged_tmp[region]:
-                    oligo_properties_merged = collapse_properties_for_duplicated_sequences(
-                        database_merged_tmp[region][oligo_sequence], oligo_properties, database_sequence_types
-                    )
-                    database_merged_tmp[region][oligo_sequence] = oligo_properties_merged
-                else:
-                    database_merged_tmp[region][oligo_sequence] = oligo_properties
-        return database_merged_tmp
-
-    # keys that are in both dicts
-    regions_intersection = list(set(database1) & set(database2))
-
     backend = PickleBackend(storage_path=dir_cache_files)
     strategy = LRUReplacement(disk_backend=backend, max_in_memory=max_entries_in_memory)
     database_merged = EffiDict(disk_backend=backend, replacement_strategy=strategy)
 
-    for region in regions_intersection:
+    regions_union = database1.keys() | database2.keys()
+    for region in regions_union:
         database_merged[region] = {}
+        if region in database1:
+            for oligo_id, oligo_properties in database1[region].items():
+                database_merged[region][oligo_id] = oligo_properties
+        if region in database2:
+            for oligo_id, oligo_properties in database2[region].items():
+                if oligo_id in database_merged[region]:
+                    database_merged[region][oligo_id] = collapse_properties_for_duplicated_coordinates(
+                        database_merged[region][oligo_id],
+                        oligo_properties,
+                        database_sequence_types,
+                    )
+                else:
+                    database_merged[region][oligo_id] = oligo_properties
 
-    # only loop over entries that have keys in both dicts
-    db1_sequences_as_keys = _get_sequence_as_key(database1, regions_intersection, sequence_type)
-    db2_sequences_as_keys = _get_sequence_as_key(database2, regions_intersection, sequence_type)
-
-    database_merged = _add_database_content(database_merged, db1_sequences_as_keys, database_sequence_types)
-    database_merged = _add_database_content(database_merged, db2_sequences_as_keys, database_sequence_types)
-
-    backend = PickleBackend(storage_path=dir_cache_files)
-    strategy = LRUReplacement(disk_backend=backend, max_in_memory=max_entries_in_memory)
-    database_concat = EffiDict(disk_backend=backend, replacement_strategy=strategy)
-
-    for region in regions_intersection:
-        database_concat[region] = {}
-
-    for region, database_merged_region in database_merged.items():
-        i = 1
-        for oligo_sequence, oligo_properties in database_merged_region.items():
-            oligo_id = f"{region}{SEPARATOR_OLIGO_ID}{i}"
-            oligo_seq_info = {sequence_type: oligo_sequence} | oligo_properties
-            database_concat[region][oligo_id] = oligo_seq_info
-            i += 1
-
-    # add entries with keys in only one dict
-    for region in set(database1) - set(database2):
-        database_concat[region] = database1[region]
-    for region in set(database2) - set(database1):
-        database_concat[region] = database2[region]
-
-    return database_concat
+    return database_merged
 
 
-def collapse_properties_for_duplicated_sequences(
+def collapse_properties_for_duplicated_coordinates(
     oligo_properties1: dict[str, Any], oligo_properties2: dict[str, Any], database_sequence_types: list[str]
 ) -> dict[str, Any]:
     """
@@ -173,7 +94,7 @@ def collapse_properties_for_duplicated_sequences(
                     )
                 elif key not in database_sequence_types:
                     oligo_properties[key].extend(values)
-                    oligo_properties[key] = list(set(oligo_properties[key]))
+                    oligo_properties[key] = list(dict.fromkeys(oligo_properties[key]))
 
     return oligo_properties
 
@@ -288,3 +209,8 @@ def flatten_property_list(property: list[Any]) -> list[Any]:
     if len(flattened_property_list) == 1:
         return cast_to_list(flattened_property_list[0])
     return cast_to_list(flattened_property_list)
+
+
+def sequence_to_id(seq: str) -> str:
+    seq = seq.upper()
+    return hashlib.sha256(seq.encode()).hexdigest()[:16]

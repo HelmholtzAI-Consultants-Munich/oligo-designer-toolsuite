@@ -421,10 +421,10 @@ class FastaParser:
         region: str = ""
         additional_info: dict[str, list[Any]] | str = ""
         coordinates: dict[str, list[Any]] = {
-            "chromosome": [None],
-            "start": [None],
-            "end": [None],
-            "strand": [None],
+            "chromosome": [],
+            "start": [],
+            "end": [],
+            "strand": [],
         }
 
         for i, header_entry in enumerate(header.split(SEPARATOR_FASTA_HEADER_FIELDS)):

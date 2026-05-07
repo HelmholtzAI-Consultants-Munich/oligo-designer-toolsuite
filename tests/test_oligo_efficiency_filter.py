@@ -29,7 +29,7 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
 # Global Parameters
 ############################################
 
-FILE_DATABASE = "tests/data/databases/database_oligo_efficiency.tsv"
+FILE_DATABASE = "tests/data/databases/database_oligo_efficiency.zip"
 
 TM_PARAMETERS = {
     "check": True,
@@ -72,8 +72,10 @@ class TestOligoScoring(unittest.TestCase):
             dir_output=self.tmp_path,
         )
         self.oligo_database.set_database_sequence_types(["oligo", "target"])
-        self.oligo_database.load_database_from_table(
-            FILE_DATABASE, region_ids=None, database_overwrite=True, merge_databases_on_sequence_type="oligo"
+        self.oligo_database.load_database(
+            FILE_DATABASE,
+            region_ids=None,
+            database_overwrite=True,
         )
         self.sequence_type = "oligo"
 
