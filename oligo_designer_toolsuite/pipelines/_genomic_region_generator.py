@@ -55,8 +55,10 @@ class GenomicRegionGenerator:
         :param source: The source of the annotations. Options: 'ncbi', 'ensembl', 'custom'.
         :type source: str
         :param source_params: Parameters required for loading the annotations depending on the source.
-            If source is 'ncbi', it should contain 'mode', 'taxon', 'species', 'annotation_release' and can optionally
-            contain 'assembly_source', 'refseq_assembly_accession', and 'assembly_name'.
+            If source is 'ncbi', it must contain 'mode'. The remaining required keys depend on that mode:
+            for taxonomy/species-based modes, provide 'taxon', 'species', and 'annotation_release';
+            for 'assembly' mode, provide the assembly identifier via 'refseq_assembly_accession' and/or
+            'assembly_name'. 'assembly_source' may also be provided when applicable.
             If source is 'ensembl', it should contain 'species' and 'annotation_release'.
             If source is 'custom', it should contain 'file_annotation', 'file_sequence', 'files_source',
             'species', 'annotation_release', and 'genome_assembly'.
