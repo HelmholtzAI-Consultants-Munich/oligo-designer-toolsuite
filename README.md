@@ -59,9 +59,9 @@ If you would like to modify an existing pipeline for adjusted experimental setti
 
 ### Requirements
 
-This packages was tested for ***Python 3.10 - 3.12*** on ***Linux (x64)*** and ***MacOS (arm64)*** but NOT tested on Windows.
+This package was tested for ***Python 3.10 - 3.12*** on ***Linux (x64)*** and ***macOS (arm64)*** but not tested on Windows.
 
-*Note: MacOS Intel Chip (osx64) Installation is ⚠️ DEPRECATED ⚠️*
+*Note: Intel-based macOS (osx64) installation is ⚠️ DEPRECATED ⚠️*
 
 For stable installation, we recommend to first setup a conda environment.
 
