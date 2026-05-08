@@ -69,62 +69,62 @@ jobs:
         python-version: ${{ fromJSON(needs.matrix.outputs.python-versions) }}
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v6
+      - name: Checkout Repository
+        uses: actions/checkout@v6
 
-    - name: Setup Conda
-      uses: conda-incubator/setup-miniconda@v3
-      with:
-        installer-url: https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh
-        auto-update-conda: true
-        python-version: ${{ matrix.python-version }}
-        activate-environment: "test-env"
+      - name: Setup Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          installer-url: https://github.com/conda-forge/miniforge/releases/download/23.11.0-0/Mambaforge-23.11.0-0-MacOSX-arm64.sh
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          activate-environment: "test-env"
 
-    - name: Check arm64
-      run: |
-        conda install -y python
-        python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
+      - name: Check arm64
+        run: |
+          conda install -y python
+          python -c "import platform; assert platform.machine() == 'arm64', platform.machine()"
 
-    - name: Update conda, add channels and install dependencies
-      shell: bash
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate test-env
-        conda config --add channels bioconda
-        conda config --add channels conda-forge
-        conda update --all
-        conda install -n test-env -y "blast>=2.15.0"
-        conda install -n test-env -y "bedtools>=2.30"
-        conda install -n test-env -y "bowtie>=1.3.1"
-        conda install -n test-env -y "bowtie2>=2.5"
-        conda install -n test-env -y "samtools>=1.22"
-        conda install -n test-env -y "bcftools>=1.22"
+      - name: Update conda, add channels and install dependencies
+        shell: bash
+        run: |
+          source $(conda info --base)/etc/profile.d/conda.sh
+          conda activate test-env
+          conda config --add channels bioconda
+          conda config --add channels conda-forge
+          conda update --all
+          conda install -n test-env -y "blast>=2.15.0"
+          conda install -n test-env -y "bedtools>=2.30"
+          conda install -n test-env -y "bowtie>=1.3.1"
+          conda install -n test-env -y "bowtie2>=2.5"
+          conda install -n test-env -y "samtools>=1.22"
+          conda install -n test-env -y "bcftools>=1.22"
 
-    - name: Install pip dependencies
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate test-env
-        python -m pip install --upgrade pip
-        pip install pytest
-        pip install -e .
+      - name: Install pip dependencies
+        run: |
+          source $(conda info --base)/etc/profile.d/conda.sh
+          conda activate test-env
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -e .
 
-    - name: Change n_jobs
-      run: |
-        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/merfish_probe_designer.yaml
-        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/oligo_seq_probe_designer.yaml
-        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/scrinshot_probe_designer.yaml
-        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/seqfish_plus_probe_designer.yaml
-        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/cycle_hcr_probe_designer.yaml
-        sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/hcr_probe_designer.yaml
-        cat data/configs/merfish_probe_designer.yaml
-        cat data/configs/oligo_seq_probe_designer.yaml
-        cat data/configs/scrinshot_probe_designer.yaml
-        cat data/configs/seqfish_plus_probe_designer.yaml
-        cat data/configs/cycle_hcr_probe_designer.yaml
-        cat data/configs/hcr_probe_designer.yaml
+      - name: Change n_jobs
+        run: |
+          sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/merfish_probe_designer.yaml
+          sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/oligo_seq_probe_designer.yaml
+          sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/scrinshot_probe_designer.yaml
+          sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/seqfish_plus_probe_designer.yaml
+          sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/cycle_hcr_probe_designer.yaml
+          sed -i '' 's/n_jobs: 4/n_jobs: 1/g' data/configs/hcr_probe_designer.yaml
+          cat data/configs/merfish_probe_designer.yaml
+          cat data/configs/oligo_seq_probe_designer.yaml
+          cat data/configs/scrinshot_probe_designer.yaml
+          cat data/configs/seqfish_plus_probe_designer.yaml
+          cat data/configs/cycle_hcr_probe_designer.yaml
+          cat data/configs/hcr_probe_designer.yaml
 
-    - name: Test with pytest
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate test-env
-        pytest --disable-warnings -k "not FTPLoader" #exclude slow FTP loader -> runs in ubuntu test
+      - name: Test with pytest
+        run: |
+          source $(conda info --base)/etc/profile.d/conda.sh
+          conda activate test-env
+          pytest --disable-warnings -k "not FTPLoader" #exclude slow FTP loader -> runs in ubuntu test
