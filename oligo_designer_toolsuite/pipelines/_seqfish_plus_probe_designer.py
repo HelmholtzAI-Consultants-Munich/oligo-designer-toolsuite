@@ -1302,7 +1302,6 @@ class TargetProbeDesigner:
             sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
         check_content_oligo_database(oligo_database)
 
         return oligo_database
@@ -1415,7 +1414,6 @@ class TargetProbeDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Specificity Filters")
         check_content_oligo_database(oligo_database)
 
         return oligo_database
@@ -1695,7 +1693,6 @@ class ReadoutProbeDesigner:
             sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
         check_content_oligo_database(oligo_database)
 
         return oligo_database
@@ -1812,7 +1809,7 @@ class ReadoutProbeDesigner:
         ]:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Specificity Filters")
+
         check_content_oligo_database(oligo_database)
         return oligo_database
 
@@ -2256,7 +2253,6 @@ class PrimerDesigner:
             sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
         check_content_oligo_database(oligo_database)
 
         return oligo_database
@@ -2372,7 +2368,6 @@ class PrimerDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Specificity Filters")
         check_content_oligo_database(oligo_database)
 
         return oligo_database
