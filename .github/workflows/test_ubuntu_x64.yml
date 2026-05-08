@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - dev
     paths-ignore:
       - '.gitignore'
       - '.pre-commit-config.yaml'
@@ -20,6 +21,7 @@ on:
   pull_request:
     branches:
       - main
+      - dev
     paths-ignore:
       - '.gitignore'
       - '.pre-commit-config.yaml'
@@ -35,18 +37,40 @@ on:
   workflow_call:
 
 jobs:
+  matrix:
+    name: Build python-version matrix from pyproject.toml
+    runs-on: ubuntu-latest
+    outputs:
+      python-versions: ${{ steps.set-matrix.outputs.python-versions }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python (for parsing)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - id: set-matrix
+        name: Parse requires-python and emit versions
+        shell: bash
+        run: |
+          echo "python-versions=$(python .github/scripts/ci_python_versions.py)" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: matrix
     runs-on: ${{ matrix.os }}
 
     strategy:
       max-parallel: 12
+      fail-fast: false
       matrix:
-        os: ["ubuntu-latest"]
-        python-version: ["3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, macos-latest]
+        python-version: ${{ fromJSON(needs.matrix.outputs.python-versions) }}
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup Conda
       uses: conda-incubator/setup-miniconda@v3
@@ -69,7 +93,7 @@ jobs:
         conda install -n test-env -y "bowtie>=1.3.1"
         conda install -n test-env -y "bowtie2>=2.5"
         conda install -n test-env -y "samtools>=1.22"
-
+        conda install -n test-env -y "bcftools>=1.22"
 
     - name: Install pip dependencies
       run: |
@@ -90,7 +114,7 @@ jobs:
         PLATFORM: ${{ matrix.os }}
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
+      uses: codecov/codecov-action@v6
       with:
         files: oligo_designer_toolsuite/coverage.xml
       env:
