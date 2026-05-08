@@ -1070,7 +1070,6 @@ class TargetProbeDesigner:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
-        oligo_database.remove_regions_with_insufficient_oligos("Specificity Filters")
         check_content_oligo_database(oligo_database)
 
         return oligo_database
