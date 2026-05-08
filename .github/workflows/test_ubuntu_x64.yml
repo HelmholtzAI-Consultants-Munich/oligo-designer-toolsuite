@@ -65,7 +65,7 @@ jobs:
       max-parallel: 12
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ${{ fromJSON(needs.matrix.outputs.python-versions) }}
 
     steps:
