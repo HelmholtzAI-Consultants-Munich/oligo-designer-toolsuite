@@ -47,7 +47,6 @@ class GenomicRegionGenerator:
     def load_annotations(
         self,
         source: str,
-        mode: str | None,
         source_params: dict,
     ) -> CustomGenomicRegionGenerator:
         """
@@ -55,11 +54,11 @@ class GenomicRegionGenerator:
 
         :param source: The source of the annotations. Options: 'ncbi', 'ensembl', 'custom'.
         :type source: str
-        :param mode: How should be specified which genome to use? Options: 'species', 'assembly'
-        :type mode: str
         :param source_params: Parameters required for loading the annotations depending on the source.
-            If source is 'ncbi', it should contain 'taxon', 'species', 'annotation_release' and can optionally
-            contain 'assembly_source', 'refseq_assembly_accession', and 'assembly_name'.
+            If source is 'ncbi', it must contain 'mode'. The remaining required keys depend on that mode:
+            for taxonomy/species-based modes, provide 'taxon', 'species', and 'annotation_release';
+            for 'assembly' mode, provide the assembly identifier via 'refseq_assembly_accession' and/or
+            'assembly_name'. 'assembly_source' may also be provided when applicable.
             If source is 'ensembl', it should contain 'species' and 'annotation_release'.
             If source is 'custom', it should contain 'file_annotation', 'file_sequence', 'files_source',
             'species', 'annotation_release', and 'genome_assembly'.
@@ -81,13 +80,13 @@ class GenomicRegionGenerator:
 
         ##### loading annotations from different sources #####
         if source == "ncbi":
-            if mode is None:
+            if source_params["mode"] is None:
                 raise ConfigurationError(
-                    "For source='ncbi', top-level config parameter 'mode' must be provided."
+                    "For source='ncbi', source_params parameter 'mode' must be provided."
                 )
             # dowload the fasta files formthe NCBI server
             region_generator = NcbiGenomicRegionGenerator(
-                mode=mode,
+                mode=source_params["mode"],
                 taxon=source_params["taxon"],
                 species=source_params["species"],
                 annotation_release=source_params["annotation_release"],
@@ -206,7 +205,6 @@ def main() -> None:
     # generate the genomic regions
     region_generator = pipeline.load_annotations(
         source=config["source"],
-        mode=config["mode"],
         source_params=config["source_params"],
     )
 

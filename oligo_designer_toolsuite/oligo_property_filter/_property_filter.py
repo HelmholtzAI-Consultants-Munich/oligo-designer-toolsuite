@@ -58,6 +58,7 @@ class PropertyFilter:
                 delayed(self._filter_region)(oligo_database, region_id, sequence_type)
                 for region_id in region_ids
             )
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
 
         return oligo_database
 

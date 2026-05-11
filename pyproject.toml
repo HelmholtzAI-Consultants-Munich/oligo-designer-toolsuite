@@ -1,5 +1,6 @@
 [build-system]
 requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["oligo_designer_toolsuite"]
@@ -14,32 +15,39 @@ local_scheme = "no-local-version"
 [project]
 name = "oligo-designer-toolsuite"
 dynamic = ["version"]
+description = "Oligo Designer Toolsuite: lightweight development of custom oligo design pipelines"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { file = "LICENSE" }
 authors = [
-  { name = "Lisa Barros de Andrade e Sousa" },
+  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
   { name = "Isra Mekki" },
-  { name = "Jonas Hagenberg" },
   { name = "Francesco Campi" },
-  { name = "Louis Kümmerle" },
   { name = "Chelsea Bright" },
+  { name = "Louis Kümmerle" },
+  { name = "Jonas Hagenberg" },
 ]
 maintainers = [
   { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
   { name = "Jonas Hagenberg", email = "jonas.hagenberg@helmholtz-muenchen.de" },
 ]
-description = "Develop custom oligo design pipelines."
 keywords = [
-  "bioinformatics",
-  "probes",
-  "oligo nucleotides",
-  "probe design",
   "oligo design",
+  "high throughput genomics",
+  "spatial transcriptomics",
+  "bioinformatics",
+  "reproducible research",
+  "workflow automation",
 ]
-readme = "README.md"
-requires-python = ">=3.10"
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bioinformatics",
 ]
 dependencies = [
   "biopython>=1.79",
@@ -60,7 +68,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pre-commit", "mypy>=1.0.0"]
+dev = ["pytest>=7", "pre-commit", "black", "mypy>=1.0.0"]
 
 [project.scripts]
 genomic_region_generator = "oligo_designer_toolsuite.pipelines._genomic_region_generator:main"
@@ -75,12 +83,13 @@ hcr_probe_designer = "oligo_designer_toolsuite.pipelines._hcr_probe_designer:mai
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
 repository = "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite"
 
+
 [tool.pytest.ini_options]
 filterwarnings = ["ignore::pytest.PytestUnraisableExceptionWarning"]
 
 [tool.black]
 line-length = 110
-target-version = ['py310', 'py311', 'py312', 'py313']
+target-version = ['py310', 'py311', 'py312']
 
 [tool.isort]
 profile = "black"

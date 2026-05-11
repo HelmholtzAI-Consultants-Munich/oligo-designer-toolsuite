@@ -64,5 +64,8 @@ class SpecificityFilter:
                 sequence_type=sequence_type,
                 n_jobs=n_jobs,
             )
+            oligo_database.remove_regions_with_insufficient_oligos(
+                pipeline_step=specificity_filter.filter_name
+            )
 
         return oligo_database

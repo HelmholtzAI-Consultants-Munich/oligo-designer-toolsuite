@@ -10,18 +10,16 @@ jobs:
      uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_ubuntu_x64.yml@main
    test_macos_arm64:
     uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_macos_arm64.yml@main
-   test_macos_x64:
-    uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_macos_x64.yml@main
 
    publish:
-    needs: [test_ubuntu_x64, test_macos_arm64, test_macos_x64]
+    needs: [test_ubuntu_x64, test_macos_arm64]
     name: Publish to PyPI
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 6
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
