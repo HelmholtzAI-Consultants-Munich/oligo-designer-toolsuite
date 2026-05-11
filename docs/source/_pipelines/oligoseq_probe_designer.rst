@@ -49,27 +49,31 @@ For a complete explanation of all function parameters, refer to the API document
     # We first generate probes that hybridize specifically to target genes sequences.
     # The pipeline will generate multiple candidate sets (n_sets) and return them as part of the probe database.
     oligo_database = pipeline.design_target_probes(
-        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
-        files_fasta_reference_database_target_probe=...,        # List of FASTA files for specificity reference
         gene_ids=...,                                           # List of gene symbols or identifiers
+        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
+        files_fasta_reference_database_targe_probe=...,         # List of FASTA files for specificity reference
+        files_vcf_reference_database_target_probe=...,          # List of VCF files for SNP masking
         target_probe_length_min=26,
         target_probe_length_max=30,
         target_probe_split_region=4,
         target_probe_targeted_exons=[1,2,3],
+        target_probe_targeted_exons_weight=1,
         target_probe_isoform_consensus=0,
+        target_probe_isoform_weight=1,
         target_probe_GC_content_min=45,
         target_probe_GC_content_opt=55,
         target_probe_GC_content_max=65,
+        target_probe_GC_weight=1,
         target_probe_Tm_min=50,
         target_probe_Tm_opt=60,
         target_probe_Tm_max=70,
+        target_probe_Tm_weight=1,
         target_probe_secondary_structures_T=37,
         target_probe_secondary_structures_threshold_deltaG=0,
         target_probe_homopolymeric_base_n={"A": 6, "T": 6, "C": 6, "G": 6},
         target_probe_max_len_selfcomplement=10,
         target_probe_hybridization_probability_threshold=0.001,
-        target_probe_GC_weight=1,
-        target_probe_Tm_weight=1,
+        target_probe_read_length_bias=20,
         set_size_min=3,
         set_size_opt=5,
         distance_between_target_probes=0,
@@ -77,9 +81,7 @@ For a complete explanation of all function parameters, refer to the API document
     )
 
     ##### Generate Final Output #####
-    # The pipeline then generates its final outputs for the 'top_n_sets'
-    # best scoring probe sets to keep.
-    pipeline.generate_output(oligo_database=oligo_database, top_n_sets=3)
+    pipeline.generate_output(oligo_database=oligo_database)
 
 
 Pipeline Description
@@ -119,9 +121,10 @@ Next, the probes are checked for off-target binding with any other region of a p
 Off-target regions are sequences of the background reference (e.g. transcriptome or genome) which match the probe region with a certain degree of homology but are not located within the gene region of the probe.
 Those off-target regions are identified with the ``BlastNFilter`` or ``BowtieFilter`` (users choice) and further refined using the ``HybridizationProbabilityFilter`` which calculates the probability of the probe hybridizing to the identified potential off-target sequences.
 Probes with a hybridization probability greater than the user-defined trheshold are removed from the database. Refining the alignment hits with the ``HybridizationProbabilityFilter`` helps to retain more probes in the database.
+In addition, we account for length biases during sequencing, where some oligos may not be sequences to their full length. Because these truncated reads can match other oligos and create alignment ambiguities, we exclude any oligos whose first x bases match.
 
 In the third step of the pipeline, the best sets of non-overlapping probes are identified for each gene.
-The ``OligosetGeneratorIndependentSet`` class is used to generate ranked, non-overlapping probe sets where each probe and probe set is scored according to a protocol dependent scoring function, i.e. by weighted GC content and melting temperature score, of the probes in the set.
+The ``OligosetGeneratorIndependentSet`` class is used to generate ranked, non-overlapping probe sets where each probe and probe set is scored according to a protocol dependent scoring function, i.e. by the weighted GC content, melting temperature, isoform consensus and targeted exons score, of the probes in the set.
 Following this step all genes with insufficient number of probes (user-defined) are removed from the database and stored in a separate file for user-inspection.
 
 In the last step of the pipeline, the ready-to-order probe sequences are reported for the best non-overlapping sets of each gene.
@@ -129,7 +132,7 @@ In the last step of the pipeline, the ready-to-order probe sequences are reporte
 The output is stored in two separate files:
 
 - ``oligo_seq_probes.tsv``: contains a table with all generated probes.
-- ``oligo_seq_probesets.yml``: contains a detailed description for each probe set, including the sequences of each part of the probe and probe specific attributes.
+- ``oligo_seq_probesets.yml``: contains a detailed description for each probe set, including the sequences of each part of the probe and probe specific properties.
 
 All default parameters can be found in the `oligo_seq_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/oligo_seq_probe_designer.yaml>`__ config file provided along the repository.
 

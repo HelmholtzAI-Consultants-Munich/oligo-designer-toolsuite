@@ -49,6 +49,8 @@ The following pipelines are pre-implemented and ready-to-use:
 
 [🧫 Oligo-Seq Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html)
 
+[🧫 CycleHCR Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/cyclehcr_probe_designer.html)
+
 If you would like to modify an existing pipeline for adjusted experimental settings or to design a new pipeline for a different experimental setup, feel free to reach out to us [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Jonas Hagenberg](mailto:jonas.hagenberg@helmholtz-munich.de).
 
 ## Installation
@@ -57,18 +59,18 @@ If you would like to modify an existing pipeline for adjusted experimental setti
 
 ### Requirements
 
-This packages was tested for ***Python 3.9 - 3.12*** on ***Linux (x64)*** and ***MacOS (osx64 and arm64)***.
+This package was tested for ***Python 3.10 - 3.12*** on ***Linux (x64)*** and ***macOS (arm64)*** but not tested on Windows.
+
+*Note: Intel-based macOS (osx64) installation is ⚠️ DEPRECATED ⚠️*
 
 For stable installation, we recommend to first setup a conda environment.
 
 *Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
 
-**🖥️ Linux Requirements**
-
 First create a conda environment:
 
 ```
-conda create -n odt python=3.11
+conda create -n odt python=3.12
 conda activate odt
 ```
 
@@ -80,145 +82,18 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
-The additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
+The additional tools need to be installed independently:
 
 ```
 conda install "blast>=2.15.0"
 conda install "bedtools>=2.30"
 conda install "bowtie>=1.3.1"
 conda install "bowtie2>=2.5"
+conda install "bcftools>=1.22"
+conda install "samtools>=1.22"
 ```
 
 All other required packages are automatically installed if installation is done via ```pip``` (see below).
-
-
-**🖥️ MacOS M Chip (arm64) Requirements**
-
-For the Apple M chips, there is currently no Blast installation available via conda. Hence, we need a workaround for the Blast installation. Therefore, we have two options:
-
-***Option 1: Blast installation via Homebrew***
-
-*Pro: Allows to install a native M Chip (arm64) version of Blast and supports installation of* ```torch > 2.2.2```.
-*Con: Requires installation Homebrew, which needs sudo rights.*
-
-First create a conda environment:
-
-```
-conda create -n odt-arm64 python=3.11
-conda activate odt-arm64
-```
-
-To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
-
-```
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda update --all
-```
-
-The additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently. **BedTools**, **Bowtie** and **Bowtie2** can be installed via conda:
-
-```
-conda install "bedtools>=2.30"
-conda install "bowtie>=1.3.1"
-conda install "bowtie2>=2.5"
-```
-
-To install the M Chip (arm64) version of Blast you need Homebrew, which can be installed as described [here](https://brew.sh/). Blast can then be installed via Homebrew:
-
-```
-brew install blast
-```
-
-All other required packages are automatically installed if installation is done via ```pip``` (see below).
-
-***Option 2: Blast installation via conda installation through Intel Chip (osx64) environment emulation***
-
-*Pro: Works with conda and requires no extra dependencies.*
-*Con: Runs via Rosetta osx64 emulation, which does not support installation of* ```torch > 2.2.2```
-
-First we need to create an conda environment that emulates the osx64 processor:
-
-```
-CONDA_SUBDIR=osx-64 conda create -n odt-osx64 python=3.11
-conda activate odt-osx64
-conda config --env --set subdir osx-64
-```
-
-To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
-
-```
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda update --all
-```
-
-The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
-
-```
-conda install "blast>=2.15.0"
-conda install "bedtools>=2.30"
-conda install "bowtie>=1.3.1"
-conda install "bowtie2>=2.5"
-```
-
-Since ```torch > 2.2.2``` installation is not provided anymore for Max Intel Chips (osx64 processor), we need to make sure to have ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
-
-```
-pip install "numpy<2.0"
-```
-
-All other required packages are automatically installed if installation is done via ```pip``` (see below).
-
-
-**🖥️ MacOS Intel Chip (osx64) Requirements**
-
-First create a conda environment:
-
-```
-conda create -n odt-x64 python=3.11
-conda activate odt-x64
-```
-
-To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
-
-```
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda update --all
-```
-
-The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
-
-```
-conda install "blast>=2.15.0"
-conda install "bedtools>=2.30"
-conda install "bowtie>=1.3.1"
-conda install "bowtie2>=2.5"
-```
-
-Since ```torch > 2.2.2``` installation is not provided anymore for Max Intel Chips (osx64 processor), we need to make sure to have ```numpy < 2.0``` to avoid conflicts which ```torch <= 2.2.2```:
-
-```
-pip install "numpy<2.0"
-```
-
-All other required packages are automatically installed if installation is done via ```pip``` (see below).
-
-**🖥️ Windows Requirements**
-
-TBD
-
-The following additional tools **Blast**, **BedTools**, **Bowtie** and **Bowtie2** need to be installed independently:
-
-- **Blast** (2.15 or higher) can be installed via [NCBI webpage](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
-
-- **BedTools** (2.30 or higher) can be installed via [BedTools GitHub](https://bedtools.readthedocs.io/en/latest/content/installation.html)
-
-- **Bowtie** (1.3 or higher) can be installed via [Bowtie webpage](https://bowtie-bio.sourceforge.net/manual.shtml#obtaining-bowtie)
-
-- **Bowtie2** (2.5 or higher) can be installed via [Bowtie2 webpage](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2)
-
 
 ### Install Options
 
@@ -267,21 +142,21 @@ For any further inquiries please send an email to [Lisa Barros de Andrade e Sous
 If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
 
 ```
-@software{campi_2023_7823048,
-	author   = {Isra Mekki,
-		     Francesco Campi,
-		     Louis Kümmerle,
-		     Chelsea Bright,
-		     Malte Lücken
-		     Fabian Theis,
-		     Marie Piraud,
-		     Lisa Barros de Andrade e Sousa},
-    title        = {{Oligo Designer Toolsuite}},
-    year         = 2023,
-    publisher    = {Zenodo},
-    version      = {v0.1.3},
-    doi          = {10.5281/zenodo.7823048},
-    url          = {https://doi.org/10.5281/zenodo.7823048}
+@software{
+	author		= 	{	Barros de Andrade e Sousa L.,
+  						Mekki I.,
+						Campi F.,
+						Kümmerle L.,
+						Bright C.,
+						Lücken M.,
+						Theis F.,
+						Piraud M.
+					},
+	title		= 	{Oligo Designer Toolsuite},
+	year		= 	{2025},
+	publisher	= 	{GitHub},
+	journal 	= 	{GitHub repository},
+	url 		= 	{https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite}
 }
 ```
 
@@ -290,34 +165,36 @@ If the Oligo Designer Toolsuite is useful for your research, consider citing the
 If you are using the SCRINSHOT, MERFISH or SeqFISH+ pipeline provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
 
 ```
-@article {kuemmerle2024probe,
-    author 	 = { Louis B. Kuemmerle,
-		     Malte D. Luecken,
-		     Alexandra B. Firsova
-		     Lisa Barros de Andrade e Sousa
-		     Lena Strasser
-                     Ilhem Isra Mekki
-                     Francesco Campi
-		     Lukas Heumos
-		     Maiia Shulman
-                     Valentina Beliaeva
-                     Soroor Hediyeh-Zadeh
-                     Anna C. Schaar
-		     Krishnaa T. Mahbubani
-		     Alexandros Sountoulidis
-		     Tamas Balassa
-		     Ferenc Kovacs
-		     Peter Horvath
-		     Marie Piraud
-		     Ali Ertürk
-		     Christos Samakovlis
-		     Fabian J. Theis},
-    title 	 = {{Probe set selection for targeted spatial transcriptomics}},
-    year 	 = {2024},
-    publisher 	 = {Nature Publishing Group US New York},
-    journal 	 = {Nature methods},
-    doi 	 = {10.1038/s41592-024-02496-z},
-    URL 	 = {https://doi.org/10.1038/s41592-024-02496-z}
+@article{
+	author 	 	= 	{
+						Louis B. Kuemmerle,
+		     			Malte D. Luecken,
+		     			Alexandra B. Firsova
+		     			Lisa Barros de Andrade e Sousa
+		     			Lena Strasser
+                     	Ilhem Isra Mekki
+                     	Francesco Campi
+		     			Lukas Heumos
+		     			Maiia Shulman
+                     	Valentina Beliaeva
+                     	Soroor Hediyeh-Zadeh
+                     	Anna C. Schaar
+		     			Krishnaa T. Mahbubani
+		     			Alexandros Sountoulidis
+		     			Tamas Balassa
+		     			Ferenc Kovacs
+		     			Peter Horvath
+		     			Marie Piraud
+		     			Ali Ertürk
+		     			Christos Samakovlis
+		     			Fabian J. Theis
+					},
+    title 	 	= 	{Probe set selection for targeted spatial transcriptomics},
+    year 	 	= 	{2024},
+    publisher 	= 	{Nature Publishing Group US New York},
+    journal 	= 	{Nature methods},
+    doi 	 	= 	{10.1038/s41592-024-02496-z},
+    URL 	 	= 	{https://doi.org/10.1038/s41592-024-02496-z}
 }
 ```
 

@@ -2,7 +2,7 @@
 This module provides a comprehensive set of filters designed to evaluate the sequence properties of oligonucleotides, ensuring their suitability for various applications.
 """
 
-from ._filter_base import PropertyFilterBase
+from ._filter_base import BasePropertyFilter
 from ._filter_experiment_specific import DetectionOligoFilter, PadlockArmsFilter
 from ._filter_experiment_unspecific import (
     ComplementFilter,
@@ -22,7 +22,7 @@ from ._property_filter import PropertyFilter
 
 __all__ = [
     "PropertyFilter",
-    "PropertyFilterBase",
+    "BasePropertyFilter",
     "SoftMaskedSequenceFilter",
     "HardMaskedSequenceFilter",
     "ProhibitedSequenceFilter",

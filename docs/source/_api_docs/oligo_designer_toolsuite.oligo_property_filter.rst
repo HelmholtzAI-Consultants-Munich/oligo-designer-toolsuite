@@ -10,21 +10,21 @@ Module contents
 .. autosummary::
 
    PropertyFilter
-   PropertyFilterBase
-   ComplementFilter
-   FivePrimeSequenceFilter
-   GCClampFilter
-   GCContentFilter
-   HardMaskedSequenceFilter
-   HomopolymericRunsFilter
-   MeltingTemperatureNNFilter
-   ProhibitedSequenceFilter
-   SecondaryStructureFilter
-   SelfComplementFilter
+   BasePropertyFilter
    SoftMaskedSequenceFilter
+   HardMaskedSequenceFilter
+   ProhibitedSequenceFilter
+   HomopolymericRunsFilter
    ThreePrimeSequenceFilter
-   DetectionOligoFilter
+   FivePrimeSequenceFilter
+   GCContentFilter
+   GCClampFilter
+   MeltingTemperatureNNFilter
+   SelfComplementFilter
+   ComplementFilter
+   SecondaryStructureFilter
    PadlockArmsFilter
+   DetectionOligoFilter
 
    {% for name in oligo_designer_toolsuite.oligo_property_filter.classes %}
      {{ name }}

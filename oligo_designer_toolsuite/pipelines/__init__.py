@@ -1,13 +1,14 @@
 """
-The module provides a collection of comprehensive oligonucleotide design pipelines, each equipped with specific functionalities to facilitate efficient and targeted oligo synthesis for diverse applications. 
+The module provides a collection of comprehensive oligonucleotide design pipelines, each equipped with specific functionalities to facilitate efficient and targeted oligo synthesis for diverse applications.
 """
 
+from ._cycle_hcr_probe_designer import CycleHCRProbeDesigner
 from ._genomic_region_generator import GenomicRegionGenerator
+from ._hcr_probe_designer import HcrProbeDesigner
+from ._merfish_probe_designer import MerfishProbeDesigner
 from ._oligo_seq_probe_designer import OligoSeqProbeDesigner
 from ._scrinshot_probe_designer import ScrinshotProbeDesigner
 from ._seqfish_plus_probe_designer import SeqFishPlusProbeDesigner
-from ._merfish_probe_designer import MerfishProbeDesigner
-
 
 __all__ = [
     "GenomicRegionGenerator",
@@ -15,4 +16,6 @@ __all__ = [
     "ScrinshotProbeDesigner",
     "SeqFishPlusProbeDesigner",
     "MerfishProbeDesigner",
+    "CycleHCRProbeDesigner",
+    "HcrProbeDesigner",
 ]

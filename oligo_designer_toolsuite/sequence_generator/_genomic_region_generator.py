@@ -6,6 +6,7 @@ import copy
 import os
 import random
 import warnings
+from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd
@@ -19,15 +20,12 @@ from Bio import SeqIO
 from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
-    SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS,
 )
+from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
 from oligo_designer_toolsuite.utils import GffParser
 
-from ..utils._sequence_processor import (
-    get_complement_regions,
-    get_sequence_from_annotation,
-)
+from ..utils._sequence_processor import get_complement_regions, get_sequence_from_annotation
 
 ############################################
 # Genomic Region Generator Classes
@@ -64,7 +62,7 @@ class CustomGenomicRegionGenerator:
     :type annotation_release: str, optional
     :param genome_assembly: The genome assembly version, defaults to "unknown".
     :type genome_assembly: str, optional
-    :param dir_output: The directory path for storing output files, defaults to "output".
+    :param dir_output: Directory path where output files will be saved. Defaults to "output".
     :type dir_output: str, optional
     """
 
@@ -72,26 +70,26 @@ class CustomGenomicRegionGenerator:
         self,
         annotation_file: str,
         sequence_file: str,
-        files_source: str = None,
-        species: str = None,
-        annotation_release: str = None,
-        genome_assembly: str = None,
+        files_source: str | None = None,
+        species: str | None = None,
+        annotation_release: str | None = None,
+        genome_assembly: str | None = None,
         dir_output: str = "output",
     ) -> None:
         """Constructor for the CustomGenomicRegionGenerator class."""
-        if not files_source:
+        if files_source is None:
             files_source = "custom"
             warnings.warn(f"No source defined. Using default source {files_source}!")
 
-        if not species:
+        if species is None:
             species = "unknown"
             warnings.warn(f"No species defined. Using default species {species}!")
 
-        if not annotation_release:
+        if annotation_release is None:
             annotation_release = "unknown"
             warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
 
-        if not genome_assembly:
+        if genome_assembly is None:
             genome_assembly = "unknown"
             warnings.warn(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
 
@@ -210,18 +208,20 @@ class CustomGenomicRegionGenerator:
             :return: The path to the file containing chromosome lengths.
             :rtype: str
             """
-            dict_chromosome_length = {}
+            chromosome_lengths = {}
             for rec in SeqIO.parse(self.sequence_file, "fasta"):
-                dict_chromosome_length[rec.id] = len(rec.seq)
+                chromosome_lengths[rec.id] = len(rec.seq)
 
             file_chromosome_length = os.path.join(self.dir_output, "annotation.genome")
             with open(file_chromosome_length, "w") as handle:
-                for key, value in sorted(dict_chromosome_length.items()):
+                for key, value in sorted(chromosome_lengths.items()):
                     handle.write(f"{key}\t{value}\n")
 
             return file_chromosome_length
 
-        def _compute_intergenic_annotation(annotation, file_chromosome_length) -> pd.DataFrame:
+        def _compute_intergenic_annotation(
+            annotation: pd.DataFrame, file_chromosome_length: str
+        ) -> pd.DataFrame:
             """
             Computes the intergenic regions based on gene annotations for each chromosome and for both positive and negative strands.
             It uses chromosome length data to determine the regions between annotated genes.
@@ -262,11 +262,11 @@ class CustomGenomicRegionGenerator:
                     )
                 )
 
-            intergenic_annotation = pd.concat(intergenic_annotation, ignore_index=True)
-            return intergenic_annotation
+            intergenic_annotation_df: pd.DataFrame = pd.concat(intergenic_annotation, ignore_index=True)
+            return intergenic_annotation_df
 
         def _compute_intergenic_annotation_strand(
-            seqid, gene_annotatio, strand, file_chromosome_length
+            seqid: str, gene_annotatio: pd.DataFrame, strand: str, file_chromosome_length: str
         ) -> pd.DataFrame:
             """
             Computes the intergenic regions for a given chromosome and strand based on gene annotations.
@@ -292,13 +292,19 @@ class CustomGenomicRegionGenerator:
                 chromosome_length = pd.read_csv(
                     file_chromosome_length, sep="\t", comment="t", header=0, names=["seqid", "length"]
                 )
+                if strand == "+":
+                    region_id_name = "InterRegPlus"
+                elif strand == "-":
+                    region_id_name = "InterRegMinus"
+                else:
+                    raise ConfigurationError(f"Invalid strand value: '{strand}'. Expected '+' or '-'.")
                 intergenic_annotation = pd.DataFrame(
                     {
                         "seqid": seqid,
                         "start_0base": 0,
                         "end": chromosome_length.length[chromosome_length.seqid == seqid],
                         "start_1base": 1,
-                        "region_id": "InterRegPlus" + str(seqid) + "_1",
+                        "region_id": region_id_name + str(seqid) + "_0",
                         "score": ".",
                         "strand": strand,
                     }
@@ -401,16 +407,12 @@ class CustomGenomicRegionGenerator:
         annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "exon")
 
-        # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts()
-        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
-
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -418,6 +420,9 @@ class CustomGenomicRegionGenerator:
         # remove duplicated entries
         if collapse_duplicated_regions:
             annotation = self._collapse_duplicated_regions(annotation)
+
+        # add transcript counts for each gene
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["start"] = annotation["start_0base"]
@@ -434,8 +439,7 @@ class CustomGenomicRegionGenerator:
             + annotation["gene_id"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
-            + annotation["transcript_count"].astype("str")
+            + annotation_transcript_inf
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )
@@ -469,7 +473,7 @@ class CustomGenomicRegionGenerator:
         :rtype: str
         """
 
-        def _compute_intron_annotation(annotation) -> pd.DataFrame:
+        def _compute_intron_annotation(annotation: pd.DataFrame) -> pd.DataFrame:
             """
             Computes intron annotations based on exon annotations for each transcript.
 
@@ -523,6 +527,9 @@ class CustomGenomicRegionGenerator:
                         )
                         exon_upstream = attributes
 
+            if len(intron_list) == 0:
+                raise ConfigurationError("Could not calculate introns.")
+
             intron_annotation = pd.DataFrame(
                 np.asarray(intron_list),
                 columns=[
@@ -548,7 +555,7 @@ class CustomGenomicRegionGenerator:
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}intron_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}intron_number="
             + annotation["intron_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -609,16 +616,12 @@ class CustomGenomicRegionGenerator:
         annotation = self._load_annotation()
         annotation = self._get_annotation_region_of_interest(annotation, "CDS")
 
-        # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts()
-        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
-
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -626,6 +629,9 @@ class CustomGenomicRegionGenerator:
         # remove duplicated entries
         if collapse_duplicated_regions:
             annotation = self._collapse_duplicated_regions(annotation)
+
+        # add transcript counts for each gene
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["start"] = annotation["start_0base"]
@@ -642,14 +648,13 @@ class CustomGenomicRegionGenerator:
             + annotation["gene_id"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
-            + annotation["transcript_count"].astype("str")
+            + annotation_transcript_inf
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )
         annotation = annotation[self.BED_HEADER]
 
-        file_fasta = os.path.join(self.dir_output,f"{self.FILE_INFO}__annotation_type__cds.fna")
+        file_fasta = os.path.join(self.dir_output, f"{self.FILE_INFO}__annotation_type__cds.fna")
         self._get_sequence_from_annotation(annotation, file_fasta, split=False)
 
         del annotation
@@ -731,7 +736,7 @@ class CustomGenomicRegionGenerator:
                 UTR_right.loc[(UTR_right["start_0base"] + 1) <= cds_end, "start_0base"] = cds_end
                 utrs.append(UTR_right)
 
-            utr_annotation = pd.concat(utrs, ignore_index=True)
+            utr_annotation: pd.DataFrame = pd.concat(utrs, ignore_index=True)
 
             return utr_annotation
 
@@ -749,18 +754,17 @@ class CustomGenomicRegionGenerator:
         if three_prime == False:
             annotation = annotation[annotation.type == "five_prime_UTR"]
 
-        # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts()
-        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
+        if annotation.shape[0] == 0:
+            raise ConfigurationError("Could not calculate the UTR.")
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
             "gene_id="
             + annotation["gene_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}transcript_id="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         annotation["region"] = self._get_annotation_region(annotation)
@@ -768,6 +772,9 @@ class CustomGenomicRegionGenerator:
         # remove duplicated entries
         if collapse_duplicated_regions:
             annotation = self._collapse_duplicated_regions(annotation)
+
+        # add transcript counts for each gene
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["start"] = annotation["start_0base"]
@@ -783,6 +790,7 @@ class CustomGenomicRegionGenerator:
             + annotation["type"]
             + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
+            + annotation_transcript_inf
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )
@@ -823,7 +831,7 @@ class CustomGenomicRegionGenerator:
         :type block_size: int
         :param collapse_duplicated_regions: Whether to collapse duplicated regions into a single entry, defauls to True.
         :type collapse_duplicated_regions: bool
-        :return: The path to the generated FASTA file containing the UTR sequences.
+        :return: The path to the generated FASTA file containing the exon-exon junction sequences.
         :rtype: str
         """
 
@@ -966,16 +974,15 @@ class CustomGenomicRegionGenerator:
         # compute exon junctions
         annotation = _compute_exon_exon_junction_annotation(annotation, block_size)
 
-        # add transcript counts for each gene
-        number_total_transcripts = self._get_number_total_transcripts()
-        annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
+        if annotation.shape[0] == 0:
+            raise ConfigurationError("Could not calculate exon-exon junctions.")
 
         # generate region_id
         annotation["region_id"] = annotation["gene_id"].astype("str")
         annotation["add_inf"] = (
             "transcript_id="
             + annotation["transcript_id"].astype("str")
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST_ITEMS}exon_number="
+            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}exon_number="
             + annotation["exon_number"].astype("str")
         )
         # generate regions -> taken from exon junction regions
@@ -984,6 +991,9 @@ class CustomGenomicRegionGenerator:
         # remove duplicated entries
         if collapse_duplicated_regions:
             annotation = self._collapse_duplicated_regions(annotation)
+
+        # add transcript counts for each gene
+        annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
         # add BED12 fields
         annotation["score"] = 0
@@ -1002,8 +1012,7 @@ class CustomGenomicRegionGenerator:
             + annotation["gene_id"].astype("str")
             + SEPARATOR_FASTA_HEADER_FIELDS_LIST
             + annotation["add_inf"]
-            + f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
-            + annotation["transcript_count"].astype("str")
+            + annotation_transcript_inf
             + SEPARATOR_FASTA_HEADER_FIELDS
             + annotation["region"]
         )
@@ -1030,7 +1039,7 @@ class CustomGenomicRegionGenerator:
         :rtype: pd.DataFrame
         """
         # read annotation file and store in dataframe
-        annotation = self.gff_parser.load_annotation_from_pickle(self.parsed_annotation_file)
+        annotation: pd.DataFrame = self.gff_parser.load_annotation_from_pickle(self.parsed_annotation_file)
 
         # required to ensure that sorting is done correctly
         annotation.start = annotation.start.astype("int")
@@ -1055,17 +1064,19 @@ class CustomGenomicRegionGenerator:
         :rtype: pd.DataFrame
         """
         region_annotation = annotation.loc[annotation["type"] == region]
+        if region_annotation.shape[0] == 0:
+            raise ConfigurationError(f"type {region} is not contained in the annotation file.")
         region_annotation.reset_index(inplace=True, drop=True)
         return region_annotation
 
     def _get_attributes(
         self,
-        start_0base: int = None,
-        start_1base: int = None,
-        end: int = None,
-        gene_id: str = None,
-        exon_number: int = None,
-        exon_size: int = None,
+        start_0base: int | None = None,
+        start_1base: int | None = None,
+        end: int | None = None,
+        gene_id: str | None = None,
+        exon_number: int | None = None,
+        exon_size: int | None = None,
     ) -> pd.Series:
         """
         Generates a pandas Series containing attributes related to genomic features.
@@ -1107,7 +1118,9 @@ class CustomGenomicRegionGenerator:
         :return: A DataFrame with duplicate regions merged. The values in columns other than 'region' are aggregated, with a special aggregation for the 'add_inf' column.
         :rtype: pd.DataFrame
         """
-        aggregate_function = {col: "first" for col in annotation.columns}
+        aggregate_function: dict[str, str | Callable[[Iterable[str]], str]] = {
+            col: "first" for col in annotation.columns
+        }
         aggregate_function["add_inf"] = SEPARATOR_FASTA_HEADER_FIELDS_LIST.join
 
         merged_annotation = annotation.groupby(annotation["region"]).agg(aggregate_function)
@@ -1115,16 +1128,16 @@ class CustomGenomicRegionGenerator:
 
         return merged_annotation
 
-    def _get_annotation_region(self, annotation: pd.DataFrame) -> str:
+    def _get_annotation_region(self, annotation: pd.DataFrame) -> pd.Series:
         """
         Generates a formatted string representing the genomic region for each annotation entry.
 
         :param annotation: A DataFrame containing genomic annotations. It must include columns 'seqid', 'start_1base', 'end', and 'strand' to construct the region string.
         :type annotation: pd.DataFrame
         :return: A string formatted as 'seqid:start_1base-end(strand)' for each annotation entry.
-        :rtype: str
+        :rtype: pd.Series
         """
-        region = (
+        region: pd.Series = (
             annotation["seqid"].astype("str")
             + ":"
             + annotation["start_1base"].astype("str")
@@ -1176,63 +1189,131 @@ class CustomGenomicRegionGenerator:
         )
         os.remove(file_bed)
 
-    def _get_number_total_transcripts(self) -> pd.DataFrame:
+    def _get_number_total_transcripts(self, gene_ids: set[str]) -> pd.DataFrame | None:
         """
         Calculates the total number of transcripts per gene from the annotation data.
+        If no transcript information is available, returns None.
 
+        :param gene_ids: The list of gene_ids for which the transcript number is calculated. This is needed
+            because for some assemblies, the transcript information is not available for all gene_ids of one type.
+        :type gene_ids: set[str]
         :return: A DataFrame where each row represents a gene with the total count of its transcripts.
-        :rtype: pd.DataFrame
+        :rtype: pd.DataFrame | None
         """
         annotation = self._load_annotation()
-        annotation = self._get_annotation_region_of_interest(annotation, "transcript")
-        number_total_transcripts = annotation["gene_id"].value_counts()
+        try:
+            annotation_interest = self._get_annotation_region_of_interest(annotation, "transcript")
+            number_total_transcripts = annotation_interest["gene_id"].value_counts()
+            number_total_transcripts_df = number_total_transcripts.reset_index()
+            number_total_transcripts_df.columns = ["gene_id", "transcript_count"]
+            if not set(gene_ids).issubset(set(number_total_transcripts_df["gene_id"])):
+                raise ConfigurationError
+        except ConfigurationError:
+            warnings.warn("Could not calculate the number of total transcripts.")
+            number_total_transcripts_df = None
+        finally:
+            return number_total_transcripts_df
 
-        number_total_transcripts = number_total_transcripts.reset_index()
-        number_total_transcripts.columns = ["gene_id", "transcript_count"]
+    def _add_transcript_counts(self, annotation: pd.DataFrame) -> tuple[pd.DataFrame, str | pd.Series]:
+        """
+        Adds the transcript count for every gene to the annotation and generates a Series of strings for the BED header.
 
-        return number_total_transcripts
+        :param annotation: DataFrame with the annotation information.
+        :type annotation: pd.DataFrame
+        :return: Updated annotation DataFrame and Series with strings fro BED header
+        :rtype: DataFrame
+        """
+        # add transcript counts for each gene
+        number_total_transcripts = self._get_number_total_transcripts(set(annotation["gene_id"]))
+        if number_total_transcripts is not None:
+            annotation = pd.merge(annotation, number_total_transcripts, on="gene_id", how="left")
+            annotation_transcript_inf = (
+                f"{SEPARATOR_FASTA_HEADER_FIELDS_LIST}number_total_transcripts="
+                + annotation["transcript_count"].astype("str")
+            )
+        else:
+            annotation_transcript_inf = ""
+
+        return annotation, annotation_transcript_inf
 
 
 class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
     """
     This class generates custom genomic regions using data from NCBI.
-    It automatically downloads and processes annotation and sequence files based on the provided taxon, species, and annotation release.
+    It automatically downloads and processes annotation and sequence files. They can either be specified by taxon, species,
+    and annotation release (and optionally the assembly source). Alternatively, the RefSeq assembly accession number and
+    the assembly name can be specified directly. Only one mode can be used and the other parameters need to be set to
+    None.
 
+    :param mode: How should be specified which genome to use? Options: 'species', 'assembly'
+    :type mode: str
     :param taxon: The taxonomic classification of the species, used to locate the appropriate NCBI files, defaults to "vertebrate_mammalian".
     :type taxon: str, optional
     :param species: The species name for which genomic regions will be generated, defaults to "Homo_sapiens".
     :type species: str, optional
     :param annotation_release: The version of the annotation release to use, defaults to "current".
     :type annotation_release: str, optional
-    :param dir_output: The directory where output files will be stored, defaults to "output".
+    :param assembly_source: NCBI assembly source to use. Supported values are "auto", "annotation_releases",
+        "latest_assembly_versions", and "reference". Defaults to "auto".
+    :type assembly_source: str, optional
+    :param refseq_assembly_accession: Optional direct RefSeq assembly accession (e.g., "GCF_000001405.38").
+    :type refseq_assembly_accession: str | None, optional
+    :param assembly_name: Optional direct assembly name (e.g., "GRCh38.p12").
+    :type assembly_name: str | None, optional
+    :param dir_output: Directory path where output files will be saved. Defaults to "output".
     :type dir_output: str, optional
     """
 
     def __init__(
         self,
-        taxon: str = None,
-        species: str = None,
-        annotation_release: str = None,
+        mode: str | None = None,
+        taxon: str | None = None,
+        species: str | None = None,
+        annotation_release: str | None = None,
+        assembly_source: str | None = None,
+        refseq_assembly_accession: str | None = None,
+        assembly_name: str | None = None,
         dir_output: str = "output",
     ) -> None:
         """Constructor for the NcbiGenomicRegionGenerator class."""
         files_source = "NCBI"
-        if taxon is None:
-            taxon = "vertebrate_mammalian"
-            warnings.warn(f"No taxon defined. Using default taxon {taxon}!")
 
-        if species is None:
-            species = "Homo_sapiens"
-            warnings.warn(f"No species defined. Using default species {species}!")
+        if mode is None:
+            raise ConfigurationError("For source='ncbi', parameter 'mode' must be provided.")
 
-        if annotation_release is None:
-            annotation_release = "current"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+        if mode == "species":
+            if taxon is None:
+                raise ConfigurationError(f"No taxon defined.")
+
+            if species is None:
+                raise ConfigurationError(f"No species defined.")
+
+            if annotation_release is None:
+                annotation_release = "current"
+                warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+
+            if assembly_source is None:
+                assembly_source = "auto"
+                warnings.warn(f"No assembly source defined. Using default assembly source {assembly_source}!")
+        elif mode == "assembly":
+            if assembly_source is None:
+                assembly_source = "auto"
+        else:
+            raise ConfigurationError("For source='ncbi', mode must be either 'species' or 'assembly'.")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ftp = FtpLoaderNCBI(self.dir_output, taxon, species, annotation_release)
+        ftp = FtpLoaderNCBI(
+            self.dir_output,
+            mode=mode,
+            taxon=taxon,
+            species=species,
+            annotation_release=annotation_release,
+            assembly_source=assembly_source if assembly_source is not None else "auto",
+            refseq_assembly_accession=refseq_assembly_accession,
+            assembly_name=assembly_name,
+        )
         annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
         sequence_file, _, _ = ftp.download_files("fasta")
 
@@ -1240,7 +1321,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
             annotation_file,
             sequence_file,
             files_source,
-            species,
+            species if species is not None else "unknown",
             annotation_release,
             genome_assembly,
             dir_output,
@@ -1256,23 +1337,23 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
     :type species: str, optional
     :param annotation_release: The version of the annotation release to use, defaults to "current".
     :type annotation_release: str, optional
-    :param dir_output: The directory where output files will be stored, defaults to "output".
+    :param dir_output: Directory path where output files will be saved. Defaults to "output".
     :type dir_output: str, optional
     """
 
     def __init__(
         self,
-        species: str = None,
-        annotation_release: str = None,
+        species: str | None = None,
+        annotation_release: str | None = None,
         dir_output: str = "output",
     ) -> None:
         """Constructor for the EnsemblGenomicRegionGenerator class."""
         files_source = "Ensemble"
-        if not species:
+        if species is None:
             species = "homo_sapiens"
             warnings.warn(f"No species defined. Using default species {species}!")
 
-        if not annotation_release:
+        if annotation_release is None:
             annotation_release = "current"
             warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
 

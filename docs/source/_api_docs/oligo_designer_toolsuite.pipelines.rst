@@ -13,6 +13,7 @@ Module contents
    ScrinshotProbeDesigner
    SeqFishPlusProbeDesigner
    MerfishProbeDesigner
+   CycleHCRProbeDesigner
 
    {% for name in oligo_designer_toolsuite.pipelines.classes %}
      {{ name }}

@@ -60,9 +60,9 @@ For a complete explanation of all function parameters, refer to the API document
     # We first generate probes that hybridize specifically to target genes sequences.
     # The pipeline will generate multiple candidate sets (n_sets) and return them as part of the probe database.
     target_probe_database = pipeline.design_target_probes(
-        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
-        files_fasta_reference_database_target_probe=...,        # List of FASTA files for specificity reference
         gene_ids=...,                                           # List of gene symbols or identifiers
+        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
+        files_fasta_reference_database_targe_probe=...,         # List of FASTA files for specificity reference
         target_probe_length_min=30,
         target_probe_length_max=30,
         target_probe_isoform_consensus=50,
@@ -136,13 +136,10 @@ For a complete explanation of all function parameters, refer to the API document
     )
 
     ##### Generate Final Output #####
-    # The pipeline then generates its final outputs for the 'top_n_sets'
-    # best scoring probe sets to keep.
     pipeline.generate_output(
-        encoding_probe_database=encoding_probe_database,
-        reverse_primer_sequence=reverse_primer_sequence,
-        forward_primer_sequence=forward_primer_sequence,
-        top_n_sets=3,
+        probe_database=encoding_probe_database,
+        codebook=codebook,
+        readout_probe_table=readout_probe_table,
     )
 
 
@@ -180,13 +177,13 @@ Off-target regions are sequences of the background reference (e.g. transcriptome
 Those off-target regions are identified with the ``BlastNFilter`` that removes probes where a BlastN alignment search found off-target sequence matches with a certain coverage and similarity, for which the user has to define thresholds.
 
 In the third step of the pipeline, the best sets of non-overlapping probes are identified for each gene.
-The ``OligosetGeneratorIndependentSet`` class is used to generate ranked, non-overlapping probe sets where each probe and probe set is scored according to a protocol dependent scoring function, i.e. by the distance to the optimal GC content and melting temperature, weighted by the number of targeted transcripts of the probes in the set.
+The ``OligosetGeneratorIndependentSet`` class is used to generate ranked, non-overlapping probe sets where each probe and probe set is scored according to a protocol dependent scoring function, i.e. by the weighted GC content, melting temperature and isoform consensus score of the probes in the set.
 Following this step all genes with insufficient number of probes (user-defined) are removed from the database and stored in a separate file for user-inspection.
 
 In the last step of the pipeline, the ready-to-order probe sequences containing all additional required sequences are designed for the best non-overlapping sets of each gene.
 For the MERFISH protocol two readout sequences are added to the probe, creating the encoding probes.
 A pool of readout probe sequences is created from random sequences with user-defined per base probability that have a GC content (``GCContentFilter``) within a user-specified range and no homopolymeric runs of three or more G nucleotides (``HomopolymericRunsFilter``).
-Additionally, the readout probes are checked for off-target binding (``BlastNFilter``) against the transcriptome and cross-hybridization (``CrossHybridizationFilter``) against other readout probe sequences where hits are removed with the ``RemoveByDegreePolicy`` that iteratively removes readout probes with the highest number of hits against other readout probes.
+Additionally, the readout probes are checked for off-target binding (``BlastNFilter``) against the transcriptome and cross-hybridization (``CrossHybridizationFilter``) against other readout probe sequences where hits are removed with the ``RemoveByDegreeFilterPolicy`` that iteratively removes readout probes with the highest number of hits against other readout probes.
 The readout probes are assigned to the probes according to a protocol-specific encoding scheme described in Wang et al. [3].
 In addition, one forward and one reverse primer is provided.
 The reverse primer is the 20nt T7 promoter sequence (TAATACGACTCACTATAGGG) and the forward primer is created from a random sequence with user-defined per base probability that fulfills the following criteria: GC content (``GCContentFilter``) and melting temperature (``MeltingTemperatureNNFilter``) within a user-specified range, CG clamp at 3’ terminal end of the sequence (``GCClampFilter``), no homopolymeric runs of any nucleotide longer than a user-specified threshold (``HomopolymericRunsFilter``), no  secondary structures below a user-defined free energy threshold (``SecondaryStructureFilter``).
@@ -194,8 +191,8 @@ Furthermore, the forward primer sequence is checked for off-target binding (``Bl
 
 The output is stored in two separate files:
 
-- ``merfish_probes_order.yml``: contains for each probe the sequences of the merfish probe and the detection oligo.
-- ``merfish_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
+- ``merfish_probes_order.yml``: contains for each probe the sequences of the merfish probe and the readout probes.
+- ``merfish_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific properties.
 
 All default parameters can be found in the `merfish_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/merfish_probe_designer.yaml>`__ config file provided along the repository.
 

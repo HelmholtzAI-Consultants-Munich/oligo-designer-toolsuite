@@ -2,15 +2,13 @@
 # imports
 ############################################
 
-from typing import get_args
-from Bio.SeqUtils import Seq
 
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
-from oligo_designer_toolsuite._constants import _TYPES_SEQ
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.oligo_property_filter import PropertyFilterBase
+from oligo_designer_toolsuite.oligo_property_filter import BasePropertyFilter
+from oligo_designer_toolsuite.utils import check_if_key_in_database
 
 ############################################
 # Property Filter Class
@@ -21,41 +19,38 @@ class PropertyFilter:
     """
     A class for applying multiple property filters to sequences in an OligoDatabase.
 
-    The `PropertyFilter` class allows you to apply a list of sequence filters (subclasses of `PropertyFilterBase`) to an OligoDatabase.
+    The `PropertyFilter` class allows you to apply a list of sequence filters (subclasses of `BasePropertyFilter`) to an OligoDatabase.
     The filters are applied in parallel across all regions of the database, and sequences that do not meet all filter criteria are removed.
 
     :param filters: A list of property filters to apply to sequences.
-    :type filters: list[PropertyFilterBase]
+    :type filters: list[BasePropertyFilter]
     """
 
     def __init__(
         self,
-        filters: list[PropertyFilterBase],
+        filters: list[BasePropertyFilter],
     ) -> None:
         """Constructor for the PropertyFilter class."""
         self.filters = filters
 
-    def apply(
-        self, oligo_database: OligoDatabase, sequence_type: _TYPES_SEQ, n_jobs: int = 1
-    ) -> OligoDatabase:
+    def apply(self, oligo_database: OligoDatabase, sequence_type: str, n_jobs: int = 1) -> OligoDatabase:
         """
         Apply the property filters to all sequences in the OligoDatabase and filter
         sequences in the OligoDatabase based on the specified property filters.
         Sequences that do not meet the criteria of all filters are removed.
 
-        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase instance containing oligonucleotide sequences and their associated properties. This database stores oligo data organized by genomic regions and can be used for filtering, property calculations, set generation, and output operations.
         :type oligo_database: OligoDatabase
-        :param sequence_type: The type of sequence to be used for filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
-        :param n_jobs: The number of jobs to run in parallel, defaults to 1.
+        :param sequence_type: Type of sequence being processed.
+        :type sequence_type: str
+        :param n_jobs: Number of parallel jobs to use for processing. Defaults to 1.
         :type n_jobs: int
         :return: The filtered OligoDatabase.
         :rtype: OligoDatabase
         """
-        options = get_args(_TYPES_SEQ)
-        assert (
-            sequence_type in options
-        ), f"Sequence type not supported! '{sequence_type}' is not in {options}."
+        assert check_if_key_in_database(
+            oligo_database.database, sequence_type
+        ), f"Sequence type '{sequence_type}' not found in database."
 
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description="Property Filter", total=len(region_ids)):
@@ -63,13 +58,11 @@ class PropertyFilter:
                 delayed(self._filter_region)(oligo_database, region_id, sequence_type)
                 for region_id in region_ids
             )
-
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Property Filters")
+
         return oligo_database
 
-    def _filter_region(
-        self, oligo_database: OligoDatabase, region_id: str, sequence_type: _TYPES_SEQ
-    ) -> None:
+    def _filter_region(self, oligo_database: OligoDatabase, region_id: str, sequence_type: str) -> None:
         """
         Filters a specific region in the OligoDatabase based on sequence properties.
 
@@ -77,12 +70,12 @@ class PropertyFilter:
         applying a series of filters to determine whether each sequence meets specified criteria.
         If a sequence does not fulfill all filter conditions, it is removed from the database.
 
-        :param oligo_database: The OligoDatabase containing the oligonucleotides and their associated attributes.
+        :param oligo_database: The OligoDatabase instance containing oligonucleotide sequences and their associated properties. This database stores oligo data organized by genomic regions and can be used for filtering, property calculations, set generation, and output operations.
         :type oligo_database: OligoDatabase
         :param region_id: Region ID to process.
         :type region_id: str
-        :param sequence_type: The type of sequence to be used for the filter calculations.
-        :type sequence_type: _TYPES_SEQ["oligo", "target"]
+        :param sequence_type: Type of sequence being processed.
+        :type sequence_type: str
         """
         oligo_ids = list(oligo_database.database[region_id].keys())
         for oligo_id in oligo_ids:
@@ -92,7 +85,7 @@ class PropertyFilter:
             if not fulfills_all_filter:
                 del oligo_database.database[region_id][oligo_id]
 
-    def _filter_sequence(self, sequence: Seq) -> bool:
+    def _filter_sequence(self, sequence: str) -> bool:
         """
         Applies a series of filters to a sequence and checks if it meets all criteria.
 

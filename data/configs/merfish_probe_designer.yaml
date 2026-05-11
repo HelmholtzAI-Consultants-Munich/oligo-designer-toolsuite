@@ -7,8 +7,6 @@
 n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
 dir_output: output_merfish_probe_designer # name of the directory where the output files will be written
 write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
-top_n_sets: 3 #maximum number of sets to report in padlock_probes.yaml and "padlock_probes_order.yaml"
-
 
 ### Target Probe Parameters
 ### -----------------------------------------------
@@ -34,14 +32,13 @@ target_probe_homopolymeric_base_n: # minimum number of nucleotides to consider i
   C: 6
   G: 6
 target_probe_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
-target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
-target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
-target_probe_isoform_weight: 2 # weight of the Tm of the probe in the efficiency score
+n_sets: 3 # number of sets to generate
 set_size_min: 50 # minimum size of probe sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
 set_size_opt: 50 # optimal size of probe sets
 distance_between_target_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
-n_sets: 100 # maximum number of sets to generate
+target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
+target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
+target_probe_isoform_weight: 2 # weight of the Tm of the probe in the efficiency score
 
 
 ### Readout Probe Parameters
@@ -61,11 +58,11 @@ readout_probe_homopolymeric_base_n: # minimum number of nucleotides to consider 
   G: 3
 readout_probe_set_size: 16 # total number of readout probes
 readout_probe_homogeneous_properties_weights: # readout probes in one set should have similar properties, the weighted sum of variance of the properties is minimized
-  TmNN: 1 # melting temperature
-  GC_content: 1 # GC content
+  TmNN_oligo: 1.0 # melting temperature
+  GC_content_oligo: 1.0 # GC content
 n_bits: 16 # number of bits contained in each barcode
 min_hamming_dist: 4 # minimum distance between two valid barcodes
-hamming_weight: 4 # number of bits containing one in each barcode
+hamming_weight: 2 # number of bits containing one in each barcode
 channels_ids: # names of fluorescent channels
   - Alexa488
   - Cy3b
@@ -98,7 +95,7 @@ primer_max_len_complement_reverse_primer: 5
 primer_Tm_min: 60
 primer_Tm_max: 75
 primer_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature 
+primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
 
 ############################
 ### DEVELOPER PARAMETERS ###
@@ -106,37 +103,11 @@ primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary st
 
 ### Target Probe Parameters
 ### -----------------------------------------------
-# Specificity filter with BlastN
-target_probe_specificity_blastn_search_parameters:
-  perc_identity: 80 # the higher the percent identity is, the more significant the match
-  strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  word_size: 10
-  dust: "no"
-  soft_masking: "false"
-  max_target_seqs: 10
-  max_hsps: 1000
-target_probe_specificity_blastn_hit_parameters:
-  min_alignment_length: 17 # can be turned into coverage
-# Crosshybridization filter with BlastN
-target_probe_cross_hybridization_blastn_search_parameters:
-  perc_identity: 80 # the higher the percent identity is, the more significant the match
-  strand: "minus" # this parameter is fixed
-  word_size: 7
-  dust: "no"
-  soft_masking: "false"
-  max_target_seqs: 10
-target_probe_cross_hybridization_blastn_hit_parameters:
-  min_alignment_length: 17 # can be turned into coverage
-# Parameters for the Oligo set selection
-max_graph_size: 5000 # maximum number of oligos that are taken into consisderation in the last step (5000 -> ~5GB, 2500 -> ~1GB)
-n_attempts: 100000 # number of attempts to find the optimal set of oligos
-heuristic: true # apply heuristic pre-search to reduce search space and runtime of oligo set selection
-heuristic_n_attempts: 100 # number of attempts to find the optimal set of oligos for heuristic pre-search
-# Parameters for Melting Temperature
+# Parameters for property filters
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 target_probe_Tm_parameters:
-  nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
+  nn_table: DNA_NN4 # SantaLucia (2004) taken from Moffitt (2016)
   tmm_table: DNA_TMM1 #default
   imm_table: DNA_IMM1 #default
   de_table: DNA_DE1 #default
@@ -150,33 +121,40 @@ target_probe_Tm_parameters:
   dNTPs: 0 #[mM] default
 target_probe_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
 target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-
+target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
+# Specificity filter with BlastN
+target_probe_specificity_blastn_search_parameters:
+  -perc_identity: 80
+  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
+  -word_size: 10
+  -dust: "no"
+  -soft_masking: "false"
+  -max_target_seqs: 10
+  -max_hsps: 1000
+target_probe_specificity_blastn_hit_parameters:
+  min_alignment_length: 17 # can be turned into coverage
+# Crosshybridization filter with BlastN
+target_probe_cross_hybridization_blastn_search_parameters:
+  -perc_identity: 80
+  -strand: "minus" # this parameter is fixed
+  -word_size: 7
+  -dust: "no"
+  -soft_masking: "false"
+  -max_target_seqs: 10
+target_probe_cross_hybridization_blastn_hit_parameters:
+  min_alignment_length: 17 # can be turned into coverage
+# Parameters for the oligo set selection
+n_attempts_graph: 50 # number of randomized graph attempts (diversification)
+n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
+diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
+jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
+jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found
 
 
 ### Readout Probe Parameters
 ### -----------------------------------------------
 readout_probe_initial_num_sequences: 100000 # if not enough readout probes can be generated, increase this number
-# Specificity filter with BlastN
-readout_probe_specificity_blastn_search_parameters:
-  perc_identity: 100 # the higher the percent identity is, the more significant the match
-  strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  word_size: 7
-  dust: "no"
-  soft_masking: "false"
-  max_target_seqs: 10
-  max_hsps: 1000
-readout_probe_specificity_blastn_hit_parameters:
-  min_alignment_length: 11 # can be turned into coverage
-# Crosshybridization filter with BlastN
-readout_probe_cross_hybridization_blastn_search_parameters:
-  perc_identity: 100 # the higher the percent identity is, the more significant the match
-  strand: "minus" # this parameter is fixed
-  word_size: 7
-  dust: "no"
-  soft_masking: "false"
-  max_target_seqs: 10
-readout_probe_cross_hybridization_blastn_hit_parameters:
-  min_alignment_length: 11 # can be turned into coverage
+# Parameters for property filters
 readout_probe_Tm_parameters:
   nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
   tmm_table: DNA_TMM1 #default
@@ -192,34 +170,34 @@ readout_probe_Tm_parameters:
   dNTPs: 0 #[mM] default
 readout_probe_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
 readout_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
+# Specificity filter with BlastN
+readout_probe_specificity_blastn_search_parameters:
+  -perc_identity: 100
+  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
+  -word_size: 7
+  -dust: "no"
+  -soft_masking: "false"
+  -max_target_seqs: 10
+  -max_hsps: 1000
+readout_probe_specificity_blastn_hit_parameters:
+  min_alignment_length: 11 # can be turned into coverage
+# Crosshybridization filter with BlastN
+readout_probe_cross_hybridization_blastn_search_parameters:
+  -perc_identity: 100
+  -strand: "minus" # this parameter is fixed
+  -word_size: 7
+  -dust: "no"
+  -soft_masking: "false"
+  -max_target_seqs: 10
+readout_probe_cross_hybridization_blastn_hit_parameters:
+  min_alignment_length: 11 # can be turned into coverage
+# Parameters for the oligo set selection
 readout_probe_n_combinations: 100000 # number of random combinations of readout probe sets to iteratte through
 
 ### Primer Parameters
 ### -----------------------------------------------
 primer_initial_num_sequences: 1000000 # if no primer can be generated, increase this number
-# Specificity filter with BlastN against reference
-primer_specificity_refrence_blastn_search_parameters:
-  perc_identity: 100 # the higher the percent identity is, the more significant the match
-  strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  word_size: 7
-  dust: "no"
-  soft_masking: "false"
-  max_target_seqs: 10
-  max_hsps: 1000
-primer_specificity_refrence_blastn_hit_parameters:
-  min_alignment_length: 14 # can be turned into coverage
-# Specificity filter with BlastN against encoding rpobes
-primer_specificity_encoding_probes_blastn_search_parameters:
-  perc_identity: 100 # the higher the percent identity is, the more significant the match
-  strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  word_size: 7
-  dust: "no"
-  soft_masking: "false"
-  max_target_seqs: 10
-  max_hsps: 1000
-primer_specificity_encoding_probes_blastn_hit_parameters:
-  min_alignment_length: 11 # can be turned into coverage
-# Parameters for Melting Temperature
+# Parameters for property filters
 # The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
 # parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
 primer_Tm_parameters:
@@ -237,3 +215,25 @@ primer_Tm_parameters:
   dNTPs: 0 #[mM] default
 primer_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
 primer_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
+# Specificity filter with BlastN against reference
+primer_specificity_refrence_blastn_search_parameters:
+  -perc_identity: 100
+  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
+  -word_size: 7
+  -dust: "no"
+  -soft_masking: "false"
+  -max_target_seqs: 10
+  -max_hsps: 1000
+primer_specificity_refrence_blastn_hit_parameters:
+  min_alignment_length: 14 # can be turned into coverage
+# Specificity filter with BlastN against hybridization rpobes
+primer_specificity_hybridization_probes_blastn_search_parameters:
+  -perc_identity: 100
+  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
+  -word_size: 7
+  -dust: "no"
+  -soft_masking: "false"
+  -max_target_seqs: 10
+  -max_hsps: 1000
+primer_specificity_hybridization_probes_blastn_hit_parameters:
+  min_alignment_length: 11 # can be turned into coverage

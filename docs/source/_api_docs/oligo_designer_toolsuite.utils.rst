@@ -11,7 +11,7 @@ Module contents
 
    FastaParser
    GffParser
-   CustomYamlDumper
+   VCFParser
 
    {% for name in oligo_designer_toolsuite.utils.classes %}
      {{ name }}

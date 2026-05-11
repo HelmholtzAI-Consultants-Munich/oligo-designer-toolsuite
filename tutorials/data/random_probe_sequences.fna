@@ -1,10 +1,10 @@
 >random_probe::regiontype=random_sequence;region_id=random_probe_0
-GAAGATGTTTAAAAAAAAGAAACATGGAGG
+GAAGGAGTATAAGGGGCAAATCGGTAAGAG
 >random_probe::regiontype=random_sequence;region_id=random_probe_1
-AATGGTTGGAGGTAGAAAGTAATATTAAGG
+AGAAGGATGAAAGGGAGGCGGAGGATGTAG
 >random_probe::regiontype=random_sequence;region_id=random_probe_2
-AGATAAATATTTGAAAAAGTATACGATTGT
+GAGGGGGATGTAGATAGTGACAAATTAAGG
 >random_probe::regiontype=random_sequence;region_id=random_probe_3
-TAAGAAGGTGATGGGAAGTTGTAGAGGGAT
+ATGAAGGGAATGATGACATGCCATGGACTG
 >random_probe::regiontype=random_sequence;region_id=random_probe_4
-AAAAGAGAATATTATTATTCGCAGTAATAG
+GAAAAAGACAGATATTAAGGATTGATAGGG

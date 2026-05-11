@@ -2,10 +2,9 @@
 # imports
 ############################################
 
-import pandas as pd
-
 from abc import ABC, abstractmethod
-from typing import Tuple
+
+import pandas as pd
 
 ############################################
 # Set Scoring Classes
@@ -18,8 +17,14 @@ class SetScoringBase(ABC):
     Implementations should define how to extract the best subset of oligonucleotides based on their scores.
     """
 
+    def __init__(self, ascending: bool) -> None:
+        """Constructor for the SetScoringBase class."""
+        self.ascending = ascending
+        self.score_1: str = ""
+        self.score_2: str = ""
+
     @abstractmethod
-    def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
+    def apply(self, oligo_set: pd.Series, n: int) -> tuple[list, dict]:
         """
         Abstract method to apply the scoring method to the oligo set and return the top `n` oligos along with their respective scores.
         This method should be implemented by subclasses to define the specific scoring logic.
@@ -30,8 +35,18 @@ class SetScoringBase(ABC):
         :param n: The number of top oligos to select.
         :type n: int
         :return: A tuple containing a list of selected oligo IDs and a dictionary of computed scores.
-        :rtype: Tuple[list, dict]
+        :rtype: tuple[list, dict]
         """
+
+    @property
+    def score_names(self) -> list[str]:
+        """
+        Returns a list of the score names.
+
+        :return: A list of the score names.
+        :rtype: list[str]
+        """
+        return [s for s in (self.score_1, self.score_2) if s]
 
 
 class LowestSetScoring(SetScoringBase):
@@ -49,7 +64,7 @@ class LowestSetScoring(SetScoringBase):
         self.score_1 = "set_score_worst"
         self.score_2 = "set_score_sum"
 
-    def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
+    def apply(self, oligo_set: pd.Series, n: int) -> tuple[list, dict]:
         """
         Apply the scoring method to the oligo set, selecting the top `n` oligos based on the lowest score.
 
@@ -58,7 +73,7 @@ class LowestSetScoring(SetScoringBase):
         :param n: The number of top oligos to select.
         :type n: int
         :return: A tuple containing a list of selected oligo IDs and a dictionary with the lowest score and the sum of scores.
-        :rtype: Tuple[list, dict]
+        :rtype: tuple[list, dict]
         """
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 
@@ -91,7 +106,7 @@ class AverageSetScoring(SetScoringBase):
         self.score_1 = "set_score_average"
         self.score_2 = "set_score_worst"
 
-    def apply(self, oligo_set: pd.Series, n: int) -> Tuple[list, dict]:
+    def apply(self, oligo_set: pd.Series, n: int) -> tuple[list, dict]:
         """
         Apply the scoring method to the oligo set, selecting the top `n` oligos based on the average score.
 
@@ -100,7 +115,7 @@ class AverageSetScoring(SetScoringBase):
         :param n: The number of top oligos to select.
         :type n: int
         :return: A tuple containing a list of selected oligo IDs and a dictionary with the average score and the lowest score.
-        :rtype: Tuple[list, dict]
+        :rtype: tuple[list, dict]
         """
         best_n_oligos = oligo_set.sort_values(ascending=self.ascending).head(n)
 

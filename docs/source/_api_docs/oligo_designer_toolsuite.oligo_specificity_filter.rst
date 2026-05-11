@@ -9,20 +9,22 @@ Module contents
 
 .. autosummary::
 
-   SpecificityFilterBase
+   BaseSpecificityFilter
+   ReferenceSpecificityFilter
    AlignmentSpecificityFilter
    ExactMatchFilter
    BlastNFilter
    BlastNSeedregionFilter
-   BlastNSeedregionLigationsiteFilter
+   BlastNSeedregionSiteFilter
    BowtieFilter
    Bowtie2Filter
    CrossHybridizationFilter
    HybridizationProbabilityFilter
-   FilterPolicyBase
-   RemoveAllPolicy
-   RemoveByDegreePolicy
-   RemoveByLargerRegionPolicy
+   VariantsFilter
+   BaseFilterPolicy
+   RemoveAllFilterPolicy
+   RemoveByDegreeFilterPolicy
+   RemoveByLargerRegionFilterPolicy
    SpecificityFilter
 
    {% for name in oligo_designer_toolsuite.oligo_specificity_filter.classes %}

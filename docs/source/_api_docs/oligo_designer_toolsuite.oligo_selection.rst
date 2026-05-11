@@ -11,9 +11,6 @@ Module contents
 
    OligosetGeneratorIndependentSet
    HomogeneousPropertyOligoSetGenerator
-   OligoSelectionPolicy
-   GreedySelectionPolicy
-   GraphBasedSelectionPolicy
 
    {% for name in oligo_designer_toolsuite.oligo_selection.classes %}
      {{ name }}

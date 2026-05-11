@@ -11,7 +11,6 @@ Module contents
 
    OligoDatabase
    ReferenceDatabase
-   OligoAttributes
 
    {% for name in oligo_designer_toolsuite.database.classes %}
      {{ name }}

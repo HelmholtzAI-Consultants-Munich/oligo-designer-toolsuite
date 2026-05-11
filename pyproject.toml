@@ -1,11 +1,11 @@
 [build-system]
 requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["oligo_designer_toolsuite"]
 
 [tool.setuptools.dynamic]
-#version = {attr = "my_package.VERSION"}
 readme = { file = "README.md" }
 
 [tool.setuptools_scm]
@@ -15,54 +15,60 @@ local_scheme = "no-local-version"
 [project]
 name = "oligo-designer-toolsuite"
 dynamic = ["version"]
-#version = "1.0.2"
+description = "Oligo Designer Toolsuite: lightweight development of custom oligo design pipelines"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { file = "LICENSE" }
 authors = [
-  { name = "Lisa Barros de Andrade e Sousa" },
+  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
   { name = "Isra Mekki" },
-  { name = "Jonas Hagenberg" },
   { name = "Francesco Campi" },
-  { name = "Louis Kümmerle" },
   { name = "Chelsea Bright" },
+  { name = "Louis Kümmerle" },
+  { name = "Jonas Hagenberg" },
 ]
 maintainers = [
   { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
   { name = "Jonas Hagenberg", email = "jonas.hagenberg@helmholtz-muenchen.de" },
 ]
-description = "Develop custom oligo design pipelines."
 keywords = [
-  "bioinformatics",
-  "probes",
-  "oligo nucleotides",
-  "probe design",
   "oligo design",
+  "high throughput genomics",
+  "spatial transcriptomics",
+  "bioinformatics",
+  "reproducible research",
+  "workflow automation",
 ]
-readme = "README.md"
-requires-python = ">=3.9"
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bioinformatics",
 ]
 dependencies = [
-  "datetime",
-  "argparse",
-  "numpy",
-  "pandas",
-  "scipy",
-  "iteration_utilities",
-  "Bio",
-  "pyyaml",
-  "networkx",
-  "joblib",
-  "seqfold",
-  "effidict<=0.0.9",
-  "joblib_progress",
+  "biopython>=1.79",
+  "cyvcf2>=0.30.0",
+  "effidict>0.0.9",
+  "ipywidgets>=8.0.0",
+  "iteration_utilities>=0.11.0",
+  "joblib>=1.3.0",
+  "joblib_progress>=0.1.2",
+  "networkx>=3.0,<3.3",
+  "numpy>=1.21.0",
   "oligo-designer-toolsuite-ai-filters",
-  "ipywidgets",
+  "openpyxl>=3.0.0",
+  "pandas>=1.3.0",
+  "pyyaml>=6.0",
+  "scipy>=1.7.0",
+  "seqfold>=0.7.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest>=7", "pre-commit", "black", "mypy>=1.0.0"]
 
 [project.scripts]
 genomic_region_generator = "oligo_designer_toolsuite.pipelines._genomic_region_generator:main"
@@ -70,7 +76,50 @@ oligo_seq_probe_designer = "oligo_designer_toolsuite.pipelines._oligo_seq_probe_
 scrinshot_probe_designer = "oligo_designer_toolsuite.pipelines._scrinshot_probe_designer:main"
 seqfish_plus_probe_designer = "oligo_designer_toolsuite.pipelines._seqfish_plus_probe_designer:main"
 merfish_probe_designer = "oligo_designer_toolsuite.pipelines._merfish_probe_designer:main"
+cycle_hcr_probe_designer = "oligo_designer_toolsuite.pipelines._cycle_hcr_probe_designer:main"
+hcr_probe_designer = "oligo_designer_toolsuite.pipelines._hcr_probe_designer:main"
 
 [project.urls]
 documentation = "https://oligo-designer-toolsuite.readthedocs.io/"
 repository = "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite"
+
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.black]
+line-length = 110
+target-version = ['py310', 'py311', 'py312']
+
+[tool.isort]
+profile = "black"
+line_length = 110
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+show_error_codes = true
+
+# Ignore missing imports for third-party packages
+[[tool.mypy.overrides]]
+module = [
+  "effidict.*",
+  "joblib.*",
+  "cyvcf2.*",
+  "seqfold.*",
+  "joblib_progress.*",
+  "iteration_utilities.*",
+  "oligo_designer_toolsuite_ai_filters.*",
+  "biopython.*",
+]
+ignore_missing_imports = true

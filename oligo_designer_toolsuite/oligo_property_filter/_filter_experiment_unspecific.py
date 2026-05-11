@@ -2,12 +2,14 @@
 # imports
 ############################################
 
-from typing import List, Union
-
-from Bio.SeqUtils import Seq
-
-from oligo_designer_toolsuite.database import OligoAttributes
-from oligo_designer_toolsuite.oligo_property_filter import PropertyFilterBase
+from oligo_designer_toolsuite._exceptions import ConfigurationError
+from oligo_designer_toolsuite.oligo_property_calculator import (
+    calc_dg_secondary_structure,
+    calc_gc_content,
+    calc_length_complement,
+    calc_tm_nn,
+)
+from oligo_designer_toolsuite.oligo_property_filter import BasePropertyFilter
 
 from ..utils._checkers_and_helpers import check_if_dna_sequence
 
@@ -16,7 +18,7 @@ from ..utils._checkers_and_helpers import check_if_dna_sequence
 ############################################
 
 
-class SoftMaskedSequenceFilter(PropertyFilterBase):
+class SoftMaskedSequenceFilter(BasePropertyFilter):
     """
     A filter class to check for the presence of soft-masked sequences.
 
@@ -29,14 +31,14 @@ class SoftMaskedSequenceFilter(PropertyFilterBase):
         """Constructor for the SoftMaskedSequenceFilter class."""
         super().__init__()
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Evaluate the sequence to determine if it includes any lowercase letters.
         If any lowercase characters are present, the method returns `False`, indicating the sequence is soft-masked.
         Otherwise, it returns `True`.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence has no lowercase characters, `False` otherwise.
         :rtype: bool
         """
@@ -45,7 +47,7 @@ class SoftMaskedSequenceFilter(PropertyFilterBase):
         return True
 
 
-class HardMaskedSequenceFilter(PropertyFilterBase):
+class HardMaskedSequenceFilter(BasePropertyFilter):
     """
     A filter class to check for the presence of hard-masked sequences.
 
@@ -62,14 +64,14 @@ class HardMaskedSequenceFilter(PropertyFilterBase):
         super().__init__()
         self.mask = mask
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Evaluate the sequence to determine if it includes the hard-mask character defined during initialization.
         If the character is present, the method returns `False`, indicating the sequence is hard-masked.
         Otherwise, it returns `True`.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence does not contain the mask character, `False` otherwise.
         :rtype: bool
         """
@@ -78,7 +80,7 @@ class HardMaskedSequenceFilter(PropertyFilterBase):
         return True
 
 
-class ProhibitedSequenceFilter(PropertyFilterBase):
+class ProhibitedSequenceFilter(BasePropertyFilter):
     """
     A filter class for identifying and excluding sequences that contain specific prohibited subsequences.
 
@@ -86,39 +88,42 @@ class ProhibitedSequenceFilter(PropertyFilterBase):
     This is particularly useful in contexts where certain sequences are known to cause issues or are otherwise undesirable.
     The prohibited sequences are case-insensitive and validated to ensure they are valid DNA sequences.
 
-    :param prohibited_sequence: A single prohibited sequence or a list of prohibited sequences to filter out.
-    :type prohibited_sequence: Union[str, List[str]]
+    :param prohibited_sequences: A single prohibited sequence or a list of prohibited sequences to filter out.
+    :type prohibited_sequences: str | list[str]
     """
 
-    def __init__(self, prohibited_sequence: Union[str, List[str]]) -> None:
+    def __init__(self, prohibited_sequences: str | list[str]) -> None:
         """Constructor for the ProhibitedSequenceFilter class."""
         super().__init__()
-        if not isinstance(prohibited_sequence, list):
-            prohibited_sequence = [prohibited_sequence]
-        self.prohibited_sequence = [s.upper() for s in prohibited_sequence]
+        if not isinstance(prohibited_sequences, list):
+            prohibited_sequences = [prohibited_sequences]
+        self.prohibited_sequences = [s.upper() for s in prohibited_sequences]
         # Check that the prohibited sequences are valid DNA sequences.
-        for s in self.prohibited_sequence:
+        for s in self.prohibited_sequences:
             if not check_if_dna_sequence(s):
-                raise ValueError("Prohibited sequence ({prohibited_sequences}) is not a DNA sequence.")
+                raise ConfigurationError(
+                    f"Prohibited sequence '{s}' is not a valid DNA sequence. "
+                    f"DNA sequences must contain only A, C, T, G (and optionally U) characters."
+                )
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Evaluate the sequence to determine if it contains any of the prohibited subsequences specified during initialization.
         If a match is found, the method returns `False`, indicating the sequence contains a prohibited subsequence.
         Otherwise, it returns `True`.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence does not contain any prohibited subsequences, `False` otherwise.
         :rtype: bool
         """
-        for s in self.prohibited_sequence:
+        for s in self.prohibited_sequences:
             if s in sequence.upper():
                 return False
         return True
 
 
-class HomopolymericRunsFilter(PropertyFilterBase):
+class HomopolymericRunsFilter(BasePropertyFilter):
     """
     A filter class for excluding sequences containing homopolymeric runs of specified nucleotides.
 
@@ -136,11 +141,14 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         # check that the nucleotides provided are valid
         for b in base_n.keys():
             if not check_if_dna_sequence(b):
-                raise ValueError("Prohibited sequence ({base}) is not a DNA sequence.")
+                raise ConfigurationError(
+                    f"Base '{b}' is not a valid DNA sequence. "
+                    f"DNA sequences must contain only A, C, T, G (and optionally U) characters."
+                )
         # create all homopolymeric runs
         self.homopolymeric_runs = [base.upper() * n for base, n in base_n.items()]
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Evaluate a DNA sequence to determine if it contains any homopolymeric runs,
         which are stretches of the same nucleotide repeated a specified number of times.
@@ -148,7 +156,7 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         Otherwise, it returns `True`.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence does not contain any prohibited homopolymeric runs, `False` otherwise.
         :rtype: bool
         """
@@ -158,7 +166,7 @@ class HomopolymericRunsFilter(PropertyFilterBase):
         return True
 
 
-class FivePrimeSequenceFilter(PropertyFilterBase):
+class FivePrimeSequenceFilter(BasePropertyFilter):
     """
     A filter class for identifying or removing sequences based on a specified 5' (five prime) sequence.
 
@@ -200,7 +208,7 @@ class FivePrimeSequenceFilter(PropertyFilterBase):
             return False
 
 
-class ThreePrimeSequenceFilter(PropertyFilterBase):
+class ThreePrimeSequenceFilter(BasePropertyFilter):
     """
     A filter class for identifying or removing sequences based on a specified 3' (three prime) sequence.
 
@@ -241,7 +249,7 @@ class ThreePrimeSequenceFilter(PropertyFilterBase):
             return False
 
 
-class GCContentFilter(PropertyFilterBase):
+class GCContentFilter(BasePropertyFilter):
     """
     A filter class for evaluating sequences based on their GC content.
 
@@ -259,27 +267,29 @@ class GCContentFilter(PropertyFilterBase):
         """Constructor for the GCContentFilter class."""
         super().__init__()
         if GC_content_max <= GC_content_min:
-            raise ValueError("GC_content_max is lower that GC_content_min!")
+            raise ConfigurationError(
+                f"GC_content_max ({GC_content_max}) must be greater than GC_content_min ({GC_content_min})."
+            )
         self.GC_content_min = GC_content_min
         self.GC_content_max = GC_content_max
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Ccalculate the GC content of the provided sequence and check if it falls between
         the minimum and maximum GC content thresholds set during initialization.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the GC content of the sequence is within the specified range, `False` otherwise.
         :rtype: bool
         """
-        GC_content = OligoAttributes._calc_GC_content(sequence)
+        GC_content = calc_gc_content(sequence)
         if self.GC_content_min < GC_content < self.GC_content_max:
             return True
         return False
 
 
-class GCClampFilter(PropertyFilterBase):
+class GCClampFilter(BasePropertyFilter):
     """
     A filter class that checks for the presence of a GC clamp at the 3' end of a sequence.
 
@@ -299,13 +309,13 @@ class GCClampFilter(PropertyFilterBase):
         self.n_bases = n_bases
         self.n_GC = n_GC
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Eevaluate the last `n_bases` of the provided sequence to determine if it
         contains at least `n_GC` G or C nucleotides, indicating the presence of a GC clamp.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence has the required GC clamp, `False` otherwise.
         :rtype: bool
         """
@@ -318,7 +328,7 @@ class GCClampFilter(PropertyFilterBase):
         return False
 
 
-class MeltingTemperatureNNFilter(PropertyFilterBase):
+class MeltingTemperatureNNFilter(BasePropertyFilter):
     """
     A filter class that evaluates sequences based on their melting temperature (Tm) using the nearest-neighbor thermodynamic model.
 
@@ -348,31 +358,31 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         Tm_min: float,
         Tm_max: float,
         Tm_parameters: dict,
-        Tm_salt_correction_parameters: dict = None,
-        Tm_chem_correction_parameters: dict = None,
+        Tm_salt_correction_parameters: dict | None = None,
+        Tm_chem_correction_parameters: dict | None = None,
     ) -> None:
         """Constructor for the MeltingTemperatureNNFilter class."""
         super().__init__()
         if Tm_max <= Tm_min:
-            raise ValueError("Tm_max is lower that Tm_min!")
+            raise ConfigurationError(f"Tm_max ({Tm_max}) must be greater than Tm_min ({Tm_min}).")
         self.Tm_min = Tm_min
         self.Tm_max = Tm_max
         self.Tm_parameters = Tm_parameters
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Calculate the melting temperature of the given sequence using the nearest-neighbor method and
         check if it lies between the specified minimum and maximum Tm values.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence's Tm is within the specified range, `False` otherwise.
         :rtype: bool
         """
 
-        Tm = OligoAttributes._calc_TmNN(
+        Tm = calc_tm_nn(
             sequence,
             self.Tm_parameters,
             self.Tm_salt_correction_parameters,
@@ -383,7 +393,7 @@ class MeltingTemperatureNNFilter(PropertyFilterBase):
         return False
 
 
-class SelfComplementFilter(PropertyFilterBase):
+class SelfComplementFilter(BasePropertyFilter):
     """
     A filter class for detecting and excluding self-complementary DNA sequences.
 
@@ -400,23 +410,23 @@ class SelfComplementFilter(PropertyFilterBase):
         super().__init__()
         self.max_len_selfcomplement = max_len_selfcomplement
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Calculate the length of the self-complementary region of a given sequence and
         check if it is within the allowed maximum length.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: `True` if the sequence's self-complementary length is within the specified limit, `False` otherwise.
         :rtype: bool
         """
-        len_selfcomp = OligoAttributes._calc_length_complement(sequence, sequence[::-1])
+        len_selfcomp = calc_length_complement(sequence1=sequence, sequence2=sequence[::-1])
         if len_selfcomp <= self.max_len_selfcomplement:
             return True
         return False
 
 
-class ComplementFilter(PropertyFilterBase):
+class ComplementFilter(BasePropertyFilter):
     """
     A filter class for detecting and excluding sequences based on their complementarity to a comparison sequence.
 
@@ -425,34 +435,34 @@ class ComplementFilter(PropertyFilterBase):
     sequences that might interact with other sequences.
 
     :param comparison_sequence: The sequence against which complementarity is assessed.
-    :type comparison_sequence: Seq
+    :type comparison_sequence: str
     :param max_len_complement: The maximum allowed length of complementarity.
     :type max_len_complement: int
     """
 
-    def __init__(self, comparison_sequence: Seq, max_len_complement: int) -> None:
+    def __init__(self, comparison_sequence: str, max_len_complement: int) -> None:
         """Constructor for the ComplementFilter class."""
         super().__init__()
         self.max_len_complement = max_len_complement
         self.comparison_sequence = comparison_sequence
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Calculate the length of the complementary overlap between the given sequence
         and the comparison sequence and check if it is within the allowed maximum length.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: True if the overlap length is less than or equal to the maximum allowed length, False otherwise.
         :rtype: bool
         """
-        len_complement = OligoAttributes._calc_length_complement(sequence, self.comparison_sequence)
+        len_complement = calc_length_complement(sequence1=sequence, sequence2=self.comparison_sequence)
         if len_complement <= self.max_len_complement:
             return True
         return False
 
 
-class SecondaryStructureFilter(PropertyFilterBase):
+class SecondaryStructureFilter(BasePropertyFilter):
     """
     A filter class for excluding sequences based on their secondary structure free energy (ΔG).
 
@@ -472,17 +482,17 @@ class SecondaryStructureFilter(PropertyFilterBase):
         self.T = T
         self.thr_DG = thr_DG
 
-    def apply(self, sequence: Seq) -> bool:
+    def apply(self, sequence: str) -> bool:
         """
         Calculate the free energy ΔG of the secondary structure of a given sequence and
         check if it exceeds the defined threshold.
 
         :param sequence: The nucleotide sequence.
-        :type sequence: Seq
+        :type sequence: str
         :return: True if the sequence's secondary structure ΔG is greater than the threshold, indicating that the sequence is acceptable. False otherwise.
         :rtype: bool
         """
-        DG_secondary_structure = OligoAttributes._calc_DG_secondary_structure(sequence, self.T)
+        DG_secondary_structure = calc_dg_secondary_structure(sequence, self.T)
         if DG_secondary_structure > self.thr_DG:
             return True
         return False

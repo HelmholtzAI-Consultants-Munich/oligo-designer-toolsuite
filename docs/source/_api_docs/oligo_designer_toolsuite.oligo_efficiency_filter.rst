@@ -9,11 +9,15 @@ Module contents
 
 .. autosummary::
 
-   OligoScoringBase
-   GCOligoScoring
-   WeightedGCUtrScoring
-   WeightedTmGCOligoScoring
-   WeightedIsoformTmGCOligoScoring
+   BaseScorer
+   OverlapTargetedExonsScorer
+   OverlapUTRScorer
+   IsoformConsensusScorer
+   DeviationFromOptimalGCContentScorer
+   DeviationFromOptimalTmScorer
+   NormalizedDeviationFromOptimalGCContentScorer
+   NormalizedDeviationFromOptimalTmScorer
+   OligoScoring
    SetScoringBase
    LowestSetScoring
    AverageSetScoring

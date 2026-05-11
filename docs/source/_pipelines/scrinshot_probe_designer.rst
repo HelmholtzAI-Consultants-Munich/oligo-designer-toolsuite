@@ -60,27 +60,30 @@ For a complete explanation of all function parameters, refer to the API document
     # We first generate probes that hybridize specifically to target genes sequences.
     # The pipeline will generate multiple candidate sets (n_sets) and return them as part of the probe database.
     target_probe_database = pipeline.design_target_probes(
-        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
-        files_fasta_reference_database_target_probe=...,        # List of FASTA files for specificity reference
         gene_ids=...,                                           # List of gene symbols or identifiers
+        files_fasta_target_probe_database=...,                  # List of FASTA files with target gene sequences
+        files_fasta_reference_database_targe_probe=...,         # List of FASTA files for specificity reference
         target_probe_length_min=40,
         target_probe_length_max=45,
         target_probe_isoform_consensus=50,
+        target_probe_isoform_weight=2,
         target_probe_GC_content_min=40,
         target_probe_GC_content_opt=50,
         target_probe_GC_content_max=60,
+        target_probe_GC_weight=1,
         target_probe_Tm_min=65,
         target_probe_Tm_opt=70,
         target_probe_Tm_max=75,
-        target_probe_homopolymeric_base_n={"A": 5, "T": 5, "C": 5, "G": 5},
-        target_probe_padlock_arm_Tm_dif_max=2,
-        target_probe_padlock_arm_length_min=10,
-        target_probe_padlock_arm_Tm_min=50,
-        target_probe_padlock_arm_Tm_max=60
-        target_probe_ligation_region_size=5
-        target_probe_isoform_weight=2,
-        target_probe_GC_weight=1,
         target_probe_Tm_weight=1,
+        target_probe_homopolymeric_base_n={"A": 5, "T": 5, "C": 5, "G": 5},
+        detection_oligo_min_thymines=2,
+        detection_oligo_length_min=15,
+        detection_oligo_length_max=40,
+        target_probe_padlock_arm_length_min=10,
+        target_probe_padlock_arm_Tm_dif_max=2,
+        target_probe_padlock_arm_Tm_min=50,
+        target_probe_padlock_arm_Tm_max=60,
+        target_probe_ligation_region_size=5,
         set_size_opt=5,
         set_size_min=3,
         distance_between_target_probes=0,
@@ -108,12 +111,7 @@ For a complete explanation of all function parameters, refer to the API document
     )
 
     ##### Generate Final Output #####
-    # The pipeline then generates its final outputs for the 'top_n_sets'
-    # best scoring probe sets to keep.
-    pipeline.generate_output(
-        oligo_database=oligo_database,
-        top_n_sets=3,
-    )
+    pipeline.generate_output(probe_database=oligo_database)
 
 
 Pipeline Description
@@ -150,11 +148,11 @@ Those probes are removed from the database to ensure uniqueness of probes for ea
 Cross-hybridizing probes are identified with the ``CrossHybridizationFilter`` that uses a BlastN alignment search to identify similar sequences and removes those hits with the ``RemoveByBiggerRegionPolicy`` that sequentially removes the probes from the genes that have the bigger probe sets.
 Next, the probes are checked for off-target binding with any other region of a provided background reference.
 Off-target regions are sequences of the background reference (e.g. transcriptome or genome) which match the probe region with a certain degree of homology but are not located within the gene region of the probe.
-Those off-target regions are identified with the ``BlastNSeedregionLigationsiteFilter`` that removes probes where a BlastN alignment search found off-target sequence matches with a certain coverage and similarity, for which the user has to define thresholds.
+Those off-target regions are identified with the ``BlastNSeedregionSiteFilter`` that removes probes where a BlastN alignment search found off-target sequence matches with a certain coverage and similarity, for which the user has to define thresholds.
 The coverage of the region around the ligation site of the probe by the matching off-target sequence is used as an additional filtering criterion.
 
 In the third step of the pipeline, the best sets of non-overlapping probes are identified for each gene.
-The ``OligosetGeneratorIndependentSet`` class is used to generate ranked, non-overlapping probe sets where each probe and probe set is scored according to a protocol dependent scoring function, i.e. by the distance to the optimal GC content and melting temperature, weighted by the number of targeted transcripts of the probes in the set.
+The ``OligosetGeneratorIndependentSet`` class is used to generate ranked, non-overlapping probe sets where each probe and probe set is scored according to a protocol dependent scoring function, i.e. by the weighted GC content, melting temperature, isoform consensus score of the probes in the set.
 Following this step all genes with insufficient number of probes (user-defined) are removed from the database and stored in a separate file for user-inspection.
 
 In the last step of the pipeline, the ready-to-order probe sequences containing all additional required sequences are designed for the best non-overlapping sets of each gene.
@@ -163,7 +161,7 @@ For the SCRINSHOT protocol, the padlock backbone is added to each probe and for 
 The output is stored in two separate files:
 
 - ``padlock_probes_order.yml``: contains for each probe the sequences of the padlock probe and the detection oligo.
-- ``padlock_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific attributes.
+- ``padlock_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific properties.
 
 All default parameters can be found in the `scrinshot_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/scrinshot_probe_designer.yaml>`__ config file provided along the repository.
 
