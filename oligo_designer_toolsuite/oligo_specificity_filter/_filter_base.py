@@ -14,6 +14,7 @@ from oligo_designer_toolsuite._constants import SEPARATOR_FASTA_HEADER_FIELDS, S
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.utils import cast_to_list, remove_index_files
+from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 ############################################
 # Oligo Specificity Filter Classes
@@ -39,7 +40,7 @@ class BaseSpecificityFilter(ABC):
         """Constructor for the BaseSpecificityFilter class."""
         # folder where we write the intermediate files
         self.filter_name = filter_name
-        self.dir_output = os.path.abspath(os.path.join(dir_output, self.filter_name))
+        self.dir_output = os.path.abspath(safe_append_filename(dir_output, self.filter_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self.sequence_type: str | None = None
@@ -155,7 +156,7 @@ class ReferenceSpecificityFilter(BaseSpecificityFilter):
         """Constructor for the ReferenceSpecificityFilter class."""
         # folder where we write the intermediate files
         self.filter_name = filter_name
-        self.dir_output = os.path.abspath(os.path.join(dir_output, self.filter_name))
+        self.dir_output = os.path.abspath(safe_append_filename(dir_output, self.filter_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self.remove_hits = remove_hits
@@ -269,7 +270,7 @@ class AlignmentSpecificityFilter(ReferenceSpecificityFilter):
 
         # folder where we write the intermediate files
         self.filter_name = filter_name
-        self.dir_output = os.path.abspath(os.path.join(dir_output, self.filter_name))
+        self.dir_output = os.path.abspath(safe_append_filename(dir_output, self.filter_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
         self.remove_hits = remove_hits

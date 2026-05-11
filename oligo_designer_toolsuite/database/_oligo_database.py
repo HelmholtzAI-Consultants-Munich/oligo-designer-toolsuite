@@ -32,6 +32,7 @@ from oligo_designer_toolsuite.utils import (
     format_oligo_properties,
     merge_databases,
 )
+from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 CustomYamlDumper.add_representer(list, CustomYamlDumper.represent_list)
 CustomYamlDumper.add_representer(dict, CustomYamlDumper.represent_dict)
@@ -82,10 +83,10 @@ class OligoDatabase:
         self.n_jobs = n_jobs
 
         self.database_name = database_name
-        self.dir_output = os.path.abspath(os.path.join(dir_output, database_name))
+        self.dir_output = os.path.abspath(safe_append_filename(dir_output, database_name))
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        self._dir_cache_files = os.path.join(self.dir_output, "cache_files")
+        self._dir_cache_files = safe_append_filename(self.dir_output, "cache_files")
 
         self.fasta_parser = FastaParser()
 
@@ -104,7 +105,7 @@ class OligoDatabase:
 
         # Initialize the file for regions with insufficient oligos
         if self.write_regions_with_insufficient_oligos:
-            self.file_removed_regions = os.path.join(
+            self.file_removed_regions = safe_append_filename(
                 self.dir_output,
                 f"regions_with_insufficient_oligos_for_{self.database_name}.txt",
             )
@@ -449,9 +450,9 @@ class OligoDatabase:
         region_ids = cast_to_list(region_ids) if region_ids else self.database.keys()
 
         if dir_output:
-            dir_database = os.path.join(dir_output, name_database)
+            dir_database = safe_append_filename(dir_output, name_database)
         else:
-            dir_database = os.path.join(self.dir_output, name_database)
+            dir_database = safe_append_filename(self.dir_output, name_database)
         Path(dir_database).mkdir(parents=True, exist_ok=True)
 
         for region_id in region_ids:
@@ -460,7 +461,7 @@ class OligoDatabase:
                 oligoset_region = self.oligosets[region_id]
             else:
                 oligoset_region = None
-            file_output = os.path.join(dir_database, region_id)
+            file_output = safe_append_filename(dir_database, region_id)
             with open(file_output, "wb") as file:
                 pickle.dump(
                     {
@@ -506,7 +507,7 @@ class OligoDatabase:
         region_ids = cast_to_list(region_ids) if region_ids else self.database.keys()
 
         dir_output = dir_output if dir_output else self.dir_output
-        file_fasta = os.path.join(dir_output, f"{filename}.fna")
+        file_fasta = safe_append_filename(dir_output, f"{filename}.fna")
         output_fasta = []
 
         with open(file_fasta, "w") as handle_fasta:
@@ -552,7 +553,7 @@ class OligoDatabase:
         region_ids = cast_to_list(region_ids) if region_ids else self.database.keys()
 
         dir_output = dir_output if dir_output else self.dir_output
-        file_bed = os.path.join(dir_output, f"{filename}.bed")
+        file_bed = safe_append_filename(dir_output, f"{filename}.bed")
 
         # retrieve relevant information from database
         property_table = self.get_oligo_property_table(
@@ -610,7 +611,7 @@ class OligoDatabase:
         properties = cast_to_list(properties)
 
         dir_output = dir_output if dir_output else self.dir_output
-        file_table = os.path.join(os.path.dirname(dir_output), f"{filename}.tsv")
+        file_table = safe_append_filename(os.path.dirname(dir_output), f"{filename}.tsv")
 
         first_entry = True
         for region_id in region_ids:
@@ -704,7 +705,7 @@ class OligoDatabase:
                     yaml_dict[region_id][oligoset_id][oligo_id_yaml] = yaml_dict_oligo_entry
 
         dir_output = dir_output if dir_output else self.dir_output
-        file_yaml = os.path.join(os.path.dirname(dir_output), f"{filename}.yml")
+        file_yaml = safe_append_filename(os.path.dirname(dir_output), f"{filename}.yml")
 
         with open(file_yaml, "w") as handle:
             yaml.dump(yaml_dict, handle, Dumper=CustomYamlDumper, default_flow_style=False, sort_keys=False)
@@ -761,13 +762,13 @@ class OligoDatabase:
                     csv_table.append(entry)
 
         dir_output = dir_output if dir_output else self.dir_output
-        file_table = os.path.join(os.path.dirname(dir_output), f"{filename}.tsv")
+        file_table = safe_append_filename(os.path.dirname(dir_output), f"{filename}.tsv")
 
         csv_table_df = pd.DataFrame(csv_table)
         csv_table_df.to_csv(file_table, sep="\t", index=False)
 
         # Also write Excel file with one sheet per region_id
-        file_excel = os.path.join(os.path.dirname(dir_output), f"{filename}.xlsx")
+        file_excel = safe_append_filename(os.path.dirname(dir_output), f"{filename}.xlsx")
         try:
             with pd.ExcelWriter(file_excel, engine="openpyxl") as writer:
                 for region_id in region_ids:
@@ -849,7 +850,7 @@ class OligoDatabase:
                     yaml_dict[region_id][oligoset_id][oligo_id] = entry
 
         dir_output = dir_output if dir_output else self.dir_output
-        file_yaml = os.path.join(os.path.dirname(dir_output), f"{filename}.yml")
+        file_yaml = safe_append_filename(os.path.dirname(dir_output), f"{filename}.yml")
 
         with open(file_yaml, "w") as outfile:
             yaml.dump(yaml_dict, outfile, Dumper=CustomYamlDumper, default_flow_style=False, sort_keys=False)

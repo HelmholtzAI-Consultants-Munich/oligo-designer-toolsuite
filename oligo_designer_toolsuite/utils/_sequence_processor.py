@@ -8,7 +8,7 @@ from collections import Counter
 
 from Bio import SeqIO
 
-from ._checkers_and_helpers import cast_to_list
+from ._checkers_and_helpers import cast_to_list, safe_append_filename
 from ._sequence_parser import FastaParser
 
 ############################################
@@ -168,7 +168,7 @@ def remove_index_files(file_reference: str, dir_output: str) -> None:
             # Remove files that start with the prefix (index files)
             # but not the reference file itself
             if file.startswith(prefix):
-                file_path = os.path.join(root, file)
+                file_path = safe_append_filename(root, file)
                 os.remove(file_path)
 
 

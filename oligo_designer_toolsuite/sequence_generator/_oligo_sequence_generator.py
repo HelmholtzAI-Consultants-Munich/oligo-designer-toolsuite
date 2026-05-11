@@ -13,7 +13,7 @@ from joblib import Parallel, delayed
 from oligo_designer_toolsuite.utils import FastaParser
 
 from .._constants import SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_FASTA_HEADER_FIELDS_LIST
-from ..utils._checkers_and_helpers import cast_to_list, generate_unique_filename
+from ..utils._checkers_and_helpers import cast_to_list, generate_unique_filename, safe_append_filename
 
 ############################################
 # Oligo Database Class
@@ -104,7 +104,7 @@ class OligoSequenceGenerator:
             }
             sequences_set.update(new_sequences)
 
-        file_fasta_out = os.path.join(self.dir_output, f"{filename_out}.fna")
+        file_fasta_out = safe_append_filename(self.dir_output, f"{filename_out}.fna")
 
         with open(file_fasta_out, "w") as handle_fasta:
             for i, seq in enumerate(sequences_set):
@@ -279,7 +279,7 @@ class OligoSequenceGenerator:
 
         # delete previous content
         for region_id in region_ids:
-            file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
+            file_fasta_region = safe_append_filename(self.dir_output, f"{region_id}.fna")
             if os.path.isfile(file_fasta_region):
                 os.remove(file_fasta_region)
 
@@ -299,7 +299,7 @@ class OligoSequenceGenerator:
                     file for file in files_fasta_oligos if os.path.basename(file).startswith(f"{region_id}_")
                 ]
                 if len(files_fasta_oligos_region) > 0:
-                    file_fasta_region = os.path.join(self.dir_output, f"{region_id}.fna")
+                    file_fasta_region = safe_append_filename(self.dir_output, f"{region_id}.fna")
                     file_fasta_out.add(file_fasta_region)
                     # merge the fasta files into one single file per region
                     self.fasta_parser.merge_fasta_files(

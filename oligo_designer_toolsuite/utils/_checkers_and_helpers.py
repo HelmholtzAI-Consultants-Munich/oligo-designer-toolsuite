@@ -3,9 +3,9 @@
 ############################################
 
 import csv
-import os
 import time
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
@@ -203,5 +203,29 @@ def generate_unique_filename(dir_output: str, base_name: str, extension: str = "
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     unique_id = uuid.uuid4().hex
     filename = f"{base_name}_{timestamp}_{unique_id}.{extension}"
-    filename = os.path.join(dir_output, filename)
+    filename = safe_append_filename(dir_output, filename)
     return filename
+
+
+def safe_append_filename(dir_path: str, file_name: str) -> str:
+    """
+    Safely joins a directory path and a file name, ensuring that the resulting path does not escape the base directory or resolve to a different file name.
+
+    :param dir_path: The base directory path.
+    :type dir_path: str
+    :param file_name: The file name to join with the directory path.
+    :type file_name: str
+    :return: The safely joined path as a string.
+    :rtype: str
+    :raises ConfigurationError: If the resulting path escapes the base directory or if the resolved file name does not match the provided file name.
+    """
+    base_dir = Path(dir_path)
+    joined_path = base_dir / file_name
+    resolved_path = joined_path.resolve()
+    if not resolved_path.parent == base_dir.resolve():
+        raise ConfigurationError(
+            f"Invalid file name: {file_name}. The resulting path escapes the base directory."
+        )
+    if not resolved_path.name == file_name:
+        raise ConfigurationError(f"Invalid file name: {file_name}. The resolved file name does not match.")
+    return str(joined_path)
