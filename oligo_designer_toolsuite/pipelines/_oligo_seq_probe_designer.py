@@ -7,10 +7,10 @@ import os
 import shutil
 import warnings
 from pathlib import Path
+from typing import Any
 
 import yaml
 
-from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
@@ -33,6 +33,7 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
     TmNNProperty,
 )
 from oligo_designer_toolsuite.oligo_property_filter import (
+    BasePropertyFilter,
     GCContentFilter,
     HardMaskedSequenceFilter,
     HomopolymericRunsFilter,
@@ -45,11 +46,10 @@ from oligo_designer_toolsuite.oligo_property_filter import (
 )
 from oligo_designer_toolsuite.oligo_selection import IndependentSetsOligoSelection
 from oligo_designer_toolsuite.oligo_specificity_filter import (
+    BaseSpecificityFilter,
     BlastNFilter,
-    BowtieFilter,
     CrossHybridizationFilter,
     ExactMatchFilter,
-    HybridizationProbabilityFilter,
     RemoveAllFilterPolicy,
     RemoveByLargerRegionFilterPolicy,
     SpecificityFilter,
@@ -129,266 +129,116 @@ class OligoSeqProbeDesigner:
 
     def design_target_probes(
         self,
-        # Step 1: Create Database Parameters
-        region_ids: list | None,
-        files_fasta_target_probe_database: list,
-        target_probe_length_min: int,
-        target_probe_length_max: int,
-        target_probe_split_region: int,
-        target_probe_isoform_consensus: float,
-        # Step 2: Property Filter Parameters
-        target_probe_GC_content_min: int,
-        target_probe_GC_content_max: int,
-        target_probe_Tm_min: int,
-        target_probe_Tm_max: int,
-        target_probe_secondary_structures_T: int,
-        target_probe_secondary_structures_threshold_deltaG: int,
-        target_probe_homopolymeric_base_n: dict,
-        target_probe_prohibited_sequences: list[str],
-        target_probe_max_len_selfcomplement: int,
-        target_probe_Tm_parameters: dict,
-        target_probe_Tm_chem_correction_parameters: dict | None,
-        target_probe_Tm_salt_correction_parameters: dict | None,
-        # Step 3: Specificity Filter Parameters
-        files_fasta_reference_database_target_probe: list,
-        files_vcf_reference_database_target_probe: list,
-        target_probe_cross_hybridization_alignment_method: str,
-        target_probe_cross_hybridization_search_parameters: dict,
-        target_probe_cross_hybridization_hit_parameters: dict,
-        target_probe_hybridization_probability_alignment_method: str,
-        target_probe_hybridization_probability_search_parameters: dict,
-        target_probe_hybridization_probability_hit_parameters: dict,
-        target_probe_hybridization_probability_threshold: float,
-        target_probe_read_length_bias: int,
-        # Step 4: Probe Scoring and Set Selection Parameters
-        target_probe_targeted_exons: list,
-        target_probe_targeted_exons_weight: float,
-        target_probe_isoform_weight: float,
-        target_probe_GC_content_opt: int,
-        target_probe_GC_weight: float,
-        target_probe_Tm_opt: int,
-        target_probe_Tm_weight: float,
-        n_sets: int,
-        set_size_min: int,
-        set_size_opt: int,
-        distance_between_target_probes: int,
-        uniform_distance_weight: float,
-        n_attempts_graph: int,
-        n_attempts_clique_enum: int,
-        diversification_fraction: float,
-        jaccard_opt: float,
-        jaccard_step: float,
+        oligo_generation_parameters: dict,
+        property_filters_parameters: dict,
+        specificity_filters_parameters: dict,
+        probe_set_selection_parameters: dict,
+        global_parameters: dict,
     ) -> OligoDatabase:
         """
-        Design target probes for Oligo-seq experiments through a multi-step pipeline.
+        Design target probes for Oligo-seq experiments using a modular multi-step pipeline.
 
-        This method performs the complete target probe design process, which includes:
-        1. Creating an initial oligo database from input FASTA files using a sliding window approach
-           with region splitting capability
-        2. Filtering probes based on sequence properties (GC content, melting temperature, homopolymeric
-           runs, secondary structure, self-complementarity)
-        3. Filtering probes based on specificity to remove off-target binding, cross-hybridization,
-           and variants using BLASTN or Bowtie searches, and hybridization probability filtering
-        4. Organizing filtered probes into optimal sets based on weighted scoring criteria (targeted
-           exons, isoform consensus, GC content, melting temperature) and distance constraints
+        This method orchestrates the complete target probe design workflow, consisting of:
+
+        1. **Oligo generation**
+        - Constructs an initial oligo database from input FASTA files
+        - Uses a sliding-window approach with optional region splitting (e.g. exon–exon junction spanning)
+
+        2. **Property-based filtering**
+        - Filters candidate oligos based on intrinsic sequence properties, including:
+            GC content, melting temperature (Tm), homopolymeric runs, secondary structure,
+            self-complementarity, and sequence constraints
+
+        3. **Specificity filtering**
+        - Removes oligos with potential off-target binding using sequence alignment (e.g. BLASTN)
+        - Filters cross-hybridizing probes and probes overlapping known variants
+        - Applies read-length bias constraints where applicable
+
+        4. **Probe set selection**
+        - Organizes filtered oligos into optimal probe sets per target
+        - Uses graph-based selection with scoring criteria such as:
+            isoform consensus, exon targeting, GC content, melting temperature, and spacing constraints
+
+        5. **Property annotation**
+        - Computes final probe properties (e.g. GC content, Tm, transcript coverage)
+        - Uses shared thermodynamic model parameters provided via `global_parameters`
 
         The resulting probes are gene-specific targeting sequences (typically 26-30 nt) that bind to
         RNA transcripts. These probes are used directly for hybridization-based capture in Oligo-seq
         experiments, which combine in situ hybridization with next-generation sequencing readout.
 
-        **Step 1: Create Database Parameters**
+        :param oligo_generation_parameters:
+            Parameters controlling oligo generation (input sequences, probe lengths, region splitting).
+        :type oligo_generation_parameters: dict
 
-        :param region_ids: List of gene identifiers (e.g., gene IDs) to target for probe design. If None,
-            all genes present in the input FASTA files will be used.
-        :type region_ids: list[str] | None
-        :param files_fasta_target_probe_database: List of paths to FASTA files containing sequences
-            from which target probes will be generated. These files should contain genomic regions
-            of interest (e.g., exons, exon-exon junctions).
-        :type files_fasta_target_probe_database: list[str]
-        :param target_probe_length_min: Minimum length (in nucleotides) for target probe sequences.
-        :type target_probe_length_min: int
-        :param target_probe_length_max: Maximum length (in nucleotides) for target probe sequences.
-        :type target_probe_length_max: int
-        :param target_probe_split_region: Size of regions (in nucleotides) to split large genomic
-            regions into when generating probe candidates. This helps manage memory usage for very
-            long sequences.
-        :type target_probe_split_region: int
-        :param target_probe_isoform_consensus: Threshold for isoform consensus filtering (typically
-            between 0.0 and 1.0). Probes with isoform consensus values below this threshold will be
-            filtered out. This ensures that selected probes target sequences that are conserved across
-            multiple transcript isoforms.
-        :type target_probe_isoform_consensus: float
+        :param property_filters_parameters:
+            Parameters for property-based filtering of oligos (e.g. GC content, Tm, sequence constraints).
+        :type property_filters_parameters: dict
 
-        **Step 2: Property Filter Parameters**
+        :param specificity_filters_parameters:
+            Parameters for specificity filtering (e.g. BLAST settings, variant filtering).
+        :type specificity_filters_parameters: dict
 
-        :param target_probe_GC_content_min: Minimum acceptable GC content for target probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type target_probe_GC_content_min: int
-        :param target_probe_GC_content_max: Maximum acceptable GC content for target probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type target_probe_GC_content_max: int
-        :param target_probe_Tm_min: Minimum acceptable melting temperature (Tm) for target probes in
-            degrees Celsius.
-        :type target_probe_Tm_min: int
-        :param target_probe_Tm_max: Maximum acceptable melting temperature (Tm) for target probes in
-            degrees Celsius.
-        :type target_probe_Tm_max: int
-        :param target_probe_secondary_structures_T: Temperature in degrees Celsius at which to evaluate
-            secondary structure formation.
-        :type target_probe_secondary_structures_T: int
-        :param target_probe_secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for
-            secondary structure stability. Probes with secondary structures having deltaG values more
-            negative than this threshold will be filtered out.
-        :type target_probe_secondary_structures_threshold_deltaG: int
-        :param target_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length of
-            homopolymeric runs for each nucleotide base (keys: 'A', 'T', 'G', 'C').
-        :type target_probe_homopolymeric_base_n: dict[str, int]
-        :param target_probe_prohibited_sequences: The sequences to prohibit in the oligos. If an oligo contains any of these sequences, it will be filtered out.
-        :type target_probe_prohibited_sequences: list[str]
-        :param target_probe_max_len_selfcomplement: Maximum allowable length of self-complementary
-            sequences. Probes with longer self-complementary regions can form hairpins and reduce
-            hybridization efficiency.
-        :type target_probe_max_len_selfcomplement: int
-        :param target_probe_Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) of target
-            probes using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
-            Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
-            'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type target_probe_Tm_parameters: dict
-        :param target_probe_Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm calculation.
-            These parameters account for the effects of chemical additives (e.g., DMSO, formamide) on melting temperature.
-            Set to ``None`` to disable chemical correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
-            For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type target_probe_Tm_chem_correction_parameters: dict | None
-        :param target_probe_Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None`` to disable
-            salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type target_probe_Tm_salt_correction_parameters: dict | None
+        :param probe_set_selection_parameters:
+            Parameters controlling probe set construction and scoring.
+        :type probe_set_selection_parameters: dict
 
-        **Step 3: Specificity Filter Parameters**
+        :param global_parameters:
+            Global/shared parameters used across the pipeline, including thermodynamic model settings
+            (e.g. melting temperature model, salt and chemical corrections).
+        :type global_parameters: dict
 
-        :param files_fasta_reference_database_target_probe: List of paths to FASTA files containing
-            reference sequences used for specificity filtering. These files are used to identify
-            off-target binding sites (e.g., whole genome or transcriptome sequences).
-        :type files_fasta_reference_database_target_probe: list[str]
-        :param files_vcf_reference_database_target_probe: List of paths to VCF files containing variant
-            information used for filtering probes that overlap with known single nucleotide polymorphisms
-            (SNPs) or other variants. Probes overlapping variants may have reduced specificity.
-        :type files_vcf_reference_database_target_probe: list[str]
-        :param target_probe_cross_hybridization_alignment_method: Alignment method to use for
-            cross-hybridization filtering. Must be either "blastn" or "bowtie".
-        :type target_probe_cross_hybridization_alignment_method: str
-        :param target_probe_cross_hybridization_search_parameters: Dictionary of parameters for alignment
-            searches used in cross-hybridization filtering. Parameters depend on the alignment method
-            (BLASTN or Bowtie).
-        :type target_probe_cross_hybridization_search_parameters: dict
-        :param target_probe_cross_hybridization_hit_parameters: Dictionary of parameters for filtering
-            alignment hits in cross-hybridization searches. Probes with cross-hybridization hits meeting
-            these criteria are removed from the larger region.
-        :type target_probe_cross_hybridization_hit_parameters: dict
-        :param target_probe_hybridization_probability_alignment_method: Alignment method to use for
-            hybridization probability filtering. Must be either "blastn" or "bowtie".
-        :type target_probe_hybridization_probability_alignment_method: str
-        :param target_probe_hybridization_probability_search_parameters: Dictionary of parameters for
-            alignment searches used in hybridization probability filtering. Parameters depend on the
-            alignment method (BLASTN or Bowtie).
-        :type target_probe_hybridization_probability_search_parameters: dict
-        :param target_probe_hybridization_probability_hit_parameters: Dictionary of parameters for
-            filtering alignment hits in hybridization probability searches.
-        :type target_probe_hybridization_probability_hit_parameters: dict
-        :param target_probe_hybridization_probability_threshold: Threshold for hybridization probability
-            filtering. Probes with hybridization probabilities above this threshold are removed, as they
-            may bind non-specifically.
-        :type target_probe_hybridization_probability_threshold: float
-        :param target_probe_read_length_bias: Number of nucleotides from the 5' end of probes to check
-            for read length bias. Probes where the first N bases match exactly with other probes are
-            removed to prevent sequencing read length biases.
-        :type target_probe_read_length_bias: int
-
-        **Step 4: Probe Scoring and Set Selection Parameters**
-
-        :param target_probe_targeted_exons: List of exon identifiers that should be preferentially
-            targeted by probes. Probes overlapping these exons receive higher scores.
-        :type target_probe_targeted_exons: list[str]
-        :param target_probe_targeted_exons_weight: Weight assigned to targeted exons overlap in the
-            scoring function.
-        :type target_probe_targeted_exons_weight: float
-        :param target_probe_isoform_weight: Weight assigned to isoform consensus in the scoring function.
-        :type target_probe_isoform_weight: float
-        :param target_probe_GC_content_opt: Optimal GC content for target probes, expressed as a fraction
-            between 0.0 and 1.0. Used in scoring to prioritize probes closer to this value.
-        :type target_probe_GC_content_opt: int
-        :param target_probe_GC_weight: Weight assigned to GC content in the scoring function.
-        :type target_probe_GC_weight: float
-        :param target_probe_Tm_opt: Optimal melting temperature (Tm) for target probes in degrees Celsius.
-            Used in scoring to prioritize probes closer to this value.
-        :type target_probe_Tm_opt: int
-        :param target_probe_Tm_weight: Weight assigned to melting temperature in the scoring function.
-        :type target_probe_Tm_weight: float
-        :param n_sets: Number of oligo sets to generate per region. Multiple sets allow for redundancy and selection
-            of the best-performing set based on scoring criteria.
-        :type n_sets: int
-        :param set_size_min: Minimum size (number of probes) required for each oligo set. Sets with fewer probes than
-            this value will be rejected, and regions that cannot generate sets meeting this minimum will be removed.
-        :type set_size_min: int
-        :param set_size_opt: Optimal size (number of probes) for each oligo set. The set selection algorithm will
-            attempt to generate sets of this size, but may produce sets with fewer probes if constraints cannot be met.
-        :type set_size_opt: int
-        :param distance_between_target_probes: Minimum genomic distance (in nucleotides) required between probes
-            within the same set. This spacing constraint prevents probes from binding too close together, which could
-            lead to reduced hybridization efficiency.
-        :type distance_between_target_probes: int
-        :param uniform_distance_weight: Weight assigned to uniform distance in the scoring function.
-        :type uniform_distance_weight: float
-        :param n_attempts_graph: Number of randomized graph attempts. In each attempt, a fraction of nodes is randomly
-            removed from the compatibility graph to create diversity; more attempts increase diversity at the cost of runtime.
-        :type n_attempts_graph: int
-        :param n_attempts_clique_enum: Maximum number of cliques enumerated per graph attempt. Limits how many cliques
-            are explored before stopping enumeration for the current graph.
-        :type n_attempts_clique_enum: int
-        :param diversification_fraction: Fraction of oligos to remove from the graph to create diversity in the set selection.
-        :type diversification_fraction: float
-        :param jaccard_opt: Optimal maximum Jaccard overlap between selected sets.
-        :type jaccard_opt: float
-        :param jaccard_step: Step size used to relax the Jaccard constraint when not enough sets are found.
-        :type jaccard_step: float
-        :return: An `OligoDatabase` object containing the designed target probes organized into sets.
-            The database includes probe sequences, properties, and set assignments for each target gene.
+        :return:
+            An `OligoDatabase` containing the designed target probes organized into sets,
+            including computed properties and metadata for each probe.
         :rtype: OligoDatabase
         """
 
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
 
         oligo_database: OligoDatabase = target_probe_designer.create_oligo_database(
-            region_ids=region_ids,
-            oligo_length_min=target_probe_length_min,
-            oligo_length_max=target_probe_length_max,
-            split_region=target_probe_split_region,
-            files_fasta_oligo_database=files_fasta_target_probe_database,
-            min_oligos_per_gene=set_size_min,
+            region_ids=oligo_generation_parameters["region_ids"],
+            oligo_length_min=oligo_generation_parameters["probe_length_min"],
+            oligo_length_max=oligo_generation_parameters["probe_length_max"],
+            split_region=oligo_generation_parameters["probe_split_region"],
+            files_fasta_oligo_database=oligo_generation_parameters["files_fasta_probe_database"],
+            min_oligos_per_gene=probe_set_selection_parameters["independent_set_selection"]["set_size_min"],
         )
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
             logging.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
 
+        # Add highly abundant k-mers to prohibited sequences
+        if property_filters_parameters["prohibited_sequences_filter"]["enabled"]:
+            prohibited_sequences = []
+            if property_filters_parameters["prohibited_sequences_filter"]["kmer_abundance_threshold"]:
+                prohibited_sequences = get_highly_abundant_kmer_sequences(
+                    files_fasta=oligo_generation_parameters["files_fasta_probe_database"],
+                    kmer_abundance_threshold=property_filters_parameters["prohibited_sequences_filter"][
+                        "kmer_abundance_threshold"
+                    ],
+                )
+            property_filters_parameters["prohibited_sequences_filter"]["prohibited_sequences"] = list(
+                set(
+                    property_filters_parameters["prohibited_sequences_filter"]["prohibited_sequences"]
+                    + prohibited_sequences
+                )
+            )
+
         oligo_database = target_probe_designer.filter_by_property(
             oligo_database=oligo_database,
-            isoform_consensus=target_probe_isoform_consensus,
-            GC_content_min=target_probe_GC_content_min,
-            GC_content_max=target_probe_GC_content_max,
-            Tm_min=target_probe_Tm_min,
-            Tm_max=target_probe_Tm_max,
-            Tm_parameters=target_probe_Tm_parameters,
-            Tm_chem_correction_parameters=target_probe_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=target_probe_Tm_salt_correction_parameters,
-            homopolymeric_base_n=target_probe_homopolymeric_base_n,
-            prohibited_sequences=target_probe_prohibited_sequences,
-            max_len_selfcomplement=target_probe_max_len_selfcomplement,
-            secondary_structures_T=target_probe_secondary_structures_T,
-            secondary_structures_threshold_deltaG=target_probe_secondary_structures_threshold_deltaG,
+            isoform_consensus_filter=property_filters_parameters["isoform_consensus_filter"],
+            targeted_exons_filter=property_filters_parameters["targeted_exons_filter"],
+            hard_masked_sequences_filter=property_filters_parameters["hard_masked_sequences_filter"],
+            soft_masked_sequences_filter=property_filters_parameters["soft_masked_sequences_filter"],
+            homopolymeric_runs_filter=property_filters_parameters["homopolymeric_runs_filter"],
+            GC_content_filter=property_filters_parameters["GC_content_filter"],
+            prohibited_sequences_filter=property_filters_parameters["prohibited_sequences_filter"],
+            self_complementarity_filter=property_filters_parameters["self_complementarity_filter"],
+            Tm_filter=property_filters_parameters["Tm_filter"],
+            secondary_structure_filter=property_filters_parameters["secondary_structure_filter"],
+            global_parameters=global_parameters,
         )
 
         if self.write_intermediate_steps:
@@ -397,16 +247,12 @@ class OligoSeqProbeDesigner:
 
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_target_probe,
-            files_vcf_reference_database=files_vcf_reference_database_target_probe,
-            target_probe_read_length_bias=target_probe_read_length_bias,
-            cross_hybridization_alignment_method=target_probe_cross_hybridization_alignment_method,
-            cross_hybridization_search_parameters=target_probe_cross_hybridization_search_parameters,
-            cross_hybridization_hit_parameters=target_probe_cross_hybridization_hit_parameters,
-            hybridization_probability_alignment_method=target_probe_hybridization_probability_alignment_method,
-            hybridization_probability_search_parameters=target_probe_hybridization_probability_search_parameters,
-            hybridization_probability_hit_parameters=target_probe_hybridization_probability_hit_parameters,
-            hybridization_probability_threshold=target_probe_hybridization_probability_threshold,
+            read_length_bias_filter=specificity_filters_parameters["read_length_bias_filter"],
+            cross_hybridization_blastn_filter=specificity_filters_parameters[
+                "cross_hybridization_blastn_filter"
+            ],
+            specificity_blastn_filter=specificity_filters_parameters["specificity_blastn_filter"],
+            variant_filter=specificity_filters_parameters["variant_filter"],
         )
 
         if self.write_intermediate_steps:
@@ -415,39 +261,22 @@ class OligoSeqProbeDesigner:
 
         oligo_database = target_probe_designer.create_oligo_sets(
             oligo_database=oligo_database,
-            targeted_exons=target_probe_targeted_exons,
-            targeted_exons_weight=target_probe_targeted_exons_weight,
-            isoform_weight=target_probe_isoform_weight,
-            GC_content_min=target_probe_GC_content_min,
-            GC_content_opt=target_probe_GC_content_opt,
-            GC_content_max=target_probe_GC_content_max,
-            GC_weight=target_probe_GC_weight,
-            Tm_min=target_probe_Tm_min,
-            Tm_opt=target_probe_Tm_opt,
-            Tm_max=target_probe_Tm_max,
-            Tm_weight=target_probe_Tm_weight,
-            Tm_parameters=target_probe_Tm_parameters,
-            Tm_chem_correction_parameters=target_probe_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=target_probe_Tm_salt_correction_parameters,
-            n_sets=n_sets,
-            set_size_min=set_size_min,
-            set_size_opt=set_size_opt,
-            distance_between_oligos=distance_between_target_probes,
-            uniform_distance_weight=uniform_distance_weight,
-            n_attempts_graph=n_attempts_graph,
-            n_attempts_clique_enum=n_attempts_clique_enum,
-            diversification_fraction=diversification_fraction,
-            jaccard_opt=jaccard_opt,
-            jaccard_step=jaccard_step,
+            independent_set_selection=probe_set_selection_parameters["independent_set_selection"],
+            uniform_distance_score=probe_set_selection_parameters["uniform_distance_score"],
+            isoform_consensus_score=probe_set_selection_parameters["isoform_consensus_score"],
+            targeted_exons_score=probe_set_selection_parameters["targeted_exons_score"],
+            GC_content_score=probe_set_selection_parameters["GC_content_score"],
+            Tm_score=probe_set_selection_parameters["Tm_score"],
+            global_parameters=global_parameters,
         )
 
         # Calculate oligo length, GC content, Tm, num targeted transcripts, isoform consensus, and length self complement
         length_property = LengthProperty()
         gc_content_property = GCContentProperty()
         TmNN_property = TmNNProperty(
-            Tm_parameters=target_probe_Tm_parameters,
-            Tm_chem_correction_parameters=target_probe_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=target_probe_Tm_salt_correction_parameters,
+            Tm_parameters=global_parameters["Tm_parameters"],
+            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"],
+            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"],
         )
         num_targeted_transcripts_property = NumTargetedTranscriptsProperty()
         isoform_consensus_property = IsoformConsensusProperty()
@@ -478,36 +307,45 @@ class OligoSeqProbeDesigner:
         output_properties: list[str] | None = None,
     ) -> None:
         """
-        Generate the final output files for the Oligo-seq probe design pipeline.
+        Generate and export final probe design results in multiple output formats.
 
-        This method writes all output files required for the Oligo-seq experiment, including probe
-        sequences and properties in multiple formats. The output files are written to the pipeline's
-        output directory.
+        This method serializes the designed probe sets from the provided `OligoDatabase`
+        into user-facing output files suitable for downstream analysis and probe ordering.
+        All files are written to the pipeline's configured output directory.
 
-        **Generated Output Files:**
+        **Generated Output Files**
 
-        1. **oligo_seq_probes.yml**: Complete probe information in YAML format, including all specified
-           properties for each probe in the top N sets per region.
+        1. **oligo_seq_probes.yml**
+        - Full probe set information in YAML format
+        - Includes all selected properties for each probe
 
-        2. **oligo_seq_probes.tsv**: Complete probe information in TSV format, including all specified
-           properties for each probe in the top N sets per region.
+        2. **oligo_seq_probes.tsv / .xlsx**
+        - Tabular representation of probe sets
+        - Contains the same information as the YAML output
+        - Excel output is organized with one sheet per region
 
-        3. **oligo_seq_probes.xlsx**: Complete probe information in Excel format with one sheet per region.
-           Each sheet contains probe sets for that region with all specified properties.
+        3. **oligo_seq_probes_order.yml**
+        - Minimal output for probe ordering
+        - Contains only essential sequence information (e.g. oligo sequences)
 
-        4. **oligo_seq_probes_order.yml**: Simplified YAML file containing only the essential sequences
-           needed for ordering probes (oligo sequences).
-
-        :param oligo_database: The `OligoDatabase` instance containing the final target probes
-            with all sequences and properties. This should be the result of the `design_target_probes`
-            method.
+        :param oligo_database:
+            Final `OligoDatabase` containing probe sequences, annotations, and computed properties.
         :type oligo_database: OligoDatabase
-        :param output_properties: List of property names to include in the output files. If None, a default
-            set of properties will be included. Available properties include: 'source', 'species', 'gene_id',
-            'chromosome', 'start', 'end', 'strand', 'oligo', 'target', 'length_oligo', 'GC_content_oligo',
-            'TmNN_oligo', 'SNP_filter', 'isoform_consensus', 'length_selfcomplement_oligo', etc.
+
+        :param output_properties:
+            List of properties to include in the output files. If `None`, a default set of
+            commonly used properties is written.
+
+            Examples include:
+            - metadata: 'source', 'species', 'gene_id', 'chromosome'
+            - genomic location: 'start', 'end', 'strand', 'regiontype'
+            - sequence: 'oligo', 'target'
+            - computed properties: 'length_oligo', 'GC_content_oligo', 'TmNN_oligo',
+            'isoform_consensus', 'length_selfcomplement_oligo'
         :type output_properties: list[str] | None
-        :return: None. All output files are written to the pipeline's output directory.
+
+        :return:
+            None. Output files are written to disk.
         """
 
         if output_properties is None:
@@ -529,7 +367,7 @@ class OligoSeqProbeDesigner:
                 "length_oligo",
                 "GC_content_oligo",
                 "TmNN_oligo",
-                "SNP_filter",
+                "variants_filter",
                 "isoform_consensus",
                 "length_selfcomplement_oligo",
             ]
@@ -568,8 +406,7 @@ class TargetProbeDesigner:
     2. Filtering probes based on sequence properties (GC content, melting temperature, homopolymeric
        runs, self-complementarity, secondary structure)
     3. Filtering probes based on specificity to remove off-target binding, cross-hybridization,
-       variants, and high hybridization probability using BLASTN or Bowtie searches, and read length
-       bias filtering
+       variants, and off-target binding using BLASTN, and read length bias filtering
     4. Organizing filtered probes into optimal sets based on weighted scoring criteria (targeted
        exons, isoform consensus, GC content, melting temperature) and distance constraints
 
@@ -608,44 +445,69 @@ class TargetProbeDesigner:
         min_oligos_per_gene: int,
     ) -> OligoDatabase:
         """
-        Create an initial oligo database by generating sequences using a sliding window approach
-        with region splitting and performing pre-filtering based on isoform consensus.
+        Generate an initial oligo database from input sequences using a sliding-window approach.
 
-        This is the first step of target probe design. The method:
-        1. Generates candidate oligo sequences from input FASTA files using a sliding window approach
-           across the specified length range, with large regions split into smaller chunks for memory efficiency
-        2. Creates an `OligoDatabase` and loads the generated sequences
-        3. Calculates reverse complement sequences and isoform consensus properties
-        4. Pre-filters oligos based on isoform consensus threshold
-        5. Removes regions with insufficient oligos after filtering
+        This method represents the first step of the target probe design pipeline. It constructs
+        a candidate oligo database by extracting sequences from input FASTA files and preparing
+        them for downstream filtering and selection.
 
-        The database stores sequences with sequence types "target" (original sequence), "oligo" (reverse
-        complement), and "oligo_short" (shortened sequences for read length bias filtering).
+        **Workflow**
 
-        :param region_ids: List of gene identifiers (e.g., gene IDs) to target for probe design. If None,
-            all genes present in the input FASTA files will be used.
+        1. **Oligo generation**
+        - Generates candidate sequences using a sliding window across input regions
+        - Supports variable oligo lengths within a specified interval
+        - Splits large regions into smaller chunks to control memory usage
+
+        2. **Database initialization**
+        - Loads generated sequences into an `OligoDatabase`
+        - Assigns sequence type `"target"` (original sequence)
+
+        3. **Sequence augmentation**
+        - Computes reverse complement sequences (`"oligo"`)
+        - Prepares additional sequence types (e.g. `"oligo_short"`) for downstream steps
+
+        4. **Initial filtering**
+        - Removes regions with insufficient oligo counts based on `min_oligos_per_gene`
+        - Validates database integrity
+
+        The resulting database contains candidate oligos prior to property and specificity filtering.
+
+        :param region_ids:
+            Optional list of region or gene identifiers to restrict probe design.
+            If `None`, all regions in the input FASTA files are processed.
         :type region_ids: list[str] | None
-        :param oligo_length_min: Minimum length (in nucleotides) for target probe sequences.
+
+        :param oligo_length_min:
+            Minimum oligo length (in nucleotides).
         :type oligo_length_min: int
-        :param oligo_length_max: Maximum length (in nucleotides) for target probe sequences.
+
+        :param oligo_length_max:
+            Maximum oligo length (in nucleotides).
         :type oligo_length_max: int
-        :param split_region: Size of regions (in nucleotides) to split large genomic regions into when
-            generating probe candidates. This helps manage memory usage for very long sequences.
+
+        :param split_region:
+            Maximum size (in nucleotides) for splitting large input regions during sequence generation.
+            This helps reduce memory usage for long sequences.
         :type split_region: int
-        :param files_fasta_oligo_database: List of paths to FASTA files containing sequences from which
-            target probes will be generated. These files should contain genomic regions of interest
-            (e.g., exons, exon-exon junctions).
+
+        :param files_fasta_oligo_database:
+            List of FASTA files containing input sequences (e.g. exons, junctions)
+            from which candidate oligos are generated.
         :type files_fasta_oligo_database: list[str]
-        :param min_oligos_per_gene: Minimum number of oligos required per region (gene) after filtering.
-            Regions with fewer oligos than this threshold will be removed from the database.
+
+        :param min_oligos_per_gene:
+            Minimum number of oligos required per region after initial generation.
+            Regions below this threshold are removed from the database.
         :type min_oligos_per_gene: int
-        :return: An `OligoDatabase` object containing the generated target probe sequences with their
-            component sequences (target, oligo, oligo_short) and calculated properties (isoform_consensus).
-            The database is filtered to only include regions that meet the minimum oligo requirement.
+
+        :return:
+            An `OligoDatabase` containing generated candidate oligos with initialized
+            sequence types ("target", "oligo", "oligo_short"). The database is filtered
+            to include only regions meeting the minimum oligo requirement.
         :rtype: OligoDatabase
         """
 
-        ##### creating the oligo sequences #####
+        # generate candidate oligo sequences (sliding window over FASTA regions)
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
             files_fasta_in=files_fasta_oligo_database,
@@ -655,7 +517,7 @@ class TargetProbeDesigner:
             n_jobs=self.n_jobs,
         )
 
-        ##### creating the oligo database #####
+        # load sequences into oligo database
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_oligos_per_gene,
             write_regions_with_insufficient_oligos=True,
@@ -673,18 +535,19 @@ class TargetProbeDesigner:
         # Set all sequence types that will be used in this pipeline
         oligo_database.set_database_sequence_types(["target", "oligo", "oligo_short"])
         # Calculate reverse complement using new PropertyCalculator pattern
-        reverse_complement_sequence_property = ReverseComplementSequenceProperty(
-            sequence_type_reverse_complement="oligo"
-        )
-        calculator = PropertyCalculator(properties=[reverse_complement_sequence_property])
+        # compute reverse complement (oligo) and isoform consensus per entry
+        rc_sequence_property = ReverseComplementSequenceProperty(sequence_type_reverse_complement="oligo")
+        calculator = PropertyCalculator(properties=[rc_sequence_property])
         oligo_database = calculator.apply(
             oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
         )
 
+        # remove temporary sliding-window output directory
         dir = oligo_sequences.dir_output
         shutil.rmtree(dir) if os.path.exists(dir) else None
 
-        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Pre-Filters")
+        # drop regions with too few oligos and validate database
+        oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Database Creation")
         check_content_oligo_database(oligo_database)
 
         return oligo_database
@@ -693,152 +556,177 @@ class TargetProbeDesigner:
     def filter_by_property(
         self,
         oligo_database: OligoDatabase,
-        isoform_consensus: float,
-        GC_content_min: int,
-        GC_content_max: int,
-        Tm_min: int,
-        Tm_max: int,
-        Tm_parameters: dict,
-        Tm_chem_correction_parameters: dict | None,
-        Tm_salt_correction_parameters: dict | None,
-        homopolymeric_base_n: dict[str, int],
-        prohibited_sequences: list[str],
-        max_len_selfcomplement: int,
-        secondary_structures_T: float,
-        secondary_structures_threshold_deltaG: float,
+        isoform_consensus_filter: dict,
+        targeted_exons_filter: dict,
+        hard_masked_sequences_filter: dict,
+        soft_masked_sequences_filter: dict,
+        homopolymeric_runs_filter: dict,
+        GC_content_filter: dict,
+        prohibited_sequences_filter: dict,
+        self_complementarity_filter: dict,
+        Tm_filter: dict,
+        secondary_structure_filter: dict,
+        global_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence properties to remove probes with undesirable
-        characteristics.
+        Filter candidate oligos based on intrinsic sequence properties.
 
-        This method applies sequential filtering using multiple property-based filters:
-        1. **Hard masked sequences**: Removes probes containing hard-masked nucleotides (N)
-        2. **Soft masked sequences**: Removes probes containing soft-masked nucleotides (lowercase)
-        3. **Homopolymeric runs**: Removes probes with homopolymeric runs exceeding specified lengths
-        4. **GC content**: Removes probes with GC content outside the specified range
-        5. **Melting temperature**: Removes probes with Tm outside the specified range
-        6. **Self-complementarity**: Removes probes with excessive self-complementary regions that can
-           form hairpins and reduce hybridization efficiency
-        7. **Secondary structure**: Removes probes that form stable secondary structures at the
-           specified temperature
+        This method applies a sequence of property-based filters to remove oligos with
+        undesirable characteristics. Filters are applied in a cost-aware order
+        (cheapest first) to reject invalid oligos as early as possible.
 
-        Probes that fail any filter are removed. Regions with insufficient oligos after filtering
+        **Workflow**
+
+        1. **Pre-filtering (cheap property-based)**
+        - Isoform consensus filtering (if enabled)
+        - (Optional) targeted exon filtering (currently not implemented)
+
+        2. **Sequence-based filtering**
+        - Masking: removes oligos containing hard-masked (N) or soft-masked (lowercase) bases
+        - Composition: filters based on homopolymeric runs, GC content, and prohibited motifs
+        - Thermodynamics:
+            - Self-complementarity (hairpin potential)
+            - Melting temperature (Tm) range
+            - Secondary structure stability (ΔG threshold)
+
+        Oligos failing any filter are removed. Regions with insufficient remaining oligos
         are removed from the database.
 
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain target probes with their
-            component sequences already calculated.
+        :param oligo_database:
+            Input `OligoDatabase` containing candidate oligos with initialized sequence types.
         :type oligo_database: OligoDatabase
-        :param isoform_consensus: Threshold for isoform consensus filtering (typically between 0.0 and 1.0).
-            Probes with isoform consensus values below this threshold will be filtered out. This ensures
-            that selected probes target sequences that are conserved across multiple transcript isoforms.
-        :type isoform_consensus: float
-        :param GC_content_min: Minimum acceptable GC content for oligos, expressed as a fraction
-            between 0.0 and 1.0.
-        :type GC_content_min: int
-        :param GC_content_max: Maximum acceptable GC content for oligos, expressed as a fraction
-            between 0.0 and 1.0.
-        :type GC_content_max: int
-        :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos in degrees Celsius.
-            Probes with calculated Tm below this value will be filtered out.
-        :type Tm_min: int
-        :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos in degrees Celsius.
-            Probes with calculated Tm above this value will be filtered out.
-        :type Tm_max: int
-        :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) using
-            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
-            Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
-            'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
-        :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
-            calculation. These parameters account for the effects of chemical additives (e.g., DMSO,
-            formamide) on melting temperature. Set to ``None`` to disable chemical correction, or set to ``{}``
-            to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
-        :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None``
-            to disable salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
-            For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
-        :param homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
-            runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
-            run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
-            identical bases.
-        :type homopolymeric_base_n: dict[str, int]
-        :param prohibited_sequences: List of sequences that are prohibited from being used in the probes.
-            These sequences will be removed from the database.
-        :type prohibited_sequences: list[str]
-        :param max_len_selfcomplement: Maximum allowable length of self-complementary sequences.
-            Probes with longer self-complementary regions can form hairpins and reduce hybridization
-            efficiency.
-        :type max_len_selfcomplement: int
-        :param secondary_structures_T: Temperature in degrees Celsius at which to evaluate secondary
-            structure formation. Secondary structures that form at this temperature can interfere
-            with probe binding.
-        :type secondary_structures_T: float
-        :param secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for secondary
-            structure stability. Probes with secondary structures having deltaG values more negative
-            (more stable) than this threshold will be filtered out.
-        :type secondary_structures_threshold_deltaG: float
-        :return: A filtered `OligoDatabase` object containing only probes that pass all property filters.
-            Regions with insufficient oligos after filtering are removed.
+
+        :param isoform_consensus_filter:
+            Dict with `enabled`, `isoform_consensus`.
+        :type isoform_consensus_filter: dict
+
+        :param targeted_exons_filter:
+            Dict with `enabled`, `targeted_exons`.
+        :type targeted_exons_filter: dict
+
+        :param hard_masked_sequences_filter:
+            Dict with `enabled`.
+        :type hard_masked_sequences_filter: dict
+
+        :param soft_masked_sequences_filter:
+            Dict with `enabled`.
+        :type soft_masked_sequences_filter: dict
+
+        :param homopolymeric_runs_filter:
+            Dict with `enabled`, `homopolymeric_base_n`.
+        :type homopolymeric_runs_filter: dict
+
+        :param GC_content_filter:
+            Dict with `enabled`, `GC_content_min`, `GC_content_max`.
+        :type GC_content_filter: dict
+
+        :param prohibited_sequences_filter:
+            Dict with `enabled`, `prohibited_sequences`, optionally `kmer_abundance_threshold`.
+        :type prohibited_sequences_filter: dict
+
+        :param self_complementarity_filter:
+            Dict with `enabled`, `max_len_selfcomplement`.
+        :type self_complementarity_filter: dict
+
+        :param Tm_filter:
+            Dict with `enabled`, `Tm_min`, `Tm_max`.
+            Thermodynamic model parameters are provided via `global_parameters`.
+        :type Tm_filter: dict
+
+        :param secondary_structure_filter:
+            Dict with `enabled`, `T`, `thr_DG`.
+        :type secondary_structure_filter: dict
+
+        :param global_parameters:
+            Shared global parameters (e.g. thermodynamic model settings).
+        :type global_parameters: dict
+
+        :return:
+            Filtered `OligoDatabase` containing only oligos passing all property filters.
         :rtype: OligoDatabase
         """
-        ##### pre-filter oligo database for certain properties #####
-        isoform_consensus_property = IsoformConsensusProperty()
-        calculator = PropertyCalculator(properties=[isoform_consensus_property])
-        oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
-        )
-        oligo_database.filter_database_by_property_threshold(
-            property_name="isoform_consensus",
-            property_thr=isoform_consensus,
-            remove_if_smaller_threshold=True,
-        )
+        # Pre-filter by isoform consensus (cheap property lookup before sequence filters)
+        if isoform_consensus_filter["enabled"]:
+            isoform_consensus_property = IsoformConsensusProperty()
+            calculator = PropertyCalculator(properties=[isoform_consensus_property])
+            oligo_database = calculator.apply(
+                oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
+            )
+            oligo_database.filter_database_by_property_threshold(
+                property_name="isoform_consensus",
+                property_thr=isoform_consensus_filter["isoform_consensus"],
+                remove_if_smaller_threshold=True,
+            )
+        # placeholder for yet missing targeted exon filter
+        # if targeted_exons_filter["enabled"]:
+        #     targeted_exons_property = TargetedExonsProperty()
+        #     calculator = PropertyCalculator(properties=[targeted_exons_property])
+        #     oligo_database = calculator.apply(
+        #         oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
+        #     )
+        #     oligo_database.filter_database_by_property_category(
+        #         property_name="targeted_exons",
+        #         property_category=targeted_exons_filter["targeted_exons"],
+        #         remove_if_equals_category=False,
+        #     )
 
-        # define the filters
-        hard_masked_sequences = HardMaskedSequenceFilter()
-        soft_masked_sequences = SoftMaskedSequenceFilter()
-        self_comp = SelfComplementFilter(
-            max_len_selfcomplement=max_len_selfcomplement,
-        )
-        homopolymeric_runs = HomopolymericRunsFilter(
-            base_n=homopolymeric_base_n,
-        )
-        gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
-        melting_temperature = MeltingTemperatureNNFilter(
-            Tm_min=Tm_min,
-            Tm_max=Tm_max,
-            Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
-        )
-        secondary_sctructure = SecondaryStructureFilter(
-            T=secondary_structures_T,
-            thr_DG=secondary_structures_threshold_deltaG,
-        )
-        prohibited_sequence_filter = ProhibitedSequenceFilter(
-            prohibited_sequences=prohibited_sequences,
-        )
+        # Instantiate sequence-based property filters
+        # Masking: drop oligos with ambiguous or low-complexity bases
+        filters: list[BasePropertyFilter] = []
+        if hard_masked_sequences_filter["enabled"]:
+            hard_masked_sequences = HardMaskedSequenceFilter()
+            filters.append(hard_masked_sequences)
 
-        filters = [
-            hard_masked_sequences,
-            soft_masked_sequences,
-            prohibited_sequence_filter,
-            homopolymeric_runs,
-            gc_content,
-            self_comp,
-            melting_temperature,
-            secondary_sctructure,
-        ]
+        if soft_masked_sequences_filter["enabled"]:
+            soft_masked_sequences = SoftMaskedSequenceFilter()
+            filters.append(soft_masked_sequences)
 
-        # initialize the preoperty filter class
+        # Composition: homopolymeric runs, GC range, prohibited motifs
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
+        if GC_content_filter["enabled"]:
+            gc_content = GCContentFilter(
+                GC_content_min=GC_content_filter["GC_content_min"],
+                GC_content_max=GC_content_filter["GC_content_max"],
+            )
+            filters.append(gc_content)
+
+        if prohibited_sequences_filter["enabled"]:
+            prohibited_sequence_filter = ProhibitedSequenceFilter(
+                prohibited_sequences=prohibited_sequences_filter["prohibited_sequences"],
+            )
+            filters.append(prohibited_sequence_filter)
+
+        # Thermodynamics: self-complementarity (hairpins), Tm range, secondary structure (ΔG)
+        if self_complementarity_filter["enabled"]:
+            self_comp = SelfComplementFilter(
+                max_len_selfcomplement=self_complementarity_filter["max_len_selfcomplement"],
+            )
+            filters.append(self_comp)
+
+        if Tm_filter["enabled"]:
+            melting_temperature = MeltingTemperatureNNFilter(
+                Tm_min=Tm_filter["Tm_min"],
+                Tm_max=Tm_filter["Tm_max"],
+                Tm_parameters=global_parameters["Tm_parameters"],
+                Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"],
+                Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"],
+            )
+            filters.append(melting_temperature)
+
+        if secondary_structure_filter["enabled"]:
+            secondary_structure = SecondaryStructureFilter(
+                T=secondary_structure_filter["T"],
+                thr_DG=secondary_structure_filter["thr_DG"],
+            )
+            filters.append(secondary_structure)
+
+        # Apply filters in order of cost (cheapest first) so failing oligos are rejected early.
         property_filter = PropertyFilter(filters=filters)
-
-        # filter the database
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -852,206 +740,149 @@ class TargetProbeDesigner:
     def filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
-        files_fasta_reference_database: list[str],
-        files_vcf_reference_database: list[str],
-        target_probe_read_length_bias: int,
-        cross_hybridization_alignment_method: str,
-        cross_hybridization_search_parameters: dict,
-        cross_hybridization_hit_parameters: dict,
-        hybridization_probability_alignment_method: str,
-        hybridization_probability_search_parameters: dict,
-        hybridization_probability_hit_parameters: dict,
-        hybridization_probability_threshold: float,
+        read_length_bias_filter: dict,
+        cross_hybridization_blastn_filter: dict,
+        specificity_blastn_filter: dict,
+        variant_filter: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence specificity to remove probes that bind
-        non-specifically, cross-hybridize, overlap with variants, or have high hybridization probability.
+        Filter candidate oligos based on sequence specificity.
 
-        This method applies multiple types of specificity filters:
+        This method removes or flags oligos that are likely to bind non-specifically,
+        cross-hybridize, or overlap with genomic variants.
 
-        1. **Read length bias filtering**: Removes probes where the first N bases match exactly with
-           other probes. This prevents sequencing read length biases that could occur when multiple
-           probes share identical 5' ends.
+        **Workflow**
 
-        2. **Exact match filtering**: Removes all probes with exact sequence matches to probes of
-           other regions.
+        1. **Read-length bias filtering**
+        - Removes oligos sharing identical prefixes of length N
+        - Prevents ambiguity in sequencing readout
 
-        3. **Variant filtering**: Marks probes that overlap with known single nucleotide polymorphisms
-           (SNPs) or other variants from VCF files. Probes overlapping variants may have reduced
-           specificity and are flagged (not removed) for downstream analysis.
+        2. **Exact match filtering**
+        - Removes oligos with identical sequences across different regions
 
-        4. **Cross-hybridization filtering**: Removes probes that cross-hybridize with each other.
-           This is critical because if probes can bind to each other, they may form dimers instead
-           of binding to the target RNA. Probes from the larger genomic region are removed when
-           cross-hybridization is detected. The alignment method (BLASTN or Bowtie) can be selected.
+        3. **Cross-hybridization filtering**
+        - Identifies oligos that can hybridize to each other
+        - Removes oligos from the larger genomic region when conflicts occur
 
-        5. **Hybridization probability filtering**: Removes probes with high hybridization probability
-           to unintended targets in the reference database. This filter uses alignment-based methods
-           (BLASTN or Bowtie) to estimate the probability of non-specific binding and removes probes
-           above the specified threshold.
+        4. **Reference specificity filtering**
+        - Removes oligos with significant similarity to unintended targets
+        - Uses alignment-based methods (e.g. BLASTN)
 
-        The reference databases are loaded from the provided FASTA and VCF files. Alignment methods
-        (BLASTN or Bowtie) can be selected independently for cross-hybridization and hybridization
-        probability filtering. Regions that do not meet the minimum oligo requirement after filtering
-        are removed from the database.
+        5. **Variant filtering**
+        - Flags or removes oligos overlapping known variants (VCF input)
 
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain target probes with their
-            component sequences already calculated.
+        All filters operate on the `"oligo"` sequence type unless stated otherwise.
+        Intermediate alignment files are removed after filtering.
+
+        :param oligo_database:
+            Input `OligoDatabase` containing oligos after property filtering.
         :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of paths to FASTA files containing reference
-            sequences against which specificity will be evaluated. These typically include the
-            entire genome or transcriptome to identify off-target binding sites.
-        :type files_fasta_reference_database: list[str]
-        :param files_vcf_reference_database: List of paths to VCF files containing variant
-            information used for filtering probes that overlap with known single nucleotide polymorphisms
-            (SNPs) or other variants. Probes overlapping variants are flagged (not removed) for
-            downstream analysis.
-        :type files_vcf_reference_database: list[str]
-        :param target_probe_read_length_bias: Number of nucleotides from the 5' end of probes to check
-            for read length bias. Probes where the first N bases match exactly with other probes are
-            removed to prevent sequencing read length biases.
-        :type target_probe_read_length_bias: int
-        :param cross_hybridization_alignment_method: Alignment method to use for cross-hybridization
-            filtering. Must be either "blastn" or "bowtie".
-        :type cross_hybridization_alignment_method: str
-        :param cross_hybridization_search_parameters: Dictionary of parameters for alignment searches
-            used in cross-hybridization filtering. Parameters depend on the alignment method
-            (BLASTN or Bowtie).
-        :type cross_hybridization_search_parameters: dict
-        :param cross_hybridization_hit_parameters: Dictionary of parameters for filtering alignment
-            hits in cross-hybridization searches. Probes with cross-hybridization hits meeting these
-            criteria are removed from the larger region.
-        :type cross_hybridization_hit_parameters: dict
-        :param hybridization_probability_alignment_method: Alignment method to use for hybridization
-            probability filtering. Must be either "blastn" or "bowtie".
-        :type hybridization_probability_alignment_method: str
-        :param hybridization_probability_search_parameters: Dictionary of parameters for alignment
-            searches used in hybridization probability filtering. Parameters depend on the alignment
-            method (BLASTN or Bowtie).
-        :type hybridization_probability_search_parameters: dict
-        :param hybridization_probability_hit_parameters: Dictionary of parameters for filtering
-            alignment hits in hybridization probability searches.
-        :type hybridization_probability_hit_parameters: dict
-        :param hybridization_probability_threshold: Threshold for hybridization probability filtering.
-            Probes with hybridization probabilities above this threshold are removed, as they may bind
-            non-specifically.
-        :type hybridization_probability_threshold: float
-        :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
-            filters. Probes overlapping variants are flagged but not removed. Regions with insufficient
-            oligos after filtering are removed.
+
+        :param read_length_bias_filter:
+            Dict with `enabled`, `read_length_bias`.
+        :type read_length_bias_filter: dict
+
+        :param cross_hybridization_blastn_filter:
+            Dict with `enabled`, `search_parameters`, `hit_parameters`.
+        :type cross_hybridization_blastn_filter: dict
+
+        :param specificity_blastn_filter:
+            Dict with `enabled`, `search_parameters`, `hit_parameters`,
+            `files_fasta_reference_database`.
+        :type specificity_blastn_filter: dict
+
+        :param variant_filter:
+            Dict with `enabled`, `files_vcf_reference_database`, `action`
+            ("flag" or "remove").
+        :type variant_filter: dict
+
+        :return:
+            Filtered `OligoDatabase` containing oligos passing specificity constraints.
+            Variant-overlapping oligos are flagged or removed depending on configuration.
         :rtype: OligoDatabase
         """
 
-        def _get_alignment_method(
-            alignment_method: str,
-            search_parameters: dict,
-            hit_parameters: dict,
-            filter_name: str,
-            dir_output: str,
-        ) -> BlastNFilter | BowtieFilter:
-            if alignment_method == "blastn":
-                return BlastNFilter(
-                    search_parameters=search_parameters,
-                    hit_parameters=hit_parameters,
-                    filter_name=filter_name,
-                    dir_output=dir_output,
-                )
-            elif alignment_method == "bowtie":
-                return BowtieFilter(
-                    search_parameters=search_parameters,
-                    filter_name=filter_name,
-                    dir_output=dir_output,
-                )
-            else:
-                raise ConfigurationError(
-                    f"Alignment method '{alignment_method}' is not supported. "
-                    f"Supported methods are: 'blastn' or 'bowtie'."
-                )
-
-        ##### define reference database #####
-        reference_database_alignment = ReferenceDatabase(
-            database_name=f"{self.subdir_db_reference}_sequences", dir_output=self.dir_output
-        )
-        reference_database_alignment.load_database_from_file(
-            files=files_fasta_reference_database, file_type="fasta", database_overwrite=True
-        )
-
-        reference_database_variants = ReferenceDatabase(
-            database_name=f"{self.subdir_db_reference}_variants", dir_output=self.dir_output
-        )
-        reference_database_variants.load_database_from_file(
-            files=files_vcf_reference_database, file_type="vcf", database_overwrite=True
-        )
-
-        ##### define exact match filter #####
         # remove sequences that could cause read length biases because the first
         # <target_probe_read_length_bias> bases of both sequences match
         # Calculate shortened sequence using new PropertyCalculator pattern
-        shortened_sequence_property = ShortenedSequenceProperty(
-            sequence_length=target_probe_read_length_bias, reverse=False
-        )
-        calculator = PropertyCalculator(properties=[shortened_sequence_property])
-        oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type="oligo", n_jobs=self.n_jobs
-        )
+        if read_length_bias_filter["enabled"]:
+            shortened_sequence_property = ShortenedSequenceProperty(
+                sequence_length=read_length_bias_filter["read_length_bias"], reverse=False
+            )
+            calculator = PropertyCalculator(properties=[shortened_sequence_property])
+            oligo_database = calculator.apply(
+                oligo_database=oligo_database, sequence_type="oligo", n_jobs=self.n_jobs
+            )
+            exact_matches_short = ExactMatchFilter(
+                policy=RemoveAllFilterPolicy(), filter_name="exact_match_read_length_bias"
+            )
+            specificity_filter = SpecificityFilter(filters=[exact_matches_short])
+            oligo_database = specificity_filter.apply(
+                oligo_database=oligo_database,
+                sequence_type="oligo_short",
+                n_jobs=self.n_jobs,
+            )
 
-        exact_matches_short = ExactMatchFilter(
-            policy=RemoveAllFilterPolicy(), filter_name="exact_match_read_length_bias"
-        )
-
-        ##### run exact match filter #####
-        specificity_filter = SpecificityFilter(filters=[exact_matches_short])
-        oligo_database = specificity_filter.apply(
-            oligo_database=oligo_database,
-            sequence_type="oligo_short",
-            n_jobs=self.n_jobs,
-        )
-
-        ##### define specificity filters #####
         exact_matches = ExactMatchFilter(policy=RemoveAllFilterPolicy(), filter_name="exact_match")
+        filters: list[BaseSpecificityFilter] = [exact_matches]
+        directories = []
 
-        variants = VariantsFilter(remove_hits=False, filter_name="SNP_filter", dir_output=self.dir_output)
-        variants.set_reference_database(reference_database=reference_database_variants)
+        if cross_hybridization_blastn_filter["enabled"]:
+            cross_hybridization_aligner = BlastNFilter(
+                remove_hits=True,
+                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
+                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            cross_hybridization = CrossHybridizationFilter(
+                policy=RemoveByLargerRegionFilterPolicy(),
+                alignment_method=cross_hybridization_aligner,
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            filters.append(cross_hybridization)
+            directories.append(cross_hybridization_aligner.dir_output)
+            directories.append(cross_hybridization.dir_output)
 
-        cross_hybridization_aligner = _get_alignment_method(
-            alignment_method=cross_hybridization_alignment_method,
-            search_parameters=cross_hybridization_search_parameters,
-            hit_parameters=cross_hybridization_hit_parameters,
-            filter_name="cross_hybridization_filter",
-            dir_output=self.dir_output,
-        )
-        cross_hybridization = CrossHybridizationFilter(
-            policy=RemoveByLargerRegionFilterPolicy(),
-            alignment_method=cross_hybridization_aligner,
-            filter_name="cross_hybridization_filter",
-            dir_output=self.dir_output,
-        )
+        if specificity_blastn_filter["enabled"]:
+            reference_database_alignment = ReferenceDatabase(
+                database_name=f"{self.subdir_db_reference}_sequences", dir_output=self.dir_output
+            )
+            reference_database_alignment.load_database_from_file(
+                files=specificity_blastn_filter["files_fasta_reference_database"],
+                file_type="fasta",
+                database_overwrite=True,
+            )
+            specificity = BlastNFilter(
+                remove_hits=True,
+                search_parameters=specificity_blastn_filter["search_parameters"],
+                hit_parameters=specificity_blastn_filter["hit_parameters"],
+                filter_name="specificity_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            specificity.set_reference_database(reference_database=reference_database_alignment)
+            filters.append(specificity)
+            directories.append(specificity.dir_output)
 
-        hybridization_probability_aligner = _get_alignment_method(
-            alignment_method=hybridization_probability_alignment_method,
-            search_parameters=hybridization_probability_search_parameters,
-            hit_parameters=hybridization_probability_hit_parameters,
-            filter_name="hybridization_probability_filter",
-            dir_output=self.dir_output,
-        )
-        hybridization_probability_aligner.set_reference_database(
-            reference_database=reference_database_alignment
-        )
-        hybridization_probability = HybridizationProbabilityFilter(
-            alignment_method=hybridization_probability_aligner,
-            threshold=hybridization_probability_threshold,
-            filter_name="hybridization_probability_filter",
-            dir_output=self.dir_output,
-        )
+        if variant_filter["enabled"]:
+            remove_hits = variant_filter["action"] == "filter"
+            reference_database_variants = ReferenceDatabase(
+                database_name=f"{self.subdir_db_reference}_variants", dir_output=self.dir_output
+            )
+            reference_database_variants.load_database_from_file(
+                files=variant_filter["files_vcf_reference_database"],
+                file_type="vcf",
+                database_overwrite=True,
+            )
+            variants = VariantsFilter(
+                remove_hits=remove_hits, filter_name="variants_filter", dir_output=self.dir_output
+            )
+            variants.set_reference_database(reference_database=reference_database_variants)
+            filters.append(variants)
+            directories.append(variants.dir_output)
 
         # run all filters specified above
-        filters = [
-            exact_matches,
-            variants,
-            cross_hybridization,
-            hybridization_probability,
-        ]
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
@@ -1060,13 +891,7 @@ class TargetProbeDesigner:
         )
 
         # remove all directories of intermediate steps
-        for directory in [
-            cross_hybridization_aligner.dir_output,
-            cross_hybridization.dir_output,
-            hybridization_probability_aligner.dir_output,
-            hybridization_probability.dir_output,
-            variants.dir_output,
-        ]:
+        for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
@@ -1078,127 +903,81 @@ class TargetProbeDesigner:
     def create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
-        targeted_exons: list[str],
-        targeted_exons_weight: float,
-        isoform_weight: float,
-        GC_content_min: float,
-        GC_content_opt: float,
-        GC_content_max: float,
-        GC_weight: float,
-        Tm_min: float,
-        Tm_opt: float,
-        Tm_max: float,
-        Tm_weight: float,
-        Tm_parameters: dict,
-        Tm_chem_correction_parameters: dict | None,
-        Tm_salt_correction_parameters: dict | None,
-        n_sets: int,
-        set_size_opt: int,
-        set_size_min: int,
-        distance_between_oligos: int,
-        uniform_distance_weight: float,
-        n_attempts_graph: int,
-        n_attempts_clique_enum: int,
-        diversification_fraction: float,
-        jaccard_opt: float,
-        jaccard_step: float,
+        independent_set_selection: dict,
+        uniform_distance_score: dict,
+        isoform_consensus_score: dict,
+        targeted_exons_score: dict,
+        GC_content_score: dict,
+        Tm_score: dict,
+        global_parameters: dict,
     ) -> OligoDatabase:
         """
-        Create optimal oligo sets based on weighted scoring criteria, distance constraints, and set selection.
+        Construct optimized oligo sets using scoring and graph-based selection.
 
-        This method performs the following steps:
-        1. **Scoring**: Calculates scores for each oligo based on weighted criteria (targeted exons overlap,
-           isoform consensus, GC content, melting temperature). Higher scores indicate better probes.
-        2. **Set generation**: Builds a compatibility graph from distance constraints and selects sets via
-           a graph-based (clique) strategy. Generates multiple diverse sets per region, controlling overlap
-           between sets using a Jaccard threshold (`jaccard_opt`) with optional relaxation (`jaccard_step`).
-        3. **Set scoring**: Evaluates each generated set by average oligo score and selects the best sets
-           (ascending order, i.e. lower average score is better for this pipeline).
-        4. **Region filtering**: Removes regions that cannot generate sets meeting the minimum size requirement.
+        This method groups filtered oligos into sets per region, optimizing for multiple
+        criteria such as sequence properties, spatial distribution, and diversity.
 
-        The algorithm attempts to find sets with optimal size (`set_size_opt`) but may produce sets
-        as small as `set_size_min` if constraints cannot be met.
+        **Workflow**
 
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain target probes that have
-            passed all previous filtering steps.
+        1. **Oligo scoring**
+        - Computes per-oligo scores based on:
+            - Isoform consensus
+            - Targeted exon overlap
+            - GC content deviation from optimal
+            - Melting temperature (Tm) deviation from optimal
+            - Uniform spacing (distance-based scoring)
+
+        2. **Set generation**
+        - Builds a compatibility graph based on distance constraints
+        - Identifies candidate sets using clique-based selection
+        - Generates multiple sets per region with diversification
+
+        3. **Set scoring and selection**
+        - Scores sets using average oligo score
+        - Selects top sets based on ranking (ascending = better)
+
+        4. **Region filtering**
+        - Removes regions that cannot produce valid sets
+            (based on `set_size_min` constraint)
+
+        The algorithm targets an optimal set size (`set_size_opt`) but may return
+        smaller sets down to `set_size_min` if constraints are restrictive.
+
+        :param oligo_database:
+            Input `OligoDatabase` containing oligos after all filtering steps.
         :type oligo_database: OligoDatabase
-        :param targeted_exons: List of exon identifiers that should be preferentially targeted by probes.
-            Probes overlapping these exons receive higher scores.
-        :type targeted_exons: list[str]
-        :param targeted_exons_weight: Weight assigned to targeted exons overlap in the scoring function.
-        :type targeted_exons_weight: float
-        :param isoform_weight: Weight assigned to isoform consensus in the scoring function.
-        :type isoform_weight: float
-        :param GC_content_min: Minimum acceptable GC content for oligos, expressed as a fraction
-            between 0.0 and 1.0. Used in scoring to penalize probes with GC content below this value.
-        :type GC_content_min: float
-        :param GC_content_opt: Optimal GC content for oligos, expressed as a fraction between 0.0
-            and 1.0. Used in scoring to prioritize probes closer to this value.
-        :type GC_content_opt: float
-        :param GC_content_max: Maximum acceptable GC content for oligos, expressed as a fraction
-            between 0.0 and 1.0. Used in scoring to penalize probes with GC content above this value.
-        :type GC_content_max: float
-        :param GC_weight: Weight assigned to GC content in the scoring function.
-        :type GC_weight: float
-        :param Tm_min: Minimum acceptable melting temperature (Tm) for oligos in degrees Celsius.
-            Used in scoring to penalize probes with Tm below this value.
-        :type Tm_min: float
-        :param Tm_opt: Optimal melting temperature (Tm) for oligos in degrees Celsius. Used in scoring
-            to prioritize probes closer to this value.
-        :type Tm_opt: float
-        :param Tm_max: Maximum acceptable melting temperature (Tm) for oligos in degrees Celsius.
-            Used in scoring to penalize probes with Tm above this value.
-        :type Tm_max: float
-        :param Tm_weight: Weight assigned to melting temperature in the scoring function.
-        :type Tm_weight: float
-        :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) using
-            the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
-            Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
-            'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
-        :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm
-            calculation. These parameters account for the effects of chemical additives (e.g., DMSO,
-            formamide) on melting temperature. Set to ``None`` to disable chemical correction, or set to ``{}``
-            to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
-        :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None``
-            to disable salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
-            For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
-        :param n_sets: Number of oligo sets to generate per region. Multiple sets allow for redundancy and selection
-            of the best-performing set based on scoring criteria.
-        :type n_sets: int
-        :param set_size_opt: Optimal size (number of probes) for each oligo set. The set selection algorithm will
-            attempt to generate sets of this size, but may produce sets with fewer probes if constraints cannot be met.
-        :type set_size_opt: int
-        :param set_size_min: Minimum size (number of probes) required for each oligo set. Sets with fewer probes than
-            this value will be rejected, and regions that cannot generate sets meeting this minimum will be removed.
-        :type set_size_min: int
-        :param distance_between_oligos: Minimum genomic distance (in nucleotides) required between probes
-            within the same set. This spacing constraint prevents probes from binding too close together, which could
-            lead to reduced hybridization efficiency.
-        :type distance_between_oligos: int
-        :param uniform_distance_weight: Weight assigned to uniform distance in the scoring function.
-        :type uniform_distance_weight: float
-        :param n_attempts_graph: Number of randomized graph attempts. In each attempt, a fraction of nodes is randomly
-            removed from the compatibility graph to create diversity.
-        :type n_attempts_graph: int
-        :param n_attempts_clique_enum: Maximum number of cliques enumerated per graph attempt.
-        :type n_attempts_clique_enum: int
-        :param diversification_fraction: Fraction of oligos to remove from the graph to create diversity in the set selection.
-        :type diversification_fraction: float
-        :param jaccard_opt: Optimal maximum Jaccard overlap between selected sets.
-        :type jaccard_opt: float
-        :param jaccard_step: Step size used to relax the Jaccard constraint when not enough sets are found.
-        :type jaccard_step: float
-        :return: An updated `OligoDatabase` object containing the generated oligo sets. Each region
-            will have up to `n_sets` sets stored, with each set containing between `set_size_min` and
-            `set_size_opt` probes. Regions with insufficient oligos are removed.
+
+        :param independent_set_selection:
+            Dict controlling set generation (size, distance, attempts, diversity, Jaccard thresholds).
+        :type independent_set_selection: dict
+
+        :param uniform_distance_score:
+            Dict with `weight`.
+        :type uniform_distance_score: dict
+
+        :param isoform_consensus_score:
+            Dict with `weight`.
+        :type isoform_consensus_score: dict
+
+        :param targeted_exons_score:
+            Dict with `weight`, `targeted_exons`.
+        :type targeted_exons_score: dict
+
+        :param GC_content_score:
+            Dict with `GC_content_min`, `GC_content_opt`, `GC_content_max`, `weight`.
+        :type GC_content_score: dict
+
+        :param Tm_score:
+            Dict with `Tm_min`, `Tm_opt`, `Tm_max`, `weight`.
+        :type Tm_score: dict
+
+        :param global_parameters:
+            Shared global parameters (e.g. thermodynamic model settings).
+        :type global_parameters: dict
+
+        :return:
+            Updated `OligoDatabase` containing selected oligo sets per region.
+            Each region includes up to `n_sets` sets satisfying size and scoring constraints.
         :rtype: OligoDatabase
         """
         oligo_lengths = [
@@ -1208,63 +987,85 @@ class TargetProbeDesigner:
 
         # Define all scorers
         uniform_distance_scorer = UniformDistanceScorer(
-            average_oligo_length=average_oligo_length, score_weight=uniform_distance_weight
+            average_oligo_length=average_oligo_length,
+            score_weight=uniform_distance_score["weight"],
         )
         exon_scorer = OverlapTargetedExonsScorer(
-            targeted_exons=targeted_exons,
-            score_weight=targeted_exons_weight,
+            targeted_exons=targeted_exons_score["targeted_exons"],
+            score_weight=targeted_exons_score["weight"],
             property_name="exon_number",
         )
-        isoform_scorer = IsoformConsensusScorer(score_weight=isoform_weight)
+        isoform_scorer = IsoformConsensusScorer(score_weight=isoform_consensus_score["weight"])
         Tm_scorer = NormalizedDeviationFromOptimalTmScorer(
-            Tm_min=Tm_min,
-            Tm_opt=Tm_opt,
-            Tm_max=Tm_max,
-            Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
-            score_weight=Tm_weight,
+            Tm_min=Tm_score["Tm_min"],
+            Tm_opt=Tm_score["Tm_opt"],
+            Tm_max=Tm_score["Tm_max"],
+            Tm_parameters=global_parameters["Tm_parameters"],
+            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"],
+            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"],
+            score_weight=Tm_score["weight"],
         )
         GC_scorer = NormalizedDeviationFromOptimalGCContentScorer(
-            GC_content_min=GC_content_min,
-            GC_content_opt=GC_content_opt,
-            GC_content_max=GC_content_max,
-            score_weight=GC_weight,
+            GC_content_min=GC_content_score["GC_content_min"],
+            GC_content_opt=GC_content_score["GC_content_opt"],
+            GC_content_max=GC_content_score["GC_content_max"],
+            score_weight=GC_content_score["weight"],
         )
 
         oligos_scoring = OligoScoring(
             scorers=[exon_scorer, isoform_scorer, Tm_scorer, GC_scorer, uniform_distance_scorer]
         )
         set_scoring = AverageSetScoring(ascending=True)
-
         base_log_parameters({"Set Selection": "Independent Sets"})
         oligoset_generator = IndependentSetsOligoSelection(
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
-            set_size_opt=set_size_opt,
-            set_size_min=set_size_min,
-            distance_between_oligos=distance_between_oligos,
-            n_attempts_graph=n_attempts_graph,
-            n_attempts_clique_enum=n_attempts_clique_enum,
-            diversification_fraction=diversification_fraction,
-            jaccard_opt=jaccard_opt,
-            jaccard_step=jaccard_step,
+            set_size_opt=independent_set_selection["set_size_opt"],
+            set_size_min=independent_set_selection["set_size_min"],
+            distance_between_oligos=independent_set_selection["distance_between_target_probes"],
+            n_attempts_graph=independent_set_selection["n_attempts_graph"],
+            n_attempts_clique_enum=independent_set_selection["n_attempts_clique_enum"],
+            diversification_fraction=independent_set_selection["diversification_fraction"],
+            jaccard_opt=independent_set_selection["jaccard_opt"],
+            jaccard_step=independent_set_selection["jaccard_step"],
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
-            n_sets=n_sets,
+            n_sets=independent_set_selection["n_sets"],
             n_jobs=self.n_jobs,
         )
         oligo_database.remove_regions_with_insufficient_oligos(pipeline_step="Oligo Selection")
         check_content_oligo_database(oligo_database)
-
         return oligo_database
 
 
 ############################################
 # Oligo-seq Designer Pipeline
 ############################################
+
+
+def _load_config(config_file: str) -> dict[str, Any]:
+
+    with open(config_file, "r") as handle:
+        config: dict[str, Any] = yaml.safe_load(handle)
+
+    config["target_probe"]["global"]["Tm_parameters"] = preprocess_tm_parameters(
+        config["target_probe"]["global"]["Tm_parameters"]
+    )
+
+    ##### read the genes file #####
+    file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
+    if file_region_ids is None:
+        warnings.warn(
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
+        )
+        config["target_probe"]["oligo_generation"]["region_ids"] = None
+    else:
+        with open(file_region_ids) as f:
+            config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
+
+    return config
 
 
 def main() -> None:
@@ -1293,106 +1094,22 @@ def main() -> None:
     args = base_parser()
 
     ##### read the config file #####
-    with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
-
-    ##### read the genes file #####
-    if config["file_regions"] is None:
-        warnings.warn(
-            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
-        )
-        region_ids = None
-    else:
-        with open(config["file_regions"]) as handle:
-            lines = handle.readlines()
-            # ensure that the list contains unique gene ids
-            region_ids = list(set([line.rstrip() for line in lines]))
+    config = _load_config(args["config"])
 
     ##### initialize probe designer pipeline #####
     pipeline = OligoSeqProbeDesigner(
-        write_intermediate_steps=config["write_intermediate_steps"],
-        dir_output=config["dir_output"],
-        n_jobs=config["n_jobs"],
-    )
-
-    ##### Add highly abundant k-mers to prohibited sequences #####
-    target_probe_prohibited_sequences = list(
-        set(
-            config["target_probe_prohibited_sequences"]
-            + get_highly_abundant_kmer_sequences(
-                files_fasta=config["files_fasta_target_probe_database"],
-                kmer_abundance_threshold=config["target_probe_kmer_abundance_threshold"],
-            )
-        )
+        write_intermediate_steps=config["general"]["write_intermediate_steps"],
+        dir_output=config["general"]["dir_output"],
+        n_jobs=config["general"]["n_jobs"],
     )
 
     ##### design probes #####
     oligo_database = pipeline.design_target_probes(
-        # Step 1: Create Database Parameters
-        region_ids=region_ids,
-        files_fasta_target_probe_database=config["files_fasta_target_probe_database"],
-        target_probe_length_min=config["target_probe_length_min"],
-        target_probe_length_max=config["target_probe_length_max"],
-        target_probe_split_region=config["target_probe_split_region"],
-        target_probe_isoform_consensus=config["target_probe_isoform_consensus"],
-        # Step 2: Property Filter Parameters
-        target_probe_GC_content_min=config["target_probe_GC_content_min"],
-        target_probe_GC_content_max=config["target_probe_GC_content_max"],
-        target_probe_Tm_min=config["target_probe_Tm_min"],
-        target_probe_Tm_max=config["target_probe_Tm_max"],
-        target_probe_secondary_structures_T=config["target_probe_secondary_structures_T"],
-        target_probe_secondary_structures_threshold_deltaG=config[
-            "target_probe_secondary_structures_threshold_deltaG"
-        ],
-        target_probe_homopolymeric_base_n=config["target_probe_homopolymeric_base_n"],
-        target_probe_prohibited_sequences=target_probe_prohibited_sequences,
-        target_probe_max_len_selfcomplement=config["target_probe_max_len_selfcomplement"],
-        target_probe_Tm_parameters=preprocess_tm_parameters(config["target_probe_Tm_parameters"]),
-        target_probe_Tm_chem_correction_parameters=config["target_probe_Tm_chem_correction_parameters"],
-        target_probe_Tm_salt_correction_parameters=config["target_probe_Tm_salt_correction_parameters"],
-        # Step 3: Specificity Filter Parameters
-        files_fasta_reference_database_target_probe=config["files_fasta_reference_database_target_probe"],
-        files_vcf_reference_database_target_probe=config["files_vcf_reference_database_target_probe"],
-        target_probe_cross_hybridization_alignment_method=config[
-            "target_probe_cross_hybridization_alignment_method"
-        ],
-        target_probe_cross_hybridization_search_parameters=config[
-            "target_probe_cross_hybridization_search_parameters"
-        ],
-        target_probe_cross_hybridization_hit_parameters=config[
-            "target_probe_cross_hybridization_hit_parameters"
-        ],
-        target_probe_hybridization_probability_alignment_method=config[
-            "target_probe_hybridization_probability_alignment_method"
-        ],
-        target_probe_hybridization_probability_search_parameters=config[
-            "target_probe_hybridization_probability_search_parameters"
-        ],
-        target_probe_hybridization_probability_hit_parameters=config[
-            "target_probe_hybridization_probability_hit_parameters"
-        ],
-        target_probe_hybridization_probability_threshold=config[
-            "target_probe_hybridization_probability_threshold"
-        ],
-        target_probe_read_length_bias=config["target_probe_read_length_bias"],
-        # Step 4: Probe Scoring and Set Selection Parameters
-        target_probe_targeted_exons=config["target_probe_targeted_exons"],
-        target_probe_targeted_exons_weight=config["target_probe_targeted_exons_weight"],
-        target_probe_isoform_weight=config["target_probe_isoform_weight"],
-        target_probe_GC_content_opt=config["target_probe_GC_content_opt"],
-        target_probe_GC_weight=config["target_probe_GC_weight"],
-        target_probe_Tm_opt=config["target_probe_Tm_opt"],
-        target_probe_Tm_weight=config["target_probe_Tm_weight"],
-        n_sets=config["n_sets"],
-        set_size_min=config["set_size_min"],
-        set_size_opt=config["set_size_opt"],
-        distance_between_target_probes=config["distance_between_target_probes"],
-        uniform_distance_weight=config["uniform_distance_weight"],
-        n_attempts_graph=config["n_attempts_graph"],
-        n_attempts_clique_enum=config["n_attempts_clique_enum"],
-        diversification_fraction=config["diversification_fraction"],
-        jaccard_opt=config["jaccard_opt"],
-        jaccard_step=config["jaccard_step"],
+        oligo_generation_parameters=config["target_probe"]["oligo_generation"],
+        property_filters_parameters=config["target_probe"]["property_filters"],
+        specificity_filters_parameters=config["target_probe"]["specificity_filters"],
+        probe_set_selection_parameters=config["target_probe"]["probe_set_selection"],
+        global_parameters=config["target_probe"]["global"],
     )
 
     pipeline.generate_output(oligo_database=oligo_database)
