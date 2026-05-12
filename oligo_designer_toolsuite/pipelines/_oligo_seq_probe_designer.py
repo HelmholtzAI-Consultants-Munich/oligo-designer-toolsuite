@@ -211,6 +211,7 @@ class OligoSeqProbeDesigner:
 
         # Add highly abundant k-mers to prohibited sequences
         if property_filters_parameters["prohibited_sequences_filter"]["enabled"]:
+            prohibited_sequences = []
             if property_filters_parameters["prohibited_sequences_filter"]["kmer_abundance_threshold"]:
                 prohibited_sequences = get_highly_abundant_kmer_sequences(
                     files_fasta=oligo_generation_parameters["files_fasta_probe_database"],
@@ -366,7 +367,7 @@ class OligoSeqProbeDesigner:
                 "length_oligo",
                 "GC_content_oligo",
                 "TmNN_oligo",
-                "SNP_filter",
+                "variants_filter",
                 "isoform_consensus",
                 "length_selfcomplement_oligo",
             ]
@@ -865,7 +866,7 @@ class TargetProbeDesigner:
             directories.append(specificity.dir_output)
 
         if variant_filter["enabled"]:
-            remove_hits = variant_filter["action"] == "remove"
+            remove_hits = variant_filter["action"] == "filter"
             reference_database_variants = ReferenceDatabase(
                 database_name=f"{self.subdir_db_reference}_variants", dir_output=self.dir_output
             )
