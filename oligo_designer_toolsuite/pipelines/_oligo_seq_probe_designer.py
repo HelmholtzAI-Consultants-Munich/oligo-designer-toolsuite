@@ -1058,7 +1058,7 @@ def _load_config(config_file: str) -> dict[str, Any]:
     file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         warnings.warn(
-            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
         config["target_probe"]["oligo_generation"]["region_ids"] = None
     else:
