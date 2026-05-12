@@ -40,6 +40,23 @@ IsoformConsensusFilterConfig = Annotated[
 ]
 
 
+class TargetedExonsFilterDisabled(FilterBaseConfig):
+    enabled: Literal[False]
+
+
+class TargetedExonsFilterEnabled(FilterBaseConfig):
+    enabled: Literal[True]
+    targeted_exons: list[str] = Field(
+        description="List of exon identifiers that should be preferentially targeted by probes. Only probes in these exons are kept.",
+        default=["1", "2", "3"],
+    )
+
+
+TargetedExonsFilterConfig = Annotated[
+    Union[TargetedExonsFilterEnabled, TargetedExonsFilterDisabled], Field(discriminator="enabled")
+]
+
+
 class HardMaskedFilterConfig(FilterBaseConfig):
     enabled: bool
 
@@ -124,19 +141,17 @@ SelfComplementarityFilterConfig = Annotated[
 ]
 
 
-class MeltingTemperatureFilterDisabled(FilterBaseConfig):
+class TmFilterDisabled(FilterBaseConfig):
     enabled: Literal[False]
 
 
-class MeltingTemperatureFilterEnabled(FilterBaseConfig):
+class TmFilterEnabled(FilterBaseConfig):
     enabled: Literal[True]
     Tm_min: TmMinT
     Tm_max: TmMaxT
 
 
-MeltingTemperatureFilterConfig = Annotated[
-    Union[MeltingTemperatureFilterEnabled, MeltingTemperatureFilterDisabled], Field(discriminator="enabled")
-]
+TmFilterConfig = Annotated[Union[TmFilterEnabled, TmFilterDisabled], Field(discriminator="enabled")]
 
 
 class SecondaryStructureFilterDisabled(FilterBaseConfig):

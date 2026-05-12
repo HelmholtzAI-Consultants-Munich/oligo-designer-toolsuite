@@ -27,7 +27,7 @@ LengthMaxT = Annotated[
 GCContentMinT = Annotated[
     float,
     Field(
-        description="Minimum GC content (as a fraction between 0.0 and 1.0) for probes. Probes with GC content below this value will be filtered out.",
+        description="Minimum GC content (as a fraction between 0.0 and 1.0) for probes. Probes with GC content below this value will be filtered out/rejected.",
         ge=0,
         le=100,
     ),
@@ -35,7 +35,7 @@ GCContentMinT = Annotated[
 GCContentMaxT = Annotated[
     float,
     Field(
-        description="Maximum GC content (as a fraction between 0.0 and 1.0) for probes. Probes with GC content above this value will be filtered out.",
+        description="Maximum GC content (as a fraction between 0.0 and 1.0) for probes. Probes with GC content above this value will be filtered out/rejected.",
         ge=0,
         le=100,
     ),

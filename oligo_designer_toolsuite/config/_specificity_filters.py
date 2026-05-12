@@ -29,11 +29,11 @@ ReadLengthBiasFilterConfig = Annotated[
 ]
 
 
-class CrossHybridizationFilterDisabled(FilterBaseConfig):
+class CrossHybridizationBlastnFilterDisabled(FilterBaseConfig):
     enabled: Literal[False]
 
 
-class CrossHybridizationFilterEnabled(FilterBaseConfig):
+class CrossHybridizationBlastnFilterEnabled(FilterBaseConfig):
     enabled: Literal[True]
     search_parameters: Annotated[
         BlastnSearchParameters,
@@ -47,8 +47,9 @@ class CrossHybridizationFilterEnabled(FilterBaseConfig):
     ]
 
 
-CrossHybridizationFilterConfig = Annotated[
-    Union[CrossHybridizationFilterEnabled, CrossHybridizationFilterDisabled], Field(discriminator="enabled")
+CrossHybridizationBlastnFilterConfig = Annotated[
+    Union[CrossHybridizationBlastnFilterEnabled, CrossHybridizationBlastnFilterDisabled],
+    Field(discriminator="enabled"),
 ]
 
 
@@ -89,6 +90,10 @@ class VariantFilterEnabled(FilterBaseConfig):
         Field(
             description="List of paths to VCF files containing variant information used for filtering probes that overlap with known single nucleotide polymorphisms (SNPs) or other variants. Probes overlapping variants may have reduced specificity.",
         ),
+    ]
+    action: Annotated[
+        Literal["flag", "filter"],
+        Field(description="Action for variant-overlapping oligos: 'flag' (mark only) or 'filter' (exclude)."),
     ]
 
 
