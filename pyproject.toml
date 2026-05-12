@@ -5,9 +5,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["oligo_designer_toolsuite"]
 
-[tool.setuptools.dynamic]
-readme = { file = "README.md" }
-
 [tool.setuptools_scm]
 write_to = "oligo_designer_toolsuite/_version.py"
 local_scheme = "no-local-version"
@@ -16,7 +13,7 @@ local_scheme = "no-local-version"
 name = "oligo-designer-toolsuite"
 dynamic = ["version"]
 description = "Oligo Designer Toolsuite: lightweight development of custom oligo design pipelines"
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10,<3.13"
 license = { file = "LICENSE" }
 authors = [
