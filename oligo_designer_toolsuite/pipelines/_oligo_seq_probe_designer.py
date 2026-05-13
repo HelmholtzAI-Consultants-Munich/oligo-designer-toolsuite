@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
+from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
@@ -1094,7 +1096,15 @@ def main() -> None:
     args = base_parser()
 
     ##### read the config file #####
-    config = _load_config(args["config"])
+    with open(args["config"], "r") as handle:
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config_validated = OligoSeqProbeDesignerConfig.model_validate(config_raw)
+        config = config_validated.model_dump()
+    except ValidationError as e:
+        logging.error("Invalid configuration file:\n%s", e)
+        raise
 
     ##### initialize probe designer pipeline #####
     pipeline = OligoSeqProbeDesigner(
