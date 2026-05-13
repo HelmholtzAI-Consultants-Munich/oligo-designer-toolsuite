@@ -67,7 +67,7 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           activate-environment: test-env
-          channels: conda-forge, bioconda, defaults
+          channels: conda-forge, bioconda
           channel-priority: strict
           use-mamba: true
 
