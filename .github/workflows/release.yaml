@@ -10,11 +10,9 @@ jobs:
      uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_ubuntu_x64.yaml@main
    test_macos_arm64:
     uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/test_macos_arm64.yaml@main
-   coverage:
-    uses: HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/.github/workflows/coverage.yaml@main
 
    publish:
-    needs: [test_ubuntu_x64, test_macos_arm64, coverage]
+    needs: [test_ubuntu_x64, test_macos_arm64]
     name: Publish to PyPI
     runs-on: ubuntu-latest
 

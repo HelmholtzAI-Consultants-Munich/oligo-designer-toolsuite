@@ -1,8 +1,11 @@
 name: Coverage
 
 on:
+  push:
+    branches: [main]
+    paths-ignore: ['.gitignore', '.pre-commit-config.yaml', '.readthedocs.yaml', 'CONTRIBUTION.md', 'LICENSE', 'MANIFEST.in', 'README.md', 'data/**', 'docs/**', 'tutorials/**']
+
   workflow_dispatch:
-  workflow_call:
 
 jobs:
   coverage:
