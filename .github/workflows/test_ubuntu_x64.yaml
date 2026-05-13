@@ -107,3 +107,23 @@ jobs:
           conda activate test-env
 
           pytest --disable-warnings -k "not FTPLoader"
+
+# NOTE:
+# We currently exclude FTP/network-dependent tests via `-k` name filtering
+# because the FTPLoader tests are slower and can be flaky in CI due to
+# external server/network variability.
+#
+# In the future, this should be migrated to proper pytest markers, e.g.:
+#
+#   @pytest.mark.network
+#   @pytest.mark.slow
+#
+# which would allow cleaner and more scalable CI selection:
+#
+#   pytest -m "not network"
+#
+# instead of relying on substring matching via `-k`.
+#
+# Marker-based test selection is the recommended pytest approach for
+# categorizing slow, integration, or network-dependent tests and scales
+# much better as the test suite grows. :contentReference[oaicite:0]{index=0}
