@@ -64,8 +64,7 @@ class IsoformConsensusScore(ScoreBaseConfig):
 
 class TargetedExonsScore(ScoreBaseConfig):
     targeted_exons: list[str] = Field(
-        description="List of exon identifiers that should be preferentially targeted by probes. Probes overlapping these exons receive higher scores.",
-        default=["1", "2", "3"],
+        description="List of exon identifiers that should be preferentially targeted by probes, e.g. ['1', '2', '3']. Probes overlapping these exons receive higher scores."
     )
 
 
