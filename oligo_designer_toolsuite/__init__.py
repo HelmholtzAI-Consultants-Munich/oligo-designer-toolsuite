@@ -2,6 +2,7 @@
 This module serves as an initializer for the package, aggregating various submodules related to genomic data processing and oligo sequence management.
 
 Submodules:
+- config: Provides pydantic models to check the configuration files for pipelines.
 - database: Contains utilities for handling and processing oligo and reference databases.
 - oligo_efficiency_filter: Provides functions for filtering oligos based on efficiency criteria.
 - oligo_property_filter: Provides functions for filtering oligos based on sequence properties.
@@ -13,6 +14,7 @@ Submodules:
 """
 
 from . import (
+    config,
     database,
     oligo_efficiency_filter,
     oligo_property_filter,
@@ -24,6 +26,7 @@ from . import (
 )
 
 __all__ = [
+    "config",
     "database",
     "oligo_efficiency_filter",
     "oligo_property_filter",
