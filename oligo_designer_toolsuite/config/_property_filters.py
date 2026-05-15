@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 
@@ -15,16 +15,21 @@ from oligo_designer_toolsuite.config._types import (
 )
 
 
-class FilterBaseConfig(BaseModel):
+class FilterBaseConfigEnabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    enabled: Literal[True]
 
 
-class IsoformConsensusFilterDisabled(FilterBaseConfig):
+class FilterBaseConfigDisabled(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     enabled: Literal[False]
 
 
-class IsoformConsensusFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class IsoformConsensusFilterDisabled(FilterBaseConfigDisabled):
+    pass
+
+
+class IsoformConsensusFilterEnabled(FilterBaseConfigEnabled):
     isoform_consensus: Annotated[
         float,
         Field(
@@ -36,16 +41,15 @@ class IsoformConsensusFilterEnabled(FilterBaseConfig):
 
 
 IsoformConsensusFilterConfig = Annotated[
-    Union[IsoformConsensusFilterEnabled, IsoformConsensusFilterDisabled], Field(discriminator="enabled")
+    IsoformConsensusFilterEnabled | IsoformConsensusFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class TargetedExonsFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class TargetedExonsFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class TargetedExonsFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class TargetedExonsFilterEnabled(FilterBaseConfigEnabled):
     targeted_exons: list[str] = Field(
         description="List of exon identifiers that should be preferentially targeted by probes. Only probes in these exons are kept.",
         default=["1", "2", "3"],
@@ -53,24 +57,25 @@ class TargetedExonsFilterEnabled(FilterBaseConfig):
 
 
 TargetedExonsFilterConfig = Annotated[
-    Union[TargetedExonsFilterEnabled, TargetedExonsFilterDisabled], Field(discriminator="enabled")
+    TargetedExonsFilterEnabled | TargetedExonsFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class HardMaskedFilterConfig(FilterBaseConfig):
+class HardMaskedFilterConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     enabled: bool
 
 
-class SoftMaskedFilterConfig(FilterBaseConfig):
+class SoftMaskedFilterConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     enabled: bool
 
 
-class HomopolymericRunsFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class HomopolymericRunsFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class HomopolymericRunsFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class HomopolymericRunsFilterEnabled(FilterBaseConfigEnabled):
     homopolymeric_base_n: Annotated[
         HomopolymerThresholds,
         Field(description="minimum number of nucleotides to consider it a homopolymeric run per base"),
@@ -78,31 +83,29 @@ class HomopolymericRunsFilterEnabled(FilterBaseConfig):
 
 
 HomopolymericRunsFilterConfig = Annotated[
-    Union[HomopolymericRunsFilterEnabled, HomopolymericRunsFilterDisabled], Field(discriminator="enabled")
+    HomopolymericRunsFilterEnabled | HomopolymericRunsFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class GCContentFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class GCContentFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class GCContentFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class GCContentFilterEnabled(FilterBaseConfigEnabled):
     GC_content_min: GCContentMinT
     GC_content_max: GCContentMaxT
 
 
 GCContentFilterConfig = Annotated[
-    Union[GCContentFilterEnabled, GCContentFilterDisabled], Field(discriminator="enabled")
+    GCContentFilterEnabled | GCContentFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class ProhibitedSequencesFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class ProhibitedSequencesFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class ProhibitedSequencesFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class ProhibitedSequencesFilterEnabled(FilterBaseConfigEnabled):
     prohibited_sequences: Annotated[
         list[DNAT],
         Field(
@@ -118,16 +121,15 @@ class ProhibitedSequencesFilterEnabled(FilterBaseConfig):
 
 
 ProhibitedSequencesFilterConfig = Annotated[
-    Union[ProhibitedSequencesFilterEnabled, ProhibitedSequencesFilterDisabled], Field(discriminator="enabled")
+    ProhibitedSequencesFilterEnabled | ProhibitedSequencesFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class SelfComplementarityFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class SelfComplementarityFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class SelfComplementarityFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class SelfComplementarityFilterEnabled(FilterBaseConfigEnabled):
     max_len_selfcomplement: Annotated[
         NonNegativeInt,
         Field(
@@ -137,33 +139,31 @@ class SelfComplementarityFilterEnabled(FilterBaseConfig):
 
 
 SelfComplementarityFilterConfig = Annotated[
-    Union[SelfComplementarityFilterEnabled, SelfComplementarityFilterDisabled], Field(discriminator="enabled")
+    SelfComplementarityFilterEnabled | SelfComplementarityFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class TmFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class TmFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class TmFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class TmFilterEnabled(FilterBaseConfigEnabled):
     Tm_min: TmMinT
     Tm_max: TmMaxT
 
 
-TmFilterConfig = Annotated[Union[TmFilterEnabled, TmFilterDisabled], Field(discriminator="enabled")]
+TmFilterConfig = Annotated[TmFilterEnabled | TmFilterDisabled, Field(discriminator="enabled")]
 
 
-class SecondaryStructureFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class SecondaryStructureFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class SecondaryStructureFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class SecondaryStructureFilterEnabled(FilterBaseConfigEnabled):
     T: TSecondaryStructureT
     thr_DG: SecondaryStructuresThresholdDeltaGT
 
 
 SecondaryStructureFilterConfig = Annotated[
-    Union[SecondaryStructureFilterEnabled, SecondaryStructureFilterDisabled], Field(discriminator="enabled")
+    SecondaryStructureFilterEnabled | SecondaryStructureFilterDisabled, Field(discriminator="enabled")
 ]

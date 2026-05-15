@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
@@ -6,16 +6,21 @@ from oligo_designer_toolsuite.config._general_models import BlastnHitParameters,
 from oligo_designer_toolsuite.config._types import FilesFastaReferenceDatabaseT
 
 
-class FilterBaseConfig(BaseModel):
+class FilterBaseConfigEnabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    enabled: Literal[True]
 
 
-class ReadLengthBiasFilterDisabled(FilterBaseConfig):
+class FilterBaseConfigDisabled(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     enabled: Literal[False]
 
 
-class ReadLengthBiasFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class ReadLengthBiasFilterDisabled(FilterBaseConfigDisabled):
+    pass
+
+
+class ReadLengthBiasFilterEnabled(FilterBaseConfigEnabled):
     read_length_bias: Annotated[
         NonNegativeInt,
         Field(
@@ -25,16 +30,15 @@ class ReadLengthBiasFilterEnabled(FilterBaseConfig):
 
 
 ReadLengthBiasFilterConfig = Annotated[
-    Union[ReadLengthBiasFilterEnabled, ReadLengthBiasFilterDisabled], Field(discriminator="enabled")
+    ReadLengthBiasFilterEnabled | ReadLengthBiasFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class CrossHybridizationBlastnFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class CrossHybridizationBlastnFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class CrossHybridizationBlastnFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class CrossHybridizationBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(description="Parameters for BLASTN searches used in cross-hybridization filtering."),
@@ -48,17 +52,16 @@ class CrossHybridizationBlastnFilterEnabled(FilterBaseConfig):
 
 
 CrossHybridizationBlastnFilterConfig = Annotated[
-    Union[CrossHybridizationBlastnFilterEnabled, CrossHybridizationBlastnFilterDisabled],
+    CrossHybridizationBlastnFilterEnabled | CrossHybridizationBlastnFilterDisabled,
     Field(discriminator="enabled"),
 ]
 
 
-class SpecificityBlastnFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class SpecificityBlastnFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class SpecificityBlastnFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class SpecificityBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
@@ -75,16 +78,15 @@ class SpecificityBlastnFilterEnabled(FilterBaseConfig):
 
 
 SpecificityBlastnFilterConfig = Annotated[
-    Union[SpecificityBlastnFilterEnabled, SpecificityBlastnFilterDisabled], Field(discriminator="enabled")
+    SpecificityBlastnFilterEnabled | SpecificityBlastnFilterDisabled, Field(discriminator="enabled")
 ]
 
 
-class VariantFilterDisabled(FilterBaseConfig):
-    enabled: Literal[False]
+class VariantFilterDisabled(FilterBaseConfigDisabled):
+    pass
 
 
-class VariantFilterEnabled(FilterBaseConfig):
-    enabled: Literal[True]
+class VariantFilterEnabled(FilterBaseConfigEnabled):
     files_vcf_reference_database: Annotated[
         list[str],
         Field(
@@ -97,6 +99,4 @@ class VariantFilterEnabled(FilterBaseConfig):
     ]
 
 
-VariantFilterConfig = Annotated[
-    Union[VariantFilterEnabled, VariantFilterDisabled], Field(discriminator="enabled")
-]
+VariantFilterConfig = Annotated[VariantFilterEnabled | VariantFilterDisabled, Field(discriminator="enabled")]

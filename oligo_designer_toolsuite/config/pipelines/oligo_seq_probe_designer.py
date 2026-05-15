@@ -6,11 +6,9 @@ from oligo_designer_toolsuite.config._general_models import (
     General,
     HomopolymerThresholds,
     TmChemCorrectionParameters,
-    TmChemCorrectionParametersCustom,
     TmChemCorrectionParametersDetails,
+    TmChemCorrectionParametersEnabled,
     TmParameters,
-    TmParametersCustom,
-    TmParametersDetails,
     TmSaltCorrectionParameters,
     TmSaltCorrectionParametersDisabled,
 )
@@ -161,33 +159,30 @@ class TargetProbeProbeSetSelection(BaseModel):
     Tm_score: TmScore = TmScore(weight=1, Tm_min=50, Tm_opt=60, Tm_max=70)
 
 
-class TargetProbeGeneral(BaseModel):
+class TargetProbeGlobal(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters = TmParametersCustom(
-        mode="custom",
-        parameters=TmParametersDetails(
-            nn_table="DNA_NN3",
-            imm_table="DNA_IMM1",
-            de_table="DNA_DE1",
-            dnac1=50,
-            dnac2=0,
-            saltcorr=7,
-            Na=1000,
-            K=0,
-            Tris=0,
-            Mg=0,
-            dNTPs=0,
-        ),
+    Tm_parameters: TmParameters = TmParameters(
+        nn_table="DNA_NN3",
+        imm_table="DNA_IMM1",
+        de_table="DNA_DE1",
+        dnac1=50,
+        dnac2=0,
+        saltcorr=7,
+        Na=1000,
+        K=0,
+        Tris=0,
+        Mg=0,
+        dNTPs=0,
     )
-    Tm_chem_correction_parameters: TmChemCorrectionParameters = TmChemCorrectionParametersCustom(
-        mode="custom",
+    Tm_chem_correction_parameters: TmChemCorrectionParameters = TmChemCorrectionParametersEnabled(
+        enabled=True,
         parameters=TmChemCorrectionParametersDetails(
             DMSO=0, DMSOfactor=0.75, fmd=20, fmdfactor=0.65, fmdmethod=1, GC=None
         ),
     )
     Tm_salt_correction_parameters: TmSaltCorrectionParameters = TmSaltCorrectionParametersDisabled(
-        mode="disabled"
+        enabled=False
     )
 
 
@@ -198,7 +193,7 @@ class TargetProbe(BaseModel):
     property_filters: TargetProbePropertyFilter = TargetProbePropertyFilter()
     specificity_filters: TargetProbeSpecificityFilter = TargetProbeSpecificityFilter()
     probe_set_selection: TargetProbeProbeSetSelection = TargetProbeProbeSetSelection()
-    general: TargetProbeGeneral = TargetProbeGeneral()
+    global_parameters: TargetProbeGlobal = TargetProbeGlobal()
 
 
 class OligoSeqProbeDesignerConfig(BaseModel):

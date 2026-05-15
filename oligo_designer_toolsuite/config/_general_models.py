@@ -8,6 +8,7 @@ from pydantic import (
     NonNegativeInt,
     NonPositiveInt,
     PositiveInt,
+    model_serializer,
     model_validator,
 )
 from typing_extensions import Self
@@ -315,6 +316,14 @@ class BlastnSearchParameters(BaseModel):
     # mt_mode
     # remote
 
+    @model_serializer
+    def serialize(self) -> dict:
+        return {
+            self.__class__.model_fields[name].serialization_alias or name: value
+            for name, value in self.__dict__.items()
+            if value is not None
+        }
+
 
 class BlastnHitParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -337,28 +346,24 @@ class BlastnHitParameters(BaseModel):
         return self
 
 
-class TmParametersDetails(BaseModel):
+class TmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # set default to None so that not all parameters need to be specified. When the parameters are passed
-    # to the io.SeqUtils.MeltingTemp.Tm_NN function, the model dump excluded parameters that are set to None
-    check: bool | None = Field(
-        default=None, description="Checks if the sequence is valid for the given method."
-    )
-    strict: bool | None = Field(
-        default=None,
+    check: bool = Field(default=True, description="Checks if the sequence is valid for the given method.")
+    strict: bool = Field(
+        default=True,
         description="Do not allow base characters or neighbor duplex keys (e.g. 'AT/NA') that could not or not unambiguously be evaluated for the respective method.",
     )
     c_seq: str | None = Field(
         default=None,
         description="Complementary sequence. The sequence of the template/target in 3'->5' direction. c_seq is necessary for mismatch correction and dangling-ends correction. Both corrections will automatically be applied if mismatches or dangling ends are present.",
     )
-    shift: int | None = Field(
-        default=None,
+    shift: int = Field(
+        default=0,
         description="Shift of the primer/probe sequence on the template/target sequence. The shift parameter is necessary to align seq and c_seq if they have different lengths or if they should have dangling ends.",
     )
-    selfcomp: bool | None = Field(
-        default=None,
+    selfcomp: bool = Field(
+        default=False,
         description="Is the sequence self-complementary? If 'True' the primer is thought binding to itself, thus dnac2 is not considered.",
     )
     nn_table: Literal["DNA_NN1", "DNA_NN2", "DNA_NN3", "DNA_NN4"] | None = Field(
@@ -374,70 +379,37 @@ class TmParametersDetails(BaseModel):
     de_table: Literal["DNA_DE1"] | None = Field(
         default=None, description="Thermodynamic values for dangling ends."
     )
-    dnac1: NonNegativeInt | None = Field(
-        default=None, description="Concentration of the higher concentrated strand [nM]."
+    dnac1: NonNegativeInt = Field(
+        default=25, description="Concentration of the higher concentrated strand [nM]."
     )
-    dnac2: NonNegativeInt | None = Field(
-        default=None, description="Concentration of the lower concentrated strand [nM]."
+    dnac2: NonNegativeInt = Field(
+        default=25, description="Concentration of the lower concentrated strand [nM]."
     )
-    saltcorr: NonNegativeInt | None = Field(
-        default=None,
+    saltcorr: NonNegativeInt = Field(
+        default=5,
         ge=0,
         le=7,
         description="Salt correction method, see Bio.SeqUtils.MeltingTemp.salt_correction.",
     )
-    Na: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
-    K: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
-    Tris: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
-    Mg: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
-    dNTPs: NonNegativeInt | None = Field(default=None, description="Concentration of the ions [mM].")
-
-    @model_validator(mode="after")
-    def _at_least_one_parameter_provided(self) -> Self:
-        data = self.model_dump()
-        if all(value is None for value in data.values()):
-            raise ValueError("At least one parameter must be provided.")
-        return self
-
-
-class TmParametersBiopythonDefaults(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["biopython_defaults"] = Field(
-        default="biopython_defaults",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.Tm_NN) be used or custom parameters?",
-    )
-
-
-class TmParametersCustom(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["custom"] = Field(
-        default="custom",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.Tm_NN) be used or custom parameters?",
-    )
-    parameters: TmParametersDetails = Field(
-        description="Required when mode='custom'. Must be omitted otherwise."
-    )
-
-
-TmParameters = Annotated[TmParametersBiopythonDefaults | TmParametersCustom, Field(discriminator="mode")]
+    Na: NonNegativeInt = Field(default=50, description="Concentration of the ions [mM].")
+    K: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
+    Tris: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
+    Mg: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
+    dNTPs: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
 
 
 class TmChemCorrectionParametersDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # defaults are from Bio.SeqUtils.MeltingTemp.chem_correction
-    DMSO: float | None = Field(default=None, ge=0, le=100, description="Percent DMSO")
-    DMSOfactor: float | None = Field(default=None, description="How much Tm should decrease per percent DMSO")
-    fmd: float | None = Field(
-        default=None, description="Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2)."
+    DMSO: float = Field(default=0, ge=0, le=100, description="Percent DMSO")
+    DMSOfactor: float = Field(default=0.75, description="How much Tm should decrease per percent DMSO")
+    fmd: float = Field(
+        default=0, description="Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2)."
     )
-    fmdfactor: float | None = Field(
-        default=None, description="How much Tm should decrease per percent formamide"
-    )
-    fmdmethod: int | None = Field(
-        default=None,
+    fmdfactor: float = Field(default=0.65, description="How much Tm should decrease per percent formamide")
+    fmdmethod: int = Field(
+        default=1,
         ge=1,
         le=2,
         description="Tm = Tm - factor(%formamide) (Default); Tm = Tm + (0.453(f(GC)) - 2.88) x [formamide]",
@@ -468,100 +440,65 @@ class TmChemCorrectionParametersDetails(BaseModel):
         return self
 
 
+class TmChemCorrectionParametersEnabled(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: Literal[True] = Field(
+        description="Should chem correction be used in the calculation of the melting temperature?",
+        default=True,
+    )
+    parameters: TmChemCorrectionParametersDetails = TmChemCorrectionParametersDetails()
+
+
 class TmChemCorrectionParametersDisabled(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
-    mode: Literal["disabled"] = Field(
-        default="disabled",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
-    )
-
-
-class TmChemCorrectionParametersBiopythonDefaults(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["biopython_defaults"] = Field(
-        default="biopython_defaults",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
-    )
-
-
-class TmChemCorrectionParametersCustom(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["custom"] = Field(
-        default="custom",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.chem_correction) be used, custom parameters or chem correction be disabled?",
-    )
-    parameters: TmChemCorrectionParametersDetails = Field(
-        description="Required when mode='custom'. Must be omitted otherwise."
+    enabled: Literal[False] = Field(
+        description="Should chem correction be used in the calculation of the melting temperature?",
+        default=False,
     )
 
 
 TmChemCorrectionParameters = Annotated[
-    TmChemCorrectionParametersDisabled
-    | TmChemCorrectionParametersBiopythonDefaults
-    | TmChemCorrectionParametersCustom,
-    Field(discriminator="mode"),
+    TmChemCorrectionParametersEnabled | TmChemCorrectionParametersDisabled, Field(discriminator="enabled")
 ]
 
 
 class TmSaltCorrectionParametersDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Na: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
-    K: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
-    Tris: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
-    Mg: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
-    dNTPs: NonNegativeInt | None = Field(default=None, description="[mM] of ion")
-    method: PositiveInt | None = Field(
-        default=None,
+    Na: NonNegativeInt = Field(default=0, description="[mM] of ion")
+    K: NonNegativeInt = Field(default=0, description="[mM] of ion")
+    Tris: NonNegativeInt = Field(default=0, description="[mM] of ion")
+    Mg: NonNegativeInt = Field(default=0, description="[mM] of ion")
+    dNTPs: NonNegativeInt = Field(default=0, description="[mM] of ion")
+    method: PositiveInt = Field(
+        default=1,
         ge=1,
         le=7,
         description="Correction method to be applied. Methods 1-4 correct Tm, method 5 corrects deltaS, methods 6 and 7 correct 1/Tm.",
     )
 
-    @model_validator(mode="after")
-    def _at_least_one_parameter_provided(self) -> Self:
-        data = self.model_dump()
-        if all(value is None for value in data.values()):
-            raise ValueError("At least one parameter must be provided.")
-        return self
+
+class TmSaltCorrectionParametersEnabled(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: Literal[True] = Field(
+        description="Should salt correction be used in the calculation of the melting temperature?",
+        default=True,
+    )
+    parameters: TmSaltCorrectionParametersDetails = TmSaltCorrectionParametersDetails()
 
 
 class TmSaltCorrectionParametersDisabled(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
-    mode: Literal["disabled"] = Field(
-        default="disabled",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
-    )
-
-
-class TmSaltCorrectionParametersBiopythonDefaults(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["biopython_defaults"] = Field(
-        default="biopython_defaults",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
-    )
-
-
-class TmSaltCorrectionParametersCustom(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["custom"] = Field(
-        default="custom",
-        description="Should the defaults of the underlying BioPython function (Bio.SeqUtils.MeltingTemp.salt_correction) be used, custom parameters or salt correction be disabled?",
-    )
-    parameters: TmSaltCorrectionParametersDetails = Field(
-        description="Required when mode='custom'. Must be omitted otherwise."
+    enabled: Literal[False] = Field(
+        description="Should salt correction be used in the calculation of the melting temperature?",
+        default=False,
     )
 
 
 TmSaltCorrectionParameters = Annotated[
-    TmSaltCorrectionParametersDisabled
-    | TmSaltCorrectionParametersBiopythonDefaults
-    | TmSaltCorrectionParametersCustom,
-    Field(discriminator="mode"),
+    TmSaltCorrectionParametersEnabled | TmSaltCorrectionParametersDisabled, Field(discriminator="enabled")
 ]
