@@ -33,7 +33,7 @@ class IsoformConsensusFilterEnabled(FilterBaseConfigEnabled):
     isoform_consensus: Annotated[
         float,
         Field(
-            description="Threshold for isoform consensus filtering (typically between 0.0 and 1.0) in %. Probes with isoform consensus values below this threshold will be filtered out. This ensures that selected probes target sequences that are conserved across multiple transcript isoforms.",
+            description="Threshold for isoform consensus filtering in %. Probes with isoform consensus values below this threshold will be filtered out. This ensures that selected probes target sequences that are conserved across multiple transcript isoforms.",
             ge=0,
             le=100,
         ),
@@ -51,8 +51,7 @@ class TargetedExonsFilterDisabled(FilterBaseConfigDisabled):
 
 class TargetedExonsFilterEnabled(FilterBaseConfigEnabled):
     targeted_exons: list[str] = Field(
-        description="List of exon identifiers that should be preferentially targeted by probes. Only probes in these exons are kept.",
-        default=["1", "2", "3"],
+        description="List of exon identifiers that should be preferentially targeted by probes, e.g. ['1', '2', '3']. Only probes in these exons are kept.",
     )
 
 

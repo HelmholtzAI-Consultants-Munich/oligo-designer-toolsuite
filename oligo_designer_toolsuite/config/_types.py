@@ -2,23 +2,36 @@ from typing import Annotated
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveInt
 
+RegionListT = Annotated[
+    str | None,
+    Field(
+        description="File with a list the genes used to generate the probe sequences, leave empty if all the genes are used. For examples, see 'data/genes'."
+    ),
+]
 FastaFileListT = Annotated[list[str], Field(min_length=1)]
 FilesFastaDatabaseT = Annotated[
     FastaFileListT,
     Field(
-        description="List of paths to FASTA file(s) containing sequences from which probes will be generated. These files should contain genomic regions of interest (e.g., exons, exon-exon junctions). Hint: use the genomic_region_generator pipeline to create FASTA files of genomic regions of interest."
+        description="List of paths to FASTA file(s) containing sequences from which probes will be generated. These files should contain genomic regions of interest (e.g., exons, exon-exon junctions). Hint: use the genomic_region_generator pipeline to create FASTA files of genomic regions of interest. For examples, see 'data/genomic_regions'."
     ),
 ]
 
 FilesFastaReferenceDatabaseT = Annotated[
     FastaFileListT,
     Field(
-        description="List of paths to FASTA file(s) containing reference sequences against which specificity will be evaluated. These typically include the entire genome or transcriptome to identify off-target binding sites. Hint: use the genomic_region_generator pipeline to create FASTA files of genomic regions of interest."
+        description="List of paths to FASTA file(s) containing reference sequences against which specificity will be evaluated. These typically include the entire genome or transcriptome to identify off-target binding sites. Hint: use the genomic_region_generator pipeline to create FASTA files of genomic regions of interest. For examples, see 'data/genomic_regions'."
+    ),
+]
+
+VCFReferenceDatabaseT = Annotated[
+    list[str],
+    Field(
+        description="List of paths to VCF files containing variant information used for filtering probes that overlap with known single nucleotide polymorphisms (SNPs) or other variants. Probes overlapping variants may have reduced specificity.",
     ),
 ]
 
 LengthMinT = Annotated[
-    NonNegativeInt, Field(description="Minimum length (in nucleotides) for probe sequences.")
+    NonNegativeInt, Field(description="Minimum length (in nucleotides) for oligo sequences.")
 ]
 LengthMaxT = Annotated[
     NonNegativeInt, Field(description="Maximum length (in nucleotides) for probe sequences.")
@@ -27,7 +40,7 @@ LengthMaxT = Annotated[
 GCContentMinT = Annotated[
     float,
     Field(
-        description="Minimum GC content (as a fraction between 0.0 and 1.0) for probes. Probes with GC content below this value will be filtered out/rejected.",
+        description="Minimum GC content (in %) for probes. Probes with GC content below this value will be filtered out/rejected.",
         ge=0,
         le=100,
     ),
@@ -35,7 +48,7 @@ GCContentMinT = Annotated[
 GCContentMaxT = Annotated[
     float,
     Field(
-        description="Maximum GC content (as a fraction between 0.0 and 1.0) for probes. Probes with GC content above this value will be filtered out/rejected.",
+        description="Maximum GC content (in %) for probes. Probes with GC content above this value will be filtered out/rejected.",
         ge=0,
         le=100,
     ),
@@ -43,7 +56,7 @@ GCContentMaxT = Annotated[
 GCContentOptT = Annotated[
     float,
     Field(
-        description="Optimal GC content for target probes, expressed as a fraction between 0.0 and 1.0. Used in scoring to prioritize probes closer to this value.",
+        description="Optimal GC content (in %) for target probes. Used in scoring to prioritize probes closer to this value.",
         ge=0,
         le=100,
     ),

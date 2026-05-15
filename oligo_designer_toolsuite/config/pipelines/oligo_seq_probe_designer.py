@@ -54,16 +54,14 @@ from oligo_designer_toolsuite.config._types import (
     FilesFastaDatabaseT,
     LengthMaxT,
     LengthMinT,
+    RegionListT,
 )
 
 
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: str | None = Field(
-        description="file with a list the genes used to generate the probe sequences, leave empty if all the genes are used",
-        default="data/genes/custom_100.txt",
-    )
+    file_region_ids: RegionListT = "data/genes/custom_100.txt"
     files_fasta_probe_database: FilesFastaDatabaseT = FilesFastaDatabaseT(
         [
             "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna",

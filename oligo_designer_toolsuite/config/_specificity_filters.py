@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from oligo_designer_toolsuite.config._general_models import BlastnHitParameters, BlastnSearchParameters
-from oligo_designer_toolsuite.config._types import FilesFastaReferenceDatabaseT
+from oligo_designer_toolsuite.config._types import FilesFastaReferenceDatabaseT, VCFReferenceDatabaseT
 
 
 class FilterBaseConfigEnabled(BaseModel):
@@ -87,12 +87,7 @@ class VariantFilterDisabled(FilterBaseConfigDisabled):
 
 
 class VariantFilterEnabled(FilterBaseConfigEnabled):
-    files_vcf_reference_database: Annotated[
-        list[str],
-        Field(
-            description="List of paths to VCF files containing variant information used for filtering probes that overlap with known single nucleotide polymorphisms (SNPs) or other variants. Probes overlapping variants may have reduced specificity.",
-        ),
-    ]
+    files_vcf_reference_database: VCFReferenceDatabaseT
     action: Annotated[
         Literal["flag", "filter"],
         Field(description="Action for variant-overlapping oligos: 'flag' (mark only) or 'filter' (exclude)."),

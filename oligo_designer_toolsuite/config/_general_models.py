@@ -345,6 +345,14 @@ class BlastnHitParameters(BaseModel):
             raise ValueError("Exactly one of 'coverage' or 'min_alignment_length' must be set.")
         return self
 
+    @model_serializer
+    def serialize(self) -> dict:
+        return {
+            self.__class__.model_fields[name].serialization_alias or name: value
+            for name, value in self.__dict__.items()
+            if value is not None
+        }
+
 
 class TmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
