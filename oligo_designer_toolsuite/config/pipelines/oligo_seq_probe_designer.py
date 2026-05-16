@@ -150,7 +150,7 @@ class TargetProbeProbeSetSelection(BaseModel):
     )
     uniform_distance_score: UniformDistanceScore = UniformDistanceScore(weight=1)
     isoform_consensus_score: IsoformConsensusScore = IsoformConsensusScore(weight=1)
-    targeted_exons_score: TargetedExonsScore = TargetedExonsScore(weight=0, targeted_exons=["1", "2", "3"])
+    targeted_exons_score: TargetedExonsScore = TargetedExonsScore(weight=0, targeted_exons=[])
     GC_content_score: GCContentScore = GCContentScore(
         weight=1, GC_content_min=45, GC_content_opt=55, GC_content_max=65
     )

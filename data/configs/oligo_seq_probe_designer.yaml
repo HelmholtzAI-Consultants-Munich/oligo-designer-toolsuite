@@ -107,7 +107,7 @@ target_probe:
       weight: 1 # Weight for isoform coverage in the set-selection scoring function.
     targeted_exons_score:
       weight: 0 # Weight for targeted-exon coverage in the set-selection scoring function.
-      targeted_exons: ["1", "2", "3"] # Exon numbers to favour in set selection.
+      targeted_exons: [] # Exon numbers to favour in set selection.
     GC_content_score:
       weight: 1 # Weight for GC content in the set-selection scoring function.
       GC_content_min: 45 # Minimum GC content (%). Oligos below this are rejected.
