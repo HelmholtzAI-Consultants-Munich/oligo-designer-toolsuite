@@ -4,7 +4,7 @@ from oligo_designer_toolsuite.config._general_models import (
     BlastnHitParameters,
     BlastnSearchParameters,
     General,
-    HomopolymerThresholds,
+    HomopolymericRunThreshold,
     TmChemCorrectionParameters,
     TmChemCorrectionParametersDetails,
     TmChemCorrectionParametersEnabled,
@@ -86,7 +86,7 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymerThresholds(A=6, T=6, C=6, G=6)
+        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6)
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=45, GC_content_max=65

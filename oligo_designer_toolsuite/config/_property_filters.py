@@ -2,9 +2,9 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 
-from oligo_designer_toolsuite.config._general_models import HomopolymerThresholds
+from oligo_designer_toolsuite.config._general_models import HomopolymericRunThreshold
 from oligo_designer_toolsuite.config._types import (
-    DNAT,
+    DRNAT,
     FractionT,
     GCContentMaxT,
     GCContentMinT,
@@ -76,7 +76,7 @@ class HomopolymericRunsFilterDisabled(FilterBaseConfigDisabled):
 
 class HomopolymericRunsFilterEnabled(FilterBaseConfigEnabled):
     homopolymeric_base_n: Annotated[
-        HomopolymerThresholds,
+        HomopolymericRunThreshold,
         Field(description="minimum number of nucleotides to consider it a homopolymeric run per base"),
     ]
 
@@ -106,7 +106,7 @@ class ProhibitedSequencesFilterDisabled(FilterBaseConfigDisabled):
 
 class ProhibitedSequencesFilterEnabled(FilterBaseConfigEnabled):
     prohibited_sequences: Annotated[
-        list[DNAT],
+        list[DRNAT],
         Field(
             description="The sequences to prohibit in the oligos. If an oligo contains any of these sequences, it will be filtered out."
         ),

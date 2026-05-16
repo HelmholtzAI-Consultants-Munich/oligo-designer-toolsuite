@@ -62,7 +62,7 @@ GCContentOptT = Annotated[
     ),
 ]
 
-DNAT = Annotated[str, Field(pattern=r"^[ATGC]+$")]
+DRNAT = Annotated[str, Field(pattern=r"^[ATUGC]+$")]
 
 FractionT = Annotated[float, Field(ge=0, le=1)]
 

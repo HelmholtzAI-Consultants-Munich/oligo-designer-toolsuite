@@ -25,7 +25,7 @@ class General(BaseModel):
     )
 
 
-class HomopolymerThresholds(BaseModel):
+class HomopolymericRunThreshold(BaseModel):
     model_config = ConfigDict(extra="forbid")
     A: PositiveInt | None = None
     T: PositiveInt | None = None
