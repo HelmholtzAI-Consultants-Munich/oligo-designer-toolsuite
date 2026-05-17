@@ -61,13 +61,8 @@ from oligo_designer_toolsuite.config._types import (
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: RegionListT = "data/genes/custom_100.txt"
-    files_fasta_probe_database: FilesFastaDatabaseT = FilesFastaDatabaseT(
-        [
-            "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna",
-            "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna",
-        ]
-    )
+    file_region_ids: RegionListT
+    files_fasta_probe_database: FilesFastaDatabaseT
     probe_length_min: LengthMinT = 26
     probe_length_max: LengthMaxT = 30
     probe_split_region: PositiveInt = Field(
@@ -118,19 +113,18 @@ class TargetProbeSpecificityFilter(BaseModel):
             hit_parameters=BlastnHitParameters(coverage=50),
         )
     )
-    specificity_blastn_filter: SpecificityBlastnFilterConfig = SpecificityBlastnFilterEnabled(
-        enabled=True,
-        search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
-        hit_parameters=BlastnHitParameters(coverage=50),
-        files_fasta_reference_database=[
-            "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna",
-            "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna",
-        ],
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default_factory=lambda: SpecificityBlastnFilterEnabled.model_construct(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
+            hit_parameters=BlastnHitParameters(coverage=50),
+        )
     )
-    variant_filter: VariantFilterConfig = VariantFilterEnabled(
-        enabled=True,
-        files_vcf_reference_database=["data/annotations/custom_GCF_000001405.40.chr16.vcf"],
-        action="flag",
+    variant_filter: VariantFilterConfig = Field(
+        default_factory=lambda: VariantFilterEnabled.model_construct(
+            enabled=True,
+            action="flag",
+        )
     )
 
 
@@ -187,11 +181,11 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbe(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration = TargetProbeOligoGeneration()
-    property_filters: TargetProbePropertyFilter = TargetProbePropertyFilter()
-    specificity_filters: TargetProbeSpecificityFilter = TargetProbeSpecificityFilter()
-    probe_set_selection: TargetProbeProbeSetSelection = TargetProbeProbeSetSelection()
-    global_parameters: TargetProbeGlobal = TargetProbeGlobal()
+    oligo_generation: TargetProbeOligoGeneration
+    property_filters: TargetProbePropertyFilter
+    specificity_filters: TargetProbeSpecificityFilter
+    probe_set_selection: TargetProbeProbeSetSelection
+    global_parameters: TargetProbeGlobal
 
 
 class OligoSeqProbeDesignerConfig(BaseModel):
@@ -203,4 +197,4 @@ class OligoSeqProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
-    target_probe: TargetProbe = TargetProbe()
+    target_probe: TargetProbe

@@ -1,0 +1,109 @@
+schema_version: 2
+general:
+  n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
+  dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
+  write_intermediate_steps: true # if true, saves intermediate results after each step
+
+target_probe:
+  oligo_generation:
+    file_regions: data/genes/custom_100.txt # file with a list the genes used to generate the oligos sequences, leave empty if all the genes are used
+    files_fasta_probe_database: # fasta file with sequences form which the oligos should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+    probe_length_min: 26 #min length of oligos
+    probe_length_max: 30 #max length of oligos
+    probe_split_region: 4 #Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.
+  property_filters:
+    isoform_consensus_filter:
+      enabled: true
+      isoform_consensus: 0 #min isoform consesnsus for oligos, i.e. how many transcripts of the total number of transcripts of a gene are covered by the oligo, given in %
+    hard_masked_sequences_filter:
+      enabled: true
+    soft_masked_sequences_filter:
+      enabled: true
+    homopolymeric_runs_filter:
+      enabled: true
+      homopolymeric_base_n: {"A": 6, "T": 6, "C": 6, "G": 6} # minimum number of nucleotides to consider it a homopolymeric run per base
+    GC_content_filter:
+      enabled: true
+      GC_content_min: 45 # minimum GC content of oligos
+      GC_content_max: 65 # maximum GC content of oligos
+    prohibited_sequences_filter:
+      enabled: true
+      prohibited_sequences: ["TCT", "CTC"] # The sequences to prohibit in the oligos. If an oligo contains any of these sequences, it will be filtered out.
+      kmer_abundance_threshold: {3: 0.0469, 4: 0.0117, 5: 0.0029, 6: 0.00073} # Leave empty if you do not want to filter for k-mer abundance.The maximum abundance of a k-mer allowed. If a k-mer has an abundance greater than this threshold, all oligos containing this k-mer will be filtered out. This is a dictionary with the k-mer length as the key and the threshold as the value.
+    self_complementarity_filter:
+      enabled: true
+      max_len_selfcomplement: 10 # The maximum length of self-complementary sequence allowed to avoid homodimer formation.
+    melting_temperature_filter:
+      enabled: true
+      Tm_min: 50 # minimum melting temperature of oligos
+      Tm_max: 70 # maximum melting temperature of oligos
+    secondary_structure_filter:
+      enabled: true
+      T: 37 # temperature to compute the secondary structure free energy
+      thr_DG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
+  specificity_filters:
+    read_length_bias_filter:
+      enabled: true
+      read_length_bias: 20 # minimum length of sequencing reads. The first <target_probe_read_length_bias> bases of an oligo should not match the <target_probe_read_length_bias> bases of another oligo to account for shorter sequencing reads that would align to multiple positions.
+    cross_hybridization_filter:
+      enabled: true
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10}
+      hit_parameters: {"coverage": 50} # could be turned into min_alignment_length
+    specificity_blastn_filter:
+      enabled: true
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10}
+      hit_parameters: {"coverage": 50} # could be turned into min_alignment_length
+      files_fasta_reference_database: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
+        - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+        - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+    variant_filter:
+      enabled: true
+      files_vcf_reference_database:
+        - data/annotations/custom_GCF_000001405.40.chr16.vcf
+  probe_set_selection:
+    n_sets: 3 #number of sets to generate
+    set_size_min: 3 # minimum size of oligo sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
+    set_size_opt: 5 # optimal size of oligo sets
+    distance_between_target_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
+    uniform_distance_weight: 1 # weight of the uniform distance in the scoring function
+    isoform_weight: 1 # weight of the GC content of the probe in the efficiency score
+    targeted_exons_weight: 1 # weight of the Tm of the probe in the efficiency score
+    targeted_exons: ["1", "2", "3"] # the exons to target for the probe
+    GC_weight: 1 # weight of the GC content of the probe in the efficiency score
+    GC_content_opt: 55 # max and min values are defiend above
+    Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
+    Tm_opt: 60 # max and min values are defiend above
+    n_attempts_graph: 50 # number of randomized graph attempts (diversification)
+    n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
+    diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
+    jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
+    jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found
+  advanced:
+    Tm_parameters:
+      mode: custom
+      parameters:
+        nn_table: DNA_NN3
+        tmm_table: DNA_TMM1
+        imm_table: DNA_IMM1
+        de_table: DNA_DE1
+        dnac1: 50 #[nM]
+        dnac2: 0 #[nM]
+        saltcorr: 7
+        Na: 1000 #[mM] #1M from probeArray paper
+        K: 0 #[mM]
+        Tris: 0 #[mM]
+        Mg: 0 #[mM]
+        dNTPs: 0 #[mM]
+    Tm_chem_correction_parameters:
+      mode: custom
+      parameters:
+        DMSO: 0
+        DMSOfactor: 0.75
+        fmd: 20
+        fmdfactor: 0.65
+        fmdmethod: 1
+        GC: null
+    Tm_salt_correction_parameters:
+      mode: disabled
