@@ -1051,17 +1051,9 @@ class TargetProbeDesigner:
 ############################################
 
 
-def _load_config(config_file: str) -> dict[str, Any]:
+def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[str, Any]:
 
-    with open(config_file, "r") as handle:
-        config_raw = yaml.safe_load(handle)
-
-    try:
-        config_validated = OligoSeqProbeDesignerConfig.model_validate(config_raw)
-        config = config_validated.model_dump()
-    except ValidationError as e:
-        logging.error("Invalid configuration file:\n%s", e)
-        raise
+    config = config_validated.model_dump()
 
     config["target_probe"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
         config["target_probe"]["global_parameters"]["Tm_parameters"]
@@ -1085,6 +1077,44 @@ def _load_config(config_file: str) -> dict[str, Any]:
             config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
     return config
+
+
+def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
+    """
+    Execute the Oligo-seq probe design pipeline.
+
+    1. Reads the gene IDs file (if provided) or uses all genes from FASTA files
+    2. Preprocesses melting temperature parameters for target probes
+    3. Preprocesses alignment method parameters for hybridization probability and cross-hybridization
+       filtering (BLASTN or Bowtie)
+    4. Initializes the OligoSeqProbeDesigner pipeline
+    5. Designs target probes for specified genes
+    6. Generates output files (YAML, TSV, Excel, order file)
+
+    :param config: Validated pipeline configuration.
+    :type config: OligoSeqProbeDesignerConfig
+    """
+
+    ##### preprocess the config file #####
+    config_dict = _preprocess_config(config)
+
+    ##### initialize probe designer pipeline #####
+    pipeline = OligoSeqProbeDesigner(
+        write_intermediate_steps=config_dict["general"]["write_intermediate_steps"],
+        dir_output=config_dict["general"]["dir_output"],
+        n_jobs=config_dict["general"]["n_jobs"],
+    )
+
+    ##### design probes #####
+    oligo_database = pipeline.design_target_probes(
+        oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
+        property_filters_parameters=config_dict["target_probe"]["property_filters"],
+        specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
+        probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
+        global_parameters=config_dict["target_probe"]["global_parameters"],
+    )
+
+    pipeline.generate_output(oligo_database=oligo_database)
 
 
 def main() -> None:
@@ -1113,25 +1143,16 @@ def main() -> None:
     args = base_parser()
 
     ##### read the config file #####
-    config = _load_config(args["config"])
+    with open(args["config"], "r") as handle:
+        config_raw = yaml.safe_load(handle)
 
-    ##### initialize probe designer pipeline #####
-    pipeline = OligoSeqProbeDesigner(
-        write_intermediate_steps=config["general"]["write_intermediate_steps"],
-        dir_output=config["general"]["dir_output"],
-        n_jobs=config["general"]["n_jobs"],
-    )
+    try:
+        config_validated = OligoSeqProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        logging.error("Invalid configuration file:\n%s", e)
+        raise
 
-    ##### design probes #####
-    oligo_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config["target_probe"]["oligo_generation"],
-        property_filters_parameters=config["target_probe"]["property_filters"],
-        specificity_filters_parameters=config["target_probe"]["specificity_filters"],
-        probe_set_selection_parameters=config["target_probe"]["probe_set_selection"],
-        global_parameters=config["target_probe"]["global_parameters"],
-    )
-
-    pipeline.generate_output(oligo_database=oligo_database)
+    oligo_seq_probe_designer(config_validated)
 
     logging.info("--------------END PIPELINE--------------")
 
