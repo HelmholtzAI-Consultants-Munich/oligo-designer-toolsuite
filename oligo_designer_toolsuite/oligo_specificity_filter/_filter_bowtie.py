@@ -16,6 +16,7 @@ from oligo_designer_toolsuite._exceptions import (
 )
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
+from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 from ..utils._sequence_processor import get_sequence_from_annotation
 
@@ -152,7 +153,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             save_description=False,
             region_ids=region_id,
         )
-        file_bowtie_results = os.path.join(self.dir_output, f"bowtie_results_{region_id}.txt")
+        file_bowtie_results = safe_append_filename(self.dir_output, f"bowtie_results_{region_id}.txt")
 
         args = [
             "bowtie",
@@ -263,10 +264,10 @@ class BowtieFilter(AlignmentSpecificityFilter):
                 "strand": table_hits["strand"],
             }
         )
-        file_bed = os.path.join(self.dir_output, f"references_{region_id}.bed")
+        file_bed = safe_append_filename(self.dir_output, f"references_{region_id}.bed")
         bed.to_csv(file_bed, sep="\t", index=False, header=False)
 
-        references_fasta_file = os.path.join(self.dir_output, f"references_{region_id}.fasta")
+        references_fasta_file = safe_append_filename(self.dir_output, f"references_{region_id}.fasta")
 
         get_sequence_from_annotation(
             file_bed, file_reference, references_fasta_file, strand=True, nameOnly=True
@@ -435,7 +436,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             save_description=False,
             region_ids=region_id,
         )
-        file_bowtie_results = os.path.join(self.dir_output, f"bowtie2_results_{region_id}.txt")
+        file_bowtie_results = safe_append_filename(self.dir_output, f"bowtie2_results_{region_id}.txt")
 
         args = [
             "bowtie2",
