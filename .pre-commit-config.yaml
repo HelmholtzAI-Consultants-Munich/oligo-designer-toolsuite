@@ -42,6 +42,7 @@ repos:
           "types-PyYAML",
           "types-setuptools",
           "types-networkx",
+          "pydantic>=2.12.5",
         ]
         args: [--ignore-missing-imports, --follow-imports=silent]
 
