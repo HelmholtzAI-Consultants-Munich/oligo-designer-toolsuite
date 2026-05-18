@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
+from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
@@ -275,8 +277,8 @@ class OligoSeqProbeDesigner:
         gc_content_property = GCContentProperty()
         TmNN_property = TmNNProperty(
             Tm_parameters=global_parameters["Tm_parameters"],
-            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"],
-            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"],
+            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"]["parameters"],
+            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"]["parameters"],
         )
         num_targeted_transcripts_property = NumTargetedTranscriptsProperty()
         isoform_consensus_property = IsoformConsensusProperty()
@@ -713,8 +715,12 @@ class TargetProbeDesigner:
                 Tm_min=Tm_filter["Tm_min"],
                 Tm_max=Tm_filter["Tm_max"],
                 Tm_parameters=global_parameters["Tm_parameters"],
-                Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"],
-                Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"],
+                Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"][
+                    "parameters"
+                ],
+                Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"][
+                    "parameters"
+                ],
             )
             filters.append(melting_temperature)
 
@@ -1001,8 +1007,8 @@ class TargetProbeDesigner:
             Tm_opt=Tm_score["Tm_opt"],
             Tm_max=Tm_score["Tm_max"],
             Tm_parameters=global_parameters["Tm_parameters"],
-            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"],
-            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"],
+            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"]["parameters"],
+            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"]["parameters"],
             score_weight=Tm_score["weight"],
         )
         GC_scorer = NormalizedDeviationFromOptimalGCContentScorer(
@@ -1048,11 +1054,24 @@ class TargetProbeDesigner:
 def _load_config(config_file: str) -> dict[str, Any]:
 
     with open(config_file, "r") as handle:
-        config: dict[str, Any] = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
 
-    config["target_probe"]["global"]["Tm_parameters"] = preprocess_tm_parameters(
-        config["target_probe"]["global"]["Tm_parameters"]
+    try:
+        config_validated = OligoSeqProbeDesignerConfig.model_validate(config_raw)
+        config = config_validated.model_dump()
+    except ValidationError as e:
+        logging.error("Invalid configuration file:\n%s", e)
+        raise
+
+    config["target_probe"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
+        config["target_probe"]["global_parameters"]["Tm_parameters"]
     )
+
+    # set Tm_chem/salt_correction_paramters to None if the correction is disabled
+    if not config["target_probe"]["global_parameters"]["Tm_chem_correction_parameters"]["enabled"]:
+        config["target_probe"]["global_parameters"]["Tm_chem_correction_parameters"]["parameters"] = None
+    if not config["target_probe"]["global_parameters"]["Tm_salt_correction_parameters"]["enabled"]:
+        config["target_probe"]["global_parameters"]["Tm_salt_correction_parameters"]["parameters"] = None
 
     ##### read the genes file #####
     file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
@@ -1109,7 +1128,7 @@ def main() -> None:
         property_filters_parameters=config["target_probe"]["property_filters"],
         specificity_filters_parameters=config["target_probe"]["specificity_filters"],
         probe_set_selection_parameters=config["target_probe"]["probe_set_selection"],
-        global_parameters=config["target_probe"]["global"],
+        global_parameters=config["target_probe"]["global_parameters"],
     )
 
     pipeline.generate_output(oligo_database=oligo_database)

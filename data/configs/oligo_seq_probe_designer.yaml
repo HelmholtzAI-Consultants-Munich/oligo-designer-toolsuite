@@ -2,6 +2,8 @@
 ### HIDDEN PARAMETERS ###
 #########################
 
+schema_version: 2
+
 general:
   n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
   dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
@@ -105,7 +107,7 @@ target_probe:
       weight: 1 # Weight for isoform coverage in the set-selection scoring function.
     targeted_exons_score:
       weight: 0 # Weight for targeted-exon coverage in the set-selection scoring function.
-      targeted_exons: ["1", "2", "3"] # Exon numbers to favour in set selection.
+      targeted_exons: [] # Exon numbers to favour in set selection.
     GC_content_score:
       weight: 1 # Weight for GC content in the set-selection scoring function.
       GC_content_min: 45 # Minimum GC content (%). Oligos below this are rejected.
@@ -118,7 +120,7 @@ target_probe:
       Tm_max: 70 # Maximum melting temperature (°C). Oligos above this are rejected.
 
 
-  global:
+  global_parameters:
     Tm_parameters:
       nn_table: DNA_NN3
       tmm_table: DNA_TMM1
@@ -133,11 +135,13 @@ target_probe:
       Mg: 0 #[mM]
       dNTPs: 0 #[mM]
     Tm_chem_correction_parameters:
-      DMSO: 0
-      DMSOfactor: 0.75
-      fmd: 20
-      fmdfactor: 0.65
-      fmdmethod: 1
-      GC: null
+      enabled: true
+      parameters:
+        DMSO: 0
+        DMSOfactor: 0.75
+        fmd: 20
+        fmdfactor: 0.65
+        fmdmethod: 1
+        GC: null
     Tm_salt_correction_parameters:
-      null
+      enabled: false
