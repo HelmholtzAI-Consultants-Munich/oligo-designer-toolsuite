@@ -1,0 +1,51 @@
+name: FTP Loader
+
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+
+  push:
+    branches: [main]
+    paths-ignore: ['.gitignore', '.pre-commit-config.yaml', '.readthedocs.yaml', 'CONTRIBUTION.md', 'LICENSE', 'MANIFEST.in', 'README.md', 'data/**', 'docs/**', 'tutorials/**']
+
+  workflow_dispatch:
+
+jobs:
+  ftp-loader:
+    name: FTP Loader Test
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Conda
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniforge-version: latest
+          auto-update-conda: true
+          python-version: "3.12"
+          activate-environment: test-env
+          channels: conda-forge, bioconda
+          channel-priority: strict
+          use-mamba: true
+
+      - name: Install Python package
+        run: |
+          conda activate test-env
+
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run FTP Loader tests
+        run: |
+          conda activate test-env
+
+          pytest --disable-warnings tests/test_sequence_generator.py -k "FTPLoader"
