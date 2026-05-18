@@ -45,16 +45,16 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     CrossHybridizationBlastnFilterEnabled,
     ReadLengthBiasFilterConfig,
     ReadLengthBiasFilterEnabled,
-    SpecificityBlastnFilterConfig,
-    SpecificityBlastnFilterEnabled,
-    VariantFilterConfig,
-    VariantFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     FilesFastaDatabaseT,
     LengthMaxT,
     LengthMinT,
     RegionListT,
+)
+from oligo_designer_toolsuite.config.overrides.oligo_seq_probe_designer_overrides import (
+    OligoSeqSpecificityBlastnFilterConfig,
+    OligoSeqVariantFilterConfig,
 )
 
 
@@ -113,19 +113,8 @@ class TargetProbeSpecificityFilter(BaseModel):
             hit_parameters=BlastnHitParameters(coverage=50),
         )
     )
-    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
-        default_factory=lambda: SpecificityBlastnFilterEnabled.model_construct(
-            enabled=True,
-            search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
-            hit_parameters=BlastnHitParameters(coverage=50),
-        )
-    )
-    variant_filter: VariantFilterConfig = Field(
-        default_factory=lambda: VariantFilterEnabled.model_construct(
-            enabled=True,
-            action="flag",
-        )
-    )
+    specificity_blastn_filter: OligoSeqSpecificityBlastnFilterConfig
+    variant_filter: OligoSeqVariantFilterConfig
 
 
 class TargetProbeProbeSetSelection(BaseModel):
