@@ -282,10 +282,9 @@ def preprocess_tm_parameters(tm_parameters: dict[str, Any]) -> dict[str, Any]:
     :return: The modified dictionary with table objects instead of string names.
     :rtype: dict[str, Any]
     """
-    tm_parameters["nn_table"] = getattr(mt, tm_parameters["nn_table"])
-    tm_parameters["tmm_table"] = getattr(mt, tm_parameters["tmm_table"])
-    tm_parameters["imm_table"] = getattr(mt, tm_parameters["imm_table"])
-    tm_parameters["de_table"] = getattr(mt, tm_parameters["de_table"])
+    for key in ("nn_table", "tmm_table", "imm_table", "de_table"):
+        if tm_parameters[key] is not None:
+            tm_parameters[key] = getattr(mt, tm_parameters[key])
     return tm_parameters
 
 
