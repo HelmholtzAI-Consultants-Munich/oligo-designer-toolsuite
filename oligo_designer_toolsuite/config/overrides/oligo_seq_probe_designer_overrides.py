@@ -40,5 +40,5 @@ class OligoSeqVariantFilterEnabled(VariantFilterEnabled):
 
 
 OligoSeqVariantFilterConfig = Annotated[
-    VariantFilterEnabled | VariantFilterDisabled, Field(discriminator="enabled")
+    OligoSeqVariantFilterEnabled | OligoSeqVariantFilterDisabled, Field(discriminator="enabled")
 ]

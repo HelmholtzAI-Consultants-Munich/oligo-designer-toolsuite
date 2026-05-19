@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
+from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._types import (
     GCContentMaxT,
@@ -47,6 +48,14 @@ class IndependentSetSelection(BaseModel):
         description="Step size used to relax the Jaccard constraint when not enough sets are found.",
     )
 
+    @model_validator(mode="after")
+    def _check_min_max(self) -> Self:
+        if self.set_size_min > self.set_size_opt:
+            raise ValueError(
+                f"'set_size_min' ({self.set_size_min}) must be <= 'set_size_opt' ({self.set_size_opt})"
+            )
+        return self
+
 
 class ScoreBaseConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -73,8 +82,24 @@ class GCContentScore(ScoreBaseConfig):
     GC_content_opt: GCContentOptT
     GC_content_max: GCContentMaxT
 
+    @model_validator(mode="after")
+    def _check_min_max(self) -> Self:
+        if not (self.GC_content_min <= self.GC_content_opt <= self.GC_content_max):
+            raise ValueError(
+                f"Values must be: 'GC_content_min' ({self.GC_content_min}) <= 'GC_content_opt' ({self.GC_content_opt}) <= 'GC_content_max' ({self.GC_content_max})"
+            )
+        return self
+
 
 class TmScore(ScoreBaseConfig):
     Tm_min: TmMinT
     Tm_opt: TmOptT
     Tm_max: TmMaxT
+
+    @model_validator(mode="after")
+    def _check_min_max(self) -> Self:
+        if not (self.Tm_min <= self.Tm_opt <= self.Tm_max):
+            raise ValueError(
+                f"Values must be: 'Tm_min' ({self.Tm_min}) <= 'Tm_opt' ({self.Tm_opt}) <= 'Tm_max' ({self.Tm_max})"
+            )
+        return self

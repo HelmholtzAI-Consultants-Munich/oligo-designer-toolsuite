@@ -1059,7 +1059,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
         config["target_probe"]["global_parameters"]["Tm_parameters"]
     )
 
-    # set Tm_chem/salt_correction_paramters to None if the correction is disabled
+    # set Tm_chem/salt_correction_parameters to None if the correction is disabled
     if not config["target_probe"]["global_parameters"]["Tm_chem_correction_parameters"]["enabled"]:
         config["target_probe"]["global_parameters"]["Tm_chem_correction_parameters"]["parameters"] = None
     if not config["target_probe"]["global_parameters"]["Tm_salt_correction_parameters"]["enabled"]:
