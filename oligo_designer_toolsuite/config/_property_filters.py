@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt, model_validator
+from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import HomopolymericRunThreshold
 from oligo_designer_toolsuite.config._types import (
@@ -94,6 +95,14 @@ class GCContentFilterEnabled(FilterBaseConfigEnabled):
     GC_content_min: GCContentMinT
     GC_content_max: GCContentMaxT
 
+    @model_validator(mode="after")
+    def _check_min_max(self) -> Self:
+        if self.GC_content_min > self.GC_content_max:
+            raise ValueError(
+                f"'GC_content_min' ({self.GC_content_min}) must be <= 'GC_content_max' ({self.GC_content_max})"
+            )
+        return self
+
 
 GCContentFilterConfig = Annotated[
     GCContentFilterEnabled | GCContentFilterDisabled, Field(discriminator="enabled")
@@ -149,6 +158,12 @@ class TmFilterDisabled(FilterBaseConfigDisabled):
 class TmFilterEnabled(FilterBaseConfigEnabled):
     Tm_min: TmMinT
     Tm_max: TmMaxT
+
+    @model_validator(mode="after")
+    def _check_min_max(self) -> Self:
+        if self.Tm_min > self.Tm_max:
+            raise ValueError(f"'Tm_min' ({self.Tm_min}) must be <= 'Tm_max' ({self.Tm_max})")
+        return self
 
 
 TmFilterConfig = Annotated[TmFilterEnabled | TmFilterDisabled, Field(discriminator="enabled")]

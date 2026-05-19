@@ -1,4 +1,7 @@
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
+from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
     BlastnHitParameters,
@@ -69,6 +72,14 @@ class TargetProbeOligoGeneration(BaseModel):
         description="Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.",
         default=4,
     )
+
+    @model_validator(mode="after")
+    def _check_min_max(self) -> Self:
+        if self.probe_length_min > self.probe_length_max:
+            raise ValueError(
+                f"'probe_length_min' ({self.probe_length_min}) must be <= 'probe_length_max' ({self.probe_length_max})"
+            )
+        return self
 
 
 class TargetProbePropertyFilter(BaseModel):
@@ -179,7 +190,7 @@ class TargetProbe(BaseModel):
 
 class OligoSeqProbeDesignerConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    schema_version: PositiveInt = 2
+    schema_version: Literal[2] = 2
     general: General = General(
         n_jobs=4,
         dir_output="output_oligo_seq_probe_designer",
