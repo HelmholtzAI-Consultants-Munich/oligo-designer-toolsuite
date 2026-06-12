@@ -2,10 +2,8 @@
 # imports
 ############################################
 
-import logging
 import os
 import shutil
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -64,9 +62,9 @@ from oligo_designer_toolsuite.pipelines._utils import (
     get_highly_abundant_kmer_sequences,
     pipeline_step_basic,
     preprocess_tm_parameters,
-    setup_logging,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
+from oligo_designer_toolsuite.utils import configure_root_logger, logger
 
 ############################################
 # Oligo-Seq Probe Designer
@@ -117,13 +115,6 @@ class OligoSeqProbeDesigner:
         # create the output folder
         self.dir_output = os.path.abspath(dir_output)
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-
-        # setup logger
-        setup_logging(
-            dir_output=self.dir_output,
-            pipeline_name="oligoseq_probe_designer",
-            log_start_message=True,
-        )
 
         ##### set class parameters #####
         self.write_intermediate_steps = write_intermediate_steps
@@ -209,7 +200,7 @@ class OligoSeqProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
-            logging.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
+            logger.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
 
         # Add highly abundant k-mers to prohibited sequences
         if property_filters_parameters["prohibited_sequences_filter"]["enabled"]:
@@ -245,7 +236,7 @@ class OligoSeqProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
-            logging.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
+            logger.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
@@ -259,7 +250,7 @@ class OligoSeqProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
-            logging.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
+            logger.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.create_oligo_sets(
             oligo_database=oligo_database,
@@ -299,7 +290,7 @@ class OligoSeqProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
-            logging.info(f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database}")
+            logger.info(f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database}")
 
         return oligo_database
 
@@ -1068,7 +1059,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
     ##### read the genes file #####
     file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
-        warnings.warn(
+        logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
         config["target_probe"]["oligo_generation"]["region_ids"] = None
@@ -1138,7 +1129,7 @@ def main() -> None:
     Command-line arguments are parsed using `base_parser()`, which expects:
     - `config`: Path to the YAML configuration file containing all pipeline parameters
     """
-    logging.info("--------------START PIPELINE--------------")
+    print("--------------START PIPELINE--------------")
 
     args = base_parser()
 
@@ -1149,12 +1140,18 @@ def main() -> None:
     try:
         config_validated = OligoSeqProbeDesignerConfig.model_validate(config_raw)
     except ValidationError as e:
-        logging.error("Invalid configuration file:\n%s", e)
+        print("Invalid configuration file:\n%s", e)
         raise
+
+    # setup logger
+    configure_root_logger(
+        dir_output=config_validated.general.dir_output,
+        pipeline_name="oligoseq_probe_designer",
+    )
 
     oligo_seq_probe_designer(config_validated)
 
-    logging.info("--------------END PIPELINE--------------")
+    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":

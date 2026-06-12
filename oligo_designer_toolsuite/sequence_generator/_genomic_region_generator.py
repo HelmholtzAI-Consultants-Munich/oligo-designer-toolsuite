@@ -5,7 +5,6 @@
 import copy
 import os
 import random
-import warnings
 from typing import Callable, Iterable
 
 import numpy as np
@@ -25,9 +24,12 @@ from oligo_designer_toolsuite._constants import (
 )
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
-from oligo_designer_toolsuite.utils import GffParser
-
-from ..utils._sequence_processor import get_complement_regions, get_sequence_from_annotation
+from oligo_designer_toolsuite.utils import (
+    GffParser,
+    get_complement_regions,
+    get_sequence_from_annotation,
+    logger,
+)
 
 ############################################
 # Genomic Region Generator Classes
@@ -81,19 +83,19 @@ class CustomGenomicRegionGenerator:
         """Constructor for the CustomGenomicRegionGenerator class."""
         if files_source is None:
             files_source = "custom"
-            warnings.warn(f"No source defined. Using default source {files_source}!")
+            logger.warning(f"No source defined. Using default source {files_source}!")
 
         if species is None:
             species = "unknown"
-            warnings.warn(f"No species defined. Using default species {species}!")
+            logger.warning(f"No species defined. Using default species {species}!")
 
         if annotation_release is None:
             annotation_release = "unknown"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+            logger.warning(f"No annotation release defined. Using default release {annotation_release}!")
 
         if genome_assembly is None:
             genome_assembly = "unknown"
-            warnings.warn(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
+            logger.warning(f"No genome assembly defined. Using default genome assembly {genome_assembly}!")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
@@ -1215,7 +1217,7 @@ class CustomGenomicRegionGenerator:
             if not set(gene_ids).issubset(set(number_total_transcripts_df["gene_id"])):
                 raise ConfigurationError
         except ConfigurationError:
-            warnings.warn("Could not calculate the number of total transcripts.")
+            logger.warning("Could not calculate the number of total transcripts.")
             number_total_transcripts_df = None
         finally:
             return number_total_transcripts_df
@@ -1296,11 +1298,13 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
             if annotation_release is None:
                 annotation_release = "current"
-                warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+                logger.warning(f"No annotation release defined. Using default release {annotation_release}!")
 
             if assembly_source is None:
                 assembly_source = "auto"
-                warnings.warn(f"No assembly source defined. Using default assembly source {assembly_source}!")
+                logger.warning(
+                    f"No assembly source defined. Using default assembly source {assembly_source}!"
+                )
         elif mode == "assembly":
             if assembly_source is None:
                 assembly_source = "auto"
@@ -1357,11 +1361,11 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
         files_source = "Ensemble"
         if species is None:
             species = "homo_sapiens"
-            warnings.warn(f"No species defined. Using default species {species}!")
+            logger.warning(f"No species defined. Using default species {species}!")
 
         if annotation_release is None:
             annotation_release = "current"
-            warnings.warn(f"No annotation release defined. Using default release {annotation_release}!")
+            logger.warning(f"No annotation release defined. Using default release {annotation_release}!")
 
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)

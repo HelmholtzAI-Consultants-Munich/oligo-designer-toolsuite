@@ -4,7 +4,6 @@
 
 import os
 import pickle
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +29,7 @@ from oligo_designer_toolsuite.utils import (
     collapse_properties_for_duplicated_sequences,
     flatten_property_list,
     format_oligo_properties,
+    logger,
     merge_databases,
 )
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
@@ -565,7 +565,7 @@ class OligoDatabase:
         property_table = property_table[~mask]
 
         if mask.sum() > 0:
-            warnings.warn(f"Removing {mask.sum()} row(s) containing None/NaN values.", UserWarning)
+            logger.warning(f"Removing {mask.sum()} row(s) containing None/NaN values.")
 
         # expand rows which contain lists for chr, start, end, strand columns into seperate rows
         property_table_extended = property_table.explode(
@@ -785,15 +785,13 @@ class OligoDatabase:
                             sheet_name = sheet_name.replace(char, "_")
                         region_data.to_excel(writer, sheet_name=sheet_name, index=False)
         except ImportError:
-            warnings.warn(
+            logger.warning(
                 "openpyxl is not installed. Excel file generation skipped. "
                 "Install openpyxl to enable Excel export: pip install openpyxl",
-                UserWarning,
             )
         except Exception as e:
-            warnings.warn(
+            logger.warning(
                 f"Failed to write Excel file: {e}. TSV file was written successfully.",
-                UserWarning,
             )
 
     def write_ready_to_order_yaml(

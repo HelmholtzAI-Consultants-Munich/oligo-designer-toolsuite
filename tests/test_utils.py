@@ -33,6 +33,7 @@ from oligo_designer_toolsuite.utils import (
     flatten_property_list,
     format_oligo_properties,
     generate_unique_filename,
+    logger,
     merge_databases,
     remove_index_files,
 )
@@ -277,12 +278,12 @@ class TestDatabaseProcessor(unittest.TestCase):
         dict1 = {"oligo": "ATCGATCGATCG", "chromosome": [["10"]], "start": [[1000]]}
         dict2 = {"oligo": "GCTAGCTAGCTA", "chromosome": [["10"]], "start": [[1000]]}
 
-        with self.assertWarns(UserWarning) as warning_context:
+        with self.assertLogs(logger, level="WARNING") as log:
             collapse_properties_for_duplicated_sequences(dict1, dict2, database_sequence_types=["oligo"])
 
         self.assertIn(
-            "oligo",
-            str(warning_context.warning),
+            "key oligo",
+            "".join(log.output),
             "error: warning should mention the key with different values",
         )
 

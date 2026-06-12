@@ -1,5 +1,5 @@
 """
-This module provides utilities for processing databases, parsing sequences and checking different file or object formats.
+This module provides utilities for processing databases, parsing sequences, checking different file or object formats and logging.
 """
 
 from ._checkers_and_helpers import (
@@ -21,6 +21,7 @@ from ._database_processor import (
     format_oligo_properties,
     merge_databases,
 )
+from ._logging import configure_root_logger, logger
 from ._sequence_parser import FastaParser, GffParser, VCFParser
 from ._sequence_processor import (
     append_nucleotide_to_sequences,
@@ -56,4 +57,6 @@ __all__ = [
     "append_nucleotide_to_sequences",
     "remove_index_files",
     "count_kmer_abundance",
+    "logger",
+    "configure_root_logger",
 ]

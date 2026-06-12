@@ -4,13 +4,12 @@
 
 import os
 import random
-import warnings
 from pathlib import Path
 
 from Bio.SeqRecord import SeqRecord
 from joblib import Parallel, delayed
 
-from oligo_designer_toolsuite.utils import FastaParser
+from oligo_designer_toolsuite.utils import FastaParser, logger
 
 from .._constants import SEPARATOR_FASTA_HEADER_FIELDS, SEPARATOR_FASTA_HEADER_FIELDS_LIST
 from ..utils._checkers_and_helpers import cast_to_list, generate_unique_filename, safe_append_filename
@@ -166,12 +165,12 @@ class OligoSequenceGenerator:
             :rtype: str
             """
             if entry.seq is None:
-                warnings.warn(f"Skipping sequence {entry.seq}: SeqRecord entry has no sequence.", UserWarning)
+                logger.warning(f"Skipping sequence {entry.seq}: SeqRecord entry has no sequence.")
                 return None
 
             # Check if entry.id is None and skip with warning
             if entry.id is None:
-                warnings.warn(f"Skipping sequence {entry.seq}: SeqRecord entry has no header.", UserWarning)
+                logger.warning(f"Skipping sequence {entry.seq}: SeqRecord entry has no header.")
                 return None
 
             entry_sequence = entry.seq
@@ -316,7 +315,7 @@ class OligoSequenceGenerator:
         # Therefore, the final output files are checked
         for one_file in list(file_fasta_out):
             if os.path.getsize(one_file) == 0:
-                warnings.warn(
+                logger.warning(
                     f"No oligos were created for region {os.path.basename(one_file).replace('.fna','')}. "
                     "This can happen if the input sequences are shorter than the specified minimum oligo length."
                 )
