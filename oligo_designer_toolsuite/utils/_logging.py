@@ -2,6 +2,7 @@
 # imports
 ############################################
 
+from pathlib import Path
 import logging
 import os
 from datetime import datetime
@@ -38,6 +39,11 @@ def configure_root_logger(
     :type log_start_message: bool
     """
     timestamp = datetime.now()
+
+    # ensure output directory exists
+    dir_output = os.path.abspath(dir_output)
+    Path(dir_output).mkdir(parents=True, exist_ok=True)
+
     file_logger = os.path.join(
         dir_output,
         f"log_{pipeline_name}_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
