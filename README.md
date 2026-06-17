@@ -105,7 +105,7 @@ pip install .
 
 ODT pipelines are configured through YAML files. Example configuration files are available in: `data/configs/`.
 
-The probe design pipelines require genomic input sequences. These can be generated with the genomic region generator. Start from one of the example configuration files, e.g.: `genomic_region_generator_ncbi.yaml`. Adjust the configuration to your species, genome annotation and output directory, then run:
+The probe design pipelines require genomic input sequences. These can be generated with the genomic region generator. Start from one of the example configuration files, e.g. `genomic_region_generator_ncbi.yaml`. Adjust the configuration to your species, genome annotation and output directory, then run:
 
 ```bash
 genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yaml
@@ -113,7 +113,7 @@ genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yam
 
 This generates the genomic region files that are used as input for downstream probe design pipelines.
 
-**Running a pipeline via CLI:** After generating the required genomic input files, choose the configuration file for your pipeline, e.g.: `oligo_seq_probe_designer.yaml`. Adjust the input paths and design parameters, then run:
+**Running a pipeline via CLI:** After generating the required genomic input files, choose the configuration file for your pipeline, e.g. `oligo_seq_probe_designer.yaml`. Adjust the input paths and design parameters, then run:
 
 ```bash
 oligo_seq_probe_designer --config data/configs/oligo_seq_probe_designer.yaml
@@ -186,21 +186,9 @@ For tutorials, configuration examples, API documentation, and detailed pipeline 
 
 <!-- LINK CONTRIBUTION START -->
 
-Contributions are more than welcome. Everything from code to notebooks, examples, and documentation is equally valuable.
+Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
 
-To contribute:
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement your changes
-4. Submit a pull request
-
-We will do our best to review contributions and help integrate them into the project.
-
-For questions or collaboration inquiries, please contact:
-
-* Lisa Barros de Andrade e Sousa ([lisa.barros@helmholtz-munich.de](mailto:lisa.barros@helmholtz-munich.de))
-* Jonas Hagenberg ([jonas.hagenberg@helmholtz-munich.de](mailto:jonas.hagenberg@helmholtz-munich.de))
+For any further inquiries please send an email to [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Jonas Hagenberg](mailto:jonas.hagenberg@helmholtz-munich.de).
 
 
 <!-- LINK CONTRIBUTION END -->
