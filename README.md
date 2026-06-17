@@ -105,7 +105,7 @@ pip install .
 
 ODT pipelines are configured through YAML files. Example configuration files are available in: `data/configs/`.
 
-The probe design pipelines require genomic input sequences. These can be generated with the **Genomic Region Generator**. Start from one of the example configuration files. Adjust the configuration to your species, genome annotation and output directory, then run:
+The probe design pipelines require genomic input sequences. These can be generated with the genomic region generator. Start from one of the example configuration files, e.g.: `genomic_region_generator_ncbi.yaml`. Adjust the configuration to your species, genome annotation and output directory, then run:
 
 ```bash
 genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yaml
