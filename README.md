@@ -55,15 +55,13 @@ Windows is currently not supported.
 
 > **Note:** Intel-based macOS (x86_64) is deprecated and no longer actively tested.
 >
-> How to verify that you are using Apple Silicon:
+> *How to verify that you are using Apple Silicon?*
 > ```bash
 > python -c "import platform; print(platform.machine())"
 > ```
 > Expected output: `arm64`
 
-For a stable installation, we recommend using a dedicated Conda environment via [miniforge](https://github.com/conda-forge/miniforge).
-
-Create a new Conda environment using the recommended channels and activate the environment:
+For a stable installation, we recommend using a dedicated Conda environment via [miniforge](https://github.com/conda-forge/miniforge). Create a new Conda environment using the recommended channels and activate the environment:
 ```
 conda create -n odt "python=3.12" "mamba" "pip"
 conda activate odt
@@ -107,7 +105,7 @@ pip install .
 
 ODT pipelines are configured through YAML files. Example configuration files are available in: `data/configs/`.
 
-The probe design pipelines require genomic input sequences. These can be generated with the **Genomic Region Generator**. Start from one of the example configuration files, e.g.: `data/configs/genomic_region_generator_ncbi.yaml`. Adjust the configuration to your species, genome annotation and output directory, then run:
+The probe design pipelines require genomic input sequences. These can be generated with the **Genomic Region Generator**. Start from one of the example configuration files. Adjust the configuration to your species, genome annotation and output directory, then run:
 
 ```bash
 genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yaml
