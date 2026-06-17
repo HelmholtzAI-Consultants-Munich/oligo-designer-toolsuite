@@ -31,16 +31,7 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 🚀 ***Oligo Designer Toolsuite*** **is a collection of modules that provides all basic functionalities for custom oligo design pipelines as well as advanced experiment-specific functionalities like machine learning models for oligo specificity prediction within a flexible Python framework.**
 
-To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. MERFISH or SeqFISH+ probe design for Spatial Transcriptomics.
-
-### Key Features
-
-* Ready-to-use oligo design pipelines for multiple experimental applications
-* Command-line interface for reproducible and scalable workflows
-* Browser-based access through ODT-Cloud
-* Modular framework for custom pipeline development
-* Runtime- and memory-optimized processing of large sequence datasets
-* Comprehensive documentation and API reference
+To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. *We also provide ready-to-use oligo design pipelines for multiple experimental applications*.
 
 ## ODT-Cloud
 
@@ -48,18 +39,7 @@ Use Oligo Designer Toolsuite directly in your browser through **ODT-Cloud**:
 
 🌐 https://odt.helmholtz-munich.de/
 
-ODT-Cloud provides a graphical user interface for running oligo design pipelines without local installation or dependency management.
-
-Available pipelines include:
-
-* SCRINSHOT Probe Designer
-* SeqFISH+ Probe Designer
-* MERFISH Probe Designer
-* HCR Probe Designer
-* CycleHCR Probe Designer
-* [Oligo-Seq Probe Designer](https://odt.helmholtz-munich.de/pipelines/oligoseq)
-
-For advanced customization, genome-wide applications, and integration into automated analysis pipelines, we recommend using the command-line interface.
+ODT-Cloud provides a graphical user interface for running oligo design pipelines without local installation or dependency management. For advanced customization, genome-wide applications, and integration into automated analysis pipelines, we recommend using the command-line interface.
 
 
 <!-- LINK INTRODUCTION END -->
@@ -70,7 +50,7 @@ For advanced customization, genome-wide applications, and integration into autom
 
 ### Requirements
 
-This package is continuously tested with ***Python 3.10 – 3.12*** on ***Linux (x86_64)*** and ***macOS (Apple Silicon / arm64)***.
+This package is continuously tested with **Python 3.10 – 3.12** on **Linux (x86_64)** and **macOS (Apple Silicon / arm64)**.
 Windows is currently not supported.
 
 > **Note:** Intel-based macOS (x86_64) is deprecated and no longer actively tested.
@@ -79,17 +59,13 @@ Windows is currently not supported.
 > ```bash
 > python -c "import platform; print(platform.machine())"
 > ```
->
-> Expected output:
-> ```text
-> arm64
-> ```
+> Expected output: `arm64`
 
 For a stable installation, we recommend using a dedicated Conda environment via [miniforge](https://github.com/conda-forge/miniforge).
 
 Create a new Conda environment using the recommended channels and activate the environment:
 ```
-conda create -n odt "python=3.12" "mamba"
+conda create -n odt "python=3.12" "mamba" "pip"
 conda activate odt
 ```
 
@@ -111,8 +87,6 @@ All other required packages are automatically installed if installation is done 
 
 ### Install Options
 
-The installation of the package is done via pip. Note: if you are using conda, first install pip with: ```conda install pip```.
-
 Install from PyPI:
 ```
 pip install oligo-designer-toolsuite
@@ -131,23 +105,9 @@ pip install .
 
 <!-- LINK QUICKSTART START -->
 
-ODT pipelines are configured through YAML files. Example configuration files are available in:
+ODT pipelines are configured through YAML files. Example configuration files are available in: `data/configs/`.
 
-```text
-data/configs/
-```
-
-The probe design pipelines require genomic input sequences. These can be generated with the **Genomic Region Generator**.
-
-**1. Generate genomic input sequences**
-
-Start from one of the example configuration files, e.g.:
-
-```bash
-data/configs/genomic_region_generator_ncbi.yaml
-```
-
-Adjust the configuration to your species, genome annotation and output directory, then run:
+The probe design pipelines require genomic input sequences. These can be generated with the **Genomic Region Generator**. Start from one of the example configuration files, e.g.: `data/configs/genomic_region_generator_ncbi.yaml`. Adjust the configuration to your species, genome annotation and output directory, then run:
 
 ```bash
 genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yaml
@@ -155,15 +115,7 @@ genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yam
 
 This generates the genomic region files that are used as input for downstream probe design pipelines.
 
-**2.1. Run a probe design pipeline from command line**
-
-After generating the required genomic input files, choose the configuration file for your pipeline, e.g.:
-
-```bash
-data/configs/oligo_seq_probe_designer.yaml
-```
-
-Adjust the input paths and design parameters, then run:
+After generating the required genomic input files, choose the configuration file for your pipeline, e.g.: `data/configs/oligo_seq_probe_designer.yaml`. Adjust the input paths and design parameters, then run:
 
 ```bash
 oligo_seq_probe_designer --config data/configs/oligo_seq_probe_designer.yaml
@@ -171,16 +123,11 @@ oligo_seq_probe_designer --config data/configs/oligo_seq_probe_designer.yaml
 
 The pipeline writes the designed probes and summary files to the configured output directory.
 
-**2.2. Run a probe design pipeline from Python**
-
 Pipelines can also be called directly from Python. For Oligo-Seq:
 
 ```python
 import yaml
-
-from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import (
-    OligoSeqProbeDesignerConfig,
-)
+from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.pipelines import oligo_seq_probe_designer
 
 with open("data/configs/oligo_seq_probe_designer.yaml", "r") as handle:
@@ -202,41 +149,39 @@ The following pipelines are pre-implemented, documented, and ready-to-use:
 
 Extract genomic target regions from genome annotations and reference genomes. The pipeline can automatically download genome assemblies and annotations from Ensembl or NCBI, or work with user-provided FASTA and GTF files.
 
-📖 Documentation: https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html)
 
 **SCRINSHOT Probe Designer**
 
 Design padlock probes for SCRINSHOT (Single-Cell RNA In-Situ Hybridization and Sequencing On Tissue) experiments. The pipeline generates gene-specific padlock probes for highly multiplexed and spatially resolved RNA detection at single-cell resolution.
 
-📖 Documentation: https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/scrinshot_probe_designer.html
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/scrinshot_probe_designer.html)
 
 **MERFISH Probe Designer**
 
 Design encoding probes for MERFISH (Multiplexed Error-Robust Fluorescence In Situ Hybridization) experiments. Generated probes contain gene-specific targeting sequences and barcode regions enabling highly multiplexed spatial transcriptomics measurements.
 
-📖 Documentation: https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/merfish_probe_designer.html
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/merfish_probe_designer.html)
 
 **SeqFISH+ Probe Designer**
 
 Design encoding probes for SeqFISH+ (Sequential Fluorescence In Situ Hybridization) experiments. The pipeline generates barcoded probe sets for large-scale spatially resolved transcriptomics with single-cell resolution.
 
-📖 Documentation: https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/seqfishplus_probe_designer.html
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/seqfishplus_probe_designer.html)
 
 **CycleHCR Probe Designer**
 
 Design barcoded probe sets for CycleHCR experiments. CycleHCR combines Hybridization Chain Reaction (HCR) with iterative barcoding strategies to enable highly multiplexed RNA imaging while minimizing molecular crowding effects.
 
-📖 Documentation: https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/cyclehcr_probe_designer.html
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/cyclehcr_probe_designer.html)
 
 **Oligo-Seq Probe Designer**
 
 Design probe libraries for Oligo-seq, a targeted RNA profiling technology that combines in situ hybridization with sequencing-based readout. The pipeline generates probes targeting exonic regions and exon-intron junctions for sensitive and reproducible transcript detection from low-input samples.
 
-📖 Documentation: https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html)
 
-For tutorials, configuration examples, API documentation, and detailed pipeline descriptions, visit:
-
-📖 https://oligo-designer-toolsuite.readthedocs.io
+For tutorials, configuration examples, API documentation, and detailed pipeline descriptions, visit: https://oligo-designer-toolsuite.readthedocs.io
 
 
 ## Contributing
