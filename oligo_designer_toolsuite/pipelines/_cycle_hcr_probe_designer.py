@@ -3,10 +3,8 @@
 ############################################
 
 import itertools
-import logging
 import os
 import shutil
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -60,9 +58,9 @@ from oligo_designer_toolsuite.pipelines._utils import (
     format_sequence,
     pipeline_step_basic,
     preprocess_tm_parameters,
-    setup_logging,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
+from oligo_designer_toolsuite.utils import configure_root_logger, logger
 
 ############################################
 # CycleHCR Probe Designer
@@ -169,12 +167,6 @@ class CycleHCRProbeDesigner:
         self.dir_output = os.path.abspath(dir_output)
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        # setup logger
-        setup_logging(
-            dir_output=self.dir_output,
-            pipeline_name="cyclehcr_probe_designer",
-            log_start_message=True,
-        )
         self.write_intermediate_steps = write_intermediate_steps
         self.n_jobs = n_jobs
 
@@ -386,7 +378,7 @@ class CycleHCRProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="1_db_target_probes_initial")
-            logging.info(
+            logger.info(
                 f"Saved target probe database for step 1 (Create Database) in directory {dir_database}"
             )
 
@@ -406,7 +398,7 @@ class CycleHCRProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="2_db_target_probes_property_filter")
-            logging.info(
+            logger.info(
                 f"Saved target probe database for step 2 (Property Filters) in directory {dir_database}"
             )
 
@@ -423,7 +415,7 @@ class CycleHCRProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="3_db_target_probes_specificity_filter")
-            logging.info(
+            logger.info(
                 f"Saved target probe database for step 3 (Specificity Filters) in directory {dir_database}"
             )
 
@@ -463,7 +455,7 @@ class CycleHCRProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="4_db_target_probes_sets")
-            logging.info(
+            logger.info(
                 f"Saved target probe database for step 4 (Specificity Filters) in directory {dir_database}."
             )
 
@@ -520,7 +512,7 @@ class CycleHCRProbeDesigner:
                     file_readout_probe_table=file_readout_probe_table
                 )
             )
-            logging.info(
+            logger.info(
                 f"Loaded readout probes table from file and retrieved {n_channels} channels and {n_readout_probes_LR} L and R readout probes."
             )
         else:
@@ -1886,7 +1878,7 @@ def main() -> None:
     Command-line arguments are parsed using `base_parser()`, which expects:
     - `config`: Path to the YAML configuration file containing all pipeline parameters
     """
-    logging.info("--------------START PIPELINE--------------")
+    print("--------------START PIPELINE--------------")
 
     args = base_parser()
 
@@ -1896,7 +1888,7 @@ def main() -> None:
 
     ##### read the genes file #####
     if config["file_regions"] is None:
-        warnings.warn(
+        logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
         )
         region_ids = None
@@ -1911,6 +1903,12 @@ def main() -> None:
         dir_output=config["dir_output"],
         write_intermediate_steps=config["write_intermediate_steps"],
         n_jobs=config["n_jobs"],
+    )
+
+    # setup logger
+    configure_root_logger(
+        dir_output=pipeline.dir_output,
+        pipeline_name="cyclehcr_probe_designer",
     )
 
     ##### design probes #####
@@ -1996,7 +1994,7 @@ def main() -> None:
         readout_probe_table=readout_probe_table,
     )
 
-    logging.info("--------------END PIPELINE--------------")
+    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":
