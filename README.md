@@ -113,7 +113,7 @@ genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yam
 
 This generates the genomic region files that are used as input for downstream probe design pipelines.
 
-After generating the required genomic input files, choose the configuration file for your pipeline, e.g.: `data/configs/oligo_seq_probe_designer.yaml`. Adjust the input paths and design parameters, then run:
+**Running a pipeline through CLI:** After generating the required genomic input files, choose the configuration file for your pipeline, e.g.: `oligo_seq_probe_designer.yaml`. Adjust the input paths and design parameters, then run:
 
 ```bash
 oligo_seq_probe_designer --config data/configs/oligo_seq_probe_designer.yaml
@@ -121,7 +121,7 @@ oligo_seq_probe_designer --config data/configs/oligo_seq_probe_designer.yaml
 
 The pipeline writes the designed probes and summary files to the configured output directory.
 
-Pipelines can also be called directly from Python. For Oligo-Seq:
+**Running a pipeline through Python:** Pipelines can also be called directly from Python. For Oligo-Seq:
 
 ```python
 import yaml
