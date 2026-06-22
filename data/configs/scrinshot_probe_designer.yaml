@@ -64,7 +64,7 @@ target_probe:
       ligation_region_size: 5 # Size of the seed region around the ligation site for BLAST seed region filter; set to 0 to skip seed-region filtering.
       search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000} # BLAST options for the specificity search.
       hit_parameters: {"coverage": 50} # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
-      files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared between the BLASTN specificity filter and the cross-hybridization filter. Use genomic_region_generator for custom reference sets.
+      files_fasta_reference_database: # FASTA file(s) used as reference for the specificity BLASTN search. Use genomic_region_generator for custom reference sets.
       - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
       - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
