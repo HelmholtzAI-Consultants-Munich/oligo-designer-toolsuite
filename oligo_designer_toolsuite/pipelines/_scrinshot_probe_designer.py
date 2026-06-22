@@ -171,7 +171,7 @@ class ScrinshotProbeDesigner:
         :type oligo_generation_parameters: dict
         :param property_filters_parameters: ``target_probe.property_filters`` block. Each filter sub-dict
             (``isoform_consensus_filter``, ``hard_masked_sequences_filter``, ``soft_masked_sequences_filter``,
-            ``homopolymeric_runs_filter``, ``GC_content_filter``, ``Tm_filter``, ``padlock_arm_filter``)
+            ``homopolymeric_runs_filter``, ``GC_content_filter``, ``Tm_filter``, ``detection_oligo_filter``)
             carries an ``enabled`` flag plus its parameters.
         :type property_filters_parameters: dict
         :param specificity_filters_parameters: ``target_probe.specificity_filters`` block. Contains the
