@@ -829,10 +829,9 @@ class TargetProbeDesigner:
         Filter the oligo database based on sequence specificity to remove probes that bind
         non-specifically or cross-hybridize.
 
-        Before applying the alignment-based filters, the method computes the ``PadlockArmsProperty``
-        for every probe (always on) — this is required by the seed-region BLASTN filter when
-        ``ligation_region_size > 0`` and by :py:meth:`ScrinshotProbeDesigner.assemble_padlock_backbone`
-        downstream.
+        This method assumes ``PadlockArmsProperty`` has already been computed for the ``oligo`` sequence
+        (e.g. in :meth:`ScrinshotProbeDesigner.design_target_probes`) so seed-region BLASTN filtering can
+        use ``ligation_site`` and downstream padlock assembly can reuse the arm sequences.
 
         The filter list is seeded with an :class:`ExactMatchFilter` (always on) and then conditionally
         extended with the BLASTN-specificity and cross-hybridization filters depending on their
