@@ -730,17 +730,13 @@ class TargetProbeDesigner:
         :type homopolymeric_runs_filter: dict
         :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
         :type GC_content_filter: dict
-        :param Tm_filter: Dict with ``enabled``, ``Tm_min``, ``Tm_max``. Thermodynamic model
-            parameters come from ``global_parameters``.
+        :param Tm_filter: Dict with ``enabled``, ``Tm_min``, ``Tm_max``, plus thermodynamic model parameters
+            (``Tm_parameters``, ``Tm_chem_correction_parameters``, ``Tm_salt_correction_parameters``) injected during
+            config preprocessing.
         :type Tm_filter: dict
-        :param padlock_arm_filter: Dict with ``enabled``, ``arm_length_min``, ``arm_Tm_dif_max``,
-            ``arm_Tm_min``, ``arm_Tm_max``. The padlock-arm filter also enforces the detection-oligo
-            length/thymine constraints (via the composite ``DetectionOligoFilter``).
-        :type padlock_arm_filter: dict
-        :param detection_oligo_parameters: ``detection_oligo.oligo_generation`` block. Provides
-            ``oligo_length_min``, ``oligo_length_max``, and ``min_thymines`` to the padlock-arm / detection-oligo
-            composite filter.
-        :type detection_oligo_parameters: dict
+        :param detection_oligo_filter: Dict with detection-oligo and padlock-arm constraints required by the
+            composite ``DetectionOligoFilter``.
+        :type detection_oligo_filter: dict
         :return: A filtered `OligoDatabase` object containing only probes that pass all enabled property
             filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
