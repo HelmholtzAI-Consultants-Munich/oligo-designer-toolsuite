@@ -10,10 +10,7 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from oligo_designer_toolsuite._exceptions import (
-    FeatureNotImplementedError,
-    FileFormatError,
-)
+from oligo_designer_toolsuite._exceptions import FeatureNotImplementedError
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
@@ -57,6 +54,8 @@ from oligo_designer_toolsuite.pipelines._utils import (
     format_sequence,
     pipeline_step_basic,
     preprocess_tm_parameters,
+    validate_bit_mapping_table,
+    validate_codebook,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import configure_root_logger, logger
@@ -185,31 +184,31 @@ class HcrProbeDesigner:
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
+
         if file_initiator_table:
             initiator_table = initiator_designer.load_initiator_table(
                 file_initiator_table=file_initiator_table
             )
+            initiator_table_source = file_initiator_table
             logger.info(f"Loaded initiator table from file and retrieved {len(initiator_table)} initiators.")
         else:
-            raise FeatureNotImplementedError(
-                "Generation of initiator table is not yet implemented. "
-                "Please provide a file_initiator_table parameter."
-            )
+            initiator_table = initiator_designer.generate_initiator_table()
+            initiator_table_source = "<generated>"
 
         if file_codebook:
             codebook = initiator_designer.load_codebook(file_codebook=file_codebook)
+            codebook_source = file_codebook
         else:
-            raise FeatureNotImplementedError(
-                "Generation of codebook is not yet implemented. " "Please provide a file_codebook parameter."
-            )
+            codebook = initiator_designer.generate_codebook(region_ids=region_ids)
+            codebook_source = "<generated>"
 
-        # Check if all region_ids are in the codebook
-        missing_region_ids = set(region_ids) - set(codebook.index)
-        if len(missing_region_ids) > 0:
-            raise FileFormatError(
-                f"Codebook is missing the following region IDs: {sorted(missing_region_ids)}. "
-                f"Codebook contains {len(codebook)} regions: {sorted(codebook.index.tolist())}"
-            )
+        initiator_designer.validate(
+            codebook=codebook,
+            initiator_table=initiator_table,
+            region_ids=region_ids,
+            codebook_source=codebook_source,
+            initiator_table_source=initiator_table_source,
+        )
 
         return codebook, initiator_table
 
@@ -330,7 +329,7 @@ class HcrProbeDesigner:
             ]
 
         # write codebook and readout probe table
-        codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="region_id")
+        codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="gene_name")
         initiator_table.to_csv(os.path.join(self.dir_output, "initiators.tsv"), sep="\t")
 
         oligo_database.write_oligosets_to_yaml(
@@ -716,51 +715,82 @@ class InitiatorDesigner:
         self.n_jobs = n_jobs
 
     def load_codebook(self, file_codebook: str) -> pd.DataFrame:
-
-        codebook = pd.read_csv(file_codebook, sep=None, engine="python", index_col="region_id")
-
-        # Check for at least one column
-        if len(codebook.columns) == 0:
-            raise FileFormatError(f"Codebook file '{file_codebook}' must contain at least one column.")
-
-        # Check that all columns start with "bit_"
-        non_bit_columns = [col for col in codebook.columns if not str(col).startswith("bit_")]
-        if len(non_bit_columns) > 0:
-            raise FileFormatError(
-                f"Codebook file '{file_codebook}' must have all columns named with 'bit_*'. "
-                f"Found columns that don't match: {non_bit_columns}"
-            )
-
-        # remove rows with any NaN
-        codebook = codebook[codebook.notna().all(axis=1)]
-        # keep only rows with 0/1 values
-        codebook = codebook[codebook.isin([0, 1]).all(axis=1)]
-        # keep only valid one-hot rows (exactly one "1")
-        codebook = codebook[(codebook == 1).sum(axis=1) == 1]
-        if len(codebook) == 0:
-            raise FileFormatError(f"Codebook file '{file_codebook}' must contain at least one row with data.")
-
-        return codebook
+        return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
     def load_initiator_table(self, file_initiator_table: str) -> pd.DataFrame:
-
-        required_cols = ["bit", "initiator_L_sequence", "initiator_R_sequence"]
-
         initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
+        return initiator_table.set_index("bit")
 
-        # Check if all required columns exist in readout_probe_table
-        cols = set(initiator_table.columns)
-        if not set(required_cols).issubset(cols):
-            missing = set(required_cols) - cols
-            raise FileFormatError(
-                f"Initiator table is missing required columns: {missing}. "
-                f"Required columns are: {required_cols}."
-            )
+    def generate_codebook(self, region_ids: list[str]) -> pd.DataFrame:
+        """
+        Generate a one-hot HCR codebook for the given regions.
 
-        initiator_table = initiator_table[required_cols]
-        initiator_table = initiator_table.set_index("bit")
+        Placeholder for a future implementation. Once implemented, the output is
+        expected to satisfy the same contract as a loaded codebook: ``gene_name``
+        index, ``bit_*`` columns, exactly one bit set per row.
+        """
+        raise FeatureNotImplementedError(
+            "Generation of codebook is not yet implemented. " "Please provide a file_codebook parameter."
+        )
 
-        return initiator_table
+    def generate_initiator_table(self) -> pd.DataFrame:
+        """
+        Generate an HCR initiator table with orthogonal L/R initiator sequences.
+
+        Placeholder for a future implementation. Once implemented, the output is
+        expected to satisfy the same contract as a loaded initiator table: ``bit``
+        index, ``initiator_L_sequence`` / ``initiator_R_sequence`` columns
+        containing DNA sequences.
+        """
+        raise FeatureNotImplementedError(
+            "Generation of initiator table is not yet implemented. "
+            "Please provide a file_initiator_table parameter."
+        )
+
+    def validate(
+        self,
+        codebook: pd.DataFrame,
+        initiator_table: pd.DataFrame,
+        region_ids: list[str],
+        *,
+        codebook_source: str,
+        initiator_table_source: str,
+    ) -> None:
+        """
+        Validate that a (codebook, initiator_table) pair forms a valid HCR initiator setup.
+
+        Centralizes the HCR-specific validation contract (one-hot codebook indexed by
+        ``gene_name``; bit-indexed initiator table with ``initiator_L_sequence`` /
+        ``initiator_R_sequence`` DNA columns; codebook bits covered by the table) so
+        that all paths producing these tables — loading from file today, generating
+        programmatically in the future — share a single validation gate.
+
+        :param codebook: Codebook DataFrame to validate.
+        :type codebook: pd.DataFrame
+        :param initiator_table: Initiator table DataFrame to validate.
+        :type initiator_table: pd.DataFrame
+        :param region_ids: Region IDs required to be present in the codebook index.
+        :type region_ids: list[str]
+        :param codebook_source: Source identifier (file path or marker) for the codebook.
+        :type codebook_source: str
+        :param initiator_table_source: Source identifier (file path or marker) for the initiator table.
+        :type initiator_table_source: str
+        :raises FileFormatError: If either input fails validation.
+        """
+        validate_codebook(
+            codebook=codebook,
+            region_ids=region_ids,
+            source=codebook_source,
+            expected_hamming_weight=1,
+            index_name="gene_name",
+        )
+        validate_bit_mapping_table(
+            table=initiator_table,
+            codebook=codebook,
+            source=initiator_table_source,
+            required_columns=["initiator_L_sequence", "initiator_R_sequence"],
+            sequence_columns=["initiator_L_sequence", "initiator_R_sequence"],
+        )
 
 
 ############################################
