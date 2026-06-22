@@ -851,9 +851,9 @@ class TargetProbeDesigner:
            each other, they may form dimers instead of binding to the target RNA. Probes from the
            larger genomic region are removed when cross-hybridization is detected.
 
-        The reference database is loaded from the provided FASTA files and shared between the BLASTN
-        specificity and cross-hybridization filters. Regions that do not meet the minimum oligo
-        requirement after filtering are removed from the database.
+        The BLASTN reference database is loaded from ``specificity_blastn_filter['files_fasta_reference_database']``
+        and used by the BLASTN-specificity filter. The cross-hybridization filter builds its own reference
+        database from the current oligos in the `OligoDatabase`.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties.
