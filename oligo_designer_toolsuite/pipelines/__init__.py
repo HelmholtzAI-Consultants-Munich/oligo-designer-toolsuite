@@ -4,7 +4,7 @@ The module provides a collection of comprehensive oligonucleotide design pipelin
 
 from ._cycle_hcr_probe_designer import CycleHCRProbeDesigner
 from ._genomic_region_generator import GenomicRegionGenerator
-from ._hcr_probe_designer import HcrProbeDesigner
+from ._hcr_probe_designer import HcrProbeDesigner, hcr_probe_designer
 from ._merfish_probe_designer import MerfishProbeDesigner
 from ._oligo_seq_probe_designer import OligoSeqProbeDesigner, oligo_seq_probe_designer
 from ._scrinshot_probe_designer import ScrinshotProbeDesigner, scrinshot_probe_designer
@@ -20,4 +20,5 @@ __all__ = [
     "MerfishProbeDesigner",
     "CycleHCRProbeDesigner",
     "HcrProbeDesigner",
+    "hcr_probe_designer",
 ]
