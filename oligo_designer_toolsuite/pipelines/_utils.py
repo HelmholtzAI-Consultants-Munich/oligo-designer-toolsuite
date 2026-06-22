@@ -4,13 +4,16 @@
 
 import inspect
 import sys
+import warnings
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from typing import Any, Callable, TypeVar, cast
 
+import pandas as pd
 from Bio.SeqUtils import MeltingTemp as mt
 
+from oligo_designer_toolsuite._exceptions import FileFormatError
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.utils import count_kmer_abundance, logger
+from oligo_designer_toolsuite.utils import check_if_dna_sequence, count_kmer_abundance, logger
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -237,6 +240,168 @@ def preprocess_tm_parameters(tm_parameters: dict[str, Any]) -> dict[str, Any]:
         if tm_parameters[key] is not None:
             tm_parameters[key] = getattr(mt, tm_parameters[key])
     return tm_parameters
+
+
+def validate_codebook(
+    codebook: pd.DataFrame,
+    region_ids: list[str],
+    *,
+    source: str,
+    expected_hamming_weight: int | None = None,
+    index_name: str = "region_id",
+) -> None:
+    """
+    Validate a codebook DataFrame against the expected format.
+
+    The codebook is expected to have ``index_name`` as the index and one or more
+    ``bit_*`` columns containing binary (0/1) values. All ``region_ids`` requested
+    by the caller must be present in the index. If ``expected_hamming_weight`` is
+    provided, each row must have exactly that many bits set; otherwise each row
+    must have at least one bit set.
+
+    :param codebook: Codebook with ``index_name`` as the index and ``bit_*`` columns.
+    :type codebook: pd.DataFrame
+    :param region_ids: Region IDs required to be present in the codebook index.
+    :type region_ids: list[str]
+    :param source: Source identifier (e.g. filename) used in error messages.
+    :type source: str
+    :param expected_hamming_weight: Required number of bits set per row, or ``None``
+        to require at least one bit set per row.
+    :type expected_hamming_weight: int | None
+    :param index_name: Expected name of the codebook index column.
+    :type index_name: str
+    :raises FileFormatError: If any validation check fails.
+    """
+    if codebook.index.name != index_name:
+        raise FileFormatError(
+            f"Codebook '{source}' must use '{index_name}' as the index, got '{codebook.index.name}'."
+        )
+
+    duplicate_regions = codebook.index[codebook.index.duplicated()].unique().tolist()
+    if duplicate_regions:
+        raise FileFormatError(
+            f"Codebook '{source}' contains duplicate {index_name}s: {sorted(duplicate_regions)}."
+        )
+
+    if len(codebook.columns) == 0:
+        raise FileFormatError(f"Codebook '{source}' must contain at least one bit column.")
+
+    non_bit_columns = [c for c in codebook.columns if not str(c).startswith("bit_")]
+    if non_bit_columns:
+        raise FileFormatError(
+            f"Codebook '{source}' must have all columns named with the 'bit_*' pattern. "
+            f"Found columns that don't match: {non_bit_columns}."
+        )
+
+    duplicate_cols = codebook.columns[codebook.columns.duplicated()].unique().tolist()
+    if duplicate_cols:
+        raise FileFormatError(
+            f"Codebook '{source}' contains duplicate bit columns: {sorted(duplicate_cols)}."
+        )
+
+    if codebook.isna().any().any():
+        rows_with_nan = codebook.index[codebook.isna().any(axis=1)].unique().tolist()
+        raise FileFormatError(f"Codebook '{source}' contains NaN values in rows: {sorted(rows_with_nan)}.")
+
+    if not codebook.isin([0, 1]).all().all():
+        invalid_rows = codebook.index[~codebook.isin([0, 1]).all(axis=1)].unique().tolist()
+        raise FileFormatError(
+            f"Codebook '{source}' must contain only 0/1 values. "
+            f"Rows with invalid values: {sorted(invalid_rows)}."
+        )
+
+    row_sums = (codebook == 1).sum(axis=1)
+    if expected_hamming_weight is None:
+        invalid_rows = codebook.index[row_sums < 1].unique().tolist()
+        if invalid_rows:
+            raise FileFormatError(
+                f"Codebook '{source}' must have at least one bit set per row. "
+                f"Rows with no bits set: {sorted(invalid_rows)}."
+            )
+    else:
+        invalid_rows = codebook.index[row_sums != expected_hamming_weight].unique().tolist()
+        if invalid_rows:
+            raise FileFormatError(
+                f"Codebook '{source}' must have exactly {expected_hamming_weight} bit(s) set per row. "
+                f"Rows with wrong count: {sorted(invalid_rows)}."
+            )
+
+    missing_region_ids = set(region_ids) - set(codebook.index)
+    if missing_region_ids:
+        raise FileFormatError(f"Codebook '{source}' is missing {index_name}s: {sorted(missing_region_ids)}.")
+
+
+def validate_bit_mapping_table(
+    table: pd.DataFrame,
+    codebook: pd.DataFrame,
+    *,
+    source: str,
+    required_columns: list[str],
+    sequence_columns: list[str],
+) -> None:
+    """
+    Validate a bit-indexed mapping table against a codebook.
+
+    The table is expected to have ``bit`` as the index and to contain all of
+    ``required_columns``. Every ``bit_*`` column present in ``codebook`` must have
+    a corresponding row in the table. Values in ``sequence_columns`` must be
+    non-empty DNA sequences containing only A/C/G/T (case-insensitive). A warning
+    is emitted (not an error) when the table contains bits that are not referenced
+    by any codebook column.
+
+    :param table: Bit-indexed table (e.g. initiator or readout probe table).
+    :type table: pd.DataFrame
+    :param codebook: Codebook whose ``bit_*`` columns drive the set of required bits.
+    :type codebook: pd.DataFrame
+    :param source: Source identifier (e.g. filename) used in error messages.
+    :type source: str
+    :param required_columns: Columns that must be present in the table.
+    :type required_columns: list[str]
+    :param sequence_columns: Subset of ``required_columns`` whose values must be
+        valid DNA sequences.
+    :type sequence_columns: list[str]
+    :raises FileFormatError: If any validation check fails.
+    """
+    if table.index.name != "bit":
+        raise FileFormatError(f"Table '{source}' must use 'bit' as the index, got '{table.index.name}'.")
+
+    duplicate_bits = table.index[table.index.duplicated()].unique().tolist()
+    if duplicate_bits:
+        raise FileFormatError(f"Table '{source}' contains duplicate bit entries: {sorted(duplicate_bits)}.")
+
+    missing_columns = set(required_columns) - set(table.columns)
+    if missing_columns:
+        raise FileFormatError(
+            f"Table '{source}' is missing required columns: {sorted(missing_columns)}. "
+            f"Required columns are: {required_columns}."
+        )
+
+    required_bits = set(codebook.columns)
+    table_bits = set(table.index)
+    missing_bits = required_bits - table_bits
+    if missing_bits:
+        raise FileFormatError(
+            f"Table '{source}' is missing entries for codebook bits: {sorted(missing_bits)}."
+        )
+
+    unused_bits = table_bits - required_bits
+    if unused_bits:
+        warnings.warn(
+            f"Table '{source}' contains bits not referenced by the codebook: {sorted(unused_bits)}.",
+            stacklevel=2,
+        )
+
+    for column in sequence_columns:
+        invalid_bits = [
+            bit
+            for bit, value in table[column].items()
+            if not isinstance(value, str) or not check_if_dna_sequence(value)
+        ]
+        if invalid_bits:
+            raise FileFormatError(
+                f"Table '{source}' column '{column}' must contain non-empty DNA sequences "
+                f"(A/C/G/T only). Invalid entries at bits: {sorted(invalid_bits)}."
+            )
 
 
 def get_highly_abundant_kmer_sequences(
