@@ -102,7 +102,7 @@ target_probe:
 
 initiator_probes:
   file_initiator_table: data/functional_oligos/hcr_initiators.tsv # csv/tsv file containing the initiator table with the columns "bit", "initiator_L_sequence", and "initiator_R_sequence".
-  file_codebook: data/functional_oligos/hcr_codebook.tsv # Codebook file: columns = "bits", rows = "region_id"; entries are 0/1 bit-encodings for each region.
+  file_codebook: data/functional_oligos/hcr_codebook.tsv # Codebook file: columns = "bits", rows = "gene_name"; entries are 0/1 bit-encodings for each gene.
 
 hybridization_probes:
   linker_sequence: AA # Linker sequence between the initiator and the target-binding L/R arm.
