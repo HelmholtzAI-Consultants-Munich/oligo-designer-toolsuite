@@ -1,102 +1,106 @@
+#########################
+### HIDDEN PARAMETERS ###
+#########################
+
+schema_version: 2
+
+general:
+  n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
+  dir_output: output_hcr_probe_designer # name of the directory where the output files will be written
+  write_intermediate_steps: true # if true, saves intermediate results after each step
+
 #######################
 ### USER PARAMETERS ###
 #######################
 
-### General parameters
-### -----------------------------------------------
-n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-dir_output: output_hcr_probe_designer # name of the directory where the output files will be written
-write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
-top_n_sets: 1 #maximum number of sets to report in hcr_probes.yaml and "hcr_probes_order.yaml"
+target_probe:
+  oligo_generation:
+    file_region_ids: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
+    files_fasta_probe_database: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
+      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+    L_probe_sequence_length: 25 # Length (bases) of the L arm of the probe; L + gap + R should equal the total probe length, e.g. 25 + 2 + 25 = 52.
+    gap_sequence_length: 2 # Length (bases) of the spacer between the L and R arms (covers the ligation site).
+    R_probe_sequence_length: 25 # Length (bases) of the R arm of the probe; L + gap + R should equal the total probe length, e.g. 25 + 2 + 25 = 52.
 
+  property_filters:
+    isoform_consensus_filter: # Require oligos to be supported by a minimum fraction of gene transcripts.
+      enabled: true # Turn this filter on or off.
+      isoform_consensus: 0 # Minimum isoform consensus (%). Oligos must be covered by at least this fraction of a gene's transcripts.
 
-### Target Probe Parameters
-### -----------------------------------------------
-file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the probe sequences, leave empty if all the genes are used
-files_fasta_target_probe_database: # fasta file with sequences form which the probes should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-files_fasta_reference_database_target_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-target_probe_isoform_consensus: 0 # min isoform consesnsus for probes, i.e. how many transcripts of the total number of transcripts of a gene are covered by the probe, given in %
-target_probe_L_probe_sequence_length: 25 # L + spacer + R sequence should equal the total probe length, e.g. 25 + 2 + 25 = 52
-target_probe_gap_sequence_length: 2 # gap between L and R probe sequences
-target_probe_R_probe_sequence_length: 25 # L + spacer + R sequence should equal the total probe length, e.g. 25 + 2 + 25 = 52
-target_probe_GC_content_min: 40 # minimum GC content of oligos
-target_probe_GC_content_max: 65 # maximum GC content of oligos
-target_probe_Tm_min: 50 # minimum melting temperature of oligos
-target_probe_Tm_max: 80 # maximum melting temperature of oligos
-target_probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
-  A: 4
-  T: 4
-  C: 4
-  G: 4
-target_probe_T_secondary_structure: 37 # Temperature at which the free energy is calculated
-target_probe_junction_region_size: 0 # size of the seed region around the junction site for blast seed region filter; set to 0 if junction region should not be considered for blast search
-target_probe_isoform_weight: 1 # weight of the isoform consensus of the probe in the efficiency score, where score is between 0 and 1
-set_size_min: 10 # minimum size of probe sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
-set_size_opt: 25 # optimal size of probe sets
-distance_between_target_probes: 2 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
-n_sets: 30 # maximum number of sets to generate
-linker_sequence: AA # linker sequence between readout probe and target sequence
+    hard_masked_sequences_filter: # Exclude oligos overlapping hard-masked (e.g. N) regions in the reference.
+      enabled: true # Turn this filter on or off.
 
-### Readout Probe Parameters
-### -----------------------------------------------
-file_initiator_table: data/functional_oligos/hcr_initiators.tsv # csv/tsv file containing the initiator table with the columns "bit", "initiator_L_sequence", and "initiator_R_sequence"
-file_codebook: data/functional_oligos/hcr_codebook.tsv # optional, file containing the codebook, where columns = "bits" and rows = "region_id" and the entries represent the bit encoding in 0/1 for the bits used for each region
+    soft_masked_sequences_filter: # Exclude oligos overlapping soft-masked (lowercase) regions in the reference.
+      enabled: false # Turn this filter on or off.
 
+    homopolymeric_runs_filter: # Exclude oligos containing long homopolymeric runs (e.g. AAAA).
+      enabled: true # Turn this filter on or off.
+      homopolymeric_base_n: {"A": 4, "T": 4, "C": 4, "G": 4} # Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.
 
-############################
-### DEVELOPER PARAMETERS ###
-############################
+    GC_content_filter: # Enforce GC content within a specified range.
+      enabled: true # Turn this filter on or off.
+      GC_content_min: 40 # Minimum GC content (%). Oligos below this are rejected.
+      GC_content_max: 65 # Maximum GC content (%). Oligos above this are rejected.
 
-### Target Probe Parameters
-### -----------------------------------------------
-# Parameters for property filters
-# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-target_probe_Tm_parameters:
-  nn_table: DNA_NN3 # default
-  tmm_table: DNA_TMM1 # default
-  imm_table: DNA_IMM1 # default
-  de_table: DNA_DE1 # default
-  dnac1: 25 #[nM]
-  dnac2: 25 #[nM]
-  saltcorr: 0 #
-  Na: 50 #[mM]
-  K: 0 #[mM] default
-  Tris: 0 #[mM] default
-  Mg: 0 #[mM] default
-  dNTPs: 0 #[mM] default
-target_probe_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
-target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-target_probe_secondary_structures_threshold_deltaG: -7 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
-# Specificity filter with BlastN
-target_probe_specificity_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  -word_size: 10
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-target_probe_specificity_blastn_hit_parameters:
-  coverage: 90 # can be turned into min_alignment_length
-# Crosshybridization filter with BlastN
-target_probe_cross_hybridization_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus" # this parameter is fixed
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-target_probe_cross_hybridization_blastn_hit_parameters:
-  coverage: 90 # can be turned into min_alignment_length
-# Parameters for the Oligo set selection
-n_attempts_graph: 50 # number of randomized graph attempts (diversification)
-n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
-diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
-jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
-jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found
+    Tm_filter: # Enforce melting temperature (Tm) within a range (uses Tm parameters below).
+      enabled: true # Turn this filter on or off.
+      Tm_min: 50 # Minimum melting temperature (°C). Oligos below this are rejected.
+      Tm_max: 80 # Maximum melting temperature (°C). Oligos above this are rejected.
 
-### Initiator Parameters
-### -----------------------------------------------
+    secondary_structure_filter: # Reject oligos with stable secondary structure at the given temperature.
+      enabled: true # Turn this filter on or off.
+      T: 37 # Temperature (°C) at which secondary structure free energy is evaluated.
+      thr_DG: -7 # Free-energy threshold (kcal/mol). Oligos with ΔG ≤ thr_DG (stable structure) are rejected.
+
+  specificity_filters:
+    cross_hybridization_blastn_filter: # Remove L/R arms that may cross-hybridize to off-target sequences (BLAST-based).
+      enabled: true # Turn this filter on or off.
+      search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10} # BLAST options for the cross-hybridization search.
+      hit_parameters: {"coverage": 90} # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+
+    specificity_blastn_filter: # Ensure oligo specificity against a reference database (BLAST-based).
+      enabled: true # Turn this filter on or off.
+      junction_region_size: 0 # Size of the seed region around the junction site for the BLAST seed-region filter; set to 0 to skip seed-region filtering.
+      search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000} # BLAST options for the specificity search.
+      hit_parameters: {"coverage": 90} # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+      files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Use genomic_region_generator for custom reference sets.
+        - data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+  probe_set_selection: # Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
+    independent_set_selection:
+      n_sets: 30 # Maximum number of probe sets to generate per gene.
+      set_size_min: 10 # Minimum set size. Genes that cannot form a set of at least this size are reported as insufficient.
+      set_size_opt: 25 # Preferred (optimal) number of oligos per set.
+      distance_between_probes: 2 # Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).
+      n_attempts_graph: 50 # Number of randomized graph attempts used to diversify set selection.
+      n_attempts_clique_enum: 50 # Maximum cliques enumerated per graph attempt.
+      diversification_fraction: 0.1 # Fraction of oligos removed from the graph in each attempt to increase set diversity.
+      jaccard_opt: 0.5 # Target maximum Jaccard similarity between selected sets; lower = more distinct sets.
+      jaccard_step: 0.1 # Step size for relaxing Jaccard threshold when too few sets are found.
+    isoform_consensus_score:
+      weight: 1 # Weight for isoform coverage in the set-selection scoring function.
+
+  global_parameters:
+    Tm_parameters:
+      nn_table: DNA_NN3 # default
+      tmm_table: DNA_TMM1 # default
+      imm_table: DNA_IMM1 # default
+      de_table: DNA_DE1 # default
+      dnac1: 25 #[nM]
+      dnac2: 25 #[nM]
+      saltcorr: 0
+      Na: 50 #[mM]
+      K: 0 #[mM] default
+      Tris: 0 #[mM] default
+      Mg: 0 #[mM] default
+      dNTPs: 0 #[mM] default
+    Tm_chem_correction_parameters:
+      enabled: false
+    Tm_salt_correction_parameters:
+      enabled: false
+
+hybridization_probe:
+  file_initiator_table: data/functional_oligos/hcr_initiators.tsv # csv/tsv file containing the initiator table with the columns "bit", "initiator_L_sequence", and "initiator_R_sequence".
+  file_codebook: data/functional_oligos/hcr_codebook.tsv # Codebook file: columns = "bits", rows = "region_id"; entries are 0/1 bit-encodings for each region.
+  linker_sequence: AA # Linker sequence between the initiator and the target-binding L/R arm.
