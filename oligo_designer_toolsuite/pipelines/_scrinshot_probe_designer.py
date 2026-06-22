@@ -183,10 +183,9 @@ class ScrinshotProbeDesigner:
             ``independent_set_selection`` scalars and the ``isoform_consensus_score`` / ``GC_content_score`` /
             ``Tm_score`` sub-dicts.
         :type probe_set_selection_parameters: dict
-        :param detection_oligo_parameters: ``detection_oligo.oligo_generation`` block. Consumed by the
-            padlock-arm / detection-oligo composite property filter (which requires the detection-oligo
-            length bounds and minimum thymines).
-        :type detection_oligo_parameters: dict
+        :param padlock_arms_parameters: ``target_probe.padlock_arms_properties`` block. Used to compute padlock-arm
+            sequences/Tm (via ``PadlockArmsProperty``) for downstream filtering and backbone assembly.
+        :type padlock_arms_parameters: dict
         :return: An `OligoDatabase` object containing the designed target probes organized into sets.
             The database includes probe sequences, properties, and set assignments for each target gene.
         :rtype: OligoDatabase
