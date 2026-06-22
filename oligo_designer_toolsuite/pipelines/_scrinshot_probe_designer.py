@@ -466,7 +466,7 @@ class ScrinshotProbeDesigner:
 
     def generate_output(
         self,
-        probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         output_properties: list[str] | None = None,
     ) -> None:
         """
@@ -490,10 +490,10 @@ class ScrinshotProbeDesigner:
         4. **padlock_probes_order.yml**: Simplified YAML file containing only the essential sequences
            needed for ordering probes (padlock probe and detection oligo sequences).
 
-        :param probe_database: The `OligoDatabase` instance containing the final padlock probes
+        :param oligo_database: The `OligoDatabase` instance containing the final padlock probes
             with all sequences and properties. This should be the result of the `design_padlock_backbone`
             and `design_detection_oligos` methods.
-        :type probe_database: OligoDatabase
+        :type oligo_database: OligoDatabase
         :param output_properties: List of property names to include in the output files. If None, a default
             set of properties will be included. Available properties include: 'source', 'species', 'gene_id',
             'chromosome', 'start', 'end', 'strand', 'sequence_target', 'sequence_padlock_arm1',
@@ -537,19 +537,19 @@ class ScrinshotProbeDesigner:
                 "isoform_consensus",
             ]
 
-        probe_database.write_oligosets_to_yaml(
+        oligo_database.write_oligosets_to_yaml(
             properties=output_properties,
             ascending=True,
             filename="padlock_probes",
         )
 
-        probe_database.write_oligosets_to_table(
+        oligo_database.write_oligosets_to_table(
             properties=output_properties,
             ascending=True,
             filename="padlock_probes",
         )
 
-        probe_database.write_ready_to_order_yaml(
+        oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_padlock_probe",
                 "sequence_detection_oligo",
@@ -1623,7 +1623,7 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
     )
 
     ##### design target probes #####
-    oligo_database = pipeline.design_target_probes(
+    target_probe_database = pipeline.design_target_probes(
         oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
         property_filters_parameters=config_dict["target_probe"]["property_filters"],
         specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
@@ -1632,19 +1632,19 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
     )
 
     ##### design detection oligos #####
-    oligo_database = pipeline.design_detection_oligos(
-        oligo_database=oligo_database,
+    target_probe_database = pipeline.design_detection_oligos(
+        oligo_database=target_probe_database,
         oligo_generation_parameters=config_dict["detection_oligo"]["oligo_generation"],
     )
 
     ##### assemble padlock backbone #####
-    probe_database = pipeline.assemble_padlock_backbone(
-        oligo_database=oligo_database,
+    target_probe_database = pipeline.assemble_padlock_backbone(
+        oligo_database=target_probe_database,
         padlock_arms_parameters=config_dict["target_probe"]["padlock_arms_properties"],
     )
 
     ##### write outputs #####
-    pipeline.generate_output(probe_database=probe_database)
+    pipeline.generate_output(oligo_database=target_probe_database)
 
 
 def main() -> None:
