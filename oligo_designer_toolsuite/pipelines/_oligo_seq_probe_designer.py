@@ -126,7 +126,6 @@ class OligoSeqProbeDesigner:
         property_filters_parameters: dict,
         specificity_filters_parameters: dict,
         probe_set_selection_parameters: dict,
-        global_parameters: dict,
     ) -> OligoDatabase:
         """
         Design target probes for Oligo-seq experiments using a modular multi-step pipeline.
@@ -154,7 +153,7 @@ class OligoSeqProbeDesigner:
 
         5. **Property annotation**
         - Computes final probe properties (e.g. GC content, Tm, transcript coverage)
-        - Uses shared thermodynamic model parameters provided via `global_parameters`
+        - Uses thermodynamic model parameters inlined into the `Tm_filter` block by `_preprocess_config`
 
         The resulting probes are gene-specific targeting sequences (typically 26-30 nt) that bind to
         RNA transcripts. These probes are used directly for hybridization-based capture in Oligo-seq
@@ -175,11 +174,6 @@ class OligoSeqProbeDesigner:
         :param probe_set_selection_parameters:
             Parameters controlling probe set construction and scoring.
         :type probe_set_selection_parameters: dict
-
-        :param global_parameters:
-            Global/shared parameters used across the pipeline, including thermodynamic model settings
-            (e.g. melting temperature model, salt and chemical corrections).
-        :type global_parameters: dict
 
         :return:
             An `OligoDatabase` containing the designed target probes organized into sets,
@@ -231,7 +225,6 @@ class OligoSeqProbeDesigner:
             self_complementarity_filter=property_filters_parameters["self_complementarity_filter"],
             Tm_filter=property_filters_parameters["Tm_filter"],
             secondary_structure_filter=property_filters_parameters["secondary_structure_filter"],
-            global_parameters=global_parameters,
         )
 
         if self.write_intermediate_steps:
@@ -260,16 +253,17 @@ class OligoSeqProbeDesigner:
             targeted_exons_score=probe_set_selection_parameters["targeted_exons_score"],
             GC_content_score=probe_set_selection_parameters["GC_content_score"],
             Tm_score=probe_set_selection_parameters["Tm_score"],
-            global_parameters=global_parameters,
         )
 
-        # Calculate oligo length, GC content, Tm, num targeted transcripts, isoform consensus, and length self complement
+        # Calculate oligo length, GC content, Tm, num targeted transcripts, isoform consensus, and length self complement.
+        # Tm parameters were inlined into the ``Tm_filter`` block by ``_preprocess_config``.
+        Tm_filter = property_filters_parameters["Tm_filter"]
         length_property = LengthProperty()
         gc_content_property = GCContentProperty()
         TmNN_property = TmNNProperty(
-            Tm_parameters=global_parameters["Tm_parameters"],
-            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"]["parameters"],
-            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"]["parameters"],
+            Tm_parameters=Tm_filter["Tm_parameters"],
+            Tm_chem_correction_parameters=Tm_filter["Tm_chem_correction_parameters"],
+            Tm_salt_correction_parameters=Tm_filter["Tm_salt_correction_parameters"],
         )
         num_targeted_transcripts_property = NumTargetedTranscriptsProperty()
         isoform_consensus_property = IsoformConsensusProperty()
@@ -559,7 +553,6 @@ class TargetProbeDesigner:
         self_complementarity_filter: dict,
         Tm_filter: dict,
         secondary_structure_filter: dict,
-        global_parameters: dict,
     ) -> OligoDatabase:
         """
         Filter candidate oligos based on intrinsic sequence properties.
@@ -622,17 +615,14 @@ class TargetProbeDesigner:
         :type self_complementarity_filter: dict
 
         :param Tm_filter:
-            Dict with `enabled`, `Tm_min`, `Tm_max`.
-            Thermodynamic model parameters are provided via `global_parameters`.
+            Dict with `enabled`, `Tm_min`, `Tm_max`. The thermodynamic model parameters
+            (`Tm_parameters`, `Tm_chem_correction_parameters`, `Tm_salt_correction_parameters`)
+            are inlined into this dict by `_preprocess_config`.
         :type Tm_filter: dict
 
         :param secondary_structure_filter:
             Dict with `enabled`, `T`, `thr_DG`.
         :type secondary_structure_filter: dict
-
-        :param global_parameters:
-            Shared global parameters (e.g. thermodynamic model settings).
-        :type global_parameters: dict
 
         :return:
             Filtered `OligoDatabase` containing only oligos passing all property filters.
@@ -705,13 +695,9 @@ class TargetProbeDesigner:
             melting_temperature = MeltingTemperatureNNFilter(
                 Tm_min=Tm_filter["Tm_min"],
                 Tm_max=Tm_filter["Tm_max"],
-                Tm_parameters=global_parameters["Tm_parameters"],
-                Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"][
-                    "parameters"
-                ],
-                Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"][
-                    "parameters"
-                ],
+                Tm_parameters=Tm_filter["Tm_parameters"],
+                Tm_chem_correction_parameters=Tm_filter["Tm_chem_correction_parameters"],
+                Tm_salt_correction_parameters=Tm_filter["Tm_salt_correction_parameters"],
             )
             filters.append(melting_temperature)
 
@@ -906,7 +892,6 @@ class TargetProbeDesigner:
         targeted_exons_score: dict,
         GC_content_score: dict,
         Tm_score: dict,
-        global_parameters: dict,
     ) -> OligoDatabase:
         """
         Construct optimized oligo sets using scoring and graph-based selection.
@@ -965,12 +950,10 @@ class TargetProbeDesigner:
         :type GC_content_score: dict
 
         :param Tm_score:
-            Dict with `Tm_min`, `Tm_opt`, `Tm_max`, `weight`.
+            Dict with `Tm_min`, `Tm_opt`, `Tm_max`, `weight`. The thermodynamic model parameters
+            (`Tm_parameters`, `Tm_chem_correction_parameters`, `Tm_salt_correction_parameters`)
+            are inlined into this dict by `_preprocess_config`.
         :type Tm_score: dict
-
-        :param global_parameters:
-            Shared global parameters (e.g. thermodynamic model settings).
-        :type global_parameters: dict
 
         :return:
             Updated `OligoDatabase` containing selected oligo sets per region.
@@ -997,9 +980,9 @@ class TargetProbeDesigner:
             Tm_min=Tm_score["Tm_min"],
             Tm_opt=Tm_score["Tm_opt"],
             Tm_max=Tm_score["Tm_max"],
-            Tm_parameters=global_parameters["Tm_parameters"],
-            Tm_chem_correction_parameters=global_parameters["Tm_chem_correction_parameters"]["parameters"],
-            Tm_salt_correction_parameters=global_parameters["Tm_salt_correction_parameters"]["parameters"],
+            Tm_parameters=Tm_score["Tm_parameters"],
+            Tm_chem_correction_parameters=Tm_score["Tm_chem_correction_parameters"],
+            Tm_salt_correction_parameters=Tm_score["Tm_salt_correction_parameters"],
             score_weight=Tm_score["weight"],
         )
         GC_scorer = NormalizedDeviationFromOptimalGCContentScorer(
@@ -1046,15 +1029,43 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
 
     config = config_validated.model_dump()
 
-    config["target_probe"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-        config["target_probe"]["global_parameters"]["Tm_parameters"]
-    )
+    # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
+    for section in ["target_probe"]:
+        config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
+            config[section]["global_parameters"]["Tm_parameters"]
+        )
+        for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
+            correction_cfg = config[section]["global_parameters"][correction]
+            if not correction_cfg["enabled"]:
+                correction_cfg["parameters"] = None
 
-    # set Tm_chem/salt_correction_parameters to None if the correction is disabled
-    if not config["target_probe"]["global_parameters"]["Tm_chem_correction_parameters"]["enabled"]:
-        config["target_probe"]["global_parameters"]["Tm_chem_correction_parameters"]["parameters"] = None
-    if not config["target_probe"]["global_parameters"]["Tm_salt_correction_parameters"]["enabled"]:
-        config["target_probe"]["global_parameters"]["Tm_salt_correction_parameters"]["parameters"] = None
+    # Inline Tm parameters into every block that consumes them so the inner designer methods
+    # don't have to thread ``global_parameters`` through the call chain.
+    target_probe_Tm_parameters = config["target_probe"]["global_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probe"]["global_parameters"][
+        "Tm_chem_correction_parameters"
+    ]["parameters"]
+    target_probe_Tm_salt_correction_parameters = config["target_probe"]["global_parameters"][
+        "Tm_salt_correction_parameters"
+    ]["parameters"]
+
+    # Tm_filter: consumed by the property filter and by the final TmNN property calculator
+    config["target_probe"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probe"]["property_filters"]["Tm_filter"][
+        "Tm_chem_correction_parameters"
+    ] = target_probe_Tm_chem_correction_parameters
+    config["target_probe"]["property_filters"]["Tm_filter"][
+        "Tm_salt_correction_parameters"
+    ] = target_probe_Tm_salt_correction_parameters
+
+    # Tm_score: consumed by the Tm scorer in create_oligo_sets
+    config["target_probe"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probe"]["probe_set_selection"]["Tm_score"][
+        "Tm_chem_correction_parameters"
+    ] = target_probe_Tm_chem_correction_parameters
+    config["target_probe"]["probe_set_selection"]["Tm_score"][
+        "Tm_salt_correction_parameters"
+    ] = target_probe_Tm_salt_correction_parameters
 
     ##### read the genes file #####
     file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
@@ -1097,15 +1108,14 @@ def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
     )
 
     ##### design probes #####
-    oligo_database = pipeline.design_target_probes(
+    target_probe_database = pipeline.design_target_probes(
         oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
         property_filters_parameters=config_dict["target_probe"]["property_filters"],
         specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
         probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
-        global_parameters=config_dict["target_probe"]["global_parameters"],
     )
 
-    pipeline.generate_output(oligo_database=oligo_database)
+    pipeline.generate_output(oligo_database=target_probe_database)
 
 
 def main() -> None:
