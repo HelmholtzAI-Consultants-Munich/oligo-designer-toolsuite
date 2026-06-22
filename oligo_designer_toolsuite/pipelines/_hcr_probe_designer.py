@@ -298,7 +298,7 @@ class HcrProbeDesigner:
 
     def generate_output(
         self,
-        probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         codebook: pd.DataFrame,
         initiator_table: pd.DataFrame,
         output_properties: list[str] | None = None,
@@ -333,13 +333,13 @@ class HcrProbeDesigner:
         codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="region_id")
         initiator_table.to_csv(os.path.join(self.dir_output, "initiators.tsv"), sep="\t")
 
-        probe_database.write_oligosets_to_yaml(
+        oligo_database.write_oligosets_to_yaml(
             properties=output_properties,
             ascending=True,
             filename="hcr_probes",
         )
 
-        probe_database.write_ready_to_order_yaml(
+        oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_hybridization_probe_L",
                 "sequence_hybridization_probe_R",
@@ -350,7 +350,7 @@ class HcrProbeDesigner:
             filename="hcr_probes_order",
         )
 
-        probe_database.write_oligosets_to_table(
+        oligo_database.write_oligosets_to_table(
             properties=output_properties,
             ascending=True,
             filename="hcr_probes",
@@ -885,7 +885,7 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
 
     ##### write outputs #####
     pipeline.generate_output(
-        probe_database=hybridization_probe_database,
+        oligo_database=hybridization_probe_database,
         codebook=codebook,
         initiator_table=initiator_table,
     )
