@@ -171,7 +171,7 @@ class ScrinshotProbeDesigner:
         :type oligo_generation_parameters: dict
         :param property_filters_parameters: ``target_probe.property_filters`` block. Each filter sub-dict
             (``isoform_consensus_filter``, ``hard_masked_sequences_filter``, ``soft_masked_sequences_filter``,
-            ``homopolymeric_runs_filter``, ``GC_content_filter``, ``Tm_filter``, ``padlock_arm_filter``)
+            ``homopolymeric_runs_filter``, ``GC_content_filter``, ``Tm_filter``, ``detection_oligo_filter``)
             carries an ``enabled`` flag plus its parameters.
         :type property_filters_parameters: dict
         :param specificity_filters_parameters: ``target_probe.specificity_filters`` block. Contains the
@@ -183,10 +183,9 @@ class ScrinshotProbeDesigner:
             ``independent_set_selection`` scalars and the ``isoform_consensus_score`` / ``GC_content_score`` /
             ``Tm_score`` sub-dicts.
         :type probe_set_selection_parameters: dict
-        :param detection_oligo_parameters: ``detection_oligo.oligo_generation`` block. Consumed by the
-            padlock-arm / detection-oligo composite property filter (which requires the detection-oligo
-            length bounds and minimum thymines).
-        :type detection_oligo_parameters: dict
+        :param padlock_arms_parameters: ``target_probe.padlock_arms_properties`` block. Used to compute padlock-arm
+            sequences/Tm (via ``PadlockArmsProperty``) for downstream filtering and backbone assembly.
+        :type padlock_arms_parameters: dict
         :return: An `OligoDatabase` object containing the designed target probes organized into sets.
             The database includes probe sequences, properties, and set assignments for each target gene.
         :rtype: OligoDatabase
@@ -467,7 +466,7 @@ class ScrinshotProbeDesigner:
 
     def generate_output(
         self,
-        probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         output_properties: list[str] | None = None,
     ) -> None:
         """
@@ -491,10 +490,10 @@ class ScrinshotProbeDesigner:
         4. **padlock_probes_order.yml**: Simplified YAML file containing only the essential sequences
            needed for ordering probes (padlock probe and detection oligo sequences).
 
-        :param probe_database: The `OligoDatabase` instance containing the final padlock probes
+        :param oligo_database: The `OligoDatabase` instance containing the final padlock probes
             with all sequences and properties. This should be the result of the `design_padlock_backbone`
             and `design_detection_oligos` methods.
-        :type probe_database: OligoDatabase
+        :type oligo_database: OligoDatabase
         :param output_properties: List of property names to include in the output files. If None, a default
             set of properties will be included. Available properties include: 'source', 'species', 'gene_id',
             'chromosome', 'start', 'end', 'strand', 'sequence_target', 'sequence_padlock_arm1',
@@ -538,19 +537,19 @@ class ScrinshotProbeDesigner:
                 "isoform_consensus",
             ]
 
-        probe_database.write_oligosets_to_yaml(
+        oligo_database.write_oligosets_to_yaml(
             properties=output_properties,
             ascending=True,
             filename="padlock_probes",
         )
 
-        probe_database.write_oligosets_to_table(
+        oligo_database.write_oligosets_to_table(
             properties=output_properties,
             ascending=True,
             filename="padlock_probes",
         )
 
-        probe_database.write_ready_to_order_yaml(
+        oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_padlock_probe",
                 "sequence_detection_oligo",
@@ -731,17 +730,13 @@ class TargetProbeDesigner:
         :type homopolymeric_runs_filter: dict
         :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
         :type GC_content_filter: dict
-        :param Tm_filter: Dict with ``enabled``, ``Tm_min``, ``Tm_max``. Thermodynamic model
-            parameters come from ``global_parameters``.
+        :param Tm_filter: Dict with ``enabled``, ``Tm_min``, ``Tm_max``, plus thermodynamic model parameters
+            (``Tm_parameters``, ``Tm_chem_correction_parameters``, ``Tm_salt_correction_parameters``) injected during
+            config preprocessing.
         :type Tm_filter: dict
-        :param padlock_arm_filter: Dict with ``enabled``, ``arm_length_min``, ``arm_Tm_dif_max``,
-            ``arm_Tm_min``, ``arm_Tm_max``. The padlock-arm filter also enforces the detection-oligo
-            length/thymine constraints (via the composite ``DetectionOligoFilter``).
-        :type padlock_arm_filter: dict
-        :param detection_oligo_parameters: ``detection_oligo.oligo_generation`` block. Provides
-            ``oligo_length_min``, ``oligo_length_max``, and ``min_thymines`` to the padlock-arm / detection-oligo
-            composite filter.
-        :type detection_oligo_parameters: dict
+        :param detection_oligo_filter: Dict with detection-oligo and padlock-arm constraints required by the
+            composite ``DetectionOligoFilter``.
+        :type detection_oligo_filter: dict
         :return: A filtered `OligoDatabase` object containing only probes that pass all enabled property
             filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
@@ -834,10 +829,9 @@ class TargetProbeDesigner:
         Filter the oligo database based on sequence specificity to remove probes that bind
         non-specifically or cross-hybridize.
 
-        Before applying the alignment-based filters, the method computes the ``PadlockArmsProperty``
-        for every probe (always on) — this is required by the seed-region BLASTN filter when
-        ``ligation_region_size > 0`` and by :py:meth:`ScrinshotProbeDesigner.assemble_padlock_backbone`
-        downstream.
+        This method assumes ``PadlockArmsProperty`` has already been computed for the ``oligo`` sequence
+        (e.g. in :meth:`ScrinshotProbeDesigner.design_target_probes`) so seed-region BLASTN filtering can
+        use ``ligation_site`` and downstream padlock assembly can reuse the arm sequences.
 
         The filter list is seeded with an :class:`ExactMatchFilter` (always on) and then conditionally
         extended with the BLASTN-specificity and cross-hybridization filters depending on their
@@ -857,9 +851,9 @@ class TargetProbeDesigner:
            each other, they may form dimers instead of binding to the target RNA. Probes from the
            larger genomic region are removed when cross-hybridization is detected.
 
-        The reference database is loaded from the provided FASTA files and shared between the BLASTN
-        specificity and cross-hybridization filters. Regions that do not meet the minimum oligo
-        requirement after filtering are removed from the database.
+        The BLASTN reference database is loaded from ``specificity_blastn_filter['files_fasta_reference_database']``
+        and used by the BLASTN-specificity filter. The cross-hybridization filter builds its own reference
+        database from the current oligos in the `OligoDatabase`.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties.
@@ -1629,7 +1623,7 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
     )
 
     ##### design target probes #####
-    oligo_database = pipeline.design_target_probes(
+    target_probe_database = pipeline.design_target_probes(
         oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
         property_filters_parameters=config_dict["target_probe"]["property_filters"],
         specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
@@ -1638,19 +1632,19 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
     )
 
     ##### design detection oligos #####
-    oligo_database = pipeline.design_detection_oligos(
-        oligo_database=oligo_database,
+    target_probe_database = pipeline.design_detection_oligos(
+        oligo_database=target_probe_database,
         oligo_generation_parameters=config_dict["detection_oligo"]["oligo_generation"],
     )
 
     ##### assemble padlock backbone #####
-    probe_database = pipeline.assemble_padlock_backbone(
-        oligo_database=oligo_database,
+    target_probe_database = pipeline.assemble_padlock_backbone(
+        oligo_database=target_probe_database,
         padlock_arms_parameters=config_dict["target_probe"]["padlock_arms_properties"],
     )
 
     ##### write outputs #####
-    pipeline.generate_output(probe_database=probe_database)
+    pipeline.generate_output(oligo_database=target_probe_database)
 
 
 def main() -> None:
