@@ -170,7 +170,7 @@ class TestCycleHCRProbeDesigner(PipelinesBase, unittest.TestCase):
     def setup_output_dir(self) -> Any:
         with open(CONFIG_CYCLEHCR_PROBE_DESIGNER, "r") as handle:
             config = yaml.safe_load(handle)
-        dir_output = config.get("dir_output")
+        dir_output = config.get("general", {}).get("dir_output")
         if dir_output is None:
             return tempfile.mkdtemp()
         return os.path.abspath(dir_output)
