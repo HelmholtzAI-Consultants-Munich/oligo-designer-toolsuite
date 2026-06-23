@@ -404,6 +404,26 @@ def validate_bit_mapping_table(
             )
 
 
+def validate_primer_sequence(sequence: str, *, source: str) -> None:
+    """
+    Validate that a primer sequence is a non-empty DNA string (A/C/G/T only).
+
+    Thin wrapper around :func:`check_if_dna_sequence` that raises a
+    ``FileFormatError`` with a ``source``-tagged message so all callers report
+    errors consistently.
+
+    :param sequence: The primer sequence to validate.
+    :type sequence: str
+    :param source: Identifier (e.g. ``"forward_primer"``) used in error messages.
+    :type source: str
+    :raises FileFormatError: If the value is not a non-empty DNA sequence.
+    """
+    if not isinstance(sequence, str) or not check_if_dna_sequence(sequence):
+        raise FileFormatError(
+            f"Primer '{source}' must be a non-empty DNA sequence (A/C/G/T only), got {sequence!r}."
+        )
+
+
 def get_highly_abundant_kmer_sequences(
     files_fasta: str | list[str],
     kmer_abundance_threshold: dict[int, float],

@@ -45,8 +45,8 @@ target_probe:
 
     Tm_filter: # Enforce melting temperature (Tm) within a range (uses Tm parameters below).
       enabled: true # Turn this filter on or off.
-      Tm_min: 90 # Minimum melting temperature (°C). Oligos below this are rejected.
-      Tm_max: 200 # Maximum melting temperature (°C). Oligos above this are rejected.
+      Tm_min: 75 # Minimum melting temperature (°C). Oligos below this are rejected.
+      Tm_max: 100 # Maximum melting temperature (°C). Oligos above this are rejected.
 
     secondary_structure_filter: # Reject oligos with stable secondary structure at the given temperature.
       enabled: true # Turn this filter on or off.
@@ -82,7 +82,7 @@ target_probe:
       weight: 10 # Weight for isoform coverage in the set-selection scoring function.
     Tm_score:
       weight: 1 # Weight for Tm in the set-selection scoring function.
-      Tm_opt: 200 # Target (optimal) Tm (°C) for scoring; CycleHCR aims for the highest stable Tm so the value matches Tm_max above.
+      Tm_opt: 75 # Target (optimal) Tm (°C) for scoring; CycleHCR aims for the highest stable Tm so the value matches Tm_max above.
 
   global_parameters:
     Tm_parameters:
@@ -104,12 +104,20 @@ target_probe:
       enabled: false
 
 readout_probes:
-  file_readout_probe_table: data/functional_oligos/cycle_hcr_readout_probes_with_codebook.tsv # csv/tsv file containing the readout probe table with the columns "bit", "channel", "readout_probe_id", "readout_probe_sequence", "L/R".
-  file_codebook: data/functional_oligos/cycle_hcr_codebook.tsv # Codebook file: columns = "bits", rows = "gene_name"; entries are 0/1 bit-encodings for each gene. Leave empty to auto-generate a codebook.
+  codebook:
+    source: generate # "generate" (default) | "load"
+    file: # example file can be found at: data/functional_oligos/cycle_hcr_codebook.tsv; codebook file: columns = "bits", rows = "gene_name"; entries are 0/1 bit-encodings for each gene.
+  readout_probe_table:
+    source: load # "generate" | "load" (default)
+    file: data/functional_oligos/cycle_hcr_readout_probes_generate_codebook.tsv # csv/tsv file containing the readout probe table with the columns "bit", "channel", "readout_probe_id", "readout_probe_sequence", "L/R".
 
 primers:
-  forward_primer_sequence: TAATACGACTCACTATAGCGTCATC # Forward PCR primer placed at the 5' end of the DNA template probe. Default = T7 promoter sequence.
-  reverse_primer_sequence: CGACACCGAACGTGCGACAA # Reverse PCR primer placed at the 3' end of the DNA template probe.
+  forward_primer: # Forward PCR primer placed at the 5' end of the DNA template probe.
+    source: load  # "generate" | "load" (default)
+    sequence: TAATACGACTCACTATAGCGTCATC # T7 promoter sequence.
+  reverse_primer: # Reverse PCR primer placed at the 3' end of the DNA template probe.
+    source: load  # "generate" | "load" (default)
+    sequence: CGACACCGAACGTGCGACAA
 
 hybridization_probes:
   linker_sequence: TT # Linker sequence between the target-binding L/R arm and the readout-probe barcode (used by both hybridization and DNA template assembly).

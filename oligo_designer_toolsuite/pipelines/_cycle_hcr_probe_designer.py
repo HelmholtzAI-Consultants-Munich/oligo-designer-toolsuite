@@ -63,6 +63,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     preprocess_tm_parameters,
     validate_bit_mapping_table,
     validate_codebook,
+    validate_primer_sequence,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import configure_root_logger, logger
@@ -334,35 +335,38 @@ class CycleHCRProbeDesigner:
               bit identifiers as index
         :rtype: tuple[pd.DataFrame, pd.DataFrame]
         """
-        file_readout_probe_table = readout_probe_parameters["file_readout_probe_table"]
-        file_codebook = readout_probe_parameters["file_codebook"]
-
         readout_probe_designer = ReadoutProbeDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
 
-        if file_readout_probe_table:
+        if readout_probe_parameters["readout_probe_table"]["source"] == "load":
             readout_probe_table = readout_probe_designer.load_readout_probe_table(
-                file_readout_probe_table=file_readout_probe_table
+                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"]
             )
-            readout_probe_table_source = file_readout_probe_table
+            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
             logger.info(
                 f"Loaded readout probes table from file and retrieved {len(readout_probe_table)} readout probes."
             )
         else:
             readout_probe_table = readout_probe_designer.generate_readout_probe_table()
-            readout_probe_table_source = "<generated>"
+            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
 
-        if file_codebook:
-            codebook = readout_probe_designer.load_codebook(file_codebook=file_codebook)
-            codebook_source = file_codebook
+        if readout_probe_parameters["codebook"]["source"] == "load":
+            codebook = readout_probe_designer.load_codebook(
+                file_codebook=readout_probe_parameters["codebook"]["file"]
+            )
+            codebook_source = readout_probe_parameters["codebook"]["file"]
         else:
             codebook = readout_probe_designer.generate_codebook(
-                region_ids=region_ids,
-                readout_probe_table=readout_probe_table,
+                region_ids=region_ids, readout_probe_table=readout_probe_table
             )
-            codebook_source = "<generated>"
+            codebook_source = readout_probe_parameters["codebook"]["source"]
+
+        # Drop readout probes whose bits are not referenced by the codebook so the table only
+        # carries the probes actually assigned to a gene.
+        referenced_bits = set(codebook.columns)
+        readout_probe_table = readout_probe_table[readout_probe_table.index.isin(referenced_bits)]
 
         readout_probe_designer.validate(
             codebook=codebook,
@@ -488,53 +492,47 @@ class CycleHCRProbeDesigner:
         primer_parameters: dict,
     ) -> tuple[str, str]:
         """
-        Load and validate forward and reverse primer sequences for DNA template probe assembly.
+        Obtain and validate forward and reverse primer sequences for DNA template probe assembly.
 
-        This method processes primer sequences that will be used for PCR amplification of the DNA
-        template probes. The primers are incorporated into the DNA template probe structure during
-        the assembly step, with the forward primer at the 5' end and the reverse primer at the 3' end.
+        For each primer, dispatches on ``primer_parameters["<role>_primer"]["source"]``: ``"load"``
+        reads the inline ``sequence`` from config; any other value (e.g. ``"generate"``) calls the
+        corresponding ``PrimerDesigner.generate_*`` method (currently a placeholder that raises
+        ``FeatureNotImplementedError``). Both primers are then validated as non-empty DNA sequences
+        through ``PrimerDesigner.validate``.
 
-        Currently, primer generation is not implemented, so both primer sequences must be provided
-        in the configuration.
-
-        :param primer_parameters: ``primers`` block. Must contain ``forward_primer_sequence`` and
-            ``reverse_primer_sequence`` (both required — primer generation is not yet implemented).
+        :param primer_parameters: ``primers`` block. Must contain ``forward_primer`` and
+            ``reverse_primer`` sub-blocks, each with ``source`` and (when ``source == "load"``)
+            ``sequence``.
         :type primer_parameters: dict
         :return: A tuple containing (reverse_primer_sequence, forward_primer_sequence) in that order.
-            Both sequences have been stripped of leading and trailing whitespace.
         :rtype: tuple[str, str]
-        :raises FeatureNotImplementedError: If either primer sequence is empty or None, since primer
-            generation is not yet implemented.
+        :raises FeatureNotImplementedError: If either primer's ``source`` requests generation
+            (placeholder, not yet implemented).
+        :raises FileFormatError: If either obtained primer is not a non-empty DNA sequence.
         """
-        forward_primer_sequence = primer_parameters["forward_primer_sequence"]
-        reverse_primer_sequence = primer_parameters["reverse_primer_sequence"]
-
         primer_designer = PrimerDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
 
-        if forward_primer_sequence:
+        if primer_parameters["forward_primer"]["source"] == "load":
             forward_primer_sequence = primer_designer.load_forward_primer(
-                forward_primer_sequence=forward_primer_sequence
+                forward_primer_sequence=primer_parameters["forward_primer"]["sequence"]
             )
         else:
-            # generate forward primers
-            raise FeatureNotImplementedError(
-                "Forward primer generation is not yet implemented. "
-                "Please provide a forward_primer_sequence parameter."
-            )
+            forward_primer_sequence = primer_designer.generate_forward_primer()
 
-        if reverse_primer_sequence:
+        if primer_parameters["reverse_primer"]["source"] == "load":
             reverse_primer_sequence = primer_designer.load_reverse_primer(
-                reverse_primer_sequence=reverse_primer_sequence
+                reverse_primer_sequence=primer_parameters["reverse_primer"]["sequence"]
             )
         else:
-            # generate reverse primers
-            raise FeatureNotImplementedError(
-                "Reverse primer generation is not yet implemented. "
-                "Please provide a reverse_primer_sequence parameter."
-            )
+            reverse_primer_sequence = primer_designer.generate_reverse_primer()
+
+        primer_designer.validate(
+            forward_primer=forward_primer_sequence,
+            reverse_primer=reverse_primer_sequence,
+        )
 
         return reverse_primer_sequence, forward_primer_sequence
 
@@ -731,17 +729,6 @@ class CycleHCRProbeDesigner:
         # write codebook and readout probe table
         codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="gene_name")
         readout_probe_table.to_csv(os.path.join(self.dir_output, "readout_probes.tsv"), sep="\t")
-
-        readout_probe_table_regions = []
-        for gene_name, barcode in codebook.iterrows():
-            bits = barcode[barcode == 1].index
-            readout_probe_info = readout_probe_table.loc[bits, :]
-            readout_probe_info["gene_name"] = gene_name
-            readout_probe_table_regions.append(readout_probe_info)
-        readout_probe_table_regions_df = pd.concat(readout_probe_table_regions, axis=0)
-        readout_probe_table_regions_df[
-            ["gene_name", "channel", "readout_probe_id", "L/R", "readout_probe_sequence"]
-        ].to_csv(os.path.join(self.dir_output, "readout_probes_regions.tsv"), sep="\t", index=False)
 
         oligo_database.write_oligosets_to_yaml(
             properties=output_properties,
@@ -1554,6 +1541,50 @@ class PrimerDesigner:
         """
         reverse_primer = str(reverse_primer_sequence).strip()
         return reverse_primer
+
+    def generate_forward_primer(self) -> str:
+        """
+        Generate a CycleHCR forward PCR primer.
+
+        Placeholder for a future implementation. Once implemented, the output is expected to
+        satisfy the same contract as a loaded forward primer: a non-empty DNA sequence
+        (A/C/G/T only).
+        """
+        raise FeatureNotImplementedError(
+            "Generation of forward primer is not yet implemented. "
+            "Please provide a forward_primer.sequence parameter and set forward_primer.source to 'load'."
+        )
+
+    def generate_reverse_primer(self) -> str:
+        """
+        Generate a CycleHCR reverse PCR primer.
+
+        Placeholder for a future implementation. Once implemented, the output is expected to
+        satisfy the same contract as a loaded reverse primer: a non-empty DNA sequence
+        (A/C/G/T only).
+        """
+        raise FeatureNotImplementedError(
+            "Generation of reverse primer is not yet implemented. "
+            "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
+        )
+
+    def validate(self, forward_primer: str, reverse_primer: str) -> None:
+        """
+        Validate that a (forward_primer, reverse_primer) pair forms a valid CycleHCR PCR primer setup.
+
+        Centralizes the CycleHCR-specific validation contract (both sequences must be non-empty
+        DNA sequences containing only A/C/G/T) so that all paths producing these primers — loading
+        from the config today, generating programmatically in the future — share a single
+        validation gate.
+
+        :param forward_primer: Forward primer sequence to validate.
+        :type forward_primer: str
+        :param reverse_primer: Reverse primer sequence to validate.
+        :type reverse_primer: str
+        :raises FileFormatError: If either primer fails DNA-sequence validation.
+        """
+        validate_primer_sequence(forward_primer, source="forward_primer")
+        validate_primer_sequence(reverse_primer, source="reverse_primer")
 
 
 ############################################
