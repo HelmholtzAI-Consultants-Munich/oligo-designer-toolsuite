@@ -105,7 +105,7 @@ target_probe:
 
 readout_probes:
   file_readout_probe_table: data/functional_oligos/cycle_hcr_readout_probes_with_codebook.tsv # csv/tsv file containing the readout probe table with the columns "bit", "channel", "readout_probe_id", "readout_probe_sequence", "L/R".
-  file_codebook: data/functional_oligos/cycle_hcr_codebook.tsv # Codebook file: columns = "bits", rows = "region_id"; entries are 0/1 bit-encodings for each region. Leave empty to auto-generate a codebook.
+  file_codebook: data/functional_oligos/cycle_hcr_codebook.tsv # Codebook file: columns = "bits", rows = "gene_name"; entries are 0/1 bit-encodings for each gene. Leave empty to auto-generate a codebook.
 
 primers:
   forward_primer_sequence: TAATACGACTCACTATAGCGTCATC # Forward PCR primer placed at the 5' end of the DNA template probe. Default = T7 promoter sequence.
