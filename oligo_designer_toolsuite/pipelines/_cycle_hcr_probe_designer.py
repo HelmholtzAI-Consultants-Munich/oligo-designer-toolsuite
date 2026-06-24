@@ -16,6 +16,7 @@ from Bio.SeqUtils import Seq
 from oligo_designer_toolsuite._exceptions import (
     ConfigurationError,
     FeatureNotImplementedError,
+    FileFormatError,
 )
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
@@ -342,7 +343,8 @@ class CycleHCRProbeDesigner:
 
         if readout_probe_parameters["readout_probe_table"]["source"] == "load":
             readout_probe_table = readout_probe_designer.load_readout_probe_table(
-                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"]
+                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"],
+                codebook_source=readout_probe_parameters["codebook"]["source"],
             )
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
             logger.info(
@@ -359,7 +361,9 @@ class CycleHCRProbeDesigner:
             codebook_source = readout_probe_parameters["codebook"]["file"]
         else:
             codebook = readout_probe_designer.generate_codebook(
-                region_ids=region_ids, readout_probe_table=readout_probe_table
+                region_ids=region_ids,
+                readout_probe_table=readout_probe_table,
+                min_hamming_distance=readout_probe_parameters["codebook"]["min_hamming_distance"],
             )
             codebook_source = readout_probe_parameters["codebook"]["source"]
 
@@ -1322,15 +1326,47 @@ class ReadoutProbeDesigner:
     def load_codebook(self, file_codebook: str) -> pd.DataFrame:
         return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
-    def load_readout_probe_table(self, file_readout_probe_table: str) -> pd.DataFrame:
+    def load_readout_probe_table(self, file_readout_probe_table: str, codebook_source: str) -> pd.DataFrame:
+        """
+        Load a CycleHCR readout probe table and prepare its ``bit`` index.
+
+        Bit handling depends on ``codebook_source``:
+
+        - ``"load"``: the file MUST contain a ``bit`` column; it is used verbatim. The user is
+          responsible for ensuring each ``bit`` value matches the corresponding column in the
+          codebook file, and that the bit→probe mapping follows the codebook's convention.
+        - any other value (i.e. the codebook will be generated): any existing ``bit`` column is
+          dropped and bits are reassigned deterministically by sorting on
+          ``(readout_probe_id, channel, L/R)``. This guarantees that even-indexed bits map to
+          ``L`` probes and odd-indexed bits to ``R`` probes, which is the layout that
+          ``generate_codebook`` assumes.
+
+        :param file_readout_probe_table: Path to the CSV/TSV readout probe table.
+        :param codebook_source: Codebook source mode from the pipeline config
+            (``readout_probes.codebook.source``).
+        :return: Readout probe table indexed by ``bit``.
+        :raises FileFormatError: If ``codebook_source == "load"`` and the file does not contain a
+            ``bit`` column.
+        """
         readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
-        if "bit" not in readout_probe_table.columns:
-            readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel"])
+        if codebook_source == "load":
+            if "bit" not in readout_probe_table.columns:
+                raise FileFormatError(
+                    f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column "
+                    f"when loading a codebook from file. The 'bit' values must match the codebook's "
+                    f"bit columns; the user is responsible for that mapping."
+                )
+        else:
+            if "bit" in readout_probe_table.columns:
+                readout_probe_table = readout_probe_table.drop(columns=["bit"])
+            readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel", "L/R"])
             readout_probe_table.reset_index(inplace=True, drop=True)
             readout_probe_table["bit"] = "bit_" + (readout_probe_table.index + 1).astype(str)
         return readout_probe_table.set_index("bit")
 
-    def generate_codebook(self, region_ids: list[str], readout_probe_table: pd.DataFrame) -> pd.DataFrame:
+    def generate_codebook(
+        self, region_ids: list[str], readout_probe_table: pd.DataFrame, min_hamming_distance: int
+    ) -> pd.DataFrame:
         """
         Generate a codebook (barcode matrix) for encoding multiple regions using CycleHCR readout probes.
 
@@ -1347,9 +1383,11 @@ class ReadoutProbeDesigner:
         - Combinations are prioritized: same probe pairs (L=R) are preferred over different pairs.
         - The codebook size is limited by the number of available probe/channel combinations.
 
-        The method validates that sufficient barcodes are available to encode all requested regions.
-        If not, a ``ConfigurationError`` is raised with suggestions to increase the number of probes
-        or reduce the number of regions.
+        Since each codeword has Hamming weight 2, the only minimum Hamming distances achievable
+        between distinct codewords are 0, 2, and 4. Requiring distance 4 restricts the codebook to
+        ``L == R`` combinations (capacity ``n_readout_probes_LR * n_channels``); allowing distance
+        2 unlocks the full set of combinations (capacity ``n_readout_probes_LR**2 * n_channels``)
+        at the cost of losing single-bit error detection.
 
         :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
             Each region will be assigned a unique barcode.
@@ -1358,13 +1396,25 @@ class ReadoutProbeDesigner:
             ``assemble_hybridization_probes``). The ``channel`` and ``L/R`` columns are used to
             derive the number of channels and the number of L/R probe pairs per channel.
         :type readout_probe_table: pd.DataFrame
+        :param min_hamming_distance: Required minimum Hamming distance between codewords. Must be
+            one of ``0``, ``2``, or ``4``. With ``4``, only ``L == R`` combinations are used and
+            single-bit errors are detectable; with ``0`` or ``2`` the full set of combinations is
+            available.
+        :type min_hamming_distance: int
         :return: A pandas DataFrame containing the binary barcode matrix. Rows are indexed by
             ``region_ids``, and columns are named ``bit_1``, ``bit_2``, etc. Only columns with at
             least one active bit are included. Each row has exactly two bits set to 1.
         :rtype: pd.DataFrame
-        :raises ConfigurationError: If the number of available barcodes is insufficient to encode
-            all requested regions (i.e., ``codebook_size_max < 2 * n_regions``).
+        :raises ConfigurationError: If ``min_hamming_distance`` is not in ``{0, 2, 4}``, or if the
+            number of available barcodes at the requested distance is insufficient to encode all
+            requested regions.
         """
+        if min_hamming_distance not in (0, 2, 4):
+            raise ConfigurationError(
+                f"min_hamming_distance must be one of 0, 2, or 4 (got {min_hamming_distance}). "
+                f"Each codeword has Hamming weight 2, so no other minimum distances are achievable."
+            )
+
         n_channels = len(readout_probe_table["channel"].unique())
         n_readout_probes_R = readout_probe_table["L/R"].value_counts()["R"]
         n_readout_probes_L = readout_probe_table["L/R"].value_counts()["L"]
@@ -1386,13 +1436,28 @@ class ReadoutProbeDesigner:
             )
         )
         combinations = sorted(combinations, key=lambda t: (0 if t[0] == t[1] else 1, t[1]))
-        codebook_size_max = len(combinations)
 
-        if codebook_size_max < (2 * n_regions):
-            raise ConfigurationError(
-                f"The number of valid barcodes ({codebook_size_max}) is lower than the required number of readout probes ({2 * n_regions}) for {n_regions} regions. "
-                f"Consider increasing the number of L/R readout probes or reducing the number of regions."
-            )
+        if min_hamming_distance == 4:
+            # Only L == R combinations give pairwise-disjoint bit pairs (distance 4).
+            combinations = [c for c in combinations if c[0] == c[1]]
+            if len(combinations) < n_regions:
+                raise ConfigurationError(
+                    f"Only {len(combinations)} barcodes are available at min_hamming_distance=4 "
+                    f"(= n_readout_probes_LR * n_channels = {n_readout_probes_LR} * {n_channels}), "
+                    f"which is fewer than the {n_regions} requested regions. "
+                    f"Consider increasing n_readout_probes_LR or n_channels, reducing the number of "
+                    f"regions, or lowering min_hamming_distance to 2."
+                )
+        else:
+            # min_hamming_distance in {0, 2}: any combination is allowed, only the total count matters.
+            if len(combinations) < n_regions:
+                raise ConfigurationError(
+                    f"Only {len(combinations)} barcodes are available "
+                    f"(= n_readout_probes_LR**2 * n_channels = {n_readout_probes_LR**2} * {n_channels}), "
+                    f"which is fewer than the {n_regions} requested regions. "
+                    f"Consider increasing n_readout_probes_LR or n_channels, or reducing the number "
+                    f"of regions."
+                )
 
         codebook_list = []
         for combination in combinations[:n_regions]:

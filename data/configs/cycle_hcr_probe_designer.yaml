@@ -107,9 +107,10 @@ readout_probes:
   codebook:
     source: generate # "generate" (default) | "load"
     file: # example file can be found at: data/functional_oligos/cycle_hcr_codebook.tsv; codebook file: columns = "bits", rows = "gene_name"; entries are 0/1 bit-encodings for each gene.
+    min_hamming_distance: 4 # only used when source = "generate"; required minimum Hamming distance between codewords. Must be one of 0, 2, or 4 (codewords have weight 2, so no other values are achievable). 4 enables single-bit error detection but limits capacity to n_readout_probes_LR * n_channels regions.
   readout_probe_table:
     source: load # "generate" | "load" (default)
-    file: data/functional_oligos/cycle_hcr_readout_probes_generate_codebook.tsv # csv/tsv file containing the readout probe table with the columns "bit", "channel", "readout_probe_id", "readout_probe_sequence", "L/R".
+    file: data/functional_oligos/cycle_hcr_readout_probes_generate_codebook.tsv # csv/tsv file containing the readout probe table with the columns "channel", "readout_probe_id", "readout_probe_sequence", "L/R". Bit handling depends on codebook.source: when codebook.source = "load" the file MUST also contain a "bit" column whose values match the codebook columns (the user is responsible for that mapping); when codebook.source = "generate" any "bit" column is ignored and bits are reassigned deterministically by sorting on (readout_probe_id, channel, L/R).
 
 primers:
   forward_primer: # Forward PCR primer placed at the 5' end of the DNA template probe.
