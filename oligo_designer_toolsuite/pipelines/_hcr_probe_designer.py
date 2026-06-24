@@ -10,7 +10,10 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from oligo_designer_toolsuite._exceptions import FeatureNotImplementedError
+from oligo_designer_toolsuite._exceptions import (
+    FeatureNotImplementedError,
+    FileFormatError,
+)
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
@@ -177,30 +180,29 @@ class HcrProbeDesigner:
         initiator_probe_parameters: dict,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
-        file_initiator_table = initiator_probe_parameters["file_initiator_table"]
-        file_codebook = initiator_probe_parameters["file_codebook"]
-
         initiator_designer = InitiatorDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
 
-        if file_initiator_table:
+        if initiator_probe_parameters["initiator_table"]["source"] == "load":
             initiator_table = initiator_designer.load_initiator_table(
-                file_initiator_table=file_initiator_table
+                file_initiator_table=initiator_probe_parameters["initiator_table"]["file"]
             )
-            initiator_table_source = file_initiator_table
+            initiator_table_source = initiator_probe_parameters["initiator_table"]["file"]
             logger.info(f"Loaded initiator table from file and retrieved {len(initiator_table)} initiators.")
         else:
             initiator_table = initiator_designer.generate_initiator_table()
-            initiator_table_source = "<generated>"
+            initiator_table_source = initiator_probe_parameters["initiator_table"]["source"]
 
-        if file_codebook:
-            codebook = initiator_designer.load_codebook(file_codebook=file_codebook)
-            codebook_source = file_codebook
+        if initiator_probe_parameters["codebook"]["source"] == "load":
+            codebook = initiator_designer.load_codebook(
+                file_codebook=initiator_probe_parameters["codebook"]["file"]
+            )
+            codebook_source = initiator_probe_parameters["codebook"]["file"]
         else:
             codebook = initiator_designer.generate_codebook(region_ids=region_ids)
-            codebook_source = "<generated>"
+            codebook_source = initiator_probe_parameters["codebook"]["source"]
 
         initiator_designer.validate(
             codebook=codebook,
@@ -719,6 +721,8 @@ class InitiatorDesigner:
 
     def load_initiator_table(self, file_initiator_table: str) -> pd.DataFrame:
         initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
+        if "bit" not in initiator_table.columns:
+            raise FileFormatError(f"Initiator table '{file_initiator_table}' must contain a 'bit' column.")
         return initiator_table.set_index("bit")
 
     def generate_codebook(self, region_ids: list[str]) -> pd.DataFrame:
@@ -730,7 +734,8 @@ class InitiatorDesigner:
         index, ``bit_*`` columns, exactly one bit set per row.
         """
         raise FeatureNotImplementedError(
-            "Generation of codebook is not yet implemented. " "Please provide a file_codebook parameter."
+            "Generation of codebook is not yet implemented. "
+            "Please provide a codebook.file parameter and set codebook.source to 'load'."
         )
 
     def generate_initiator_table(self) -> pd.DataFrame:
@@ -744,7 +749,7 @@ class InitiatorDesigner:
         """
         raise FeatureNotImplementedError(
             "Generation of initiator table is not yet implemented. "
-            "Please provide a file_initiator_table parameter."
+            "Please provide an initiator_table.file parameter and set initiator_table.source to 'load'."
         )
 
     def validate(
