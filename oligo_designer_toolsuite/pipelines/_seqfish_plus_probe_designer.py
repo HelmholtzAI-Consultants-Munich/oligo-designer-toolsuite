@@ -518,8 +518,10 @@ class SeqFishPlusProbeDesigner:
         :param primer_parameters: ``primers`` block. Must contain ``forward_primer`` (with
             ``source`` and either ``sequence`` when ``source == "load"`` or the full
             ``oligo_generation`` / ``property_filters`` / ``specificity_filters`` /
-            ``global_parameters`` sub-blocks when ``source == "generate"``) and ``reverse_primer``
-            (with ``source`` and ``sequence`` when ``source == "load"``).
+            ``global_parameters`` sub-blocks when ``source == "generate"`` — the Tm parameters
+            inside ``global_parameters`` are inlined into ``property_filters.Tm_filter`` by
+            :func:`_preprocess_config`) and ``reverse_primer`` (with ``source`` and ``sequence``
+            when ``source == "load"``).
         :type primer_parameters: dict
         :return: A tuple ``(reverse_primer_sequence, forward_primer_sequence)``.
         :rtype: tuple[str, str]
@@ -2107,9 +2109,10 @@ class PrimerDesigner:
         Each step keeps its own ``@pipeline_step_basic`` logging.
 
         :param parameters: ``primers.forward_primer`` block. Must contain ``oligo_generation``,
-            ``property_filters``, ``specificity_filters``, ``global_parameters`` sub-blocks; Tm parameters
-            are expected to have been preprocessed (Tm tables resolved, Tm chem/salt ``parameters``
-            normalized to ``None`` when disabled).
+            ``property_filters``, ``specificity_filters`` sub-blocks. Tm parameters are expected to
+            have been inlined into ``property_filters.Tm_filter`` by :func:`_preprocess_config` (Tm
+            tables resolved, Tm chem/salt ``parameters`` normalized to ``None`` when disabled); the
+            best-Tm matcher reads them from there.
         :type parameters: dict
         :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward primer
             should match.
@@ -2123,15 +2126,6 @@ class PrimerDesigner:
         :return: Selected forward primer sequence (Tm closest to the reverse primer).
         :rtype: str
         """
-
-        Tm_parameters = parameters["global_parameters"]["Tm_parameters"]
-        Tm_chem_correction_parameters = parameters["global_parameters"]["Tm_chem_correction_parameters"][
-            "parameters"
-        ]
-        Tm_salt_correction_parameters = parameters["global_parameters"]["Tm_salt_correction_parameters"][
-            "parameters"
-        ]
-
         oligo_database: OligoDatabase = self.create_oligo_database(
             oligo_length=parameters["oligo_generation"]["probe_length"],
             oligo_base_probabilities=parameters["oligo_generation"]["base_probabilities"],
@@ -2176,9 +2170,13 @@ class PrimerDesigner:
         # Compute Tm of the reverse primer once.
         Tm_reverse_primer = calc_tm_nn(
             sequence=reverse_primer_sequence,
-            Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+            Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
+            Tm_chem_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                "Tm_chem_correction_parameters"
+            ],
+            Tm_salt_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                "Tm_salt_correction_parameters"
+            ],
         )
 
         # Iterate over surviving primer candidates and pick the one whose Tm is closest to the reverse primer's.
@@ -2188,9 +2186,13 @@ class PrimerDesigner:
             for primer_properties in database_region.values():
                 Tm_forward_primer = calc_tm_nn(
                     sequence=primer_properties["oligo"],
-                    Tm_parameters=Tm_parameters,
-                    Tm_chem_correction_parameters=Tm_chem_correction_parameters,
-                    Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+                    Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
+                    Tm_chem_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                        "Tm_chem_correction_parameters"
+                    ],
+                    Tm_salt_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                        "Tm_salt_correction_parameters"
+                    ],
                 )
                 dif_Tm = abs(Tm_forward_primer - Tm_reverse_primer)
                 if dif_Tm < min_dif_Tm:
@@ -2229,8 +2231,10 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
       ``primers.forward_primer.global_parameters.Tm_parameters`` to their
       ``Bio.SeqUtils.MeltingTemp`` objects, normalizes the chem/salt correction blocks
       (``parameters`` set to ``None`` when ``enabled`` is ``False``), and inlines the Tm
-      parameters into ``primers.forward_primer.property_filters.Tm_filter`` so the
-      property-filter call site doesn't have to thread ``global_parameters`` through.
+      parameters into ``primers.forward_primer.property_filters.Tm_filter``. Downstream
+      consumers (the property filter and the best-Tm matcher in
+      :py:meth:`PrimerDesigner.generate_forward_primer`) read Tm parameters from
+      ``Tm_filter`` directly, so ``global_parameters`` is never threaded through the call chain.
     """
 
     ##### region ids #####

@@ -82,10 +82,7 @@ readout_probes:
   # Barcoding scheme — shared between codebook generation and readout probe table generation.
   n_barcode_rounds: 4 # Number of barcode rounds for hybridization.
   n_pseudocolors: 20 # Number of pseudocolors per round.
-  channels_ids: # Fluorescence channels used in the experiment.
-    - Alexa488
-    - Cy3b
-    - Alexa647
+  channels_ids: ["Alexa488", "Cy3b", "Alexa647"] # Fluorescence channels used in the experiment.
 
   codebook:
     source: generate # "generate" (default) | "load"
@@ -95,7 +92,6 @@ readout_probes:
     source: generate # "generate" (default) | "load"
     # file: data/functional_oligos/seqfish_plus_readout_probes.tsv # Only used when source = load. Bit-indexed table with columns: "channel", "readout_probe_id", "L/R", "readout_probe_sequence".
 
-    # Below — only used when source = generate.
     oligo_generation:
       probe_length: 15 # Length (bases) of each random readout probe.
       base_probabilities: {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25} # Per-base probability used to generate random readout-probe sequences.
@@ -130,7 +126,6 @@ primers:
     source: generate # "generate" (default) | "load"
     # sequence: ACGT... # Only used when source = load.
 
-    # Below — only used when source = generate.
     oligo_generation:
       probe_length: 20 # Length (bases) of each generated primer.
       base_probabilities: {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25} # Per-base probability used to generate random primer sequences.
