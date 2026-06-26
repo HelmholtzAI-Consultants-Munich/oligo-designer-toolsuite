@@ -2105,8 +2105,9 @@ class PrimerDesigner:
         and selecting the candidate whose melting temperature is closest to the reverse primer's Tm.
 
         Internally orchestrates the existing decorated steps:
-        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` → :py:meth:`filter_by_specificity`.
-        Each step keeps its own ``@pipeline_step_basic`` logging.
+        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` → :py:meth:`filter_by_specificity`,
+        then delegates the best-Tm match selection to :py:meth:`_pick_best_tm_match_primer`. Each
+        decorated step keeps its own ``@pipeline_step_basic`` logging.
 
         :param parameters: ``primers.forward_primer`` block. Must contain ``oligo_generation``,
             ``property_filters``, ``specificity_filters`` sub-blocks. Tm parameters are expected to
@@ -2167,9 +2168,9 @@ class PrimerDesigner:
             dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
             logger.info(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
 
-        # Compute Tm of the reverse primer once.
-        Tm_reverse_primer = calc_tm_nn(
-            sequence=reverse_primer_sequence,
+        return self._get_best_forward_primer(
+            oligo_database=oligo_database,
+            reverse_primer_sequence=reverse_primer_sequence,
             Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
             Tm_chem_correction_parameters=parameters["property_filters"]["Tm_filter"][
                 "Tm_chem_correction_parameters"
@@ -2179,6 +2180,42 @@ class PrimerDesigner:
             ],
         )
 
+    def _get_best_forward_primer(
+        self,
+        oligo_database: OligoDatabase,
+        reverse_primer_sequence: str,
+        Tm_parameters: dict,
+        Tm_chem_correction_parameters: dict,
+        Tm_salt_correction_parameters: dict,
+    ) -> str:
+        """
+        Pick the candidate primer in ``oligo_database`` whose melting temperature is closest to
+        the reverse primer's Tm, for balanced PCR amplification.
+
+        :param oligo_database: Filtered ``OligoDatabase`` of forward primer candidates.
+        :type oligo_database: OligoDatabase
+        :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward
+            primer should match.
+        :type reverse_primer_sequence: str
+        :param Tm_filter: ``Tm_filter`` block carrying the inlined Tm parameters
+            (``Tm_parameters``, ``Tm_chem_correction_parameters``,
+            ``Tm_salt_correction_parameters``) used for the Tm calculation.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Tm chemistry correction parameters.
+        :type Tm_chem_correction_parameters: dict
+        :param Tm_salt_correction_parameters: Tm salt correction parameters.
+        :type Tm_salt_correction_parameters: dict
+        :return: Forward primer sequence with the Tm closest to the reverse primer's.
+        :rtype: str
+        """
+        # Compute Tm of the reverse primer once.
+        Tm_reverse_primer = calc_tm_nn(
+            sequence=reverse_primer_sequence,
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+        )
+
         # Iterate over surviving primer candidates and pick the one whose Tm is closest to the reverse primer's.
         min_dif_Tm = float("inf")
         forward_primer_sequence = ""
@@ -2186,13 +2223,9 @@ class PrimerDesigner:
             for primer_properties in database_region.values():
                 Tm_forward_primer = calc_tm_nn(
                     sequence=primer_properties["oligo"],
-                    Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
-                    Tm_chem_correction_parameters=parameters["property_filters"]["Tm_filter"][
-                        "Tm_chem_correction_parameters"
-                    ],
-                    Tm_salt_correction_parameters=parameters["property_filters"]["Tm_filter"][
-                        "Tm_salt_correction_parameters"
-                    ],
+                    Tm_parameters=Tm_parameters,
+                    Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+                    Tm_salt_correction_parameters=Tm_salt_correction_parameters,
                 )
                 dif_Tm = abs(Tm_forward_primer - Tm_reverse_primer)
                 if dif_Tm < min_dif_Tm:
