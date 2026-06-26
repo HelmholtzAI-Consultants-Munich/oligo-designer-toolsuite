@@ -78,108 +78,130 @@ target_probe:
     UTR_score:
       weight: 10 # Weight for UTR-overlap targeting in the set-selection scoring function.
 
-#######################################
-### Readout/Primer parameters       ###
-### (deferred; refactor in next PR) ###
-#######################################
-files_fasta_reference_database_readout_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-readout_probe_length: 15
-readout_probe_base_probabilities:
-  A: 0.25
-  C: 0.25
-  G: 0.25
-  T: 0.25
-readout_probe_GC_content_min: 40
-readout_probe_GC_content_max: 60
-readout_probe_homopolymeric_base_n:
-  G: 3
-n_barcode_rounds: 4
-n_pseudocolors: 20
-channels_ids:
-  - Alexa488
-  - Cy3b
-  - Alexa647
-readout_probe_initial_num_sequences: 100000
-readout_probe_specificity_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus"
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-readout_probe_specificity_blastn_hit_parameters:
-  min_alignment_length: 10
-readout_probe_cross_hybridization_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus"
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-readout_probe_cross_hybridization_blastn_hit_parameters:
-  min_alignment_length: 10
+readout_probes:
+  # Barcoding scheme — shared between codebook generation and readout probe table generation.
+  n_barcode_rounds: 4 # Number of barcode rounds for hybridization.
+  n_pseudocolors: 20 # Number of pseudocolors per round.
+  channels_ids: # Fluorescence channels used in the experiment.
+    - Alexa488
+    - Cy3b
+    - Alexa647
 
-files_fasta_reference_database_primer: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-reverse_primer_sequence: CCCTATAGTGAGTCGTATTA
-primer_length: 20
-primer_base_probabilities:
-  A: 0.25
-  C: 0.25
-  G: 0.25
-  T: 0.25
-primer_GC_content_min: 50
-primer_GC_content_max: 65
-primer_number_GC_GCclamp: 1
-primer_number_three_prime_base_GCclamp: 2
-primer_homopolymeric_base_n:
-  A: 4
-  T: 4
-  C: 4
-  G: 4
-primer_max_len_selfcomplement: 6
-primer_max_len_complement_reverse_primer: 5
-primer_Tm_min: 60
-primer_Tm_max: 75
-primer_T_secondary_structure: 76
-primer_secondary_structures_threshold_deltaG: 0
-primer_initial_num_sequences: 1000000
-primer_Tm_parameters:
-  nn_table: DNA_NN4
-  tmm_table: DNA_TMM1
-  imm_table: DNA_IMM1
-  de_table: DNA_DE1
-  dnac1: 250
-  dnac2: 250
-  saltcorr: 5
-  Na: 300
-  K: 0
-  Tris: 0
-  Mg: 0
-  dNTPs: 0
-primer_Tm_chem_correction_parameters: null
-primer_Tm_salt_correction_parameters: null
-primer_specificity_refrence_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus"
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-primer_specificity_refrence_blastn_hit_parameters:
-  min_alignment_length: 14
-primer_specificity_hybridization_probes_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus"
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-primer_specificity_hybridization_probes_blastn_hit_parameters:
-  min_alignment_length: 11
+  codebook:
+    source: generate # "generate" (default) | "load"
+    # file: data/functional_oligos/seqfish_plus_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
+
+  readout_probe_table:
+    source: generate # "generate" (default) | "load"
+    # file: data/functional_oligos/seqfish_plus_readout_probes.tsv # Only used when source = load. Bit-indexed table with columns: "channel", "readout_probe_id", "L/R", "readout_probe_sequence".
+
+    # Below — only used when source = generate.
+    oligo_generation:
+      probe_length: 15 # Length (bases) of each random readout probe.
+      base_probabilities: {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25} # Per-base probability used to generate random readout-probe sequences.
+      initial_num_sequences: 100000 # Number of random sequences to generate before filtering.
+
+    property_filters:
+      GC_content_filter: # Enforce GC content within a specified range.
+        enabled: true # Turn this filter on or off.
+        GC_content_min: 40 # Minimum GC content (%). Probes below this are rejected.
+        GC_content_max: 60 # Maximum GC content (%). Probes above this are rejected.
+
+      homopolymeric_runs_filter: # Exclude probes containing long homopolymeric runs.
+        enabled: true # Turn this filter on or off.
+        homopolymeric_base_n: {"G": 3} # Minimum run length per base to count as homopolymeric (any base not listed is unrestricted).
+
+    specificity_filters:
+      specificity_blastn_filter: # Remove readout probes with significant hits to the reference (BLAST-based).
+        enabled: true # Turn this filter on or off.
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        hit_parameters: {"min_alignment_length": 10}
+        files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter.
+          - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+          - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+      cross_hybridization_blastn_filter: # Remove readout probes that cross-hybridize to each other (BLAST-based).
+        enabled: true # Turn this filter on or off.
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+        hit_parameters: {"min_alignment_length": 10}
+
+primers:
+  forward_primer:
+    source: generate # "generate" (default) | "load"
+    # sequence: ACGT... # Only used when source = load.
+
+    # Below — only used when source = generate.
+    oligo_generation:
+      probe_length: 20 # Length (bases) of each generated primer.
+      base_probabilities: {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25} # Per-base probability used to generate random primer sequences.
+      initial_num_sequences: 1000000 # Number of random sequences to generate before filtering.
+
+    property_filters:
+      GC_content_filter: # Enforce GC content within a specified range.
+        enabled: true
+        GC_content_min: 50
+        GC_content_max: 65
+
+      GC_clamp_filter: # Require G/C nucleotides at the 3' end of the primer for stable binding.
+        enabled: true
+        number_GC_GCclamp: 1 # Minimum number of G or C nucleotides required at the 3' end.
+        number_three_prime_base_GCclamp: 2 # Number of bases from the 3' end to consider for the GC clamp.
+
+      homopolymeric_runs_filter:
+        enabled: true
+        homopolymeric_base_n: {"A": 4, "T": 4, "C": 4, "G": 4}
+
+      self_complementarity_filter: # Limit self-complementarity to avoid hairpins.
+        enabled: true
+        max_len_selfcomplement: 6
+
+      complement_reverse_primer_filter: # Limit complementarity between the forward primer and the (known) reverse primer to prevent primer-dimer formation.
+        enabled: true
+        max_len_complement: 5
+
+      Tm_filter:
+        enabled: true
+        Tm_min: 60
+        Tm_max: 75
+
+      secondary_structure_filter:
+        enabled: true
+        T: 76
+        thr_DG: 0
+
+    specificity_filters:
+      specificity_blastn_filter: # Ensure primer specificity against a reference database (BLAST-based).
+        enabled: true
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        hit_parameters: {"min_alignment_length": 14}
+        files_fasta_reference_database: # FASTA file(s) used as reference for primer specificity.
+          - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+          - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+      hybridization_probes_blastn_filter: # Remove primers that match the assembled hybridization probes (BLAST-based).
+        enabled: true
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        hit_parameters: {"min_alignment_length": 11}
+
+    global_parameters:
+      Tm_parameters:
+        nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
+        tmm_table: DNA_TMM1
+        imm_table: DNA_IMM1
+        de_table: DNA_DE1
+        dnac1: 250 #[nM]
+        dnac2: 250 #[nM]
+        saltcorr: 5
+        Na: 300 #[mM]
+        K: 0
+        Tris: 0
+        Mg: 0
+        dNTPs: 0
+      Tm_chem_correction_parameters:
+        enabled: false
+      Tm_salt_correction_parameters:
+        enabled: false
+
+  reverse_primer:
+    source: load # "generate" (not yet implemented) | "load" (default)
+    sequence: CCCTATAGTGAGTCGTATTA # Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.
