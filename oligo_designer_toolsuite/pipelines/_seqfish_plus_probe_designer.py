@@ -352,85 +352,19 @@ class SeqFishPlusProbeDesigner:
             )
             codebook_source = readout_probe_parameters["codebook"]["source"]
 
-        ##### readout probe table: load or generate #####
+        ##### readout probe table: load or generate via the multi-step pipeline #####
         if readout_probe_parameters["readout_probe_table"]["source"] == "load":
             readout_probe_table = readout_probe_designer.load_readout_probe_table(
                 file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"]
             )
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
         else:
-            # Multi-step generation: create random oligos → property filter → specificity filter → format table.
-            oligo_database: OligoDatabase = readout_probe_designer.create_oligo_database(
-                oligo_length=readout_probe_parameters["readout_probe_table"]["oligo_generation"][
-                    "probe_length"
-                ],
-                oligo_base_probabilities=readout_probe_parameters["readout_probe_table"]["oligo_generation"][
-                    "base_probabilities"
-                ],
-                initial_num_sequences=readout_probe_parameters["readout_probe_table"]["oligo_generation"][
-                    "initial_num_sequences"
-                ],
-            )
-
-            if self.write_intermediate_steps:
-                dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
-                logger.info(
-                    f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}"
-                )
-
-            oligo_database = readout_probe_designer.filter_by_property(
-                oligo_database=oligo_database,
-                GC_content_min=readout_probe_parameters["readout_probe_table"]["property_filters"][
-                    "GC_content_filter"
-                ]["GC_content_min"],
-                GC_content_max=readout_probe_parameters["readout_probe_table"]["property_filters"][
-                    "GC_content_filter"
-                ]["GC_content_max"],
-                homopolymeric_base_n=readout_probe_parameters["readout_probe_table"]["property_filters"][
-                    "homopolymeric_runs_filter"
-                ]["homopolymeric_base_n"],
-            )
-
-            if self.write_intermediate_steps:
-                dir_database = oligo_database.save_database(
-                    name_database="2_db_readout_probes_property_filter"
-                )
-                logger.info(
-                    f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}"
-                )
-
-            oligo_database = readout_probe_designer.filter_by_specificity(
-                oligo_database=oligo_database,
-                files_fasta_reference_database=readout_probe_parameters["readout_probe_table"][
-                    "specificity_filters"
-                ]["specificity_blastn_filter"]["files_fasta_reference_database"],
-                specificity_blastn_search_parameters=readout_probe_parameters["readout_probe_table"][
-                    "specificity_filters"
-                ]["specificity_blastn_filter"]["search_parameters"],
-                specificity_blastn_hit_parameters=readout_probe_parameters["readout_probe_table"][
-                    "specificity_filters"
-                ]["specificity_blastn_filter"]["hit_parameters"],
-                cross_hybridization_blastn_search_parameters=readout_probe_parameters["readout_probe_table"][
-                    "specificity_filters"
-                ]["cross_hybridization_blastn_filter"]["search_parameters"],
-                cross_hybridization_blastn_hit_parameters=readout_probe_parameters["readout_probe_table"][
-                    "specificity_filters"
-                ]["cross_hybridization_blastn_filter"]["hit_parameters"],
-            )
-
-            if self.write_intermediate_steps:
-                dir_database = oligo_database.save_database(
-                    name_database="3_db_readout_probes_specificty_filter"
-                )
-                logger.info(
-                    f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
-                )
-
             readout_probe_table = readout_probe_designer.generate_readout_probe_table(
-                readout_probe_database=oligo_database,
+                parameters=readout_probe_parameters["readout_probe_table"],
                 channels_ids=readout_probe_parameters["channels_ids"],
                 n_barcode_rounds=readout_probe_parameters["n_barcode_rounds"],
                 n_pseudocolors=readout_probe_parameters["n_pseudocolors"],
+                write_intermediate_steps=self.write_intermediate_steps,
             )
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
 
@@ -1648,53 +1582,126 @@ class ReadoutProbeDesigner:
 
     def generate_readout_probe_table(
         self,
+        parameters: dict,
+        channels_ids: list[str],
+        n_barcode_rounds: int,
+        n_pseudocolors: int,
+        write_intermediate_steps: bool = False,
+    ) -> pd.DataFrame:
+        """
+        Generate a SeqFISH+ readout probe table by running the full multi-step readout probe
+        design pipeline and assigning the surviving sequences to bit / barcode-round /
+        pseudocolor / channel slots.
+
+        Internally orchestrates the existing decorated steps:
+        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` →
+        :py:meth:`filter_by_specificity`, then formats the filtered database into a bit-indexed
+        table via :py:meth:`_format_readout_probe_table`. Each step keeps its own
+        ``@pipeline_step_basic`` logging.
+
+        :param parameters: ``readout_probes.readout_probe_table`` block. Must contain
+            ``oligo_generation``, ``property_filters`` and ``specificity_filters`` sub-blocks.
+        :type parameters: dict
+        :param channels_ids: List of fluorescence channel identifiers used to distribute readout
+            probes across channels.
+        :type channels_ids: list[str]
+        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme.
+        :type n_barcode_rounds: int
+        :param n_pseudocolors: Number of pseudocolors per barcode round.
+        :type n_pseudocolors: int
+        :param write_intermediate_steps: If True, save the per-step readout-probe databases for
+            debugging.
+        :type write_intermediate_steps: bool
+        :return: Bit-indexed readout probe table with ``barcode_round``, ``pseudocolor``,
+            ``channel`` and ``readout_probe_sequence`` columns.
+        :rtype: pd.DataFrame
+        """
+        oligo_database: OligoDatabase = self.create_oligo_database(
+            oligo_length=parameters["oligo_generation"]["probe_length"],
+            oligo_base_probabilities=parameters["oligo_generation"]["base_probabilities"],
+            initial_num_sequences=parameters["oligo_generation"]["initial_num_sequences"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
+            logger.info(
+                f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}"
+            )
+
+        oligo_database = self.filter_by_property(
+            oligo_database=oligo_database,
+            GC_content_min=parameters["property_filters"]["GC_content_filter"]["GC_content_min"],
+            GC_content_max=parameters["property_filters"]["GC_content_filter"]["GC_content_max"],
+            homopolymeric_base_n=parameters["property_filters"]["homopolymeric_runs_filter"][
+                "homopolymeric_base_n"
+            ],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_readout_probes_property_filter")
+            logger.info(
+                f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}"
+            )
+
+        oligo_database = self.filter_by_specificity(
+            oligo_database=oligo_database,
+            files_fasta_reference_database=parameters["specificity_filters"]["specificity_blastn_filter"][
+                "files_fasta_reference_database"
+            ],
+            specificity_blastn_search_parameters=parameters["specificity_filters"][
+                "specificity_blastn_filter"
+            ]["search_parameters"],
+            specificity_blastn_hit_parameters=parameters["specificity_filters"]["specificity_blastn_filter"][
+                "hit_parameters"
+            ],
+            cross_hybridization_blastn_search_parameters=parameters["specificity_filters"][
+                "cross_hybridization_blastn_filter"
+            ]["search_parameters"],
+            cross_hybridization_blastn_hit_parameters=parameters["specificity_filters"][
+                "cross_hybridization_blastn_filter"
+            ]["hit_parameters"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_readout_probes_specificty_filter")
+            logger.info(
+                f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
+            )
+
+        return self._format_readout_probe_table(
+            readout_probe_database=oligo_database,
+            channels_ids=channels_ids,
+            n_barcode_rounds=n_barcode_rounds,
+            n_pseudocolors=n_pseudocolors,
+        )
+
+    def _format_readout_probe_table(
+        self,
         readout_probe_database: OligoDatabase,
-        channels_ids: list,
+        channels_ids: list[str],
         n_barcode_rounds: int,
         n_pseudocolors: int,
     ) -> pd.DataFrame:
         """
-        Create a readout probe table that maps codebook bits to barcode rounds, pseudocolors, channels, and readout probe sequences.
+        Format a filtered readout-probe database into a bit-indexed table mapping each bit to a
+        barcode round, pseudocolor, channel and readout probe sequence.
 
-        This method generates a table where each bit position in the codebook is assigned:
-        1. A readout probe sequence from the database
-        2. A barcode round identifier (indicating which round of barcoding this bit belongs to)
-        3. A pseudocolor identifier (indicating which pseudocolor is used in this round)
-        4. A fluorescence channel identifier
+        For each barcode round, pseudocolors are cycled through, and for each pseudocolor, channels
+        are cycled through, so each bit position has a unique (round, pseudocolor, channel) triple.
 
-        The readout probes are distributed across channels, pseudocolors, and barcode rounds in a systematic
-        fashion. For each barcode round, pseudocolors are cycled through, and for each pseudocolor, channels
-        are cycled through. This ensures that each bit position has a unique combination of barcode round,
-        pseudocolor, and channel.
-
-        The table is indexed by bit labels (bit_1, bit_2, etc.) and contains columns for barcode_round,
-        pseudocolor, channel, and readout_probe_sequence. This table is used to assign readout probes
-        to each bit position in the codebook for multiplexed imaging using the combinatorial pseudocolor system.
-
-        :param readout_probe_database: The `OligoDatabase` instance containing readout probe sequences
-            and their associated properties. This database should contain readout probes that have
-            been filtered.
+        :param readout_probe_database: Filtered ``OligoDatabase`` of readout probe sequences.
         :type readout_probe_database: OligoDatabase
-        :param channels_ids: List of fluorescence channel identifiers (e.g., ['Cy3', 'Cy5', 'Alexa488'])
-            to which readout probes will be assigned. Readout probes are distributed across channels
-            in a systematic fashion.
-        :type channels_ids: list
-        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme. This determines how
-            many rounds of barcoding are used, and each round requires readout probes.
+        :param channels_ids: Fluorescence channel identifiers used to distribute readout probes.
+        :type channels_ids: list[str]
+        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme.
         :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors available for encoding. Each barcode round uses
-            one pseudocolor, and readout probes are assigned to pseudocolors systematically.
+        :param n_pseudocolors: Number of pseudocolors per barcode round.
         :type n_pseudocolors: int
-        :return: A DataFrame containing the readout probe table with columns:
-            - **barcode_round**: Barcode round identifier (1-indexed) for this bit
-            - **pseudocolor**: Pseudocolor identifier (1-indexed) for this bit
-            - **channel**: Fluorescence channel identifier assigned to this bit
-            - **readout_probe_sequence**: DNA sequence of the readout probe
-            The DataFrame is indexed by bit labels (bit_1, bit_2, etc.).
+        :return: Bit-indexed readout probe table with columns ``barcode_round``, ``pseudocolor``,
+            ``channel`` and ``readout_probe_sequence``.
         :rtype: pd.DataFrame
-        :raises AssertionError: If the number of available readout probes in the database is less
-            than the number of required bits (`n_barcode_rounds * n_pseudocolors * n_channels`). In this
-            case, generate more readout probes or reduce the number of barcode rounds, pseudocolors, or channels.
+        :raises AssertionError: If the database contains fewer probes than the required number of
+            bits (``n_barcode_rounds * n_pseudocolors * len(channels_ids)``).
         """
         n_channels = len(channels_ids)
         n_bits = n_barcode_rounds * n_pseudocolors * n_channels
