@@ -1286,32 +1286,37 @@ class ReadoutProbeDesigner:
         Probes that fail any filter are removed. Regions with insufficient oligos after filtering
         are removed from the database.
 
+        Each filter is gated on its own ``enabled`` flag. Probes that fail any enabled filter are
+        removed from the database.
+
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain readout probe sequences
             generated in the previous step.
         :type oligo_database: OligoDatabase
-        :param GC_content_filter: Dict with ``GC_content_min``, ``GC_content_max``.
+        :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
         :type GC_content_filter: dict
-        :param homopolymeric_runs_filter: Dict with ``homopolymeric_base_n`` (mapping
+        :param homopolymeric_runs_filter: Dict with ``enabled``, ``homopolymeric_base_n`` (mapping
             ``A``/``T``/``C``/``G`` to maximum allowed run lengths).
         :type homopolymeric_runs_filter: dict
-        :return: A filtered `OligoDatabase` object containing only probes that pass all property filters.
-            Regions with insufficient oligos after filtering are removed.
+        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
+            property filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
         """
-        # define the filters
-        gc_content = GCContentFilter(
-            GC_content_min=GC_content_filter["GC_content_min"],
-            GC_content_max=GC_content_filter["GC_content_max"],
-        )
-        homopolymeric_runs = HomopolymericRunsFilter(
-            base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
-        )
+        # Build property-filter list, gating each filter on its own ``enabled`` flag.
+        filters: list[BasePropertyFilter] = []
 
-        filters = [
-            gc_content,
-            homopolymeric_runs,
-        ]
+        if GC_content_filter["enabled"]:
+            gc_content = GCContentFilter(
+                GC_content_min=GC_content_filter["GC_content_min"],
+                GC_content_max=GC_content_filter["GC_content_max"],
+            )
+            filters.append(gc_content)
+
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
 
         # initialize the preoperty filter class
         property_filter = PropertyFilter(filters=filters)
@@ -1349,64 +1354,74 @@ class ReadoutProbeDesigner:
            of binding to their intended targets. Probes are removed based on their degree of
            cross-hybridization (using `RemoveByDegreeFilterPolicy`).
 
-        The reference database is loaded from the FASTA file(s) inside ``specificity_blastn_filter``
-        and is shared by both BLASTN-based filters. Regions that do not meet the minimum oligo
-        requirement after filtering are removed from the database.
+        The filter list is seeded with an :class:`ExactMatchFilter` (always on) and then conditionally
+        extended with BLASTN-specificity and cross-hybridization filters depending on their
+        ``enabled`` flags. The reference database is loaded from the FASTA file(s) inside
+        ``specificity_blastn_filter`` and is shared by both BLASTN-based filters. Regions that do
+        not meet the minimum oligo requirement after filtering are removed from the database.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain readout probe sequences
             that have passed property filtering.
         :type oligo_database: OligoDatabase
-        :param specificity_blastn_filter: Dict with ``search_parameters``, ``hit_parameters``,
-            ``files_fasta_reference_database``.
+        :param specificity_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``, ``files_fasta_reference_database``.
         :type specificity_blastn_filter: dict
-        :param cross_hybridization_blastn_filter: Dict with ``search_parameters``, ``hit_parameters``.
+        :param cross_hybridization_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``.
         :type cross_hybridization_blastn_filter: dict
-        :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
-            and cross-hybridization filters. Regions with insufficient oligos after filtering are removed.
+        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
+            specificity and cross-hybridization filters. Regions with insufficient oligos after
+            filtering are removed.
         :rtype: OligoDatabase
         """
-        reference_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
-        )
-        reference_database.load_database_from_file(
-            files=specificity_blastn_filter["files_fasta_reference_database"],
-            file_type="fasta",
-            database_overwrite=True,
-        )
-
-        ##### specificity filters #####
-        # removing duplicated oligos
+        ##### exact match filter (always on); BLASTN filters gated on ``enabled`` #####
         exact_matches = ExactMatchFilter(
             policy=RemoveAllFilterPolicy(), filter_name="readout_probes_exact_match"
         )
+        filters: list = [exact_matches]
+        directories: list[str] = []
 
-        # BlastN Filter
-        specificity = BlastNFilter(
-            remove_hits=True,
-            search_parameters=specificity_blastn_filter["search_parameters"],
-            hit_parameters=specificity_blastn_filter["hit_parameters"],
-            filter_name="readout_probes_blastn_specificity",
-            dir_output=self.dir_output,
-        )
-        specificity.set_reference_database(reference_database=reference_database)
+        if specificity_blastn_filter["enabled"]:
+            reference_database = ReferenceDatabase(
+                database_name=self.subdir_db_reference, dir_output=self.dir_output
+            )
+            reference_database.load_database_from_file(
+                files=specificity_blastn_filter["files_fasta_reference_database"],
+                file_type="fasta",
+                database_overwrite=True,
+            )
+            specificity = BlastNFilter(
+                remove_hits=True,
+                search_parameters=specificity_blastn_filter["search_parameters"],
+                hit_parameters=specificity_blastn_filter["hit_parameters"],
+                filter_name="readout_probes_blastn_specificity",
+                dir_output=self.dir_output,
+            )
+            specificity.set_reference_database(reference_database=reference_database)
+            filters.append(specificity)
+            directories.append(specificity.dir_output)
 
-        # Cross-Hybridization Filter
-        cross_hybridization_aligner = BlastNFilter(
-            remove_hits=True,
-            search_parameters=cross_hybridization_blastn_filter["search_parameters"],
-            hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
-            filter_name="readout_probes_blastn_crosshybridization",
-            dir_output=self.dir_output,
-        )
-        cross_hybridization = CrossHybridizationFilter(
-            policy=RemoveByDegreeFilterPolicy(),
-            alignment_method=cross_hybridization_aligner,
-            filter_name="readout_probes_blastn_crosshybridization",
-            dir_output=self.dir_output,
-        )
+        if cross_hybridization_blastn_filter["enabled"]:
+            cross_hybridization_aligner = BlastNFilter(
+                remove_hits=True,
+                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
+                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
+                filter_name="readout_probes_blastn_crosshybridization",
+                dir_output=self.dir_output,
+            )
+            cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
+            cross_hybridization = CrossHybridizationFilter(
+                policy=RemoveByDegreeFilterPolicy(),
+                alignment_method=cross_hybridization_aligner,
+                filter_name="readout_probes_blastn_crosshybridization",
+                dir_output=self.dir_output,
+            )
+            filters.append(cross_hybridization)
+            directories.append(cross_hybridization_aligner.dir_output)
+            directories.append(cross_hybridization.dir_output)
 
-        specificity_filter = SpecificityFilter(filters=[exact_matches, specificity, cross_hybridization])
+        specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -1414,11 +1429,7 @@ class ReadoutProbeDesigner:
         )
 
         # remove all directories of intermediate steps
-        for directory in [
-            specificity.dir_output,
-            cross_hybridization_aligner.dir_output,
-            cross_hybridization.dir_output,
-        ]:
+        for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
@@ -1856,77 +1867,90 @@ class PrimerDesigner:
         7. **Secondary structure**: Removes primers that form stable secondary structures at the
            specified temperature
 
-        Probes that fail any filter are removed. Regions with insufficient oligos after filtering
-        are removed from the database.
+        Each filter is gated on its own ``enabled`` flag. Probes that fail any enabled filter are
+        removed from the database.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain primer sequences generated
             in the previous step.
         :type oligo_database: OligoDatabase
-        :param GC_content_filter: Dict with ``GC_content_min``, ``GC_content_max``.
+        :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
         :type GC_content_filter: dict
-        :param GC_clamp_filter: Dict with ``number_GC_GCclamp``, ``number_three_prime_base_GCclamp``.
+        :param GC_clamp_filter: Dict with ``enabled``, ``number_GC_GCclamp``,
+            ``number_three_prime_base_GCclamp``.
         :type GC_clamp_filter: dict
-        :param homopolymeric_runs_filter: Dict with ``homopolymeric_base_n`` (mapping
+        :param homopolymeric_runs_filter: Dict with ``enabled``, ``homopolymeric_base_n`` (mapping
             ``A``/``T``/``C``/``G`` to maximum allowed run lengths).
         :type homopolymeric_runs_filter: dict
-        :param self_complementarity_filter: Dict with ``max_len_selfcomplement``.
+        :param self_complementarity_filter: Dict with ``enabled``, ``max_len_selfcomplement``.
         :type self_complementarity_filter: dict
-        :param complement_reverse_primer_filter: Dict with ``max_len_complement``.
+        :param complement_reverse_primer_filter: Dict with ``enabled``, ``max_len_complement``.
         :type complement_reverse_primer_filter: dict
-        :param Tm_filter: Dict with ``Tm_min``, ``Tm_max``, ``Tm_parameters``,
+        :param Tm_filter: Dict with ``enabled``, ``Tm_min``, ``Tm_max``, ``Tm_parameters``,
             ``Tm_chem_correction_parameters``, ``Tm_salt_correction_parameters`` (Tm parameters are
             inlined into this dict by :func:`_preprocess_config`).
         :type Tm_filter: dict
-        :param secondary_structure_filter: Dict with ``T``, ``thr_DG``.
+        :param secondary_structure_filter: Dict with ``enabled``, ``T``, ``thr_DG``.
         :type secondary_structure_filter: dict
         :param reverse_primer_sequence: DNA sequence of the reverse primer used by the
             complement-reverse-primer filter to prevent primer-dimer formation.
         :type reverse_primer_sequence: str
-        :return: A filtered `OligoDatabase` object containing only primers that pass all property filters.
-            Regions with insufficient oligos after filtering are removed.
+        :return: A filtered `OligoDatabase` object containing only primers that pass all enabled
+            property filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
         """
-        # define the filters
-        gc_content = GCContentFilter(
-            GC_content_min=GC_content_filter["GC_content_min"],
-            GC_content_max=GC_content_filter["GC_content_max"],
-        )
-        gc_clamp = GCClampFilter(
-            n_bases=GC_clamp_filter["number_three_prime_base_GCclamp"],
-            n_GC=GC_clamp_filter["number_GC_GCclamp"],
-        )
-        homopolymeric_runs = HomopolymericRunsFilter(
-            base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
-        )
-        self_complement = SelfComplementFilter(
-            max_len_selfcomplement=self_complementarity_filter["max_len_selfcomplement"],
-        )
-        complement = ComplementFilter(
-            comparison_sequence=reverse_primer_sequence,
-            max_len_complement=complement_reverse_primer_filter["max_len_complement"],
-        )
-        melting_temperature = MeltingTemperatureNNFilter(
-            Tm_min=Tm_filter["Tm_min"],
-            Tm_max=Tm_filter["Tm_max"],
-            Tm_parameters=Tm_filter["Tm_parameters"],
-            Tm_chem_correction_parameters=Tm_filter["Tm_chem_correction_parameters"],
-            Tm_salt_correction_parameters=Tm_filter["Tm_salt_correction_parameters"],
-        )
-        secondary_sctructure = SecondaryStructureFilter(
-            T=secondary_structure_filter["T"],
-            thr_DG=secondary_structure_filter["thr_DG"],
-        )
+        # Build property-filter list, gating each filter on its own ``enabled`` flag.
+        filters: list[BasePropertyFilter] = []
 
-        filters = [
-            gc_content,
-            gc_clamp,
-            homopolymeric_runs,
-            self_complement,
-            complement,
-            melting_temperature,
-            secondary_sctructure,
-        ]
+        if GC_content_filter["enabled"]:
+            gc_content = GCContentFilter(
+                GC_content_min=GC_content_filter["GC_content_min"],
+                GC_content_max=GC_content_filter["GC_content_max"],
+            )
+            filters.append(gc_content)
+
+        if GC_clamp_filter["enabled"]:
+            gc_clamp = GCClampFilter(
+                n_bases=GC_clamp_filter["number_three_prime_base_GCclamp"],
+                n_GC=GC_clamp_filter["number_GC_GCclamp"],
+            )
+            filters.append(gc_clamp)
+
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
+        if self_complementarity_filter["enabled"]:
+            self_complement = SelfComplementFilter(
+                max_len_selfcomplement=self_complementarity_filter["max_len_selfcomplement"],
+            )
+            filters.append(self_complement)
+
+        if complement_reverse_primer_filter["enabled"]:
+            complement = ComplementFilter(
+                comparison_sequence=reverse_primer_sequence,
+                max_len_complement=complement_reverse_primer_filter["max_len_complement"],
+            )
+            filters.append(complement)
+
+        if Tm_filter["enabled"]:
+            melting_temperature = MeltingTemperatureNNFilter(
+                Tm_min=Tm_filter["Tm_min"],
+                Tm_max=Tm_filter["Tm_max"],
+                Tm_parameters=Tm_filter["Tm_parameters"],
+                Tm_chem_correction_parameters=Tm_filter["Tm_chem_correction_parameters"],
+                Tm_salt_correction_parameters=Tm_filter["Tm_salt_correction_parameters"],
+            )
+            filters.append(melting_temperature)
+
+        if secondary_structure_filter["enabled"]:
+            secondary_sctructure = SecondaryStructureFilter(
+                T=secondary_structure_filter["T"],
+                thr_DG=secondary_structure_filter["thr_DG"],
+            )
+            filters.append(secondary_sctructure)
 
         # initialize the preoperty filter class
         property_filter = PropertyFilter(filters=filters)
@@ -1964,69 +1988,74 @@ class PrimerDesigner:
            they may interfere with probe function or cause unwanted amplification. The hybridization
            probe database is used to create a reference FASTA file for this filtering step.
 
-        Both filters use BLASTN searches with configurable search and hit parameters. Primers with
-        hits meeting the specified criteria are removed. Regions that do not meet the minimum oligo
-        requirement after filtering are removed from the database.
+        Each BLASTN filter is gated on its own ``enabled`` flag. Primers with hits meeting the
+        specified criteria are removed. Regions that do not meet the minimum oligo requirement
+        after filtering are removed from the database.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain primer sequences that have
             passed property filtering.
         :type oligo_database: OligoDatabase
-        :param specificity_blastn_filter: Dict with ``search_parameters``, ``hit_parameters``,
-            ``files_fasta_reference_database``.
+        :param specificity_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``, ``files_fasta_reference_database``.
         :type specificity_blastn_filter: dict
-        :param hybridization_probes_blastn_filter: Dict with ``search_parameters``, ``hit_parameters``.
+        :param hybridization_probes_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``.
         :type hybridization_probes_blastn_filter: dict
         :param file_fasta_hybridization_probes_database: Path to the FASTA file containing the
             assembled hybridization probe sequences (created at runtime). Used as the reference
             database for the hybridization-probe BLASTN filter so primers do not bind the
             hybridization probes themselves.
         :type file_fasta_hybridization_probes_database: str
-        :return: A filtered `OligoDatabase` object containing only primers that pass all specificity
-            filters. Regions with insufficient oligos after filtering are removed.
+        :return: A filtered `OligoDatabase` object containing only primers that pass all enabled
+            specificity filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
         """
-        ##### specificity filters against reference #####
-        reference_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
-        )
-        reference_database.load_database_from_file(
-            files=specificity_blastn_filter["files_fasta_reference_database"],
-            file_type="fasta",
-            database_overwrite=True,
-        )
-        # BlastN Filter
-        specificity_refrence = BlastNFilter(
-            search_parameters=specificity_blastn_filter["search_parameters"],
-            hit_parameters=specificity_blastn_filter["hit_parameters"],
-            filter_name="primer_blastn_specificity_reference",
-            dir_output=self.dir_output,
-        )
-        specificity_refrence.set_reference_database(reference_database=reference_database)
+        ##### BLASTN filters gated on ``enabled`` #####
+        filters: list = []
+        directories: list[str] = []
 
-        ##### specificity filters against hybridization probes #####
-        hybridization_probes_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
-        )
-        hybridization_probes_database.load_database_from_file(
-            files=file_fasta_hybridization_probes_database,
-            file_type="fasta",
-            database_overwrite=True,
-        )
-        # BlastN Filter
-        specificity_hybridization_probes = BlastNFilter(
-            search_parameters=hybridization_probes_blastn_filter["search_parameters"],
-            hit_parameters=hybridization_probes_blastn_filter["hit_parameters"],
-            filter_name="primer_blastn_specificity_hybridization_probes",
-            dir_output=self.dir_output,
-        )
-        specificity_hybridization_probes.set_reference_database(
-            reference_database=hybridization_probes_database
-        )
+        if specificity_blastn_filter["enabled"]:
+            reference_database = ReferenceDatabase(
+                database_name=self.subdir_db_reference, dir_output=self.dir_output
+            )
+            reference_database.load_database_from_file(
+                files=specificity_blastn_filter["files_fasta_reference_database"],
+                file_type="fasta",
+                database_overwrite=True,
+            )
+            specificity_refrence = BlastNFilter(
+                search_parameters=specificity_blastn_filter["search_parameters"],
+                hit_parameters=specificity_blastn_filter["hit_parameters"],
+                filter_name="primer_blastn_specificity_reference",
+                dir_output=self.dir_output,
+            )
+            specificity_refrence.set_reference_database(reference_database=reference_database)
+            filters.append(specificity_refrence)
+            directories.append(specificity_refrence.dir_output)
 
-        specificity_filter = SpecificityFilter(
-            filters=[specificity_refrence, specificity_hybridization_probes]
-        )
+        if hybridization_probes_blastn_filter["enabled"]:
+            hybridization_probes_database = ReferenceDatabase(
+                database_name=self.subdir_db_reference, dir_output=self.dir_output
+            )
+            hybridization_probes_database.load_database_from_file(
+                files=file_fasta_hybridization_probes_database,
+                file_type="fasta",
+                database_overwrite=True,
+            )
+            specificity_hybridization_probes = BlastNFilter(
+                search_parameters=hybridization_probes_blastn_filter["search_parameters"],
+                hit_parameters=hybridization_probes_blastn_filter["hit_parameters"],
+                filter_name="primer_blastn_specificity_hybridization_probes",
+                dir_output=self.dir_output,
+            )
+            specificity_hybridization_probes.set_reference_database(
+                reference_database=hybridization_probes_database
+            )
+            filters.append(specificity_hybridization_probes)
+            directories.append(specificity_hybridization_probes.dir_output)
+
+        specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -2034,10 +2063,7 @@ class PrimerDesigner:
         )
 
         # remove all directories of intermediate steps
-        for directory in [
-            specificity_refrence.dir_output,
-            specificity_hybridization_probes.dir_output,
-        ]:
+        for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
