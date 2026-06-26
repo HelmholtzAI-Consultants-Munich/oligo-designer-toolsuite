@@ -1410,7 +1410,6 @@ class ReadoutProbeDesigner:
                 filter_name="readout_probes_blastn_crosshybridization",
                 dir_output=self.dir_output,
             )
-            cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
             cross_hybridization = CrossHybridizationFilter(
                 policy=RemoveByDegreeFilterPolicy(),
                 alignment_method=cross_hybridization_aligner,
