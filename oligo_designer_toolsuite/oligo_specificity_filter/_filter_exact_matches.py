@@ -2,7 +2,8 @@
 # imports
 ############################################
 
-import iteration_utilities
+from collections import Counter
+
 import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
@@ -188,13 +189,11 @@ class ExactMatchFilter(BaseSpecificityFilter):
         :return: A list of duplicated sequences.
         :rtype: list
         """
-        # convert to upper sequence
-        sequences = [sequence.upper() for sequence in sequences]
+        # convert to upper sequence and count occurences
+        counts = Counter(map(str.upper, sequences))
 
         # find the duplicates within the database
-        duplicated_sequences = list(
-            iteration_utilities.unique_everseen(iteration_utilities.duplicates(sequences))
-        )
+        duplicated_sequences = [seq for seq, count in counts.items() if count > 1]
 
         return duplicated_sequences
 
