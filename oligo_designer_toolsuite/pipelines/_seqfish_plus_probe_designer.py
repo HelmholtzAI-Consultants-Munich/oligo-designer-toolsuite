@@ -1437,6 +1437,10 @@ class ReadoutProbeDesigner:
         check_content_oligo_database(oligo_database)
         return oligo_database
 
+    def load_codebook(self, file_codebook: str) -> pd.DataFrame:
+        """Load a SeqFISH+ codebook from a TSV/CSV file (index column: ``gene_name``)."""
+        return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
+
     def generate_codebook(
         self, region_ids: list[str], n_barcode_rounds: int, n_pseudocolors: int, n_channels: int
     ) -> pd.DataFrame:
@@ -1525,10 +1529,6 @@ class ReadoutProbeDesigner:
 
         return codebook
 
-    def load_codebook(self, file_codebook: str) -> pd.DataFrame:
-        """Load a SeqFISH+ codebook from a TSV/CSV file (index column: ``gene_name``)."""
-        return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
-
     def load_readout_probe_table(self, file_readout_probe_table: str) -> pd.DataFrame:
         """Load a SeqFISH+ readout probe table from a TSV/CSV file. The ``bit`` column must be present."""
         readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
@@ -1537,39 +1537,6 @@ class ReadoutProbeDesigner:
                 f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column."
             )
         return readout_probe_table.set_index("bit")
-
-    def validate(
-        self,
-        codebook: pd.DataFrame,
-        readout_probe_table: pd.DataFrame,
-        region_ids: list[str],
-        *,
-        codebook_source: str,
-        readout_probe_table_source: str,
-    ) -> None:
-        """
-        Validate that a (codebook, readout_probe_table) pair forms a valid SeqFISH+ readout setup.
-
-        Delegates to the shared :func:`validate_codebook` and :func:`validate_bit_mapping_table`
-        helpers with SeqFISH+-specific knobs (codebook indexed by ``gene_name``; readout probe table
-        has the SeqFISH+ four-column layout). The codebook hamming weight is left unconstrained
-        (``expected_hamming_weight=None``) because SeqFISH+ uses a combinatorial pseudocolor
-        encoding rather than a fixed-weight binary code.
-        """
-        validate_codebook(
-            codebook=codebook,
-            region_ids=region_ids,
-            source=codebook_source,
-            expected_hamming_weight=None,
-            index_name="gene_name",
-        )
-        validate_bit_mapping_table(
-            table=readout_probe_table,
-            codebook=codebook,
-            source=readout_probe_table_source,
-            required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
-            sequence_columns=["readout_probe_sequence"],
-        )
 
     def generate_readout_probe_table(
         self,
@@ -1727,6 +1694,39 @@ class ReadoutProbeDesigner:
                 break
         readout_probe_table.set_index("bit", inplace=True)
         return readout_probe_table
+
+    def validate(
+        self,
+        codebook: pd.DataFrame,
+        readout_probe_table: pd.DataFrame,
+        region_ids: list[str],
+        *,
+        codebook_source: str,
+        readout_probe_table_source: str,
+    ) -> None:
+        """
+        Validate that a (codebook, readout_probe_table) pair forms a valid SeqFISH+ readout setup.
+
+        Delegates to the shared :func:`validate_codebook` and :func:`validate_bit_mapping_table`
+        helpers with SeqFISH+-specific knobs (codebook indexed by ``gene_name``; readout probe table
+        has the SeqFISH+ four-column layout). The codebook hamming weight is left unconstrained
+        (``expected_hamming_weight=None``) because SeqFISH+ uses a combinatorial pseudocolor
+        encoding rather than a fixed-weight binary code.
+        """
+        validate_codebook(
+            codebook=codebook,
+            region_ids=region_ids,
+            source=codebook_source,
+            expected_hamming_weight=None,
+            index_name="gene_name",
+        )
+        validate_bit_mapping_table(
+            table=readout_probe_table,
+            codebook=codebook,
+            source=readout_probe_table_source,
+            required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
+            sequence_columns=["readout_probe_sequence"],
+        )
 
 
 ############################################
@@ -2072,10 +2072,6 @@ class PrimerDesigner:
 
         return oligo_database
 
-    def load_forward_primer(self, sequence: str) -> str:
-        """Load and validate a forward primer sequence (whitespace stripped)."""
-        return str(sequence).strip()
-
     def load_reverse_primer(self, sequence: str) -> str:
         """Load and validate a reverse primer sequence (whitespace stripped)."""
         return str(sequence).strip()
@@ -2092,6 +2088,10 @@ class PrimerDesigner:
             "Generation of the reverse primer is not yet implemented. "
             "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
         )
+
+    def load_forward_primer(self, sequence: str) -> str:
+        """Load and validate a forward primer sequence (whitespace stripped)."""
+        return str(sequence).strip()
 
     def generate_forward_primer(
         self,
@@ -2168,7 +2168,7 @@ class PrimerDesigner:
             dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
             logger.info(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
 
-        return self._get_best_forward_primer(
+        forward_primer_sequence = self._get_best_forward_primer(
             oligo_database=oligo_database,
             reverse_primer_sequence=reverse_primer_sequence,
             Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
@@ -2179,6 +2179,8 @@ class PrimerDesigner:
                 "Tm_salt_correction_parameters"
             ],
         )
+
+        return forward_primer_sequence
 
     def _get_best_forward_primer(
         self,
