@@ -90,7 +90,7 @@ readout_probes:
 
   readout_probe_table:
     source: generate # "generate" (default) | "load"
-    # file: data/functional_oligos/seqfish_plus_readout_probes.tsv # Only used when source = load. Bit-indexed table with columns: "channel", "readout_probe_id", "L/R", "readout_probe_sequence".
+    # file: data/functional_oligos/seqfish_plus_readout_probes_load_codebook.tsv # Only used when source = load. Bit-indexed table with columns: "barcode_round", "pseudocolor", "channel", "readout_probe_sequence".
 
     oligo_generation:
       probe_length: 15 # Length (bases) of each random readout probe.
