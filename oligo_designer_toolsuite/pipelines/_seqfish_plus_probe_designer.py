@@ -346,9 +346,7 @@ class SeqFishPlusProbeDesigner:
         else:
             codebook = readout_probe_designer.generate_codebook(
                 region_ids=region_ids,
-                n_barcode_rounds=readout_probe_parameters["n_barcode_rounds"],
-                n_pseudocolors=readout_probe_parameters["n_pseudocolors"],
-                n_channels=len(readout_probe_parameters["channels_ids"]),
+                codebook_parameters=readout_probe_parameters["codebook"],
             )
             codebook_source = readout_probe_parameters["codebook"]["source"]
 
@@ -360,10 +358,8 @@ class SeqFishPlusProbeDesigner:
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
         else:
             readout_probe_table = readout_probe_designer.generate_readout_probe_table(
-                parameters=readout_probe_parameters["readout_probe_table"],
-                channels_ids=readout_probe_parameters["channels_ids"],
-                n_barcode_rounds=readout_probe_parameters["n_barcode_rounds"],
-                n_pseudocolors=readout_probe_parameters["n_pseudocolors"],
+                readout_probe_parameters=readout_probe_parameters["readout_probe_table"],
+                codebook_parameters=readout_probe_parameters["codebook"],
                 write_intermediate_steps=self.write_intermediate_steps,
             )
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
@@ -1210,8 +1206,188 @@ class ReadoutProbeDesigner:
 
         self.n_jobs = n_jobs
 
+    def load_codebook(self, file_codebook: str) -> pd.DataFrame:
+        """Load a SeqFISH+ codebook from a TSV/CSV file (index column: ``gene_name``)."""
+        return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
+
+    def generate_codebook(self, region_ids: list[str], codebook_parameters: dict) -> pd.DataFrame:
+        """
+        Generate a combinatorial pseudocolor codebook with barcode rounds for hybridization regions.
+
+        This method generates a codebook that assigns each region a unique barcode using a combinatorial
+        pseudocolor system. The codebook ensures that:
+        - Each barcode is constructed from combinations of pseudocolors across multiple barcode rounds
+        - Each barcode includes a channel assignment for fluorescence detection
+        - The number of valid barcodes is sufficient to encode all regions
+
+        The combinatorial pseudocolor system allows for efficient encoding: with `n_pseudocolors` pseudocolors
+        and `n_barcode_rounds` rounds, the codebook can encode up to `n_channels * (n_pseudocolors ** (n_barcode_rounds - 1))`
+        unique regions. Each barcode is represented as a binary vector where each bit corresponds to a specific
+        combination of barcode round, pseudocolor, and channel.
+
+        The algorithm generates all possible barcode combinations by iterating through pseudocolor combinations
+        and channels. Columns where all values are 0 (unused bits) are automatically removed from the final codebook.
+
+        :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
+            Each region will be assigned a unique barcode.
+        :type region_ids: list[str]
+        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme. Each round contributes
+            to the combinatorial encoding capacity.
+        :type n_barcode_rounds: int
+        :param n_pseudocolors: Number of pseudocolors available for encoding. Each barcode round uses
+            one pseudocolor, and the final round includes a checksum pseudocolor.
+        :type n_pseudocolors: int
+        :param n_channels: Number of fluorescence channels available for detection. Each barcode is
+            assigned to one channel.
+        :type n_channels: int
+        :return: A DataFrame containing the codebook with binary encoded bits. Each row represents a
+            region's barcode, with columns named `bit_1`, `bit_2`, etc. Unused bit columns (all zeros)
+            are automatically removed.
+        :rtype: pd.DataFrame
+        :raises ConfigurationError: If the number of valid barcodes (based on pseudocolors, barcode rounds,
+            and channels) is insufficient for the number of regions. In this case, consider increasing
+            `n_pseudocolors`, `n_barcode_rounds`, or `n_channels`, or reducing the number of regions.
+        """
+
+        def _generate_barcode(
+            pseudocolors: list, channel: int, n_pseudocolors: int, n_channels: int
+        ) -> np.ndarray:
+            pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
+            assert n_pseudocolors > max(
+                pseudocolors
+            ), f"The number of pseudocolor is {n_pseudocolors}, while the barcode contains {max(pseudocolors)} pseudocolors."
+            assert (
+                n_channels > channel
+            ), f"The number of channles is {n_channels}, while the barcode contains {channel} channels."
+            n_barcode_rounds = len(pseudocolors)
+            barcode = np.zeros(n_channels * n_pseudocolors * n_barcode_rounds, dtype=np.int8)
+            for i, pseudocolor in enumerate(pseudocolors):
+                barcode[i * n_pseudocolors * n_channels + n_channels * pseudocolor + channel] = 1
+            return barcode
+
+        n_regions = len(region_ids)
+        n_pseudocolors = codebook_parameters["n_pseudocolors"]
+        n_barcode_rounds = codebook_parameters["n_barcode_rounds"]
+        n_channels = len(codebook_parameters["channels_ids"])
+
+        codebook_list: list[np.ndarray] = []
+        codebook_size = n_channels * (n_pseudocolors ** (n_barcode_rounds - 1))
+        barcode_size = n_pseudocolors * n_barcode_rounds * n_channels
+
+        if codebook_size < n_regions:
+            raise ConfigurationError(
+                f"The number of valid barcodes ({codebook_size}) is lower than the number of regions ({n_regions}). "
+                f"Consider increasing the number of pseudocolors or barcoding rounds, or reducing the number of regions."
+            )
+        for pseudocolors in product(range(n_pseudocolors), repeat=n_barcode_rounds - 1):
+            for channel in range(n_channels):
+                barcode = _generate_barcode(
+                    pseudocolors=list(pseudocolors),
+                    channel=channel,
+                    n_pseudocolors=n_pseudocolors,
+                    n_channels=n_channels,
+                )
+                codebook_list.append(barcode)
+
+        codebook: pd.DataFrame = pd.DataFrame(
+            codebook_list[0:n_regions], index=region_ids, columns=[f"bit_{i+1}" for i in range(barcode_size)]
+        )
+        codebook.index.name = "gene_name"
+
+        # Remove columns where all values are 0
+        codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
+
+        return codebook
+
+    def load_readout_probe_table(self, file_readout_probe_table: str) -> pd.DataFrame:
+        """Load a SeqFISH+ readout probe table from a TSV/CSV file. The ``bit`` column must be present."""
+        readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
+        if "bit" not in readout_probe_table.columns:
+            raise FileFormatError(
+                f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column."
+            )
+        return readout_probe_table.set_index("bit")
+
+    def generate_readout_probe_table(
+        self,
+        readout_probe_parameters: dict,
+        codebook_parameters: dict,
+        write_intermediate_steps: bool = False,
+    ) -> pd.DataFrame:
+        """
+        Generate a SeqFISH+ readout probe table by running the full multi-step readout probe
+        design pipeline and assigning the surviving sequences to bit / barcode-round /
+        pseudocolor / channel slots.
+
+        Internally orchestrates the existing decorated steps:
+        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` →
+        :py:meth:`filter_by_specificity`, then formats the filtered database into a bit-indexed
+        table via :py:meth:`_format_readout_probe_table`. Each step keeps its own
+        ``@pipeline_step_basic`` logging.
+
+        :param readout_probe_parameters: ``readout_probes.readout_probe_table`` block. Must contain
+            ``oligo_generation``, ``property_filters`` and ``specificity_filters`` sub-blocks.
+        :type readout_probe_parameters: dict
+        :param codebook_parameters: ``readout_probes.codebook`` block.
+        :type codebook_parameters: dict
+        :param write_intermediate_steps: If True, save the per-step readout-probe databases for
+            debugging.
+        :type write_intermediate_steps: bool
+        :return: Bit-indexed readout probe table with ``barcode_round``, ``pseudocolor``,
+            ``channel`` and ``readout_probe_sequence`` columns.
+        :rtype: pd.DataFrame
+        """
+        oligo_database: OligoDatabase = self._create_oligo_database(
+            oligo_length=readout_probe_parameters["oligo_generation"]["probe_length"],
+            oligo_base_probabilities=readout_probe_parameters["oligo_generation"]["base_probabilities"],
+            initial_num_sequences=readout_probe_parameters["oligo_generation"]["initial_num_sequences"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
+            logger.info(
+                f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}"
+            )
+
+        oligo_database = self._filter_by_property(
+            oligo_database=oligo_database,
+            GC_content_filter=readout_probe_parameters["property_filters"]["GC_content_filter"],
+            homopolymeric_runs_filter=readout_probe_parameters["property_filters"][
+                "homopolymeric_runs_filter"
+            ],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_readout_probes_property_filter")
+            logger.info(
+                f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}"
+            )
+
+        oligo_database = self._filter_by_specificity(
+            oligo_database=oligo_database,
+            specificity_blastn_filter=readout_probe_parameters["specificity_filters"][
+                "specificity_blastn_filter"
+            ],
+            cross_hybridization_blastn_filter=readout_probe_parameters["specificity_filters"][
+                "cross_hybridization_blastn_filter"
+            ],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_readout_probes_specificty_filter")
+            logger.info(
+                f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
+            )
+
+        return self._format_readout_probe_table(
+            readout_probe_database=oligo_database,
+            channels_ids=codebook_parameters["channels_ids"],
+            n_barcode_rounds=codebook_parameters["n_barcode_rounds"],
+            n_pseudocolors=codebook_parameters["n_pseudocolors"],
+        )
+
     @pipeline_step_basic(step_name="Readout Probe Generation - Create Oligo Database")
-    def create_oligo_database(
+    def _create_oligo_database(
         self,
         oligo_length: int,
         oligo_base_probabilities: dict,
@@ -1271,7 +1447,7 @@ class ReadoutProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Property Filters")
-    def filter_by_property(
+    def _filter_by_property(
         self,
         oligo_database: OligoDatabase,
         GC_content_filter: dict,
@@ -1334,7 +1510,7 @@ class ReadoutProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Specificity Filters")
-    def filter_by_specificity(
+    def _filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
         specificity_blastn_filter: dict,
@@ -1436,188 +1612,6 @@ class ReadoutProbeDesigner:
 
         check_content_oligo_database(oligo_database)
         return oligo_database
-
-    def load_codebook(self, file_codebook: str) -> pd.DataFrame:
-        """Load a SeqFISH+ codebook from a TSV/CSV file (index column: ``gene_name``)."""
-        return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
-
-    def generate_codebook(
-        self, region_ids: list[str], n_barcode_rounds: int, n_pseudocolors: int, n_channels: int
-    ) -> pd.DataFrame:
-        """
-        Generate a combinatorial pseudocolor codebook with barcode rounds for hybridization regions.
-
-        This method generates a codebook that assigns each region a unique barcode using a combinatorial
-        pseudocolor system. The codebook ensures that:
-        - Each barcode is constructed from combinations of pseudocolors across multiple barcode rounds
-        - Each barcode includes a channel assignment for fluorescence detection
-        - The number of valid barcodes is sufficient to encode all regions
-
-        The combinatorial pseudocolor system allows for efficient encoding: with `n_pseudocolors` pseudocolors
-        and `n_barcode_rounds` rounds, the codebook can encode up to `n_channels * (n_pseudocolors ** (n_barcode_rounds - 1))`
-        unique regions. Each barcode is represented as a binary vector where each bit corresponds to a specific
-        combination of barcode round, pseudocolor, and channel.
-
-        The algorithm generates all possible barcode combinations by iterating through pseudocolor combinations
-        and channels. Columns where all values are 0 (unused bits) are automatically removed from the final codebook.
-
-        :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
-            Each region will be assigned a unique barcode.
-        :type region_ids: list[str]
-        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme. Each round contributes
-            to the combinatorial encoding capacity.
-        :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors available for encoding. Each barcode round uses
-            one pseudocolor, and the final round includes a checksum pseudocolor.
-        :type n_pseudocolors: int
-        :param n_channels: Number of fluorescence channels available for detection. Each barcode is
-            assigned to one channel.
-        :type n_channels: int
-        :return: A DataFrame containing the codebook with binary encoded bits. Each row represents a
-            region's barcode, with columns named `bit_1`, `bit_2`, etc. Unused bit columns (all zeros)
-            are automatically removed.
-        :rtype: pd.DataFrame
-        :raises ConfigurationError: If the number of valid barcodes (based on pseudocolors, barcode rounds,
-            and channels) is insufficient for the number of regions. In this case, consider increasing
-            `n_pseudocolors`, `n_barcode_rounds`, or `n_channels`, or reducing the number of regions.
-        """
-
-        def _generate_barcode(
-            pseudocolors: list, channel: int, n_pseudocolors: int, n_channels: int
-        ) -> np.ndarray:
-            pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
-            assert n_pseudocolors > max(
-                pseudocolors
-            ), f"The number of pseudocolor is {n_pseudocolors}, while the barcode contains {max(pseudocolors)} pseudocolors."
-            assert (
-                n_channels > channel
-            ), f"The number of channles is {n_channels}, while the barcode contains {channel} channels."
-            n_barcode_rounds = len(pseudocolors)
-            barcode = np.zeros(n_channels * n_pseudocolors * n_barcode_rounds, dtype=np.int8)
-            for i, pseudocolor in enumerate(pseudocolors):
-                barcode[i * n_pseudocolors * n_channels + n_channels * pseudocolor + channel] = 1
-            return barcode
-
-        n_regions = len(region_ids)
-
-        codebook_list: list[np.ndarray] = []
-        codebook_size = n_channels * (n_pseudocolors ** (n_barcode_rounds - 1))
-        barcode_size = n_pseudocolors * n_barcode_rounds * n_channels
-
-        if codebook_size < n_regions:
-            raise ConfigurationError(
-                f"The number of valid barcodes ({codebook_size}) is lower than the number of regions ({n_regions}). "
-                f"Consider increasing the number of pseudocolors or barcoding rounds, or reducing the number of regions."
-            )
-        for pseudocolors in product(range(n_pseudocolors), repeat=n_barcode_rounds - 1):
-            for channel in range(n_channels):
-                barcode = _generate_barcode(
-                    pseudocolors=list(pseudocolors),
-                    channel=channel,
-                    n_pseudocolors=n_pseudocolors,
-                    n_channels=n_channels,
-                )
-                codebook_list.append(barcode)
-
-        codebook: pd.DataFrame = pd.DataFrame(
-            codebook_list[0:n_regions], index=region_ids, columns=[f"bit_{i+1}" for i in range(barcode_size)]
-        )
-        codebook.index.name = "gene_name"
-
-        # Remove columns where all values are 0
-        codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
-
-        return codebook
-
-    def load_readout_probe_table(self, file_readout_probe_table: str) -> pd.DataFrame:
-        """Load a SeqFISH+ readout probe table from a TSV/CSV file. The ``bit`` column must be present."""
-        readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
-        if "bit" not in readout_probe_table.columns:
-            raise FileFormatError(
-                f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column."
-            )
-        return readout_probe_table.set_index("bit")
-
-    def generate_readout_probe_table(
-        self,
-        parameters: dict,
-        channels_ids: list[str],
-        n_barcode_rounds: int,
-        n_pseudocolors: int,
-        write_intermediate_steps: bool = False,
-    ) -> pd.DataFrame:
-        """
-        Generate a SeqFISH+ readout probe table by running the full multi-step readout probe
-        design pipeline and assigning the surviving sequences to bit / barcode-round /
-        pseudocolor / channel slots.
-
-        Internally orchestrates the existing decorated steps:
-        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` →
-        :py:meth:`filter_by_specificity`, then formats the filtered database into a bit-indexed
-        table via :py:meth:`_format_readout_probe_table`. Each step keeps its own
-        ``@pipeline_step_basic`` logging.
-
-        :param parameters: ``readout_probes.readout_probe_table`` block. Must contain
-            ``oligo_generation``, ``property_filters`` and ``specificity_filters`` sub-blocks.
-        :type parameters: dict
-        :param channels_ids: List of fluorescence channel identifiers used to distribute readout
-            probes across channels.
-        :type channels_ids: list[str]
-        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme.
-        :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors per barcode round.
-        :type n_pseudocolors: int
-        :param write_intermediate_steps: If True, save the per-step readout-probe databases for
-            debugging.
-        :type write_intermediate_steps: bool
-        :return: Bit-indexed readout probe table with ``barcode_round``, ``pseudocolor``,
-            ``channel`` and ``readout_probe_sequence`` columns.
-        :rtype: pd.DataFrame
-        """
-        oligo_database: OligoDatabase = self.create_oligo_database(
-            oligo_length=parameters["oligo_generation"]["probe_length"],
-            oligo_base_probabilities=parameters["oligo_generation"]["base_probabilities"],
-            initial_num_sequences=parameters["oligo_generation"]["initial_num_sequences"],
-        )
-
-        if write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
-            logger.info(
-                f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}"
-            )
-
-        oligo_database = self.filter_by_property(
-            oligo_database=oligo_database,
-            GC_content_filter=parameters["property_filters"]["GC_content_filter"],
-            homopolymeric_runs_filter=parameters["property_filters"]["homopolymeric_runs_filter"],
-        )
-
-        if write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="2_db_readout_probes_property_filter")
-            logger.info(
-                f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}"
-            )
-
-        oligo_database = self.filter_by_specificity(
-            oligo_database=oligo_database,
-            specificity_blastn_filter=parameters["specificity_filters"]["specificity_blastn_filter"],
-            cross_hybridization_blastn_filter=parameters["specificity_filters"][
-                "cross_hybridization_blastn_filter"
-            ],
-        )
-
-        if write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="3_db_readout_probes_specificty_filter")
-            logger.info(
-                f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
-            )
-
-        return self._format_readout_probe_table(
-            readout_probe_database=oligo_database,
-            channels_ids=channels_ids,
-            n_barcode_rounds=n_barcode_rounds,
-            n_pseudocolors=n_pseudocolors,
-        )
 
     def _format_readout_probe_table(
         self,
@@ -1772,8 +1766,118 @@ class PrimerDesigner:
 
         self.n_jobs = n_jobs
 
+    def load_reverse_primer(self, sequence: str) -> str:
+        """Load and validate a reverse primer sequence (whitespace stripped)."""
+        return str(sequence).strip()
+
+    def generate_reverse_primer(self) -> str:
+        """
+        Generate a SeqFISH+ reverse primer.
+
+        Placeholder for a future implementation. SeqFISH+ currently expects the reverse primer
+        sequence to be provided via the config (``primers.reverse_primer.source = "load"``); the
+        forward primer is selected to match the reverse primer's melting temperature.
+        """
+        raise FeatureNotImplementedError(
+            "Generation of the reverse primer is not yet implemented. "
+            "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
+        )
+
+    def load_forward_primer(self, sequence: str) -> str:
+        """Load and validate a forward primer sequence (whitespace stripped)."""
+        return str(sequence).strip()
+
+    def generate_forward_primer(
+        self,
+        parameters: dict,
+        reverse_primer_sequence: str,
+        file_fasta_hybridization_probes_database: str,
+        write_intermediate_steps: bool = False,
+    ) -> str:
+        """
+        Generate a SeqFISH+ forward primer by running the full multi-step primer design pipeline
+        and selecting the candidate whose melting temperature is closest to the reverse primer's Tm.
+
+        Internally orchestrates the existing decorated steps:
+        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` → :py:meth:`filter_by_specificity`,
+        then delegates the best-Tm match selection to :py:meth:`_pick_best_tm_match_primer`. Each
+        decorated step keeps its own ``@pipeline_step_basic`` logging.
+
+        :param parameters: ``primers.forward_primer`` block. Must contain ``oligo_generation``,
+            ``property_filters``, ``specificity_filters`` sub-blocks. Tm parameters are expected to
+            have been inlined into ``property_filters.Tm_filter`` by :func:`_preprocess_config` (Tm
+            tables resolved, Tm chem/salt ``parameters`` normalized to ``None`` when disabled); the
+            best-Tm matcher reads them from there.
+        :type parameters: dict
+        :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward primer
+            should match.
+        :type reverse_primer_sequence: str
+        :param hybridization_probe_database: Hybridization probe database used to build a reference
+            FASTA file for the second specificity-filter pass (primers must not bind the hybridization
+            probes themselves).
+        :type hybridization_probe_database: OligoDatabase
+        :param write_intermediate_steps: If True, save the per-step primer databases for debugging.
+        :type write_intermediate_steps: bool
+        :return: Selected forward primer sequence (Tm closest to the reverse primer).
+        :rtype: str
+        """
+        oligo_database: OligoDatabase = self._create_oligo_database(
+            oligo_length=parameters["oligo_generation"]["probe_length"],
+            oligo_base_probabilities=parameters["oligo_generation"]["base_probabilities"],
+            initial_num_sequences=parameters["oligo_generation"]["initial_num_sequences"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_primers_initial")
+            logger.info(f"Saved primer database for step 1 (Create Database) in directory {dir_database}")
+
+        oligo_database = self._filter_by_property(
+            oligo_database=oligo_database,
+            GC_content_filter=parameters["property_filters"]["GC_content_filter"],
+            GC_clamp_filter=parameters["property_filters"]["GC_clamp_filter"],
+            homopolymeric_runs_filter=parameters["property_filters"]["homopolymeric_runs_filter"],
+            self_complementarity_filter=parameters["property_filters"]["self_complementarity_filter"],
+            complement_reverse_primer_filter=parameters["property_filters"][
+                "complement_reverse_primer_filter"
+            ],
+            Tm_filter=parameters["property_filters"]["Tm_filter"],
+            secondary_structure_filter=parameters["property_filters"]["secondary_structure_filter"],
+            reverse_primer_sequence=reverse_primer_sequence,
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_primer_property_filter")
+            logger.info(f"Saved primer database for step 2 (Property Filters) in directory {dir_database}")
+
+        oligo_database = self._filter_by_specificity(
+            oligo_database=oligo_database,
+            specificity_blastn_filter=parameters["specificity_filters"]["specificity_blastn_filter"],
+            hybridization_probes_blastn_filter=parameters["specificity_filters"][
+                "hybridization_probes_blastn_filter"
+            ],
+            file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
+            logger.info(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
+
+        forward_primer_sequence = self._get_best_forward_primer(
+            oligo_database=oligo_database,
+            reverse_primer_sequence=reverse_primer_sequence,
+            Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
+            Tm_chem_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                "Tm_chem_correction_parameters"
+            ],
+            Tm_salt_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                "Tm_salt_correction_parameters"
+            ],
+        )
+
+        return forward_primer_sequence
+
     @pipeline_step_basic(step_name="Primer Generation - Create Oligo Database")
-    def create_oligo_database(
+    def _create_oligo_database(
         self,
         oligo_length: int,
         oligo_base_probabilities: dict,
@@ -1840,7 +1944,7 @@ class PrimerDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Primer Generation - Property Filters")
-    def filter_by_property(
+    def _filter_by_property(
         self,
         oligo_database: OligoDatabase,
         GC_content_filter: dict,
@@ -1967,7 +2071,7 @@ class PrimerDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Primer Generation - Specificity Filters")
-    def filter_by_specificity(
+    def _filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
         specificity_blastn_filter: dict,
@@ -2071,116 +2175,6 @@ class PrimerDesigner:
         check_content_oligo_database(oligo_database)
 
         return oligo_database
-
-    def load_reverse_primer(self, sequence: str) -> str:
-        """Load and validate a reverse primer sequence (whitespace stripped)."""
-        return str(sequence).strip()
-
-    def generate_reverse_primer(self) -> str:
-        """
-        Generate a SeqFISH+ reverse primer.
-
-        Placeholder for a future implementation. SeqFISH+ currently expects the reverse primer
-        sequence to be provided via the config (``primers.reverse_primer.source = "load"``); the
-        forward primer is selected to match the reverse primer's melting temperature.
-        """
-        raise FeatureNotImplementedError(
-            "Generation of the reverse primer is not yet implemented. "
-            "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
-        )
-
-    def load_forward_primer(self, sequence: str) -> str:
-        """Load and validate a forward primer sequence (whitespace stripped)."""
-        return str(sequence).strip()
-
-    def generate_forward_primer(
-        self,
-        parameters: dict,
-        reverse_primer_sequence: str,
-        file_fasta_hybridization_probes_database: str,
-        write_intermediate_steps: bool = False,
-    ) -> str:
-        """
-        Generate a SeqFISH+ forward primer by running the full multi-step primer design pipeline
-        and selecting the candidate whose melting temperature is closest to the reverse primer's Tm.
-
-        Internally orchestrates the existing decorated steps:
-        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` → :py:meth:`filter_by_specificity`,
-        then delegates the best-Tm match selection to :py:meth:`_pick_best_tm_match_primer`. Each
-        decorated step keeps its own ``@pipeline_step_basic`` logging.
-
-        :param parameters: ``primers.forward_primer`` block. Must contain ``oligo_generation``,
-            ``property_filters``, ``specificity_filters`` sub-blocks. Tm parameters are expected to
-            have been inlined into ``property_filters.Tm_filter`` by :func:`_preprocess_config` (Tm
-            tables resolved, Tm chem/salt ``parameters`` normalized to ``None`` when disabled); the
-            best-Tm matcher reads them from there.
-        :type parameters: dict
-        :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward primer
-            should match.
-        :type reverse_primer_sequence: str
-        :param hybridization_probe_database: Hybridization probe database used to build a reference
-            FASTA file for the second specificity-filter pass (primers must not bind the hybridization
-            probes themselves).
-        :type hybridization_probe_database: OligoDatabase
-        :param write_intermediate_steps: If True, save the per-step primer databases for debugging.
-        :type write_intermediate_steps: bool
-        :return: Selected forward primer sequence (Tm closest to the reverse primer).
-        :rtype: str
-        """
-        oligo_database: OligoDatabase = self.create_oligo_database(
-            oligo_length=parameters["oligo_generation"]["probe_length"],
-            oligo_base_probabilities=parameters["oligo_generation"]["base_probabilities"],
-            initial_num_sequences=parameters["oligo_generation"]["initial_num_sequences"],
-        )
-
-        if write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="1_db_primers_initial")
-            logger.info(f"Saved primer database for step 1 (Create Database) in directory {dir_database}")
-
-        oligo_database = self.filter_by_property(
-            oligo_database=oligo_database,
-            GC_content_filter=parameters["property_filters"]["GC_content_filter"],
-            GC_clamp_filter=parameters["property_filters"]["GC_clamp_filter"],
-            homopolymeric_runs_filter=parameters["property_filters"]["homopolymeric_runs_filter"],
-            self_complementarity_filter=parameters["property_filters"]["self_complementarity_filter"],
-            complement_reverse_primer_filter=parameters["property_filters"][
-                "complement_reverse_primer_filter"
-            ],
-            Tm_filter=parameters["property_filters"]["Tm_filter"],
-            secondary_structure_filter=parameters["property_filters"]["secondary_structure_filter"],
-            reverse_primer_sequence=reverse_primer_sequence,
-        )
-
-        if write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="2_db_primer_property_filter")
-            logger.info(f"Saved primer database for step 2 (Property Filters) in directory {dir_database}")
-
-        oligo_database = self.filter_by_specificity(
-            oligo_database=oligo_database,
-            specificity_blastn_filter=parameters["specificity_filters"]["specificity_blastn_filter"],
-            hybridization_probes_blastn_filter=parameters["specificity_filters"][
-                "hybridization_probes_blastn_filter"
-            ],
-            file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
-        )
-
-        if write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
-            logger.info(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
-
-        forward_primer_sequence = self._get_best_forward_primer(
-            oligo_database=oligo_database,
-            reverse_primer_sequence=reverse_primer_sequence,
-            Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
-            Tm_chem_correction_parameters=parameters["property_filters"]["Tm_filter"][
-                "Tm_chem_correction_parameters"
-            ],
-            Tm_salt_correction_parameters=parameters["property_filters"]["Tm_filter"][
-                "Tm_salt_correction_parameters"
-            ],
-        )
-
-        return forward_primer_sequence
 
     def _get_best_forward_primer(
         self,

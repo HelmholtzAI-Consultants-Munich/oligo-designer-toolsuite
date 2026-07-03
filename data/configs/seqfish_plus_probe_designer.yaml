@@ -79,18 +79,18 @@ target_probe:
       weight: 10 # Weight for UTR-overlap targeting in the set-selection scoring function.
 
 readout_probes:
-  # Barcoding scheme — shared between codebook generation and readout probe table generation.
-  n_barcode_rounds: 4 # Number of barcode rounds for hybridization.
-  n_pseudocolors: 20 # Number of pseudocolors per round.
-  channels_ids: ["Alexa488", "Cy3b", "Alexa647"] # Fluorescence channels used in the experiment.
 
   codebook:
     source: generate # "generate" (default) | "load"
-    # file: data/functional_oligos/seqfish_plus_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
+    file: null # data/functional_oligos/seqfish_plus_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
+
+    n_barcode_rounds: 4 # Number of barcode rounds for hybridization.
+    n_pseudocolors: 20 # Number of pseudocolors per round.
+    channels_ids: ["Alexa488", "Cy3b", "Alexa647"] # Fluorescence channels used in the experiment.
 
   readout_probe_table:
     source: generate # "generate" (default) | "load"
-    # file: data/functional_oligos/seqfish_plus_readout_probes_load_codebook.tsv # Only used when source = load. Bit-indexed table with columns: "barcode_round", "pseudocolor", "channel", "readout_probe_sequence".
+    file: null # data/functional_oligos/seqfish_plus_readout_probes_load_codebook.tsv # Only used when source = load. Bit-indexed table with columns: "barcode_round", "pseudocolor", "channel", "readout_probe_sequence".
 
     oligo_generation:
       probe_length: 15 # Length (bases) of each random readout probe.
@@ -124,7 +124,7 @@ readout_probes:
 primers:
   forward_primer:
     source: generate # "generate" (default) | "load"
-    # sequence: ACGT... # Only used when source = load.
+    sequence: null # ACGT... # Only used when source = load.
 
     oligo_generation:
       probe_length: 20 # Length (bases) of each generated primer.
