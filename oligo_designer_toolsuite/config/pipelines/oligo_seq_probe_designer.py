@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 from typing_extensions import Self
@@ -48,16 +48,16 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     CrossHybridizationBlastnFilterEnabled,
     ReadLengthBiasFilterConfig,
     ReadLengthBiasFilterEnabled,
+    SpecificityBlastnFilterDisabled,
+    SpecificityBlastnFilterEnabled,
+    VariantFilterDisabled,
+    VariantFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     FilesFastaDatabaseT,
     LengthMaxT,
     LengthMinT,
     RegionListT,
-)
-from oligo_designer_toolsuite.config.overrides.oligo_seq_probe_designer_overrides import (
-    OligoSeqSpecificityBlastnFilterConfig,
-    OligoSeqVariantFilterConfig,
 )
 
 
@@ -109,6 +109,40 @@ class TargetProbePropertyFilter(BaseModel):
     secondary_structure_filter: SecondaryStructureFilterConfig = SecondaryStructureFilterEnabled(
         enabled=True, T=37, thr_DG=0
     )
+
+
+# Oligo-seq specific override for BlastnFilterConfig and VariantFilterConfig
+class OligoSeqSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
+    pass
+
+
+class OligoSeqSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
+    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
+        perc_identity=80, strand="minus", word_size=10
+    )
+    hit_parameters: BlastnHitParameters = BlastnHitParameters(coverage=50)
+
+
+OligoSeqSpecificityBlastnFilterConfig = Annotated[
+    OligoSeqSpecificityBlastnFilterEnabled | OligoSeqSpecificityBlastnFilterDisabled,
+    Field(discriminator="enabled"),
+]
+
+
+class OligoSeqVariantFilterDisabled(VariantFilterDisabled):
+    pass
+
+
+class OligoSeqVariantFilterEnabled(VariantFilterEnabled):
+    action: Annotated[
+        Literal["flag", "filter"],
+        Field(description="Action for variant-overlapping oligos: 'flag' (mark only) or 'filter' (exclude)."),
+    ] = "flag"
+
+
+OligoSeqVariantFilterConfig = Annotated[
+    OligoSeqVariantFilterEnabled | OligoSeqVariantFilterDisabled, Field(discriminator="enabled")
+]
 
 
 class TargetProbeSpecificityFilter(BaseModel):
