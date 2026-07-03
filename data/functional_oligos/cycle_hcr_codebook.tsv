@@ -1,3 +1,4 @@
-region_id	bit_1	bit_2	bit_3	bit_4
-PRR35	1	1	0	0
-DECR2	0	0	1	1
+gene_name	bit_1	bit_2	bit_3	bit_4	bit_5	bit_6
+AARS1	1	1	0	0	0	0
+DECR2	0	0	1	1	0	0
+PRR35	0	0	0	0	1	1
