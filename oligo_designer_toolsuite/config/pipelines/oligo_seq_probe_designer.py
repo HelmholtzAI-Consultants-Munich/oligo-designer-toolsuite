@@ -60,6 +60,48 @@ from oligo_designer_toolsuite.config._types import (
     RegionListT,
 )
 
+############################################
+# Oligoseq-specific overrides
+############################################
+
+
+class OligoSeqSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
+    pass
+
+
+class OligoSeqSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
+    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
+        perc_identity=80, strand="minus", word_size=10
+    )
+    hit_parameters: BlastnHitParameters = BlastnHitParameters(coverage=50)
+
+
+OligoSeqSpecificityBlastnFilterConfig = Annotated[
+    OligoSeqSpecificityBlastnFilterEnabled | OligoSeqSpecificityBlastnFilterDisabled,
+    Field(discriminator="enabled"),
+]
+
+
+class OligoSeqVariantFilterDisabled(VariantFilterDisabled):
+    pass
+
+
+class OligoSeqVariantFilterEnabled(VariantFilterEnabled):
+    action: Annotated[
+        Literal["flag", "filter"],
+        Field(description="Action for variant-overlapping oligos: 'flag' (mark only) or 'filter' (exclude)."),
+    ] = "flag"
+
+
+OligoSeqVariantFilterConfig = Annotated[
+    OligoSeqVariantFilterEnabled | OligoSeqVariantFilterDisabled, Field(discriminator="enabled")
+]
+
+
+############################################
+# Target probe
+############################################
+
 
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -111,40 +153,6 @@ class TargetProbePropertyFilter(BaseModel):
     )
 
 
-# Oligo-seq specific override for BlastnFilterConfig and VariantFilterConfig
-class OligoSeqSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
-    pass
-
-
-class OligoSeqSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=80, strand="minus", word_size=10
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(coverage=50)
-
-
-OligoSeqSpecificityBlastnFilterConfig = Annotated[
-    OligoSeqSpecificityBlastnFilterEnabled | OligoSeqSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
-]
-
-
-class OligoSeqVariantFilterDisabled(VariantFilterDisabled):
-    pass
-
-
-class OligoSeqVariantFilterEnabled(VariantFilterEnabled):
-    action: Annotated[
-        Literal["flag", "filter"],
-        Field(description="Action for variant-overlapping oligos: 'flag' (mark only) or 'filter' (exclude)."),
-    ] = "flag"
-
-
-OligoSeqVariantFilterConfig = Annotated[
-    OligoSeqVariantFilterEnabled | OligoSeqVariantFilterDisabled, Field(discriminator="enabled")
-]
-
-
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -169,7 +177,7 @@ class TargetProbeProbeSetSelection(BaseModel):
         n_sets=3,
         set_size_min=3,
         set_size_opt=5,
-        distance_between_target_probes=0,
+        distance_between_probes=0,
         n_attempts_graph=50,
         n_attempts_clique_enum=50,
         diversification_fraction=0.1,
@@ -220,6 +228,11 @@ class TargetProbe(BaseModel):
     specificity_filters: TargetProbeSpecificityFilter
     probe_set_selection: TargetProbeProbeSetSelection
     global_parameters: TargetProbeGlobal
+
+
+############################################
+# Top level
+############################################
 
 
 class OligoSeqProbeDesignerConfig(BaseModel):
