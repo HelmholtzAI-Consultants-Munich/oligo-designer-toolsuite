@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
+from oligo_designer_toolsuite.config.pipelines.hcr_probe_designer import HcrProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 
@@ -84,3 +85,47 @@ class TestScrinshotYaml(unittest.TestCase):
         assert schema["title"] == "ScrinshotProbeDesignerConfig"
         assert "target_probe" in schema["properties"]
         assert "detection_oligo" in schema["properties"]
+
+
+# ---------------------------------------------------------------------------
+# HcrProbeDesignerConfig
+# ---------------------------------------------------------------------------
+
+
+class TestHcrYaml(unittest.TestCase):
+    def test_parses(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HcrProbeDesignerConfig.model_validate(raw)
+        assert cfg.schema_version == 2
+        assert cfg.general.write_intermediate_steps is True
+
+    def test_round_trip(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HcrProbeDesignerConfig.model_validate(raw)
+        cfg2 = HcrProbeDesignerConfig.model_validate(cfg.model_dump())
+        assert cfg == cfg2
+
+    def test_unknown_top_level_field_forbidden(self) -> None:
+        # HCR has no readout_probe section; extra="forbid" must reject it
+        raw = _load("hcr_probe_designer.yaml")
+        raw["readout_probe"] = {"file_readout_probe_table": "p.csv"}
+        with self.assertRaises(ValidationError):
+            HcrProbeDesignerConfig.model_validate(raw)
+
+    def test_codebook_generate_rejected(self) -> None:
+        # Generation of codebook/initiator table is not implemented for HCR; only "load" is allowed
+        raw = _load("hcr_probe_designer.yaml")
+        raw["initiator_probes"]["codebook"]["source"] = "generate"
+        with self.assertRaises(ValidationError):
+            HcrProbeDesignerConfig.model_validate(raw)
+
+        raw = _load("hcr_probe_designer.yaml")
+        raw["initiator_probes"]["initiator_table"]["source"] = "generate"
+        with self.assertRaises(ValidationError):
+            HcrProbeDesignerConfig.model_validate(raw)
+
+    def test_json_schema(self) -> None:
+        schema = HcrProbeDesignerConfig.model_json_schema()
+        assert schema["title"] == "HcrProbeDesignerConfig"
+        assert "target_probe" in schema["properties"]
+        assert "initiator_probes" in schema["properties"]
