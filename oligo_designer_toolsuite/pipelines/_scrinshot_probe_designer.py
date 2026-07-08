@@ -12,7 +12,9 @@ from typing import Any
 import yaml
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
+from pydantic import ValidationError
 
+from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     IsoformConsensusScorer,
@@ -1511,7 +1513,9 @@ class DetectionOligoDesigner:
 ############################################
 
 
-def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
+def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[str, Any]:
+
+    config = config_validated.model_dump()
 
     # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
     for section in ["target_probe", "detection_oligo"]:
@@ -1600,16 +1604,21 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def scrinshot_probe_designer(config: dict[str, Any]) -> None:
+def scrinshot_probe_designer(config: ScrinshotProbeDesignerConfig) -> None:
     """
-    Execute the SCRINSHOT probe design pipeline from a (raw) configuration dict.
+    Execute the SCRINSHOT probe design pipeline.
 
-    The dict is expected to follow the nested layout of ``data/configs/scrinshot_probe_designer.yaml``
-    (``general``, ``target_probe.*``, ``detection_oligo.*``). The caller is responsible for configuring
-    the library logger before invoking this function (see :func:`main`).
+    The caller is responsible for  configuring the library logger
+    before invoking this function (see :func:`main`).
 
-    :param config: Pipeline configuration loaded via ``yaml.safe_load``.
-    :type config: dict
+    1. Reads the gene IDs file (if provided) or uses all genes from FASTA files
+    2. Preprocesses melting temperature parameters for target and detection probes
+    3. Initializes the ScrinshotProbeDesigner pipeline
+    4. Designs target probes for specified genes
+    5. Generates output files (YAML, TSV, Excel, order file)
+
+    :param config: Validated pipeline configuration.
+    :type config: ScrinshotProbeDesignerConfig
     """
 
     ##### preprocess the config file #####
@@ -1651,8 +1660,9 @@ def main() -> None:
     """
     Main entry point for running the SCRINSHOT probe design pipeline.
 
-    Parses ``--config``, loads the YAML, configures the library logger to write into the configured
-    output directory, then delegates to :func:`scrinshot_probe_designer`.
+    Parses ``--config``, loads the YAML, validates it against :class:`ScrinshotProbeDesignerConfig`,
+    configures the library logger to write into the configured output directory, then delegates to
+    :func:`scrinshot_probe_designer`.
     """
     print("--------------START PIPELINE--------------")
 
@@ -1660,15 +1670,21 @@ def main() -> None:
 
     ##### read the config file #####
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config_validated = ScrinshotProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        print("Invalid configuration file:\n%s", e)
+        raise
 
     # setup logger now that we know the output directory
     configure_root_logger(
-        dir_output=config["general"]["dir_output"],
+        dir_output=config_validated.general.dir_output,
         pipeline_name="scrinshot_probe_designer",
     )
 
-    scrinshot_probe_designer(config)
+    scrinshot_probe_designer(config_validated)
 
     print("--------------END PIPELINE--------------")
 
