@@ -2,8 +2,6 @@
 # imports
 ############################################
 
-from collections import Counter
-
 import pandas as pd
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
@@ -177,7 +175,7 @@ class ExactMatchFilter(BaseSpecificityFilter):
 
         return oligo_pair_hits
 
-    def _get_duplicated_sequences(self, sequences: list) -> list:
+    def _get_duplicated_sequences(self, sequences: list[str]) -> list[str]:
         """
         Identifies duplicated sequences within a list of sequences.
 
@@ -185,15 +183,24 @@ class ExactMatchFilter(BaseSpecificityFilter):
         It returns a list of these duplicated sequences, which can be used for further analysis or filtering.
 
         :param sequences: A list of sequences to be checked for duplicates.
-        :type sequences: list
+        :type sequences: list[str]
         :return: A list of duplicated sequences.
-        :rtype: list
+        :rtype: list[str]
         """
-        # convert to upper sequence and count occurences
-        counts = Counter(map(str.upper, sequences))
+        # convert sequences to uppercase
+        sequences = [sequence.upper() for sequence in sequences]
+
+        # keep track of seen sequences and found duplicates
+        seen: set[str] = set()
+        duplicated_sequences = []
 
         # find the duplicates within the database
-        duplicated_sequences = [seq for seq, count in counts.items() if count > 1]
+        for sequence in sequences:
+            if sequence in seen:
+                # sequence was seen before -> duplicate
+                duplicated_sequences.append(sequence)
+            else:
+                seen.add(sequence)
 
         return duplicated_sequences
 
