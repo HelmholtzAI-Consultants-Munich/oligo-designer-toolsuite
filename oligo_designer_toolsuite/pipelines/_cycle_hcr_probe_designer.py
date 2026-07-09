@@ -12,12 +12,14 @@ import numpy as np
 import pandas as pd
 import yaml
 from Bio.SeqUtils import Seq
+from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import (
     ConfigurationError,
     FeatureNotImplementedError,
     FileFormatError,
 )
+from oligo_designer_toolsuite.config import CycleHcrProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
@@ -1657,10 +1659,11 @@ class PrimerDesigner:
 ############################################
 
 
-def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
+def _preprocess_config(config_validated: CycleHcrProbeDesignerConfig) -> dict[str, Any]:
     """
-    Preprocess a CycleHCR pipeline configuration dict in place.
+    Preprocess a validated CycleHCR pipeline configuration into a plain dict.
 
+    - Converts the validated model into a dict via ``model_dump()``; all downstream steps operate on that dict.
     - Resolves the ``nn_table``/``tmm_table``/``imm_table``/``de_table`` strings in
       ``target_probe.global_parameters.Tm_parameters`` to their ``Bio.SeqUtils.MeltingTemp`` objects.
     - For every Tm chem/salt correction block: if ``enabled`` is ``False`` sets ``parameters`` to
@@ -1674,6 +1677,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     - Expands ``target_probe.oligo_generation.file_region_ids`` to a sorted unique list under
       ``target_probe.oligo_generation.region_ids`` (or ``None`` if no file was provided).
     """
+
+    config = config_validated.model_dump()
 
     # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
     for section in ["target_probe"]:
@@ -1737,17 +1742,17 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def cycle_hcr_probe_designer(config: dict[str, Any]) -> None:
+def cycle_hcr_probe_designer(config: CycleHcrProbeDesignerConfig) -> None:
     """
-    Execute the CycleHCR probe design pipeline from a (raw) configuration dict.
+    Execute the CycleHCR probe design pipeline from a validated configuration (pydantic model).
 
-    The dict is expected to follow the nested layout of ``data/configs/cycle_hcr_probe_designer.yaml``
+    The config follows the nested layout of ``data/configs/cycle_hcr_probe_designer.yaml``
     (``general``, ``target_probe.*``, ``readout_probes``, ``primers``, ``hybridization_probes``).
     The caller is responsible for configuring the library logger before invoking this function
     (see :func:`main`).
 
-    :param config: Pipeline configuration loaded via ``yaml.safe_load``.
-    :type config: dict
+    :param config: Validated pipeline configuration.
+    :type config: CycleHcrProbeDesignerConfig
     """
 
     ##### preprocess the config file #####
@@ -1813,15 +1818,21 @@ def main() -> None:
 
     ##### read the config file #####
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config_validated = CycleHcrProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        print("Invalid configuration file:\n%s", e)
+        raise
 
     # setup logger now that we know the output directory
     configure_root_logger(
-        dir_output=config["general"]["dir_output"],
+        dir_output=config_validated.general.dir_output,
         pipeline_name="cyclehcr_probe_designer",
     )
 
-    cycle_hcr_probe_designer(config)
+    cycle_hcr_probe_designer(config_validated)
 
     print("--------------END PIPELINE--------------")
 
