@@ -4,7 +4,6 @@
 
 import inspect
 import sys
-import warnings
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from typing import Any, Callable, TypeVar, cast
 
@@ -23,6 +22,16 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def base_parser() -> dict[str, Any]:
+    """
+    Parse the command-line arguments shared by every pipeline entry point.
+
+    Every ``<pipeline>_probe_designer`` CLI accepts a single ``-c / --config`` argument
+    pointing at a YAML config file. This helper centralises that parsing so each pipeline's
+    ``main()`` only needs a one-liner call.
+
+    :return: Parsed arguments as a dictionary (currently a single key ``"config"``).
+    :rtype: dict[str, Any]
+    """
     parser = ArgumentParser(
         prog="Genomic Region Generator",
         usage="genomic_region_generation [options]",
@@ -123,16 +132,24 @@ def get_oligo_length_min_max_from_database(oligo_database: OligoDatabase) -> tup
 
 def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
     """
-    Decorator for basic pipeline steps that logs parameters and tracks database info.
+    Decorator for basic pipeline steps that logs parameters and reports the resulting database size.
 
-    :param step_name: Name of the pipeline step.
+    Wraps a pipeline step method (typically a filter or a database-creation step) so that the
+    parameters passed in are captured to the run log and the number of oligos / regions in the
+    returned ``OligoDatabase`` is reported afterwards. Use when the wrapped step returns a single
+    ``OligoDatabase``; for steps that also return auxiliary values use :func:`pipeline_step_advanced`.
+
+    :param step_name: Human-readable name of the pipeline step (used in log messages).
     :type step_name: str
-    :return: Decorator function.
+    :return: Decorator that instruments the wrapped function with logging.
     :rtype: Callable[[F], F]
     """
 
     def decorator(function: F) -> F:
+        """Return the instrumented replacement for ``function``."""
+
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            """Run ``function``, logging its parameters and the resulting database size."""
             logger.info(f"Parameters {step_name}:")
             log_parameters_and_get_db(function, args, kwargs)
 
@@ -152,16 +169,24 @@ def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
 
 def pipeline_step_advanced(step_name: str) -> Callable[[F], F]:
     """
-    Decorator for advanced pipeline steps that logs parameters and tracks database changes.
+    Decorator for pipeline steps that both mutate the database and return auxiliary values.
 
-    :param step_name: Name of the pipeline step.
+    Extends :func:`pipeline_step_basic` by also reporting **how many** oligos / regions were
+    removed by the step (compared to the pre-call state). Use when the wrapped step returns
+    a tuple ``(oligo_database, *extras)`` — the returned tuple is passed through unchanged
+    after the log messages are emitted.
+
+    :param step_name: Human-readable name of the pipeline step (used in log messages).
     :type step_name: str
-    :return: Decorator function.
+    :return: Decorator that instruments the wrapped function with logging.
     :rtype: Callable[[F], F]
     """
 
     def decorator(function: F) -> F:
+        """Return the instrumented replacement for ``function``."""
+
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            """Run ``function``, logging parameters plus before/after database sizes."""
             logger.info(f"Parameters {step_name}:")
             oligo_database = log_parameters_and_get_db(function, args, kwargs)
 
@@ -340,16 +365,16 @@ def validate_bit_mapping_table(
     sequence_columns: list[str],
 ) -> None:
     """
-    Validate a bit-indexed mapping table against a codebook.
+    Validate a bit-indexed mapping table (e.g. readout probe table, initiator table) against a codebook.
 
-    The table is expected to have ``bit`` as the index and to contain all of
-    ``required_columns``. Every ``bit_*`` column present in ``codebook`` must have
-    a corresponding row in the table. Values in ``sequence_columns`` must be
-    non-empty DNA sequences containing only A/C/G/T (case-insensitive). A warning
-    is emitted (not an error) when the table contains bits that are not referenced
-    by any codebook column.
+    A probe design run needs every codebook bit to have a corresponding readout / initiator
+    sequence — without that, the assembled probes cannot be decoded at imaging time. This helper
+    enforces that contract: every bit column present in ``codebook`` must appear as a row in
+    the mapping table, and the sequence values in that row must be valid DNA. Bits present in
+    the mapping table but not used by the codebook are silently accepted — a full-size readout
+    set paired with a small-panel codebook is a legitimate configuration, not a mistake.
 
-    :param table: Bit-indexed table (e.g. initiator or readout probe table).
+    :param table: Bit-indexed table (e.g. readout probe table, initiator table).
     :type table: pd.DataFrame
     :param codebook: Codebook whose ``bit_*`` columns drive the set of required bits.
     :type codebook: pd.DataFrame
@@ -382,13 +407,6 @@ def validate_bit_mapping_table(
     if missing_bits:
         raise FileFormatError(
             f"Table '{source}' is missing entries for codebook bits: {sorted(missing_bits)}."
-        )
-
-    unused_bits = table_bits - required_bits
-    if unused_bits:
-        warnings.warn(
-            f"Table '{source}' contains bits not referenced by the codebook: {sorted(unused_bits)}.",
-            stacklevel=2,
         )
 
     for column in sequence_columns:
