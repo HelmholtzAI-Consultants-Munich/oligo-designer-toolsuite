@@ -16,6 +16,7 @@ from scipy.spatial.distance import hamming
 
 from oligo_designer_toolsuite._exceptions import (
     ConfigurationError,
+    FeatureNotImplementedError,
     FileFormatError,
 )
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
@@ -70,6 +71,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     preprocess_tm_parameters,
     validate_bit_mapping_table,
     validate_codebook,
+    validate_primer_sequence,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences, configure_root_logger, logger
@@ -479,230 +481,76 @@ class MerfishProbeDesigner:
 
     def design_primers(
         self,
-        # Step 1: Create Database Parameters
-        reverse_primer_sequence: str,
-        primer_length: int,
-        primer_base_probabilities: dict[str, float],
-        primer_initial_num_sequences: int,
-        # Step 2: Property Filter Parameters
-        primer_GC_content_min: float,
-        primer_GC_content_max: float,
-        primer_number_GC_GCclamp: int,
-        primer_number_three_prime_base_GCclamp: int,
-        primer_homopolymeric_base_n: dict[str, int],
-        primer_max_len_selfcomplement: int,
-        primer_max_len_complement_reverse_primer: int,
-        primer_Tm_min: float,
-        primer_Tm_max: float,
-        primer_T_secondary_structure: float,
-        primer_secondary_structures_threshold_deltaG: float,
-        primer_Tm_parameters: dict,
-        primer_Tm_chem_correction_parameters: dict | None,
-        primer_Tm_salt_correction_parameters: dict | None,
-        # Step 3: Specificity Filter Parameters
         hybridization_probe_database: OligoDatabase,
-        files_fasta_reference_database_primer: list[str],
-        primer_specificity_refrence_blastn_search_parameters: dict,
-        primer_specificity_refrence_blastn_hit_parameters: dict,
-        primer_specificity_hybridization_probes_blastn_search_parameters: dict,
-        primer_specificity_hybridization_probes_blastn_hit_parameters: dict,
+        primer_parameters: dict,
     ) -> tuple[str, str]:
         """
         Design forward and reverse primers for MERFISH hybridization probes through a multi-step pipeline.
 
-        This method performs the complete primer design process, which includes:
-        1. Creating an initial oligo database by generating random sequences with specified nucleotide
-           probabilities and length (all ending with "T" nucleotide)
-        2. Filtering primers based on sequence properties (GC content, GC clamp, homopolymeric runs,
-           self-complementarity, complementarity to reverse primer, melting temperature, secondary structure)
-        3. Filtering primers based on specificity to remove primers that bind to reference sequences
-           or to the hybridization probes themselves using BLASTN searches
-        4. Selecting the forward primer that has a melting temperature closest to the reverse primer's
-           melting temperature to ensure balanced PCR amplification
+        Each primer (forward, reverse) is loaded from its config block when
+        ``...source == "load"`` or generated programmatically when ``...source == "generate"``.
+        :py:meth:`PrimerDesigner.generate_forward_primer` runs the full multi-step primer pipeline
+        and selects the candidate whose Tm is closest to the reverse primer's Tm;
+        :py:meth:`PrimerDesigner.generate_reverse_primer` is currently a placeholder. After both
+        primers are obtained the pair is validated via :py:meth:`PrimerDesigner.validate`.
 
-        The reverse primer sequence is provided as input, and the method designs a forward primer that
-        matches its melting temperature for optimal PCR performance.
-
-        **Step 1: Create Database Parameters**
-
-        :param reverse_primer_sequence: DNA sequence of the reverse primer that will be used as a reference.
-            The forward primer will be selected to match this primer's melting temperature.
-        :type reverse_primer_sequence: str
-        :param primer_length: Length (in nucleotides) of each primer sequence to generate.
-        :type primer_length: int
-        :param primer_base_probabilities: Dictionary specifying the probability of each nucleotide base
-            in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should sum to 1.0
-            (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
-        :type primer_base_probabilities: dict[str, float]
-        :param primer_initial_num_sequences: Number of random sequences to generate initially before filtering.
-            Higher values provide more candidates but increase computation time.
-        :type primer_initial_num_sequences: int
-
-        **Step 2: Property Filter Parameters**
-
-        :param primer_GC_content_min: Minimum acceptable GC content for primers, expressed as a fraction
-            between 0.0 and 1.0.
-        :type primer_GC_content_min: float
-        :param primer_GC_content_max: Maximum acceptable GC content for primers, expressed as a fraction
-            between 0.0 and 1.0.
-        :type primer_GC_content_max: float
-        :param primer_number_GC_GCclamp: Minimum number of G or C nucleotides required within the specified
-            number of bases at the 3' end (GC clamp). This improves primer binding stability.
-        :type primer_number_GC_GCclamp: int
-        :param primer_number_three_prime_base_GCclamp: Number of bases from the 3' end to consider for
-            the GC clamp requirement.
-        :type primer_number_three_prime_base_GCclamp: int
-        :param primer_homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
-            runs for each nucleotide base (keys: 'A', 'T', 'G', 'C').
-        :type primer_homopolymeric_base_n: dict[str, int]
-        :param primer_max_len_selfcomplement: Maximum allowable length of self-complementary sequences.
-            Primers with longer self-complementary regions can form hairpins and reduce PCR efficiency.
-        :type primer_max_len_selfcomplement: int
-        :param primer_max_len_complement_reverse_primer: Maximum allowable length of complementarity to the
-            reverse primer sequence. This prevents the forward and reverse primers from binding to each other.
-        :type primer_max_len_complement_reverse_primer: int
-        :param primer_Tm_min: Minimum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type primer_Tm_min: float
-        :param primer_Tm_max: Maximum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type primer_Tm_max: float
-        :param primer_T_secondary_structure: Temperature in degrees Celsius at which to evaluate secondary
-            structure formation.
-        :type primer_T_secondary_structure: float
-        :param primer_secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for secondary
-            structure stability. Primers with secondary structures having deltaG values more negative than
-            this threshold will be filtered out.
-        :type primer_secondary_structures_threshold_deltaG: float
-        :param primer_Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) of primers
-            using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
-            Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
-            'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type primer_Tm_parameters: dict
-        :param primer_Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm calculation.
-            These parameters account for the effects of chemical additives (e.g., DMSO, formamide) on melting temperature.
-            Set to ``None`` to disable chemical correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
-            For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type primer_Tm_chem_correction_parameters: dict | None
-        :param primer_Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None`` to disable
-            salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type primer_Tm_salt_correction_parameters: dict | None
-
-        **Step 3: Specificity Filter Parameters**
-
-        :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization probes.
-            This database is used to create a reference FASTA file for specificity filtering to ensure primers
-            do not bind to the hybridization probes themselves.
+        :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization
+            probes. The hybridization probes are written to a temporary FASTA so they can be used
+            as a reference for the second specificity-filter pass (the primer must not bind the
+            hybridization probes themselves).
         :type hybridization_probe_database: OligoDatabase
-        :param files_fasta_reference_database_primer: List of paths to FASTA files containing reference sequences
-            used for specificity filtering. These files are used to identify off-target binding sites (e.g.,
-            whole genome or transcriptome sequences).
-        :type files_fasta_reference_database_primer: list[str]
-        :param primer_specificity_refrence_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering against the reference database.
-        :type primer_specificity_refrence_blastn_search_parameters: dict
-        :param primer_specificity_refrence_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches against the reference database.
-        :type primer_specificity_refrence_blastn_hit_parameters: dict
-        :param primer_specificity_hybridization_probes_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering against the hybridization probes database.
-        :type primer_specificity_hybridization_probes_blastn_search_parameters: dict
-        :param primer_specificity_hybridization_probes_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches against the hybridization probes database.
-        :type primer_specificity_hybridization_probes_blastn_hit_parameters: dict
-        :return: A tuple containing:
-            - **reverse_primer_sequence** (str): The input reverse primer sequence (unchanged)
-            - **forward_primer_sequence** (str): The selected forward primer sequence with melting temperature
-              closest to the reverse primer's melting temperature
+        :param primer_parameters: ``primers`` block. Must contain ``forward_primer`` (with
+            ``source`` and either ``sequence`` when ``source == "load"`` or the full
+            ``oligo_generation`` / ``property_filters`` / ``specificity_filters`` /
+            ``global_parameters`` sub-blocks when ``source == "generate"`` — the Tm parameters
+            inside ``global_parameters`` are inlined into ``property_filters.Tm_filter`` by
+            :func:`_preprocess_config`) and ``reverse_primer`` (with ``source`` and ``sequence``
+            when ``source == "load"``).
+        :type primer_parameters: dict
+        :return: A tuple ``(reverse_primer_sequence, forward_primer_sequence)``.
         :rtype: tuple[str, str]
         """
+        # Write the hybridization probes to a FASTA file so they can be used as a reference for
+        # the second specificity pass (primer must not bind the hybridization probes themselves).
         file_fasta_hybridization_probes_database = hybridization_probe_database.write_database_to_fasta(
-            filename=f"db_reference_hybridization_probes",
+            filename="db_reference_hybridization_probes",
             save_description=False,
             region_ids=None,
             sequence_type="sequence_hybridization_probe",
         )
 
-        # TODO: allow providing or genrating reverse and foreward primers
-
         primer_designer = PrimerDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
-        oligo_database = primer_designer.create_oligo_database(
-            oligo_length=primer_length,
-            oligo_base_probabilities=primer_base_probabilities,
-            initial_num_sequences=primer_initial_num_sequences,
-        )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="1_db_primers_initial")
-            logger.info(f"Saved primer database for step 1 (Create Database) in directory {dir_database}")
+        ##### reverse primer: load or generate (placeholder) #####
+        if primer_parameters["reverse_primer"]["source"] == "load":
+            reverse_primer_sequence = primer_designer.load_reverse_primer(
+                sequence=primer_parameters["reverse_primer"]["sequence"]
+            )
+        else:
+            reverse_primer_sequence = primer_designer.generate_reverse_primer()
 
-        oligo_database = primer_designer.filter_by_property(
-            oligo_database=oligo_database,
-            GC_content_min=primer_GC_content_min,
-            GC_content_max=primer_GC_content_max,
-            number_GC_GCclamp=primer_number_GC_GCclamp,
-            number_three_prime_base_GCclamp=primer_number_three_prime_base_GCclamp,
-            homopolymeric_base_n=primer_homopolymeric_base_n,
-            max_len_selfcomplement=primer_max_len_selfcomplement,
-            reverse_primer_sequence=reverse_primer_sequence,
-            max_len_complement=primer_max_len_complement_reverse_primer,
-            Tm_min=primer_Tm_min,
-            Tm_max=primer_Tm_max,
-            Tm_parameters=primer_Tm_parameters,
-            Tm_chem_correction_parameters=primer_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=primer_Tm_salt_correction_parameters,
-            T_secondary_structure=primer_T_secondary_structure,
-            secondary_structures_threshold_deltaG=primer_secondary_structures_threshold_deltaG,
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="2_db_primer_property_filter")
-            logger.info(f"Saved primer database for step 2 (Property Filters) in directory {dir_database}")
-
-        oligo_database = primer_designer.filter_by_specificity(
-            oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_primer,
-            specificity_refrence_blastn_search_parameters=primer_specificity_refrence_blastn_search_parameters,
-            specificity_refrence_blastn_hit_parameters=primer_specificity_refrence_blastn_hit_parameters,
-            file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
-            specificity_hybridization_probes_blastn_search_parameters=primer_specificity_hybridization_probes_blastn_search_parameters,
-            specificity_hybridization_probes_blastn_hit_parameters=primer_specificity_hybridization_probes_blastn_hit_parameters,
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
-            logger.info(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
-
-        # calculate Tm for the reverse primer
-        Tm_reverse_primer = calc_tm_nn(
-            sequence=reverse_primer_sequence,
-            Tm_parameters=primer_Tm_parameters,
-            Tm_chem_correction_parameters=primer_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=primer_Tm_salt_correction_parameters,
-        )
-
-        # iterate over all primers in the database to find the one with Tm closest to the reverse primer Tm
-        min_dif_Tm = float("inf")
-        forward_primer_sequence = ""
-        for database_region in oligo_database.database.values():
-            for primer_properties in database_region.values():
-                Tm_forward_primer = calc_tm_nn(
-                    sequence=primer_properties["oligo"],
-                    Tm_parameters=primer_Tm_parameters,
-                    Tm_chem_correction_parameters=primer_Tm_chem_correction_parameters,
-                    Tm_salt_correction_parameters=primer_Tm_salt_correction_parameters,
-                )
-                dif_Tm = abs(Tm_forward_primer - Tm_reverse_primer)
-                if dif_Tm < min_dif_Tm:
-                    min_dif_Tm = dif_Tm
-                    forward_primer_sequence = primer_properties["oligo"]
+        ##### forward primer: load or generate via the multi-step pipeline #####
+        if primer_parameters["forward_primer"]["source"] == "load":
+            forward_primer_sequence = primer_designer.load_forward_primer(
+                sequence=primer_parameters["forward_primer"]["sequence"]
+            )
+        else:
+            forward_primer_sequence = primer_designer.generate_forward_primer(
+                parameters=primer_parameters["forward_primer"],
+                reverse_primer_sequence=reverse_primer_sequence,
+                file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
+                write_intermediate_steps=self.write_intermediate_steps,
+            )
 
         os.remove(file_fasta_hybridization_probes_database)
+
+        primer_designer.validate(
+            forward_primer=forward_primer_sequence,
+            reverse_primer=reverse_primer_sequence,
+        )
 
         return reverse_primer_sequence, forward_primer_sequence
 
@@ -1401,7 +1249,9 @@ class ReadoutProbeDesigner:
 
         :param readout_probe_parameters: ``readout_probes.readout_probe_table`` block. Must contain
             ``oligo_generation``, ``property_filters``, ``specificity_filters``,
-            ``probe_set_selection``, ``global_parameters`` and ``channels_ids``.
+            ``probe_set_selection`` (with the inlined ``Tm_parameters`` /
+            ``Tm_chem_correction_parameters`` / ``Tm_salt_correction_parameters`` from
+            :func:`_preprocess_config`) and ``channels_ids``.
         :type readout_probe_parameters: dict
         :param codebook_parameters: ``readout_probes.codebook`` block; ``n_bits`` is used to size
             the returned table.
@@ -1455,19 +1305,20 @@ class ReadoutProbeDesigner:
                 f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
             )
 
-        probe_set_selection = readout_probe_parameters["probe_set_selection"]
         oligo_database = self._create_oligo_sets(
             oligo_database=oligo_database,
-            set_size=probe_set_selection["set_size"],
-            homogeneous_properties_weights=probe_set_selection["homogeneous_properties_weights"],
-            n_combinations=probe_set_selection["n_combinations"],
-            Tm_parameters=readout_probe_parameters["global_parameters"]["Tm_parameters"],
-            Tm_chem_correction_parameters=readout_probe_parameters["global_parameters"][
+            set_size=readout_probe_parameters["probe_set_selection"]["set_size"],
+            homogeneous_properties_weights=readout_probe_parameters["probe_set_selection"][
+                "homogeneous_properties_weights"
+            ],
+            n_combinations=readout_probe_parameters["probe_set_selection"]["n_combinations"],
+            Tm_parameters=readout_probe_parameters["probe_set_selection"]["Tm_parameters"],
+            Tm_chem_correction_parameters=readout_probe_parameters["probe_set_selection"][
                 "Tm_chem_correction_parameters"
-            ]["parameters"],
-            Tm_salt_correction_parameters=readout_probe_parameters["global_parameters"][
+            ],
+            Tm_salt_correction_parameters=readout_probe_parameters["probe_set_selection"][
                 "Tm_salt_correction_parameters"
-            ]["parameters"],
+            ],
         )
 
         if write_intermediate_steps:
@@ -2001,8 +1852,131 @@ class PrimerDesigner:
 
         self.n_jobs = n_jobs
 
+    def load_reverse_primer(self, sequence: str) -> str:
+        """Load and validate a reverse primer sequence (whitespace stripped)."""
+        return str(sequence).strip()
+
+    def generate_reverse_primer(self) -> str:
+        """
+        Generate a MERFISH reverse primer.
+
+        Placeholder for a future implementation. MERFISH currently expects the reverse primer
+        sequence to be provided via the config (``primers.reverse_primer.source = "load"``); the
+        forward primer is selected to match the reverse primer's melting temperature.
+        """
+        raise FeatureNotImplementedError(
+            "Generation of the reverse primer is not yet implemented. "
+            "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
+        )
+
+    def load_forward_primer(self, sequence: str) -> str:
+        """Load and validate a forward primer sequence (whitespace stripped)."""
+        return str(sequence).strip()
+
+    def generate_forward_primer(
+        self,
+        parameters: dict,
+        reverse_primer_sequence: str,
+        file_fasta_hybridization_probes_database: str,
+        write_intermediate_steps: bool = False,
+    ) -> str:
+        """
+        Generate a MERFISH forward primer by running the full multi-step primer design pipeline
+        and selecting the candidate whose melting temperature is closest to the reverse primer's Tm.
+
+        Internally orchestrates the existing decorated steps:
+        :py:meth:`_create_oligo_database` → :py:meth:`_filter_by_property` →
+        :py:meth:`_filter_by_specificity`, then delegates the best-Tm match selection to
+        :py:meth:`_get_best_forward_primer`. Each decorated step keeps its own
+        ``@pipeline_step_basic`` logging.
+
+        :param parameters: ``primers.forward_primer`` block. Must contain ``oligo_generation``,
+            ``property_filters``, ``specificity_filters`` sub-blocks. Tm parameters are expected to
+            have been inlined into ``property_filters.Tm_filter`` by :func:`_preprocess_config`
+            (Tm tables resolved, Tm chem/salt ``parameters`` normalized to ``None`` when disabled);
+            the best-Tm matcher reads them from there.
+        :type parameters: dict
+        :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward primer
+            should match.
+        :type reverse_primer_sequence: str
+        :param file_fasta_hybridization_probes_database: Path to a FASTA file with the assembled
+            hybridization probe sequences (created at runtime by :py:meth:`design_primers`). Used as
+            reference for the second specificity-filter pass (primer must not bind the hybridization
+            probes themselves).
+        :type file_fasta_hybridization_probes_database: str
+        :param write_intermediate_steps: If True, save the per-step primer databases for debugging.
+        :type write_intermediate_steps: bool
+        :return: Selected forward primer sequence (Tm closest to the reverse primer).
+        :rtype: str
+        """
+        oligo_database: OligoDatabase = self._create_oligo_database(
+            oligo_length=parameters["oligo_generation"]["probe_length"],
+            oligo_base_probabilities=parameters["oligo_generation"]["base_probabilities"],
+            initial_num_sequences=parameters["oligo_generation"]["initial_num_sequences"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_primers_initial")
+            logger.info(f"Saved primer database for step 1 (Create Database) in directory {dir_database}")
+
+        oligo_database = self._filter_by_property(
+            oligo_database=oligo_database,
+            GC_content_filter=parameters["property_filters"]["GC_content_filter"],
+            GC_clamp_filter=parameters["property_filters"]["GC_clamp_filter"],
+            homopolymeric_runs_filter=parameters["property_filters"]["homopolymeric_runs_filter"],
+            self_complementarity_filter=parameters["property_filters"]["self_complementarity_filter"],
+            complement_reverse_primer_filter=parameters["property_filters"][
+                "complement_reverse_primer_filter"
+            ],
+            Tm_filter=parameters["property_filters"]["Tm_filter"],
+            secondary_structure_filter=parameters["property_filters"]["secondary_structure_filter"],
+            reverse_primer_sequence=reverse_primer_sequence,
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_primer_property_filter")
+            logger.info(f"Saved primer database for step 2 (Property Filters) in directory {dir_database}")
+
+        oligo_database = self._filter_by_specificity(
+            oligo_database=oligo_database,
+            specificity_blastn_filter=parameters["specificity_filters"]["specificity_blastn_filter"],
+            hybridization_probes_blastn_filter=parameters["specificity_filters"][
+                "hybridization_probes_blastn_filter"
+            ],
+            file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_primer_specificty_filter")
+            logger.info(f"Saved primer database for step 3 (Specificity Filters) in directory {dir_database}")
+
+        forward_primer_sequence = self._get_best_forward_primer(
+            oligo_database=oligo_database,
+            reverse_primer_sequence=reverse_primer_sequence,
+            Tm_parameters=parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
+            Tm_chem_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                "Tm_chem_correction_parameters"
+            ],
+            Tm_salt_correction_parameters=parameters["property_filters"]["Tm_filter"][
+                "Tm_salt_correction_parameters"
+            ],
+        )
+
+        return forward_primer_sequence
+
+    def validate(self, forward_primer: str, reverse_primer: str) -> None:
+        """
+        Validate a (forward_primer, reverse_primer) pair as valid DNA sequences.
+
+        Delegates to the shared :func:`validate_primer_sequence` helper for each primer; the
+        source identifiers are hardcoded as ``"forward_primer"`` / ``"reverse_primer"`` because
+        primer roles are fixed.
+        """
+        validate_primer_sequence(sequence=forward_primer, source="forward_primer")
+        validate_primer_sequence(sequence=reverse_primer, source="reverse_primer")
+
     @pipeline_step_basic(step_name="Primer Generation - Create Oligo Database")
-    def create_oligo_database(
+    def _create_oligo_database(
         self,
         oligo_length: int,
         oligo_base_probabilities: dict[str, float],
@@ -2012,7 +1986,7 @@ class PrimerDesigner:
         Create an initial oligo database by generating random sequences with specified nucleotide
         probabilities, all ending with a "T" nucleotide.
 
-        This is the first step of primer design. The method generates random DNA sequences with
+        Private helper of :py:meth:`generate_forward_primer`. Generates random DNA sequences with
         user-defined nucleotide probabilities. All generated sequences end with a "T" nucleotide,
         which is a common requirement for PCR primers to improve binding stability. The sequences
         are created with length `oligo_length - 1`, then a "T" is appended to each sequence.
@@ -2070,141 +2044,106 @@ class PrimerDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Primer Generation - Property Filters")
-    def filter_by_property(
+    def _filter_by_property(
         self,
         oligo_database: OligoDatabase,
-        GC_content_min: float,
-        GC_content_max: float,
-        number_GC_GCclamp: int,
-        number_three_prime_base_GCclamp: int,
-        homopolymeric_base_n: dict[str, int],
-        max_len_selfcomplement: int,
+        GC_content_filter: dict,
+        GC_clamp_filter: dict,
+        homopolymeric_runs_filter: dict,
+        self_complementarity_filter: dict,
+        complement_reverse_primer_filter: dict,
+        Tm_filter: dict,
+        secondary_structure_filter: dict,
         reverse_primer_sequence: str,
-        max_len_complement: int,
-        Tm_min: float,
-        Tm_max: float,
-        Tm_parameters: dict,
-        Tm_chem_correction_parameters: dict | None,
-        Tm_salt_correction_parameters: dict | None,
-        T_secondary_structure: float,
-        secondary_structures_threshold_deltaG: float,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence properties to remove primers with undesirable
-        characteristics.
+        Filter the oligo database based on sequence properties.
 
-        This method applies sequential filtering using multiple property-based filters:
-        1. **GC content**: Removes primers with GC content outside the specified range
-        2. **GC clamp**: Removes primers that do not have sufficient G or C nucleotides at the 3' end
-        3. **Homopolymeric runs**: Removes primers with homopolymeric runs exceeding specified lengths
-        4. **Self-complementarity**: Removes primers with excessive self-complementary regions that can
-           form hairpins and reduce PCR efficiency
-        5. **Complementarity to reverse primer**: Removes primers with excessive complementarity to the
-           reverse primer sequence, which prevents primer-dimer formation
-        6. **Melting temperature**: Removes primers with Tm outside the specified range
-        7. **Secondary structure**: Removes primers that form stable secondary structures at the
-           specified temperature
-
-        Probes that fail any filter are removed. Regions with insufficient oligos after filtering
-        are removed from the database.
+        Each filter is gated on its own ``enabled`` flag. Probes that fail any enabled filter are
+        removed from the database. Private helper of :py:meth:`generate_forward_primer`.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain primer sequences generated
             in the previous step.
         :type oligo_database: OligoDatabase
-        :param GC_content_min: Minimum acceptable GC content for primers, expressed as a fraction
-            between 0.0 and 1.0.
-        :type GC_content_min: float
-        :param GC_content_max: Maximum acceptable GC content for primers, expressed as a fraction
-            between 0.0 and 1.0.
-        :type GC_content_max: float
-        :param number_GC_GCclamp: Minimum number of G or C nucleotides required within the specified
-            number of bases at the 3' end (GC clamp). This improves primer binding stability.
-        :type number_GC_GCclamp: int
-        :param number_three_prime_base_GCclamp: Number of bases from the 3' end to consider for
-            the GC clamp requirement.
-        :type number_three_prime_base_GCclamp: int
-        :param homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
-            runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
-            run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
-            identical bases.
-        :type homopolymeric_base_n: dict[str, int]
-        :param max_len_selfcomplement: Maximum allowable length of self-complementary sequences.
-            Primers with longer self-complementary regions can form hairpins and reduce PCR efficiency.
-        :type max_len_selfcomplement: int
-        :param reverse_primer_sequence: DNA sequence of the reverse primer that will be used for
-            complementarity filtering. This prevents the forward and reverse primers from binding to
-            each other.
+        :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
+        :type GC_content_filter: dict
+        :param GC_clamp_filter: Dict with ``enabled``, ``number_GC_GCclamp``,
+            ``number_three_prime_base_GCclamp``.
+        :type GC_clamp_filter: dict
+        :param homopolymeric_runs_filter: Dict with ``enabled``, ``homopolymeric_base_n``.
+        :type homopolymeric_runs_filter: dict
+        :param self_complementarity_filter: Dict with ``enabled``, ``max_len_selfcomplement``.
+        :type self_complementarity_filter: dict
+        :param complement_reverse_primer_filter: Dict with ``enabled``, ``max_len_complement``.
+        :type complement_reverse_primer_filter: dict
+        :param Tm_filter: Dict with ``enabled``, ``Tm_min``, ``Tm_max``, ``Tm_parameters``,
+            ``Tm_chem_correction_parameters``, ``Tm_salt_correction_parameters`` (Tm parameters
+            are inlined into this dict by :func:`_preprocess_config`).
+        :type Tm_filter: dict
+        :param secondary_structure_filter: Dict with ``enabled``, ``T``, ``thr_DG``.
+        :type secondary_structure_filter: dict
+        :param reverse_primer_sequence: DNA sequence of the reverse primer used by the
+            complement-reverse-primer filter to prevent primer-dimer formation.
         :type reverse_primer_sequence: str
-        :param max_len_complement: Maximum allowable length of complementarity to the reverse primer
-            sequence. This prevents the forward and reverse primers from binding to each other.
-        :type max_len_complement: int
-        :param Tm_min: Minimum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type Tm_min: float
-        :param Tm_max: Maximum acceptable melting temperature (Tm) for primers in degrees Celsius.
-        :type Tm_max: float
-        :param Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) of primers
-            using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
-            Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
-            'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type Tm_parameters: dict
-        :param Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm calculation.
-            These parameters account for the effects of chemical additives (e.g., DMSO, formamide) on melting temperature.
-            Set to ``None`` to disable chemical correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
-            For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type Tm_chem_correction_parameters: dict | None
-        :param Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None`` to disable
-            salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type Tm_salt_correction_parameters: dict | None
-        :param T_secondary_structure: Temperature in degrees Celsius at which to evaluate secondary
-            structure formation. Secondary structures that form at this temperature can interfere
-            with primer binding.
-        :type T_secondary_structure: float
-        :param secondary_structures_threshold_deltaG: DeltaG threshold (in kcal/mol) for secondary
-            structure stability. Primers with secondary structures having deltaG values more negative
-            (more stable) than this threshold will be filtered out.
-        :type secondary_structures_threshold_deltaG: float
-        :return: A filtered `OligoDatabase` object containing only primers that pass all property filters.
-            Regions with insufficient oligos after filtering are removed.
+        :return: A filtered `OligoDatabase` object containing only primers that pass all enabled
+            property filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
         """
-        # define the filters
-        gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
-        gc_clamp = GCClampFilter(n_bases=number_three_prime_base_GCclamp, n_GC=number_GC_GCclamp)
-        homopolymeric_runs = HomopolymericRunsFilter(
-            base_n=homopolymeric_base_n,
-        )
-        self_complement = SelfComplementFilter(max_len_selfcomplement=max_len_selfcomplement)
-        complement = ComplementFilter(
-            comparison_sequence=reverse_primer_sequence, max_len_complement=max_len_complement
-        )
-        melting_temperature = MeltingTemperatureNNFilter(
-            Tm_min=Tm_min,
-            Tm_max=Tm_max,
-            Tm_parameters=Tm_parameters,
-            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
-        )
-        secondary_sctructure = SecondaryStructureFilter(
-            T=T_secondary_structure,
-            thr_DG=secondary_structures_threshold_deltaG,
-        )
+        # Build property-filter list, gating each filter on its own ``enabled`` flag.
+        filters: list[BasePropertyFilter] = []
 
-        filters = [
-            gc_content,
-            gc_clamp,
-            homopolymeric_runs,
-            self_complement,
-            complement,
-            melting_temperature,
-            secondary_sctructure,
-        ]
+        if GC_content_filter["enabled"]:
+            gc_content = GCContentFilter(
+                GC_content_min=GC_content_filter["GC_content_min"],
+                GC_content_max=GC_content_filter["GC_content_max"],
+            )
+            filters.append(gc_content)
 
-        # initialize the preoperty filter class
+        if GC_clamp_filter["enabled"]:
+            gc_clamp = GCClampFilter(
+                n_bases=GC_clamp_filter["number_three_prime_base_GCclamp"],
+                n_GC=GC_clamp_filter["number_GC_GCclamp"],
+            )
+            filters.append(gc_clamp)
+
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
+        if self_complementarity_filter["enabled"]:
+            self_complement = SelfComplementFilter(
+                max_len_selfcomplement=self_complementarity_filter["max_len_selfcomplement"],
+            )
+            filters.append(self_complement)
+
+        if complement_reverse_primer_filter["enabled"]:
+            complement = ComplementFilter(
+                comparison_sequence=reverse_primer_sequence,
+                max_len_complement=complement_reverse_primer_filter["max_len_complement"],
+            )
+            filters.append(complement)
+
+        if Tm_filter["enabled"]:
+            melting_temperature = MeltingTemperatureNNFilter(
+                Tm_min=Tm_filter["Tm_min"],
+                Tm_max=Tm_filter["Tm_max"],
+                Tm_parameters=Tm_filter["Tm_parameters"],
+                Tm_chem_correction_parameters=Tm_filter["Tm_chem_correction_parameters"],
+                Tm_salt_correction_parameters=Tm_filter["Tm_salt_correction_parameters"],
+            )
+            filters.append(melting_temperature)
+
+        if secondary_structure_filter["enabled"]:
+            secondary_structure = SecondaryStructureFilter(
+                T=secondary_structure_filter["T"],
+                thr_DG=secondary_structure_filter["thr_DG"],
+            )
+            filters.append(secondary_structure)
+
+        # initialize the property filter class
         property_filter = PropertyFilter(filters=filters)
 
         # filter the database
@@ -2213,108 +2152,88 @@ class PrimerDesigner:
             sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
-
         check_content_oligo_database(oligo_database)
 
         return oligo_database
 
     @pipeline_step_basic(step_name="Primer Generation - Specificity Filters")
-    def filter_by_specificity(
+    def _filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
-        files_fasta_reference_database: list[str],
-        specificity_refrence_blastn_search_parameters: dict,
-        specificity_refrence_blastn_hit_parameters: dict,
+        specificity_blastn_filter: dict,
+        hybridization_probes_blastn_filter: dict,
         file_fasta_hybridization_probes_database: str,
-        specificity_hybridization_probes_blastn_search_parameters: dict,
-        specificity_hybridization_probes_blastn_hit_parameters: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence specificity to remove primers that bind
-        non-specifically to reference sequences or to the hybridization probes themselves.
+        Filter the oligo database based on sequence specificity.
 
-        This method applies two types of specificity filters:
-
-        1. **Reference database specificity filtering**: Removes primers that bind to unintended
-           genomic regions using BLASTN searches against reference sequences (e.g., whole genome
-           or transcriptome sequences). This ensures primers do not bind to off-target sites.
-
-        2. **Hybridization probes specificity filtering**: Removes primers that bind to the hybridization
-           probes themselves. This is critical because if primers can bind to the hybridization probes,
-           they may interfere with probe function or cause unwanted amplification. The hybridization
-           probe database is used to create a reference FASTA file for this filtering step.
-
-        Both filters use BLASTN searches with configurable search and hit parameters. Primers with
-        hits meeting the specified criteria are removed. Regions that do not meet the minimum oligo
-        requirement after filtering are removed from the database.
+        Each BLASTN filter is gated on its own ``enabled`` flag. Primers with hits meeting the
+        specified criteria are removed. Private helper of :py:meth:`generate_forward_primer`.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain primer sequences that have
             passed property filtering.
         :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of paths to FASTA files containing reference
-            sequences used for specificity filtering. These files are used to identify off-target
-            binding sites (e.g., whole genome or transcriptome sequences).
-        :type files_fasta_reference_database: list[str]
-        :param specificity_refrence_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering against the reference database.
-        :type specificity_refrence_blastn_search_parameters: dict
-        :param specificity_refrence_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches against the reference database.
-            Primers with hits meeting these criteria are removed.
-        :type specificity_refrence_blastn_hit_parameters: dict
-        :param file_fasta_hybridization_probes_database: Path to the FASTA file containing
-            hybridization probe sequences. This file is used to create a reference database
-            for specificity filtering to ensure primers do not bind to the hybridization probes themselves.
+        :param specificity_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``, ``files_fasta_reference_database``.
+        :type specificity_blastn_filter: dict
+        :param hybridization_probes_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``.
+        :type hybridization_probes_blastn_filter: dict
+        :param file_fasta_hybridization_probes_database: Path to the FASTA file containing the
+            assembled hybridization probe sequences (created at runtime). Used as the reference
+            database for the hybridization-probe BLASTN filter so primers do not bind the
+            hybridization probes themselves.
         :type file_fasta_hybridization_probes_database: str
-        :param specificity_hybridization_probes_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering against the hybridization probes database.
-        :type specificity_hybridization_probes_blastn_search_parameters: dict
-        :param specificity_hybridization_probes_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches against the hybridization probes database. Primers with hits meeting these
-            criteria are removed.
-        :type specificity_hybridization_probes_blastn_hit_parameters: dict
-        :return: A filtered `OligoDatabase` object containing only primers that pass all specificity
-            filters. Regions with insufficient oligos after filtering are removed.
+        :return: A filtered `OligoDatabase` object containing only primers that pass all enabled
+            specificity filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
         """
-        ##### specificity filters against reference #####
-        reference_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
-        )
-        reference_database.load_database_from_file(
-            files=files_fasta_reference_database, file_type="fasta", database_overwrite=True
-        )
-        # BlastN Filter
-        specificity_refrence = BlastNFilter(
-            search_parameters=specificity_refrence_blastn_search_parameters,
-            hit_parameters=specificity_refrence_blastn_hit_parameters,
-            filter_name="primer_blastn_specificity_reference",
-            dir_output=self.dir_output,
-        )
-        specificity_refrence.set_reference_database(reference_database=reference_database)
+        ##### BLASTN filters gated on ``enabled`` #####
+        filters: list[BaseSpecificityFilter] = []
+        directories: list[str] = []
 
-        ##### specificity filters against hybridization probes #####
-        hybridization_probes_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
-        )
-        hybridization_probes_database.load_database_from_file(
-            files=file_fasta_hybridization_probes_database, file_type="fasta", database_overwrite=True
-        )
-        # BlastN Filter
-        specificity_hybridization_probes = BlastNFilter(
-            search_parameters=specificity_hybridization_probes_blastn_search_parameters,
-            hit_parameters=specificity_hybridization_probes_blastn_hit_parameters,
-            filter_name="primer_blastn_specificity_hybridization_probes",
-            dir_output=self.dir_output,
-        )
-        specificity_hybridization_probes.set_reference_database(
-            reference_database=hybridization_probes_database
-        )
+        if specificity_blastn_filter["enabled"]:
+            reference_database = ReferenceDatabase(
+                database_name=self.subdir_db_reference, dir_output=self.dir_output
+            )
+            reference_database.load_database_from_file(
+                files=specificity_blastn_filter["files_fasta_reference_database"],
+                file_type="fasta",
+                database_overwrite=True,
+            )
+            specificity_refrence = BlastNFilter(
+                search_parameters=specificity_blastn_filter["search_parameters"],
+                hit_parameters=specificity_blastn_filter["hit_parameters"],
+                filter_name="primer_blastn_specificity_reference",
+                dir_output=self.dir_output,
+            )
+            specificity_refrence.set_reference_database(reference_database=reference_database)
+            filters.append(specificity_refrence)
+            directories.append(specificity_refrence.dir_output)
 
-        specificity_filter = SpecificityFilter(
-            filters=[specificity_refrence, specificity_hybridization_probes]
-        )
+        if hybridization_probes_blastn_filter["enabled"]:
+            hybridization_probes_database = ReferenceDatabase(
+                database_name=self.subdir_db_reference, dir_output=self.dir_output
+            )
+            hybridization_probes_database.load_database_from_file(
+                files=file_fasta_hybridization_probes_database,
+                file_type="fasta",
+                database_overwrite=True,
+            )
+            specificity_hybridization_probes = BlastNFilter(
+                search_parameters=hybridization_probes_blastn_filter["search_parameters"],
+                hit_parameters=hybridization_probes_blastn_filter["hit_parameters"],
+                filter_name="primer_blastn_specificity_hybridization_probes",
+                dir_output=self.dir_output,
+            )
+            specificity_hybridization_probes.set_reference_database(
+                reference_database=hybridization_probes_database
+            )
+            filters.append(specificity_hybridization_probes)
+            directories.append(specificity_hybridization_probes.dir_output)
+
+        specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -2322,16 +2241,65 @@ class PrimerDesigner:
         )
 
         # remove all directories of intermediate steps
-        for directory in [
-            specificity_refrence.dir_output,
-            specificity_hybridization_probes.dir_output,
-        ]:
+        for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
         check_content_oligo_database(oligo_database)
 
         return oligo_database
+
+    def _get_best_forward_primer(
+        self,
+        oligo_database: OligoDatabase,
+        reverse_primer_sequence: str,
+        Tm_parameters: dict,
+        Tm_chem_correction_parameters: dict | None,
+        Tm_salt_correction_parameters: dict | None,
+    ) -> str:
+        """
+        Pick the candidate primer in ``oligo_database`` whose melting temperature is closest to
+        the reverse primer's Tm, for balanced PCR amplification.
+
+        :param oligo_database: Filtered ``OligoDatabase`` of forward primer candidates.
+        :type oligo_database: OligoDatabase
+        :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward
+            primer should match.
+        :type reverse_primer_sequence: str
+        :param Tm_parameters: Nearest-neighbor Tm parameters.
+        :type Tm_parameters: dict
+        :param Tm_chem_correction_parameters: Tm chemistry correction parameters (``None`` if disabled).
+        :type Tm_chem_correction_parameters: dict | None
+        :param Tm_salt_correction_parameters: Tm salt correction parameters (``None`` if disabled).
+        :type Tm_salt_correction_parameters: dict | None
+        :return: Forward primer sequence with the Tm closest to the reverse primer's.
+        :rtype: str
+        """
+        # Compute Tm of the reverse primer once.
+        Tm_reverse_primer = calc_tm_nn(
+            sequence=reverse_primer_sequence,
+            Tm_parameters=Tm_parameters,
+            Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+            Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+        )
+
+        # Iterate over surviving primer candidates and pick the one whose Tm is closest to the reverse primer's.
+        min_dif_Tm = float("inf")
+        forward_primer_sequence = ""
+        for database_region in oligo_database.database.values():
+            for primer_properties in database_region.values():
+                Tm_forward_primer = calc_tm_nn(
+                    sequence=primer_properties["oligo"],
+                    Tm_parameters=Tm_parameters,
+                    Tm_chem_correction_parameters=Tm_chem_correction_parameters,
+                    Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+                )
+                dif_Tm = abs(Tm_forward_primer - Tm_reverse_primer)
+                if dif_Tm < min_dif_Tm:
+                    min_dif_Tm = dif_Tm
+                    forward_primer_sequence = primer_properties["oligo"]
+
+        return forward_primer_sequence
 
 
 ############################################
@@ -2351,7 +2319,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
       ``False`` so downstream filters receive a clean ``None``.
     - Inlines Tm parameters and chem/salt corrections into every block that consumes them
       (``target_probe.property_filters.Tm_filter``, ``target_probe.probe_set_selection.Tm_score``,
-      and ``primers.forward_primer.property_filters.Tm_filter``) so designer methods don't have to
+      ``readout_probes.readout_probe_table.probe_set_selection``, and
+      ``primers.forward_primer.property_filters.Tm_filter``) so designer methods don't have to
       thread ``global_parameters`` through the call chain.
     - Copies ``Tm_min`` / ``Tm_max`` from ``target_probe.property_filters.Tm_filter`` into
       ``target_probe.probe_set_selection.Tm_score`` (the ``NormalizedDeviationFromOptimalTmScorer``
@@ -2421,6 +2390,25 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             correction_cfg = config["readout_probes"]["readout_probe_table"]["global_parameters"][correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
+
+        # Inline Tm parameters into probe_set_selection (consumed by the homogeneous-property set scorer).
+        config["readout_probes"]["readout_probe_table"]["probe_set_selection"]["Tm_parameters"] = config[
+            "readout_probes"
+        ]["readout_probe_table"]["global_parameters"]["Tm_parameters"]
+        config["readout_probes"]["readout_probe_table"]["probe_set_selection"][
+            "Tm_chem_correction_parameters"
+        ] = config["readout_probes"]["readout_probe_table"]["global_parameters"][
+            "Tm_chem_correction_parameters"
+        ][
+            "parameters"
+        ]
+        config["readout_probes"]["readout_probe_table"]["probe_set_selection"][
+            "Tm_salt_correction_parameters"
+        ] = config["readout_probes"]["readout_probe_table"]["global_parameters"][
+            "Tm_salt_correction_parameters"
+        ][
+            "parameters"
+        ]
 
     ##### Tm preprocessing for primers.forward_primer #####
     if config["primers"]["forward_primer"]["source"] == "generate":
@@ -2508,57 +2496,10 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         readout_probe_table=readout_probe_table,
     )
 
-    ##### design primers (bridged: legacy flat-kwargs interface — refactored in stage 4) #####
-    forward_primer_cfg = config_dict["primers"]["forward_primer"]
-    reverse_primer_cfg = config_dict["primers"]["reverse_primer"]
-    forward_primer_property_filters = forward_primer_cfg["property_filters"]
-    forward_primer_specificity_filters = forward_primer_cfg["specificity_filters"]
-    forward_primer_Tm_filter = forward_primer_property_filters["Tm_filter"]
+    ##### design primers (load / generate forward + reverse primer sequences) #####
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
-        reverse_primer_sequence=reverse_primer_cfg["sequence"],
-        primer_length=forward_primer_cfg["oligo_generation"]["probe_length"],
-        primer_base_probabilities=forward_primer_cfg["oligo_generation"]["base_probabilities"],
-        primer_initial_num_sequences=forward_primer_cfg["oligo_generation"]["initial_num_sequences"],
-        primer_GC_content_min=forward_primer_property_filters["GC_content_filter"]["GC_content_min"],
-        primer_GC_content_max=forward_primer_property_filters["GC_content_filter"]["GC_content_max"],
-        primer_number_GC_GCclamp=forward_primer_property_filters["GC_clamp_filter"]["number_GC_GCclamp"],
-        primer_number_three_prime_base_GCclamp=forward_primer_property_filters["GC_clamp_filter"][
-            "number_three_prime_base_GCclamp"
-        ],
-        primer_homopolymeric_base_n=forward_primer_property_filters["homopolymeric_runs_filter"][
-            "homopolymeric_base_n"
-        ],
-        primer_max_len_selfcomplement=forward_primer_property_filters["self_complementarity_filter"][
-            "max_len_selfcomplement"
-        ],
-        primer_max_len_complement_reverse_primer=forward_primer_property_filters[
-            "complement_reverse_primer_filter"
-        ]["max_len_complement"],
-        primer_Tm_min=forward_primer_Tm_filter["Tm_min"],
-        primer_Tm_max=forward_primer_Tm_filter["Tm_max"],
-        primer_T_secondary_structure=forward_primer_property_filters["secondary_structure_filter"]["T"],
-        primer_secondary_structures_threshold_deltaG=forward_primer_property_filters[
-            "secondary_structure_filter"
-        ]["thr_DG"],
-        primer_Tm_parameters=forward_primer_Tm_filter["Tm_parameters"],
-        primer_Tm_chem_correction_parameters=forward_primer_Tm_filter["Tm_chem_correction_parameters"],
-        primer_Tm_salt_correction_parameters=forward_primer_Tm_filter["Tm_salt_correction_parameters"],
         hybridization_probe_database=hybridization_probe_database,
-        files_fasta_reference_database_primer=forward_primer_specificity_filters["specificity_blastn_filter"][
-            "files_fasta_reference_database"
-        ],
-        primer_specificity_refrence_blastn_search_parameters=forward_primer_specificity_filters[
-            "specificity_blastn_filter"
-        ]["search_parameters"],
-        primer_specificity_refrence_blastn_hit_parameters=forward_primer_specificity_filters[
-            "specificity_blastn_filter"
-        ]["hit_parameters"],
-        primer_specificity_hybridization_probes_blastn_search_parameters=forward_primer_specificity_filters[
-            "hybridization_probes_blastn_filter"
-        ]["search_parameters"],
-        primer_specificity_hybridization_probes_blastn_hit_parameters=forward_primer_specificity_filters[
-            "hybridization_probes_blastn_filter"
-        ]["hit_parameters"],
+        primer_parameters=config_dict["primers"],
     )
 
     probe_database = pipeline.assemble_dna_template_probes(
