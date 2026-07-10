@@ -309,9 +309,12 @@ class MerfishProbeDesigner:
 
         Each artefact (codebook, readout probe table) is loaded from file when
         ``...source == "load"`` or generated programmatically when ``...source == "generate"``.
-        Once both are obtained, the readout probe table is trimmed to only the bits referenced by
-        the codebook, and the pair is validated via
-        :py:meth:`ReadoutProbeDesigner.validate`.
+        The readout probe table always carries all ``n_bits`` rows (the MERFISH standard 16-bit
+        readout set), even when the codebook only references a subset — this keeps the full
+        readout set available if a caller later loads a different codebook that references other
+        bits. Once both are obtained, the pair is validated via
+        :py:meth:`ReadoutProbeDesigner.validate` (a warning is emitted for readout bits not
+        referenced by the codebook, which is expected).
 
         The codebook assigns each region a unique binary barcode with a fixed Hamming weight
         (``hamming_weight``) and a minimum Hamming distance (``min_hamming_dist``) that enables
@@ -370,10 +373,6 @@ class MerfishProbeDesigner:
                 write_intermediate_steps=self.write_intermediate_steps,
             )
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
-
-        ##### trim readout probe table to bits referenced by the codebook #####
-        referenced_bits = set(codebook.columns)
-        readout_probe_table = readout_probe_table[readout_probe_table.index.isin(referenced_bits)]
 
         readout_probe_designer.validate(
             codebook=codebook,
@@ -1240,8 +1239,10 @@ class ReadoutProbeDesigner:
         than half the minimum Hamming distance.
 
         The algorithm generates all possible barcodes with the specified Hamming weight, then filters
-        them to ensure the minimum Hamming distance constraint is met. Columns where all values are 0
-        (unused bits) are automatically removed from the final codebook.
+        them to ensure the minimum Hamming distance constraint is met. The returned codebook always
+        carries all ``n_bits`` columns — bit positions that no accepted codeword uses appear as
+        all-zero columns rather than being dropped, so the codebook shape matches the ``n_bits``
+        readout probe set 1:1.
 
         :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
             Each region will be assigned a unique barcode.
@@ -1250,8 +1251,8 @@ class ReadoutProbeDesigner:
             ``min_hamming_dist``, ``hamming_weight``.
         :type codebook_parameters: dict
         :return: A DataFrame containing the codebook with binary encoded bits. Rows are indexed by
-            ``gene_name`` (from ``region_ids``); columns are named ``bit_1``, ``bit_2``, etc. Unused
-            bit columns (all zeros) are automatically removed.
+            ``gene_name`` (from ``region_ids``); columns are ``bit_1`` .. ``bit_{n_bits}``. Bits not
+            used by any codeword appear as all-zero columns.
         :rtype: pd.DataFrame
         :raises ConfigurationError: If the number of valid barcodes (meeting Hamming distance constraints)
             is insufficient for the number of regions. In this case, consider increasing ``n_bits``,
@@ -1291,9 +1292,6 @@ class ReadoutProbeDesigner:
             codebook_list[0:n_regions], index=region_ids, columns=[f"bit_{i+1}" for i in range(n_bits)]
         )
         codebook.index.name = "gene_name"
-
-        # Remove columns where all values are 0
-        codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
 
         return codebook
 
