@@ -388,7 +388,7 @@ class MerfishProbeDesigner:
 
     def assemble_hybridization_probes(
         self,
-        target_probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
     ) -> OligoDatabase:
@@ -409,13 +409,12 @@ class MerfishProbeDesigner:
         The assembled sequences are stored as properties in the database for each probe, enabling downstream
         primer addition and DNA template probe assembly.
 
-        :param target_probe_database: The `OligoDatabase` instance containing target probes with their
-            sequences and properties. This database should contain target probes organized by region IDs,
-            with each region having one or more probe sets.
-        :type target_probe_database: OligoDatabase
+        :param oligo_database: The target-probe `OligoDatabase` (returned by :py:meth:`design_target_probes`).
+            The method assembles hybridization probes onto this database and returns it.
+        :type oligo_database: OligoDatabase
         :param codebook: A pandas DataFrame containing binary barcodes for each region. Rows are indexed
-            by region IDs, and columns represent bit positions (bit_1, bit_2, etc.). Each row has exactly
-            `hamming_weight` bits set to 1, indicating which readout probes are assigned to that region.
+            by ``gene_name``, and columns represent bit positions (bit_1, bit_2, etc.). Each row has exactly
+            ``hamming_weight`` bits set to 1, indicating which readout probes are assigned to that region.
         :type codebook: pd.DataFrame
         :param readout_probe_table: A pandas DataFrame containing readout probe sequences and their
             associated bit identifiers. The DataFrame should be indexed by bit labels (bit_1, bit_2, etc.)
@@ -429,9 +428,9 @@ class MerfishProbeDesigner:
             - `sequence_hybridization_probe`: The complete assembled hybridization probe sequence
         :rtype: OligoDatabase
         """
-        region_ids = list(target_probe_database.database.keys())
+        region_ids = list(oligo_database.database.keys())
 
-        target_probe_database.set_database_sequence_types(
+        oligo_database.set_database_sequence_types(
             [
                 "sequence_target",
                 "sequence_readout_probe_1",
@@ -447,13 +446,13 @@ class MerfishProbeDesigner:
             sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
             sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
 
-            probe_ids = list(target_probe_database.database[region_id].keys())
+            probe_ids = list(oligo_database.database[region_id].keys())
             new_properties: dict[str, dict[str, str]] = {probe_id: {} for probe_id in probe_ids}
 
             for probe_id in probe_ids:
 
                 new_properties[probe_id]["sequence_target"] = format_sequence(
-                    database=target_probe_database,
+                    database=oligo_database,
                     property="target",
                     region_id=region_id,
                     oligo_id=probe_id,
@@ -466,7 +465,7 @@ class MerfishProbeDesigner:
                     str(Seq(sequence_readout_probe_1).reverse_complement())
                     + "A"
                     + format_sequence(
-                        database=target_probe_database,
+                        database=oligo_database,
                         property="oligo",
                         region_id=region_id,
                         oligo_id=probe_id,
@@ -475,13 +474,13 @@ class MerfishProbeDesigner:
                     + str(Seq(sequence_readout_probe_2).reverse_complement())
                 )
 
-            target_probe_database.update_oligo_properties(new_properties)
+            oligo_database.update_oligo_properties(new_properties)
 
-        return target_probe_database
+        return oligo_database
 
     def design_primers(
         self,
-        hybridization_probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         primer_parameters: dict,
     ) -> tuple[str, str]:
         """
@@ -494,11 +493,11 @@ class MerfishProbeDesigner:
         :py:meth:`PrimerDesigner.generate_reverse_primer` is currently a placeholder. After both
         primers are obtained the pair is validated via :py:meth:`PrimerDesigner.validate`.
 
-        :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization
-            probes. The hybridization probes are written to a temporary FASTA so they can be used
-            as a reference for the second specificity-filter pass (the primer must not bind the
-            hybridization probes themselves).
-        :type hybridization_probe_database: OligoDatabase
+        :param oligo_database: The hybridization-probe `OligoDatabase` (returned by
+            :py:meth:`assemble_hybridization_probes`). Written to a temporary FASTA so it can be
+            used as a reference for the second specificity-filter pass (the primer must not bind
+            the hybridization probes themselves).
+        :type oligo_database: OligoDatabase
         :param primer_parameters: ``primers`` block. Must contain ``forward_primer`` (with
             ``source`` and either ``sequence`` when ``source == "load"`` or the full
             ``oligo_generation`` / ``property_filters`` / ``specificity_filters`` /
@@ -512,7 +511,7 @@ class MerfishProbeDesigner:
         """
         # Write the hybridization probes to a FASTA file so they can be used as a reference for
         # the second specificity pass (primer must not bind the hybridization probes themselves).
-        file_fasta_hybridization_probes_database = hybridization_probe_database.write_database_to_fasta(
+        file_fasta_hybridization_probes_database = oligo_database.write_database_to_fasta(
             filename="db_reference_hybridization_probes",
             save_description=False,
             region_ids=None,
@@ -556,7 +555,7 @@ class MerfishProbeDesigner:
 
     def assemble_dna_template_probes(
         self,
-        hybridization_probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         forward_primer_sequence: str,
         reverse_primer_sequence: str,
     ) -> OligoDatabase:
@@ -571,10 +570,11 @@ class MerfishProbeDesigner:
         The assembled sequences are stored as properties in the database for each probe, ready for
         synthesis and experimental use.
 
-        :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization probes
-            with their sequences and properties. This database should contain the `sequence_hybridization_probe`
-            property for each probe, which was created by the `assemble_hybridization_probes` method.
-        :type hybridization_probe_database: OligoDatabase
+        :param oligo_database: The hybridization-probe `OligoDatabase` (returned by
+            :py:meth:`assemble_hybridization_probes`) — must expose the
+            ``sequence_hybridization_probe`` property on each probe. The method attaches DNA
+            template probe sequences to this database and returns it.
+        :type oligo_database: OligoDatabase
         :param forward_primer_sequence: DNA sequence of the forward primer that binds to the 5' end of
             the DNA template probe.
         :type forward_primer_sequence: str
@@ -588,8 +588,8 @@ class MerfishProbeDesigner:
             - `sequence_dna_template_probe`: The complete assembled DNA template probe sequence
         :rtype: OligoDatabase
         """
-        region_ids = list(hybridization_probe_database.database.keys())
-        hybridization_probe_database.set_database_sequence_types(
+        region_ids = list(oligo_database.database.keys())
+        oligo_database.set_database_sequence_types(
             [
                 "sequence_forward_primer",
                 "sequence_reverse_primer",
@@ -598,7 +598,7 @@ class MerfishProbeDesigner:
         )
 
         for region_id in region_ids:
-            probe_ids = list(hybridization_probe_database.database[region_id].keys())
+            probe_ids = list(oligo_database.database[region_id].keys())
             new_properties: dict[str, dict[str, str]] = {probe_id: {} for probe_id in probe_ids}
 
             for probe_id in probe_ids:
@@ -608,7 +608,7 @@ class MerfishProbeDesigner:
                 new_properties[probe_id]["sequence_dna_template_probe"] = (
                     forward_primer_sequence
                     + format_sequence(
-                        database=hybridization_probe_database,
+                        database=oligo_database,
                         property="sequence_hybridization_probe",
                         region_id=region_id,
                         oligo_id=probe_id,
@@ -616,13 +616,13 @@ class MerfishProbeDesigner:
                     + reverse_primer_sequence
                 )
 
-            hybridization_probe_database.update_oligo_properties(new_properties)
+            oligo_database.update_oligo_properties(new_properties)
 
-        return hybridization_probe_database
+        return oligo_database
 
     def generate_output(
         self,
-        probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
         output_properties: list[str] | None = None,
@@ -654,10 +654,10 @@ class MerfishProbeDesigner:
         6. **merfish_probes_order.yml**: Simplified YAML file containing only the essential sequences
            needed for ordering probes (DNA template probe and readout probe sequences).
 
-        :param probe_database: The `OligoDatabase` instance containing the final DNA template probes
-            with all sequences and properties. This should be the result of the `assemble_dna_template_probes`
-            method.
-        :type probe_database: OligoDatabase
+        :param oligo_database: The DNA-template-probe `OligoDatabase` (returned by
+            :py:meth:`assemble_dna_template_probes`) — the final probe database written to the
+            output files.
+        :type oligo_database: OligoDatabase
         :param codebook: A pandas DataFrame containing binary barcodes for each region. Rows are indexed
             by region IDs, and columns represent bit positions. This should be the codebook generated
             by the `design_readout_probes` method.
@@ -701,19 +701,19 @@ class MerfishProbeDesigner:
         codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="gene_name")
         readout_probe_table.to_csv(os.path.join(self.dir_output, "readout_probes.tsv"), sep="\t")
 
-        probe_database.write_oligosets_to_yaml(
+        oligo_database.write_oligosets_to_yaml(
             properties=output_properties,
             ascending=True,
             filename="merfish_probes",
         )
 
-        probe_database.write_oligosets_to_table(
+        oligo_database.write_oligosets_to_table(
             properties=output_properties,
             ascending=True,
             filename="merfish_probes",
         )
 
-        probe_database.write_ready_to_order_yaml(
+        oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_dna_template_probe",
                 "sequence_readout_probe_1",
@@ -1222,6 +1222,81 @@ class ReadoutProbeDesigner:
         """Load a MERFISH codebook from a TSV/CSV file (index column: ``gene_name``)."""
         return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
+    def generate_codebook(
+        self,
+        region_ids: list[str],
+        codebook_parameters: dict,
+    ) -> pd.DataFrame:
+        """
+        Generate a binary barcode codebook with specified Hamming distance constraints and fixed Hamming weight.
+
+        The codebook assigns each region a unique binary barcode where:
+        - each barcode has a fixed Hamming weight (``hamming_weight`` active bits),
+        - the minimum Hamming distance between any two barcodes meets ``min_hamming_dist``,
+        - the number of valid barcodes is sufficient to encode all ``region_ids``.
+
+        The Hamming distance constraint provides error correction capability: if a barcode is misread
+        during imaging it can still be correctly identified as long as the number of bit errors is less
+        than half the minimum Hamming distance.
+
+        The algorithm generates all possible barcodes with the specified Hamming weight, then filters
+        them to ensure the minimum Hamming distance constraint is met. Columns where all values are 0
+        (unused bits) are automatically removed from the final codebook.
+
+        :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
+            Each region will be assigned a unique barcode.
+        :type region_ids: list[str]
+        :param codebook_parameters: ``readout_probes.codebook`` block. Must contain ``n_bits``,
+            ``min_hamming_dist``, ``hamming_weight``.
+        :type codebook_parameters: dict
+        :return: A DataFrame containing the codebook with binary encoded bits. Rows are indexed by
+            ``gene_name`` (from ``region_ids``); columns are named ``bit_1``, ``bit_2``, etc. Unused
+            bit columns (all zeros) are automatically removed.
+        :rtype: pd.DataFrame
+        :raises ConfigurationError: If the number of valid barcodes (meeting Hamming distance constraints)
+            is insufficient for the number of regions. In this case, consider increasing ``n_bits``,
+            reducing ``min_hamming_dist``, or reducing the number of regions.
+        """
+
+        def _generate_barcode(raw_barcode: list, n_bits: int) -> np.ndarray:
+            barcode = np.zeros(n_bits, dtype=np.int8)
+            for i in raw_barcode:
+                barcode[i] = 1
+            return barcode
+
+        n_bits = codebook_parameters["n_bits"]
+        min_hamming_dist = codebook_parameters["min_hamming_dist"]
+        hamming_weight = codebook_parameters["hamming_weight"]
+
+        n_regions = len(region_ids)
+        codebook_list: list[np.ndarray] = []
+        for raw_barcode in combinations(iterable=range(n_bits), r=hamming_weight):
+            new_barcode = _generate_barcode(raw_barcode=list(raw_barcode), n_bits=n_bits)
+            # check if the barcode passes the requirements
+            add_new_barcode = True
+            for barcode in codebook_list:
+                hamming_dist = hamming(new_barcode, barcode) * n_bits
+                if hamming_dist < min_hamming_dist:
+                    add_new_barcode = False
+                    break
+            if add_new_barcode:
+                codebook_list.append(new_barcode)
+        if len(codebook_list) < n_regions:
+            raise ConfigurationError(
+                f"The number of valid barcodes ({len(codebook_list)}) is lower than the number of regions ({n_regions}). "
+                f"Consider increasing the number of bits or reducing the number of regions."
+            )
+
+        codebook: pd.DataFrame = pd.DataFrame(
+            codebook_list[0:n_regions], index=region_ids, columns=[f"bit_{i+1}" for i in range(n_bits)]
+        )
+        codebook.index.name = "gene_name"
+
+        # Remove columns where all values are 0
+        codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
+
+        return codebook
+
     def load_readout_probe_table(self, file_readout_probe_table: str) -> pd.DataFrame:
         """Load a MERFISH readout probe table from a TSV/CSV file. The ``bit`` column must be present."""
         readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
@@ -1328,7 +1403,7 @@ class ReadoutProbeDesigner:
             )
 
         return self._format_readout_probe_table(
-            readout_probe_database=oligo_database,
+            oligo_database=oligo_database,
             channels_ids=readout_probe_parameters["channels_ids"],
             n_bits=codebook_parameters["n_bits"],
         )
@@ -1660,83 +1735,8 @@ class ReadoutProbeDesigner:
 
         return oligo_database
 
-    def generate_codebook(
-        self,
-        region_ids: list[str],
-        codebook_parameters: dict,
-    ) -> pd.DataFrame:
-        """
-        Generate a binary barcode codebook with specified Hamming distance constraints and fixed Hamming weight.
-
-        The codebook assigns each region a unique binary barcode where:
-        - each barcode has a fixed Hamming weight (``hamming_weight`` active bits),
-        - the minimum Hamming distance between any two barcodes meets ``min_hamming_dist``,
-        - the number of valid barcodes is sufficient to encode all ``region_ids``.
-
-        The Hamming distance constraint provides error correction capability: if a barcode is misread
-        during imaging it can still be correctly identified as long as the number of bit errors is less
-        than half the minimum Hamming distance.
-
-        The algorithm generates all possible barcodes with the specified Hamming weight, then filters
-        them to ensure the minimum Hamming distance constraint is met. Columns where all values are 0
-        (unused bits) are automatically removed from the final codebook.
-
-        :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
-            Each region will be assigned a unique barcode.
-        :type region_ids: list[str]
-        :param codebook_parameters: ``readout_probes.codebook`` block. Must contain ``n_bits``,
-            ``min_hamming_dist``, ``hamming_weight``.
-        :type codebook_parameters: dict
-        :return: A DataFrame containing the codebook with binary encoded bits. Rows are indexed by
-            ``gene_name`` (from ``region_ids``); columns are named ``bit_1``, ``bit_2``, etc. Unused
-            bit columns (all zeros) are automatically removed.
-        :rtype: pd.DataFrame
-        :raises ConfigurationError: If the number of valid barcodes (meeting Hamming distance constraints)
-            is insufficient for the number of regions. In this case, consider increasing ``n_bits``,
-            reducing ``min_hamming_dist``, or reducing the number of regions.
-        """
-
-        def _generate_barcode(raw_barcode: list, n_bits: int) -> np.ndarray:
-            barcode = np.zeros(n_bits, dtype=np.int8)
-            for i in raw_barcode:
-                barcode[i] = 1
-            return barcode
-
-        n_bits = codebook_parameters["n_bits"]
-        min_hamming_dist = codebook_parameters["min_hamming_dist"]
-        hamming_weight = codebook_parameters["hamming_weight"]
-
-        n_regions = len(region_ids)
-        codebook_list: list[np.ndarray] = []
-        for raw_barcode in combinations(iterable=range(n_bits), r=hamming_weight):
-            new_barcode = _generate_barcode(raw_barcode=list(raw_barcode), n_bits=n_bits)
-            # check if the barcode passes the requirements
-            add_new_barcode = True
-            for barcode in codebook_list:
-                hamming_dist = hamming(new_barcode, barcode) * n_bits
-                if hamming_dist < min_hamming_dist:
-                    add_new_barcode = False
-                    break
-            if add_new_barcode:
-                codebook_list.append(new_barcode)
-        if len(codebook_list) < n_regions:
-            raise ConfigurationError(
-                f"The number of valid barcodes ({len(codebook_list)}) is lower than the number of regions ({n_regions}). "
-                f"Consider increasing the number of bits or reducing the number of regions."
-            )
-
-        codebook: pd.DataFrame = pd.DataFrame(
-            codebook_list[0:n_regions], index=region_ids, columns=[f"bit_{i+1}" for i in range(n_bits)]
-        )
-        codebook.index.name = "gene_name"
-
-        # Remove columns where all values are 0
-        codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
-
-        return codebook
-
     def _format_readout_probe_table(
-        self, readout_probe_database: OligoDatabase, channels_ids: list[str], n_bits: int
+        self, oligo_database: OligoDatabase, channels_ids: list[str], n_bits: int
     ) -> pd.DataFrame:
         """
         Format a filtered readout-probe database into a bit-indexed table mapping each bit to a
@@ -1754,10 +1754,9 @@ class ReadoutProbeDesigner:
         readout probe ID, and readout probe sequence. This table is used to assign readout probes
         to each bit position in the codebook for multiplexed imaging.
 
-        :param readout_probe_database: The `OligoDatabase` instance containing readout probe sequences
-            and their associated properties. This database should contain readout probes that have
-            been filtered and organized into sets.
-        :type readout_probe_database: OligoDatabase
+        :param oligo_database: Filtered ``OligoDatabase`` of readout probe sequences (returned by
+            :py:meth:`_create_oligo_sets`).
+        :type oligo_database: OligoDatabase
         :param channels_ids: List of fluorescence channel identifiers (e.g., ['Cy3', 'Cy5', 'Alexa488'])
             to which readout probes will be assigned. Readout probes are distributed across channels
             in a round-robin fashion.
@@ -1775,7 +1774,7 @@ class ReadoutProbeDesigner:
             than the number of required bits (`n_bits`). In this case, generate more readout probes
             or reduce the number of bits in the codebook.
         """
-        readout_probes = readout_probe_database.get_oligoid_sequence_mapping(
+        readout_probes = oligo_database.get_oligoid_sequence_mapping(
             sequence_type="oligo", sequence_to_upper=False
         )
         assert (
@@ -2490,26 +2489,29 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         readout_probe_parameters=config_dict["readout_probes"],
     )
 
+    ##### assemble hybridization probes #####
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
-        target_probe_database=target_probe_database,
+        oligo_database=target_probe_database,
         codebook=codebook,
         readout_probe_table=readout_probe_table,
     )
 
     ##### design primers (load / generate forward + reverse primer sequences) #####
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
-        hybridization_probe_database=hybridization_probe_database,
+        oligo_database=hybridization_probe_database,
         primer_parameters=config_dict["primers"],
     )
 
-    probe_database = pipeline.assemble_dna_template_probes(
-        hybridization_probe_database=hybridization_probe_database,
+    ##### assemble DNA template probes #####
+    dna_template_probe_database = pipeline.assemble_dna_template_probes(
+        oligo_database=hybridization_probe_database,
         reverse_primer_sequence=reverse_primer_sequence,
         forward_primer_sequence=forward_primer_sequence,
     )
 
+    ##### write outputs #####
     pipeline.generate_output(
-        probe_database=probe_database,
+        oligo_database=dna_template_probe_database,
         codebook=codebook,
         readout_probe_table=readout_probe_table,
     )
