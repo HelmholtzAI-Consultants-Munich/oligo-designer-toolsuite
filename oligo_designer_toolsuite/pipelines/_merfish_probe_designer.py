@@ -14,7 +14,10 @@ import yaml
 from Bio.SeqUtils import Seq
 from scipy.spatial.distance import hamming
 
-from oligo_designer_toolsuite._exceptions import ConfigurationError
+from oligo_designer_toolsuite._exceptions import (
+    ConfigurationError,
+    FileFormatError,
+)
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     IsoformConsensusScorer,
@@ -65,6 +68,8 @@ from oligo_designer_toolsuite.pipelines._utils import (
     format_sequence,
     pipeline_step_basic,
     preprocess_tm_parameters,
+    validate_bit_mapping_table,
+    validate_codebook,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences, configure_root_logger, logger
@@ -294,227 +299,87 @@ class MerfishProbeDesigner:
 
     def design_readout_probes(
         self,
-        # Step 1: Create Database Parameters
         region_ids: list[str],
-        readout_probe_length: int,
-        readout_probe_base_probabilities: dict[str, float],
-        readout_probe_initial_num_sequences: int,
-        # Step 2: Property Filter Parameters
-        readout_probe_GC_content_min: float,
-        readout_probe_GC_content_max: float,
-        readout_probe_homopolymeric_base_n: dict[str, int],
-        # Step 3: Specificity Filter Parameters
-        files_fasta_reference_database_readout_probe: list[str],
-        readout_probe_specificity_blastn_search_parameters: dict,
-        readout_probe_specificity_blastn_hit_parameters: dict,
-        readout_probe_cross_hybridization_blastn_search_parameters: dict,
-        readout_probe_cross_hybridization_blastn_hit_parameters: dict,
-        # Step 4: Set Selection Parameters
-        readout_probe_set_size: int,
-        readout_probe_n_combinations: int,
-        readout_probe_Tm_parameters: dict,
-        readout_probe_Tm_chem_correction_parameters: dict | None,
-        readout_probe_Tm_salt_correction_parameters: dict | None,
-        readout_probe_homogeneous_properties_weights: dict[str, float],
-        # Step 5 & 6: Codebook and Readout Probe Table Parameters
-        n_bits: int,
-        min_hamming_dist: int,
-        hamming_weight: int,
-        channels_ids: list[str],
+        readout_probe_parameters: dict,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Design readout probes and generate a codebook for MERFISH experiments through a multi-step pipeline.
 
-        This method performs the complete readout probe design process, which includes:
-        1. Creating an initial oligo database by generating random sequences with specified nucleotide
-           probabilities and length
-        2. Filtering probes based on sequence properties (GC content, homopolymeric runs)
-        3. Filtering probes based on specificity to remove off-target binding and cross-hybridization
-           using BLASTN searches
-        4. Selecting sets of probes with homogeneous properties (GC content and melting temperature)
-           to ensure consistent performance across all readout probes
-        5. Generating a binary codebook with specified Hamming distance constraints to enable error
-           correction during imaging
-        6. Creating a readout probe table that maps codebook bits to channels and readout probe sequences
+        Each artefact (codebook, readout probe table) is loaded from file when
+        ``...source == "load"`` or generated programmatically when ``...source == "generate"``.
+        Once both are obtained, the readout probe table is trimmed to only the bits referenced by
+        the codebook, and the pair is validated via
+        :py:meth:`ReadoutProbeDesigner.validate`.
 
-        The codebook assigns each region a unique binary barcode with a fixed Hamming weight (number of
-        active bits). The readout probe table assigns readout probes to each bit position and distributes
-        them across fluorescence channels for multiplexed detection.
-
-        **Step 1: Create Database Parameters**
+        The codebook assigns each region a unique binary barcode with a fixed Hamming weight
+        (``hamming_weight``) and a minimum Hamming distance (``min_hamming_dist``) that enables
+        single-bit error detection/correction. The readout probe table assigns readout probes to
+        each bit position and distributes them across fluorescence channels for multiplexed
+        detection.
 
         :param region_ids: List of region identifiers (e.g., gene IDs) for which readout probes and
             codebook entries are to be generated. The number of regions determines the minimum number
             of barcodes required in the codebook.
         :type region_ids: list[str]
-        :param readout_probe_length: Length (in nucleotides) of each readout probe sequence.
-        :type readout_probe_length: int
-        :param readout_probe_base_probabilities: Dictionary specifying the probability of each nucleotide
-            base in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should
-            sum to 1.0 (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
-        :type readout_probe_base_probabilities: dict[str, float]
-        :param readout_probe_initial_num_sequences: Number of random sequences to generate initially
-            before filtering. Higher values provide more candidates but increase computation time.
-        :type readout_probe_initial_num_sequences: int
-
-        **Step 2: Property Filter Parameters**
-
-        :param readout_probe_GC_content_min: Minimum acceptable GC content for readout probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type readout_probe_GC_content_min: float
-        :param readout_probe_GC_content_max: Maximum acceptable GC content for readout probes, expressed
-            as a fraction between 0.0 and 1.0.
-        :type readout_probe_GC_content_max: float
-        :param readout_probe_homopolymeric_base_n: Dictionary specifying the maximum allowed length of
-            homopolymeric runs for each nucleotide base (keys: 'A', 'T', 'G', 'C').
-        :type readout_probe_homopolymeric_base_n: dict[str, int]
-
-        **Step 3: Specificity Filter Parameters**
-
-        :param files_fasta_reference_database_readout_probe: List of paths to FASTA files containing
-            reference sequences used for specificity filtering. These files are used to identify
-            off-target binding sites and potential cross-hybridization events.
-        :type files_fasta_reference_database_readout_probe: list[str]
-        :param readout_probe_specificity_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in specificity filtering.
-        :type readout_probe_specificity_blastn_search_parameters: dict
-        :param readout_probe_specificity_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in specificity searches.
-        :type readout_probe_specificity_blastn_hit_parameters: dict
-        :param readout_probe_cross_hybridization_blastn_search_parameters: Dictionary of parameters for
-            BLASTN searches used in cross-hybridization filtering.
-        :type readout_probe_cross_hybridization_blastn_search_parameters: dict
-        :param readout_probe_cross_hybridization_blastn_hit_parameters: Dictionary of parameters for
-            filtering BLASTN hits in cross-hybridization searches.
-        :type readout_probe_cross_hybridization_blastn_hit_parameters: dict
-
-        **Step 4: Set Selection Parameters**
-
-        :param readout_probe_set_size: Number of readout probes to include in each set. Sets are selected
-            to have homogeneous properties (GC content and melting temperature).
-        :type readout_probe_set_size: int
-        :param readout_probe_n_combinations: Number of combinations to evaluate during set creation.
-            Higher values may find better sets but increase computation time.
-        :type readout_probe_n_combinations: int
-        :param readout_probe_Tm_parameters: Dictionary of parameters for calculating melting temperature (Tm) of readout
-            probes using the nearest-neighbor method. For using Bio.SeqUtils.MeltingTemp default parameters, set to ``{}``.
-            Common parameters include: 'nn_table', 'tmm_table', 'imm_table', 'de_table', 'dnac1', 'dnac2', 'Na', 'K',
-            'Tris', 'Mg', 'dNTPs', 'saltcorr', etc. For more information on parameters, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-        :type readout_probe_Tm_parameters: dict
-        :param readout_probe_Tm_chem_correction_parameters: Dictionary of chemical correction parameters for Tm calculation.
-            These parameters account for the effects of chemical additives (e.g., DMSO, formamide) on melting temperature.
-            Set to ``None`` to disable chemical correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters.
-            For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.chem_correction
-        :type readout_probe_Tm_chem_correction_parameters: dict | None
-        :param readout_probe_Tm_salt_correction_parameters: Dictionary of salt correction parameters for Tm calculation.
-            These parameters account for the effects of salt concentration on melting temperature. Set to ``None`` to disable
-            salt correction, or set to ``{}`` to use Bio.SeqUtils.MeltingTemp default parameters. For more information, see:
-            https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.salt_correction
-        :type readout_probe_Tm_salt_correction_parameters: dict | None
-        :param readout_probe_homogeneous_properties_weights: Dictionary specifying weights for property
-            homogeneity in set selection. Keys should be property names (e.g., 'GC_content', 'TmNN')
-            and values are weights.
-        :type readout_probe_homogeneous_properties_weights: dict[str, float]
-
-        **Step 5 & 6: Codebook and Readout Probe Table Parameters**
-
-        :param n_bits: Number of bits in each barcode in the codebook. This determines the maximum
-            number of unique barcodes that can be generated.
-        :type n_bits: int
-        :param min_hamming_dist: Minimum Hamming distance required between any two barcodes in the
-            codebook. Higher values provide better error correction but reduce the number of available
-            barcodes.
-        :type min_hamming_dist: int
-        :param hamming_weight: Fixed Hamming weight (number of active bits, value 1) for each barcode.
-            All barcodes will have exactly this many bits set to 1.
-        :type hamming_weight: int
-        :param channels_ids: List of fluorescence channel identifiers (e.g., ['Cy3', 'Cy5', 'Alexa488'])
-            to which readout probes will be assigned. Readout probes are distributed across channels
-            in a round-robin fashion.
-        :type channels_ids: list[str]
+        :param readout_probe_parameters: ``readout_probes`` block. Must contain ``codebook`` (with
+            ``source``, optional ``file``, ``n_bits``, ``min_hamming_dist``, ``hamming_weight``)
+            and ``readout_probe_table`` (with ``source``, optional ``file``, ``channels_ids``, and
+            the multi-step generation parameters — ``oligo_generation``, ``property_filters``,
+            ``specificity_filters``, ``probe_set_selection``, ``global_parameters`` — when
+            ``source == "generate"``).
+        :type readout_probe_parameters: dict
         :return: A tuple containing:
-            - **codebook** (pd.DataFrame): Binary barcode matrix with region IDs as index and bit columns
-              (bit_1, bit_2, etc.) as data. Each row represents a region's barcode, with exactly
-              `hamming_weight` bits set to 1.
-            - **readout_probe_table** (pd.DataFrame): Table mapping each bit to a readout probe sequence,
-              channel assignment, and probe ID. Indexed by bit labels (bit_1, bit_2, etc.).
+            - **codebook** (pd.DataFrame): Binary barcode matrix with ``gene_name`` as index and bit
+              columns (bit_1, bit_2, etc.) as data. Each row represents a region's barcode, with
+              exactly ``hamming_weight`` bits set to 1.
+            - **readout_probe_table** (pd.DataFrame): Table mapping each bit referenced by the
+              codebook to a readout probe sequence, channel assignment, and probe ID. Indexed by
+              bit labels (bit_1, bit_2, etc.).
         :rtype: tuple[pd.DataFrame, pd.DataFrame]
-        :raises ConfigurationError: If the number of valid barcodes (meeting Hamming distance constraints)
-            is insufficient for the number of regions.
         """
         readout_probe_designer = ReadoutProbeDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
         )
-        oligo_database: OligoDatabase = readout_probe_designer.create_oligo_database(
-            oligo_length=readout_probe_length,
-            oligo_base_probabilities=readout_probe_base_probabilities,
-            initial_num_sequences=readout_probe_initial_num_sequences,
-        )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
-            logger.info(
-                f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}"
+        ##### codebook: load or generate #####
+        if readout_probe_parameters["codebook"]["source"] == "load":
+            codebook = readout_probe_designer.load_codebook(
+                file_codebook=readout_probe_parameters["codebook"]["file"]
             )
-
-        oligo_database = readout_probe_designer.filter_by_property(
-            oligo_database=oligo_database,
-            GC_content_min=readout_probe_GC_content_min,
-            GC_content_max=readout_probe_GC_content_max,
-            homopolymeric_base_n=readout_probe_homopolymeric_base_n,
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="2_db_readout_probes_property_filter")
-            logger.info(
-                f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}"
+            codebook_source = readout_probe_parameters["codebook"]["file"]
+        else:
+            codebook = readout_probe_designer.generate_codebook(
+                region_ids=region_ids,
+                codebook_parameters=readout_probe_parameters["codebook"],
             )
+            codebook_source = readout_probe_parameters["codebook"]["source"]
 
-        oligo_database = readout_probe_designer.filter_by_specificity(
-            oligo_database=oligo_database,
-            files_fasta_reference_database=files_fasta_reference_database_readout_probe,
-            specificity_blastn_search_parameters=readout_probe_specificity_blastn_search_parameters,
-            specificity_blastn_hit_parameters=readout_probe_specificity_blastn_hit_parameters,
-            cross_hybridization_blastn_search_parameters=readout_probe_cross_hybridization_blastn_search_parameters,
-            cross_hybridization_blastn_hit_parameters=readout_probe_cross_hybridization_blastn_hit_parameters,
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="3_db_readout_probes_specificty_filter")
-            logger.info(
-                f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
+        ##### readout probe table: load or generate via the multi-step pipeline #####
+        if readout_probe_parameters["readout_probe_table"]["source"] == "load":
+            readout_probe_table = readout_probe_designer.load_readout_probe_table(
+                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"]
             )
-
-        oligo_database = readout_probe_designer.create_oligo_sets(
-            oligo_database=oligo_database,
-            set_size=readout_probe_set_size,
-            homogeneous_properties_weights=readout_probe_homogeneous_properties_weights,
-            n_combinations=readout_probe_n_combinations,
-            Tm_parameters=readout_probe_Tm_parameters,
-            Tm_chem_correction_parameters=readout_probe_Tm_chem_correction_parameters,
-            Tm_salt_correction_parameters=readout_probe_Tm_salt_correction_parameters,
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="4_db_readout_probes_set_selection")
-            logger.info(
-                f"Saved readout probe database for step 4 (Set Selection) in directory {dir_database}"
+            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
+        else:
+            readout_probe_table = readout_probe_designer.generate_readout_probe_table(
+                readout_probe_parameters=readout_probe_parameters["readout_probe_table"],
+                codebook_parameters=readout_probe_parameters["codebook"],
+                write_intermediate_steps=self.write_intermediate_steps,
             )
+            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
 
-        codebook = readout_probe_designer.generate_codebook(
+        ##### trim readout probe table to bits referenced by the codebook #####
+        referenced_bits = set(codebook.columns)
+        readout_probe_table = readout_probe_table[readout_probe_table.index.isin(referenced_bits)]
+
+        readout_probe_designer.validate(
+            codebook=codebook,
+            readout_probe_table=readout_probe_table,
             region_ids=region_ids,
-            n_bits=n_bits,
-            min_hamming_dist=min_hamming_dist,
-            hamming_weight=hamming_weight,
-        )
-
-        readout_probe_table = readout_probe_designer.create_readout_probe_table(
-            readout_probe_database=oligo_database,
-            channels_ids=channels_ids,
-            n_bits=n_bits,
+            codebook_source=codebook_source,
+            readout_probe_table_source=readout_probe_table_source,
+            hamming_weight=readout_probe_parameters["codebook"]["hamming_weight"],
         )
 
         return codebook, readout_probe_table
@@ -985,7 +850,7 @@ class MerfishProbeDesigner:
                 "isoform_consensus",
             ]
 
-        codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="region_id")
+        codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="gene_name")
         readout_probe_table.to_csv(os.path.join(self.dir_output, "readout_probes.tsv"), sep="\t")
 
         probe_database.write_oligosets_to_yaml(
@@ -1505,8 +1370,153 @@ class ReadoutProbeDesigner:
 
         self.n_jobs = n_jobs
 
+    def load_codebook(self, file_codebook: str) -> pd.DataFrame:
+        """Load a MERFISH codebook from a TSV/CSV file (index column: ``gene_name``)."""
+        return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
+
+    def load_readout_probe_table(self, file_readout_probe_table: str) -> pd.DataFrame:
+        """Load a MERFISH readout probe table from a TSV/CSV file. The ``bit`` column must be present."""
+        readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
+        if "bit" not in readout_probe_table.columns:
+            raise FileFormatError(
+                f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column."
+            )
+        return readout_probe_table.set_index("bit")
+
+    def generate_readout_probe_table(
+        self,
+        readout_probe_parameters: dict,
+        codebook_parameters: dict,
+        write_intermediate_steps: bool = False,
+    ) -> pd.DataFrame:
+        """
+        Generate a MERFISH readout probe table by running the full multi-step readout probe
+        design pipeline and assigning the surviving sequences to bit / channel slots.
+
+        Internally orchestrates the existing decorated steps:
+        :py:meth:`_create_oligo_database` → :py:meth:`_filter_by_property` →
+        :py:meth:`_filter_by_specificity` → :py:meth:`_create_oligo_sets`, then formats the
+        selected set into a bit-indexed table via :py:meth:`_format_readout_probe_table`. Each
+        decorated step keeps its own ``@pipeline_step_basic`` logging.
+
+        :param readout_probe_parameters: ``readout_probes.readout_probe_table`` block. Must contain
+            ``oligo_generation``, ``property_filters``, ``specificity_filters``,
+            ``probe_set_selection``, ``global_parameters`` and ``channels_ids``.
+        :type readout_probe_parameters: dict
+        :param codebook_parameters: ``readout_probes.codebook`` block; ``n_bits`` is used to size
+            the returned table.
+        :type codebook_parameters: dict
+        :param write_intermediate_steps: If True, save the per-step readout-probe databases for
+            debugging.
+        :type write_intermediate_steps: bool
+        :return: Bit-indexed readout probe table with ``channel``, ``readout_probe_id``,
+            ``readout_probe_sequence`` columns.
+        :rtype: pd.DataFrame
+        """
+        oligo_database: OligoDatabase = self._create_oligo_database(
+            oligo_length=readout_probe_parameters["oligo_generation"]["probe_length"],
+            oligo_base_probabilities=readout_probe_parameters["oligo_generation"]["base_probabilities"],
+            initial_num_sequences=readout_probe_parameters["oligo_generation"]["initial_num_sequences"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_readout_probes_initial")
+            logger.info(
+                f"Saved readout probe database for step 1 (Create Database) in directory {dir_database}"
+            )
+
+        oligo_database = self._filter_by_property(
+            oligo_database=oligo_database,
+            GC_content_filter=readout_probe_parameters["property_filters"]["GC_content_filter"],
+            homopolymeric_runs_filter=readout_probe_parameters["property_filters"][
+                "homopolymeric_runs_filter"
+            ],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_readout_probes_property_filter")
+            logger.info(
+                f"Saved readout probe database for step 2 (Property Filters) in directory {dir_database}"
+            )
+
+        oligo_database = self._filter_by_specificity(
+            oligo_database=oligo_database,
+            specificity_blastn_filter=readout_probe_parameters["specificity_filters"][
+                "specificity_blastn_filter"
+            ],
+            cross_hybridization_blastn_filter=readout_probe_parameters["specificity_filters"][
+                "cross_hybridization_blastn_filter"
+            ],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_readout_probes_specificty_filter")
+            logger.info(
+                f"Saved readout probe database for step 3 (Specificity Filters) in directory {dir_database}"
+            )
+
+        probe_set_selection = readout_probe_parameters["probe_set_selection"]
+        oligo_database = self._create_oligo_sets(
+            oligo_database=oligo_database,
+            set_size=probe_set_selection["set_size"],
+            homogeneous_properties_weights=probe_set_selection["homogeneous_properties_weights"],
+            n_combinations=probe_set_selection["n_combinations"],
+            Tm_parameters=readout_probe_parameters["global_parameters"]["Tm_parameters"],
+            Tm_chem_correction_parameters=readout_probe_parameters["global_parameters"][
+                "Tm_chem_correction_parameters"
+            ]["parameters"],
+            Tm_salt_correction_parameters=readout_probe_parameters["global_parameters"][
+                "Tm_salt_correction_parameters"
+            ]["parameters"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="4_db_readout_probes_set_selection")
+            logger.info(
+                f"Saved readout probe database for step 4 (Set Selection) in directory {dir_database}"
+            )
+
+        return self._format_readout_probe_table(
+            readout_probe_database=oligo_database,
+            channels_ids=readout_probe_parameters["channels_ids"],
+            n_bits=codebook_parameters["n_bits"],
+        )
+
+    def validate(
+        self,
+        codebook: pd.DataFrame,
+        readout_probe_table: pd.DataFrame,
+        region_ids: list[str],
+        *,
+        codebook_source: str,
+        readout_probe_table_source: str,
+        hamming_weight: int,
+    ) -> None:
+        """
+        Validate that a (codebook, readout_probe_table) pair forms a valid MERFISH readout setup.
+
+        Delegates to the shared :func:`validate_codebook` and :func:`validate_bit_mapping_table`
+        helpers with MERFISH-specific knobs (codebook indexed by ``gene_name``; readout probe
+        table with the MERFISH three-column layout; every codeword has exactly ``hamming_weight``
+        active bits).
+        """
+        validate_codebook(
+            codebook=codebook,
+            region_ids=region_ids,
+            source=codebook_source,
+            expected_hamming_weight=hamming_weight,
+            index_name="gene_name",
+        )
+        validate_bit_mapping_table(
+            table=readout_probe_table,
+            codebook=codebook,
+            source=readout_probe_table_source,
+            required_columns=["channel", "readout_probe_id", "readout_probe_sequence"],
+            sequence_columns=["readout_probe_sequence"],
+        )
+
     @pipeline_step_basic(step_name="Readout Probe Generation - Create Oligo Database")
-    def create_oligo_database(
+    def _create_oligo_database(
         self,
         oligo_length: int,
         oligo_base_probabilities: dict[str, float],
@@ -1515,9 +1525,9 @@ class ReadoutProbeDesigner:
         """
         Create an initial oligo database by generating random sequences with specified nucleotide probabilities.
 
-        This is the first step of readout probe design. The method generates random DNA sequences
+        Private helper of :py:meth:`generate_readout_probe_table`. Generates random DNA sequences
         with user-defined nucleotide probabilities and creates an `OligoDatabase` to store them.
-        These sequences will be filtered and organized into sets in subsequent steps.
+        These sequences are then filtered and organized into sets by downstream steps.
 
         :param oligo_length: Length (in nucleotides) of each readout probe sequence to generate.
         :type oligo_length: int
@@ -1565,55 +1575,48 @@ class ReadoutProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Property Filters")
-    def filter_by_property(
+    def _filter_by_property(
         self,
         oligo_database: OligoDatabase,
-        GC_content_min: float,
-        GC_content_max: float,
-        homopolymeric_base_n: dict[str, int],
+        GC_content_filter: dict,
+        homopolymeric_runs_filter: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence properties to remove probes with undesirable
-        characteristics.
+        Filter the oligo database based on sequence properties.
 
-        This method applies sequential filtering using property-based filters:
-        1. **GC content**: Removes probes with GC content outside the specified range
-        2. **Homopolymeric runs**: Removes probes with homopolymeric runs exceeding specified lengths
-
-        Probes that fail any filter are removed. Regions with insufficient oligos after filtering
-        are removed from the database.
+        Each filter is gated on its own ``enabled`` flag. Probes that fail any enabled filter are
+        removed from the database. Private helper of :py:meth:`generate_readout_probe_table`.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain readout probe sequences
             generated in the previous step.
         :type oligo_database: OligoDatabase
-        :param GC_content_min: Minimum acceptable GC content for readout probes, expressed as a fraction
-            between 0.0 and 1.0.
-        :type GC_content_min: float
-        :param GC_content_max: Maximum acceptable GC content for readout probes, expressed as a fraction
-            between 0.0 and 1.0.
-        :type GC_content_max: float
-        :param homopolymeric_base_n: Dictionary specifying the maximum allowed length of homopolymeric
-            runs for each nucleotide base. Keys should be 'A', 'T', 'G', 'C' and values are the maximum
-            run length. For example: {'A': 3, 'T': 3, 'G': 3, 'C': 3} allows up to 3 consecutive
-            identical bases.
-        :type homopolymeric_base_n: dict[str, int]
-        :return: A filtered `OligoDatabase` object containing only probes that pass all property filters.
-            Regions with insufficient oligos after filtering are removed.
+        :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
+        :type GC_content_filter: dict
+        :param homopolymeric_runs_filter: Dict with ``enabled``, ``homopolymeric_base_n`` (mapping
+            ``A``/``T``/``C``/``G`` to maximum allowed run lengths).
+        :type homopolymeric_runs_filter: dict
+        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
+            property filters. Regions with insufficient oligos after filtering are removed.
         :rtype: OligoDatabase
         """
-        # define the filters
-        gc_content = GCContentFilter(GC_content_min=GC_content_min, GC_content_max=GC_content_max)
-        homopolymeric_runs = HomopolymericRunsFilter(
-            base_n=homopolymeric_base_n,
-        )
+        # Build property-filter list, gating each filter on its own ``enabled`` flag.
+        filters: list[BasePropertyFilter] = []
 
-        filters = [
-            gc_content,
-            homopolymeric_runs,
-        ]
+        if GC_content_filter["enabled"]:
+            gc_content = GCContentFilter(
+                GC_content_min=GC_content_filter["GC_content_min"],
+                GC_content_max=GC_content_filter["GC_content_max"],
+            )
+            filters.append(gc_content)
 
-        # initialize the preoperty filter class
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
+        # initialize the property filter class
         property_filter = PropertyFilter(filters=filters)
 
         # filter the database
@@ -1622,109 +1625,85 @@ class ReadoutProbeDesigner:
             sequence_type="oligo",
             n_jobs=self.n_jobs,
         )
-
         check_content_oligo_database(oligo_database)
 
         return oligo_database
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Specificity Filters")
-    def filter_by_specificity(
+    def _filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
-        files_fasta_reference_database: list[str],
-        specificity_blastn_search_parameters: dict,
-        specificity_blastn_hit_parameters: dict,
-        cross_hybridization_blastn_search_parameters: dict,
-        cross_hybridization_blastn_hit_parameters: dict,
+        specificity_blastn_filter: dict,
+        cross_hybridization_blastn_filter: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence specificity to remove probes that bind
-        non-specifically or cross-hybridize.
+        Filter the oligo database based on sequence specificity.
 
-        This method applies two types of specificity filters:
-
-        1. **Specificity filtering**: Removes probes that bind to unintended genomic regions
-           - **Exact matches**: Removes all probes with exact sequence matches to other probes
-           - **BLASTN specificity**: Uses BLASTN to search for similar sequences in the reference database.
-             Probes with hits meeting the specified criteria are removed
-
-        2. **Cross-hybridization filtering**: Removes probes that cross-hybridize with each other.
-           This is critical because if probes can bind to each other, they may form dimers instead
-           of binding to their intended targets. Probes are removed based on their degree of
-           cross-hybridization (using `RemoveByDegreeFilterPolicy`).
-
-        The reference database is loaded from the provided FASTA files and used for all BLASTN searches.
-        Regions that do not meet the minimum oligo requirement after filtering are removed from
-        the database.
+        The filter list is seeded with an :class:`ExactMatchFilter` (always on) and then conditionally
+        extended with BLASTN-specificity and cross-hybridization filters depending on their
+        ``enabled`` flags. The reference database is loaded from the FASTA file(s) inside
+        ``specificity_blastn_filter`` and is shared by both BLASTN-based filters. Private helper
+        of :py:meth:`generate_readout_probe_table`.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain readout probe sequences
             that have passed property filtering.
         :type oligo_database: OligoDatabase
-        :param files_fasta_reference_database: List of paths to FASTA files containing reference
-            sequences against which specificity will be evaluated. These typically include the
-            entire genome or transcriptome to identify off-target binding sites.
-        :type files_fasta_reference_database: list[str]
-        :param specificity_blastn_search_parameters: Dictionary of parameters for BLASTN searches
-            used in specificity filtering. Common parameters include: 'task', 'word_size', 'evalue',
-            'max_target_seqs', 'num_threads', etc.
-        :type specificity_blastn_search_parameters: dict
-        :param specificity_blastn_hit_parameters: Dictionary of parameters for filtering BLASTN hits
-            in specificity searches. Common parameters include: 'identity_min', 'alignment_length_min',
-            'mismatches_max', 'gaps_max', etc. Probes with hits meeting these criteria are removed.
-        :type specificity_blastn_hit_parameters: dict
-        :param cross_hybridization_blastn_search_parameters: Dictionary of parameters for BLASTN
-            searches used in cross-hybridization filtering. These searches check if probes align to
-            each other. Common parameters are similar to `specificity_blastn_search_parameters`.
-        :type cross_hybridization_blastn_search_parameters: dict
-        :param cross_hybridization_blastn_hit_parameters: Dictionary of parameters for filtering
-            BLASTN hits in cross-hybridization searches. Common parameters are similar to
-            `specificity_blastn_hit_parameters`. Probes with cross-hybridization hits meeting these
-            criteria are removed based on their degree of cross-hybridization.
-        :type cross_hybridization_blastn_hit_parameters: dict
-        :return: A filtered `OligoDatabase` object containing only probes that pass all specificity
-            and cross-hybridization filters. Regions with insufficient oligos after filtering are removed.
+        :param specificity_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``, ``files_fasta_reference_database``.
+        :type specificity_blastn_filter: dict
+        :param cross_hybridization_blastn_filter: Dict with ``enabled``, ``search_parameters``,
+            ``hit_parameters``.
+        :type cross_hybridization_blastn_filter: dict
+        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
+            specificity and cross-hybridization filters. Regions with insufficient oligos after
+            filtering are removed.
         :rtype: OligoDatabase
         """
-        reference_database = ReferenceDatabase(
-            database_name=self.subdir_db_reference, dir_output=self.dir_output
-        )
-        reference_database.load_database_from_file(
-            files=files_fasta_reference_database, file_type="fasta", database_overwrite=False
-        )
-
-        ##### specificity filters #####
-        # removing duplicated oligos
+        ##### exact match filter (always on); BLASTN filters gated on ``enabled`` #####
         exact_matches = ExactMatchFilter(
             policy=RemoveAllFilterPolicy(), filter_name="readout_probes_exact_match"
         )
+        filters: list[BaseSpecificityFilter] = [exact_matches]
+        directories: list[str] = []
 
-        # BlastN Filter
-        specificity = BlastNFilter(
-            search_parameters=specificity_blastn_search_parameters,
-            hit_parameters=specificity_blastn_hit_parameters,
-            filter_name="readout_probes_blastn_specificity",
-            dir_output=self.dir_output,
-        )
-        specificity.set_reference_database(reference_database=reference_database)
+        if specificity_blastn_filter["enabled"]:
+            reference_database = ReferenceDatabase(
+                database_name=self.subdir_db_reference, dir_output=self.dir_output
+            )
+            reference_database.load_database_from_file(
+                files=specificity_blastn_filter["files_fasta_reference_database"],
+                file_type="fasta",
+                database_overwrite=False,
+            )
+            specificity = BlastNFilter(
+                search_parameters=specificity_blastn_filter["search_parameters"],
+                hit_parameters=specificity_blastn_filter["hit_parameters"],
+                filter_name="readout_probes_blastn_specificity",
+                dir_output=self.dir_output,
+            )
+            specificity.set_reference_database(reference_database=reference_database)
+            filters.append(specificity)
+            directories.append(specificity.dir_output)
 
-        # Cross-Hybridization Filter
-        cross_hybridization_aligner = BlastNFilter(
-            search_parameters=cross_hybridization_blastn_search_parameters,
-            hit_parameters=cross_hybridization_blastn_hit_parameters,
-            filter_name="readout_probes_blastn_crosshybridization",
-            dir_output=self.dir_output,
-        )
-        cross_hybridization_aligner.set_reference_database(reference_database=reference_database)
+        if cross_hybridization_blastn_filter["enabled"]:
+            cross_hybridization_aligner = BlastNFilter(
+                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
+                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
+                filter_name="readout_probes_blastn_crosshybridization",
+                dir_output=self.dir_output,
+            )
+            cross_hybridization = CrossHybridizationFilter(
+                policy=RemoveByDegreeFilterPolicy(),
+                alignment_method=cross_hybridization_aligner,
+                filter_name="readout_probes_blastn_crosshybridization",
+                dir_output=self.dir_output,
+            )
+            filters.append(cross_hybridization)
+            directories.append(cross_hybridization_aligner.dir_output)
+            directories.append(cross_hybridization.dir_output)
 
-        cross_hybridization = CrossHybridizationFilter(
-            policy=RemoveByDegreeFilterPolicy(),
-            alignment_method=cross_hybridization_aligner,
-            filter_name="readout_probes_blastn_crosshybridization",
-            dir_output=self.dir_output,
-        )
-
-        specificity_filter = SpecificityFilter(filters=[exact_matches, specificity, cross_hybridization])
+        specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -1732,20 +1711,15 @@ class ReadoutProbeDesigner:
         )
 
         # remove all directories of intermediate steps
-        for directory in [
-            specificity.dir_output,
-            cross_hybridization_aligner.dir_output,
-            cross_hybridization.dir_output,
-        ]:
+        for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
 
         check_content_oligo_database(oligo_database)
-
         return oligo_database
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Set Selection")
-    def create_oligo_sets(
+    def _create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
         set_size: int,
@@ -1758,7 +1732,7 @@ class ReadoutProbeDesigner:
         """
         Create optimal oligo sets with homogeneous properties (GC content and melting temperature).
 
-        This method performs the following steps:
+        Private helper of :py:meth:`generate_readout_probe_table`. Steps:
         1. **Property calculation**: Calculates GC content and melting temperature (Tm) for each oligo
            using the specified Tm parameters and corrections
         2. **Set generation**: Organizes oligos into sets that have homogeneous properties. The algorithm
@@ -1766,8 +1740,8 @@ class ReadoutProbeDesigner:
            consistent hybridization behavior across the readout probe set
         3. **Region filtering**: Removes regions that cannot generate sets meeting the size requirement
 
-        The method uses :class:`HomogeneousPropertyOligoSelection` to evaluate multiple combinations
-        and select the best set with the most uniform properties.
+        Uses :class:`HomogeneousPropertyOligoSelection` to evaluate multiple combinations and select
+        the best set with the most uniform properties.
 
         :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
             and their associated properties. This database should contain readout probe sequences
@@ -1838,21 +1812,18 @@ class ReadoutProbeDesigner:
     def generate_codebook(
         self,
         region_ids: list[str],
-        n_bits: int,
-        min_hamming_dist: int,
-        hamming_weight: int,
+        codebook_parameters: dict,
     ) -> pd.DataFrame:
         """
         Generate a binary barcode codebook with specified Hamming distance constraints and fixed Hamming weight.
 
-        This method generates a codebook that assigns each region a unique binary barcode. The codebook
-        ensures that:
-        - Each barcode has a fixed Hamming weight (number of active bits, value 1)
-        - The minimum Hamming distance between any two barcodes meets the specified threshold
-        - The number of valid barcodes is sufficient to encode all regions
+        The codebook assigns each region a unique binary barcode where:
+        - each barcode has a fixed Hamming weight (``hamming_weight`` active bits),
+        - the minimum Hamming distance between any two barcodes meets ``min_hamming_dist``,
+        - the number of valid barcodes is sufficient to encode all ``region_ids``.
 
         The Hamming distance constraint provides error correction capability: if a barcode is misread
-        during imaging, it can still be correctly identified as long as the number of bit errors is less
+        during imaging it can still be correctly identified as long as the number of bit errors is less
         than half the minimum Hamming distance.
 
         The algorithm generates all possible barcodes with the specified Hamming weight, then filters
@@ -1862,23 +1833,16 @@ class ReadoutProbeDesigner:
         :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
             Each region will be assigned a unique barcode.
         :type region_ids: list[str]
-        :param n_bits: Number of bits in each barcode in the codebook. This determines the maximum
-            number of unique barcodes that can be generated.
-        :type n_bits: int
-        :param min_hamming_dist: Minimum Hamming distance required between any two barcodes in the
-            codebook. Higher values provide better error correction but reduce the number of available
-            barcodes.
-        :type min_hamming_dist: int
-        :param hamming_weight: Fixed Hamming weight (number of active bits, value 1) for each barcode.
-            All barcodes will have exactly this many bits set to 1.
-        :type hamming_weight: int
-        :return: A DataFrame containing the codebook with binary encoded bits. Each row represents a
-            region's barcode, with columns named `bit_1`, `bit_2`, etc. Unused bit columns (all zeros)
-            are automatically removed.
+        :param codebook_parameters: ``readout_probes.codebook`` block. Must contain ``n_bits``,
+            ``min_hamming_dist``, ``hamming_weight``.
+        :type codebook_parameters: dict
+        :return: A DataFrame containing the codebook with binary encoded bits. Rows are indexed by
+            ``gene_name`` (from ``region_ids``); columns are named ``bit_1``, ``bit_2``, etc. Unused
+            bit columns (all zeros) are automatically removed.
         :rtype: pd.DataFrame
         :raises ConfigurationError: If the number of valid barcodes (meeting Hamming distance constraints)
-            is insufficient for the number of regions. In this case, consider increasing `n_bits` or
-            reducing `min_hamming_dist` or `n_regions`.
+            is insufficient for the number of regions. In this case, consider increasing ``n_bits``,
+            reducing ``min_hamming_dist``, or reducing the number of regions.
         """
 
         def _generate_barcode(raw_barcode: list, n_bits: int) -> np.ndarray:
@@ -1886,6 +1850,10 @@ class ReadoutProbeDesigner:
             for i in raw_barcode:
                 barcode[i] = 1
             return barcode
+
+        n_bits = codebook_parameters["n_bits"]
+        min_hamming_dist = codebook_parameters["min_hamming_dist"]
+        hamming_weight = codebook_parameters["hamming_weight"]
 
         n_regions = len(region_ids)
         codebook_list: list[np.ndarray] = []
@@ -1909,19 +1877,21 @@ class ReadoutProbeDesigner:
         codebook: pd.DataFrame = pd.DataFrame(
             codebook_list[0:n_regions], index=region_ids, columns=[f"bit_{i+1}" for i in range(n_bits)]
         )
+        codebook.index.name = "gene_name"
 
         # Remove columns where all values are 0
         codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
 
         return codebook
 
-    def create_readout_probe_table(
+    def _format_readout_probe_table(
         self, readout_probe_database: OligoDatabase, channels_ids: list[str], n_bits: int
     ) -> pd.DataFrame:
         """
-        Create a readout probe table that maps codebook bits to channels and readout probe sequences.
+        Format a filtered readout-probe database into a bit-indexed table mapping each bit to a
+        channel and readout probe sequence.
 
-        This method generates a table where each bit position in the codebook is assigned:
+        Private helper of :py:meth:`generate_readout_probe_table`. Steps:
         1. A readout probe sequence from the database
         2. A fluorescence channel identifier
 
@@ -2526,57 +2496,10 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
     )
 
-    ##### design readout probes (bridged: legacy flat-kwargs interface — refactored in stage 3) #####
-    readout_probes_cfg = config_dict["readout_probes"]
-    codebook_cfg = readout_probes_cfg["codebook"]
-    readout_probe_table_cfg = readout_probes_cfg["readout_probe_table"]
-    readout_probe_global = readout_probe_table_cfg["global_parameters"]
-    readout_probe_property_filters = readout_probe_table_cfg["property_filters"]
-    readout_probe_specificity_filters = readout_probe_table_cfg["specificity_filters"]
-    readout_probe_probe_set_selection = readout_probe_table_cfg["probe_set_selection"]
+    ##### design readout probes (codebook + readout probe table) #####
     codebook, readout_probe_table = pipeline.design_readout_probes(
         region_ids=list(target_probe_database.database.keys()),
-        readout_probe_length=readout_probe_table_cfg["oligo_generation"]["probe_length"],
-        readout_probe_base_probabilities=readout_probe_table_cfg["oligo_generation"]["base_probabilities"],
-        readout_probe_initial_num_sequences=readout_probe_table_cfg["oligo_generation"][
-            "initial_num_sequences"
-        ],
-        readout_probe_GC_content_min=readout_probe_property_filters["GC_content_filter"]["GC_content_min"],
-        readout_probe_GC_content_max=readout_probe_property_filters["GC_content_filter"]["GC_content_max"],
-        readout_probe_homopolymeric_base_n=readout_probe_property_filters["homopolymeric_runs_filter"][
-            "homopolymeric_base_n"
-        ],
-        files_fasta_reference_database_readout_probe=readout_probe_specificity_filters[
-            "specificity_blastn_filter"
-        ]["files_fasta_reference_database"],
-        readout_probe_specificity_blastn_search_parameters=readout_probe_specificity_filters[
-            "specificity_blastn_filter"
-        ]["search_parameters"],
-        readout_probe_specificity_blastn_hit_parameters=readout_probe_specificity_filters[
-            "specificity_blastn_filter"
-        ]["hit_parameters"],
-        readout_probe_cross_hybridization_blastn_search_parameters=readout_probe_specificity_filters[
-            "cross_hybridization_blastn_filter"
-        ]["search_parameters"],
-        readout_probe_cross_hybridization_blastn_hit_parameters=readout_probe_specificity_filters[
-            "cross_hybridization_blastn_filter"
-        ]["hit_parameters"],
-        readout_probe_set_size=readout_probe_probe_set_selection["set_size"],
-        readout_probe_n_combinations=readout_probe_probe_set_selection["n_combinations"],
-        readout_probe_Tm_parameters=readout_probe_global["Tm_parameters"],
-        readout_probe_Tm_chem_correction_parameters=readout_probe_global["Tm_chem_correction_parameters"][
-            "parameters"
-        ],
-        readout_probe_Tm_salt_correction_parameters=readout_probe_global["Tm_salt_correction_parameters"][
-            "parameters"
-        ],
-        readout_probe_homogeneous_properties_weights=readout_probe_probe_set_selection[
-            "homogeneous_properties_weights"
-        ],
-        n_bits=codebook_cfg["n_bits"],
-        min_hamming_dist=codebook_cfg["min_hamming_dist"],
-        hamming_weight=codebook_cfg["hamming_weight"],
-        channels_ids=readout_probe_table_cfg["channels_ids"],
+        readout_probe_parameters=config_dict["readout_probes"],
     )
 
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
