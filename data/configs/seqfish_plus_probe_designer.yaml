@@ -84,8 +84,8 @@ readout_probes:
     source: generate # "generate" (default) | "load"
     file: null # data/functional_oligos/seqfish_plus_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
 
-    n_barcode_rounds: 4 # Number of barcode rounds for hybridization.
-    n_pseudocolors: 20 # Number of pseudocolors per round.
+    n_barcode_rounds: 4 # Number of barcode rounds for hybridization. Must match the number of readout probes per gene assembled downstream (currently 4).
+    n_pseudocolors: 4 # Number of pseudocolors per round.
     channels_ids: ["Alexa488", "Cy3b", "Alexa647"] # Fluorescence channels used in the experiment.
 
   readout_probe_table:

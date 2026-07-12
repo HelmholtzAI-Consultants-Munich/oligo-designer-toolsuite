@@ -311,8 +311,10 @@ class SeqFishPlusProbeDesigner:
 
         Each artefact (codebook, readout probe table) is loaded from file when
         ``...source == "load"`` or generated programmatically when ``...source == "generate"``.
-        Once both are obtained, the readout probe table is trimmed to only the bits referenced by
-        the codebook, and the pair is validated via
+        The readout probe table always carries all ``barcode_size`` rows (the full designed
+        combinatorial-pseudocolor readout set) even when the codebook only references a subset —
+        this keeps the full readout set available if a caller later loads a different codebook that
+        references other bits. Once both are obtained, the pair is validated via
         :py:meth:`ReadoutProbeDesigner.validate`.
 
         :param region_ids: List of region identifiers (e.g., gene IDs) for which readout probes and
@@ -364,9 +366,6 @@ class SeqFishPlusProbeDesigner:
             )
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
 
-        ##### trim readout probe table to bits referenced by the codebook #####
-        referenced_bits = set(codebook.columns)
-        readout_probe_table = readout_probe_table[readout_probe_table.index.isin(referenced_bits)]
         readout_probe_designer.validate(
             codebook=codebook,
             readout_probe_table=readout_probe_table,
@@ -1225,8 +1224,11 @@ class ReadoutProbeDesigner:
         unique regions. Each barcode is represented as a binary vector where each bit corresponds to a specific
         combination of barcode round, pseudocolor, and channel.
 
-        The algorithm generates all possible barcode combinations by iterating through pseudocolor combinations
-        and channels. Columns where all values are 0 (unused bits) are automatically removed from the final codebook.
+        The algorithm generates all possible barcode combinations by iterating through pseudocolor
+        combinations and channels. The returned codebook always carries all ``barcode_size`` columns
+        (``n_pseudocolors × n_barcode_rounds × n_channels``) — bit positions that no accepted codeword
+        uses appear as all-zero columns rather than being dropped, so the codebook shape matches the
+        readout probe set 1:1.
 
         :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
             Each region will be assigned a unique barcode.
@@ -1241,8 +1243,8 @@ class ReadoutProbeDesigner:
             assigned to one channel.
         :type n_channels: int
         :return: A DataFrame containing the codebook with binary encoded bits. Each row represents a
-            region's barcode, with columns named `bit_1`, `bit_2`, etc. Unused bit columns (all zeros)
-            are automatically removed.
+            region's barcode; columns are ``bit_1`` .. ``bit_{barcode_size}``. Bit positions not used
+            by any accepted codeword appear as all-zero columns.
         :rtype: pd.DataFrame
         :raises ConfigurationError: If the number of valid barcodes (based on pseudocolors, barcode rounds,
             and channels) is insufficient for the number of regions. In this case, consider increasing
@@ -1293,9 +1295,6 @@ class ReadoutProbeDesigner:
             codebook_list[0:n_regions], index=region_ids, columns=[f"bit_{i+1}" for i in range(barcode_size)]
         )
         codebook.index.name = "gene_name"
-
-        # Remove columns where all values are 0
-        codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
 
         return codebook
 

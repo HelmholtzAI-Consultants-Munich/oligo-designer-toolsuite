@@ -367,11 +367,6 @@ class CycleHCRProbeDesigner:
             )
             codebook_source = readout_probe_parameters["codebook"]["source"]
 
-        # Drop readout probes whose bits are not referenced by the codebook so the table only
-        # carries the probes actually assigned to a gene.
-        referenced_bits = set(codebook.columns)
-        readout_probe_table = readout_probe_table[readout_probe_table.index.isin(referenced_bits)]
-
         readout_probe_designer.validate(
             codebook=codebook,
             readout_probe_table=readout_probe_table,
@@ -1402,8 +1397,12 @@ class ReadoutProbeDesigner:
             available.
         :type min_hamming_distance: int
         :return: A pandas DataFrame containing the binary barcode matrix. Rows are indexed by
-            ``region_ids``, and columns are named ``bit_1``, ``bit_2``, etc. Only columns with at
-            least one active bit are included. Each row has exactly two bits set to 1.
+            ``region_ids`` (index name ``gene_name``); columns are ``bit_1`` .. ``bit_{codebook_size}``,
+            where ``codebook_size`` is the full designed bit space derived from the readout probe
+            table (``n_readout_probes_LR * n_channels`` for ``min_hamming_distance == 4``,
+            ``n_readout_probes_LR**2 * n_channels`` otherwise). Bit positions not used by any accepted
+            codeword appear as all-zero columns rather than being dropped, so the codebook shape
+            matches the readout probe table 1:1. Each populated row has exactly two bits set to 1.
         :rtype: pd.DataFrame
         :raises ConfigurationError: If ``min_hamming_distance`` is not in ``{0, 2, 4}``, or if the
             number of available barcodes at the requested distance is insufficient to encode all
@@ -1471,9 +1470,6 @@ class ReadoutProbeDesigner:
             codebook_list, index=region_ids, columns=[f"bit_{i+1}" for i in range(codebook_size)]
         )
         codebook.index.name = "gene_name"
-
-        # Remove columns where all values are 0
-        codebook = codebook.loc[:, (codebook != 0).any(axis=0)]
 
         return codebook
 
