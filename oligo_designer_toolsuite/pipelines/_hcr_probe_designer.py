@@ -808,7 +808,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     Preprocess an HCR pipeline configuration dict in place.
 
     - Resolves the ``nn_table``/``tmm_table``/``imm_table``/``de_table`` strings in
-      ``target_probe.global_parameters.Tm_parameters`` to their ``Bio.SeqUtils.MeltingTemp`` objects.
+      ``target_probes.global_parameters.Tm_parameters`` to their ``Bio.SeqUtils.MeltingTemp`` objects.
     - For every Tm chem/salt correction block: if ``enabled`` is ``False`` sets ``parameters`` to
       ``None`` so downstream filters receive a clean ``None``.
     - Inlines Tm parameters and chem/salt corrections into every block that consumes them
@@ -816,12 +816,12 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
       call chain.
     - Computes the derived ``junction_site`` from the L arm + half the gap length and injects it
       into the ``specificity_blastn_filter`` block.
-    - Expands ``target_probe.oligo_generation.file_region_ids`` to a sorted unique list under
-      ``target_probe.oligo_generation.region_ids`` (or ``None`` if no file was provided).
+    - Expands ``target_probes.oligo_generation.file_region_ids`` to a sorted unique list under
+      ``target_probes.oligo_generation.region_ids`` (or ``None`` if no file was provided).
     """
 
     # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
-    for section in ["target_probe"]:
+    for section in ["target_probes"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
         )
@@ -830,46 +830,46 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probe"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
     # Inline Tm parameters into the Tm_filter block
-    config["target_probe"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
     # Compute the derived junction site (in the joined oligo coordinate space) and inject it
     # into the specificity BLASTN filter block for the seed-region variant.
-    L_probe_sequence_length = config["target_probe"]["oligo_generation"]["L_probe_sequence_length"]
-    gap_sequence_length = config["target_probe"]["oligo_generation"]["gap_sequence_length"]
-    R_probe_sequence_length = config["target_probe"]["oligo_generation"]["R_probe_sequence_length"]
-    config["target_probe"]["oligo_generation"]["oligo_length"] = (
+    L_probe_sequence_length = config["target_probes"]["oligo_generation"]["L_probe_sequence_length"]
+    gap_sequence_length = config["target_probes"]["oligo_generation"]["gap_sequence_length"]
+    R_probe_sequence_length = config["target_probes"]["oligo_generation"]["R_probe_sequence_length"]
+    config["target_probes"]["oligo_generation"]["oligo_length"] = (
         L_probe_sequence_length + gap_sequence_length + R_probe_sequence_length
     )
-    config["target_probe"]["specificity_filters"]["specificity_blastn_filter"]["junction_site"] = (
+    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"]["junction_site"] = (
         L_probe_sequence_length + gap_sequence_length // 2
     )
 
     ##### read the genes file #####
-    file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
+    file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. "
             "This choice can use a lot of resources."
         )
-        config["target_probe"]["oligo_generation"]["region_ids"] = None
+        config["target_probes"]["oligo_generation"]["region_ids"] = None
     else:
         with open(file_region_ids) as f:
-            config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
+            config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
     return config
 
@@ -879,7 +879,7 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
     Execute the HCR probe design pipeline from a (raw) configuration dict.
 
     The dict is expected to follow the nested layout of ``data/configs/hcr_probe_designer.yaml``
-    (``general``, ``target_probe.*``, ``hybridization_probe``). The caller is responsible for
+    (``general``, ``target_probes.*``, ``hybridization_probe``). The caller is responsible for
     configuring the library logger before invoking this function (see :func:`main`).
 
     :param config: Pipeline configuration loaded via ``yaml.safe_load``.
@@ -898,10 +898,10 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
 
     ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probe"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
+        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
+        property_filters_parameters=config_dict["target_probes"]["property_filters"],
+        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
+        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
     )
 
     ##### design initiators (codebook + initiator table) #####

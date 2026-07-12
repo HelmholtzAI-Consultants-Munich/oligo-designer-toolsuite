@@ -13,7 +13,7 @@ general:
 ### USER PARAMETERS ###
 #######################
 
-target_probe:
+target_probes:
   oligo_generation:
     file_region_ids: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
     files_fasta_probe_database: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.

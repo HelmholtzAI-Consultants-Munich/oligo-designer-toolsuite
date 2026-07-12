@@ -203,21 +203,21 @@ class SeqFishPlusProbeDesigner:
         transcripts. These probes will later be combined with four readout probe overhang sequences to
         create complete hybridization probes.
 
-        :param oligo_generation_parameters: ``target_probe.oligo_generation`` block. Must contain
+        :param oligo_generation_parameters: ``target_probes.oligo_generation`` block. Must contain
             ``region_ids`` (populated from ``file_region_ids``), ``probe_length_min``, ``probe_length_max``,
             and ``files_fasta_probe_database``.
         :type oligo_generation_parameters: dict
-        :param property_filters_parameters: ``target_probe.property_filters`` block. Each filter
+        :param property_filters_parameters: ``target_probes.property_filters`` block. Each filter
             sub-dict (``isoform_consensus_filter``, ``hard_masked_sequences_filter``,
             ``soft_masked_sequences_filter``, ``homopolymeric_runs_filter``, ``GC_content_filter``,
             ``secondary_structure_filter``) carries an ``enabled`` flag plus its parameters.
         :type property_filters_parameters: dict
-        :param specificity_filters_parameters: ``target_probe.specificity_filters`` block. Contains
+        :param specificity_filters_parameters: ``target_probes.specificity_filters`` block. Contains
             ``specificity_blastn_filter`` (with ``files_fasta_reference_database`` shared with the
             cross-hybridization filter) and ``cross_hybridization_blastn_filter`` — each with
             ``enabled``, ``search_parameters``, ``hit_parameters``.
         :type specificity_filters_parameters: dict
-        :param probe_set_selection_parameters: ``target_probe.probe_set_selection`` block. Contains
+        :param probe_set_selection_parameters: ``target_probes.probe_set_selection`` block. Contains
             the ``independent_set_selection`` scalars and the ``GC_content_score`` / ``UTR_score``
             sub-dicts.
         :type probe_set_selection_parameters: dict
@@ -391,7 +391,7 @@ class SeqFishPlusProbeDesigner:
         2. Retrieves the corresponding readout probe sequences from the readout probe table
         3. Assembles the hybridization probe sequence with the structure:
            [reverse_complement(readout_probe_1)] + [reverse_complement(readout_probe_2)] + "T" +
-           [target_probe] + "T" + [reverse_complement(readout_probe_3)] + [reverse_complement(readout_probe_4)]
+           [target_probes] + "T" + [reverse_complement(readout_probe_3)] + [reverse_complement(readout_probe_4)]
 
         The readout probes are reverse-complemented because they will hybridize to the overhang sequences
         embedded in the hybridization probe. The single "T" nucleotides serve as spacers between the
@@ -2250,10 +2250,10 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     """
     Preprocess a SeqFISH+ pipeline configuration dict in place.
 
-    - Expands ``target_probe.oligo_generation.file_region_ids`` to a sorted unique list under
-      ``target_probe.oligo_generation.region_ids`` (or ``None`` if no file was provided).
+    - Expands ``target_probes.oligo_generation.file_region_ids`` to a sorted unique list under
+      ``target_probes.oligo_generation.region_ids`` (or ``None`` if no file was provided).
     - The SeqFISH+ target-probe path does not use Tm parameters, so no Tm preprocessing is
-      required on ``target_probe``.
+      required on ``target_probes``.
     - When ``primers.forward_primer.source == "generate"``, resolves the ``nn_table`` /
       ``tmm_table`` / ``imm_table`` / ``de_table`` strings in
       ``primers.forward_primer.global_parameters.Tm_parameters`` to their
@@ -2266,16 +2266,16 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     """
 
     ##### region ids #####
-    file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
+    file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. "
             "This choice can use a lot of resources."
         )
-        config["target_probe"]["oligo_generation"]["region_ids"] = None
+        config["target_probes"]["oligo_generation"]["region_ids"] = None
     else:
         with open(file_region_ids) as f:
-            config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
+            config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
     ##### Tm preprocessing for the forward primer (only when source == "generate") #####
     forward_primer_cfg = config["primers"]["forward_primer"]
@@ -2306,7 +2306,7 @@ def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
     Execute the SeqFISH+ probe design pipeline from a (raw) configuration dict.
 
     The dict is expected to follow the nested layout of
-    ``data/configs/seqfish_plus_probe_designer.yaml`` (``general``, ``target_probe.*``,
+    ``data/configs/seqfish_plus_probe_designer.yaml`` (``general``, ``target_probes.*``,
     ``readout_probes``, ``primers``). The caller is responsible for configuring the library
     logger before invoking this function (see :func:`main`).
 
@@ -2326,10 +2326,10 @@ def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
 
     ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probe"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
+        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
+        property_filters_parameters=config_dict["target_probes"]["property_filters"],
+        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
+        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
     )
 
     ##### design readout probes (codebook + readout probe table) #####

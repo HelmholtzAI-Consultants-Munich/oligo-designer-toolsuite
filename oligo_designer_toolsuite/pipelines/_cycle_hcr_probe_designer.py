@@ -199,22 +199,22 @@ class CycleHCRProbeDesigner:
         regions on the target transcript, separated by a gap. These probes are designed with high
         melting temperatures to remain bound during stripping cycles.
 
-        :param oligo_generation_parameters: ``target_probe.oligo_generation`` block. Contains
+        :param oligo_generation_parameters: ``target_probes.oligo_generation`` block. Contains
             ``region_ids`` (populated from ``file_region_ids``), ``files_fasta_probe_database``,
             ``L_probe_sequence_length``, ``gap_sequence_length``, ``R_probe_sequence_length``, and the
             derived ``oligo_length`` injected by :func:`_preprocess_config`.
         :type oligo_generation_parameters: dict
-        :param property_filters_parameters: ``target_probe.property_filters`` block. Each filter
+        :param property_filters_parameters: ``target_probes.property_filters`` block. Each filter
             sub-dict carries an ``enabled`` flag plus its parameters; ``Tm_filter`` additionally
             receives the inlined ``Tm_parameters`` / ``Tm_chem_correction_parameters`` /
             ``Tm_salt_correction_parameters`` from :func:`_preprocess_config`.
         :type property_filters_parameters: dict
-        :param specificity_filters_parameters: ``target_probe.specificity_filters`` block.
+        :param specificity_filters_parameters: ``target_probes.specificity_filters`` block.
             ``specificity_blastn_filter`` carries ``files_fasta_reference_database``,
             ``junction_region_size``, and the derived ``junction_site``;
             ``cross_hybridization_blastn_filter`` carries its own search/hit parameters.
         :type specificity_filters_parameters: dict
-        :param probe_set_selection_parameters: ``target_probe.probe_set_selection`` block. Contains
+        :param probe_set_selection_parameters: ``target_probes.probe_set_selection`` block. Contains
             the ``independent_set_selection`` scalars and the ``isoform_consensus_score`` / ``Tm_score``
             sub-dicts (Tm parameters inlined into ``Tm_score`` by :func:`_preprocess_config`).
         :type probe_set_selection_parameters: dict
@@ -1658,7 +1658,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     Preprocess a CycleHCR pipeline configuration dict in place.
 
     - Resolves the ``nn_table``/``tmm_table``/``imm_table``/``de_table`` strings in
-      ``target_probe.global_parameters.Tm_parameters`` to their ``Bio.SeqUtils.MeltingTemp`` objects.
+      ``target_probes.global_parameters.Tm_parameters`` to their ``Bio.SeqUtils.MeltingTemp`` objects.
     - For every Tm chem/salt correction block: if ``enabled`` is ``False`` sets ``parameters`` to
       ``None`` so downstream filters receive a clean ``None``.
     - Inlines Tm parameters and chem/salt corrections into every block that consumes them
@@ -1667,12 +1667,12 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     - Computes the derived ``oligo_length = L + gap + R`` and ``junction_site = L + gap // 2``
       and injects them into the blocks that consume them (``oligo_generation`` and
       ``specificity_blastn_filter`` respectively).
-    - Expands ``target_probe.oligo_generation.file_region_ids`` to a sorted unique list under
-      ``target_probe.oligo_generation.region_ids`` (or ``None`` if no file was provided).
+    - Expands ``target_probes.oligo_generation.file_region_ids`` to a sorted unique list under
+      ``target_probes.oligo_generation.region_ids`` (or ``None`` if no file was provided).
     """
 
     # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
-    for section in ["target_probe"]:
+    for section in ["target_probes"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
         )
@@ -1681,54 +1681,54 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probe"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
     # Inline Tm parameters into Tm_filter (consumed by the property filter and by the final TmNN property calculator)
-    config["target_probe"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
     # Inline Tm parameters into Tm_score (consumed by the Tm scorer in create_oligo_sets)
-    config["target_probe"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
     # Derive oligo_length and junction_site and inject them into the consuming blocks.
-    L_probe_sequence_length = config["target_probe"]["oligo_generation"]["L_probe_sequence_length"]
-    gap_sequence_length = config["target_probe"]["oligo_generation"]["gap_sequence_length"]
-    R_probe_sequence_length = config["target_probe"]["oligo_generation"]["R_probe_sequence_length"]
-    config["target_probe"]["oligo_generation"]["oligo_length"] = (
+    L_probe_sequence_length = config["target_probes"]["oligo_generation"]["L_probe_sequence_length"]
+    gap_sequence_length = config["target_probes"]["oligo_generation"]["gap_sequence_length"]
+    R_probe_sequence_length = config["target_probes"]["oligo_generation"]["R_probe_sequence_length"]
+    config["target_probes"]["oligo_generation"]["oligo_length"] = (
         L_probe_sequence_length + gap_sequence_length + R_probe_sequence_length
     )
-    config["target_probe"]["specificity_filters"]["specificity_blastn_filter"]["junction_site"] = (
+    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"]["junction_site"] = (
         L_probe_sequence_length + gap_sequence_length // 2
     )
 
     ##### read the genes file #####
-    file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
+    file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. "
             "This choice can use a lot of resources."
         )
-        config["target_probe"]["oligo_generation"]["region_ids"] = None
+        config["target_probes"]["oligo_generation"]["region_ids"] = None
     else:
         with open(file_region_ids) as f:
-            config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
+            config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
     return config
 
@@ -1738,7 +1738,7 @@ def cycle_hcr_probe_designer(config: dict[str, Any]) -> None:
     Execute the CycleHCR probe design pipeline from a (raw) configuration dict.
 
     The dict is expected to follow the nested layout of ``data/configs/cycle_hcr_probe_designer.yaml``
-    (``general``, ``target_probe.*``, ``readout_probes``, ``primers``, ``hybridization_probes``).
+    (``general``, ``target_probes.*``, ``readout_probes``, ``primers``, ``hybridization_probes``).
     The caller is responsible for configuring the library logger before invoking this function
     (see :func:`main`).
 
@@ -1758,10 +1758,10 @@ def cycle_hcr_probe_designer(config: dict[str, Any]) -> None:
 
     ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probe"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
+        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
+        property_filters_parameters=config_dict["target_probes"]["property_filters"],
+        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
+        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
     )
 
     ##### design readout probes (codebook + readout probe table) #####

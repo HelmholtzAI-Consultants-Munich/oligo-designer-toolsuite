@@ -214,20 +214,20 @@ class MerfishProbeDesigner:
         transcripts. These probes will later be combined with readout probe barcodes to create complete
         hybridization probes.
 
-        :param oligo_generation_parameters: ``target_probe.oligo_generation`` block. Contains
+        :param oligo_generation_parameters: ``target_probes.oligo_generation`` block. Contains
             ``region_ids`` (populated from ``file_region_ids`` by :func:`_preprocess_config`),
             ``files_fasta_probe_database``, ``probe_length_min``, ``probe_length_max``.
         :type oligo_generation_parameters: dict
-        :param property_filters_parameters: ``target_probe.property_filters`` block. Each filter
+        :param property_filters_parameters: ``target_probes.property_filters`` block. Each filter
             sub-dict carries an ``enabled`` flag plus its parameters; ``Tm_filter`` additionally
             receives the inlined ``Tm_parameters`` / ``Tm_chem_correction_parameters`` /
             ``Tm_salt_correction_parameters`` from :func:`_preprocess_config`.
         :type property_filters_parameters: dict
-        :param specificity_filters_parameters: ``target_probe.specificity_filters`` block.
+        :param specificity_filters_parameters: ``target_probes.specificity_filters`` block.
             ``specificity_blastn_filter`` carries ``files_fasta_reference_database`` (shared with
             the cross-hybridization filter).
         :type specificity_filters_parameters: dict
-        :param probe_set_selection_parameters: ``target_probe.probe_set_selection`` block. Contains
+        :param probe_set_selection_parameters: ``target_probes.probe_set_selection`` block. Contains
             the ``independent_set_selection`` scalars and the ``GC_content_score`` / ``Tm_score`` /
             ``isoform_consensus_score`` sub-dicts (Tm parameters + min/max inlined by
             :func:`_preprocess_config`).
@@ -399,7 +399,7 @@ class MerfishProbeDesigner:
         1. Looks up the region's barcode in the codebook to identify which two readout probes are assigned
         2. Retrieves the corresponding readout probe sequences from the readout probe table
         3. Assembles the hybridization probe sequence with the structure:
-           [reverse_complement(readout_probe_1)] + "A" + [target_probe] + "A" + [reverse_complement(readout_probe_2)]
+           [reverse_complement(readout_probe_1)] + "A" + [target_probes] + "A" + [reverse_complement(readout_probe_2)]
 
         The readout probes are reverse-complemented because they will hybridize to the barcode sequences
         embedded in the hybridization probe. The single "A" nucleotides serve as spacers between the
@@ -2309,71 +2309,71 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     Preprocess a MERFISH pipeline configuration dict in place.
 
     - Resolves the ``nn_table`` / ``tmm_table`` / ``imm_table`` / ``de_table`` strings in every
-      ``global_parameters.Tm_parameters`` block (target_probe, readout_probes.readout_probe_table,
+      ``global_parameters.Tm_parameters`` block (target_probes, readout_probes.readout_probe_table,
       primers.forward_primer when ``source == "generate"``) to their
       ``Bio.SeqUtils.MeltingTemp`` objects.
     - For every Tm chem/salt correction block, sets ``parameters`` to ``None`` when ``enabled`` is
       ``False`` so downstream filters receive a clean ``None``.
     - Inlines Tm parameters and chem/salt corrections into every block that consumes them
-      (``target_probe.property_filters.Tm_filter``, ``target_probe.probe_set_selection.Tm_score``,
+      (``target_probes.property_filters.Tm_filter``, ``target_probes.probe_set_selection.Tm_score``,
       ``readout_probes.readout_probe_table.probe_set_selection``, and
       ``primers.forward_primer.property_filters.Tm_filter``) so designer methods don't have to
       thread ``global_parameters`` through the call chain.
-    - Copies ``Tm_min`` / ``Tm_max`` from ``target_probe.property_filters.Tm_filter`` into
-      ``target_probe.probe_set_selection.Tm_score`` (the ``NormalizedDeviationFromOptimalTmScorer``
+    - Copies ``Tm_min`` / ``Tm_max`` from ``target_probes.property_filters.Tm_filter`` into
+      ``target_probes.probe_set_selection.Tm_score`` (the ``NormalizedDeviationFromOptimalTmScorer``
       needs these bounds); same for ``GC_content_min`` / ``GC_content_max`` into
       ``GC_content_score``.
-    - Expands ``target_probe.oligo_generation.file_region_ids`` to a sorted unique list under
-      ``target_probe.oligo_generation.region_ids`` (or ``None`` if no file was provided).
+    - Expands ``target_probes.oligo_generation.file_region_ids`` to a sorted unique list under
+      ``target_probes.oligo_generation.region_ids`` (or ``None`` if no file was provided).
     """
 
-    ##### Tm preprocessing for target_probe #####
-    config["target_probe"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-        config["target_probe"]["global_parameters"]["Tm_parameters"]
+    ##### Tm preprocessing for target_probes #####
+    config["target_probes"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
+        config["target_probes"]["global_parameters"]["Tm_parameters"]
     )
     for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-        correction_cfg = config["target_probe"]["global_parameters"][correction]
+        correction_cfg = config["target_probes"]["global_parameters"][correction]
         if not correction_cfg["enabled"]:
             correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probe"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
     # Inline Tm parameters into Tm_filter (consumed by the property filter).
-    config["target_probe"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
     # Inline Tm parameters + Tm_min/max into Tm_score (consumed by NormalizedDeviationFromOptimalTmScorer).
-    config["target_probe"]["probe_set_selection"]["Tm_score"]["Tm_min"] = config["target_probe"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"]["Tm_min"] = config["target_probes"][
         "property_filters"
     ]["Tm_filter"]["Tm_min"]
-    config["target_probe"]["probe_set_selection"]["Tm_score"]["Tm_max"] = config["target_probe"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"]["Tm_max"] = config["target_probes"][
         "property_filters"
     ]["Tm_filter"]["Tm_max"]
-    config["target_probe"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
     # Inline GC_content_min/max into GC_content_score (needed by NormalizedDeviationFromOptimalGCContentScorer).
-    config["target_probe"]["probe_set_selection"]["GC_content_score"]["GC_content_min"] = config[
-        "target_probe"
+    config["target_probes"]["probe_set_selection"]["GC_content_score"]["GC_content_min"] = config[
+        "target_probes"
     ]["property_filters"]["GC_content_filter"]["GC_content_min"]
-    config["target_probe"]["probe_set_selection"]["GC_content_score"]["GC_content_max"] = config[
-        "target_probe"
+    config["target_probes"]["probe_set_selection"]["GC_content_score"]["GC_content_max"] = config[
+        "target_probes"
     ]["property_filters"]["GC_content_filter"]["GC_content_max"]
 
     ##### Tm preprocessing for readout_probes.readout_probe_table (used by the SET-selection Tm scorer) #####
@@ -2437,16 +2437,16 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         ] = primer_Tm_salt_correction_parameters
 
     ##### region ids #####
-    file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
+    file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. "
             "This choice can use a lot of resources."
         )
-        config["target_probe"]["oligo_generation"]["region_ids"] = None
+        config["target_probes"]["oligo_generation"]["region_ids"] = None
     else:
         with open(file_region_ids) as f:
-            config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
+            config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
     return config
 
@@ -2456,7 +2456,7 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
     Execute the MERFISH probe design pipeline from a (raw) configuration dict.
 
     The dict is expected to follow the nested layout of ``data/configs/merfish_probe_designer.yaml``
-    (``general``, ``target_probe.*``, ``readout_probes``, ``primers``). The caller is responsible
+    (``general``, ``target_probes.*``, ``readout_probes``, ``primers``). The caller is responsible
     for configuring the library logger before invoking this function (see :func:`main`).
 
     :param config: Pipeline configuration loaded via ``yaml.safe_load``.
@@ -2475,10 +2475,10 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
 
     ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probe"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
+        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
+        property_filters_parameters=config_dict["target_probes"]["property_filters"],
+        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
+        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
     )
 
     ##### design readout probes (codebook + readout probe table) #####

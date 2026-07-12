@@ -165,25 +165,25 @@ class ScrinshotProbeDesigner:
         transcripts. These probes will later be split into padlock arms and combined with a backbone
         sequence to create complete padlock probes.
 
-        :param oligo_generation_parameters: ``target_probe.oligo_generation`` block. Must contain
+        :param oligo_generation_parameters: ``target_probes.oligo_generation`` block. Must contain
             ``region_ids`` (populated from ``file_region_ids``), ``probe_length_min``, ``probe_length_max``,
             and ``files_fasta_probe_database``.
         :type oligo_generation_parameters: dict
-        :param property_filters_parameters: ``target_probe.property_filters`` block. Each filter sub-dict
+        :param property_filters_parameters: ``target_probes.property_filters`` block. Each filter sub-dict
             (``isoform_consensus_filter``, ``hard_masked_sequences_filter``, ``soft_masked_sequences_filter``,
             ``homopolymeric_runs_filter``, ``GC_content_filter``, ``Tm_filter``, ``detection_oligo_filter``)
             carries an ``enabled`` flag plus its parameters.
         :type property_filters_parameters: dict
-        :param specificity_filters_parameters: ``target_probe.specificity_filters`` block. Contains the
+        :param specificity_filters_parameters: ``target_probes.specificity_filters`` block. Contains the
             shared ``files_fasta_reference_database`` and ``ligation_region_size`` plus the
             ``specificity_blastn_filter`` and ``cross_hybridization_blastn_filter`` sub-dicts, each with
             ``enabled``, ``search_parameters``, and ``hit_parameters``.
         :type specificity_filters_parameters: dict
-        :param probe_set_selection_parameters: ``target_probe.probe_set_selection`` block. Contains the
+        :param probe_set_selection_parameters: ``target_probes.probe_set_selection`` block. Contains the
             ``independent_set_selection`` scalars and the ``isoform_consensus_score`` / ``GC_content_score`` /
             ``Tm_score`` sub-dicts.
         :type probe_set_selection_parameters: dict
-        :param padlock_arms_parameters: ``target_probe.padlock_arms_properties`` block. Used to compute padlock-arm
+        :param padlock_arms_parameters: ``target_probes.padlock_arms_properties`` block. Used to compute padlock-arm
             sequences/Tm (via ``PadlockArmsProperty``) for downstream filtering and backbone assembly.
         :type padlock_arms_parameters: dict
         :return: An `OligoDatabase` object containing the designed target probes organized into sets.
@@ -1514,7 +1514,7 @@ class DetectionOligoDesigner:
 def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
 
     # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
-    for section in ["target_probe", "detection_oligo"]:
+    for section in ["target_probes", "detection_oligo"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
         )
@@ -1523,50 +1523,54 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probe"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
     # Note: for the detection oligo filter we have to set the Tm parameters to the ones form the target
     # probe because it is used to check if padlock arms are feasible.
-    config["target_probe"]["property_filters"]["detection_oligo_filter"] = {
+    config["target_probes"]["property_filters"]["detection_oligo_filter"] = {
         "oligo_length_min": config["detection_oligo"]["oligo_generation"]["oligo_length_min"],
         "oligo_length_max": config["detection_oligo"]["oligo_generation"]["oligo_length_max"],
         "min_thymines": config["detection_oligo"]["oligo_generation"]["min_thymines"],
-        "padlock_arm_length_min": config["target_probe"]["padlock_arms_properties"]["padlock_arm_length_min"],
-        "padlock_arm_Tm_dif_max": config["target_probe"]["padlock_arms_properties"]["padlock_arm_Tm_dif_max"],
-        "padlock_arm_Tm_min": config["target_probe"]["padlock_arms_properties"]["padlock_arm_Tm_min"],
-        "padlock_arm_Tm_max": config["target_probe"]["padlock_arms_properties"]["padlock_arm_Tm_max"],
+        "padlock_arm_length_min": config["target_probes"]["padlock_arms_properties"][
+            "padlock_arm_length_min"
+        ],
+        "padlock_arm_Tm_dif_max": config["target_probes"]["padlock_arms_properties"][
+            "padlock_arm_Tm_dif_max"
+        ],
+        "padlock_arm_Tm_min": config["target_probes"]["padlock_arms_properties"]["padlock_arm_Tm_min"],
+        "padlock_arm_Tm_max": config["target_probes"]["padlock_arms_properties"]["padlock_arm_Tm_max"],
         "Tm_parameters": target_probe_Tm_parameters,
         "Tm_chem_correction_parameters": target_probe_Tm_chem_correction_parameters,
         "Tm_salt_correction_parameters": target_probe_Tm_salt_correction_parameters,
     }
 
-    config["target_probe"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
-    config["target_probe"]["padlock_arms_properties"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["padlock_arms_properties"][
+    config["target_probes"]["padlock_arms_properties"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["padlock_arms_properties"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["padlock_arms_properties"][
+    config["target_probes"]["padlock_arms_properties"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
-    config["target_probe"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
@@ -1587,15 +1591,15 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     ] = detection_oligo_Tm_salt_correction_parameters
 
     ##### read the genes file #####
-    file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
+    file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
-        config["target_probe"]["oligo_generation"]["region_ids"] = None
+        config["target_probes"]["oligo_generation"]["region_ids"] = None
     else:
         with open(file_region_ids) as f:
-            config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
+            config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
     return config
 
@@ -1605,7 +1609,7 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
     Execute the SCRINSHOT probe design pipeline from a (raw) configuration dict.
 
     The dict is expected to follow the nested layout of ``data/configs/scrinshot_probe_designer.yaml``
-    (``general``, ``target_probe.*``, ``detection_oligo.*``). The caller is responsible for configuring
+    (``general``, ``target_probes.*``, ``detection_oligo.*``). The caller is responsible for configuring
     the library logger before invoking this function (see :func:`main`).
 
     :param config: Pipeline configuration loaded via ``yaml.safe_load``.
@@ -1624,11 +1628,11 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
 
     ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probe"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
-        padlock_arms_parameters=config_dict["target_probe"]["padlock_arms_properties"],
+        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
+        property_filters_parameters=config_dict["target_probes"]["property_filters"],
+        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
+        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
+        padlock_arms_parameters=config_dict["target_probes"]["padlock_arms_properties"],
     )
 
     ##### design detection oligos #####
@@ -1640,7 +1644,7 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
     ##### assemble padlock backbone #####
     target_probe_database = pipeline.assemble_padlock_backbone(
         oligo_database=target_probe_database,
-        padlock_arms_parameters=config_dict["target_probe"]["padlock_arms_properties"],
+        padlock_arms_parameters=config_dict["target_probes"]["padlock_arms_properties"],
     )
 
     ##### write outputs #####

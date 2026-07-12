@@ -1030,7 +1030,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
     config = config_validated.model_dump()
 
     # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
-    for section in ["target_probe"]:
+    for section in ["target_probes"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
         )
@@ -1041,42 +1041,42 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
 
     # Inline Tm parameters into every block that consumes them so the inner designer methods
     # don't have to thread ``global_parameters`` through the call chain.
-    target_probe_Tm_parameters = config["target_probe"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probe"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
     # Tm_filter: consumed by the property filter and by the final TmNN property calculator
-    config["target_probe"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["property_filters"]["Tm_filter"][
+    config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
     # Tm_score: consumed by the Tm scorer in create_oligo_sets
-    config["target_probe"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"]["Tm_parameters"] = target_probe_Tm_parameters
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_chem_correction_parameters"
     ] = target_probe_Tm_chem_correction_parameters
-    config["target_probe"]["probe_set_selection"]["Tm_score"][
+    config["target_probes"]["probe_set_selection"]["Tm_score"][
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
     ##### read the genes file #####
-    file_region_ids = config["target_probe"]["oligo_generation"]["file_region_ids"]
+    file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
-        config["target_probe"]["oligo_generation"]["region_ids"] = None
+        config["target_probes"]["oligo_generation"]["region_ids"] = None
     else:
         with open(file_region_ids) as f:
-            config["target_probe"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
+            config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
     return config
 
@@ -1109,10 +1109,10 @@ def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
 
     ##### design probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probe"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probe"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probe"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probe"]["probe_set_selection"],
+        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
+        property_filters_parameters=config_dict["target_probes"]["property_filters"],
+        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
+        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
     )
 
     pipeline.generate_output(oligo_database=target_probe_database)
