@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 from typing_extensions import Self
 
 from oligo_designer_toolsuite._constants import SUPPORTED_TAXA_SOURCES
@@ -75,7 +75,7 @@ class AnnotationParamsEnsembl(BaseModel):
 
 
 class AnnotationParamsNcbiSpecies(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     taxon: Annotated[
         Literal[
@@ -121,7 +121,7 @@ class AnnotationParamsNcbiSpecies(BaseModel):
         available_sources = SUPPORTED_TAXA_SOURCES[self.taxon]
         if self.assembly_source != "auto" and self.assembly_source not in available_sources:
             supported_sources = ", ".join(sorted(available_sources))
-            raise ValidationError(
+            raise ValueError(
                 f"assembly_source '{self.assembly_source}' is not available for taxon '{self.taxon}'. "
                 f"Supported sources for this taxon are: {supported_sources}."
             )
@@ -129,7 +129,7 @@ class AnnotationParamsNcbiSpecies(BaseModel):
             self.assembly_source in {"latest_assembly_versions", "reference"}
             or (self.assembly_source == "auto" and "annotation_releases" not in available_sources)
         ):
-            raise ValidationError(
+            raise ValueError(
                 "A numeric annotation_release is only supported with assembly_source='annotation_releases'. "
                 "Use annotation_release='current' for latest_assembly_versions/reference."
             )
@@ -137,7 +137,7 @@ class AnnotationParamsNcbiSpecies(BaseModel):
 
 
 class AnnotationNcbiSpecies(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     source: Annotated[
         Literal["ncbi"],
@@ -269,8 +269,8 @@ class GenomicRegionGeneratorConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_exon_exon_junction_block_size(self) -> Self:
-        if self.exon_exon_junction_block_size is None:
-            raise ValidationError(
+        if self.genomic_regions.exon_exon_junction and self.exon_exon_junction_block_size is None:
+            raise ValueError(
                 "exon_exon_junction_block_size must be set if exon_exon_junction is set to True."
             )
         return self

@@ -13,6 +13,7 @@ from typing import Any
 
 import yaml
 
+from oligo_designer_toolsuite.config.pipelines.genomic_region_generator import GenomicRegionGeneratorConfig
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 
 ############################################
@@ -89,8 +90,8 @@ class PipelinesBase(unittest.TestCase, ABC):
 class TestGenomicRegionGenerator(PipelinesBase, unittest.TestCase):
     def setup_output_dir(self) -> Any:
         with open(CONFIG_GENOMIC_REGION_GENERATOR, "r") as handle:
-            config = yaml.safe_load(handle)
-        dir_output = config.get("dir_output")
+            config = GenomicRegionGeneratorConfig(**yaml.safe_load(handle))
+        dir_output = config.dir_output
         if dir_output is None:
             return tempfile.mkdtemp()
         return os.path.abspath(dir_output)
