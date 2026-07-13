@@ -1823,7 +1823,7 @@ def main() -> None:
     try:
         config_validated = CycleHcrProbeDesignerConfig.model_validate(config_raw)
     except ValidationError as e:
-        print("Invalid configuration file:\n%s", e)
+        print(f"Invalid configuration file:\n{e}")
         raise
 
     # setup logger now that we know the output directory
