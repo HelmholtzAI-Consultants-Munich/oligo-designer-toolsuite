@@ -1313,7 +1313,14 @@ class ReadoutProbeDesigner:
             raise FileFormatError(
                 f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column."
             )
-        return readout_probe_table.set_index("bit")
+        readout_probe_table = readout_probe_table.set_index("bit")
+        validate_bit_mapping_table(
+            table=readout_probe_table,
+            source=file_readout_probe_table,
+            required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
+            sequence_columns=["readout_probe_sequence"],
+        )
+        return readout_probe_table
 
     def generate_readout_probe_table(
         self,

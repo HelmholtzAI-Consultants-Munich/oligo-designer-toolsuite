@@ -358,14 +358,15 @@ def validate_codebook(
 
 def validate_bit_mapping_table(
     table: pd.DataFrame,
-    codebook: pd.DataFrame,
+    codebook: pd.DataFrame | None = None,
     *,
     source: str,
     required_columns: list[str],
     sequence_columns: list[str],
 ) -> None:
     """
-    Validate a bit-indexed mapping table (e.g. readout probe table, initiator table) against a codebook.
+    Validate a bit-indexed mapping table (e.g. readout probe table, initiator table), optionally
+    against a codebook.
 
     A probe design run needs every codebook bit to have a corresponding readout / initiator
     sequence — without that, the assembled probes cannot be decoded at imaging time. This helper
@@ -374,10 +375,17 @@ def validate_bit_mapping_table(
     the mapping table but not used by the codebook are silently accepted — a full-size readout
     set paired with a small-panel codebook is a legitimate configuration, not a mistake.
 
+    When called with ``codebook=None`` (typically right after loading the table from a file, before
+    a codebook has been obtained), the bit-coverage check is skipped and only the structural
+    checks are enforced: non-empty table, ``bit`` index, no duplicate bits, required columns
+    present, and sequence columns contain valid DNA. This lets a malformed file surface a clear
+    :class:`FileFormatError` at load time instead of a cryptic downstream crash.
+
     :param table: Bit-indexed table (e.g. readout probe table, initiator table).
     :type table: pd.DataFrame
-    :param codebook: Codebook whose ``bit_*`` columns drive the set of required bits.
-    :type codebook: pd.DataFrame
+    :param codebook: Codebook whose ``bit_*`` columns drive the set of required bits. Pass ``None``
+        to skip the bit-coverage check (useful for early load-time validation).
+    :type codebook: pd.DataFrame | None
     :param source: Source identifier (e.g. filename) used in error messages.
     :type source: str
     :param required_columns: Columns that must be present in the table.
@@ -387,6 +395,9 @@ def validate_bit_mapping_table(
     :type sequence_columns: list[str]
     :raises FileFormatError: If any validation check fails.
     """
+    if len(table) == 0:
+        raise FileFormatError(f"Table '{source}' is empty. Expected at least one bit-indexed row.")
+
     if table.index.name != "bit":
         raise FileFormatError(f"Table '{source}' must use 'bit' as the index, got '{table.index.name}'.")
 
@@ -401,13 +412,14 @@ def validate_bit_mapping_table(
             f"Required columns are: {required_columns}."
         )
 
-    required_bits = set(codebook.columns)
-    table_bits = set(table.index)
-    missing_bits = required_bits - table_bits
-    if missing_bits:
-        raise FileFormatError(
-            f"Table '{source}' is missing entries for codebook bits: {sorted(missing_bits)}."
-        )
+    if codebook is not None:
+        required_bits = set(codebook.columns)
+        table_bits = set(table.index)
+        missing_bits = required_bits - table_bits
+        if missing_bits:
+            raise FileFormatError(
+                f"Table '{source}' is missing entries for codebook bits: {sorted(missing_bits)}."
+            )
 
     for column in sequence_columns:
         invalid_bits = [

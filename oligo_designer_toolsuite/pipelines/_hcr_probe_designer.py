@@ -788,7 +788,14 @@ class InitiatorDesigner:
         initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
         if "bit" not in initiator_table.columns:
             raise FileFormatError(f"Initiator table '{file_initiator_table}' must contain a 'bit' column.")
-        return initiator_table.set_index("bit")
+        initiator_table = initiator_table.set_index("bit")
+        validate_bit_mapping_table(
+            table=initiator_table,
+            source=file_initiator_table,
+            required_columns=["initiator_L_sequence", "initiator_R_sequence"],
+            sequence_columns=["initiator_L_sequence", "initiator_R_sequence"],
+        )
+        return initiator_table
 
     def generate_initiator_table(self) -> pd.DataFrame:
         """

@@ -1491,7 +1491,14 @@ class ReadoutProbeDesigner:
             readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel", "L/R"])
             readout_probe_table.reset_index(inplace=True, drop=True)
             readout_probe_table["bit"] = "bit_" + (readout_probe_table.index + 1).astype(str)
-        return readout_probe_table.set_index("bit")
+        readout_probe_table = readout_probe_table.set_index("bit")
+        validate_bit_mapping_table(
+            table=readout_probe_table,
+            source=file_readout_probe_table,
+            required_columns=["channel", "readout_probe_id", "L/R", "readout_probe_sequence"],
+            sequence_columns=["readout_probe_sequence"],
+        )
+        return readout_probe_table
 
     def generate_readout_probe_table(self) -> pd.DataFrame:
         """
