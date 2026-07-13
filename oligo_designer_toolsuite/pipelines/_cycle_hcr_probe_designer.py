@@ -1341,44 +1341,6 @@ class ReadoutProbeDesigner:
     def load_codebook(self, file_codebook: str) -> pd.DataFrame:
         return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
-    def load_readout_probe_table(self, file_readout_probe_table: str, codebook_source: str) -> pd.DataFrame:
-        """
-        Load a CycleHCR readout probe table and prepare its ``bit`` index.
-
-        Bit handling depends on ``codebook_source``:
-
-        - ``"load"``: the file MUST contain a ``bit`` column; it is used verbatim. The user is
-          responsible for ensuring each ``bit`` value matches the corresponding column in the
-          codebook file, and that the bit→probe mapping follows the codebook's convention.
-        - any other value (i.e. the codebook will be generated): any existing ``bit`` column is
-          dropped and bits are reassigned deterministically by sorting on
-          ``(readout_probe_id, channel, L/R)``. This guarantees that even-indexed bits map to
-          ``L`` probes and odd-indexed bits to ``R`` probes, which is the layout that
-          ``generate_codebook`` assumes.
-
-        :param file_readout_probe_table: Path to the CSV/TSV readout probe table.
-        :param codebook_source: Codebook source mode from the pipeline config
-            (``readout_probes.codebook.source``).
-        :return: Readout probe table indexed by ``bit``.
-        :raises FileFormatError: If ``codebook_source == "load"`` and the file does not contain a
-            ``bit`` column.
-        """
-        readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
-        if codebook_source == "load":
-            if "bit" not in readout_probe_table.columns:
-                raise FileFormatError(
-                    f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column "
-                    f"when loading a codebook from file. The 'bit' values must match the codebook's "
-                    f"bit columns; the user is responsible for that mapping."
-                )
-        else:
-            if "bit" in readout_probe_table.columns:
-                readout_probe_table = readout_probe_table.drop(columns=["bit"])
-            readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel", "L/R"])
-            readout_probe_table.reset_index(inplace=True, drop=True)
-            readout_probe_table["bit"] = "bit_" + (readout_probe_table.index + 1).astype(str)
-        return readout_probe_table.set_index("bit")
-
     def generate_codebook(
         self, region_ids: list[str], readout_probe_table: pd.DataFrame, min_hamming_distance: int
     ) -> pd.DataFrame:
@@ -1493,6 +1455,44 @@ class ReadoutProbeDesigner:
 
         return codebook
 
+    def load_readout_probe_table(self, file_readout_probe_table: str, codebook_source: str) -> pd.DataFrame:
+        """
+        Load a CycleHCR readout probe table and prepare its ``bit`` index.
+
+        Bit handling depends on ``codebook_source``:
+
+        - ``"load"``: the file MUST contain a ``bit`` column; it is used verbatim. The user is
+          responsible for ensuring each ``bit`` value matches the corresponding column in the
+          codebook file, and that the bit→probe mapping follows the codebook's convention.
+        - any other value (i.e. the codebook will be generated): any existing ``bit`` column is
+          dropped and bits are reassigned deterministically by sorting on
+          ``(readout_probe_id, channel, L/R)``. This guarantees that even-indexed bits map to
+          ``L`` probes and odd-indexed bits to ``R`` probes, which is the layout that
+          ``generate_codebook`` assumes.
+
+        :param file_readout_probe_table: Path to the CSV/TSV readout probe table.
+        :param codebook_source: Codebook source mode from the pipeline config
+            (``readout_probes.codebook.source``).
+        :return: Readout probe table indexed by ``bit``.
+        :raises FileFormatError: If ``codebook_source == "load"`` and the file does not contain a
+            ``bit`` column.
+        """
+        readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
+        if codebook_source == "load":
+            if "bit" not in readout_probe_table.columns:
+                raise FileFormatError(
+                    f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column "
+                    f"when loading a codebook from file. The 'bit' values must match the codebook's "
+                    f"bit columns; the user is responsible for that mapping."
+                )
+        else:
+            if "bit" in readout_probe_table.columns:
+                readout_probe_table = readout_probe_table.drop(columns=["bit"])
+            readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel", "L/R"])
+            readout_probe_table.reset_index(inplace=True, drop=True)
+            readout_probe_table["bit"] = "bit_" + (readout_probe_table.index + 1).astype(str)
+        return readout_probe_table.set_index("bit")
+
     def generate_readout_probe_table(self) -> pd.DataFrame:
         """
         Generate a CycleHCR readout probe table.
@@ -1585,25 +1585,6 @@ class PrimerDesigner:
         self.dir_output = os.path.abspath(dir_output)
         self.n_jobs = n_jobs
 
-    def load_forward_primer(self, forward_primer_sequence: str) -> str:
-        """
-        Load and validate a forward primer sequence.
-
-        This method takes a forward primer sequence string, validates it by converting to string
-        and stripping whitespace, then returns the cleaned sequence. The forward primer binds to
-        the 5' end of the DNA template probe and initiates PCR amplification in the forward direction.
-
-        :param forward_primer_sequence: DNA sequence of the forward primer. Should be a string
-            containing valid nucleotide characters (A, T, G, C). The sequence will be stripped
-            of leading and trailing whitespace.
-        :type forward_primer_sequence: str
-        :return: The cleaned forward primer sequence with whitespace removed. The sequence is
-            ready to be used in the CycleHCR pipeline for DNA template probe assembly.
-        :rtype: str
-        """
-        forward_primer = str(forward_primer_sequence).strip()
-        return forward_primer
-
     def load_reverse_primer(self, reverse_primer_sequence: str) -> str:
         """
         Load and validate a reverse primer sequence.
@@ -1623,19 +1604,6 @@ class PrimerDesigner:
         reverse_primer = str(reverse_primer_sequence).strip()
         return reverse_primer
 
-    def generate_forward_primer(self) -> str:
-        """
-        Generate a CycleHCR forward PCR primer.
-
-        Placeholder for a future implementation. Once implemented, the output is expected to
-        satisfy the same contract as a loaded forward primer: a non-empty DNA sequence
-        (A/C/G/T only).
-        """
-        raise FeatureNotImplementedError(
-            "Generation of forward primer is not yet implemented. "
-            "Please provide a forward_primer.sequence parameter and set forward_primer.source to 'load'."
-        )
-
     def generate_reverse_primer(self) -> str:
         """
         Generate a CycleHCR reverse PCR primer.
@@ -1647,6 +1615,38 @@ class PrimerDesigner:
         raise FeatureNotImplementedError(
             "Generation of reverse primer is not yet implemented. "
             "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
+        )
+
+    def load_forward_primer(self, forward_primer_sequence: str) -> str:
+        """
+        Load and validate a forward primer sequence.
+
+        This method takes a forward primer sequence string, validates it by converting to string
+        and stripping whitespace, then returns the cleaned sequence. The forward primer binds to
+        the 5' end of the DNA template probe and initiates PCR amplification in the forward direction.
+
+        :param forward_primer_sequence: DNA sequence of the forward primer. Should be a string
+            containing valid nucleotide characters (A, T, G, C). The sequence will be stripped
+            of leading and trailing whitespace.
+        :type forward_primer_sequence: str
+        :return: The cleaned forward primer sequence with whitespace removed. The sequence is
+            ready to be used in the CycleHCR pipeline for DNA template probe assembly.
+        :rtype: str
+        """
+        forward_primer = str(forward_primer_sequence).strip()
+        return forward_primer
+
+    def generate_forward_primer(self) -> str:
+        """
+        Generate a CycleHCR forward PCR primer.
+
+        Placeholder for a future implementation. Once implemented, the output is expected to
+        satisfy the same contract as a loaded forward primer: a non-empty DNA sequence
+        (A/C/G/T only).
+        """
+        raise FeatureNotImplementedError(
+            "Generation of forward primer is not yet implemented. "
+            "Please provide a forward_primer.sequence parameter and set forward_primer.source to 'load'."
         )
 
     def validate(self, forward_primer: str, reverse_primer: str) -> None:

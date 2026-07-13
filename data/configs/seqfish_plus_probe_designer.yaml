@@ -48,11 +48,6 @@ target_probes:
       thr_DG: 0 # Free-energy threshold (kcal/mol). Oligos with ΔG ≤ thr_DG (stable structure) are rejected.
 
   specificity_filters:
-    cross_hybridization_blastn_filter: # Remove oligos that may cross-hybridize to other probes (BLAST-based).
-      enabled: true # Turn this filter on or off.
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10} # BLAST options for the cross-hybridization search.
-      hit_parameters: {"min_alignment_length": 17} # Hit criteria. Hits satisfying these lead to oligo rejection.
-
     specificity_blastn_filter: # Ensure oligo specificity against a reference database (BLAST-based).
       enabled: true # Turn this filter on or off.
       search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000} # BLAST options for the specificity search.
@@ -60,6 +55,11 @@ target_probes:
       files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter. Use genomic_region_generator for custom reference sets.
         - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
         - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+    cross_hybridization_blastn_filter: # Remove oligos that may cross-hybridize to other probes (BLAST-based).
+      enabled: true # Turn this filter on or off.
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10} # BLAST options for the cross-hybridization search.
+      hit_parameters: {"min_alignment_length": 17} # Hit criteria. Hits satisfying these lead to oligo rejection.
 
   probe_set_selection: # Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
     independent_set_selection:
@@ -98,14 +98,14 @@ readout_probes:
       initial_num_sequences: 100000 # Number of random sequences to generate before filtering.
 
     property_filters:
+      homopolymeric_runs_filter: # Exclude probes containing long homopolymeric runs.
+        enabled: true # Turn this filter on or off.
+        homopolymeric_base_n: {"G": 3} # Minimum run length per base to count as homopolymeric (any base not listed is unrestricted).
+
       GC_content_filter: # Enforce GC content within a specified range.
         enabled: true # Turn this filter on or off.
         GC_content_min: 40 # Minimum GC content (%). Probes below this are rejected.
         GC_content_max: 60 # Maximum GC content (%). Probes above this are rejected.
-
-      homopolymeric_runs_filter: # Exclude probes containing long homopolymeric runs.
-        enabled: true # Turn this filter on or off.
-        homopolymeric_base_n: {"G": 3} # Minimum run length per base to count as homopolymeric (any base not listed is unrestricted).
 
     specificity_filters:
       specificity_blastn_filter: # Remove readout probes with significant hits to the reference (BLAST-based).
@@ -132,6 +132,10 @@ primers:
       initial_num_sequences: 1000000 # Number of random sequences to generate before filtering.
 
     property_filters:
+      homopolymeric_runs_filter:
+        enabled: true
+        homopolymeric_base_n: {"A": 4, "T": 4, "C": 4, "G": 4}
+
       GC_content_filter: # Enforce GC content within a specified range.
         enabled: true
         GC_content_min: 50
@@ -141,10 +145,6 @@ primers:
         enabled: true
         number_GC_GCclamp: 1 # Minimum number of G or C nucleotides required at the 3' end.
         number_three_prime_base_GCclamp: 2 # Number of bases from the 3' end to consider for the GC clamp.
-
-      homopolymeric_runs_filter:
-        enabled: true
-        homopolymeric_base_n: {"A": 4, "T": 4, "C": 4, "G": 4}
 
       self_complementarity_filter: # Limit self-complementarity to avoid hairpins.
         enabled: true

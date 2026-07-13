@@ -771,12 +771,6 @@ class InitiatorDesigner:
     def load_codebook(self, file_codebook: str) -> pd.DataFrame:
         return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
-    def load_initiator_table(self, file_initiator_table: str) -> pd.DataFrame:
-        initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
-        if "bit" not in initiator_table.columns:
-            raise FileFormatError(f"Initiator table '{file_initiator_table}' must contain a 'bit' column.")
-        return initiator_table.set_index("bit")
-
     def generate_codebook(self, region_ids: list[str]) -> pd.DataFrame:
         """
         Generate a one-hot HCR codebook for the given regions.
@@ -789,6 +783,12 @@ class InitiatorDesigner:
             "Generation of codebook is not yet implemented. "
             "Please provide a codebook.file parameter and set codebook.source to 'load'."
         )
+
+    def load_initiator_table(self, file_initiator_table: str) -> pd.DataFrame:
+        initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
+        if "bit" not in initiator_table.columns:
+            raise FileFormatError(f"Initiator table '{file_initiator_table}' must contain a 'bit' column.")
+        return initiator_table.set_index("bit")
 
     def generate_initiator_table(self) -> pd.DataFrame:
         """

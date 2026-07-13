@@ -1033,24 +1033,6 @@ class TargetProbeDesigner:
         filters: list[BaseSpecificityFilter] = [exact_matches]
         directories: list[str] = []
 
-        if cross_hybridization_blastn_filter["enabled"]:
-            cross_hybridization_aligner = BlastNFilter(
-                remove_hits=True,
-                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
-                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
-                filter_name="cross_hybridization_blastn_filter",
-                dir_output=self.dir_output,
-            )
-            cross_hybridization = CrossHybridizationFilter(
-                policy=RemoveByLargerRegionFilterPolicy(),
-                alignment_method=cross_hybridization_aligner,
-                filter_name="cross_hybridization_blastn_filter",
-                dir_output=self.dir_output,
-            )
-            filters.append(cross_hybridization)
-            directories.append(cross_hybridization_aligner.dir_output)
-            directories.append(cross_hybridization.dir_output)
-
         if specificity_blastn_filter["enabled"]:
             reference_database = ReferenceDatabase(
                 database_name=f"{self.subdir_db_reference}_sequences", dir_output=self.dir_output
@@ -1070,6 +1052,24 @@ class TargetProbeDesigner:
             specificity.set_reference_database(reference_database=reference_database)
             filters.append(specificity)
             directories.append(specificity.dir_output)
+
+        if cross_hybridization_blastn_filter["enabled"]:
+            cross_hybridization_aligner = BlastNFilter(
+                remove_hits=True,
+                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
+                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            cross_hybridization = CrossHybridizationFilter(
+                policy=RemoveByLargerRegionFilterPolicy(),
+                alignment_method=cross_hybridization_aligner,
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            filters.append(cross_hybridization)
+            directories.append(cross_hybridization_aligner.dir_output)
+            directories.append(cross_hybridization.dir_output)
 
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
@@ -1539,18 +1539,18 @@ class ReadoutProbeDesigner:
         # Build property-filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
 
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
         if GC_content_filter["enabled"]:
             gc_content = GCContentFilter(
                 GC_content_min=GC_content_filter["GC_content_min"],
                 GC_content_max=GC_content_filter["GC_content_max"],
             )
             filters.append(gc_content)
-
-        if homopolymeric_runs_filter["enabled"]:
-            homopolymeric_runs = HomopolymericRunsFilter(
-                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
-            )
-            filters.append(homopolymeric_runs)
 
         # initialize the property filter class
         property_filter = PropertyFilter(filters=filters)
@@ -2102,6 +2102,12 @@ class PrimerDesigner:
         # Build property-filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
 
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
         if GC_content_filter["enabled"]:
             gc_content = GCContentFilter(
                 GC_content_min=GC_content_filter["GC_content_min"],
@@ -2115,12 +2121,6 @@ class PrimerDesigner:
                 n_GC=GC_clamp_filter["number_GC_GCclamp"],
             )
             filters.append(gc_clamp)
-
-        if homopolymeric_runs_filter["enabled"]:
-            homopolymeric_runs = HomopolymericRunsFilter(
-                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
-            )
-            filters.append(homopolymeric_runs)
 
         if self_complementarity_filter["enabled"]:
             self_complement = SelfComplementFilter(

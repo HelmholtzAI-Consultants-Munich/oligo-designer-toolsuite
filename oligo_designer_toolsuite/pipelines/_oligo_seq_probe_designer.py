@@ -821,24 +821,6 @@ class TargetProbeDesigner:
         filters: list[BaseSpecificityFilter] = [exact_matches]
         directories = []
 
-        if cross_hybridization_blastn_filter["enabled"]:
-            cross_hybridization_aligner = BlastNFilter(
-                remove_hits=True,
-                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
-                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
-                filter_name="cross_hybridization_blastn_filter",
-                dir_output=self.dir_output,
-            )
-            cross_hybridization = CrossHybridizationFilter(
-                policy=RemoveByLargerRegionFilterPolicy(),
-                alignment_method=cross_hybridization_aligner,
-                filter_name="cross_hybridization_blastn_filter",
-                dir_output=self.dir_output,
-            )
-            filters.append(cross_hybridization)
-            directories.append(cross_hybridization_aligner.dir_output)
-            directories.append(cross_hybridization.dir_output)
-
         if specificity_blastn_filter["enabled"]:
             reference_database_alignment = ReferenceDatabase(
                 database_name=f"{self.subdir_db_reference}_sequences", dir_output=self.dir_output
@@ -858,6 +840,24 @@ class TargetProbeDesigner:
             specificity.set_reference_database(reference_database=reference_database_alignment)
             filters.append(specificity)
             directories.append(specificity.dir_output)
+
+        if cross_hybridization_blastn_filter["enabled"]:
+            cross_hybridization_aligner = BlastNFilter(
+                remove_hits=True,
+                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
+                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            cross_hybridization = CrossHybridizationFilter(
+                policy=RemoveByLargerRegionFilterPolicy(),
+                alignment_method=cross_hybridization_aligner,
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            filters.append(cross_hybridization)
+            directories.append(cross_hybridization_aligner.dir_output)
+            directories.append(cross_hybridization.dir_output)
 
         if variant_filter["enabled"]:
             remove_hits = variant_filter["action"] == "filter"

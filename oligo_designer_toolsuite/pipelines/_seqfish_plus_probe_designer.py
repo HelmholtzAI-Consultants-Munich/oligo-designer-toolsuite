@@ -1037,24 +1037,6 @@ class TargetProbeDesigner:
         filters: list = [exact_matches]
         directories: list[str] = []
 
-        if cross_hybridization_blastn_filter["enabled"]:
-            cross_hybridization_aligner = BlastNFilter(
-                remove_hits=True,
-                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
-                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
-                filter_name="cross_hybridization_blastn_filter",
-                dir_output=self.dir_output,
-            )
-            cross_hybridization = CrossHybridizationFilter(
-                policy=RemoveByLargerRegionFilterPolicy(),
-                alignment_method=cross_hybridization_aligner,
-                filter_name="cross_hybridization_blastn_filter",
-                dir_output=self.dir_output,
-            )
-            filters.append(cross_hybridization)
-            directories.append(cross_hybridization_aligner.dir_output)
-            directories.append(cross_hybridization.dir_output)
-
         if specificity_blastn_filter["enabled"]:
             reference_database = ReferenceDatabase(
                 database_name=f"{self.subdir_db_reference}_sequences", dir_output=self.dir_output
@@ -1074,6 +1056,24 @@ class TargetProbeDesigner:
             specificity.set_reference_database(reference_database=reference_database)
             filters.append(specificity)
             directories.append(specificity.dir_output)
+
+        if cross_hybridization_blastn_filter["enabled"]:
+            cross_hybridization_aligner = BlastNFilter(
+                remove_hits=True,
+                search_parameters=cross_hybridization_blastn_filter["search_parameters"],
+                hit_parameters=cross_hybridization_blastn_filter["hit_parameters"],
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            cross_hybridization = CrossHybridizationFilter(
+                policy=RemoveByLargerRegionFilterPolicy(),
+                alignment_method=cross_hybridization_aligner,
+                filter_name="cross_hybridization_blastn_filter",
+                dir_output=self.dir_output,
+            )
+            filters.append(cross_hybridization)
+            directories.append(cross_hybridization_aligner.dir_output)
+            directories.append(cross_hybridization.dir_output)
 
         specificity_filter = SpecificityFilter(filters=filters)
         oligo_database = specificity_filter.apply(
@@ -1393,6 +1393,39 @@ class ReadoutProbeDesigner:
             n_pseudocolors=codebook_parameters["n_pseudocolors"],
         )
 
+    def validate(
+        self,
+        codebook: pd.DataFrame,
+        readout_probe_table: pd.DataFrame,
+        region_ids: list[str],
+        *,
+        codebook_source: str,
+        readout_probe_table_source: str,
+    ) -> None:
+        """
+        Validate that a (codebook, readout_probe_table) pair forms a valid SeqFISH+ readout setup.
+
+        Delegates to the shared :func:`validate_codebook` and :func:`validate_bit_mapping_table`
+        helpers with SeqFISH+-specific knobs (codebook indexed by ``gene_name``; readout probe table
+        has the SeqFISH+ four-column layout). The codebook hamming weight is left unconstrained
+        (``expected_hamming_weight=None``) because SeqFISH+ uses a combinatorial pseudocolor
+        encoding rather than a fixed-weight binary code.
+        """
+        validate_codebook(
+            codebook=codebook,
+            region_ids=region_ids,
+            source=codebook_source,
+            expected_hamming_weight=None,
+            index_name="gene_name",
+        )
+        validate_bit_mapping_table(
+            table=readout_probe_table,
+            codebook=codebook,
+            source=readout_probe_table_source,
+            required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
+            sequence_columns=["readout_probe_sequence"],
+        )
+
     @pipeline_step_basic(step_name="Readout Probe Generation - Create Oligo Database")
     def _create_oligo_database(
         self,
@@ -1490,18 +1523,18 @@ class ReadoutProbeDesigner:
         # Build property-filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
 
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
         if GC_content_filter["enabled"]:
             gc_content = GCContentFilter(
                 GC_content_min=GC_content_filter["GC_content_min"],
                 GC_content_max=GC_content_filter["GC_content_max"],
             )
             filters.append(gc_content)
-
-        if homopolymeric_runs_filter["enabled"]:
-            homopolymeric_runs = HomopolymericRunsFilter(
-                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
-            )
-            filters.append(homopolymeric_runs)
 
         # initialize the preoperty filter class
         property_filter = PropertyFilter(filters=filters)
@@ -1696,39 +1729,6 @@ class ReadoutProbeDesigner:
         readout_probe_table.set_index("bit", inplace=True)
         return readout_probe_table
 
-    def validate(
-        self,
-        codebook: pd.DataFrame,
-        readout_probe_table: pd.DataFrame,
-        region_ids: list[str],
-        *,
-        codebook_source: str,
-        readout_probe_table_source: str,
-    ) -> None:
-        """
-        Validate that a (codebook, readout_probe_table) pair forms a valid SeqFISH+ readout setup.
-
-        Delegates to the shared :func:`validate_codebook` and :func:`validate_bit_mapping_table`
-        helpers with SeqFISH+-specific knobs (codebook indexed by ``gene_name``; readout probe table
-        has the SeqFISH+ four-column layout). The codebook hamming weight is left unconstrained
-        (``expected_hamming_weight=None``) because SeqFISH+ uses a combinatorial pseudocolor
-        encoding rather than a fixed-weight binary code.
-        """
-        validate_codebook(
-            codebook=codebook,
-            region_ids=region_ids,
-            source=codebook_source,
-            expected_hamming_weight=None,
-            index_name="gene_name",
-        )
-        validate_bit_mapping_table(
-            table=readout_probe_table,
-            codebook=codebook,
-            source=readout_probe_table_source,
-            required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
-            sequence_columns=["readout_probe_sequence"],
-        )
-
 
 ############################################
 # SeqFish Plus Primer Designer
@@ -1883,6 +1883,17 @@ class PrimerDesigner:
 
         return forward_primer_sequence
 
+    def validate(self, forward_primer: str, reverse_primer: str) -> None:
+        """
+        Validate a (forward_primer, reverse_primer) pair as valid DNA sequences.
+
+        Delegates to the shared :func:`validate_primer_sequence` helper for each primer; the
+        source identifiers are hardcoded as ``"forward_primer"`` / ``"reverse_primer"`` because
+        primer roles are fixed.
+        """
+        validate_primer_sequence(sequence=forward_primer, source="forward_primer")
+        validate_primer_sequence(sequence=reverse_primer, source="reverse_primer")
+
     @pipeline_step_basic(step_name="Primer Generation - Create Oligo Database")
     def _create_oligo_database(
         self,
@@ -2014,6 +2025,12 @@ class PrimerDesigner:
         # Build property-filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
 
+        if homopolymeric_runs_filter["enabled"]:
+            homopolymeric_runs = HomopolymericRunsFilter(
+                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
+            )
+            filters.append(homopolymeric_runs)
+
         if GC_content_filter["enabled"]:
             gc_content = GCContentFilter(
                 GC_content_min=GC_content_filter["GC_content_min"],
@@ -2027,12 +2044,6 @@ class PrimerDesigner:
                 n_GC=GC_clamp_filter["number_GC_GCclamp"],
             )
             filters.append(gc_clamp)
-
-        if homopolymeric_runs_filter["enabled"]:
-            homopolymeric_runs = HomopolymericRunsFilter(
-                base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
-            )
-            filters.append(homopolymeric_runs)
 
         if self_complementarity_filter["enabled"]:
             self_complement = SelfComplementFilter(
@@ -2236,17 +2247,6 @@ class PrimerDesigner:
                     forward_primer_sequence = primer_properties["oligo"]
 
         return forward_primer_sequence
-
-    def validate(self, forward_primer: str, reverse_primer: str) -> None:
-        """
-        Validate a (forward_primer, reverse_primer) pair as valid DNA sequences.
-
-        Delegates to the shared :func:`validate_primer_sequence` helper for each primer; the
-        source identifiers are hardcoded as ``"forward_primer"`` / ``"reverse_primer"`` because
-        primer roles are fixed.
-        """
-        validate_primer_sequence(sequence=forward_primer, source="forward_primer")
-        validate_primer_sequence(sequence=reverse_primer, source="reverse_primer")
 
 
 ############################################
