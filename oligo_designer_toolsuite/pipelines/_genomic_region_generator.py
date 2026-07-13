@@ -46,8 +46,6 @@ class GenomicRegionGenerator:
         """
         Loads annotations from the specified source (NCBI, Ensembl, or custom files).
 
-        :param source: The source of the annotations. Options: 'ncbi', 'ensembl', 'custom'.
-        :type source: str
         :param annotation: Parameters required for loading the annotations depending on the source.
             It needs to include the keys 'source' and 'parameters'.
             If source is 'ncbi', it additionally must contain the key 'mode'.
@@ -79,14 +77,17 @@ class GenomicRegionGenerator:
             if annotation["mode"] is None:
                 raise ConfigurationError("For source='ncbi', annotation parameter 'mode' must be provided.")
             # dowload the fasta files formthe NCBI server
+            # use get syntax for the parameters because depending on the mode,
+            # they can be missing because they are not needed for the selected source
+            # therefore, return None in this case
             region_generator = NcbiGenomicRegionGenerator(
                 mode=annotation["mode"],
-                taxon=annotation["parameters"]["taxon"],
-                species=annotation["parameters"]["species"],
-                annotation_release=annotation["parameters"]["annotation_release"],
-                assembly_source=annotation["parameters"]["assembly_source"],
-                refseq_assembly_accession=annotation["parameters"]["refseq_assembly_accession"],
-                assembly_name=annotation["parameters"]["assembly_name"],
+                taxon=annotation.get("parameters", {}).get("taxon"),
+                species=annotation.get("parameters", {}).get("species"),
+                annotation_release=annotation.get("parameters", {}).get("annotation_release"),
+                assembly_source=annotation.get("parameters", {}).get("assembly_source"),
+                refseq_assembly_accession=annotation.get("parameters", {}).get("refseq_assembly_accession"),
+                assembly_name=annotation.get("parameters", {}).get("assembly_name"),
                 dir_output=self.dir_output,
             )
         elif annotation["source"] == "ensembl":
@@ -197,7 +198,7 @@ def main() -> None:
     try:
         config_validated = GenomicRegionGeneratorConfig.model_validate(config_raw)
     except ValidationError as e:
-        print("Invalid configuration file:\n%s", e)
+        print(f"Invalid configuration file:\n{e}")
         raise
 
     config = config_validated.model_dump()

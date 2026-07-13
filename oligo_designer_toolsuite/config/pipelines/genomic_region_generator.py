@@ -93,7 +93,7 @@ class AnnotationParamsNcbiSpecies(BaseModel):
             "viral",
         ],
         Field(
-            description="Taxon of the species. Supported taxa are: archaea, bacteria, fungi, invertebrate, metagenomes, plants, protozoa, unknown, vertebrate_mammalian, vertebrate_other, viral.",
+            description="Taxon of the species. Supported taxa are: archaea, bacteria, fungi, invertebrate, metagenomes, plant, plants, protozoa, unknown, vertebrate_mammalian, vertebrate_other, viral.",
             default="vertebrate_mammalian",
         ),
     ]
@@ -104,7 +104,7 @@ class AnnotationParamsNcbiSpecies(BaseModel):
     assembly_source: Annotated[
         Literal["auto", "annotation_releases", "latest_assembly_versions", "reference"],
         Field(
-            description="Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory. 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'. 'latest_assembly_version' directory is available for all species and contains the latest assembly. 'reference' directory contains the reference genome. This is only available for a subset of species. 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_version'",
+            description="Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory. 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'. 'latest_assembly_versions' directory is available for all species and contains the latest assembly. 'reference' directory contains the reference genome. This is only available for a subset of species. 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_version'",
             default="auto",
         ),
     ]
