@@ -122,148 +122,45 @@ class OligoSeqProbeDesigner:
 
     def design_target_probes(
         self,
-        oligo_generation_parameters: dict,
-        property_filters_parameters: dict,
-        specificity_filters_parameters: dict,
-        probe_set_selection_parameters: dict,
+        target_probes_parameters: dict,
     ) -> OligoDatabase:
         """
-        Design target probes for Oligo-seq experiments using a modular multi-step pipeline.
+        Design target probes for Oligo-seq experiments.
 
-        This method orchestrates the complete target probe design workflow, consisting of:
+        Thin wrapper around :py:meth:`TargetProbeDesigner.generate_target_probes` — instantiates
+        the inner designer and delegates the full multi-step workflow (oligo generation → property
+        filtering → specificity filtering → probe-set selection → final property annotation) to it.
+        Kept as a public API so callers can drive the target-probe stage without touching the
+        inner class directly.
 
-        1. **Oligo generation**
-        - Constructs an initial oligo database from input FASTA files
-        - Uses a sliding-window approach with optional region splitting (e.g. exon–exon junction spanning)
-
-        2. **Property-based filtering**
-        - Filters candidate oligos based on intrinsic sequence properties, including:
-            GC content, melting temperature (Tm), homopolymeric runs, secondary structure,
-            self-complementarity, and sequence constraints
-
-        3. **Specificity filtering**
-        - Removes oligos with potential off-target binding using sequence alignment (e.g. BLASTN)
-        - Filters cross-hybridizing probes and probes overlapping known variants
-        - Applies read-length bias constraints where applicable
-
-        4. **Probe set selection**
-        - Organizes filtered oligos into optimal probe sets per target
-        - Uses graph-based selection with scoring criteria such as:
-            isoform consensus, exon targeting, GC content, melting temperature, and spacing constraints
-
-        5. **Property annotation**
-        - Computes final probe properties (e.g. GC content, Tm, transcript coverage)
-        - Uses thermodynamic model parameters inlined into the `Tm_filter` block by `_preprocess_config`
-
-        The resulting probes are gene-specific targeting sequences (typically 26-30 nt) that bind to
-        RNA transcripts. These probes are used directly for hybridization-based capture in Oligo-seq
-        experiments, which combine in situ hybridization with next-generation sequencing readout.
-
-        :param oligo_generation_parameters:
-            Parameters controlling oligo generation (input sequences, probe lengths, region splitting).
-        :type oligo_generation_parameters: dict
-
-        :param property_filters_parameters:
-            Parameters for property-based filtering of oligos (e.g. GC content, Tm, sequence constraints).
-        :type property_filters_parameters: dict
-
-        :param specificity_filters_parameters:
-            Parameters for specificity filtering (e.g. BLAST settings, variant filtering).
-        :type specificity_filters_parameters: dict
-
-        :param probe_set_selection_parameters:
-            Parameters controlling probe set construction and scoring.
-        :type probe_set_selection_parameters: dict
-
-        :return:
-            An `OligoDatabase` containing the designed target probes organized into sets,
-            including computed properties and metadata for each probe.
+        :param target_probes_parameters: ``target_probes`` block from the pipeline config. Must
+            contain ``oligo_generation``, ``property_filters``, ``specificity_filters``, and
+            ``probe_set_selection`` sub-blocks. Tm parameters are expected to have been inlined
+            into ``property_filters.Tm_filter`` by :func:`_preprocess_config`.
+        :type target_probes_parameters: dict
+        :return: An `OligoDatabase` containing the designed target probes organised into sets,
+            annotated with per-probe properties.
         :rtype: OligoDatabase
         """
-
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
-
-        oligo_database: OligoDatabase = target_probe_designer.create_oligo_database(
-            region_ids=oligo_generation_parameters["region_ids"],
-            oligo_length_min=oligo_generation_parameters["probe_length_min"],
-            oligo_length_max=oligo_generation_parameters["probe_length_max"],
-            split_region=oligo_generation_parameters["probe_split_region"],
-            files_fasta_oligo_database=oligo_generation_parameters["files_fasta_probe_database"],
-            min_oligos_per_gene=probe_set_selection_parameters["independent_set_selection"]["set_size_min"],
+        target_probes_database = target_probe_designer.generate_target_probes(
+            target_probes_parameters=target_probes_parameters,
+            write_intermediate_steps=self.write_intermediate_steps,
         )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
-            logger.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
-
-        # Add highly abundant k-mers to prohibited sequences
-        if property_filters_parameters["prohibited_sequences_filter"]["enabled"]:
-            prohibited_sequences = []
-            if property_filters_parameters["prohibited_sequences_filter"]["kmer_abundance_threshold"]:
-                prohibited_sequences = get_highly_abundant_kmer_sequences(
-                    files_fasta=oligo_generation_parameters["files_fasta_probe_database"],
-                    kmer_abundance_threshold=property_filters_parameters["prohibited_sequences_filter"][
-                        "kmer_abundance_threshold"
-                    ],
-                )
-            property_filters_parameters["prohibited_sequences_filter"]["prohibited_sequences"] = list(
-                set(
-                    property_filters_parameters["prohibited_sequences_filter"]["prohibited_sequences"]
-                    + prohibited_sequences
-                )
-            )
-
-        oligo_database = target_probe_designer.filter_by_property(
-            oligo_database=oligo_database,
-            isoform_consensus_filter=property_filters_parameters["isoform_consensus_filter"],
-            targeted_exons_filter=property_filters_parameters["targeted_exons_filter"],
-            hard_masked_sequences_filter=property_filters_parameters["hard_masked_sequences_filter"],
-            soft_masked_sequences_filter=property_filters_parameters["soft_masked_sequences_filter"],
-            homopolymeric_runs_filter=property_filters_parameters["homopolymeric_runs_filter"],
-            GC_content_filter=property_filters_parameters["GC_content_filter"],
-            prohibited_sequences_filter=property_filters_parameters["prohibited_sequences_filter"],
-            self_complementarity_filter=property_filters_parameters["self_complementarity_filter"],
-            Tm_filter=property_filters_parameters["Tm_filter"],
-            secondary_structure_filter=property_filters_parameters["secondary_structure_filter"],
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
-            logger.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
-
-        oligo_database = target_probe_designer.filter_by_specificity(
-            oligo_database=oligo_database,
-            read_length_bias_filter=specificity_filters_parameters["read_length_bias_filter"],
-            cross_hybridization_blastn_filter=specificity_filters_parameters[
-                "cross_hybridization_blastn_filter"
-            ],
-            specificity_blastn_filter=specificity_filters_parameters["specificity_blastn_filter"],
-            variant_filter=specificity_filters_parameters["variant_filter"],
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
-            logger.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
-
-        oligo_database = target_probe_designer.create_oligo_sets(
-            oligo_database=oligo_database,
-            independent_set_selection=probe_set_selection_parameters["independent_set_selection"],
-            uniform_distance_score=probe_set_selection_parameters["uniform_distance_score"],
-            isoform_consensus_score=probe_set_selection_parameters["isoform_consensus_score"],
-            targeted_exons_score=probe_set_selection_parameters["targeted_exons_score"],
-            GC_content_score=probe_set_selection_parameters["GC_content_score"],
-            Tm_score=probe_set_selection_parameters["Tm_score"],
-        )
-
-        # Calculate oligo length, GC content, Tm, num targeted transcripts, isoform consensus, and length self complement.
-        # Tm parameters were inlined into the ``Tm_filter`` block by ``_preprocess_config``.
-        Tm_filter = property_filters_parameters["Tm_filter"]
+        # Compute per-probe properties reported in the final output — length, GC content, Tm,
+        # transcript coverage, isoform consensus, self-complement length. Tm parameters were
+        # inlined into the ``Tm_filter`` block by ``_preprocess_config``.
         length_property = LengthProperty()
         gc_content_property = GCContentProperty()
         TmNN_property = TmNNProperty(
-            Tm_parameters=Tm_filter["Tm_parameters"],
-            Tm_chem_correction_parameters=Tm_filter["Tm_chem_correction_parameters"],
-            Tm_salt_correction_parameters=Tm_filter["Tm_salt_correction_parameters"],
+            Tm_parameters=target_probes_parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
+            Tm_chem_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
+                "Tm_chem_correction_parameters"
+            ],
+            Tm_salt_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
+                "Tm_salt_correction_parameters"
+            ],
         )
         num_targeted_transcripts_property = NumTargetedTranscriptsProperty()
         isoform_consensus_property = IsoformConsensusProperty()
@@ -278,15 +175,11 @@ class OligoSeqProbeDesigner:
                 length_self_complement_property,
             ]
         )
-        oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type="oligo", n_jobs=self.n_jobs
+        target_probes_database = calculator.apply(
+            oligo_database=target_probes_database, sequence_type="oligo", n_jobs=self.n_jobs
         )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
-            logger.info(f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database}")
-
-        return oligo_database
+        return target_probes_database
 
     def generate_output(
         self,
@@ -421,8 +314,126 @@ class TargetProbeDesigner:
 
         self.n_jobs = n_jobs
 
+    def generate_target_probes(
+        self,
+        target_probes_parameters: dict,
+        write_intermediate_steps: bool = False,
+    ) -> OligoDatabase:
+        """
+        Generate Oligo-seq target probes by running the full multi-step target-probe design pipeline.
+
+        Internally orchestrates the existing decorated steps:
+        :py:meth:`_create_oligo_database` → :py:meth:`_filter_by_property` →
+        :py:meth:`_filter_by_specificity` → :py:meth:`_create_oligo_sets`. Each decorated step
+        keeps its own ``@pipeline_step_basic`` logging.
+
+        The resulting probes are gene-specific targeting sequences (typically 26-30 nt) that
+        hybridize directly to RNA transcripts for hybridization-based capture in Oligo-seq
+        experiments. After set selection the method also computes final per-probe properties
+        (length, GC content, Tm, transcript coverage, isoform consensus, self-complementarity)
+        so callers receive an oligo database ready for downstream reporting.
+
+        :param target_probes_parameters: ``target_probes`` block. Must contain ``oligo_generation``,
+            ``property_filters``, ``specificity_filters``, ``probe_set_selection`` sub-blocks.
+            Tm parameters are expected to have been inlined into
+            ``property_filters.Tm_filter`` by :func:`_preprocess_config`; the final Tm property
+            calculator reads them from there.
+        :type target_probes_parameters: dict
+        :param write_intermediate_steps: If True, save the per-step target-probe databases for
+            debugging.
+        :type write_intermediate_steps: bool
+        :return: An `OligoDatabase` containing the designed target probes organised into sets,
+            annotated with per-probe properties.
+        :rtype: OligoDatabase
+        """
+        oligo_generation_parameters = target_probes_parameters["oligo_generation"]
+        property_filters_parameters = target_probes_parameters["property_filters"]
+        specificity_filters_parameters = target_probes_parameters["specificity_filters"]
+        probe_set_selection_parameters = target_probes_parameters["probe_set_selection"]
+
+        oligo_database: OligoDatabase = self._create_oligo_database(
+            region_ids=oligo_generation_parameters["region_ids"],
+            oligo_length_min=oligo_generation_parameters["probe_length_min"],
+            oligo_length_max=oligo_generation_parameters["probe_length_max"],
+            split_region=oligo_generation_parameters["probe_split_region"],
+            files_fasta_oligo_database=oligo_generation_parameters["files_fasta_probe_database"],
+            min_oligos_per_gene=probe_set_selection_parameters["independent_set_selection"]["set_size_min"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
+            logger.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
+
+        # Add highly abundant k-mers to prohibited sequences before property filtering.
+        # These are short motifs that occur too often in the reference to be safely tolerated
+        # inside a probe (they'd bind everywhere), so we blacklist them alongside user-supplied
+        # prohibited motifs.
+        if property_filters_parameters["prohibited_sequences_filter"]["enabled"]:
+            prohibited_sequences = []
+            if property_filters_parameters["prohibited_sequences_filter"]["kmer_abundance_threshold"]:
+                prohibited_sequences = get_highly_abundant_kmer_sequences(
+                    files_fasta=oligo_generation_parameters["files_fasta_probe_database"],
+                    kmer_abundance_threshold=property_filters_parameters["prohibited_sequences_filter"][
+                        "kmer_abundance_threshold"
+                    ],
+                )
+            property_filters_parameters["prohibited_sequences_filter"]["prohibited_sequences"] = list(
+                set(
+                    property_filters_parameters["prohibited_sequences_filter"]["prohibited_sequences"]
+                    + prohibited_sequences
+                )
+            )
+
+        oligo_database = self._filter_by_property(
+            oligo_database=oligo_database,
+            isoform_consensus_filter=property_filters_parameters["isoform_consensus_filter"],
+            targeted_exons_filter=property_filters_parameters["targeted_exons_filter"],
+            hard_masked_sequences_filter=property_filters_parameters["hard_masked_sequences_filter"],
+            soft_masked_sequences_filter=property_filters_parameters["soft_masked_sequences_filter"],
+            homopolymeric_runs_filter=property_filters_parameters["homopolymeric_runs_filter"],
+            GC_content_filter=property_filters_parameters["GC_content_filter"],
+            prohibited_sequences_filter=property_filters_parameters["prohibited_sequences_filter"],
+            self_complementarity_filter=property_filters_parameters["self_complementarity_filter"],
+            Tm_filter=property_filters_parameters["Tm_filter"],
+            secondary_structure_filter=property_filters_parameters["secondary_structure_filter"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
+            logger.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
+
+        oligo_database = self._filter_by_specificity(
+            oligo_database=oligo_database,
+            read_length_bias_filter=specificity_filters_parameters["read_length_bias_filter"],
+            cross_hybridization_blastn_filter=specificity_filters_parameters[
+                "cross_hybridization_blastn_filter"
+            ],
+            specificity_blastn_filter=specificity_filters_parameters["specificity_blastn_filter"],
+            variant_filter=specificity_filters_parameters["variant_filter"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
+            logger.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
+
+        oligo_database = self._create_oligo_sets(
+            oligo_database=oligo_database,
+            independent_set_selection=probe_set_selection_parameters["independent_set_selection"],
+            uniform_distance_score=probe_set_selection_parameters["uniform_distance_score"],
+            isoform_consensus_score=probe_set_selection_parameters["isoform_consensus_score"],
+            targeted_exons_score=probe_set_selection_parameters["targeted_exons_score"],
+            GC_content_score=probe_set_selection_parameters["GC_content_score"],
+            Tm_score=probe_set_selection_parameters["Tm_score"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
+            logger.info(f"Saved probe database for step 4 (Set Selection) in directory {dir_database}")
+
+        return oligo_database
+
     @pipeline_step_basic(step_name="Create Database")
-    def create_oligo_database(
+    def _create_oligo_database(
         self,
         region_ids: list | None,
         oligo_length_min: int,
@@ -540,7 +551,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Property Filters")
-    def filter_by_property(
+    def _filter_by_property(
         self,
         oligo_database: OligoDatabase,
         isoform_consensus_filter: dict,
@@ -720,7 +731,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Specificity Filters")
-    def filter_by_specificity(
+    def _filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
         read_length_bias_filter: dict,
@@ -883,7 +894,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Oligo Selection")
-    def create_oligo_sets(
+    def _create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
         independent_set_selection: dict,
@@ -1107,12 +1118,9 @@ def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
         n_jobs=config_dict["general"]["n_jobs"],
     )
 
-    ##### design probes #####
+    ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probes"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
+        target_probes_parameters=config_dict["target_probes"],
     )
 
     pipeline.generate_output(oligo_database=target_probe_database)

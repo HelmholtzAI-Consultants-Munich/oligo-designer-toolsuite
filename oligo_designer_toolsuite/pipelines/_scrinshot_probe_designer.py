@@ -143,128 +143,41 @@ class ScrinshotProbeDesigner:
 
     def design_target_probes(
         self,
-        oligo_generation_parameters: dict,
-        property_filters_parameters: dict,
-        specificity_filters_parameters: dict,
-        probe_set_selection_parameters: dict,
-        padlock_arms_parameters: dict,
+        target_probes_parameters: dict,
     ) -> OligoDatabase:
         """
-        Design target probes for SCRINSHOT experiments through a multi-step pipeline.
+        Design target probes for SCRINSHOT experiments.
 
-        This method performs the complete target probe design process, which includes:
-        1. Creating an initial oligo database from input FASTA files using a sliding window approach
-        2. Filtering probes based on sequence properties (GC content, melting temperature, homopolymeric
-           runs, detection oligo requirements, padlock arm requirements)
-        3. Filtering probes based on specificity to remove off-target binding and cross-hybridization
-           using BLASTN searches
-        4. Organizing filtered probes into optimal sets based on weighted scoring criteria (isoform
-           consensus, GC content, melting temperature) and distance constraints
+        Thin wrapper around :py:meth:`TargetProbeDesigner.generate_target_probes` — instantiates
+        the inner designer and delegates the full multi-step workflow to it. Kept as a public API
+        so callers can drive the target-probe stage without touching the inner class directly.
 
-        The resulting probes are gene-specific targeting sequences (typically 40-45 nt) that bind to RNA
-        transcripts. These probes will later be split into padlock arms and combined with a backbone
-        sequence to create complete padlock probes.
-
-        :param oligo_generation_parameters: ``target_probes.oligo_generation`` block. Must contain
-            ``region_ids`` (populated from ``file_region_ids``), ``probe_length_min``, ``probe_length_max``,
-            and ``files_fasta_probe_database``.
-        :type oligo_generation_parameters: dict
-        :param property_filters_parameters: ``target_probes.property_filters`` block. Each filter sub-dict
-            (``isoform_consensus_filter``, ``hard_masked_sequences_filter``, ``soft_masked_sequences_filter``,
-            ``homopolymeric_runs_filter``, ``GC_content_filter``, ``Tm_filter``, ``detection_oligo_filter``)
-            carries an ``enabled`` flag plus its parameters.
-        :type property_filters_parameters: dict
-        :param specificity_filters_parameters: ``target_probes.specificity_filters`` block. Contains the
-            shared ``files_fasta_reference_database`` and ``ligation_region_size`` plus the
-            ``specificity_blastn_filter`` and ``cross_hybridization_blastn_filter`` sub-dicts, each with
-            ``enabled``, ``search_parameters``, and ``hit_parameters``.
-        :type specificity_filters_parameters: dict
-        :param probe_set_selection_parameters: ``target_probes.probe_set_selection`` block. Contains the
-            ``independent_set_selection`` scalars and the ``isoform_consensus_score`` / ``GC_content_score`` /
-            ``Tm_score`` sub-dicts.
-        :type probe_set_selection_parameters: dict
-        :param padlock_arms_parameters: ``target_probes.padlock_arms_properties`` block. Used to compute padlock-arm
-            sequences/Tm (via ``PadlockArmsProperty``) for downstream filtering and backbone assembly.
-        :type padlock_arms_parameters: dict
-        :return: An `OligoDatabase` object containing the designed target probes organized into sets.
-            The database includes probe sequences, properties, and set assignments for each target gene.
+        :param target_probes_parameters: ``target_probes`` block from the pipeline config. Must
+            contain ``oligo_generation``, ``property_filters``, ``specificity_filters``,
+            ``probe_set_selection``, and ``padlock_arms_properties`` sub-blocks. Tm parameters
+            are expected to have been inlined into ``property_filters.Tm_filter`` and
+            ``padlock_arms_properties`` by :func:`_preprocess_config`.
+        :type target_probes_parameters: dict
+        :return: An `OligoDatabase` containing the designed target probes organised into sets,
+            annotated with padlock-arm coordinates ready for backbone assembly.
         :rtype: OligoDatabase
         """
-
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
-
-        oligo_database: OligoDatabase = target_probe_designer.create_oligo_database(
-            region_ids=oligo_generation_parameters["region_ids"],
-            oligo_length_min=oligo_generation_parameters["probe_length_min"],
-            oligo_length_max=oligo_generation_parameters["probe_length_max"],
-            files_fasta_oligo_database=oligo_generation_parameters["files_fasta_probe_database"],
-            min_oligos_per_gene=probe_set_selection_parameters["independent_set_selection"]["set_size_min"],
+        target_probes_database = target_probe_designer.generate_target_probes(
+            target_probes_parameters=target_probes_parameters,
+            write_intermediate_steps=self.write_intermediate_steps,
         )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
-            logger.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
-
-        oligo_database = target_probe_designer.filter_by_property(
-            oligo_database=oligo_database,
-            isoform_consensus_filter=property_filters_parameters["isoform_consensus_filter"],
-            hard_masked_sequences_filter=property_filters_parameters["hard_masked_sequences_filter"],
-            soft_masked_sequences_filter=property_filters_parameters["soft_masked_sequences_filter"],
-            homopolymeric_runs_filter=property_filters_parameters["homopolymeric_runs_filter"],
-            GC_content_filter=property_filters_parameters["GC_content_filter"],
-            Tm_filter=property_filters_parameters["Tm_filter"],
-            detection_oligo_filter=property_filters_parameters["detection_oligo_filter"],
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
-            logger.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
-
-        ##### compute padlock arm properties #####
-        # Required by assemble_padlock_backbone and by the seed-region BLASTN filter when ligation_region_size > 0.
-        padlock_arms_property = PadlockArmsProperty(
-            arm_length_min=padlock_arms_parameters["padlock_arm_length_min"],
-            arm_Tm_dif_max=padlock_arms_parameters["padlock_arm_Tm_dif_max"],
-            arm_Tm_min=padlock_arms_parameters["padlock_arm_Tm_min"],
-            arm_Tm_max=padlock_arms_parameters["padlock_arm_Tm_max"],
-            Tm_parameters=padlock_arms_parameters["Tm_parameters"],
-            Tm_chem_correction_parameters=padlock_arms_parameters["Tm_chem_correction_parameters"],
-            Tm_salt_correction_parameters=padlock_arms_parameters["Tm_salt_correction_parameters"],
-        )
-        calculator = PropertyCalculator(properties=[padlock_arms_property])
-        oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type="oligo", n_jobs=self.n_jobs
-        )
-
-        oligo_database = target_probe_designer.filter_by_specificity(
-            oligo_database=oligo_database,
-            specificity_blastn_filter=specificity_filters_parameters["specificity_blastn_filter"],
-            cross_hybridization_blastn_filter=specificity_filters_parameters[
-                "cross_hybridization_blastn_filter"
-            ],
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
-            logger.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
-
-        oligo_database = target_probe_designer.create_oligo_sets(
-            oligo_database=oligo_database,
-            independent_set_selection=probe_set_selection_parameters["independent_set_selection"],
-            isoform_consensus_score=probe_set_selection_parameters["isoform_consensus_score"],
-            GC_content_score=probe_set_selection_parameters["GC_content_score"],
-            Tm_score=probe_set_selection_parameters["Tm_score"],
-        )
-
-        # Calculate oligo length, GC content, Tm, and isoform consensus on the selected oligos.
+        # Compute per-probe properties reported in the final output — length, GC content, Tm,
+        # isoform consensus. Tm parameters were inlined into ``Tm_filter`` by ``_preprocess_config``.
         length_property = LengthProperty()
         gc_content_property = GCContentProperty()
         TmNN_property = TmNNProperty(
-            Tm_parameters=property_filters_parameters["Tm_filter"]["Tm_parameters"],
-            Tm_chem_correction_parameters=property_filters_parameters["Tm_filter"][
+            Tm_parameters=target_probes_parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
+            Tm_chem_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
                 "Tm_chem_correction_parameters"
             ],
-            Tm_salt_correction_parameters=property_filters_parameters["Tm_filter"][
+            Tm_salt_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
                 "Tm_salt_correction_parameters"
             ],
         )
@@ -277,16 +190,11 @@ class ScrinshotProbeDesigner:
                 isoform_consensus_property,
             ]
         )
-
-        oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type="oligo", n_jobs=self.n_jobs
+        target_probes_database = calculator.apply(
+            oligo_database=target_probes_database, sequence_type="oligo", n_jobs=self.n_jobs
         )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
-            logger.info(f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database}.")
-
-        return oligo_database
+        return target_probes_database
 
     def design_detection_oligos(
         self,
@@ -599,8 +507,116 @@ class TargetProbeDesigner:
 
         self.n_jobs = n_jobs
 
+    def generate_target_probes(
+        self,
+        target_probes_parameters: dict,
+        write_intermediate_steps: bool = False,
+    ) -> OligoDatabase:
+        """
+        Generate SCRINSHOT target probes by running the full multi-step target-probe design pipeline.
+
+        Internally orchestrates the existing decorated steps:
+        :py:meth:`_create_oligo_database` → :py:meth:`_filter_by_property` → **PadlockArmsProperty
+        computation** (interleaved) → :py:meth:`_filter_by_specificity` →
+        :py:meth:`_create_oligo_sets`. Each decorated step keeps its own ``@pipeline_step_basic``
+        logging.
+
+        The padlock-arm properties are computed **after property filtering and before specificity
+        filtering** because the seed-region BLASTN filter (when ``ligation_region_size > 0``) needs
+        the arm coordinates to define the seed region, and the downstream padlock backbone assembly
+        also reads those properties. Once set selection is complete the method also computes final
+        per-probe properties (length, GC content, Tm, isoform consensus).
+
+        :param target_probes_parameters: ``target_probes`` block. Must contain ``oligo_generation``,
+            ``property_filters``, ``specificity_filters``, ``probe_set_selection``, and
+            ``padlock_arms_properties`` sub-blocks. Tm parameters are expected to have been inlined
+            into ``property_filters.Tm_filter`` and ``padlock_arms_properties`` by
+            :func:`_preprocess_config`.
+        :type target_probes_parameters: dict
+        :param write_intermediate_steps: If True, save the per-step target-probe databases for
+            debugging.
+        :type write_intermediate_steps: bool
+        :return: An `OligoDatabase` containing the designed target probes organised into sets,
+            annotated with padlock-arm coordinates ready for backbone assembly.
+        :rtype: OligoDatabase
+        """
+        oligo_generation_parameters = target_probes_parameters["oligo_generation"]
+        property_filters_parameters = target_probes_parameters["property_filters"]
+        specificity_filters_parameters = target_probes_parameters["specificity_filters"]
+        probe_set_selection_parameters = target_probes_parameters["probe_set_selection"]
+        padlock_arms_parameters = target_probes_parameters["padlock_arms_properties"]
+
+        oligo_database: OligoDatabase = self._create_oligo_database(
+            region_ids=oligo_generation_parameters["region_ids"],
+            oligo_length_min=oligo_generation_parameters["probe_length_min"],
+            oligo_length_max=oligo_generation_parameters["probe_length_max"],
+            files_fasta_oligo_database=oligo_generation_parameters["files_fasta_probe_database"],
+            min_oligos_per_gene=probe_set_selection_parameters["independent_set_selection"]["set_size_min"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
+            logger.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
+
+        oligo_database = self._filter_by_property(
+            oligo_database=oligo_database,
+            isoform_consensus_filter=property_filters_parameters["isoform_consensus_filter"],
+            hard_masked_sequences_filter=property_filters_parameters["hard_masked_sequences_filter"],
+            soft_masked_sequences_filter=property_filters_parameters["soft_masked_sequences_filter"],
+            homopolymeric_runs_filter=property_filters_parameters["homopolymeric_runs_filter"],
+            GC_content_filter=property_filters_parameters["GC_content_filter"],
+            Tm_filter=property_filters_parameters["Tm_filter"],
+            detection_oligo_filter=property_filters_parameters["detection_oligo_filter"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
+            logger.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
+
+        ##### compute padlock arm properties #####
+        # Required by assemble_padlock_backbone and by the seed-region BLASTN filter when ligation_region_size > 0.
+        padlock_arms_property = PadlockArmsProperty(
+            arm_length_min=padlock_arms_parameters["padlock_arm_length_min"],
+            arm_Tm_dif_max=padlock_arms_parameters["padlock_arm_Tm_dif_max"],
+            arm_Tm_min=padlock_arms_parameters["padlock_arm_Tm_min"],
+            arm_Tm_max=padlock_arms_parameters["padlock_arm_Tm_max"],
+            Tm_parameters=padlock_arms_parameters["Tm_parameters"],
+            Tm_chem_correction_parameters=padlock_arms_parameters["Tm_chem_correction_parameters"],
+            Tm_salt_correction_parameters=padlock_arms_parameters["Tm_salt_correction_parameters"],
+        )
+        calculator = PropertyCalculator(properties=[padlock_arms_property])
+        oligo_database = calculator.apply(
+            oligo_database=oligo_database, sequence_type="oligo", n_jobs=self.n_jobs
+        )
+
+        oligo_database = self._filter_by_specificity(
+            oligo_database=oligo_database,
+            specificity_blastn_filter=specificity_filters_parameters["specificity_blastn_filter"],
+            cross_hybridization_blastn_filter=specificity_filters_parameters[
+                "cross_hybridization_blastn_filter"
+            ],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
+            logger.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
+
+        oligo_database = self._create_oligo_sets(
+            oligo_database=oligo_database,
+            independent_set_selection=probe_set_selection_parameters["independent_set_selection"],
+            isoform_consensus_score=probe_set_selection_parameters["isoform_consensus_score"],
+            GC_content_score=probe_set_selection_parameters["GC_content_score"],
+            Tm_score=probe_set_selection_parameters["Tm_score"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
+            logger.info(f"Saved probe database for step 4 (Set Selection) in directory {dir_database}.")
+
+        return oligo_database
+
     @pipeline_step_basic(step_name="Create Database")
-    def create_oligo_database(
+    def _create_oligo_database(
         self,
         region_ids: list | None,
         oligo_length_min: int,
@@ -684,7 +700,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Property Filters")
-    def filter_by_property(
+    def _filter_by_property(
         self,
         oligo_database: OligoDatabase,
         isoform_consensus_filter: dict,
@@ -819,7 +835,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Specificity Filters")
-    def filter_by_specificity(
+    def _filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
         specificity_blastn_filter: dict,
@@ -958,7 +974,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Set Selection")
-    def create_oligo_sets(
+    def _create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
         independent_set_selection: dict,
@@ -1628,11 +1644,7 @@ def scrinshot_probe_designer(config: dict[str, Any]) -> None:
 
     ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probes"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
-        padlock_arms_parameters=config_dict["target_probes"]["padlock_arms_properties"],
+        target_probes_parameters=config_dict["target_probes"],
     )
 
     ##### design detection oligos #####

@@ -87,92 +87,50 @@ class HcrProbeDesigner:
 
     def design_target_probes(
         self,
-        oligo_generation_parameters: dict,
-        property_filters_parameters: dict,
-        specificity_filters_parameters: dict,
-        probe_set_selection_parameters: dict,
+        target_probes_parameters: dict,
     ) -> OligoDatabase:
+        """
+        Design target probes for HCR experiments.
 
+        Thin wrapper around :py:meth:`TargetProbeDesigner.generate_target_probes` — instantiates
+        the inner designer and delegates the full multi-step workflow to it. Kept as a public API
+        so callers can drive the target-probe stage without touching the inner class directly.
+
+        :param target_probes_parameters: ``target_probes`` block from the pipeline config. Must
+            contain ``oligo_generation``, ``property_filters``, ``specificity_filters``, and
+            ``probe_set_selection`` sub-blocks. Tm parameters are expected to have been inlined
+            into ``property_filters.Tm_filter`` by :func:`_preprocess_config`.
+        :type target_probes_parameters: dict
+        :return: An `OligoDatabase` containing the designed target probes organised into sets,
+            with per-arm Tm properties annotated on the L/R half-probes.
+        :rtype: OligoDatabase
+        """
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
-
-        oligo_database: OligoDatabase = target_probe_designer.create_oligo_database(
-            region_ids=oligo_generation_parameters["region_ids"],
-            oligo_length=oligo_generation_parameters["oligo_length"],
-            L_probe_sequence_length=oligo_generation_parameters["L_probe_sequence_length"],
-            gap_sequence_length=oligo_generation_parameters["gap_sequence_length"],
-            R_probe_sequence_length=oligo_generation_parameters["R_probe_sequence_length"],
-            files_fasta_oligo_database=oligo_generation_parameters["files_fasta_probe_database"],
-            min_oligos_per_gene=probe_set_selection_parameters["independent_set_selection"]["set_size_min"],
+        target_probes_database = target_probe_designer.generate_target_probes(
+            target_probes_parameters=target_probes_parameters,
+            write_intermediate_steps=self.write_intermediate_steps,
         )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="1_db_target_probes_initial")
-            logger.info(
-                f"Saved target probe database for step 1 (Create Database) in directory {dir_database}"
-            )
-
-        oligo_database = target_probe_designer.filter_by_property(
-            oligo_database=oligo_database,
-            isoform_consensus_filter=property_filters_parameters["isoform_consensus_filter"],
-            hard_masked_sequences_filter=property_filters_parameters["hard_masked_sequences_filter"],
-            soft_masked_sequences_filter=property_filters_parameters["soft_masked_sequences_filter"],
-            homopolymeric_runs_filter=property_filters_parameters["homopolymeric_runs_filter"],
-            GC_content_filter=property_filters_parameters["GC_content_filter"],
-            Tm_filter=property_filters_parameters["Tm_filter"],
-            secondary_structure_filter=property_filters_parameters["secondary_structure_filter"],
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="2_db_target_probes_property_filter")
-            logger.info(
-                f"Saved target probe database for step 2 (Property Filters) in directory {dir_database}"
-            )
-
-        oligo_database = target_probe_designer.filter_by_specificity(
-            oligo_database=oligo_database,
-            specificity_blastn_filter=specificity_filters_parameters["specificity_blastn_filter"],
-            cross_hybridization_blastn_filter=specificity_filters_parameters[
-                "cross_hybridization_blastn_filter"
-            ],
-        )
-
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="3_db_target_probes_specificity_filter")
-            logger.info(
-                f"Saved target probe database for step 3 (Specificity Filters) in directory {dir_database}"
-            )
-
-        oligo_database = target_probe_designer.create_oligo_sets(
-            oligo_database=oligo_database,
-            independent_set_selection=probe_set_selection_parameters["independent_set_selection"],
-            isoform_consensus_score=probe_set_selection_parameters["isoform_consensus_score"],
-        )
-
-        # Caluclate properties
+        # Compute per-arm Tm on both L and R halves. Tm parameters were inlined into ``Tm_filter``
+        # by ``_preprocess_config``; the same values are reused here.
         tm_nn_property: BaseProperty = TmNNProperty(
-            Tm_parameters=property_filters_parameters["Tm_filter"]["Tm_parameters"],
-            Tm_chem_correction_parameters=property_filters_parameters["Tm_filter"][
+            Tm_parameters=target_probes_parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
+            Tm_chem_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
                 "Tm_chem_correction_parameters"
             ],
-            Tm_salt_correction_parameters=property_filters_parameters["Tm_filter"][
+            Tm_salt_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
                 "Tm_salt_correction_parameters"
             ],
         )
         calculator = PropertyCalculator(properties=[tm_nn_property])
-        oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type="oligo_L", n_jobs=self.n_jobs
+        target_probes_database = calculator.apply(
+            oligo_database=target_probes_database, sequence_type="oligo_L", n_jobs=self.n_jobs
         )
-        oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type="oligo_R", n_jobs=self.n_jobs
+        target_probes_database = calculator.apply(
+            oligo_database=target_probes_database, sequence_type="oligo_R", n_jobs=self.n_jobs
         )
 
-        if self.write_intermediate_steps:
-            dir_database = oligo_database.save_database(name_database="4_db_target_probes_sets")
-            logger.info(
-                f"Saved target probe database for step 4 (Specificity Filters) in directory {dir_database}."
-            )
-
-        return oligo_database
+        return target_probes_database
 
     def design_initiators(
         self,
@@ -375,8 +333,102 @@ class TargetProbeDesigner:
 
         self.n_jobs = n_jobs
 
+    def generate_target_probes(
+        self,
+        target_probes_parameters: dict,
+        write_intermediate_steps: bool = False,
+    ) -> OligoDatabase:
+        """
+        Generate HCR target probes by running the full multi-step target-probe design pipeline.
+
+        HCR probes are split into two halves — an ``oligo_L`` (left) arm and an ``oligo_R`` (right)
+        arm — separated by a short gap that carries the ligation site. Internally this method
+        orchestrates the existing decorated steps :py:meth:`_create_oligo_database` →
+        :py:meth:`_filter_by_property` → :py:meth:`_filter_by_specificity` →
+        :py:meth:`_create_oligo_sets`, and then computes the per-arm melting temperature
+        (``TmNNProperty``) on both ``oligo_L`` and ``oligo_R`` so downstream initiator assembly
+        and reporting have Tm values available for each half-probe.
+
+        :param target_probes_parameters: ``target_probes`` block. Must contain ``oligo_generation``,
+            ``property_filters``, ``specificity_filters``, ``probe_set_selection`` sub-blocks.
+            Tm parameters are expected to have been inlined into ``property_filters.Tm_filter``
+            by :func:`_preprocess_config`.
+        :type target_probes_parameters: dict
+        :param write_intermediate_steps: If True, save the per-step target-probe databases for
+            debugging.
+        :type write_intermediate_steps: bool
+        :return: An `OligoDatabase` containing the designed target probes organised into sets,
+            with per-arm Tm properties annotated on ``oligo_L`` and ``oligo_R`` sequences.
+        :rtype: OligoDatabase
+        """
+        oligo_generation_parameters = target_probes_parameters["oligo_generation"]
+        property_filters_parameters = target_probes_parameters["property_filters"]
+        specificity_filters_parameters = target_probes_parameters["specificity_filters"]
+        probe_set_selection_parameters = target_probes_parameters["probe_set_selection"]
+
+        oligo_database: OligoDatabase = self._create_oligo_database(
+            region_ids=oligo_generation_parameters["region_ids"],
+            oligo_length=oligo_generation_parameters["oligo_length"],
+            L_probe_sequence_length=oligo_generation_parameters["L_probe_sequence_length"],
+            gap_sequence_length=oligo_generation_parameters["gap_sequence_length"],
+            R_probe_sequence_length=oligo_generation_parameters["R_probe_sequence_length"],
+            files_fasta_oligo_database=oligo_generation_parameters["files_fasta_probe_database"],
+            min_oligos_per_gene=probe_set_selection_parameters["independent_set_selection"]["set_size_min"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="1_db_target_probes_initial")
+            logger.info(
+                f"Saved target probe database for step 1 (Create Database) in directory {dir_database}"
+            )
+
+        oligo_database = self._filter_by_property(
+            oligo_database=oligo_database,
+            isoform_consensus_filter=property_filters_parameters["isoform_consensus_filter"],
+            hard_masked_sequences_filter=property_filters_parameters["hard_masked_sequences_filter"],
+            soft_masked_sequences_filter=property_filters_parameters["soft_masked_sequences_filter"],
+            homopolymeric_runs_filter=property_filters_parameters["homopolymeric_runs_filter"],
+            GC_content_filter=property_filters_parameters["GC_content_filter"],
+            Tm_filter=property_filters_parameters["Tm_filter"],
+            secondary_structure_filter=property_filters_parameters["secondary_structure_filter"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="2_db_target_probes_property_filter")
+            logger.info(
+                f"Saved target probe database for step 2 (Property Filters) in directory {dir_database}"
+            )
+
+        oligo_database = self._filter_by_specificity(
+            oligo_database=oligo_database,
+            specificity_blastn_filter=specificity_filters_parameters["specificity_blastn_filter"],
+            cross_hybridization_blastn_filter=specificity_filters_parameters[
+                "cross_hybridization_blastn_filter"
+            ],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="3_db_target_probes_specificity_filter")
+            logger.info(
+                f"Saved target probe database for step 3 (Specificity Filters) in directory {dir_database}"
+            )
+
+        oligo_database = self._create_oligo_sets(
+            oligo_database=oligo_database,
+            independent_set_selection=probe_set_selection_parameters["independent_set_selection"],
+            isoform_consensus_score=probe_set_selection_parameters["isoform_consensus_score"],
+        )
+
+        if write_intermediate_steps:
+            dir_database = oligo_database.save_database(name_database="4_db_target_probes_sets")
+            logger.info(
+                f"Saved target probe database for step 4 (Set Selection) in directory {dir_database}."
+            )
+
+        return oligo_database
+
     @pipeline_step_basic(step_name="Target Probe Generation - Create Database")
-    def create_oligo_database(
+    def _create_oligo_database(
         self,
         region_ids: list[str] | None,
         oligo_length: int,
@@ -451,7 +503,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Target Probe Generation - Property Filters")
-    def filter_by_property(
+    def _filter_by_property(
         self,
         oligo_database: OligoDatabase,
         isoform_consensus_filter: dict,
@@ -539,7 +591,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Target Probe Generation - Specificity Filters")
-    def filter_by_specificity(
+    def _filter_by_specificity(
         self,
         oligo_database: OligoDatabase,
         specificity_blastn_filter: dict,
@@ -661,7 +713,7 @@ class TargetProbeDesigner:
         return oligo_database
 
     @pipeline_step_basic(step_name="Target Probe Generation - Set Selection")
-    def create_oligo_sets(
+    def _create_oligo_sets(
         self,
         oligo_database: OligoDatabase,
         independent_set_selection: dict,
@@ -898,10 +950,7 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
 
     ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
-        oligo_generation_parameters=config_dict["target_probes"]["oligo_generation"],
-        property_filters_parameters=config_dict["target_probes"]["property_filters"],
-        specificity_filters_parameters=config_dict["target_probes"]["specificity_filters"],
-        probe_set_selection_parameters=config_dict["target_probes"]["probe_set_selection"],
+        target_probes_parameters=config_dict["target_probes"],
     )
 
     ##### design initiators (codebook + initiator table) #####

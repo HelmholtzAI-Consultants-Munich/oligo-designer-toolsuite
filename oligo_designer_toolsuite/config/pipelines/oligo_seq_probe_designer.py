@@ -197,4 +197,4 @@ class OligoSeqProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
-    target_probe: TargetProbe
+    target_probes: TargetProbe
