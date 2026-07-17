@@ -4,7 +4,6 @@
 
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
-from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase
@@ -67,6 +66,13 @@ class HybridizationProbabilityFilter(ReferenceSpecificityFilter):
 
         # instantiate ai model
         self.threshold = threshold
+        try:
+            from oligo_designer_toolsuite_ai_filters.api import APIHybridizationProbability
+        except ImportError as e:
+            raise ImportError(
+                "HybridizationProbabilityFilter requires the optional 'ai-filters' extra. "
+                "Install it with: pip install oligo-designer-toolsuite[ai-filters]"
+            ) from e
         self.model = APIHybridizationProbability(ai_filter_path=ai_filter_path)
 
     def _create_reference(self, n_jobs: int) -> str:

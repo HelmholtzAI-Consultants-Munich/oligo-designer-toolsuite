@@ -87,6 +87,11 @@ jobs:
             "samtools>=1.22" \
             "bcftools>=1.22"
 
+      - name: Clone environment for ai-filters tests
+        run: |
+          # Clone the env for later tests with optional ai-filters installed
+          conda create -y --clone test-env --name test-env-aifilters
+
       - name: Install Python package
         run: |
           conda activate test-env
@@ -98,7 +103,12 @@ jobs:
         run: |
           conda activate test-env
 
-          python -c "import oligo_designer_toolsuite"
+          # Default install: package (and the filter class) must import without ai-filters / torch.
+          python -c "import oligo_designer_toolsuite; from oligo_designer_toolsuite.oligo_specificity_filter import HybridizationProbabilityFilter"
+          # torch must NOT be pulled in by the default install.
+          if pip show torch > /dev/null 2>&1; then
+            echo "ERROR: torch is installed but should not be without the ai-filters extra"; exit 1
+          fi
 
       - name: Run tests
         env:
@@ -106,7 +116,24 @@ jobs:
         run: |
           conda activate test-env
 
+          # AI filter tests skip here (ai-filters not installed); everything else runs.
           pytest --disable-warnings -k "not FTPLoader"
+
+      - name: Install Python package with ai-filters (cloned env)
+        run: |
+          conda activate test-env-aifilters
+
+          python -m pip install --upgrade pip
+          pip install -e .[dev,ai-filters]
+
+      - name: Run specificity filter tests with ai-filters (cloned env)
+        run: |
+          conda activate test-env-aifilters
+
+          # Assert the extra is really installed: this makes HAS_AI_FILTERS True, which
+          # is needed for the HybridizationProbability tests
+          python -c "from oligo_designer_toolsuite_ai_filters.api import APIBase"
+          pytest --disable-warnings tests/test_oligo_specificity_filter.py
 
 # NOTE:
 # We currently exclude FTP/network-dependent tests via `-k` name filtering

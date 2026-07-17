@@ -122,6 +122,14 @@ cd oligo-designer-toolsuite
 
 		pip install -e .[dev]
 
+- If you want to use `HybridizationProbabilityFilter` (currently not used in any predefined pipeline), you need to add the optional dependency:
+
+		pip install oligo-designer-toolsuite[ai-filters]
+
+	or
+
+		pip install .[ai-filters]
+
 
 <!-- LINK INSTALLATION END -->
 
