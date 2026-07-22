@@ -1256,9 +1256,10 @@ class ReadoutProbeDesigner:
             assert n_pseudocolors > max(
                 pseudocolors
             ), f"The number of pseudocolor is {n_pseudocolors}, while the barcode contains {max(pseudocolors)} pseudocolors."
-            assert (
-                n_channels > channel
-            ), f"The number of channles is {n_channels}, while the barcode contains {channel} channels."
+            if n_channels <= channel:
+                raise ConfigurationError(
+                    f"The number of channels is {n_channels}, while the barcode contains channel index {channel}."
+                )
             n_barcode_rounds = len(pseudocolors)
             barcode = np.zeros(n_channels * n_pseudocolors * n_barcode_rounds, dtype=np.int8)
             for i, pseudocolor in enumerate(pseudocolors):
