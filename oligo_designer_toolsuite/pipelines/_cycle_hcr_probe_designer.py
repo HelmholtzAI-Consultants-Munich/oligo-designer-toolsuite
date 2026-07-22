@@ -328,8 +328,10 @@ class CycleHCRProbeDesigner:
         bring together the split HCR initiator during imaging.
 
         The codebook and readout probe table can either be loaded from files or
-        generated from the config. Both tables are checked before they are returned,
-        so missing targets or missing readout sequences are caught early.
+        generated from the config. The readout probe table is checked as soon as it
+        is available. After the codebook is ready, both tables are checked
+        together, so missing targets or missing readout sequences are caught
+        early.
 
         :param region_ids: Target regions that must be represented in the codebook,
             usually gene names or gene IDs.
@@ -360,6 +362,13 @@ class CycleHCRProbeDesigner:
             readout_probe_table = readout_probe_designer.generate_readout_probe_table()
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
 
+        # Table-only validation: catch structural issues (index name, columns, DNA validity)
+        # before generate_codebook consumes the table.
+        readout_probe_designer.validate(
+            readout_probe_table=readout_probe_table,
+            readout_probe_table_source=readout_probe_table_source,
+        )
+
         if readout_probe_parameters["codebook"]["source"] == "load":
             codebook = readout_probe_designer.load_codebook(
                 file_codebook=readout_probe_parameters["codebook"]["file"]
@@ -373,12 +382,13 @@ class CycleHCRProbeDesigner:
             )
             codebook_source = readout_probe_parameters["codebook"]["source"]
 
+        # Full pair validation: also checks that every codebook bit is covered by the table.
         readout_probe_designer.validate(
-            codebook=codebook,
             readout_probe_table=readout_probe_table,
+            readout_probe_table_source=readout_probe_table_source,
+            codebook=codebook,
             region_ids=region_ids,
             codebook_source=codebook_source,
-            readout_probe_table_source=readout_probe_table_source,
         )
 
         return codebook, readout_probe_table
@@ -1589,6 +1599,8 @@ class ReadoutProbeDesigner:
         :py:meth:`generate_codebook` expects, with left and right readout probes
         arranged in a predictable order.
 
+        Column and sequence checks are done later by :py:meth:`validate`.
+
         :param file_readout_probe_table: Path to the readout probe table file. The
             file must contain ``readout_probe_sequence``, ``channel``,
             ``readout_probe_id``, and ``L/R`` columns. If the codebook is loaded
@@ -1600,8 +1612,7 @@ class ReadoutProbeDesigner:
         :type codebook_source: str
         :return: Readout probe table indexed by ``bit``.
         :rtype: pd.DataFrame
-        :raises FileFormatError: If a required column is missing, if a readout probe
-            sequence is invalid, or if the ``bit`` column is missing when a codebook
+        :raises FileFormatError: If the ``bit`` column is missing when a codebook
             is loaded from file.
         """
         readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
@@ -1620,14 +1631,7 @@ class ReadoutProbeDesigner:
             readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel", "L/R"])
             readout_probe_table.reset_index(inplace=True, drop=True)
             readout_probe_table["bit"] = "bit_" + (readout_probe_table.index + 1).astype(str)
-        readout_probe_table = readout_probe_table.set_index("bit")
-        validate_bit_mapping_table(
-            table=readout_probe_table,
-            source=file_readout_probe_table,
-            required_columns=["channel", "readout_probe_id", "L/R", "readout_probe_sequence"],
-            sequence_columns=["readout_probe_sequence"],
-        )
-        return readout_probe_table
+        return readout_probe_table.set_index("bit")
 
     def generate_readout_probe_table(self) -> pd.DataFrame:
         """
@@ -1648,59 +1652,80 @@ class ReadoutProbeDesigner:
 
     def validate(
         self,
-        codebook: pd.DataFrame,
-        readout_probe_table: pd.DataFrame,
-        region_ids: list[str],
+        readout_probe_table: pd.DataFrame | None = None,
         *,
-        codebook_source: str,
-        readout_probe_table_source: str,
+        readout_probe_table_source: str | None = None,
+        codebook: pd.DataFrame | None = None,
+        region_ids: list[str] | None = None,
+        codebook_source: str | None = None,
     ) -> None:
         """
-        Check that the codebook and readout probe table match.
+        Check the codebook and/or readout probe table.
 
-        This method checks the two tables together. The codebook must contain all
-        requested target regions, use ``gene_name`` as the row index, and contain
-        only ``0`` and ``1`` values in its bit columns. For CycleHCR, each target
-        region must have exactly two active bits.
+        This method can check either table on its own, or both together. When a
+        codebook is provided, it must contain all requested target regions, use
+        ``gene_name`` as the row index, and contain only ``0`` and ``1`` values in
+        its bit columns. For CycleHCR, each target region must have exactly two
+        active bits.
 
-        The readout probe table must contain every bit used by the codebook. It must
-        also provide a valid DNA sequence, channel, L/R role, and readout probe ID
-        for each bit.
+        When a readout probe table is provided, it must include a valid DNA
+        sequence, channel, L/R role, and readout probe ID for each bit. If a
+        codebook is also provided, every bit used by the codebook must appear in
+        the table.
 
-        Running this check before probe assembly helps catch mismatched files early,
-        such as a codebook that refers to a bit missing from the readout probe table.
+        Running these checks before probe assembly helps catch mismatched files
+        early, such as a codebook that refers to a bit missing from the readout
+        probe table.
 
-        :param codebook: Codebook table assigning target regions to barcode bits.
-            Rows are target regions and columns are ``bit_*`` entries.
-        :type codebook: pd.DataFrame
-        :param readout_probe_table: Table linking each barcode bit to a readout
-            probe sequence and its readout information.
-        :type readout_probe_table: pd.DataFrame
+        :param readout_probe_table: Optional table linking each barcode bit to a
+            readout probe sequence and its readout information. If ``None``, the
+            table is not checked.
+        :type readout_probe_table: pd.DataFrame | None
+        :param readout_probe_table_source: File path or source label for the
+            readout probe table. Used in error messages when the table is checked.
+        :type readout_probe_table_source: str | None
+        :param codebook: Optional codebook table assigning target regions to
+            barcode bits. Rows are target regions and columns are ``bit_*``
+            entries. If ``None``, the codebook is not checked.
+        :type codebook: pd.DataFrame | None
         :param region_ids: Target regions that must be present in the codebook.
-        :type region_ids: list[str]
-        :param codebook_source: File path or source label for the codebook. Used in
-            error messages.
-        :type codebook_source: str
-        :param readout_probe_table_source: File path or source label for the readout
-            probe table. Used in error messages.
-        :type readout_probe_table_source: str
+            Required when a codebook is checked.
+        :type region_ids: list[str] | None
+        :param codebook_source: File path or source label for the codebook. Used
+            in error messages when the codebook is checked.
+        :type codebook_source: str | None
+        :return: None
+        :rtype: None
+        :raises ValueError: If a table is checked without its required companion
+            arguments (for example ``region_ids`` / ``codebook_source`` with a
+            codebook, or ``readout_probe_table_source`` with a readout probe table).
         :raises FileFormatError: If the codebook or readout probe table is missing
             required information or contains invalid values.
         """
-        validate_codebook(
-            codebook=codebook,
-            region_ids=region_ids,
-            source=codebook_source,
-            expected_hamming_weight=2,
-            index_name="gene_name",
-        )
-        validate_bit_mapping_table(
-            table=readout_probe_table,
-            codebook=codebook,
-            source=readout_probe_table_source,
-            required_columns=["channel", "readout_probe_id", "L/R", "readout_probe_sequence"],
-            sequence_columns=["readout_probe_sequence"],
-        )
+        if codebook is not None:
+            if region_ids is None:
+                raise ValueError("region_ids must be provided when validating a codebook.")
+            if codebook_source is None:
+                raise ValueError("codebook_source must be provided when validating a codebook.")
+            validate_codebook(
+                codebook=codebook,
+                region_ids=region_ids,
+                source=codebook_source,
+                expected_hamming_weight=2,
+                index_name="gene_name",
+            )
+        if readout_probe_table is not None:
+            if readout_probe_table_source is None:
+                raise ValueError(
+                    "readout_probe_table_source must be provided when validating a readout probe table."
+                )
+            validate_bit_mapping_table(
+                table=readout_probe_table,
+                codebook=codebook,
+                source=readout_probe_table_source,
+                required_columns=["channel", "readout_probe_id", "L/R", "readout_probe_sequence"],
+                sequence_columns=["readout_probe_sequence"],
+            )
 
 
 ############################################

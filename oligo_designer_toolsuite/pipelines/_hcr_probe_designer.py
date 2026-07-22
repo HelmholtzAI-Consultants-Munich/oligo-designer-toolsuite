@@ -303,8 +303,9 @@ class HcrProbeDesigner:
         are attached to the left and right target probes during probe assembly.
 
         The codebook and initiator table can either be loaded from files or
-        generated from the config. Both tables are checked together before they are
-        returned, so missing targets or missing initiator sequences are caught
+        generated from the config. The initiator table is checked as soon as it
+        is available. After the codebook is ready, both tables are checked
+        together, so missing targets or missing initiator sequences are caught
         before probe assembly.
 
         :param region_ids: Target regions that must be represented in the codebook,
@@ -333,6 +334,13 @@ class HcrProbeDesigner:
             initiator_table = initiator_designer.generate_initiator_table()
             initiator_table_source = initiator_probe_parameters["initiator_table"]["source"]
 
+        # Table-only validation: catch structural issues (index name, columns, DNA validity)
+        # as soon as the table is available.
+        initiator_designer.validate(
+            initiator_table=initiator_table,
+            initiator_table_source=initiator_table_source,
+        )
+
         if initiator_probe_parameters["codebook"]["source"] == "load":
             codebook = initiator_designer.load_codebook(
                 file_codebook=initiator_probe_parameters["codebook"]["file"]
@@ -342,12 +350,13 @@ class HcrProbeDesigner:
             codebook = initiator_designer.generate_codebook(region_ids=region_ids)
             codebook_source = initiator_probe_parameters["codebook"]["source"]
 
+        # Full pair validation: also checks that every codebook bit is covered by the table.
         initiator_designer.validate(
-            codebook=codebook,
             initiator_table=initiator_table,
+            initiator_table_source=initiator_table_source,
+            codebook=codebook,
             region_ids=region_ids,
             codebook_source=codebook_source,
-            initiator_table_source=initiator_table_source,
         )
 
         return codebook, initiator_table
@@ -1240,9 +1249,8 @@ class InitiatorDesigner:
         other on the right probe.
 
         The file must contain a ``bit`` column, an ``initiator_L_sequence`` column,
-        and an ``initiator_R_sequence`` column. The initiator sequences are checked
-        when the table is loaded. The match between codebook bits and initiator-table
-        rows is checked later by :py:meth:`validate`.
+        and an ``initiator_R_sequence`` column. Column and sequence checks are done
+        later by :py:meth:`validate`.
 
         :param file_initiator_table: Path to the initiator table file. The file must
             contain ``bit``, ``initiator_L_sequence``, and
@@ -1250,20 +1258,12 @@ class InitiatorDesigner:
         :type file_initiator_table: str
         :return: Initiator table indexed by ``bit``.
         :rtype: pandas.DataFrame
-        :raises FileFormatError: If the ``bit`` column is missing, a required
-            sequence column is missing, or an initiator sequence is not valid DNA.
+        :raises FileFormatError: If the ``bit`` column is missing.
         """
         initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
         if "bit" not in initiator_table.columns:
             raise FileFormatError(f"Initiator table '{file_initiator_table}' must contain a 'bit' column.")
-        initiator_table = initiator_table.set_index("bit")
-        validate_bit_mapping_table(
-            table=initiator_table,
-            source=file_initiator_table,
-            required_columns=["initiator_L_sequence", "initiator_R_sequence"],
-            sequence_columns=["initiator_L_sequence", "initiator_R_sequence"],
-        )
-        return initiator_table
+        return initiator_table.set_index("bit")
 
     def generate_initiator_table(self) -> pd.DataFrame:
         """
@@ -1284,59 +1284,79 @@ class InitiatorDesigner:
 
     def validate(
         self,
-        codebook: pd.DataFrame,
-        initiator_table: pd.DataFrame,
-        region_ids: list[str],
+        initiator_table: pd.DataFrame | None = None,
         *,
-        codebook_source: str,
-        initiator_table_source: str,
+        initiator_table_source: str | None = None,
+        codebook: pd.DataFrame | None = None,
+        region_ids: list[str] | None = None,
+        codebook_source: str | None = None,
     ) -> None:
         """
-        Check that the codebook and initiator table match.
+        Check the codebook and/or initiator table.
 
-        This method checks both tables together. The codebook must contain all
-        requested target regions, use ``gene_name`` as the row index, and contain
-        only ``0`` and ``1`` values in its bit columns. For HCR, each target region
-        must have exactly one active bit.
+        This method can check either table on its own, or both together. When a
+        codebook is provided, it must contain all requested target regions, use
+        ``gene_name`` as the row index, and contain only ``0`` and ``1`` values in
+        its bit columns. For HCR, each target region must have exactly one active
+        bit.
 
-        The initiator table must contain every bit used by the codebook. For each
-        bit, it must provide a valid left and right half-initiator sequence.
+        When an initiator table is provided, it must include a valid left and right
+        half-initiator sequence for each bit. If a codebook is also provided, every
+        bit used by the codebook must appear in the table.
 
-        Running this check before probe assembly helps catch mismatched input files
-        early, such as a codebook that refers to an amplifier bit missing from the
-        initiator table.
+        Running these checks before probe assembly helps catch mismatched input
+        files early, such as a codebook that refers to an amplifier bit missing
+        from the initiator table.
 
-        :param codebook: Codebook table assigning target regions to amplifier bits.
-            Rows are target regions and columns are ``bit_*`` entries.
-        :type codebook: pd.DataFrame
-        :param initiator_table: Table linking each amplifier bit to its left and
-            right half-initiator sequences.
-        :type initiator_table: pd.DataFrame
-        :param region_ids: Target regions that must be present in the codebook.
-        :type region_ids: list[str]
-        :param codebook_source: File path or source label for the codebook. Used in
-            error messages.
-        :type codebook_source: str
+        :param initiator_table: Optional table linking each amplifier bit to its
+            left and right half-initiator sequences. If ``None``, the table is not
+            checked.
+        :type initiator_table: pd.DataFrame | None
         :param initiator_table_source: File path or source label for the initiator
-            table. Used in error messages.
-        :type initiator_table_source: str
+            table. Used in error messages when the table is checked.
+        :type initiator_table_source: str | None
+        :param codebook: Optional codebook table assigning target regions to
+            amplifier bits. Rows are target regions and columns are ``bit_*``
+            entries. If ``None``, the codebook is not checked.
+        :type codebook: pd.DataFrame | None
+        :param region_ids: Target regions that must be present in the codebook.
+            Required when a codebook is checked.
+        :type region_ids: list[str] | None
+        :param codebook_source: File path or source label for the codebook. Used
+            in error messages when the codebook is checked.
+        :type codebook_source: str | None
+        :return: None
+        :rtype: None
+        :raises ValueError: If a table is checked without its required companion
+            arguments (for example ``region_ids`` / ``codebook_source`` with a
+            codebook, or ``initiator_table_source`` with an initiator table).
         :raises FileFormatError: If the codebook or initiator table is missing
             required information or contains invalid values.
         """
-        validate_codebook(
-            codebook=codebook,
-            region_ids=region_ids,
-            source=codebook_source,
-            expected_hamming_weight=1,
-            index_name="gene_name",
-        )
-        validate_bit_mapping_table(
-            table=initiator_table,
-            codebook=codebook,
-            source=initiator_table_source,
-            required_columns=["initiator_L_sequence", "initiator_R_sequence"],
-            sequence_columns=["initiator_L_sequence", "initiator_R_sequence"],
-        )
+        if codebook is not None:
+            if region_ids is None:
+                raise ValueError("region_ids must be provided when validating a codebook.")
+            if codebook_source is None:
+                raise ValueError("codebook_source must be provided when validating a codebook.")
+            validate_codebook(
+                codebook=codebook,
+                region_ids=region_ids,
+                source=codebook_source,
+                expected_hamming_weight=1,
+                index_name="gene_name",
+            )
+        if initiator_table is not None:
+            if initiator_table_source is None:
+                raise ValueError(
+                    "initiator_table_source must be provided when validating an initiator table."
+                )
+            validate_bit_mapping_table(
+                table=initiator_table,
+                codebook=codebook,
+                source=initiator_table_source,
+                required_columns=["initiator_L_sequence", "initiator_R_sequence"],
+                sequence_columns=["initiator_L_sequence", "initiator_R_sequence"],
+            )
 
 
 ############################################

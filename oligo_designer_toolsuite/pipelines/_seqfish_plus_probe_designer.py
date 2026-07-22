@@ -344,11 +344,11 @@ class SeqFishPlusProbeDesigner:
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
 
         readout_probe_designer.validate(
-            codebook=codebook,
             readout_probe_table=readout_probe_table,
+            readout_probe_table_source=readout_probe_table_source,
+            codebook=codebook,
             region_ids=region_ids,
             codebook_source=codebook_source,
-            readout_probe_table_source=readout_probe_table_source,
         )
 
         return codebook, readout_probe_table
@@ -1324,9 +1324,9 @@ class ReadoutProbeDesigner:
         It must contain the bit name, barcode round, pseudocolor, fluorescence
         channel, and readout probe sequence.
 
-        The table is checked as soon as it is loaded, so missing columns or invalid
-        DNA sequences are caught early. The full match against the codebook is done
-        later by :py:meth:`validate`.
+        Column and sequence checks are done later by :py:meth:`validate`. When a
+        codebook is also provided there, every codebook bit must appear in this
+        table.
 
         :param file_readout_probe_table: Path to the readout probe table file. The
             file must contain ``bit``, ``barcode_round``, ``pseudocolor``,
@@ -1334,22 +1334,14 @@ class ReadoutProbeDesigner:
         :type file_readout_probe_table: str
         :return: Readout probe table indexed by ``bit``.
         :rtype: pd.DataFrame
-        :raises FileFormatError: If a required column is missing or if a readout
-            probe sequence is invalid.
+        :raises FileFormatError: If the ``bit`` column is missing.
         """
         readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
         if "bit" not in readout_probe_table.columns:
             raise FileFormatError(
                 f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column."
             )
-        readout_probe_table = readout_probe_table.set_index("bit")
-        validate_bit_mapping_table(
-            table=readout_probe_table,
-            source=file_readout_probe_table,
-            required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
-            sequence_columns=["readout_probe_sequence"],
-        )
-        return readout_probe_table
+        return readout_probe_table.set_index("bit")
 
     def generate_readout_probe_table(
         self,
@@ -1434,58 +1426,79 @@ class ReadoutProbeDesigner:
 
     def validate(
         self,
-        codebook: pd.DataFrame,
-        readout_probe_table: pd.DataFrame,
-        region_ids: list[str],
+        readout_probe_table: pd.DataFrame | None = None,
         *,
-        codebook_source: str,
-        readout_probe_table_source: str,
+        readout_probe_table_source: str | None = None,
+        codebook: pd.DataFrame | None = None,
+        region_ids: list[str] | None = None,
+        codebook_source: str | None = None,
     ) -> None:
         """
-        Check that the codebook and readout probe table match.
+        Check the codebook and/or readout probe table.
 
-        This method checks the two tables together. The codebook must contain all
-        requested target regions, use ``gene_name`` as the row index, and contain
-        only ``0`` and ``1`` values in its bit columns.
+        This method can check either table on its own, or both together. When a
+        codebook is provided, it must contain all requested target regions, use
+        ``gene_name`` as the row index, and contain only ``0`` and ``1`` values in
+        its bit columns.
 
-        The readout probe table must contain every bit used by the codebook. It must
-        also provide a valid DNA sequence, barcode round, pseudocolor, and channel
-        for each bit.
+        When a readout probe table is provided, it must include a valid DNA
+        sequence, barcode round, pseudocolor, and channel for each bit. If a
+        codebook is also provided, every bit used by the codebook must appear in
+        the table.
 
-        Running this check before probe assembly helps catch mismatched files early,
-        such as a codebook that refers to a bit missing from the readout probe table.
+        Running these checks before probe assembly helps catch mismatched files
+        early, such as a codebook that refers to a bit missing from the readout
+        probe table.
 
-        :param codebook: Codebook table assigning target regions to barcode bits.
-            Rows are target regions and columns are ``bit_*`` entries.
-        :type codebook: pd.DataFrame
-        :param readout_probe_table: Table linking each barcode bit to a readout
-            probe sequence and its readout information.
-        :type readout_probe_table: pd.DataFrame
+        :param readout_probe_table: Optional table linking each barcode bit to a
+            readout probe sequence and its readout information. If ``None``, the
+            table is not checked.
+        :type readout_probe_table: pd.DataFrame | None
+        :param readout_probe_table_source: File path or source label for the
+            readout probe table. Used in error messages when the table is checked.
+        :type readout_probe_table_source: str | None
+        :param codebook: Optional codebook table assigning target regions to
+            barcode bits. Rows are target regions and columns are ``bit_*``
+            entries. If ``None``, the codebook is not checked.
+        :type codebook: pd.DataFrame | None
         :param region_ids: Target regions that must be present in the codebook.
-        :type region_ids: list[str]
-        :param codebook_source: File path or source label for the codebook. Used in
-            error messages.
-        :type codebook_source: str
-        :param readout_probe_table_source: File path or source label for the readout
-            probe table. Used in error messages.
-        :type readout_probe_table_source: str
+            Required when a codebook is checked.
+        :type region_ids: list[str] | None
+        :param codebook_source: File path or source label for the codebook. Used
+            in error messages when the codebook is checked.
+        :type codebook_source: str | None
+        :return: None
+        :rtype: None
+        :raises ValueError: If a table is checked without its required companion
+            arguments (for example ``region_ids`` / ``codebook_source`` with a
+            codebook, or ``readout_probe_table_source`` with a readout probe table).
         :raises FileFormatError: If the codebook or readout probe table is missing
             required information or contains invalid values.
         """
-        validate_codebook(
-            codebook=codebook,
-            region_ids=region_ids,
-            source=codebook_source,
-            expected_hamming_weight=None,
-            index_name="gene_name",
-        )
-        validate_bit_mapping_table(
-            table=readout_probe_table,
-            codebook=codebook,
-            source=readout_probe_table_source,
-            required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
-            sequence_columns=["readout_probe_sequence"],
-        )
+        if codebook is not None:
+            if region_ids is None:
+                raise ValueError("region_ids must be provided when validating a codebook.")
+            if codebook_source is None:
+                raise ValueError("codebook_source must be provided when validating a codebook.")
+            validate_codebook(
+                codebook=codebook,
+                region_ids=region_ids,
+                source=codebook_source,
+                expected_hamming_weight=None,
+                index_name="gene_name",
+            )
+        if readout_probe_table is not None:
+            if readout_probe_table_source is None:
+                raise ValueError(
+                    "readout_probe_table_source must be provided when validating a readout probe table."
+                )
+            validate_bit_mapping_table(
+                table=readout_probe_table,
+                codebook=codebook,
+                source=readout_probe_table_source,
+                required_columns=["barcode_round", "pseudocolor", "channel", "readout_probe_sequence"],
+                sequence_columns=["readout_probe_sequence"],
+            )
 
     @pipeline_step_basic(step_name="Readout Probe Generation - Create Oligo Database")
     def _create_oligo_database(
