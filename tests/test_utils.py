@@ -12,6 +12,7 @@ import pandas as pd
 from Bio.SeqUtils import MeltingTemp as mt
 from effidict import EffiDict, LRUReplacement, PickleBackend
 
+from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.pipelines._utils import (
     get_highly_abundant_kmer_sequences,
@@ -19,6 +20,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 from oligo_designer_toolsuite.utils import (
+    BedParser,
     FastaParser,
     GffParser,
     VCFParser,
@@ -416,6 +418,123 @@ class TestGffParser(unittest.TestCase):
         """Test loading annotation from a pickle file."""
         result = self.parser.load_annotation_from_pickle(FILE_PICKLE)
         assert type(result) == pd.DataFrame, f"error: GTF dataframe not correctly loaded from pickle file"
+
+
+class TestBedParser(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_bed_parser")
+        Path(self.tmp_path).mkdir(parents=True, exist_ok=True)
+        self.parser = BedParser()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path)
+
+    def test_read_bed_skips_track_browser_and_comment_lines(self) -> None:
+        file_bed = os.path.join(self.tmp_path, "with_headers.bed")
+        with open(file_bed, "w") as handle:
+            handle.write("browser position chr1:1-1000\n")
+            handle.write('track name="test" description="demo"\n')
+            handle.write("# comment line\n")
+            handle.write("\n")
+            handle.write("chr1\t0\t100\tfeat1\t.\t+\n")
+            handle.write("chr1\t200\t300\tfeat2\t.\t-\n")
+
+        bed = self.parser.read_bed(file_bed, names=["seqid", "start", "end", "name", "score", "strand"])
+
+        assert len(bed) == 2, "error: track/browser/comment/blank lines should be skipped"
+        assert bed.loc[0, "seqid"] == "chr1"
+        assert bed.loc[0, "start"] == 0
+        assert bed.loc[0, "end"] == 100
+        assert bed.loc[1, "name"] == "feat2"
+
+    def test_read_bed_does_not_truncate_contig_names_containing_t(self) -> None:
+        file_bed = os.path.join(self.tmp_path, "contig_with_t.bed")
+        with open(file_bed, "w") as handle:
+            handle.write("chr1_alt\t10\t20\n")
+            handle.write("scaffold_t1\t30\t40\n")
+
+        bed = self.parser.read_bed(file_bed, names=["seqid", "start", "end"])
+
+        assert list(bed["seqid"]) == ["chr1_alt", "scaffold_t1"]
+        assert list(bed["start"]) == [10, 30]
+        assert list(bed["end"]) == [20, 40]
+
+    def test_write_bed_and_read_bed_roundtrip(self) -> None:
+        file_bed = os.path.join(self.tmp_path, "roundtrip.bed")
+        bed_in = pd.DataFrame(
+            {
+                "seqid": ["chr1", "chr2"],
+                "start": [0, 100],
+                "end": [50, 150],
+                "name": ["a", "b"],
+                "score": [".", "."],
+                "strand": ["+", "-"],
+            }
+        )
+
+        self.parser.write_bed(
+            bed_in,
+            file_bed,
+            columns=["seqid", "start", "end", "name", "score", "strand"],
+        )
+
+        with open(file_bed) as handle:
+            first_line = handle.readline()
+        assert not first_line.startswith(("track", "browser", "#"))
+        assert "seqid" not in first_line
+
+        bed_out = self.parser.read_bed(file_bed, names=["seqid", "start", "end", "name", "score", "strand"])
+        pd.testing.assert_frame_equal(bed_out, bed_in)
+
+    def test_read_bed_chunksize_streams_filtered_rows(self) -> None:
+        file_bed = os.path.join(self.tmp_path, "chunked.bed")
+        with open(file_bed, "w") as handle:
+            handle.write('track name="demo"\n')
+            handle.write("# comment\n")
+            for i in range(5):
+                handle.write(f"chr1\t{i * 10}\t{i * 10 + 5}\n")
+
+        chunks = self.parser.read_bed(file_bed, names=["seqid", "start", "end"], chunksize=2)
+        frames = list(chunks)
+        chunks.close()
+
+        assert len(frames) == 3
+        bed = pd.concat(frames, ignore_index=True)
+        assert len(bed) == 5
+        assert list(bed["start"]) == [0, 10, 20, 30, 40]
+
+    def test_convert_start_0_to_1_and_1_to_0(self) -> None:
+        assert self.parser.convert_start(99, "0-based", "1-based") == 100
+        assert self.parser.convert_start(100, "1-based", "0-based") == 99
+
+        starts = pd.Series([0, 10, 20])
+        converted = self.parser.convert_start(starts, "0-based", "1-based")
+        pd.testing.assert_series_equal(converted, pd.Series([1, 11, 21]))
+
+        roundtrip = self.parser.convert_start(converted, "1-based", "0-based")
+        pd.testing.assert_series_equal(roundtrip, starts)
+
+    def test_convert_start_same_indexing_is_identity(self) -> None:
+        assert self.parser.convert_start(50, "0-based", "0-based") == 50
+        assert self.parser.convert_start(50, "1-based", "1-based") == 50
+
+    def test_convert_start_invalid_indexing_raises(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            self.parser.convert_start(10, "zero", "1-based")
+        with self.assertRaises(ConfigurationError):
+            self.parser.convert_start(10, "0-based", "one")
+
+    def test_chromosome_length_file_keeps_first_row_with_header_none(self) -> None:
+        # chrom.sizes / bedtools -g files are headerless; header=0 would drop the first chromosome.
+        file_genome = os.path.join(self.tmp_path, "annotation.genome")
+        with open(file_genome, "w") as handle:
+            handle.write("chr1\t1000\n")
+            handle.write("chr2\t2000\n")
+
+        chromosome_length = pd.read_csv(file_genome, sep="\t", header=None, names=["seqid", "length"])
+
+        assert list(chromosome_length["seqid"]) == ["chr1", "chr2"]
+        assert list(chromosome_length["length"]) == [1000, 2000]
 
 
 class TestFastaParser(unittest.TestCase):
