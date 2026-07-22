@@ -294,6 +294,8 @@ class CycleHCRProbeDesigner:
             write_intermediate_steps=self.write_intermediate_steps,
         )
 
+        # Per-arm Tm: primary probes must stay bound during stripping, so each half is
+        # scored independently for the output tables (Tm params come from Tm_filter).
         tm_nn_property: BaseProperty = TmNNProperty(
             Tm_parameters=target_probes_parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
             Tm_chem_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
@@ -436,6 +438,7 @@ class CycleHCRProbeDesigner:
             barcode = codebook.loc[region_id]
             bits = barcode[barcode == 1].index
             readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
+            # Weight-2 codebook: first active bit is L, second is R (validated upstream).
             sequence_readout_probe_L = readout_probe_sequences.iloc[0]
             sequence_readout_probe_R = readout_probe_sequences.iloc[1]
 
@@ -464,6 +467,7 @@ class CycleHCRProbeDesigner:
                 new_properties[probe_id]["sequence_readout_probe_L"] = sequence_readout_probe_L
                 new_properties[probe_id]["sequence_readout_probe_R"] = sequence_readout_probe_R
 
+                # Linker is stored on the template strand; RC so it sits correctly on the probe.
                 new_properties[probe_id]["sequence_hybridization_probe_L"] = (
                     sequence_readout_probe_L
                     + str(Seq(linker_sequence).reverse_complement())
@@ -599,6 +603,7 @@ class CycleHCRProbeDesigner:
                 new_properties[probe_id]["sequence_reverse_primer"] = reverse_primer_sequence
                 new_properties[probe_id]["sequence_forward_primer"] = forward_primer_sequence
 
+                # Internal parts are RC so reverse transcription yields the probe strand.
                 new_properties[probe_id]["sequence_dna_template_probe_L"] = (
                     forward_primer_sequence
                     + str(
@@ -969,6 +974,7 @@ class TargetProbeDesigner:
         )
         oligo_database.set_database_sequence_types(["target", "oligo", "oligo_L", "oligo_R"])
 
+        # Probe strand is the reverse complement of the transcript ("target") window.
         reverse_complement_sequence_property: BaseProperty = ReverseComplementSequenceProperty(
             sequence_type_reverse_complement="oligo"
         )
@@ -977,6 +983,7 @@ class TargetProbeDesigner:
             oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
         )
 
+        # Split the probe strand, not the target: 5'→3' on the oligo is R, spacer, then L.
         split_start_end = [
             (0, L_probe_sequence_length),
             (L_probe_sequence_length, L_probe_sequence_length + gap_sequence_length),
@@ -1056,6 +1063,7 @@ class TargetProbeDesigner:
             the enabled sequence checks.
         :rtype: OligoDatabase
         """
+        # Cheap property lookup first; drop weak isoform coverage before sequence work.
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -1107,8 +1115,10 @@ class TargetProbeDesigner:
             )
             filters.append(secondary_structure)
 
+        # Filters were queued cheapest-first so failing probes exit before thermodynamics.
         property_filter = PropertyFilter(filters=filters)
 
+        # Both arms must pass independently; a weak L or R half fails the whole pair.
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo_L",
@@ -1174,6 +1184,8 @@ class TargetProbeDesigner:
             )
             specificity: AlignmentSpecificityFilter
             if specificity_blastn_filter["junction_region_size"] > 0:
+                # Prefer off-targets that span the L/R junction; single-arm hits cannot
+                # bring both initiator halves together and are less harmful.
                 oligo_ids = oligo_database.get_oligoid_list()
                 junction_site = specificity_blastn_filter["junction_site"]
                 oligo_database.update_oligo_properties(
@@ -1206,6 +1218,7 @@ class TargetProbeDesigner:
         )
         check_content_oligo_database(oligo_database)
 
+        # Cross-hyb is arm-specific (L vs L, R vs R), so it cannot ride on "oligo".
         if cross_hybridization_blastn_filter["enabled"]:
             cross_hybridization_aligner_L = BlastNFilter(
                 remove_hits=True,
@@ -1319,6 +1332,8 @@ class TargetProbeDesigner:
             score_weight=Tm_score["weight"],
         )
         oligos_scoring = OligoScoring(scorers=[isoform_consensus_scorer, Tm_scorer])
+        # ascending=False: higher aggregate scores win; Tm proximity to Tm_opt keeps
+        # probes bound through cyclic stripping.
         set_scoring = AverageSetScoring(ascending=False)
 
         base_log_parameters({"Set Selection": "Independent Sets"})
@@ -1498,6 +1513,8 @@ class ReadoutProbeDesigner:
             :return: Barcode vector with exactly two active bits.
             :rtype: list
             """
+            # Bit layout matches the generated readout table: per probe-id block,
+            # channels alternate L then R (even = L, odd = R).
             index1 = ((n_channels * 2) * combination[0]) + (2 * combination[2])
             index2 = ((n_channels * 2) * combination[1]) + (2 * combination[2]) + 1
             barcode = np.zeros(codebook_size, dtype=np.int8)
@@ -1512,9 +1529,11 @@ class ReadoutProbeDesigner:
                 list(range(n_readout_probes_LR)), list(range(n_readout_probes_LR)), list(range(n_channels))
             )
         )
+        # Prefer matched L/R IDs first; they give disjoint bit pairs (distance 4).
         combinations = sorted(combinations, key=lambda t: (0 if t[0] == t[1] else 1, t[1]))
 
         if min_hamming_distance == 4:
+            # Only L == R combinations are pairwise distance 4.
             combinations = [c for c in combinations if c[0] == c[1]]
             if len(combinations) < n_regions:
                 raise ConfigurationError(
@@ -1525,6 +1544,7 @@ class ReadoutProbeDesigner:
                     f"regions, or lowering min_hamming_distance to 2."
                 )
         else:
+            # Distance 0 or 2: any L/R pair is allowed; only the total count matters.
             if len(combinations) < n_regions:
                 raise ConfigurationError(
                     f"Only {len(combinations)} barcodes are available "
@@ -1593,6 +1613,8 @@ class ReadoutProbeDesigner:
                     f"bit columns; the user is responsible for that mapping."
                 )
         else:
+            # Regenerating the codebook: ignore any existing bit column and assign bits
+            # in the order generate_codebook expects (probe id, channel, L then R).
             if "bit" in readout_probe_table.columns:
                 readout_probe_table = readout_probe_table.drop(columns=["bit"])
             readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel", "L/R"])
@@ -1826,6 +1848,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     :rtype: dict
     """
 
+    # Resolve Tm table names and blank disabled chem/salt corrections to None so
+    # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
@@ -1843,6 +1867,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
+    # Inline shared Tm settings into the blocks that consume them.
     config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
     config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
@@ -1865,6 +1890,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     config["target_probes"]["oligo_generation"]["oligo_length"] = (
         L_probe_sequence_length + gap_sequence_length + R_probe_sequence_length
     )
+    # Junction site is mid-gap on the target strand; the seed-region BLAST filter
+    # uses it to bias hits toward junction-spanning off-targets.
     config["target_probes"]["specificity_filters"]["specificity_blastn_filter"]["junction_site"] = (
         L_probe_sequence_length + gap_sequence_length // 2
     )
@@ -1943,6 +1970,7 @@ def cycle_hcr_probe_designer(config: dict[str, Any]) -> None:
         readout_probe_parameters=config_dict["readout_probes"],
     )
 
+    # Runtime-derived tables are not in the YAML; inject them before assembly.
     config_dict["hybridization_probes"]["codebook"] = codebook
     config_dict["hybridization_probes"]["readout_probe_table"] = readout_probe_table
     hybridization_probe_database = pipeline.assemble_hybridization_probes(

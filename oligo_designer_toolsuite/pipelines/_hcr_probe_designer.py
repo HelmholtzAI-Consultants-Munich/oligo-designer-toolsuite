@@ -265,6 +265,8 @@ class HcrProbeDesigner:
             write_intermediate_steps=self.write_intermediate_steps,
         )
 
+        # Per-arm Tm: each half is scored independently for the output tables
+        # (params from Tm_filter). High Tm is still preferred, though stripping is less critical than CycleHCR.
         tm_nn_property: BaseProperty = TmNNProperty(
             Tm_parameters=target_probes_parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
             Tm_chem_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
@@ -406,6 +408,7 @@ class HcrProbeDesigner:
         for region_id in region_ids:
             barcode = codebook.loc[region_id]
             bits = barcode[barcode == 1].index
+            # Weight-1 (one-hot) codebook: the single active bit supplies both L and R initiator halves.
             sequence_initiator_L = initiator_table.loc[bits, "initiator_L_sequence"].iloc[0]
             sequence_initiator_R = initiator_table.loc[bits, "initiator_R_sequence"].iloc[0]
 
@@ -767,6 +770,7 @@ class TargetProbeDesigner:
         )
         oligo_database.set_database_sequence_types(["target", "oligo", "oligo_L", "oligo_R"])
 
+        # Probe strand is the reverse complement of the transcript ("target") window.
         reverse_complement_sequence_property: BaseProperty = ReverseComplementSequenceProperty(
             sequence_type_reverse_complement="oligo"
         )
@@ -775,6 +779,7 @@ class TargetProbeDesigner:
             oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
         )
 
+        # Split the probe strand, not the target: 5'→3' on the oligo is R, spacer, then L.
         split_start_end = [
             (0, L_probe_sequence_length),
             (L_probe_sequence_length, L_probe_sequence_length + gap_sequence_length),
@@ -854,6 +859,7 @@ class TargetProbeDesigner:
             the enabled sequence checks.
         :rtype: OligoDatabase
         """
+        # Cheap property lookup first; drop weak isoform coverage before sequence work.
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -905,8 +911,10 @@ class TargetProbeDesigner:
             )
             filters.append(secondary_structure)
 
+        # Filters were queued cheapest-first so failing probes exit before thermodynamics.
         property_filter = PropertyFilter(filters=filters)
 
+        # Both arms must pass independently; a weak L or R half fails the whole pair.
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo_L",
@@ -972,6 +980,8 @@ class TargetProbeDesigner:
             )
             specificity: AlignmentSpecificityFilter
             if specificity_blastn_filter["junction_region_size"] > 0:
+                # Prefer off-targets that span the L/R junction; single-arm hits cannot
+                # bring both initiator halves together and are less harmful.
                 oligo_ids = oligo_database.get_oligoid_list()
                 junction_site = specificity_blastn_filter["junction_site"]
                 oligo_database.update_oligo_properties(
@@ -1004,6 +1014,7 @@ class TargetProbeDesigner:
         )
         check_content_oligo_database(oligo_database)
 
+        # Cross-hyb is arm-specific (L vs L, R vs R), so it cannot ride on "oligo".
         if cross_hybridization_blastn_filter["enabled"]:
             cross_hybridization_aligner_L = BlastNFilter(
                 remove_hits=True,
@@ -1102,6 +1113,7 @@ class TargetProbeDesigner:
         """
         isoform_consensus_scorer = IsoformConsensusScorer(score_weight=isoform_consensus_score["weight"])
         oligos_scoring = OligoScoring(scorers=[isoform_consensus_scorer])
+        # ascending=False: higher aggregate (isoform) scores win.
         set_scoring = AverageSetScoring(ascending=False)
 
         base_log_parameters({"Set Selection": "Independent Sets"})
@@ -1352,6 +1364,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     :rtype: dict
     """
 
+    # Resolve Tm table names and blank disabled chem/salt corrections to None so
+    # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
@@ -1369,6 +1383,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
+    # Inline shared Tm settings into the blocks that consume them.
     config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
     config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
@@ -1383,6 +1398,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     config["target_probes"]["oligo_generation"]["oligo_length"] = (
         L_probe_sequence_length + gap_sequence_length + R_probe_sequence_length
     )
+    # Junction site is mid-gap on the target strand; the seed-region BLAST filter
+    # uses it to bias hits toward junction-spanning off-targets.
     config["target_probes"]["specificity_filters"]["specificity_blastn_filter"]["junction_site"] = (
         L_probe_sequence_length + gap_sequence_length // 2
     )
@@ -1459,6 +1476,7 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
         initiator_probe_parameters=config_dict["initiator_probes"],
     )
 
+    # Runtime-derived tables are not in the YAML; inject them before assembly.
     config_dict["hybridization_probes"]["codebook"] = codebook
     config_dict["hybridization_probes"]["initiator_table"] = initiator_table
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
@@ -1491,6 +1509,7 @@ def main() -> None:
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
         dir_output=config["general"]["dir_output"],
         pipeline_name="hcr_probe_designer",

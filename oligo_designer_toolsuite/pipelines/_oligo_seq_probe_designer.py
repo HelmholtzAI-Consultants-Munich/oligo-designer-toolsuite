@@ -219,6 +219,7 @@ class OligoSeqProbeDesigner:
             write_intermediate_steps=self.write_intermediate_steps,
         )
 
+        # Reporting properties for the output tables (not used as design filters here).
         length_property = LengthProperty()
         gc_content_property = GCContentProperty()
         TmNN_property = TmNNProperty(
@@ -423,6 +424,8 @@ class TargetProbeDesigner:
             dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
             logger.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
 
+        # Abundant k-mers bind everywhere in the reference; blacklist them with any
+        # user-supplied motifs before property filtering.
         if property_filters_parameters["prohibited_sequences_filter"]["enabled"]:
             prohibited_sequences = []
             if property_filters_parameters["prohibited_sequences_filter"]["kmer_abundance_threshold"]:
@@ -555,6 +558,8 @@ class TargetProbeDesigner:
         )
         oligo_database.set_database_sequence_types(["target", "oligo", "oligo_short"])
 
+        # Register oligo_short now so the read-length-bias filter can fill it later.
+        # Probe strand is the reverse complement of the transcript ("target") window.
         rc_sequence_property = ReverseComplementSequenceProperty(sequence_type_reverse_complement="oligo")
         calculator = PropertyCalculator(properties=[rc_sequence_property])
         oligo_database = calculator.apply(
@@ -637,6 +642,7 @@ class TargetProbeDesigner:
             sequence-property checks.
         :rtype: OligoDatabase
         """
+        # Cheap property lookup first; drop weak isoform coverage before sequence work.
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -649,6 +655,20 @@ class TargetProbeDesigner:
                 remove_if_smaller_threshold=True,
             )
 
+        # targeted_exons_filter is not implemented yet; see the method docstring.
+        # if targeted_exons_filter["enabled"]:
+        #     targeted_exons_property = TargetedExonsProperty()
+        #     calculator = PropertyCalculator(properties=[targeted_exons_property])
+        #     oligo_database = calculator.apply(
+        #         oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
+        #     )
+        #     oligo_database.filter_database_by_property_category(
+        #         property_name="targeted_exons",
+        #         property_category=targeted_exons_filter["targeted_exons"],
+        #         remove_if_equals_category=False,
+        #     )
+
+        # Cheapest filters first so failing probes exit before thermodynamics.
         filters: list[BasePropertyFilter] = []
         if hard_masked_sequences_filter["enabled"]:
             hard_masked_sequences = HardMaskedSequenceFilter()
@@ -760,6 +780,8 @@ class TargetProbeDesigner:
             specificity checks.
         :rtype: OligoDatabase
         """
+        # Oligo-seq: short-read prefixes that match cannot be told apart, so drop
+        # exact matches on the 5' window stored as oligo_short.
         if read_length_bias_filter["enabled"]:
             shortened_sequence_property = ShortenedSequenceProperty(
                 sequence_length=read_length_bias_filter["read_length_bias"], reverse=False
@@ -821,6 +843,7 @@ class TargetProbeDesigner:
             directories.append(cross_hybridization.dir_output)
 
         if variant_filter["enabled"]:
+            # action "filter" drops hits; other actions keep probes but annotate them.
             remove_hits = variant_filter["action"] == "filter"
             reference_database_variants = ReferenceDatabase(
                 database_name=f"{self.subdir_db_reference}_variants", dir_output=self.dir_output
@@ -909,6 +932,8 @@ class TargetProbeDesigner:
         oligo_lengths = [
             len(sequence) for sequence in oligo_database.get_sequence_list(sequence_type="oligo")
         ]
+        # Uniform-distance scoring is in units of mean probe length so sets stay
+        # roughly length-invariant when oligo lengths vary.
         average_oligo_length = sum(oligo_lengths) / len(oligo_lengths)
 
         uniform_distance_scorer = UniformDistanceScorer(
@@ -992,6 +1017,8 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
     """
     config = config_validated.model_dump()
 
+    # Resolve Tm table names and blank disabled chem/salt corrections to None so
+    # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
@@ -1009,6 +1036,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
+    # Inline shared Tm settings into the blocks that consume them.
     config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
     config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
@@ -1115,6 +1143,7 @@ def main() -> None:
         print("Invalid configuration file:\n%s", e)
         raise
 
+    # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
         dir_output=config_validated.general.dir_output,
         pipeline_name="oligoseq_probe_designer",

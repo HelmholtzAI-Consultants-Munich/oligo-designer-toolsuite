@@ -421,6 +421,7 @@ class MerfishProbeDesigner:
             barcode = codebook.loc[region_id]
             bits = barcode[barcode == 1].index
             readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
+            # Weight-2 barcode: first and second active bits map to the two readout sites.
             sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
             sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
 
@@ -439,6 +440,7 @@ class MerfishProbeDesigner:
                 new_properties[probe_id]["sequence_readout_probe_1"] = sequence_readout_probe_1
                 new_properties[probe_id]["sequence_readout_probe_2"] = sequence_readout_probe_2
 
+                # Encoding probe stores RC of each readout so the fluorescent oligo can bind.
                 new_properties[probe_id]["sequence_hybridization_probe"] = (
                     str(Seq(sequence_readout_probe_1).reverse_complement())
                     + "A"
@@ -483,6 +485,7 @@ class MerfishProbeDesigner:
         :return: Reverse primer sequence and forward primer sequence.
         :rtype: tuple[str, str]
         """
+        # Dump encoding probes so primer design can reject oligos that bind the probe body.
         file_fasta_hybridization_probes_database = oligo_database.write_database_to_fasta(
             filename="db_reference_hybridization_probes",
             save_description=False,
@@ -872,6 +875,7 @@ class TargetProbeDesigner:
             region_ids=region_ids,
         )
 
+        # Probe strand is the reverse complement of the transcript ("target") window.
         reverse_complement_sequence_property = ReverseComplementSequenceProperty(
             sequence_type_reverse_complement="oligo"
         )
@@ -940,6 +944,7 @@ class TargetProbeDesigner:
             sequence-property checks.
         :rtype: OligoDatabase
         """
+        # Cheap property lookup first; drop weak isoform coverage before sequence work.
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -952,6 +957,7 @@ class TargetProbeDesigner:
                 remove_if_smaller_threshold=True,
             )
 
+        # Cheapest filters first so failing probes exit before thermodynamics.
         filters: list[BasePropertyFilter] = []
 
         if hard_masked_sequences_filter["enabled"]:
@@ -1318,6 +1324,7 @@ class ReadoutProbeDesigner:
             new_barcode = _generate_barcode(raw_barcode=list(raw_barcode), n_bits=n_bits)
             add_new_barcode = True
             for barcode in codebook_list:
+                # scipy returns a fraction; scale to absolute distance for the greedy floor.
                 hamming_dist = hamming(new_barcode, barcode) * n_bits
                 if hamming_dist < min_hamming_dist:
                     add_new_barcode = False
@@ -2093,6 +2100,7 @@ class PrimerDesigner:
         """
 
         forward_primer_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
+        # Draw at length-1 because a fixed 3'-T is appended below.
         forward_primer_fasta_file = forward_primer_sequences.create_sequences_random(
             filename_out="forward_primer_sequences",
             length_sequences=oligo_length - 1,
@@ -2369,6 +2377,7 @@ class PrimerDesigner:
         :return: Forward primer sequence with the closest melting temperature match.
         :rtype: str
         """
+        # Reverse-primer Tm is fixed; compute once and reuse while ranking forward candidates.
         Tm_reverse_primer = calc_tm_nn(
             sequence=reverse_primer_sequence,
             Tm_parameters=Tm_parameters,
@@ -2423,6 +2432,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     :rtype: dict
     """
 
+    # Resolve Tm table names and blank disabled chem/salt corrections to None so
+    # downstream filters treat None as "no correction" without checking the flag.
     config["target_probes"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
         config["target_probes"]["global_parameters"]["Tm_parameters"]
     )
@@ -2439,6 +2450,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
+    # Inline shared Tm settings into the blocks that consume them.
     config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
     config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
@@ -2468,6 +2480,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "target_probes"
     ]["property_filters"]["GC_content_filter"]["GC_content_max"]
 
+    # Same Tm prep when readout sequences are generated rather than loaded.
     if config["readout_probes"]["readout_probe_table"]["source"] == "generate":
         config["readout_probes"]["readout_probe_table"]["global_parameters"]["Tm_parameters"] = (
             preprocess_tm_parameters(
@@ -2497,6 +2510,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             "parameters"
         ]
 
+    # Same Tm prep when the forward primer is generated rather than loaded.
     if config["primers"]["forward_primer"]["source"] == "generate":
         config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"]
@@ -2597,6 +2611,7 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         readout_probe_parameters=config_dict["readout_probes"],
     )
 
+    # Runtime-derived codebook and readout table are not in the YAML; pass them in.
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
         oligo_database=target_probe_database,
         codebook=codebook,
@@ -2608,6 +2623,7 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         primer_parameters=config_dict["primers"],
     )
 
+    # Primers are also runtime-derived; pass them into DNA-template assembly.
     dna_template_probe_database = pipeline.assemble_dna_template_probes(
         oligo_database=hybridization_probe_database,
         reverse_primer_sequence=reverse_primer_sequence,
@@ -2639,6 +2655,7 @@ def main() -> None:
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
         dir_output=config["general"]["dir_output"],
         pipeline_name="merfish_probe_designer",

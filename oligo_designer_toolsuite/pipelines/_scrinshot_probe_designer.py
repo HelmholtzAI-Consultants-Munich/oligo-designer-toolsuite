@@ -255,6 +255,7 @@ class ScrinshotProbeDesigner:
             write_intermediate_steps=self.write_intermediate_steps,
         )
 
+        # Reporting properties for the output tables (not used as design filters here).
         length_property = LengthProperty()
         gc_content_property = GCContentProperty()
         TmNN_property = TmNNProperty(
@@ -422,9 +423,12 @@ class ScrinshotProbeDesigner:
                     sequence_oligo = oligo_database.get_oligo_property_value(
                         property="oligo", region_id=region_id, oligo_id=oligo_id, flatten=True
                     )
+                    # Skip probes whose ligation_site was never set (failed arm constraints upstream).
                     if not isinstance(sequence_oligo, str) or not isinstance(ligation_site, int):
                         continue
 
+                    # On the probe strand the junction is arm2 then arm1 (5'→3'); assemble as
+                    # arm1–backbone–arm2 so the free ends meet for ligation after hybridization.
                     sequence_padlock_arm1: str = sequence_oligo[ligation_site:]
                     sequence_padlock_arm2: str = sequence_oligo[:ligation_site]
                     sequence_padlock_accessory1: str = "TCCTCTATGATTACTGAC"
@@ -677,6 +681,7 @@ class TargetProbeDesigner:
             dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
             logger.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
 
+        # Arm Tm/length and ligation_site are needed before seed-region BLAST and backbone assembly.
         padlock_arms_property = PadlockArmsProperty(
             arm_length_min=padlock_arms_parameters["padlock_arm_length_min"],
             arm_Tm_dif_max=padlock_arms_parameters["padlock_arm_Tm_dif_max"],
@@ -779,6 +784,7 @@ class TargetProbeDesigner:
         )
 
         oligo_database.set_database_sequence_types(["target", "oligo"])
+        # Probe strand is the reverse complement of the transcript ("target") window.
         rc_sequence_property = ReverseComplementSequenceProperty(sequence_type_reverse_complement="oligo")
         calculator = PropertyCalculator(properties=[rc_sequence_property])
         oligo_database = calculator.apply(
@@ -852,6 +858,7 @@ class TargetProbeDesigner:
         :rtype: OligoDatabase
         """
 
+        # Cheap property lookup first; drop weak isoform coverage before sequence work.
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -864,6 +871,7 @@ class TargetProbeDesigner:
                 remove_if_smaller_threshold=True,
             )
 
+        # Cheapest filters first so failing probes exit before thermodynamics.
         filters: list[BasePropertyFilter] = []
         if hard_masked_sequences_filter["enabled"]:
             hard_masked_sequences = HardMaskedSequenceFilter()
@@ -886,6 +894,7 @@ class TargetProbeDesigner:
             )
             filters.append(gc_content)
 
+        # Full-length Tm is separate from DetectionOligoFilter, which also validates padlock arms.
         if Tm_filter["enabled"]:
             melting_temperature = MeltingTemperatureNNFilter(
                 Tm_min=Tm_filter["Tm_min"],
@@ -974,6 +983,8 @@ class TargetProbeDesigner:
             )
             specificity: AlignmentSpecificityFilter
             if specificity_blastn_filter["ligation_region_size"] > 0:
+                # Prefer off-targets that span the ligation site; hits that miss the
+                # junction cannot circularize a padlock and are less harmful.
                 specificity = BlastNSeedregionSiteFilter(
                     remove_hits=True,
                     seedregion_size=specificity_blastn_filter["ligation_region_size"],
@@ -1208,6 +1219,7 @@ class DetectionOligoDesigner:
         region_ids = list(oligo_database.database.keys())
 
         with joblib_progress(description="Design Detection Oligos", total=len(region_ids)):
+            # sharedmem: workers mutate oligo_database in place and return nothing.
             Parallel(n_jobs=self.n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._create_detection_oligos_region)(
                     oligo_database,
@@ -1305,6 +1317,8 @@ class DetectionOligoDesigner:
                 if not isinstance(sequence_oligo, str) or not isinstance(ligation_site, int):
                     continue
 
+                # Three windows around the ligation site (centered and ±shifted); keep the
+                # closest to Tm_opt, then trim from either end for nearby lengths.
                 (
                     detect_oligo_even,
                     detect_oligo_long_left,
@@ -1363,6 +1377,7 @@ class DetectionOligoDesigner:
                 Tm_dif = Tm_dif_cut_from_right + Tm_dif_cut_from_left
                 detection_oligo = oligos[Tm_dif.index(min(Tm_dif))]
 
+                # Score Tm on the T-only DNA; U substitutions for UNG cleavage come after.
                 Tm_detection_oligo = calc_tm_nn(
                     sequence=detection_oligo,
                     Tm_parameters=Tm_parameters,
@@ -1475,6 +1490,7 @@ class DetectionOligoDesigner:
             )
         ]
 
+        # Alternate ends each step so the ligation site stays near the center as length shrinks.
         for count in range(0, len(oligo) - oligo_length_min):
             if bool(count % 2) * cut_from_right:
                 oligo = oligo[1:]
@@ -1519,6 +1535,7 @@ class DetectionOligoDesigner:
             marker.
         :rtype: str
         """
+        # Attach the dye on the end with fewer nearby T's so UNG sites stay away from the label.
         if oligo.find("T") < oligo[::-1].find("T"):
             fluorophor_pos = "left"
         else:
@@ -1572,6 +1589,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     :rtype: dict
     """
 
+    # Resolve Tm table names and blank disabled chem/salt corrections to None so
+    # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes", "detection_oligo"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
@@ -1589,6 +1608,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
+    # DetectionOligoFilter also scores padlock-arm Tm, so it uses target-probe conditions,
+    # not the detection-oligo imaging Tm settings.
     config["target_probes"]["property_filters"]["detection_oligo_filter"] = {
         "oligo_length_min": config["detection_oligo"]["oligo_generation"]["oligo_length_min"],
         "oligo_length_max": config["detection_oligo"]["oligo_generation"]["oligo_length_max"],
@@ -1606,6 +1627,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "Tm_salt_correction_parameters": target_probe_Tm_salt_correction_parameters,
     }
 
+    # Inline shared Tm settings into the blocks that consume them.
     config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
     config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
@@ -1740,6 +1762,7 @@ def main() -> None:
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
         dir_output=config["general"]["dir_output"],
         pipeline_name="scrinshot_probe_designer",

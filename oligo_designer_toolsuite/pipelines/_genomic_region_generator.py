@@ -100,6 +100,7 @@ class GenomicRegionGenerator:
             setting is missing.
         """
         logger.info("Parameters Load Annotations:")
+        # Log call args via the frame so this step stays consistent with decorated pipeline steps.
         frame = inspect.currentframe()
         if frame is not None:
             args, _, _, values = inspect.getargvalues(frame)
@@ -111,6 +112,7 @@ class GenomicRegionGenerator:
         ) = None
 
         if source == "ncbi":
+            # NCBI needs an explicit mode (species vs assembly) before any download starts.
             if source_params["mode"] is None:
                 raise ConfigurationError(
                     "For source='ncbi', source_params parameter 'mode' must be provided."
@@ -213,6 +215,7 @@ class GenomicRegionGenerator:
                 elif genomic_region == "utr":
                     file_fasta = region_generator.get_sequence_UTR()
                 elif genomic_region == "exon_exon_junction":
+                    # block_size is half-length around the splice site; ignored for other types.
                     file_fasta = region_generator.get_sequence_exon_exon_junction(block_size=block_size)
                 else:
                     raise ConfigurationError(
@@ -272,6 +275,7 @@ def main() -> None:
 
     pipeline = GenomicRegionGenerator(dir_output=config["dir_output"])
 
+    # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
         dir_output=pipeline.dir_output,
         pipeline_name="genomic_region_generation",

@@ -405,6 +405,7 @@ class SeqFishPlusProbeDesigner:
             barcode = codebook.loc[region_id]
             bits = barcode[barcode == 1].index
             readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
+            # Weight-4 codebook (n_barcode_rounds=4): active bits map to overhangs 1..4.
             sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
             sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
             sequence_readout_probe_3 = readout_probe_sequences.iloc[2]
@@ -427,6 +428,7 @@ class SeqFishPlusProbeDesigner:
                 new_properties[probe_id]["sequence_readout_probe_3"] = sequence_readout_probe_3
                 new_properties[probe_id]["sequence_readout_probe_4"] = sequence_readout_probe_4
 
+                # RC so fluorescent readout oligos can anneal to these overhangs on the probe.
                 new_properties[probe_id]["sequence_hybridization_probe"] = (
                     str(Seq(sequence_readout_probe_1).reverse_complement())
                     + str(Seq(sequence_readout_probe_2).reverse_complement())
@@ -473,6 +475,7 @@ class SeqFishPlusProbeDesigner:
         :return: Reverse primer sequence and forward primer sequence.
         :rtype: tuple[str, str]
         """
+        # Dump hybridization probes so primer design can reject primers that anneal to them.
         file_fasta_hybridization_probes_database = hybridization_probe_database.write_database_to_fasta(
             filename="db_reference_hybridization_probes",
             save_description=False,
@@ -864,6 +867,7 @@ class TargetProbeDesigner:
         )
         oligo_database.set_database_sequence_types(["target", "oligo"])
 
+        # Probe strand is the reverse complement of the transcript ("target") window.
         reverse_complement_sequence_property = ReverseComplementSequenceProperty(
             sequence_type_reverse_complement="oligo"
         )
@@ -928,6 +932,7 @@ class TargetProbeDesigner:
             sequence-property checks.
         :rtype: OligoDatabase
         """
+        # Cheap property lookup first; drop weak isoform coverage before sequence work.
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -969,6 +974,7 @@ class TargetProbeDesigner:
             )
             filters.append(secondary_sctructure)
 
+        # Filters were queued cheapest-first so failing probes exit before thermodynamics.
         property_filter = PropertyFilter(filters=filters)
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
@@ -1264,6 +1270,7 @@ class ReadoutProbeDesigner:
             :return: Barcode vector with one active bit per barcode round.
             :rtype: np.ndarray
             """
+            # Final-round pseudocolor is a parity checksum over the free rounds.
             pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
             assert n_pseudocolors > max(
                 pseudocolors
@@ -1274,6 +1281,7 @@ class ReadoutProbeDesigner:
             n_barcode_rounds = len(pseudocolors)
             barcode = np.zeros(n_channels * n_pseudocolors * n_barcode_rounds, dtype=np.int8)
             for i, pseudocolor in enumerate(pseudocolors):
+                # Flat bit index: barcode round, then pseudocolor, then channel.
                 barcode[i * n_pseudocolors * n_channels + n_channels * pseudocolor + channel] = 1
             return barcode
 
@@ -1753,6 +1761,7 @@ class ReadoutProbeDesigner:
                 if pseudocolor == 0:
                     barcode_round = (barcode_round + 1) % n_barcode_rounds
 
+            # Extra random probes may exist; stop once every barcode bit has a sequence.
             if i >= n_bits - 1:
                 break
         readout_probe_table.set_index("bit", inplace=True)
@@ -1983,6 +1992,7 @@ class PrimerDesigner:
         :rtype: OligoDatabase
         """
         forward_primer_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
+        # Draw at length-1 because a fixed 3'-T is appended below.
         forward_primer_fasta_file = forward_primer_sequences.create_sequences_random(
             filename_out="forward_primer_sequences",
             length_sequences=oligo_length - 1,
@@ -2256,6 +2266,7 @@ class PrimerDesigner:
         :return: Forward primer sequence with the closest melting temperature match.
         :rtype: str
         """
+        # Reverse-primer Tm is fixed; compute once and compare each forward candidate to it.
         Tm_reverse_primer = calc_tm_nn(
             sequence=reverse_primer_sequence,
             Tm_parameters=Tm_parameters,
@@ -2320,6 +2331,8 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
 
     forward_primer_cfg = config["primers"]["forward_primer"]
     if forward_primer_cfg["source"] == "generate":
+        # Resolve Tm table names and blank disabled chem/salt corrections to None so
+        # downstream filters treat None as "no correction" without checking the flag.
         global_parameters = forward_primer_cfg["global_parameters"]
         global_parameters["Tm_parameters"] = preprocess_tm_parameters(global_parameters["Tm_parameters"])
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
@@ -2327,6 +2340,7 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
+        # Inline shared Tm settings into the forward-primer Tm filter.
         forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_parameters"] = global_parameters[
             "Tm_parameters"
         ]
@@ -2441,6 +2455,7 @@ def main() -> None:
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
+    # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
         dir_output=config["general"]["dir_output"],
         pipeline_name="seqfishplus_probe_designer",
