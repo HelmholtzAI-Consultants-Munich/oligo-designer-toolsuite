@@ -1,3 +1,16 @@
+"""
+seqFISH+ probe designer pipeline.
+
+seqFISH+, or sequential fluorescence in situ hybridization plus, is an
+image-based RNA detection method that reads combinatorial pseudocolor barcodes
+over multiple hybridization rounds. This allows large gene panels to be imaged
+with a limited number of fluorescence channels.
+
+See :class:`SeqFishPlusProbeDesigner` for the full pipeline description and
+probe structure. See :func:`seqfish_plus_probe_designer` for the config-driven
+workflow.
+"""
+
 ############################################
 # imports
 ############################################
@@ -75,93 +88,158 @@ from oligo_designer_toolsuite.utils import append_nucleotide_to_sequences, confi
 
 class SeqFishPlusProbeDesigner:
     """
-    A class for designing hybridization probes for SeqFISH+ (sequential fluorescence in situ hybridization plus) experiments.
+    Design probe libraries for seqFISH+ experiments.
 
-    This class provides a complete pipeline for designing SeqFISH+ probes, which enable multiplexed RNA detection
-    in single cells through combinatorial barcoding with pseudocolors and sequential imaging rounds.
-
-    **SeqFISH+ Pipeline Overview:**
-    1. **Target Probe Design**: Design gene-specific targeting sequences (28 nt) that bind to RNA transcripts
-    2. **Readout Probe Design**: Generate readout probe sequences (15 nt) and create a codebook using pseudocolors
-       and barcode rounds for hybridization
-    3. **Hybridization Probe Assembly**: Combine target probes with four readout probe overhang sequences based on the codebook
-    4. **Primer Design**: Design PCR primers for amplifying DNA template probes
-    5. **DNA Template Probe Assembly**: Assemble final DNA template probes with forward and reverse primers
-    6. **Output Generation**: Generate output files in multiple formats (TSV, YAML)
+    This class runs the design workflow for seqFISH+ encoding probes, readout
+    probe assignments, DNA template probes, and output files. The designed
+    library can be used for multiplexed RNA detection with sequential imaging
+    and combinatorial barcoding.
 
     Overview
     --------
-    seqFISH+ (sequential fluorescence in situ hybridization plus) is a spatial transcriptomics
-    method that enables the identification, counting, and spatial mapping of up to 10,000 RNA
-    species directly in single cells within their native tissue context. By combining sequential
-    rounds of hybridization and imaging, seqFISH+ overcomes the optical crowding that limits
-    traditional smFISH approaches and achieves super-resolved, transcriptome-scale RNA imaging
-    using a standard confocal microscope.
+    seqFISH+, or sequential fluorescence in situ hybridization plus, is an
+    imaging-based method for measuring many RNA species in single cells while
+    preserving their spatial positions in tissue.
 
-    Each RNA species is assigned a unique multi-bit barcode that is read out through sequential
-    hybridization of fluorophore-labeled readout probes. By expanding the barcode space using
-    “pseudocolours” across multiple fluorescence channels and hybridization rounds, seqFISH+
-    achieves genome-scale multiplexing.
+    The method assigns each RNA species a barcode that is read over multiple
+    rounds of hybridization and imaging. In each round, fluorescent readout
+    probes bind to selected readout-binding sequences on the encoding probes.
+    The pattern of fluorescence signals across rounds identifies the RNA
+    molecule.
+
+    seqFISH+ expands the number of possible barcodes by using pseudocolors.
+    A pseudocolor is defined by a combination of hybridization round and
+    fluorescence channel. This allows large gene panels to be imaged with a
+    limited number of microscope channels.
 
     Probe Structure
     ---------------
     **Hybridization (Encoding) Probes**
-    - Single-stranded DNA oligonucleotides that hybridize directly to target mRNAs.
-    - Each probe contains:
-        - A **28-nt targeting sequence** complementary to the RNA transcript.
-        - Four **15-nt overhang sequences** (readout handles, labeled I–IV) that correspond to
-        barcode positions decoded by sequential readout hybridizations.
-        - Overhangs serve as binding sites for fluorescent readout probes during barcode readout.
-    - A set of 24 hybridization probes is typically designed per gene to ensure detection efficiency
-    and signal amplification.
-    - The hybridization probe has the structure:
-        [Overhang I] + [Overhang II] + [Targeting Sequence] + [Overhang III] + [Overhang IV]
+
+    Encoding probes are single-stranded DNA oligos that bind directly to target
+    mRNAs. Each target gene is represented by several encoding probes. Together,
+    these probes provide enough signal to detect individual RNA molecules.
+
+    Each encoding probe contains:
+
+    - a target-binding sequence that is complementary to the RNA,
+    - four readout-binding overhangs that encode the gene barcode,
+    - short spacer bases between the target-binding and readout-binding parts.
+
+    A common seqFISH+ encoding probe layout is::
+
+        [Overhang I] + [Overhang II] + [spacer] + [target-binding sequence]
+        + [spacer] + [Overhang III] + [Overhang IV]
+
+    In the original seqFISH+ design, the target-binding sequence was typically
+    28 nucleotides long, and each readout-binding overhang was 15 nucleotides
+    long. The exact lengths depend on the design settings used in the pipeline.
 
     **Readout Probes**
-    - Short (typically 15-nt) dye-labeled DNA oligonucleotides complementary to the overhang
-    sequences on the hybridization probes.
-    - Each readout probe binds to one overhang and carries a fluorophore (Alexa Fluor 488, Cy3b,
-    or Alexa Fluor 647) that reports the “on” state of a barcode bit during a hybridization round.
-    - The barcoding scheme uses a combinatorial “pseudocolour” system with 60 hybridization
-    rounds divided among three fluorescence channels. Each channel encodes ~8,000 genes,
-    resulting in a total of ~24,000 barcodes with built-in error correction.
 
-    **DNA Template Probe**
-    - The hybridization probes are synthesized from large oligonucleotide pools containing
-    forward and reverse PCR primer regions flanking the probe body.
-    - These primer regions allow limited-cycle PCR amplification and in vitro transcription
-    to generate RNA intermediates that are reverse-transcribed into single-stranded DNA probes.
-    - The forward primer includes a uracil residue, enabling enzymatic cleavage (e.g., by USER enzyme)
-    to remove primer sequences and yield the final probe.
-    - The **DNA template probe** has the structure:
-        [Forward Primer] + [Overhang I] + [Overhang II] + [Targeting Sequence] + [Overhang III] + [Overhang IV] + [Reverse Primer]
+    Readout probes are short fluorescent DNA oligos that bind to the overhangs
+    on the encoding probes. Each readout probe reports one barcode position in a
+    defined hybridization round and fluorescence channel.
+
+    During the experiment, readout probes are added, imaged, and removed before
+    the next imaging round. After all rounds are complete, the observed
+    pseudocolor pattern is decoded to identify the RNA molecule.
+
+    seqFISH+ codebooks can include an error-checking round. This helps identify
+    barcode patterns that are inconsistent with the expected code and reduces
+    false assignments.
+
+    **Codebook**
+
+    The codebook assigns each target gene to a barcode. Rows correspond to
+    genes, and columns correspond to readout positions or pseudocolors,
+    depending on the design.
+
+    In seqFISH+, each barcode is read through several rounds. The use of
+    pseudocolors increases the number of possible barcodes without requiring the
+    same number of fluorophores.
+
+    **DNA Template Probes**
+
+    DNA template probes are synthesis-ready oligos used to prepare the final
+    encoding probe library. They contain the encoding probe sequence flanked by
+    primer binding sites.
+
+    A simplified template layout is::
+
+        [Forward primer] + [encoding probe] + [Reverse primer]
+
+    The primer binding sites allow amplification of the oligo pool. Depending on
+    the protocol, the amplified pool can be transcribed, reverse-transcribed,
+    processed to remove primer regions, and purified to produce single-stranded
+    DNA encoding probes.
 
     Probe Library Preparation
     -------------------------
-    The seqFISH+ probe library is generated through a multi-step molecular synthesis and
-    purification workflow. First, target genes are selected and assigned barcode sequences
-    within an error-correctable codebook. For each gene, a set of 24 hybridization probes is designed,
-    each with a 28-nt target-binding region and four 15-nt readout overhangs. These sequences
-    are synthesized in an oligonucleotide pool and amplified by limited PCR cycles. Amplified
-    products are transcribed and reverse-transcribed to generate single-stranded DNA probes,
-    followed by enzymatic cleavage to remove primer regions and purification.
+    A seqFISH+ encoding probe library is usually prepared from a pooled DNA oligo
+    library. The pool contains many template probes, each with primer binding
+    sites and an encoding probe body.
+
+    The pool is amplified by limited-cycle PCR. It can then be transcribed and
+    reverse-transcribed to generate single-stranded DNA probes. If a
+    uracil-containing primer is used, USER enzyme can be used to remove primer
+    sequences before the final probe pool is purified.
+
+    In the experiment, encoding probes are hybridized to RNA in fixed cells or
+    tissue. The barcode is then read over multiple imaging rounds using
+    fluorescent readout probes.
+
+    Pipeline Overview
+    -----------------
+    The pipeline performs the main steps needed to design a seqFISH+ probe
+    library:
+
+    1. **Target probe design**
+
+       Design gene-specific target-binding sequences that hybridize to RNA
+       transcripts.
+
+    2. **Readout probe design**
+
+       Load or generate readout-binding sequences and create a codebook based on
+       pseudocolors and imaging rounds.
+
+    3. **Encoding probe assembly**
+
+       Combine target-binding sequences with four assigned readout-binding
+       overhangs according to the codebook.
+
+    4. **Primer handling**
+
+       Load or generate the forward and reverse primer sequences used for
+       template amplification.
+
+    5. **DNA template assembly**
+
+       Add primer binding sites to the encoding probe body to create
+       synthesis-ready DNA template probes.
+
+    6. **Output generation**
+
+       Write the designed probes, codebook, readout information, and related
+       probe properties to output files.
 
     References
     ----------
-    Eng, C. H. L., Lawson, M., Zhu, Q., Dries, R., Koulena, N., Takei, Y., ... & Cai, L. (2019).
+    Eng, C. H. L., Lawson, M., Zhu, Q., Dries, R., Koulena, N., Takei, Y.,
+    Yun, J., Cronin, C., Karp, C., Yuan, G. C., & Cai, L. (2019).
     Transcriptome-scale super-resolved imaging in tissues by RNA seqFISH+.
-    Nature, 568(7751), 235-239.
+    Nature, 568, 235-239. https://doi.org/10.1038/s41586-019-1049-y
 
-    :param dir_output: Directory path where output files will be saved. This directory will be created
-        if it does not exist.
-    :type dir_output: str
-    :param write_intermediate_steps: Whether to save intermediate results during the probe design pipeline.
-        If True, intermediate databases and results will be saved at each pipeline step, which is useful
-        for debugging and analysis but increases disk usage.
+    :param write_intermediate_steps: If ``True``, save intermediate probe
+        databases after pipeline steps. This can help with checking a design run
+        or finding where probes were removed.
     :type write_intermediate_steps: bool
-    :param n_jobs: Number of parallel jobs to use for processing. Set to 1 for serial processing or higher
-        values for parallel processing. This affects the parallelization of filtering, property calculation,
-        and set generation operations.
+    :param dir_output: Directory where output files and intermediate results are
+        saved. The directory is created if it does not exist.
+    :type dir_output: str
+    :param n_jobs: Number of worker processes used for steps that can run in
+        parallel. Use ``1`` to run without parallel processing.
     :type n_jobs: int
     """
 
@@ -173,11 +251,9 @@ class SeqFishPlusProbeDesigner:
     ) -> None:
         """Constructor for the SeqFishPlusProbeDesigner class."""
 
-        # create the output folder
         self.dir_output = os.path.abspath(dir_output)
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ##### set class parameters #####
         self.write_intermediate_steps = write_intermediate_steps
         self.n_jobs = n_jobs
 
@@ -186,17 +262,20 @@ class SeqFishPlusProbeDesigner:
         target_probes_parameters: dict,
     ) -> OligoDatabase:
         """
-        Design target probes for SeqFISH+ experiments.
+        Design the RNA-binding parts of the seqFISH+ hybridization probes.
 
-        Thin wrapper around :py:meth:`TargetProbeDesigner.generate_target_probes` — instantiates
-        the inner designer and delegates the full multi-step workflow to it. Kept as a public API
-        so callers can drive the target-probe stage without touching the inner class directly.
+        This step designs target-binding sequences for each target gene. The
+        candidate probes are filtered for sequence quality and specificity, and a
+        final probe set is selected for each target. Readout-binding sequences are
+        added later when the hybridization probes are assembled.
 
-        :param target_probes_parameters: ``target_probes`` block from the pipeline config. Must
-            contain ``oligo_generation``, ``property_filters``, ``specificity_filters``, and
-            ``probe_set_selection`` sub-blocks.
+        :param target_probes_parameters: Settings for target probe design from the
+            ``target_probes`` section of the pipeline config. This includes probe
+            generation, sequence filters, specificity filters, and probe set
+            selection settings.
         :type target_probes_parameters: dict
-        :return: An `OligoDatabase` containing the designed target probes organised into sets.
+        :return: Database containing the selected target-binding probes for each
+            target region.
         :rtype: OligoDatabase
         """
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
@@ -212,46 +291,26 @@ class SeqFishPlusProbeDesigner:
         readout_probe_parameters: dict,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Design readout probes and generate a codebook for SeqFISH+ experiments through a multi-step pipeline.
+        Load or create the seqFISH+ readout probes and codebook.
 
-        This method performs the complete readout probe design process, which includes:
-        1. Creating an initial oligo database by generating random sequences with specified nucleotide
-           probabilities and length
-        2. Filtering probes based on sequence properties (GC content, homopolymeric runs)
-        3. Filtering probes based on specificity to remove off-target binding and cross-hybridization
-           using BLASTN searches
-        4. Generating a codebook using pseudocolors and barcode rounds for combinatorial hybridization
-        5. Creating a readout probe table that maps codebook bits to channels, barcode rounds,
-           pseudocolors, and readout probe sequences
+        The codebook assigns each target region to a combinatorial barcode. Active
+        bits in that barcode identify the readout probes used during imaging. These
+        readout probes later bind to barcode sequences on the hybridization probes
+        and report which RNA molecule is present.
 
-        The codebook assigns each region a unique barcode using a combinatorial pseudocolor system
-        across multiple barcode rounds and fluorescence channels. The readout probe table assigns
-        readout probes to each bit position and distributes them across channels, rounds, and
-        pseudocolors for multiplexed detection.
+        The codebook and readout probe table can either be loaded from files or
+        generated from the config. Both tables are checked before they are returned,
+        so missing targets or missing readout sequences are caught early.
 
-        Each artefact (codebook, readout probe table) is loaded from file when
-        ``...source == "load"`` or generated programmatically when ``...source == "generate"``.
-        The readout probe table always carries all ``barcode_size`` rows (the full designed
-        combinatorial-pseudocolor readout set) even when the codebook only references a subset —
-        this keeps the full readout set available if a caller later loads a different codebook that
-        references other bits. Once both are obtained, the pair is validated via
-        :py:meth:`ReadoutProbeDesigner.validate`.
-
-        :param region_ids: List of region identifiers (e.g., gene IDs) for which readout probes and
-            codebook entries are to be generated. The number of regions determines the minimum number
-            of barcodes required in the codebook.
+        :param region_ids: Target regions that must be represented in the codebook,
+            usually gene names or gene IDs.
         :type region_ids: list[str]
-        :param readout_probe_parameters: ``readout_probes`` block. Must contain ``n_barcode_rounds``,
-            ``n_pseudocolors``, ``channels_ids``, ``codebook`` (with ``source`` and optional ``file``),
-            and ``readout_probe_table`` (with ``source`` and optional ``file`` plus the multi-step
-            generation parameters when ``source == "generate"``).
+        :param readout_probe_parameters: Settings from the ``readout_probes`` section
+            of the pipeline config. This includes the codebook settings and the
+            readout probe table settings.
         :type readout_probe_parameters: dict
-        :return: A tuple containing:
-            - **codebook** (pd.DataFrame): Binary barcode matrix with ``gene_name`` as index and bit
-              columns (bit_1, bit_2, etc.) as data. Each row represents a region's barcode assignment.
-            - **readout_probe_table** (pd.DataFrame): Table mapping each bit to a readout probe sequence,
-              barcode round, pseudocolor, channel assignment, and bit label. Indexed by bit labels
-              (bit_1, bit_2, etc.).
+        :return: Codebook and readout probe table used to assign readout probes to
+            target regions.
         :rtype: tuple[pd.DataFrame, pd.DataFrame]
         """
         readout_probe_designer = ReadoutProbeDesigner(
@@ -259,7 +318,6 @@ class SeqFishPlusProbeDesigner:
             n_jobs=self.n_jobs,
         )
 
-        ##### codebook: load or generate #####
         if readout_probe_parameters["codebook"]["source"] == "load":
             codebook = readout_probe_designer.load_codebook(
                 file_codebook=readout_probe_parameters["codebook"]["file"]
@@ -272,7 +330,6 @@ class SeqFishPlusProbeDesigner:
             )
             codebook_source = readout_probe_parameters["codebook"]["source"]
 
-        ##### readout probe table: load or generate via the multi-step pipeline #####
         if readout_probe_parameters["readout_probe_table"]["source"] == "load":
             readout_probe_table = readout_probe_designer.load_readout_probe_table(
                 file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"]
@@ -303,43 +360,32 @@ class SeqFishPlusProbeDesigner:
         readout_probe_table: pd.DataFrame,
     ) -> OligoDatabase:
         """
-        Assemble hybridization probes by combining target probes with four readout probe overhang sequences based on the codebook.
+        Build the seqFISH+ hybridization probes.
 
-        This method creates complete SeqFISH+ hybridization probes by combining gene-specific target probes
-        with four readout probe overhang sequences according to the codebook assignment. For each region, the method:
-        1. Looks up the region's barcode in the codebook to identify which four readout probes are assigned
-        2. Retrieves the corresponding readout probe sequences from the readout probe table
-        3. Assembles the hybridization probe sequence with the structure:
-           [reverse_complement(readout_probe_1)] + [reverse_complement(readout_probe_2)] + "T" +
-           [target_probes] + "T" + [reverse_complement(readout_probe_3)] + [reverse_complement(readout_probe_4)]
+        This step combines each RNA-binding target sequence with the four readout
+        barcode sequences assigned by the codebook. The target-binding part keeps
+        the probe on the RNA, while the readout barcodes are used during imaging
+        rounds.
 
-        The readout probes are reverse-complemented because they will hybridize to the overhang sequences
-        embedded in the hybridization probe. The single "T" nucleotides serve as spacers between the
-        readout probe binding sites and the target probe sequence.
+        A simplified layout is::
 
-        The assembled sequences are stored as properties in the database for each probe, enabling downstream
-        primer addition and DNA template probe assembly.
+            [rc(readout barcode 1)] + [rc(readout barcode 2)] + [T]
+            + [target-binding sequence] + [T]
+            + [rc(readout barcode 3)] + [rc(readout barcode 4)]
 
-        :param target_probe_database: The `OligoDatabase` instance containing target probes with their
-            sequences and properties. This database should contain target probes organized by region IDs,
-            with each region having one or more probe sets.
+        The assembled sequences are added to the existing probe database.
+
+        :param target_probe_database: Database returned by
+            :py:meth:`design_target_probes`. This database is updated with the
+            assembled hybridization probe sequences.
         :type target_probe_database: OligoDatabase
-        :param codebook: A pandas DataFrame containing binary barcodes for each region. Rows are indexed
-            by region IDs, and columns represent bit positions (bit_1, bit_2, etc.). Each row has exactly
-            four bits set to 1, indicating which readout probes are assigned to that region.
+        :param codebook: Table assigning target regions to readout barcode bits.
+            Rows are target regions and columns are barcode bits.
         :type codebook: pd.DataFrame
-        :param readout_probe_table: A pandas DataFrame containing readout probe sequences and their
-            associated bit identifiers. The DataFrame should be indexed by bit labels (bit_1, bit_2, etc.)
-            and contain a 'readout_probe_sequence' column with the probe sequences.
+        :param readout_probe_table: Table linking each barcode bit to its readout
+            probe sequence and related readout information.
         :type readout_probe_table: pd.DataFrame
-        :return: An updated `OligoDatabase` object containing the assembled hybridization probes. The
-            database includes the following new sequence properties for each probe:
-            - `sequence_target`: The gene-specific targeting sequence
-            - `sequence_readout_probe_1`: The first readout probe sequence (from the barcode)
-            - `sequence_readout_probe_2`: The second readout probe sequence (from the barcode)
-            - `sequence_readout_probe_3`: The third readout probe sequence (from the barcode)
-            - `sequence_readout_probe_4`: The fourth readout probe sequence (from the barcode)
-            - `sequence_hybridization_probe`: The complete assembled hybridization probe sequence
+        :return: Database with seqFISH+ hybridization probe sequences added.
         :rtype: OligoDatabase
         """
         region_ids = list(target_probe_database.database.keys())
@@ -406,43 +452,27 @@ class SeqFishPlusProbeDesigner:
         primer_parameters: dict,
     ) -> tuple[str, str]:
         """
-        Design forward and reverse primers for SeqFISH+ hybridization probes through a multi-step pipeline.
+        Load or design the PCR primers for DNA template probes.
 
-        This method performs the complete primer design process, which includes:
-        1. Creating an initial oligo database by generating random sequences with specified nucleotide
-           probabilities and length (all ending with "T" nucleotide)
-        2. Filtering primers based on sequence properties (GC content, GC clamp, homopolymeric runs,
-           self-complementarity, complementarity to reverse primer, melting temperature, secondary structure)
-        3. Filtering primers based on specificity to remove primers that bind to reference sequences
-           or to the hybridization probes themselves using BLASTN searches
-        4. Selecting the forward primer that has a melting temperature closest to the reverse primer's
-           melting temperature to ensure balanced PCR amplification
+        The forward and reverse primers are used to amplify the DNA template probe
+        library before the final hybridization probes are prepared.
 
-        Each primer (forward, reverse) is loaded from its config block when
-        ``...source == "load"`` or generated programmatically when ``...source == "generate"``.
-        ``generate_forward_primer`` runs the full multi-step primer pipeline and selects the
-        candidate whose melting temperature is closest to the reverse primer's Tm;
-        ``generate_reverse_primer`` is currently a placeholder. After both primers are
-        obtained the pair is validated via :py:meth:`PrimerDesigner.validate`.
+        The primers can either be loaded from the config or generated by the primer
+        design workflow. Both primer sequences are checked before they are returned.
+        When a forward primer is generated, the assembled hybridization probes are
+        also used to avoid primers that bind the probe body.
 
-        :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization
-            probes. The hybridization probes are written to a temporary FASTA so they can be used
-            as a reference for the second specificity-filter pass (the primer must not bind the
-            hybridization probes themselves).
+        :param hybridization_probe_database: Database returned by
+            :py:meth:`assemble_hybridization_probes`. The hybridization probe
+            sequences are used when generating a new forward primer.
         :type hybridization_probe_database: OligoDatabase
-        :param primer_parameters: ``primers`` block. Must contain ``forward_primer`` (with
-            ``source`` and either ``sequence`` when ``source == "load"`` or the full
-            ``oligo_generation`` / ``property_filters`` / ``specificity_filters`` /
-            ``global_parameters`` sub-blocks when ``source == "generate"`` — the Tm parameters
-            inside ``global_parameters`` are inlined into ``property_filters.Tm_filter`` by
-            :func:`_preprocess_config`) and ``reverse_primer`` (with ``source`` and ``sequence``
-            when ``source == "load"``).
+        :param primer_parameters: Settings from the ``primers`` section of the
+            pipeline config. This includes the forward and reverse primer entries
+            and their sequences or design settings.
         :type primer_parameters: dict
-        :return: A tuple ``(reverse_primer_sequence, forward_primer_sequence)``.
+        :return: Reverse primer sequence and forward primer sequence.
         :rtype: tuple[str, str]
         """
-        # Write the hybridization probes to a FASTA file so they can be used as a reference for
-        # the second specificity pass (primer must not bind the hybridization probes themselves).
         file_fasta_hybridization_probes_database = hybridization_probe_database.write_database_to_fasta(
             filename="db_reference_hybridization_probes",
             save_description=False,
@@ -455,7 +485,6 @@ class SeqFishPlusProbeDesigner:
             n_jobs=self.n_jobs,
         )
 
-        ##### reverse primer: load or generate (placeholder) #####
         if primer_parameters["reverse_primer"]["source"] == "load":
             reverse_primer_sequence = primer_designer.load_reverse_primer(
                 sequence=primer_parameters["reverse_primer"]["sequence"]
@@ -463,7 +492,6 @@ class SeqFishPlusProbeDesigner:
         else:
             reverse_primer_sequence = primer_designer.generate_reverse_primer()
 
-        ##### forward primer: load or generate via the multi-step pipeline #####
         if primer_parameters["forward_primer"]["source"] == "load":
             forward_primer_sequence = primer_designer.load_forward_primer(
                 sequence=primer_parameters["forward_primer"]["sequence"]
@@ -492,31 +520,27 @@ class SeqFishPlusProbeDesigner:
         reverse_primer_sequence: str,
     ) -> OligoDatabase:
         """
-        Assemble DNA template probes by combining hybridization probes with forward and reverse primers.
+        Build the synthesis-ready DNA template probes.
 
-        This method creates the final DNA template probes used for PCR amplification by combining
-        hybridization probes with PCR primer sequences. For each probe in the database, the method
-        assembles the DNA template probe with the structure:
-        [Forward Primer] + [Hybridization Probe] + [Reverse Primer]
+        This step adds the forward and reverse primer sequences to each
+        hybridization probe. The resulting DNA template sequences are the sequences
+        used for pooled oligo synthesis and library amplification.
 
-        The assembled sequences are stored as properties in the database for each probe, ready for
-        synthesis and experimental use.
+        A simplified layout is::
 
-        :param hybridization_probe_database: The `OligoDatabase` instance containing hybridization probes
-            with their sequences and properties. This database should contain the `sequence_hybridization_probe`
-            property for each probe, which was created by the `assemble_hybridization_probes` method.
+            [forward primer] + [hybridization probe] + [reverse primer]
+
+        :param hybridization_probe_database: Database returned by
+            :py:meth:`assemble_hybridization_probes`. This database is updated with
+            the DNA template sequences.
         :type hybridization_probe_database: OligoDatabase
-        :param forward_primer_sequence: DNA sequence of the forward primer that binds to the 5' end of
-            the DNA template probe.
+        :param forward_primer_sequence: Forward primer sequence used to amplify the
+            DNA template probe library.
         :type forward_primer_sequence: str
-        :param reverse_primer_sequence: DNA sequence of the reverse primer that binds to the 3' end of
-            the DNA template probe.
+        :param reverse_primer_sequence: Reverse primer sequence used to amplify the
+            DNA template probe library.
         :type reverse_primer_sequence: str
-        :return: An updated `OligoDatabase` object containing the assembled DNA template probes. The
-            database includes the following new sequence properties for each probe:
-            - `sequence_forward_primer`: The forward primer sequence
-            - `sequence_reverse_primer`: The reverse primer sequence
-            - `sequence_dna_template_probe`: The complete assembled DNA template probe sequence
+        :return: Database with DNA template probe sequences added.
         :rtype: OligoDatabase
         """
         region_ids = list(hybridization_probe_database.database.keys())
@@ -559,56 +583,28 @@ class SeqFishPlusProbeDesigner:
         output_properties: list[str] | None = None,
     ) -> None:
         """
-        Generate the final output files for the SeqFISH+ probe design pipeline.
+        Write the completed seqFISH+ probe design to files.
 
-        This method writes all output files required for the SeqFISH+ experiment, including codebooks,
-        readout probe tables, and probe sequences in multiple formats. The output files are written
-        to the pipeline's output directory.
+        This step saves the final probe database, the codebook, and the readout
+        probe table. It also writes an order-ready file that contains the DNA
+        template probe sequences and readout probe sequences needed for synthesis.
 
-        **Generated Output Files:**
+        If no output properties are provided, a default set of probe annotations and
+        sequence fields is written.
 
-        1. **codebook.tsv**: Binary barcode matrix with region IDs as index and bit columns. Each row
-           represents a region's barcode assignment using the pseudocolor and barcode round system.
-
-        2. **readout_probes.tsv**: Table mapping readout probe sequences to bit positions, barcode rounds,
-           pseudocolors, and channels. Contains columns: bit, barcode_round, pseudocolor, channel,
-           readout_probe_sequence.
-
-        3. **seqfish_plus_probes.yml**: Complete probe information in YAML format, including all specified
-           properties for each probe set per region.
-
-        4. **seqfish_plus_probes.tsv**: Complete probe information in TSV format, including all specified
-           properties for each probe set per region.
-
-        5. **seqfish_plus_probes.xlsx**: Complete probe information in Excel format with one sheet per region.
-           Each sheet contains probe sets for that region with all specified properties.
-
-        6. **seqfish_plus_probes_order.yml**: Simplified YAML file containing only the essential sequences
-           needed for ordering probes (DNA template probe and all four readout probe sequences).
-
-        :param oligo_database: The `OligoDatabase` instance containing the final DNA template probes
-            with all sequences and properties. This should be the result of the `assemble_dna_template_probes`
-            method.
+        :param oligo_database: Database returned by
+            :py:meth:`assemble_dna_template_probes`.
         :type oligo_database: OligoDatabase
-        :param codebook: A pandas DataFrame containing binary barcodes for each region. Rows are indexed
-            by region IDs, and columns represent bit positions. This should be the codebook generated
-            by the `design_readout_probes` method.
+        :param codebook: Table assigning target regions to readout barcode bits.
+            Rows are target regions and columns are barcode bits.
         :type codebook: pd.DataFrame
-        :param readout_probe_table: A pandas DataFrame containing readout probe sequences and their
-            associated bit identifiers, barcode rounds, pseudocolors, and channel assignments. This should
-            be the readout probe table generated by the `design_readout_probes` method.
+        :param readout_probe_table: Table linking each barcode bit to its readout
+            probe sequence and related readout information.
         :type readout_probe_table: pd.DataFrame
-        :param output_properties: List of property names to include in the output files. If None, a default
-            set of properties will be included. Available properties include: 'source', 'species', 'gene_id',
-            'chromosome', 'start', 'end', 'strand', 'sequence_target', 'sequence_readout_probe_1',
-            'sequence_readout_probe_2', 'sequence_readout_probe_3', 'sequence_readout_probe_4',
-            'sequence_hybridization_probe', 'sequence_forward_primer', 'sequence_reverse_primer',
-            'sequence_dna_template_probe', 'isoform_consensus', etc.
+        :param output_properties: Probe properties to include in the detailed output
+            files. If ``None``, a default set of annotations and sequences is used.
         :type output_properties: list[str] | None
-        :param properties: Default list of properties to include if `output_properties` is None. This parameter
-            is used internally and typically should not be modified.
-        :type properties: list[str]
-        :return: None. All output files are written to the pipeline's output directory.
+        :return: None
         """
         if output_properties is None:
             output_properties = [
@@ -671,32 +667,47 @@ class SeqFishPlusProbeDesigner:
 
 class TargetProbeDesigner:
     """
-    A class for designing target probes for SeqFISH+ experiments through a multi-step pipeline.
+    Design the RNA-binding part of seqFISH+ hybridization probes.
 
-    This class provides methods for the complete target probe design process, which includes:
-    1. Creating an initial oligo database from input FASTA files using a sliding window approach
-    2. Filtering probes based on sequence properties (GC content, homopolymeric runs, secondary structure)
-    3. Filtering probes based on specificity to remove off-target binding and cross-hybridization
-       using BLASTN searches
-    4. Organizing filtered probes into optimal sets based on weighted scoring criteria (GC content,
-       UTR targeting) and distance constraints
+    This class designs the gene-specific target sequences that bind directly to
+    RNA. Downstream steps later add the readout barcode sequences that encode the
+    gene identity. Several target probes are usually selected for each gene so the
+    combined signal is bright enough for reliable detection.
 
-    The resulting probes are gene-specific targeting sequences (typically 28 nt) that bind to RNA
-    transcripts. These probes will later be combined with four readout probe overhang sequences to
-    create complete hybridization probes.
+    The workflow has four main steps:
 
-    :param dir_output: Directory path where output files will be saved.
+    1. **Candidate generation**
+
+       Build candidate target probes from transcript or target-region FASTA
+       files.
+
+    2. **Sequence filtering**
+
+       Remove candidates with unsuitable sequence properties, such as masked
+       sequence, long single-base runs, unsuitable GC content, or strong
+       secondary structure.
+
+    3. **Specificity filtering**
+
+       Remove candidates that may bind to unintended targets or cross-hybridize
+       with other probes in the panel.
+
+    4. **Probe set selection**
+
+       Select final probe sets for each target region, using criteria such as GC
+       content, UTR overlap, and probe spacing.
+
+    :param dir_output: Directory where output files and intermediate results are
+        saved.
     :type dir_output: str
-    :param n_jobs: Number of parallel jobs to use for processing. Set to 1 for serial processing or higher
-        values for parallel processing. This affects the parallelization of filtering, property calculation,
-        and set generation operations.
+    :param n_jobs: Number of worker processes used for steps that can run in
+        parallel. Use ``1`` to run without parallel processing.
     :type n_jobs: int
     """
 
     def __init__(self, dir_output: str, n_jobs: int) -> None:
         """Constructor for the TargetProbeDesigner class."""
 
-        ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
         self.subdir_db_oligos = "db_probes"
         self.subdir_db_reference = "db_reference"
@@ -709,22 +720,23 @@ class TargetProbeDesigner:
         write_intermediate_steps: bool = False,
     ) -> OligoDatabase:
         """
-        Generate SeqFISH+ target probes by running the full multi-step target-probe design pipeline.
+        Run the full seqFISH+ target-probe design workflow.
 
-        Internally orchestrates the existing decorated steps :py:meth:`_create_oligo_database` →
-        :py:meth:`_filter_by_property` → :py:meth:`_filter_by_specificity` →
-        :py:meth:`_create_oligo_sets`. Each decorated step keeps its own ``@pipeline_step_basic``
-        logging. The resulting probes are gene-specific targeting sequences (typically 28 nt) that
-        bind directly to RNA transcripts; downstream steps combine each probe with four readout
-        probe overhang sequences to form the complete hybridization probe.
+        This method designs the RNA-binding target sequences used in seqFISH+
+        hybridization probes. It starts from transcript or target-region sequences,
+        creates candidate probes, filters them, checks their specificity, and
+        selects final probe sets for each target region.
 
-        :param target_probes_parameters: ``target_probes`` block. Must contain ``oligo_generation``,
-            ``property_filters``, ``specificity_filters``, ``probe_set_selection`` sub-blocks.
+        :param target_probes_parameters: Settings from the ``target_probes`` section
+            of the pipeline config. This includes candidate generation, sequence
+            filters, specificity filters, and probe set selection.
         :type target_probes_parameters: dict
-        :param write_intermediate_steps: If True, save the per-step target-probe databases for
-            debugging.
+        :param write_intermediate_steps: If ``True``, save intermediate probe
+            databases after each main step. This can help when checking where probes
+            were removed.
         :type write_intermediate_steps: bool
-        :return: An `OligoDatabase` containing the designed target probes organised into sets.
+        :return: Database containing selected seqFISH+ target probes for each target
+            region.
         :rtype: OligoDatabase
         """
         oligo_generation_parameters = target_probes_parameters["oligo_generation"]
@@ -801,41 +813,33 @@ class TargetProbeDesigner:
         min_oligos_per_gene: int,
     ) -> OligoDatabase:
         """
-        Create an initial oligo database by generating sequences using a sliding window approach.
+        Create the first database of candidate seqFISH+ target probes.
 
-        This is the first step of target probe design. The method:
-        1. Generates candidate oligo sequences from input FASTA files using a sliding window approach
-           across the specified length range
-        2. Creates an `OligoDatabase` and loads the generated sequences
-        3. Calculates the reverse complement sequence (``oligo`` sequence type) — always on
-        4. Removes regions with insufficient oligos
+        Candidate probes are generated by sliding windows across the input
+        sequences. All probe lengths between the minimum and maximum length are
+        considered. For each candidate, the transcript-facing sequence is stored,
+        and the reverse complement is stored as the DNA probe sequence that will
+        bind to the RNA.
 
-        The database stores sequences with sequence types "target" (original sequence) and
-        "oligo" (reverse complement).
+        Regions with too few candidate probes are removed at this stage.
 
-        Isoform-consensus property computation and filtering live in :py:meth:`filter_by_property`
-        so all ``filter_database_by_property_threshold`` calls remain in the property-filter phase.
-
-        :param region_ids: List of gene identifiers (e.g., gene IDs) to target for probe design. If None,
-            all genes present in the input FASTA files will be used.
-        :type region_ids: list | None
-        :param oligo_length_min: Minimum length (in nucleotides) for target probe sequences.
+        :param region_ids: Target regions to design probes for, usually gene names
+            or gene IDs. If ``None``, all regions in the input FASTA files are used.
+        :type region_ids: list[str] | None
+        :param oligo_length_min: Minimum candidate probe length in bases.
         :type oligo_length_min: int
-        :param oligo_length_max: Maximum length (in nucleotides) for target probe sequences.
+        :param oligo_length_max: Maximum candidate probe length in bases.
         :type oligo_length_max: int
-        :param files_fasta_oligo_database: List of paths to FASTA files containing sequences from which
-            target probes will be generated. These files should contain genomic regions of interest
-            (e.g., exons, exon-exon junctions).
+        :param files_fasta_oligo_database: FASTA files containing the transcript or
+            target-region sequences used for probe design.
         :type files_fasta_oligo_database: list[str]
-        :param min_oligos_per_gene: Minimum number of oligos required per region (gene) after generation.
-            Regions with fewer oligos than this threshold will be removed from the database.
+        :param min_oligos_per_gene: Minimum number of candidate probes a region must
+            have to remain in the database.
         :type min_oligos_per_gene: int
-        :return: An `OligoDatabase` object containing the generated target probe sequences with their
-            component sequences (target, oligo). The database is filtered to only include regions that
-            meet the minimum oligo requirement.
+        :return: Database containing candidate probes with the target sequence and
+            the DNA probe sequence.
         :rtype: OligoDatabase
         """
-        ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
             files_fasta_in=files_fasta_oligo_database,
@@ -844,7 +848,6 @@ class TargetProbeDesigner:
             n_jobs=self.n_jobs,
         )
 
-        ##### creating the oligo database #####
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_oligos_per_gene,
             write_regions_with_insufficient_oligos=True,
@@ -859,10 +862,8 @@ class TargetProbeDesigner:
             sequence_type="target",
             region_ids=region_ids,
         )
-        # Set all sequence types that will be used in this pipeline
         oligo_database.set_database_sequence_types(["target", "oligo"])
 
-        ##### compute reverse complement (always on) #####
         reverse_complement_sequence_property = ReverseComplementSequenceProperty(
             sequence_type_reverse_complement="oligo"
         )
@@ -891,48 +892,42 @@ class TargetProbeDesigner:
         secondary_structure_filter: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence properties to remove probes with undesirable
-        characteristics.
+        Remove candidate probes with unsuitable sequence properties.
 
-        This method applies multiple property-based filters, each gated on its own ``enabled`` flag.
-        The isoform-consensus filter is applied first as a cheap pre-filter on the ``target`` sequence
-        type; the remaining sequence-based filters are then applied to the ``oligo`` sequence type.
-        Probes that fail any enabled filter are removed from the database.
+        This step checks whether each candidate probe is likely to behave well in
+        the experiment. It can remove probes that overlap masked sequence, contain
+        long single-base runs, have unsuitable GC content, or are predicted to fold
+        strongly onto themselves.
 
-        The following filters are applied (in this order, when enabled):
-        1. **Isoform consensus** (cheap pre-filter): computes ``IsoformConsensusProperty`` on the
-           ``target`` sequence and removes regions below the configured threshold.
-        2. **Hard masked sequences**: Removes probes containing hard-masked nucleotides (N)
-        3. **Soft masked sequences**: Removes probes containing soft-masked nucleotides (lowercase)
-        4. **Homopolymeric runs**: Removes probes with homopolymeric runs exceeding specified lengths
-        5. **GC content**: Removes probes with GC content outside the specified range
-        6. **Secondary structure**: Removes probes that form stable secondary structures at the
-           specified temperature
+        If isoform consensus filtering is enabled, probes are also checked for how
+        well they represent the annotated isoforms of the target gene.
 
-        Regions that do not meet the minimum oligo requirement after filtering are removed from
-        the database.
-
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties.
+        :param oligo_database: Candidate probe database returned by
+            :py:meth:`_create_oligo_database`. This database is updated by the
+            filtering step.
         :type oligo_database: OligoDatabase
-        :param isoform_consensus_filter: Dict with ``enabled``, ``isoform_consensus``.
+        :param isoform_consensus_filter: Settings for keeping probes that target a
+            sufficient fraction of annotated isoforms.
         :type isoform_consensus_filter: dict
-        :param hard_masked_sequences_filter: Dict with ``enabled``.
+        :param hard_masked_sequences_filter: Settings for removing probes that
+            overlap hard-masked bases, such as ``N`` bases.
         :type hard_masked_sequences_filter: dict
-        :param soft_masked_sequences_filter: Dict with ``enabled``.
+        :param soft_masked_sequences_filter: Settings for removing probes that
+            overlap soft-masked sequence, often used for repetitive or low-complexity
+            regions.
         :type soft_masked_sequences_filter: dict
-        :param homopolymeric_runs_filter: Dict with ``enabled``, ``homopolymeric_base_n`` (mapping
-            ``A``/``T``/``C``/``G`` to maximum allowed run lengths).
+        :param homopolymeric_runs_filter: Settings for removing probes with long
+            runs of the same base.
         :type homopolymeric_runs_filter: dict
-        :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
+        :param GC_content_filter: Settings for the allowed GC-content range.
         :type GC_content_filter: dict
-        :param secondary_structure_filter: Dict with ``enabled``, ``T``, ``thr_DG``.
+        :param secondary_structure_filter: Settings for removing probes predicted to
+            form stable self-structures.
         :type secondary_structure_filter: dict
-        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
-            property filters. Regions with insufficient oligos after filtering are removed.
+        :return: Filtered database containing probes that passed the enabled
+            sequence-property checks.
         :rtype: OligoDatabase
         """
-        # Pre-filter by isoform consensus (cheap property lookup before sequence filters)
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -945,7 +940,6 @@ class TargetProbeDesigner:
                 remove_if_smaller_threshold=True,
             )
 
-        # Build sequence-based property filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
         if hard_masked_sequences_filter["enabled"]:
             hard_masked_sequences = HardMaskedSequenceFilter()
@@ -975,10 +969,7 @@ class TargetProbeDesigner:
             )
             filters.append(secondary_sctructure)
 
-        # initialize the property filter class
         property_filter = PropertyFilter(filters=filters)
-
-        # filter the database
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -996,43 +987,31 @@ class TargetProbeDesigner:
         cross_hybridization_blastn_filter: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence specificity to remove probes that bind
-        non-specifically or cross-hybridize.
+        Remove probes that may bind to the wrong place.
 
-        The filter list is seeded with an :class:`ExactMatchFilter` (always on) and then conditionally
-        extended with BLASTN-specificity and cross-hybridization filters depending on their
-        ``enabled`` flags. All filters are applied in a single :class:`SpecificityFilter` invocation
-        so the database is iterated once.
+        This step checks whether candidate probes are specific to their intended RNA
+        target. It removes exact duplicate probe sequences and, when enabled, uses
+        BLASTN to find probes that may also bind to unintended reference sequences.
 
-        1. **Exact matches** (always on): Removes all probes with exact sequence matches to probes of
-           other regions.
-        2. **BLASTN specificity** (gated on ``specificity_blastn_filter['enabled']``): Uses BLASTN to
-           search for similar sequences in the reference database. Probes with hits meeting the
-           specified criteria are removed.
-        3. **Cross-hybridization** (gated on ``cross_hybridization_blastn_filter['enabled']``):
-           Removes probes that cross-hybridize with each other. This is critical because if probes
-           can bind to each other, they may form dimers instead of binding to the target RNA. Probes
-           from the larger genomic region are removed when cross-hybridization is detected.
+        The method can also remove probes that may cross-hybridize with other probes
+        in the same panel.
 
-        The reference database is loaded from the FASTA file(s) inside ``specificity_blastn_filter``
-        and is shared by both BLASTN-based filters. Regions that do not meet the minimum oligo
-        requirement after filtering are removed from the database.
-
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties.
+        :param oligo_database: Probe database returned by
+            :py:meth:`_filter_by_property`. This database is updated by the
+            specificity filters.
         :type oligo_database: OligoDatabase
-        :param specificity_blastn_filter: Dict with ``enabled``, ``search_parameters``,
-            ``hit_parameters``, ``files_fasta_reference_database``.
+        :param specificity_blastn_filter: Settings for checking probe specificity
+            against reference sequences. This includes the reference FASTA files and
+            BLASTN search settings.
         :type specificity_blastn_filter: dict
-        :param cross_hybridization_blastn_filter: Dict with ``enabled``, ``search_parameters``,
-            ``hit_parameters``.
+        :param cross_hybridization_blastn_filter: Settings for checking whether
+            probes in the same panel may bind to each other or to unintended probe
+            targets.
         :type cross_hybridization_blastn_filter: dict
-        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
-            specificity and cross-hybridization filters. Regions with insufficient oligos after
-            filtering are removed.
+        :return: Filtered database containing probes that passed the enabled
+            specificity checks.
         :rtype: OligoDatabase
         """
-        ##### exact match filter (always on); BLASTN filters gated on ``enabled`` #####
         exact_matches = ExactMatchFilter(policy=RemoveAllFilterPolicy(), filter_name="exact_match")
         filters: list = [exact_matches]
         directories: list[str] = []
@@ -1082,7 +1061,6 @@ class TargetProbeDesigner:
             n_jobs=self.n_jobs,
         )
 
-        # remove all directories of intermediate steps
         for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
@@ -1100,39 +1078,35 @@ class TargetProbeDesigner:
         UTR_score: dict,
     ) -> OligoDatabase:
         """
-        Create optimal oligo sets based on weighted scoring criteria, distance constraints, and set selection.
+        Select final seqFISH+ target-probe sets.
 
-        This method performs the following steps:
-        1. **Scoring**: Calculates scores for each oligo based on weighted criteria (GC content, UTR targeting).
-           Higher scores indicate better probes.
-        2. **Set generation**: Builds a compatibility graph from distance constraints and selects sets via
-           a graph-based (clique) strategy. Generates multiple diverse sets per region, controlling overlap
-           between sets using a Jaccard threshold (``jaccard_opt``) with optional relaxation (``jaccard_step``).
-        3. **Set scoring**: Evaluates each generated set and selects the best sets based on the lowest
-           average score (ascending order).
-        4. **Region filtering**: Removes regions that cannot generate sets meeting the minimum size requirement.
+        This step chooses groups of probes from the filtered candidates. The selected
+        probes should be well spaced along the target region and should meet the
+        requested number of probes per target.
 
-        The algorithm attempts to find sets with optimal size (``set_size_opt``) but may produce sets
-        as small as ``set_size_min`` if constraints cannot be met.
+        Probe sets are scored using GC content and UTR overlap. The method can keep
+        more than one possible probe set per target region, which gives users
+        alternatives when several good designs are available. Regions without enough
+        suitable probes are removed.
 
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain target probes that have
-            passed all previous filtering steps.
+        :param oligo_database: Filtered probe database returned by
+            :py:meth:`_filter_by_specificity`. This database is updated with the
+            selected probe sets.
         :type oligo_database: OligoDatabase
-        :param independent_set_selection: Dict controlling set generation. Must contain ``n_sets``,
-            ``set_size_min``, ``set_size_opt``, ``distance_between_probes``, ``n_attempts_graph``,
-            ``n_attempts_clique_enum``, ``diversification_fraction``, ``jaccard_opt``, ``jaccard_step``.
+        :param independent_set_selection: Settings that control how many probe sets
+            are selected, how many probes each set should contain, and how far apart
+            selected probes should be placed.
         :type independent_set_selection: dict
-        :param GC_content_score: Dict with ``weight``, ``GC_content_opt``.
+        :param GC_content_score: Settings for scoring probes by how close their GC
+            content is to the desired value.
         :type GC_content_score: dict
-        :param UTR_score: Dict with ``weight``.
+        :param UTR_score: Settings for scoring probes by how well they overlap the
+            target region annotation.
         :type UTR_score: dict
-        :return: An updated `OligoDatabase` object containing the generated oligo sets. Each region
-            will have up to ``n_sets`` sets stored, with each set containing between ``set_size_min``
-            and ``set_size_opt`` probes. Regions with insufficient oligos are removed.
+        :return: Database with selected probe sets attached to each remaining target
+            region.
         :rtype: OligoDatabase
         """
-        # Define all scorers
         utr_scorer = OverlapUTRScorer(score_weight=UTR_score["weight"], property_name="regiontype")
         GC_scorer = DeviationFromOptimalGCContentScorer(
             GC_content_opt=GC_content_score["GC_content_opt"],
@@ -1174,28 +1148,31 @@ class TargetProbeDesigner:
 
 class ReadoutProbeDesigner:
     """
-    A class for designing SeqFISH+ readout probes and generating codebooks through a multi-step pipeline.
+    Manage the readout probes and codebook used for seqFISH+ decoding.
 
-    This class provides methods for the complete readout probe design process, which includes:
-    1. Creating an initial oligo database by generating random sequences with specified nucleotide
-       probabilities
-    2. Filtering probes based on sequence properties (GC content, homopolymeric runs)
-    3. Filtering probes based on specificity to remove off-target binding and cross-hybridization
-       using BLASTN searches
-    4. Generating a combinatorial pseudocolor codebook with barcode rounds for hybridization regions
-    5. Creating a readout probe table that maps codebook bits to barcode rounds, pseudocolors,
-       channels, and readout probe sequences
+    In seqFISH+, each target gene is assigned a combinatorial barcode. The
+    barcode is read over several hybridization rounds. In each round, fluorescent
+    readout probes bind to selected barcode sequences on the hybridization
+    probes. The pattern of signals across rounds identifies the RNA molecule.
 
-    The resulting readout probes are non-targeting sequences (typically 15 nt overhangs) that bind
-    to barcode sequences on the hybridization probes. Each readout probe is assigned to a specific bit
-    position in the codebook and distributed across fluorescence channels and barcode rounds for
-    multiplexed detection using a combinatorial pseudocolor system.
+    This class handles the two tables needed for that assignment:
 
-    :param dir_output: Directory path where output files will be saved.
+    - the **codebook**, which assigns each target region to a barcode built from
+      pseudocolors across imaging rounds and fluorescence channels,
+    - the **readout probe table**, which links each barcode bit to a readout probe
+      sequence, barcode round, pseudocolor, and channel.
+
+    Both tables can be loaded from files or generated from the config. When the
+    readout probe table is generated, candidate sequences are drawn from a random
+    DNA pool and filtered for sequence quality and specificity. Before the tables
+    are used, they are checked together to make sure that all requested target
+    regions and barcode bits are covered.
+
+    :param dir_output: Directory where output files and intermediate results are
+        saved.
     :type dir_output: str
-    :param n_jobs: Number of parallel jobs to use for processing. Set to 1 for serial processing or higher
-        values for parallel processing. This affects the parallelization of filtering, property calculation,
-        and set generation operations.
+    :param n_jobs: Number of worker processes used for steps that can run in
+        parallel. Use ``1`` to run without parallel processing.
     :type n_jobs: int
     """
 
@@ -1206,7 +1183,6 @@ class ReadoutProbeDesigner:
     ) -> None:
         """Constructor for the ReadoutProbeDesigner class."""
 
-        ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
         self.subdir_db_oligos = "db_readout_probes"
         self.subdir_db_reference = "db_reference"
@@ -1214,54 +1190,80 @@ class ReadoutProbeDesigner:
         self.n_jobs = n_jobs
 
     def load_codebook(self, file_codebook: str) -> pd.DataFrame:
-        """Load a SeqFISH+ codebook from a TSV/CSV file (index column: ``gene_name``)."""
+        """
+        Load a seqFISH+ codebook from a table file.
+
+        The codebook file should contain one row per target region and one column
+        per barcode bit. The target region column must be named ``gene_name``. Bit
+        columns are expected to be named ``bit_1``, ``bit_2``, and so on.
+
+        The table is loaded here, but the full content check is done later together
+        with the readout probe table. This makes sure that the codebook bits and the
+        available readout probes match.
+
+        :param file_codebook: Path to the codebook file. The file must contain a
+            ``gene_name`` column and one or more ``bit_*`` columns.
+        :type file_codebook: str
+        :return: Codebook table indexed by ``gene_name``.
+        :rtype: pd.DataFrame
+        """
         return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
     def generate_codebook(self, region_ids: list[str], codebook_parameters: dict) -> pd.DataFrame:
         """
-        Generate a combinatorial pseudocolor codebook with barcode rounds for hybridization regions.
+        Generate a seqFISH+ codebook from the codebook settings.
 
-        This method generates a codebook that assigns each region a unique barcode using a combinatorial
-        pseudocolor system. The codebook ensures that:
-        - Each barcode is constructed from combinations of pseudocolors across multiple barcode rounds
-        - Each barcode includes a channel assignment for fluorescence detection
-        - The number of valid barcodes is sufficient to encode all regions
+        The generated codebook assigns each target region to a combinatorial
+        barcode. Each row is a target region. Each column is a barcode bit. A value
+        of ``1`` means that the target carries the readout-binding sequence for that
+        bit.
 
-        The combinatorial pseudocolor system allows for efficient encoding: with `n_pseudocolors` pseudocolors
-        and `n_barcode_rounds` rounds, the codebook can encode up to `n_channels * (n_pseudocolors ** (n_barcode_rounds - 1))`
-        unique regions. Each barcode is represented as a binary vector where each bit corresponds to a specific
-        combination of barcode round, pseudocolor, and channel.
+        seqFISH+ barcodes are built from pseudocolors across several barcode rounds.
+        In each round, one pseudocolor is selected and that choice is tied to one
+        fluorescence channel. The first ``n_barcode_rounds - 1`` rounds are chosen
+        freely. The last round is derived from the earlier rounds as a parity check.
+        That final round helps catch barcode patterns that do not match the expected
+        relation during decoding.
 
-        The algorithm generates all possible barcode combinations by iterating through pseudocolor
-        combinations and channels. The returned codebook always carries all ``barcode_size`` columns
-        (``n_pseudocolors × n_barcode_rounds × n_channels``) — bit positions that no accepted codeword
-        uses appear as all-zero columns rather than being dropped, so the codebook shape matches the
-        readout probe set 1:1.
+        Bit positions are arranged by barcode round, then pseudocolor, then channel.
+        Unused bit columns are kept as all-zero columns so the codebook stays aligned
+        with the full readout probe set.
 
-        :param region_ids: List of region identifiers (e.g., gene IDs) to encode in the codebook.
-            Each region will be assigned a unique barcode.
+        :param region_ids: Target regions that need barcode assignments, usually
+            gene names or gene IDs.
         :type region_ids: list[str]
-        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme. Each round contributes
-            to the combinatorial encoding capacity.
-        :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors available for encoding. Each barcode round uses
-            one pseudocolor, and the final round includes a checksum pseudocolor.
-        :type n_pseudocolors: int
-        :param n_channels: Number of fluorescence channels available for detection. Each barcode is
-            assigned to one channel.
-        :type n_channels: int
-        :return: A DataFrame containing the codebook with binary encoded bits. Each row represents a
-            region's barcode; columns are ``bit_1`` .. ``bit_{barcode_size}``. Bit positions not used
-            by any accepted codeword appear as all-zero columns.
+        :param codebook_parameters: Settings from the ``readout_probes.codebook``
+            section of the pipeline config. This includes ``n_barcode_rounds``,
+            ``n_pseudocolors``, and ``channels_ids``.
+        :type codebook_parameters: dict
+        :return: Codebook table with target regions as rows and barcode bits as
+            columns.
         :rtype: pd.DataFrame
-        :raises ConfigurationError: If the number of valid barcodes (based on pseudocolors, barcode rounds,
-            and channels) is insufficient for the number of regions. In this case, consider increasing
-            `n_pseudocolors`, `n_barcode_rounds`, or `n_channels`, or reducing the number of regions.
+        :raises ConfigurationError: If there are not enough valid barcodes for all
+            requested target regions.
         """
 
         def _generate_barcode(
             pseudocolors: list, channel: int, n_pseudocolors: int, n_channels: int
         ) -> np.ndarray:
+            """
+            Convert one pseudocolor and channel choice into a binary barcode.
+
+            The method appends a parity pseudocolor for the final barcode round and
+            then sets one active bit for each round. Bit positions are arranged by
+            barcode round, then pseudocolor, then channel.
+
+            :param pseudocolors: Pseudocolor indices for the free barcode rounds.
+            :type pseudocolors: list
+            :param channel: Fluorescence channel index used for the barcode.
+            :type channel: int
+            :param n_pseudocolors: Total number of pseudocolors available.
+            :type n_pseudocolors: int
+            :param n_channels: Total number of fluorescence channels available.
+            :type n_channels: int
+            :return: Barcode vector with one active bit per barcode round.
+            :rtype: np.ndarray
+            """
             pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
             assert n_pseudocolors > max(
                 pseudocolors
@@ -1307,7 +1309,26 @@ class ReadoutProbeDesigner:
         return codebook
 
     def load_readout_probe_table(self, file_readout_probe_table: str) -> pd.DataFrame:
-        """Load a SeqFISH+ readout probe table from a TSV/CSV file. The ``bit`` column must be present."""
+        """
+        Load a seqFISH+ readout probe table from a table file.
+
+        The readout probe table links each barcode bit to a readout probe sequence.
+        It must contain the bit name, barcode round, pseudocolor, fluorescence
+        channel, and readout probe sequence.
+
+        The table is checked as soon as it is loaded, so missing columns or invalid
+        DNA sequences are caught early. The full match against the codebook is done
+        later by :py:meth:`validate`.
+
+        :param file_readout_probe_table: Path to the readout probe table file. The
+            file must contain ``bit``, ``barcode_round``, ``pseudocolor``,
+            ``channel``, and ``readout_probe_sequence`` columns.
+        :type file_readout_probe_table: str
+        :return: Readout probe table indexed by ``bit``.
+        :rtype: pd.DataFrame
+        :raises FileFormatError: If a required column is missing or if a readout
+            probe sequence is invalid.
+        """
         readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
         if "bit" not in readout_probe_table.columns:
             raise FileFormatError(
@@ -1329,26 +1350,29 @@ class ReadoutProbeDesigner:
         write_intermediate_steps: bool = False,
     ) -> pd.DataFrame:
         """
-        Generate a SeqFISH+ readout probe table by running the full multi-step readout probe
-        design pipeline and assigning the surviving sequences to bit / barcode-round /
-        pseudocolor / channel slots.
+        Generate a seqFISH+ readout probe table.
 
-        Internally orchestrates the existing decorated steps:
-        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` →
-        :py:meth:`filter_by_specificity`, then formats the filtered database into a bit-indexed
-        table via :py:meth:`_format_readout_probe_table`. Each step keeps its own
-        ``@pipeline_step_basic`` logging.
+        This method designs short DNA sequences that will serve as readout probes.
+        Candidate sequences are drawn from a random DNA pool and filtered for
+        sequence quality and specificity. The surviving probes are written into a
+        bit-indexed table with barcode round, pseudocolor, and channel information.
 
-        :param readout_probe_parameters: ``readout_probes.readout_probe_table`` block. Must contain
-            ``oligo_generation``, ``property_filters`` and ``specificity_filters`` sub-blocks.
+        :param readout_probe_parameters: Settings from the
+            ``readout_probes.readout_probe_table`` section of the pipeline config.
+            This includes candidate generation, sequence filters, and specificity
+            filters.
         :type readout_probe_parameters: dict
-        :param codebook_parameters: ``readout_probes.codebook`` block.
+        :param codebook_parameters: Settings from the ``readout_probes.codebook``
+            section of the pipeline config. The barcode-round, pseudocolor, and
+            channel settings define how many readout probes are written into the
+            final table.
         :type codebook_parameters: dict
-        :param write_intermediate_steps: If True, save the per-step readout-probe databases for
-            debugging.
+        :param write_intermediate_steps: If ``True``, save intermediate probe
+            databases after each main step. This can help when checking where probes
+            were removed.
         :type write_intermediate_steps: bool
-        :return: Bit-indexed readout probe table with ``barcode_round``, ``pseudocolor``,
-            ``channel`` and ``readout_probe_sequence`` columns.
+        :return: Readout probe table indexed by ``bit``, with barcode round,
+            pseudocolor, channel, and sequence columns.
         :rtype: pd.DataFrame
         """
         oligo_database: OligoDatabase = self._create_oligo_database(
@@ -1410,13 +1434,35 @@ class ReadoutProbeDesigner:
         readout_probe_table_source: str,
     ) -> None:
         """
-        Validate that a (codebook, readout_probe_table) pair forms a valid SeqFISH+ readout setup.
+        Check that the codebook and readout probe table match.
 
-        Delegates to the shared :func:`validate_codebook` and :func:`validate_bit_mapping_table`
-        helpers with SeqFISH+-specific knobs (codebook indexed by ``gene_name``; readout probe table
-        has the SeqFISH+ four-column layout). The codebook hamming weight is left unconstrained
-        (``expected_hamming_weight=None``) because SeqFISH+ uses a combinatorial pseudocolor
-        encoding rather than a fixed-weight binary code.
+        This method checks the two tables together. The codebook must contain all
+        requested target regions, use ``gene_name`` as the row index, and contain
+        only ``0`` and ``1`` values in its bit columns.
+
+        The readout probe table must contain every bit used by the codebook. It must
+        also provide a valid DNA sequence, barcode round, pseudocolor, and channel
+        for each bit.
+
+        Running this check before probe assembly helps catch mismatched files early,
+        such as a codebook that refers to a bit missing from the readout probe table.
+
+        :param codebook: Codebook table assigning target regions to barcode bits.
+            Rows are target regions and columns are ``bit_*`` entries.
+        :type codebook: pd.DataFrame
+        :param readout_probe_table: Table linking each barcode bit to a readout
+            probe sequence and its readout information.
+        :type readout_probe_table: pd.DataFrame
+        :param region_ids: Target regions that must be present in the codebook.
+        :type region_ids: list[str]
+        :param codebook_source: File path or source label for the codebook. Used in
+            error messages.
+        :type codebook_source: str
+        :param readout_probe_table_source: File path or source label for the readout
+            probe table. Used in error messages.
+        :type readout_probe_table_source: str
+        :raises FileFormatError: If the codebook or readout probe table is missing
+            required information or contains invalid values.
         """
         validate_codebook(
             codebook=codebook,
@@ -1441,26 +1487,23 @@ class ReadoutProbeDesigner:
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
-        Create an initial oligo database by generating random sequences with specified nucleotide probabilities.
+        Create the first database of candidate readout probes.
 
-        This is the first step of readout probe design. The method generates random DNA sequences
-        with user-defined nucleotide probabilities and creates an `OligoDatabase` to store them.
-        These sequences will be filtered in subsequent steps.
+        Candidate sequences are drawn from a random DNA pool. Readout probes do not
+        bind endogenous RNA directly. They bind barcode sequences carried by the
+        hybridization probes, so no transcript scaffold is needed here.
 
-        :param oligo_length: Length (in nucleotides) of each readout probe sequence to generate.
+        :param oligo_length: Length of each candidate readout probe in bases.
         :type oligo_length: int
-        :param oligo_base_probabilities: Dictionary specifying the probability of each nucleotide
-            base in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should
-            sum to 1.0 (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
+        :param oligo_base_probabilities: Probabilities used to draw random DNA
+            sequences. Keys are ``A``, ``T``, ``C``, and ``G``.
         :type oligo_base_probabilities: dict
-        :param initial_num_sequences: Number of random sequences to generate initially before filtering.
-            Higher values provide more candidates but increase computation time.
+        :param initial_num_sequences: Number of random candidate sequences to create
+            before filtering.
         :type initial_num_sequences: int
-        :return: An `OligoDatabase` object containing the generated random readout probe sequences.
-            The database stores sequences with sequence type "oligo".
+        :return: Database containing the random candidate readout probes.
         :rtype: OligoDatabase
         """
-        ##### creating the oligo sequences #####
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_random(
             filename_out="readout_probe_sequences",
@@ -1470,7 +1513,6 @@ class ReadoutProbeDesigner:
             base_alphabet_with_probability=oligo_base_probabilities,
         )
 
-        ##### creating the oligo database #####
         oligo_database = OligoDatabase(
             min_oligos_per_region=0,
             write_regions_with_insufficient_oligos=False,
@@ -1485,7 +1527,6 @@ class ReadoutProbeDesigner:
             sequence_type="oligo",
             region_ids=None,
         )
-        # Set all sequence types that will be used in this pipeline
         oligo_database.set_database_sequence_types(["oligo"])
 
         dir = oligo_sequences.dir_output
@@ -1501,33 +1542,26 @@ class ReadoutProbeDesigner:
         homopolymeric_runs_filter: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence properties to remove probes with undesirable
-        characteristics.
+        Remove candidate readout probes with unsuitable sequence properties.
 
-        This method applies sequential filtering using property-based filters:
-        1. **GC content**: Removes probes with GC content outside the specified range
-        2. **Homopolymeric runs**: Removes probes with homopolymeric runs exceeding specified lengths
+        This step checks whether each candidate is likely to behave well during
+        imaging. It can remove probes with unsuitable GC content or long runs of the
+        same base. Keeping the remaining probes in a similar property range helps
+        them hybridize under the same imaging conditions.
 
-        Probes that fail any filter are removed. Regions with insufficient oligos after filtering
-        are removed from the database.
-
-        Each filter is gated on its own ``enabled`` flag. Probes that fail any enabled filter are
-        removed from the database.
-
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain readout probe sequences
-            generated in the previous step.
+        :param oligo_database: Candidate probe database returned by
+            :py:meth:`_create_oligo_database`. This database is updated by the
+            filtering step.
         :type oligo_database: OligoDatabase
-        :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
+        :param GC_content_filter: Settings for the allowed GC-content range.
         :type GC_content_filter: dict
-        :param homopolymeric_runs_filter: Dict with ``enabled``, ``homopolymeric_base_n`` (mapping
-            ``A``/``T``/``C``/``G`` to maximum allowed run lengths).
+        :param homopolymeric_runs_filter: Settings for removing probes with long
+            runs of the same base.
         :type homopolymeric_runs_filter: dict
-        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
-            property filters. Regions with insufficient oligos after filtering are removed.
+        :return: Filtered database containing probes that passed the enabled
+            sequence-property checks.
         :rtype: OligoDatabase
         """
-        # Build property-filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
 
         if homopolymeric_runs_filter["enabled"]:
@@ -1543,10 +1577,7 @@ class ReadoutProbeDesigner:
             )
             filters.append(gc_content)
 
-        # initialize the preoperty filter class
         property_filter = PropertyFilter(filters=filters)
-
-        # filter the database
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -1564,43 +1595,32 @@ class ReadoutProbeDesigner:
         cross_hybridization_blastn_filter: dict,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence specificity to remove probes that bind
-        non-specifically or cross-hybridize.
+        Remove readout probes that may bind to the wrong place.
 
-        This method applies two types of specificity filters:
+        This step checks whether candidate readout probes are specific enough for
+        imaging. It removes exact duplicate sequences and, when enabled, uses BLASTN
+        to find probes that may also bind to unintended reference sequences.
 
-        1. **Specificity filtering**: Removes probes that bind to unintended genomic regions
-           - **Exact matches**: Removes all probes with exact sequence matches to other probes
-           - **BLASTN specificity**: Uses BLASTN to search for similar sequences in the reference database.
-             Probes with hits meeting the specified criteria are removed
+        This matters for seqFISH+ because a readout probe that matches endogenous
+        RNA can create false signal during an imaging round. The method can also
+        remove probes that may bind to each other instead of to the barcode
+        sequences on the hybridization probes.
 
-        2. **Cross-hybridization filtering**: Removes probes that cross-hybridize with each other.
-           This is critical because if probes can bind to each other, they may form dimers instead
-           of binding to their intended targets. Probes are removed based on their degree of
-           cross-hybridization (using `RemoveByDegreeFilterPolicy`).
-
-        The filter list is seeded with an :class:`ExactMatchFilter` (always on) and then conditionally
-        extended with BLASTN-specificity and cross-hybridization filters depending on their
-        ``enabled`` flags. The reference database is loaded from the FASTA file(s) inside
-        ``specificity_blastn_filter`` and is shared by both BLASTN-based filters. Regions that do
-        not meet the minimum oligo requirement after filtering are removed from the database.
-
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain readout probe sequences
-            that have passed property filtering.
+        :param oligo_database: Probe database returned by
+            :py:meth:`_filter_by_property`. This database is updated by the
+            specificity filters.
         :type oligo_database: OligoDatabase
-        :param specificity_blastn_filter: Dict with ``enabled``, ``search_parameters``,
-            ``hit_parameters``, ``files_fasta_reference_database``.
+        :param specificity_blastn_filter: Settings for checking probe specificity
+            against reference sequences. This includes the reference FASTA files and
+            BLASTN search settings.
         :type specificity_blastn_filter: dict
-        :param cross_hybridization_blastn_filter: Dict with ``enabled``, ``search_parameters``,
-            ``hit_parameters``.
+        :param cross_hybridization_blastn_filter: Settings for checking whether
+            readout probes in the same panel may bind to each other.
         :type cross_hybridization_blastn_filter: dict
-        :return: A filtered `OligoDatabase` object containing only probes that pass all enabled
-            specificity and cross-hybridization filters. Regions with insufficient oligos after
-            filtering are removed.
+        :return: Filtered database containing probes that passed the enabled
+            specificity checks.
         :rtype: OligoDatabase
         """
-        ##### exact match filter (always on); BLASTN filters gated on ``enabled`` #####
         exact_matches = ExactMatchFilter(
             policy=RemoveAllFilterPolicy(), filter_name="readout_probes_exact_match"
         )
@@ -1652,7 +1672,6 @@ class ReadoutProbeDesigner:
             n_jobs=self.n_jobs,
         )
 
-        # remove all directories of intermediate steps
         for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
@@ -1668,25 +1687,27 @@ class ReadoutProbeDesigner:
         n_pseudocolors: int,
     ) -> pd.DataFrame:
         """
-        Format a filtered readout-probe database into a bit-indexed table mapping each bit to a
-        barcode round, pseudocolor, channel and readout probe sequence.
+        Build the bit-indexed seqFISH+ readout probe table.
 
-        For each barcode round, pseudocolors are cycled through, and for each pseudocolor, channels
-        are cycled through, so each bit position has a unique (round, pseudocolor, channel) triple.
+        This step assigns each selected readout probe to one barcode bit. Bits are
+        filled in a fixed order: barcode round first, then pseudocolor, then
+        channel. That order keeps the table aligned with the codebook.
 
-        :param readout_probe_database: Filtered ``OligoDatabase`` of readout probe sequences.
+        :param readout_probe_database: Selected readout probe database returned by
+            :py:meth:`_filter_by_specificity`.
         :type readout_probe_database: OligoDatabase
-        :param channels_ids: Fluorescence channel identifiers used to distribute readout probes.
+        :param channels_ids: Fluorescence channel names to assign across barcode
+            bits.
         :type channels_ids: list[str]
-        :param n_barcode_rounds: Number of barcode rounds in the encoding scheme.
+        :param n_barcode_rounds: Number of barcode rounds in the experiment.
         :type n_barcode_rounds: int
-        :param n_pseudocolors: Number of pseudocolors per barcode round.
+        :param n_pseudocolors: Number of pseudocolors used in each barcode round.
         :type n_pseudocolors: int
-        :return: Bit-indexed readout probe table with columns ``barcode_round``, ``pseudocolor``,
-            ``channel`` and ``readout_probe_sequence``.
+        :return: Readout probe table indexed by ``bit``, with barcode round,
+            pseudocolor, channel, and sequence columns.
         :rtype: pd.DataFrame
-        :raises AssertionError: If the database contains fewer probes than the required number of
-            bits (``n_barcode_rounds * n_pseudocolors * len(channels_ids)``).
+        :raises AssertionError: If fewer readout probes are available than are
+            needed to fill all barcode bits.
         """
         n_channels = len(channels_ids)
         n_bits = n_barcode_rounds * n_pseudocolors * n_channels
@@ -1731,6 +1752,7 @@ class ReadoutProbeDesigner:
                 pseudocolor = (pseudocolor + 1) % n_pseudocolors
                 if pseudocolor == 0:
                     barcode_round = (barcode_round + 1) % n_barcode_rounds
+
             if i >= n_bits - 1:
                 break
         readout_probe_table.set_index("bit", inplace=True)
@@ -1744,25 +1766,24 @@ class ReadoutProbeDesigner:
 
 class PrimerDesigner:
     """
-    A class for designing SeqFISH+ primers through a multi-step pipeline.
+    Load or design the PCR primers used for seqFISH+ DNA templates.
 
-    This class provides methods for the complete primer design process, which includes:
-    1. Creating an initial oligo database by generating random sequences with specified nucleotide
-       probabilities and length (all ending with "T" nucleotide)
-    2. Filtering primers based on sequence properties (GC content, GC clamp, homopolymeric runs,
-       self-complementarity, complementarity to reverse primer, melting temperature, secondary structure)
-    3. Filtering primers based on specificity to remove primers that bind to reference sequences
-       or to the hybridization probes themselves using BLASTN searches
+    seqFISH+ hybridization probes are prepared from DNA template sequences. These
+    templates contain the probe body flanked by a forward primer and a reverse
+    primer. The primer pair is used to amplify the pooled template library before
+    the final single-stranded probes are prepared.
 
-    The class is used to design forward primers that match a provided reverse primer's melting
-    temperature for optimal PCR amplification. The resulting primers are used to amplify the
-    hybridization probes during probe library preparation.
+    The reverse primer is usually provided in the pipeline config. The forward
+    primer can also be loaded from the config, or it can be designed automatically.
+    Automatic forward-primer design draws random candidates, filters them for
+    sequence quality and specificity, and then selects the candidate whose melting
+    temperature best matches the reverse primer.
 
-    :param dir_output: Directory path where output files will be saved.
+    :param dir_output: Directory where output files and intermediate results are
+        saved.
     :type dir_output: str
-    :param n_jobs: Number of parallel jobs to use for processing. Set to 1 for serial processing or higher
-        values for parallel processing. This affects the parallelization of filtering, property calculation,
-        and set generation operations.
+    :param n_jobs: Number of worker processes used for steps that can run in
+        parallel. Use ``1`` to run without parallel processing.
     :type n_jobs: int
     """
 
@@ -1773,7 +1794,6 @@ class PrimerDesigner:
     ) -> None:
         """Constructor for the PrimerDesigner class."""
 
-        ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
         self.subdir_db_oligos = "db_primer"
         self.subdir_db_reference = "db_reference"
@@ -1781,16 +1801,32 @@ class PrimerDesigner:
         self.n_jobs = n_jobs
 
     def load_reverse_primer(self, sequence: str) -> str:
-        """Load and validate a reverse primer sequence (whitespace stripped)."""
+        """
+        Load the reverse primer sequence from the config.
+
+        The reverse primer is used together with the forward primer to amplify the
+        DNA template probe pool. This method trims surrounding whitespace. The
+        sequence itself is checked later by :py:meth:`validate`.
+
+        :param sequence: Reverse primer sequence used for PCR amplification of the
+            DNA template probes.
+        :type sequence: str
+        :return: Cleaned reverse primer sequence.
+        :rtype: str
+        """
         return str(sequence).strip()
 
     def generate_reverse_primer(self) -> str:
         """
-        Generate a SeqFISH+ reverse primer.
+        Generate a reverse primer sequence.
 
-        Placeholder for a future implementation. SeqFISH+ currently expects the reverse primer
-        sequence to be provided via the config (``primers.reverse_primer.source = "load"``); the
-        forward primer is selected to match the reverse primer's melting temperature.
+        Automatic reverse primer design is not available yet. Provide the reverse
+        primer sequence in the pipeline config instead.
+
+        :return: Reverse primer sequence.
+        :rtype: str
+        :raises FeatureNotImplementedError: Always raised until reverse primer
+            generation is implemented.
         """
         raise FeatureNotImplementedError(
             "Generation of the reverse primer is not yet implemented. "
@@ -1798,7 +1834,19 @@ class PrimerDesigner:
         )
 
     def load_forward_primer(self, sequence: str) -> str:
-        """Load and validate a forward primer sequence (whitespace stripped)."""
+        """
+        Load the forward primer sequence from the config.
+
+        The forward primer is used together with the reverse primer to amplify the
+        DNA template probe pool. This method trims surrounding whitespace. The
+        sequence itself is checked later by :py:meth:`validate`.
+
+        :param sequence: Forward primer sequence used for PCR amplification of the
+            DNA template probes.
+        :type sequence: str
+        :return: Cleaned forward primer sequence.
+        :rtype: str
+        """
         return str(sequence).strip()
 
     def generate_forward_primer(
@@ -1809,30 +1857,30 @@ class PrimerDesigner:
         write_intermediate_steps: bool = False,
     ) -> str:
         """
-        Generate a SeqFISH+ forward primer by running the full multi-step primer design pipeline
-        and selecting the candidate whose melting temperature is closest to the reverse primer's Tm.
+        Generate a forward primer matched to the reverse primer.
 
-        Internally orchestrates the existing decorated steps:
-        :py:meth:`create_oligo_database` → :py:meth:`filter_by_property` → :py:meth:`filter_by_specificity`,
-        then delegates the best-Tm match selection to :py:meth:`_pick_best_tm_match_primer`. Each
-        decorated step keeps its own ``@pipeline_step_basic`` logging.
+        This method designs a forward primer for amplifying the DNA template probe
+        pool. Candidate sequences are drawn from a random DNA pool, filtered for
+        sequence quality, and checked for unwanted binding to reference sequences
+        or to the assembled hybridization probes. The surviving candidate whose
+        melting temperature best matches the reverse primer is returned.
 
-        :param parameters: ``primers.forward_primer`` block. Must contain ``oligo_generation``,
-            ``property_filters``, ``specificity_filters`` sub-blocks. Tm parameters are expected to
-            have been inlined into ``property_filters.Tm_filter`` by :func:`_preprocess_config` (Tm
-            tables resolved, Tm chem/salt ``parameters`` normalized to ``None`` when disabled); the
-            best-Tm matcher reads them from there.
+        :param parameters: Settings from the ``primers.forward_primer`` section of
+            the pipeline config. This includes candidate generation, sequence
+            filters, and specificity filters.
         :type parameters: dict
-        :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward primer
-            should match.
+        :param reverse_primer_sequence: Reverse primer sequence used as the melting
+            temperature reference for selecting the forward primer.
         :type reverse_primer_sequence: str
-        :param hybridization_probe_database: Hybridization probe database used to build a reference
-            FASTA file for the second specificity-filter pass (primers must not bind the hybridization
-            probes themselves).
-        :type hybridization_probe_database: OligoDatabase
-        :param write_intermediate_steps: If True, save the per-step primer databases for debugging.
+        :param file_fasta_hybridization_probes_database: FASTA file containing the
+            assembled hybridization probe sequences. Used to avoid primers that bind
+            the probe body.
+        :type file_fasta_hybridization_probes_database: str
+        :param write_intermediate_steps: If ``True``, save intermediate primer
+            databases after each main step. This can help when checking where
+            candidates were removed.
         :type write_intermediate_steps: bool
-        :return: Selected forward primer sequence (Tm closest to the reverse primer).
+        :return: Selected forward primer sequence.
         :rtype: str
         """
         oligo_database: OligoDatabase = self._create_oligo_database(
@@ -1892,11 +1940,18 @@ class PrimerDesigner:
 
     def validate(self, forward_primer: str, reverse_primer: str) -> None:
         """
-        Validate a (forward_primer, reverse_primer) pair as valid DNA sequences.
+        Check that both primer sequences are valid DNA sequences.
 
-        Delegates to the shared :func:`validate_primer_sequence` helper for each primer; the
-        source identifiers are hardcoded as ``"forward_primer"`` / ``"reverse_primer"`` because
-        primer roles are fixed.
+        Each primer must be a non-empty sequence containing only ``A``, ``C``,
+        ``G``, and ``T``. This check catches missing primers and accidental
+        characters before the template probes are assembled.
+
+        :param forward_primer: Forward primer sequence to check.
+        :type forward_primer: str
+        :param reverse_primer: Reverse primer sequence to check.
+        :type reverse_primer: str
+        :raises FileFormatError: If either primer is empty or contains characters
+            other than ``A``, ``C``, ``G``, and ``T``.
         """
         validate_primer_sequence(sequence=forward_primer, source="forward_primer")
         validate_primer_sequence(sequence=reverse_primer, source="reverse_primer")
@@ -1909,31 +1964,24 @@ class PrimerDesigner:
         initial_num_sequences: int,
     ) -> OligoDatabase:
         """
-        Create an initial oligo database by generating random sequences with specified nucleotide
-        probabilities, all ending with a "T" nucleotide.
+        Create the first database of candidate forward primers.
 
-        This is the first step of primer design. The method generates random DNA sequences with
-        user-defined nucleotide probabilities. All generated sequences end with a "T" nucleotide,
-        which is a common requirement for PCR primers to improve binding stability. The sequences
-        are created with length `oligo_length - 1`, then a "T" is appended to each sequence.
+        Candidate sequences are drawn from a random DNA pool. Each sequence is
+        generated one base shorter than the requested primer length, and a terminal
+        ``T`` is then added. This keeps the 3' end consistent across the candidate
+        pool.
 
-        :param oligo_length: Length (in nucleotides) of each primer sequence to generate. Note that
-            sequences are generated with length `oligo_length - 1`, then a "T" nucleotide is appended,
-            resulting in sequences of exactly `oligo_length`.
+        :param oligo_length: Final length of each candidate primer in bases.
         :type oligo_length: int
-        :param oligo_base_probabilities: Dictionary specifying the probability of each nucleotide base
-            in randomly generated sequences. Keys should be 'A', 'T', 'G', 'C' and values should sum to 1.0
-            (e.g., {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}).
+        :param oligo_base_probabilities: Probabilities used to draw random DNA
+            sequences. Keys are ``A``, ``T``, ``C``, and ``G``.
         :type oligo_base_probabilities: dict
-        :param initial_num_sequences: Number of random sequences to generate initially before filtering.
-            Higher values provide more candidates but increase computation time.
+        :param initial_num_sequences: Number of random candidate sequences to create
+            before filtering.
         :type initial_num_sequences: int
-        :return: An `OligoDatabase` object containing the generated random primer sequences. All sequences
-            end with a "T" nucleotide. The database stores sequences with sequence type "oligo".
+        :return: Database containing the random candidate forward primers.
         :rtype: OligoDatabase
         """
-        ##### creating the primer sequences #####
-        # random forward primer
         forward_primer_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         forward_primer_fasta_file = forward_primer_sequences.create_sequences_random(
             filename_out="forward_primer_sequences",
@@ -1942,10 +1990,8 @@ class PrimerDesigner:
             name_sequences="forward_primer",
             base_alphabet_with_probability=oligo_base_probabilities,
         )
-        # we want to keep primer which end with a specific nucleotide, i.e. "T"
         forward_primer_fasta_file = append_nucleotide_to_sequences(forward_primer_fasta_file, nucleotide="T")
 
-        ##### creating the primer database #####
         oligo_database = OligoDatabase(
             min_oligos_per_region=0,
             write_regions_with_insufficient_oligos=False,
@@ -1960,7 +2006,6 @@ class PrimerDesigner:
             sequence_type="oligo",
             region_ids=None,
         )
-        # Set all sequence types that will be used in this pipeline
         oligo_database.set_database_sequence_types(["oligo"])
 
         dir = forward_primer_sequences.dir_output
@@ -1982,54 +2027,45 @@ class PrimerDesigner:
         reverse_primer_sequence: str,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence properties to remove primers with undesirable
-        characteristics.
+        Remove candidate primers with unsuitable sequence properties.
 
-        This method applies sequential filtering using multiple property-based filters:
-        1. **GC content**: Removes primers with GC content outside the specified range
-        2. **GC clamp**: Removes primers that do not have sufficient G or C nucleotides at the 3' end
-        3. **Homopolymeric runs**: Removes primers with homopolymeric runs exceeding specified lengths
-        4. **Self-complementarity**: Removes primers with excessive self-complementary regions that can
-           form hairpins and reduce PCR efficiency
-        5. **Complementarity to reverse primer**: Removes primers with excessive complementarity to the
-           reverse primer sequence, which prevents primer-dimer formation
-        6. **Melting temperature**: Removes primers with Tm outside the specified range
-        7. **Secondary structure**: Removes primers that form stable secondary structures at the
-           specified temperature
+        This step checks whether each candidate is likely to work well during PCR.
+        It can remove primers with unsuitable GC content, missing GC clamps, long
+        single-base runs, strong self-complementarity, complementarity to the
+        reverse primer, unsuitable melting temperature, or strong secondary
+        structure.
 
-        Each filter is gated on its own ``enabled`` flag. Probes that fail any enabled filter are
-        removed from the database.
-
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain primer sequences generated
-            in the previous step.
+        :param oligo_database: Candidate primer database returned by
+            :py:meth:`_create_oligo_database`. This database is updated by the
+            filtering step.
         :type oligo_database: OligoDatabase
-        :param GC_content_filter: Dict with ``enabled``, ``GC_content_min``, ``GC_content_max``.
+        :param GC_content_filter: Settings for the allowed GC-content range.
         :type GC_content_filter: dict
-        :param GC_clamp_filter: Dict with ``enabled``, ``number_GC_GCclamp``,
-            ``number_three_prime_base_GCclamp``.
+        :param GC_clamp_filter: Settings for requiring G or C bases near the 3' end
+            of the primer.
         :type GC_clamp_filter: dict
-        :param homopolymeric_runs_filter: Dict with ``enabled``, ``homopolymeric_base_n`` (mapping
-            ``A``/``T``/``C``/``G`` to maximum allowed run lengths).
+        :param homopolymeric_runs_filter: Settings for removing primers with long
+            runs of the same base.
         :type homopolymeric_runs_filter: dict
-        :param self_complementarity_filter: Dict with ``enabled``, ``max_len_selfcomplement``.
+        :param self_complementarity_filter: Settings for removing primers that can
+            fold back on themselves.
         :type self_complementarity_filter: dict
-        :param complement_reverse_primer_filter: Dict with ``enabled``, ``max_len_complement``.
+        :param complement_reverse_primer_filter: Settings for removing primers that
+            can bind strongly to the reverse primer.
         :type complement_reverse_primer_filter: dict
-        :param Tm_filter: Dict with ``enabled``, ``Tm_min``, ``Tm_max``, ``Tm_parameters``,
-            ``Tm_chem_correction_parameters``, ``Tm_salt_correction_parameters`` (Tm parameters are
-            inlined into this dict by :func:`_preprocess_config`).
+        :param Tm_filter: Settings for the allowed melting-temperature range and the
+            conditions used for the calculation.
         :type Tm_filter: dict
-        :param secondary_structure_filter: Dict with ``enabled``, ``T``, ``thr_DG``.
+        :param secondary_structure_filter: Settings for removing primers predicted to
+            form stable self-structures.
         :type secondary_structure_filter: dict
-        :param reverse_primer_sequence: DNA sequence of the reverse primer used by the
-            complement-reverse-primer filter to prevent primer-dimer formation.
+        :param reverse_primer_sequence: Reverse primer sequence used when checking
+            primer-primer complementarity.
         :type reverse_primer_sequence: str
-        :return: A filtered `OligoDatabase` object containing only primers that pass all enabled
-            property filters. Regions with insufficient oligos after filtering are removed.
+        :return: Filtered database containing primers that passed the enabled
+            sequence-property checks.
         :rtype: OligoDatabase
         """
-        # Build property-filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
 
         if homopolymeric_runs_filter["enabled"]:
@@ -2082,10 +2118,7 @@ class PrimerDesigner:
             )
             filters.append(secondary_sctructure)
 
-        # initialize the preoperty filter class
         property_filter = PropertyFilter(filters=filters)
-
-        # filter the database
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo",
@@ -2104,44 +2137,34 @@ class PrimerDesigner:
         file_fasta_hybridization_probes_database: str,
     ) -> OligoDatabase:
         """
-        Filter the oligo database based on sequence specificity to remove primers that bind
-        non-specifically to reference sequences or to the hybridization probes themselves.
+        Remove primers that may bind to the wrong place.
 
-        This method applies two types of specificity filters:
+        This step checks whether candidate primers are specific enough for library
+        amplification. When enabled, it uses BLASTN to find primers that may also
+        bind to unintended reference sequences.
 
-        1. **Reference database specificity filtering**: Removes primers that bind to unintended
-           genomic regions using BLASTN searches against reference sequences (e.g., whole genome
-           or transcriptome sequences). This ensures primers do not bind to off-target sites.
+        It can also check whether primers bind to the assembled hybridization
+        probes. Primers that anneal inside the probe body can interfere with
+        amplification of the intended template library.
 
-        2. **Hybridization probes specificity filtering**: Removes primers that bind to the hybridization
-           probes themselves. This is critical because if primers can bind to the hybridization probes,
-           they may interfere with probe function or cause unwanted amplification. The hybridization
-           probe database is used to create a reference FASTA file for this filtering step.
-
-        Each BLASTN filter is gated on its own ``enabled`` flag. Primers with hits meeting the
-        specified criteria are removed. Regions that do not meet the minimum oligo requirement
-        after filtering are removed from the database.
-
-        :param oligo_database: The `OligoDatabase` instance containing oligonucleotide sequences
-            and their associated properties. This database should contain primer sequences that have
-            passed property filtering.
+        :param oligo_database: Primer database returned by
+            :py:meth:`_filter_by_property`. This database is updated by the
+            specificity filters.
         :type oligo_database: OligoDatabase
-        :param specificity_blastn_filter: Dict with ``enabled``, ``search_parameters``,
-            ``hit_parameters``, ``files_fasta_reference_database``.
+        :param specificity_blastn_filter: Settings for checking primer specificity
+            against reference sequences. This includes the reference FASTA files and
+            BLASTN search settings.
         :type specificity_blastn_filter: dict
-        :param hybridization_probes_blastn_filter: Dict with ``enabled``, ``search_parameters``,
-            ``hit_parameters``.
+        :param hybridization_probes_blastn_filter: Settings for checking whether
+            primers may bind to the assembled hybridization probes.
         :type hybridization_probes_blastn_filter: dict
-        :param file_fasta_hybridization_probes_database: Path to the FASTA file containing the
-            assembled hybridization probe sequences (created at runtime). Used as the reference
-            database for the hybridization-probe BLASTN filter so primers do not bind the
-            hybridization probes themselves.
+        :param file_fasta_hybridization_probes_database: FASTA file containing the
+            assembled hybridization probe sequences used for the probe-body check.
         :type file_fasta_hybridization_probes_database: str
-        :return: A filtered `OligoDatabase` object containing only primers that pass all enabled
-            specificity filters. Regions with insufficient oligos after filtering are removed.
+        :return: Filtered database containing primers that passed the enabled
+            specificity checks.
         :rtype: OligoDatabase
         """
-        ##### BLASTN filters gated on ``enabled`` #####
         filters: list = []
         directories: list[str] = []
 
@@ -2192,7 +2215,6 @@ class PrimerDesigner:
             n_jobs=self.n_jobs,
         )
 
-        # remove all directories of intermediate steps
         for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
@@ -2210,26 +2232,30 @@ class PrimerDesigner:
         Tm_salt_correction_parameters: dict,
     ) -> str:
         """
-        Pick the candidate primer in ``oligo_database`` whose melting temperature is closest to
-        the reverse primer's Tm, for balanced PCR amplification.
+        Choose the forward primer whose melting temperature best matches the reverse primer.
 
-        :param oligo_database: Filtered ``OligoDatabase`` of forward primer candidates.
+        After filtering, several forward-primer candidates may remain. This method
+        compares their melting temperatures with the reverse primer and returns the
+        closest match. Matching melting temperatures helps both primers anneal under
+        the same PCR conditions.
+
+        :param oligo_database: Filtered primer database returned by
+            :py:meth:`_filter_by_specificity`.
         :type oligo_database: OligoDatabase
-        :param reverse_primer_sequence: Reverse primer sequence whose Tm the selected forward
-            primer should match.
+        :param reverse_primer_sequence: Reverse primer sequence used as the melting
+            temperature reference.
         :type reverse_primer_sequence: str
-        :param Tm_filter: ``Tm_filter`` block carrying the inlined Tm parameters
-            (``Tm_parameters``, ``Tm_chem_correction_parameters``,
-            ``Tm_salt_correction_parameters``) used for the Tm calculation.
+        :param Tm_parameters: Settings used to calculate melting temperatures.
         :type Tm_parameters: dict
-        :param Tm_chem_correction_parameters: Tm chemistry correction parameters.
+        :param Tm_chem_correction_parameters: Optional chemical correction settings
+            for the melting-temperature calculation.
         :type Tm_chem_correction_parameters: dict
-        :param Tm_salt_correction_parameters: Tm salt correction parameters.
+        :param Tm_salt_correction_parameters: Optional salt correction settings for
+            the melting-temperature calculation.
         :type Tm_salt_correction_parameters: dict
-        :return: Forward primer sequence with the Tm closest to the reverse primer's.
+        :return: Forward primer sequence with the closest melting temperature match.
         :rtype: str
         """
-        # Compute Tm of the reverse primer once.
         Tm_reverse_primer = calc_tm_nn(
             sequence=reverse_primer_sequence,
             Tm_parameters=Tm_parameters,
@@ -2237,7 +2263,6 @@ class PrimerDesigner:
             Tm_salt_correction_parameters=Tm_salt_correction_parameters,
         )
 
-        # Iterate over surviving primer candidates and pick the one whose Tm is closest to the reverse primer's.
         min_dif_Tm = float("inf")
         forward_primer_sequence = ""
         for database_region in oligo_database.database.values():
@@ -2263,24 +2288,25 @@ class PrimerDesigner:
 
 def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     """
-    Preprocess a SeqFISH+ pipeline configuration dict in place.
+    Prepare the seqFISH+ config before the pipeline runs.
 
-    - Expands ``target_probes.oligo_generation.file_region_ids`` to a sorted unique list under
-      ``target_probes.oligo_generation.region_ids`` (or ``None`` if no file was provided).
-    - The SeqFISH+ target-probe path does not use Tm parameters, so no Tm preprocessing is
-      required on ``target_probes``.
-    - When ``primers.forward_primer.source == "generate"``, resolves the ``nn_table`` /
-      ``tmm_table`` / ``imm_table`` / ``de_table`` strings in
-      ``primers.forward_primer.global_parameters.Tm_parameters`` to their
-      ``Bio.SeqUtils.MeltingTemp`` objects, normalizes the chem/salt correction blocks
-      (``parameters`` set to ``None`` when ``enabled`` is ``False``), and inlines the Tm
-      parameters into ``primers.forward_primer.property_filters.Tm_filter``. Downstream
-      consumers (the property filter and the best-Tm matcher in
-      :py:meth:`PrimerDesigner.generate_forward_primer`) read Tm parameters from
-      ``Tm_filter`` directly, so ``global_parameters`` is never threaded through the call chain.
+    This step updates the config in place so later design stages can read ready-to-use
+    settings. Target-probe design in this pipeline does not use melting-temperature
+    settings. When the forward primer is generated rather than loaded, this step also
+    resolves melting-temperature tables, turns off unused temperature corrections,
+    and copies the shared temperature settings into the forward-primer filter that
+    needs them.
+
+    It also expands an optional gene-list file into a concrete list of target
+    regions. If no gene list is provided, all regions in the input FASTA files are
+    used.
+
+    :param config: Pipeline configuration loaded from the YAML config file.
+    :type config: dict
+    :return: The same config dict, updated with the prepared settings.
+    :rtype: dict
     """
 
-    ##### region ids #####
     file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
@@ -2292,7 +2318,6 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         with open(file_region_ids) as f:
             config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
-    ##### Tm preprocessing for the forward primer (only when source == "generate") #####
     forward_primer_cfg = config["primers"]["forward_primer"]
     if forward_primer_cfg["source"] == "generate":
         global_parameters = forward_primer_cfg["global_parameters"]
@@ -2302,7 +2327,6 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-        # Inline Tm parameters into Tm_filter (consumed by the property filter).
         forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_parameters"] = global_parameters[
             "Tm_parameters"
         ]
@@ -2318,59 +2342,80 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
 
 def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
     """
-    Execute the SeqFISH+ probe design pipeline from a (raw) configuration dict.
+    Run the seqFISH+ probe design pipeline from a config dict.
 
-    The dict is expected to follow the nested layout of
-    ``data/configs/seqfish_plus_probe_designer.yaml`` (``general``, ``target_probes.*``,
-    ``readout_probes``, ``primers``). The caller is responsible for configuring the library
-    logger before invoking this function (see :func:`main`).
+    This function prepares the config with :func:`_preprocess_config`, then runs
+    :class:`SeqFishPlusProbeDesigner` end to end. It designs target probes, loads or
+    creates the readout probes and codebook, assembles hybridization probes and DNA
+    templates with primers, and writes the final files under
+    ``config['general']['dir_output']``. The caller should configure the library
+    logger before calling this function (see :func:`main`).
 
-    :param config: Pipeline configuration loaded via ``yaml.safe_load``.
+    The config should follow ``data/configs/seqfish_plus_probe_designer.yaml``.
+
+    Top-level config sections:
+
+    - ``general``: output directory, intermediate-step writing, and worker count.
+    - ``target_probes``: candidate generation, sequence filters, specificity filters,
+      and probe set selection.
+    - ``readout_probes``: codebook and readout probe table settings.
+    - ``primers``: forward and reverse primer settings.
+
+    Files written under ``dir_output``:
+
+    - ``codebook.tsv``: barcode assignments for each target gene.
+    - ``readout_probes.tsv``: readout probe sequences and related bit information.
+    - ``seqfish_plus_probes.yml``: full probe records.
+    - ``seqfish_plus_probes_order.yml``: sequences ready for synthesis.
+    - ``seqfish_plus_probes.tsv`` / ``seqfish_plus_probes.xlsx``: probe sets as tables.
+
+    Intermediate probe databases are also written when
+    ``general.write_intermediate_steps`` is ``True``.
+
+    See :class:`SeqFishPlusProbeDesigner` for the pipeline description and probe
+    structure.
+
+    :param config: Pipeline configuration loaded from the YAML config file. It is
+        updated in place by :func:`_preprocess_config` before the pipeline runs.
     :type config: dict
+    :return: None
+    :rtype: None
     """
 
-    ##### preprocess the config file #####
     config_dict = _preprocess_config(config)
 
-    ##### initialize probe designer pipeline #####
     pipeline = SeqFishPlusProbeDesigner(
         write_intermediate_steps=config_dict["general"]["write_intermediate_steps"],
         dir_output=config_dict["general"]["dir_output"],
         n_jobs=config_dict["general"]["n_jobs"],
     )
 
-    ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
         target_probes_parameters=config_dict["target_probes"],
     )
 
-    ##### design readout probes (codebook + readout probe table) #####
     codebook, readout_probe_table = pipeline.design_readout_probes(
         region_ids=list(target_probe_database.database.keys()),
         readout_probe_parameters=config_dict["readout_probes"],
     )
 
-    ##### assemble hybridization probes #####
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
         target_probe_database=target_probe_database,
         codebook=codebook,
         readout_probe_table=readout_probe_table,
     )
 
-    ##### design primers (load / generate forward + reverse primer sequences) #####
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
         hybridization_probe_database=hybridization_probe_database,
         primer_parameters=config_dict["primers"],
     )
 
-    ##### assemble DNA template probes #####
     dna_template_probe_database = pipeline.assemble_dna_template_probes(
         hybridization_probe_database=hybridization_probe_database,
         reverse_primer_sequence=reverse_primer_sequence,
         forward_primer_sequence=forward_primer_sequence,
     )
 
-    ##### write outputs #####
     pipeline.generate_output(
         oligo_database=dna_template_probe_database,
         codebook=codebook,
@@ -2380,36 +2425,22 @@ def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
 
 def main() -> None:
     """
-    Main entry point for running the SeqFish Plus probe design pipeline.
+    Run the seqFISH+ probe design pipeline from the command line.
 
-    This function orchestrates the complete SeqFish Plus probe design workflow:
-    1. Parses command-line arguments using the base parser
-    2. Reads the configuration YAML file containing all pipeline parameters
-    3. Reads the gene IDs file (if provided) or uses all genes from FASTA files
-    4. Preprocesses melting temperature parameters for target probes, readout probes, and primers
-    5. Initializes the SeqFishPlusProbeDesigner pipeline
-    6. Designs target probes for specified genes
-    7. Designs readout probes and generates the codebook
-    8. Assembles hybridization probes by combining target probes with readout probe barcodes
-    9. Designs forward and reverse primers for PCR amplification
-    10. Assembles final DNA template probes with primers
-    11. Generates output files (codebook, readout probe table, probe sequences, etc.)
+    Parses the required ``-c``/``--config`` argument, loads the YAML configuration
+    file, and configures the library logger to write under the configured output
+    directory. It then calls :func:`seqfish_plus_probe_designer`.
 
-    The function is typically called from the command line:
-    ``seqfish_plus_probe_designer --config <path_to_config.yaml>``
-
-    Command-line arguments are parsed using `base_parser()`, which expects:
-    - `config`: Path to the YAML configuration file containing all pipeline parameters
+    :return: None
+    :rtype: None
     """
     print("--------------START PIPELINE--------------")
 
     args = base_parser()
 
-    ##### read the config file #####
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
-    # setup logger now that we know the output directory
     configure_root_logger(
         dir_output=config["general"]["dir_output"],
         pipeline_name="seqfishplus_probe_designer",

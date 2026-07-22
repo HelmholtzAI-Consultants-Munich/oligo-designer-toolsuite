@@ -1,3 +1,15 @@
+"""
+HCR probe designer pipeline.
+
+HCR, or Hybridization Chain Reaction, is an RNA-FISH method that uses pairs of
+split-initiator probes to trigger fluorescent signal amplification at RNA
+targets. Signal is produced by HCR hairpins after both probe halves bind next to
+each other on the transcript.
+
+See :class:`HcrProbeDesigner` for the full pipeline description and probe
+structure. See :func:`hcr_probe_designer` for the config-driven workflow.
+"""
+
 ############################################
 # imports
 ############################################
@@ -69,6 +81,146 @@ from oligo_designer_toolsuite.utils import configure_root_logger, logger
 
 
 class HcrProbeDesigner:
+    """
+    Design probe sets for HCR RNA-FISH experiments.
+
+    This class runs the design workflow for split-initiator HCR probes. The
+    final output is a set of left and right probe sequences for each target gene,
+    together with the assigned HCR amplifier information.
+
+    Overview
+    --------
+    HCR, or Hybridization Chain Reaction, is an RNA-FISH method that amplifies
+    fluorescent signal without enzymes. It is used to detect RNA molecules in
+    fixed cells, tissues, embryos, and whole-mount samples.
+
+    In HCR RNA-FISH, each RNA target is detected by pairs of DNA probes. The two
+    probes in a pair bind next to each other on the same transcript. Each probe
+    carries one half of an HCR initiator. When both probes bind at the correct
+    position, the two initiator halves form a complete initiator and start HCR
+    amplification.
+
+    The amplification step uses two fluorescent DNA hairpins. Once triggered,
+    the hairpins open one after the other and form a fluorescent polymer at the
+    RNA target. A single probe that binds somewhere else should not start
+    amplification on its own, which helps reduce background signal.
+
+    Probe Structure
+    ---------------
+    **Hybridization (Target) Probes**
+
+    Each target gene is detected by several probe pairs. A pair consists of a
+    left probe and a right probe that bind to nearby positions on the RNA
+    transcript, usually with a small gap between them.
+
+    Each probe contains:
+
+    - a target-binding sequence that is complementary to the RNA,
+    - one half of an HCR initiator,
+    - a short linker between the target-binding sequence and the initiator half.
+
+    The left and right probes are arranged so that the initiator halves face
+    each other when both probes bind to the RNA.
+
+    A simplified layout is::
+
+        Left probe:
+            [initiator half L] + [linker] + [target-binding sequence L]
+
+        Right probe:
+            [target-binding sequence R] + [linker] + [initiator half R]
+
+    Only the full probe pair should trigger HCR amplification. This split design
+    is important because it makes accidental signal from single off-target probes
+    much less likely.
+
+    **HCR Amplifiers**
+
+    Each HCR amplifier consists of two DNA hairpins, usually called H1 and H2.
+    The hairpins are stable until they meet the matching initiator. After
+    initiation, H1 and H2 open in turn and build a fluorescent polymer at the
+    target site.
+
+    Different amplifiers, such as B1, B2, B3, and others, can be used in the
+    same experiment. Each target gene is assigned to one amplifier. The chosen
+    amplifier determines which initiator sequences are attached to the probes
+    and which fluorescent hairpins are used during imaging.
+
+    **Codebook and Initiator Table**
+
+    The codebook assigns each target gene to an HCR amplifier. In this pipeline,
+    the codebook is a one-hot table: each row is a gene, each column is an
+    amplifier bit, and each gene has exactly one active bit.
+
+    This means that each gene is detected in one fluorescence channel. Standard
+    HCR is therefore not a combinatorial barcoding method. The number of genes
+    that can be imaged together depends on the number of available amplifiers
+    and fluorophores in the experiment.
+
+    The initiator table links each amplifier bit to the left and right
+    half-initiator sequences used to build the probe pairs.
+
+    Probe Library Preparation
+    -------------------------
+    Standard HCR probe sets are often small enough to order as individual
+    single-stranded DNA oligos. A typical target uses several probe pairs, often
+    around 10 to 30 pairs per gene, depending on transcript length and design
+    choices.
+
+    The output of this pipeline is a sequence table that can be checked, shared,
+    and submitted for oligo synthesis. The synthesized probes are then pooled by
+    target or by experiment before hybridization.
+
+    During the experiment, the probe set is hybridized to the sample. After
+    washing, matching fluorescent HCR hairpins are added. Hairpin amplification
+    creates the signal at the RNA target.
+
+    Pipeline Overview
+    -----------------
+    The pipeline performs the main steps needed to design an HCR probe set:
+
+    1. **Target probe design**
+
+       Design left and right target-binding sequences for each gene. The two
+       sequences in a pair are selected so they bind close to each other on the
+       transcript.
+
+    2. **Initiator assignment**
+
+       Load or generate a codebook that assigns each gene to one HCR amplifier.
+       Load the initiator table that provides the matching left and right
+       half-initiator sequences.
+
+    3. **Hybridization probe assembly**
+
+       Combine each target-binding sequence with the assigned initiator half and
+       linker sequence to build the final left and right HCR probes.
+
+    4. **Output generation**
+
+       Write the final probe sequences, probe properties, codebook, and
+       initiator table to files that can be inspected and used for ordering.
+
+    References
+    ----------
+    Choi, H. M. T., Schwarzkopf, M., Fornace, M. E., Acharya, A.,
+    Artavanis, G., Stegmaier, J., Cunha, A., & Pierce, N. A. (2018).
+    Third-generation in situ hybridization chain reaction: multiplexed,
+    quantitative, sensitive, versatile, robust. Development, 145(12),
+    dev165753. https://doi.org/10.1242/dev.165753
+
+    :param write_intermediate_steps: If ``True``, save intermediate probe
+        databases after pipeline steps. This can help with checking a design run
+        or finding where probes were removed.
+    :type write_intermediate_steps: bool
+    :param dir_output: Directory where output files and intermediate results are
+        saved. The directory is created if it does not exist.
+    :type dir_output: str
+    :param n_jobs: Number of worker processes used for steps that can run in
+        parallel. Use ``1`` to run without parallel processing.
+    :type n_jobs: int
+    """
+
     def __init__(
         self,
         write_intermediate_steps: bool,
@@ -76,12 +228,9 @@ class HcrProbeDesigner:
         n_jobs: int,
     ) -> None:
         """Constructor for the HcrProbeDesigner class."""
-
-        # create the output folder
         self.dir_output = os.path.abspath(dir_output)
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ##### set class parameters #####
         self.write_intermediate_steps = write_intermediate_steps
         self.n_jobs = n_jobs
 
@@ -90,19 +239,24 @@ class HcrProbeDesigner:
         target_probes_parameters: dict,
     ) -> OligoDatabase:
         """
-        Design target probes for HCR experiments.
+        Design the RNA-binding parts of the HCR probes.
 
-        Thin wrapper around :py:meth:`TargetProbeDesigner.generate_target_probes` — instantiates
-        the inner designer and delegates the full multi-step workflow to it. Kept as a public API
-        so callers can drive the target-probe stage without touching the inner class directly.
+        This step designs left and right target-binding sequences for each target
+        gene. The two halves are selected so they bind close to each other on the RNA
+        transcript. This is needed for split-initiator HCR, because amplification
+        should only start when both probe halves bind at the same target site.
 
-        :param target_probes_parameters: ``target_probes`` block from the pipeline config. Must
-            contain ``oligo_generation``, ``property_filters``, ``specificity_filters``, and
-            ``probe_set_selection`` sub-blocks. Tm parameters are expected to have been inlined
-            into ``property_filters.Tm_filter`` by :func:`_preprocess_config`.
+        Candidate probes are generated, filtered for sequence quality and
+        specificity, and then selected into final probe sets. The melting
+        temperature is calculated separately for the left and right halves and saved
+        with each probe.
+
+        :param target_probes_parameters: Settings from the ``target_probes`` section
+            of the pipeline config. This includes candidate generation, sequence
+            filters, specificity filters, and probe set selection.
         :type target_probes_parameters: dict
-        :return: An `OligoDatabase` containing the designed target probes organised into sets,
-            with per-arm Tm properties annotated on the L/R half-probes.
+        :return: Database containing the selected left and right target-binding
+            probe halves for each target gene.
         :rtype: OligoDatabase
         """
         target_probe_designer = TargetProbeDesigner(self.dir_output, self.n_jobs)
@@ -111,8 +265,6 @@ class HcrProbeDesigner:
             write_intermediate_steps=self.write_intermediate_steps,
         )
 
-        # Compute per-arm Tm on both L and R halves. Tm parameters were inlined into ``Tm_filter``
-        # by ``_preprocess_config``; the same values are reused here.
         tm_nn_property: BaseProperty = TmNNProperty(
             Tm_parameters=target_probes_parameters["property_filters"]["Tm_filter"]["Tm_parameters"],
             Tm_chem_correction_parameters=target_probes_parameters["property_filters"]["Tm_filter"][
@@ -137,7 +289,33 @@ class HcrProbeDesigner:
         region_ids: list[str],
         initiator_probe_parameters: dict,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Load or create the HCR codebook and initiator table.
 
+        The codebook assigns each target gene to one HCR amplifier. In standard HCR,
+        this is a one-hot assignment: each gene has one active bit and is detected in
+        one fluorescence channel.
+
+        The initiator table links each codebook bit to the left and right
+        half-initiator sequences for the matching amplifier. These half-initiators
+        are attached to the left and right target probes during probe assembly.
+
+        The codebook and initiator table can either be loaded from files or
+        generated from the config. Both tables are checked together before they are
+        returned, so missing targets or missing initiator sequences are caught
+        before probe assembly.
+
+        :param region_ids: Target regions that must be represented in the codebook,
+            usually gene names or gene IDs.
+        :type region_ids: list[str]
+        :param initiator_probe_parameters: Settings from the ``initiator_probes``
+            section of the pipeline config. This includes the codebook settings and
+            the initiator table settings.
+        :type initiator_probe_parameters: dict
+        :return: Codebook and initiator table used to assign HCR amplifiers to
+            target genes.
+        :rtype: tuple[pd.DataFrame, pd.DataFrame]
+        """
         initiator_designer = InitiatorDesigner(
             dir_output=self.dir_output,
             n_jobs=self.n_jobs,
@@ -177,7 +355,35 @@ class HcrProbeDesigner:
         oligo_database: OligoDatabase,
         hybridization_probe_parameters: dict,
     ) -> OligoDatabase:
+        """
+        Build the final HCR probe sequences.
 
+        This step combines each target-binding probe half with the assigned
+        half-initiator and linker sequence. Each target site receives a left and a
+        right HCR probe. The target-binding parts bind to the RNA, while the
+        initiator halves face outward and remain available to start HCR
+        amplification.
+
+        A simplified layout is::
+
+            Left probe:
+                [initiator half L] + [linker] + [target-binding sequence L]
+
+            Right probe:
+                [target-binding sequence R] + [linker] + [initiator half R]
+
+        The assembled sequences are added to the existing probe database.
+
+        :param oligo_database: Database returned by :py:meth:`design_target_probes`.
+            This database is updated with the assembled HCR probe sequences.
+        :type oligo_database: OligoDatabase
+        :param hybridization_probe_parameters: Settings from the
+            ``hybridization_probes`` section of the pipeline config. This section
+            must include the linker sequence, codebook, and initiator table.
+        :type hybridization_probe_parameters: dict
+        :return: Database with left and right HCR probe sequences added.
+        :rtype: OligoDatabase
+        """
         linker_sequence = hybridization_probe_parameters["linker_sequence"]
         codebook = hybridization_probe_parameters["codebook"]
         initiator_table = hybridization_probe_parameters["initiator_table"]
@@ -262,7 +468,30 @@ class HcrProbeDesigner:
         initiator_table: pd.DataFrame,
         output_properties: list[str] | None = None,
     ) -> None:
+        """
+        Write the completed HCR probe design to files.
 
+        This step saves the final probe database, the codebook, and the initiator
+        table. It also writes an order-ready file with the left and right HCR probe
+        sequences and the initiator sequences needed for synthesis or checking.
+
+        If no output properties are provided, a default set of annotations and
+        sequence fields is written.
+
+        :param oligo_database: Database returned by
+            :py:meth:`assemble_hybridization_probes`.
+        :type oligo_database: OligoDatabase
+        :param codebook: Table assigning each target gene to one HCR amplifier bit.
+            Rows are target regions and columns are barcode bits.
+        :type codebook: pd.DataFrame
+        :param initiator_table: Table linking each amplifier bit to its left and
+            right half-initiator sequences.
+        :type initiator_table: pd.DataFrame
+        :param output_properties: Probe properties to include in the detailed output
+            files. If ``None``, a default set of annotations and sequences is used.
+        :type output_properties: list[str] | None
+        :return: None
+        """
         if output_properties is None:
             output_properties = [
                 "source",
@@ -288,7 +517,6 @@ class HcrProbeDesigner:
                 "isoform_consensus",
             ]
 
-        # write codebook and readout probe table
         codebook.to_csv(os.path.join(self.dir_output, "codebook.tsv"), sep="\t", index_label="gene_name")
         initiator_table.to_csv(os.path.join(self.dir_output, "initiators.tsv"), sep="\t")
 
@@ -322,11 +550,50 @@ class HcrProbeDesigner:
 
 
 class TargetProbeDesigner:
+    """
+    Design the RNA-binding probe pairs used in HCR experiments.
+
+    This class designs the gene-specific part of HCR probes. Each candidate is
+    split into a left and a right target-binding arm. The two arms are selected
+    so they bind close to each other on the RNA transcript.
+
+    Both arms must have suitable sequence properties and should bind only to the
+    intended target. This matters because HCR amplification should start only
+    when both probe halves bind next to each other on the same RNA molecule.
+
+    The workflow has four main steps:
+
+    1. **Candidate generation**
+
+       Build candidate probes from transcript FASTA files and split each
+       candidate into a left arm, a gap sequence, and a right arm.
+
+    2. **Sequence filtering**
+
+       Remove candidates with unsuitable sequence properties, such as poor GC
+       content, long single-base runs, masked sequence, unsuitable melting
+       temperature, or strong secondary structure.
+
+    3. **Specificity filtering**
+
+       Remove candidates that are likely to bind to unintended transcripts or to
+       other probes in the panel.
+
+    4. **Probe set selection**
+
+       Select suitable probe sets for each target gene, while keeping probes
+       well spaced across the transcript.
+
+    :param dir_output: Directory where output files and intermediate results are
+        saved.
+    :type dir_output: str
+    :param n_jobs: Number of worker processes used for steps that can run in
+        parallel. Use ``1`` to run without parallel processing.
+    :type n_jobs: int
+    """
 
     def __init__(self, dir_output: str, n_jobs: int) -> None:
         """Constructor for the TargetProbeDesigner class."""
-
-        ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
         self.subdir_db_oligos = "db_target_probes"
         self.subdir_db_reference = "db_reference"
@@ -339,26 +606,26 @@ class TargetProbeDesigner:
         write_intermediate_steps: bool = False,
     ) -> OligoDatabase:
         """
-        Generate HCR target probes by running the full multi-step target-probe design pipeline.
+        Run the full HCR target-probe design workflow.
 
-        HCR probes are split into two halves — an ``oligo_L`` (left) arm and an ``oligo_R`` (right)
-        arm — separated by a short gap that carries the ligation site. Internally this method
-        orchestrates the existing decorated steps :py:meth:`_create_oligo_database` →
-        :py:meth:`_filter_by_property` → :py:meth:`_filter_by_specificity` →
-        :py:meth:`_create_oligo_sets`, and then computes the per-arm melting temperature
-        (``TmNNProperty``) on both ``oligo_L`` and ``oligo_R`` so downstream initiator assembly
-        and reporting have Tm values available for each half-probe.
+        This method designs the left and right RNA-binding arms used in HCR probe
+        pairs. It starts from transcript sequences, creates candidate probe pairs,
+        filters them, checks their specificity, and selects final probe sets for
+        each target gene.
 
-        :param target_probes_parameters: ``target_probes`` block. Must contain ``oligo_generation``,
-            ``property_filters``, ``specificity_filters``, ``probe_set_selection`` sub-blocks.
-            Tm parameters are expected to have been inlined into ``property_filters.Tm_filter``
-            by :func:`_preprocess_config`.
+        Each surviving probe contains two target-binding arms that bind close to
+        each other on the RNA. Both arms must pass the same quality checks.
+
+        :param target_probes_parameters: Settings from the ``target_probes`` section
+            of the pipeline config. This includes candidate generation, sequence
+            filters, specificity filters, and probe set selection.
         :type target_probes_parameters: dict
-        :param write_intermediate_steps: If True, save the per-step target-probe databases for
-            debugging.
+        :param write_intermediate_steps: If ``True``, save intermediate probe
+            databases after each main step. This can help when checking where probes
+            were removed.
         :type write_intermediate_steps: bool
-        :return: An `OligoDatabase` containing the designed target probes organised into sets,
-            with per-arm Tm properties annotated on ``oligo_L`` and ``oligo_R`` sequences.
+        :return: Database containing the selected target-probe pairs for each target
+            gene.
         :rtype: OligoDatabase
         """
         oligo_generation_parameters = target_probes_parameters["oligo_generation"]
@@ -438,8 +705,44 @@ class TargetProbeDesigner:
         files_fasta_oligo_database: list[str],
         min_oligos_per_gene: int,
     ) -> OligoDatabase:
+        """
+        Create the first database of candidate target probes.
 
-        ##### creating the oligo sequences #####
+        Candidate probes are generated by sliding a fixed-size window across the
+        input transcript sequences. Each candidate covers the full target region for
+        one HCR probe pair: the left binding site, the gap, and the right binding
+        site.
+
+        The candidate is then converted into the DNA probe strand and split into the
+        left arm, spacer, and right arm. Regions with too few candidate probes are
+        removed at this stage.
+
+        :param region_ids: Target regions to design probes for, usually gene names
+            or gene IDs. If ``None``, all regions in the input FASTA files are used.
+        :type region_ids: list[str] | None
+        :param oligo_length: Total length of the candidate target window in bases.
+            This should match the left arm length, gap length, and right arm length
+            combined.
+        :type oligo_length: int
+        :param L_probe_sequence_length: Length of the left target-binding arm in
+            nucleotides.
+        :type L_probe_sequence_length: int
+        :param gap_sequence_length: Length of the gap between the two arms on the RNA
+            target, in nucleotides.
+        :type gap_sequence_length: int
+        :param R_probe_sequence_length: Length of the right target-binding arm in
+            nucleotides.
+        :type R_probe_sequence_length: int
+        :param files_fasta_oligo_database: FASTA files containing the transcript or
+            target-region sequences used for probe design.
+        :type files_fasta_oligo_database: list[str]
+        :param min_oligos_per_gene: Minimum number of candidate probes a region must
+            have to remain in the database.
+        :type min_oligos_per_gene: int
+        :return: Database containing candidate probes with target, probe, left-arm,
+            right-arm, and spacer sequences.
+        :rtype: OligoDatabase
+        """
         oligo_sequences = OligoSequenceGenerator(dir_output=self.dir_output)
         oligo_fasta_file = oligo_sequences.create_sequences_sliding_window(
             files_fasta_in=files_fasta_oligo_database,
@@ -448,7 +751,6 @@ class TargetProbeDesigner:
             n_jobs=self.n_jobs,
         )
 
-        ##### creating the oligo database #####
         oligo_database = OligoDatabase(
             min_oligos_per_region=min_oligos_per_gene,
             write_regions_with_insufficient_oligos=True,
@@ -463,10 +765,8 @@ class TargetProbeDesigner:
             sequence_type="target",
             region_ids=region_ids,
         )
-        # Set all sequence types that will be used in this pipeline
         oligo_database.set_database_sequence_types(["target", "oligo", "oligo_L", "oligo_R"])
 
-        ##### compute reverse complement (always on) #####
         reverse_complement_sequence_property: BaseProperty = ReverseComplementSequenceProperty(
             sequence_type_reverse_complement="oligo"
         )
@@ -475,7 +775,6 @@ class TargetProbeDesigner:
             oligo_database=oligo_database, sequence_type="target", n_jobs=self.n_jobs
         )
 
-        ##### split the oligo sequence into L arm + spacer + R arm (always on) #####
         split_start_end = [
             (0, L_probe_sequence_length),
             (L_probe_sequence_length, L_probe_sequence_length + gap_sequence_length),
@@ -484,7 +783,6 @@ class TargetProbeDesigner:
                 L_probe_sequence_length + gap_sequence_length + R_probe_sequence_length,
             ),
         ]
-        # first right then left sequence because we are splitting the oligo not the target sequence
         split_sequence_property: BaseProperty = SplitSequenceProperty(
             split_start_end=split_start_end,
             split_names=["oligo_R", "spacer", "oligo_L"],
@@ -514,8 +812,48 @@ class TargetProbeDesigner:
         Tm_filter: dict,
         secondary_structure_filter: dict,
     ) -> OligoDatabase:
+        """
+        Remove candidate probes with unsuitable sequence properties.
 
-        # Pre-filter by isoform consensus (cheap property lookup before sequence filters)
+        This step checks whether each candidate probe is likely to behave well in
+        the experiment. It can remove probes that overlap masked sequence, contain
+        long single-base runs, have unsuitable GC content, have a melting temperature
+        outside the chosen range, or are predicted to fold strongly onto themselves.
+
+        The left and right arms are checked separately. A probe pair is kept only if
+        both arms pass the enabled filters. If isoform consensus filtering is
+        enabled, probes are also checked for how well they represent the annotated
+        isoforms of the target gene.
+
+        :param oligo_database: Candidate probe database returned by
+            :py:meth:`_create_oligo_database`. This database is updated by the
+            filtering step.
+        :type oligo_database: OligoDatabase
+        :param isoform_consensus_filter: Settings for keeping probes that target a
+            sufficient fraction of annotated isoforms.
+        :type isoform_consensus_filter: dict
+        :param soft_masked_sequences_filter: Settings for removing probes that
+            overlap soft-masked sequence, often used for repetitive or low-complexity
+            regions.
+        :type soft_masked_sequences_filter: dict
+        :param hard_masked_sequences_filter: Settings for removing probes that
+            overlap hard-masked bases, such as ``N`` bases.
+        :type hard_masked_sequences_filter: dict
+        :param homopolymeric_runs_filter: Settings for removing probes with long
+            runs of the same base.
+        :type homopolymeric_runs_filter: dict
+        :param GC_content_filter: Settings for the allowed GC-content range.
+        :type GC_content_filter: dict
+        :param Tm_filter: Settings for the allowed melting-temperature range and the
+            conditions used for the calculation.
+        :type Tm_filter: dict
+        :param secondary_structure_filter: Settings for removing probes predicted to
+            form stable self-structures.
+        :type secondary_structure_filter: dict
+        :return: Filtered database in which both arms of each remaining probe passed
+            the enabled sequence checks.
+        :rtype: OligoDatabase
+        """
         if isoform_consensus_filter["enabled"]:
             isoform_consensus_property = IsoformConsensusProperty()
             calculator = PropertyCalculator(properties=[isoform_consensus_property])
@@ -528,7 +866,6 @@ class TargetProbeDesigner:
                 remove_if_smaller_threshold=True,
             )
 
-        # Build sequence-based property filter list, gating each filter on its own ``enabled`` flag.
         filters: list[BasePropertyFilter] = []
         if hard_masked_sequences_filter["enabled"]:
             hard_masked_sequences = HardMaskedSequenceFilter()
@@ -538,7 +875,6 @@ class TargetProbeDesigner:
             soft_masked_sequences = SoftMaskedSequenceFilter()
             filters.append(soft_masked_sequences)
 
-        # Composition: homopolymeric runs, GC range, prohibited motifs
         if homopolymeric_runs_filter["enabled"]:
             homopolymeric_runs = HomopolymericRunsFilter(
                 base_n=homopolymeric_runs_filter["homopolymeric_base_n"],
@@ -552,7 +888,6 @@ class TargetProbeDesigner:
             )
             filters.append(gc_content)
 
-        # Thermodynamics: self-complementarity (hairpins), Tm range, secondary structure (ΔG)
         if Tm_filter["enabled"]:
             melting_temperature = MeltingTemperatureNNFilter(
                 Tm_min=Tm_filter["Tm_min"],
@@ -570,10 +905,8 @@ class TargetProbeDesigner:
             )
             filters.append(secondary_structure)
 
-        # initialize the property filter class
         property_filter = PropertyFilter(filters=filters)
 
-        # filter the database — same filters applied to both L and R arms
         oligo_database = property_filter.apply(
             oligo_database=oligo_database,
             sequence_type="oligo_L",
@@ -597,8 +930,33 @@ class TargetProbeDesigner:
         specificity_blastn_filter: dict,
         cross_hybridization_blastn_filter: dict,
     ) -> OligoDatabase:
+        """
+        Remove probes that may bind to the wrong place.
 
-        ##### exact match + specificity filter (exact_matches always on, specificity gated on enabled) #####
+        This step checks whether candidate probes are specific to their intended
+        target. It removes exact duplicate matches and, when enabled, uses BLASTN to
+        find probes that may also bind to other transcript or reference sequences.
+
+        It can also check whether probe arms are likely to bind to other probes in
+        the same panel. For HCR, this is done separately for the left and right arms,
+        because both arms need to behave well on their own.
+
+        :param oligo_database: Probe database returned by
+            :py:meth:`_filter_by_property`. This database is updated by the
+            specificity filters.
+        :type oligo_database: OligoDatabase
+        :param specificity_blastn_filter: Settings for checking probe specificity
+            against reference sequences. This includes the reference FASTA files and
+            BLASTN search settings.
+        :type specificity_blastn_filter: dict
+        :param cross_hybridization_blastn_filter: Settings for checking whether
+            probes in the same panel may bind to each other or to the wrong target
+            probe arm.
+        :type cross_hybridization_blastn_filter: dict
+        :return: Filtered database containing probes that passed the enabled
+            specificity checks.
+        :rtype: OligoDatabase
+        """
         exact_matches = ExactMatchFilter(policy=RemoveAllFilterPolicy(), filter_name="exact_match")
         filters: list[BaseSpecificityFilter] = [exact_matches]
         directories = []
@@ -646,9 +1004,6 @@ class TargetProbeDesigner:
         )
         check_content_oligo_database(oligo_database)
 
-        ##### cross hybridization filter (gated on enabled) #####
-        # Built and applied separately because it operates on the "oligo_L" and "oligo_R"
-        # sequence types rather than on the joined "oligo" sequence.
         if cross_hybridization_blastn_filter["enabled"]:
             cross_hybridization_aligner_L = BlastNFilter(
                 remove_hits=True,
@@ -705,7 +1060,6 @@ class TargetProbeDesigner:
             )
             check_content_oligo_database(oligo_database)
 
-        ##### remove all directories of intermediate steps #####
         for directory in directories:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
@@ -719,8 +1073,33 @@ class TargetProbeDesigner:
         independent_set_selection: dict,
         isoform_consensus_score: dict,
     ) -> OligoDatabase:
+        """
+        Select final probe sets for each target gene.
 
-        # Define all scorers
+        This step chooses groups of probes from the filtered candidates. The selected
+        probes should be well spaced along the transcript and should meet the
+        requested number of probes per gene.
+
+        Probe sets are scored by how well they represent the annotated isoforms of
+        the target gene. The method can keep more than one possible probe set per
+        gene, which gives users alternatives when several good designs are
+        available. Regions without enough suitable probes are removed.
+
+        :param oligo_database: Filtered probe database returned by
+            :py:meth:`_filter_by_specificity`. This database is updated with the
+            selected probe sets.
+        :type oligo_database: OligoDatabase
+        :param independent_set_selection: Settings that control how many probe sets
+            are selected, how many probes each set should contain, and how far apart
+            selected probes should be placed.
+        :type independent_set_selection: dict
+        :param isoform_consensus_score: Settings for scoring probes by how well they
+            represent the annotated isoforms of a target gene.
+        :type isoform_consensus_score: dict
+        :return: Database with selected probe sets attached to each remaining target
+            gene.
+        :rtype: OligoDatabase
+        """
         isoform_consensus_scorer = IsoformConsensusScorer(score_weight=isoform_consensus_score["weight"])
         oligos_scoring = OligoScoring(scorers=[isoform_consensus_scorer])
         set_scoring = AverageSetScoring(ascending=False)
@@ -756,6 +1135,39 @@ class TargetProbeDesigner:
 
 
 class InitiatorDesigner:
+    """
+    Manage the HCR codebook and initiator table.
+
+    In HCR, each target gene is assigned to one HCR amplifier. Each amplifier is
+    represented by one bit in the codebook. A gene has exactly one active bit,
+    which means it is detected with one amplifier and one fluorescence channel.
+
+    The initiator table links each bit to the two half-initiator sequences used
+    for that amplifier. During probe assembly, these half-initiators are added
+    to the left and right target-binding probes. When both probes bind next to
+    each other on the RNA, the two halves form the initiator that starts HCR
+    amplification.
+
+    This class loads, generates, and checks the two tables needed for this
+    assignment:
+
+    - the **codebook**, which assigns each gene to one amplifier bit,
+    - the **initiator table**, which gives the left and right half-initiator
+      sequences for each bit.
+
+    Standard HCR uses a one-hot codebook. It is not a combinatorial barcode and
+    does not provide distance-based error correction. The number of genes that
+    can be imaged together is limited by the available amplifiers and
+    fluorophores.
+
+    :param dir_output: Directory where output files and intermediate results are
+        saved.
+    :type dir_output: str
+    :param n_jobs: Number of worker processes used for steps that can run in
+        parallel. This value is kept for consistency with the other designer
+        classes.
+    :type n_jobs: int
+    """
 
     def __init__(
         self,
@@ -763,21 +1175,44 @@ class InitiatorDesigner:
         n_jobs: int,
     ) -> None:
         """Constructor for the InitiatorDesigner class."""
-
-        ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
         self.n_jobs = n_jobs
 
     def load_codebook(self, file_codebook: str) -> pd.DataFrame:
+        """
+        Load an HCR codebook from a table file.
+
+        The codebook assigns each target gene to one HCR amplifier. The file should
+        contain one row per target region and one column per amplifier bit. The
+        target region column must be named ``gene_name``. Bit columns are expected to
+        be named ``bit_1``, ``bit_2``, and so on.
+
+        The table is loaded here, but the full content check is done later together
+        with the initiator table. This makes sure that every active bit in the
+        codebook has matching initiator sequences.
+
+        :param file_codebook: Path to the codebook file. The file must contain a
+            ``gene_name`` column and one or more ``bit_*`` columns.
+        :type file_codebook: str
+        :return: Codebook table indexed by ``gene_name``.
+        :rtype: pandas.DataFrame
+        """
         return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
     def generate_codebook(self, region_ids: list[str]) -> pd.DataFrame:
         """
-        Generate a one-hot HCR codebook for the given regions.
+        Generate an HCR codebook.
 
-        Placeholder for a future implementation. Once implemented, the output is
-        expected to satisfy the same contract as a loaded codebook: ``gene_name``
-        index, ``bit_*`` columns, exactly one bit set per row.
+        Automatic codebook generation is not available yet. For now, the codebook
+        must be supplied as an input file.
+
+        :param region_ids: Target regions that need amplifier assignments, usually
+            gene names or gene IDs.
+        :type region_ids: list[str]
+        :return: Codebook table with one active bit per target region.
+        :rtype: pandas.DataFrame
+        :raises FeatureNotImplementedError: Always raised until codebook generation
+            is implemented.
         """
         raise FeatureNotImplementedError(
             "Generation of codebook is not yet implemented. "
@@ -785,6 +1220,27 @@ class InitiatorDesigner:
         )
 
     def load_initiator_table(self, file_initiator_table: str) -> pd.DataFrame:
+        """
+        Load an HCR initiator table from a table file.
+
+        The initiator table links each amplifier bit to the two DNA sequences that
+        form the split HCR initiator. One sequence is used on the left probe and the
+        other on the right probe.
+
+        The file must contain a ``bit`` column, an ``initiator_L_sequence`` column,
+        and an ``initiator_R_sequence`` column. The initiator sequences are checked
+        when the table is loaded. The match between codebook bits and initiator-table
+        rows is checked later by :py:meth:`validate`.
+
+        :param file_initiator_table: Path to the initiator table file. The file must
+            contain ``bit``, ``initiator_L_sequence``, and
+            ``initiator_R_sequence`` columns.
+        :type file_initiator_table: str
+        :return: Initiator table indexed by ``bit``.
+        :rtype: pandas.DataFrame
+        :raises FileFormatError: If the ``bit`` column is missing, a required
+            sequence column is missing, or an initiator sequence is not valid DNA.
+        """
         initiator_table = pd.read_csv(file_initiator_table, sep=None, engine="python")
         if "bit" not in initiator_table.columns:
             raise FileFormatError(f"Initiator table '{file_initiator_table}' must contain a 'bit' column.")
@@ -799,12 +1255,15 @@ class InitiatorDesigner:
 
     def generate_initiator_table(self) -> pd.DataFrame:
         """
-        Generate an HCR initiator table with orthogonal L/R initiator sequences.
+        Generate an HCR initiator table.
 
-        Placeholder for a future implementation. Once implemented, the output is
-        expected to satisfy the same contract as a loaded initiator table: ``bit``
-        index, ``initiator_L_sequence`` / ``initiator_R_sequence`` columns
-        containing DNA sequences.
+        Automatic initiator table generation is not available yet. For now, the
+        initiator table must be supplied as an input file.
+
+        :return: Initiator table indexed by ``bit``.
+        :rtype: pandas.DataFrame
+        :raises FeatureNotImplementedError: Always raised until initiator table
+            generation is implemented.
         """
         raise FeatureNotImplementedError(
             "Generation of initiator table is not yet implemented. "
@@ -821,25 +1280,36 @@ class InitiatorDesigner:
         initiator_table_source: str,
     ) -> None:
         """
-        Validate that a (codebook, initiator_table) pair forms a valid HCR initiator setup.
+        Check that the codebook and initiator table match.
 
-        Centralizes the HCR-specific validation contract (one-hot codebook indexed by
-        ``gene_name``; bit-indexed initiator table with ``initiator_L_sequence`` /
-        ``initiator_R_sequence`` DNA columns; codebook bits covered by the table) so
-        that all paths producing these tables — loading from file today, generating
-        programmatically in the future — share a single validation gate.
+        This method checks both tables together. The codebook must contain all
+        requested target regions, use ``gene_name`` as the row index, and contain
+        only ``0`` and ``1`` values in its bit columns. For HCR, each target region
+        must have exactly one active bit.
 
-        :param codebook: Codebook DataFrame to validate.
+        The initiator table must contain every bit used by the codebook. For each
+        bit, it must provide a valid left and right half-initiator sequence.
+
+        Running this check before probe assembly helps catch mismatched input files
+        early, such as a codebook that refers to an amplifier bit missing from the
+        initiator table.
+
+        :param codebook: Codebook table assigning target regions to amplifier bits.
+            Rows are target regions and columns are ``bit_*`` entries.
         :type codebook: pd.DataFrame
-        :param initiator_table: Initiator table DataFrame to validate.
+        :param initiator_table: Table linking each amplifier bit to its left and
+            right half-initiator sequences.
         :type initiator_table: pd.DataFrame
-        :param region_ids: Region IDs required to be present in the codebook index.
+        :param region_ids: Target regions that must be present in the codebook.
         :type region_ids: list[str]
-        :param codebook_source: Source identifier (file path or marker) for the codebook.
+        :param codebook_source: File path or source label for the codebook. Used in
+            error messages.
         :type codebook_source: str
-        :param initiator_table_source: Source identifier (file path or marker) for the initiator table.
+        :param initiator_table_source: File path or source label for the initiator
+            table. Used in error messages.
         :type initiator_table_source: str
-        :raises FileFormatError: If either input fails validation.
+        :raises FileFormatError: If the codebook or initiator table is missing
+            required information or contains invalid values.
         """
         validate_codebook(
             codebook=codebook,
@@ -864,22 +1334,24 @@ class InitiatorDesigner:
 
 def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     """
-    Preprocess an HCR pipeline configuration dict in place.
+    Prepare the HCR config before the pipeline runs.
 
-    - Resolves the ``nn_table``/``tmm_table``/``imm_table``/``de_table`` strings in
-      ``target_probes.global_parameters.Tm_parameters`` to their ``Bio.SeqUtils.MeltingTemp`` objects.
-    - For every Tm chem/salt correction block: if ``enabled`` is ``False`` sets ``parameters`` to
-      ``None`` so downstream filters receive a clean ``None``.
-    - Inlines Tm parameters and chem/salt corrections into every block that consumes them
-      (``Tm_filter``) so designer methods don't have to thread ``global_parameters`` through the
-      call chain.
-    - Computes the derived ``junction_site`` from the L arm + half the gap length and injects it
-      into the ``specificity_blastn_filter`` block.
-    - Expands ``target_probes.oligo_generation.file_region_ids`` to a sorted unique list under
-      ``target_probes.oligo_generation.region_ids`` (or ``None`` if no file was provided).
+    This step updates the config in place so later design stages can read ready-to-use
+    settings. It resolves melting-temperature tables, turns off unused temperature
+    corrections, and copies the shared temperature settings into the filters that
+    need them.
+
+    It also derives the full probe length and the left/right junction position from
+    the arm and gap lengths, and expands an optional gene-list file into a concrete
+    list of target regions. If no gene list is provided, all regions in the input
+    FASTA files are used.
+
+    :param config: Pipeline configuration loaded from the YAML config file.
+    :type config: dict
+    :return: The same config dict, updated with the prepared settings.
+    :rtype: dict
     """
 
-    # Preprocess Tm tables and set Tm_chem/salt_correction_parameters to None if the correction is disabled
     for section in ["target_probes"]:
         config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config[section]["global_parameters"]["Tm_parameters"]
@@ -897,7 +1369,6 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
-    # Inline Tm parameters into the Tm_filter block
     config["target_probes"]["property_filters"]["Tm_filter"]["Tm_parameters"] = target_probe_Tm_parameters
     config["target_probes"]["property_filters"]["Tm_filter"][
         "Tm_chem_correction_parameters"
@@ -906,8 +1377,6 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
-    # Compute the derived junction site (in the joined oligo coordinate space) and inject it
-    # into the specificity BLASTN filter block for the seed-region variant.
     L_probe_sequence_length = config["target_probes"]["oligo_generation"]["L_probe_sequence_length"]
     gap_sequence_length = config["target_probes"]["oligo_generation"]["gap_sequence_length"]
     R_probe_sequence_length = config["target_probes"]["oligo_generation"]["R_probe_sequence_length"]
@@ -918,7 +1387,6 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         L_probe_sequence_length + gap_sequence_length // 2
     )
 
-    ##### read the genes file #####
     file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
         logger.warning(
@@ -935,38 +1403,62 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
 
 def hcr_probe_designer(config: dict[str, Any]) -> None:
     """
-    Execute the HCR probe design pipeline from a (raw) configuration dict.
+    Run the HCR probe design pipeline from a config dict.
 
-    The dict is expected to follow the nested layout of ``data/configs/hcr_probe_designer.yaml``
-    (``general``, ``target_probes.*``, ``hybridization_probe``). The caller is responsible for
-    configuring the library logger before invoking this function (see :func:`main`).
+    This function prepares the config with :func:`_preprocess_config`, then runs
+    :class:`HcrProbeDesigner` end to end. It designs target probes, loads or creates
+    the initiators and codebook, assembles the hybridization probes, and writes the
+    final files under ``config['general']['dir_output']``. The caller should
+    configure the library logger before calling this function (see :func:`main`).
 
-    :param config: Pipeline configuration loaded via ``yaml.safe_load``.
+    The config should follow ``data/configs/hcr_probe_designer.yaml``.
+
+    Top-level config sections:
+
+    - ``general``: output directory, intermediate-step writing, and worker count.
+    - ``target_probes``: candidate generation, sequence filters, specificity filters,
+      and probe set selection.
+    - ``initiator_probes``: codebook and initiator table settings.
+    - ``hybridization_probes``: linker sequence used during probe assembly.
+
+    Files written under ``dir_output``:
+
+    - ``codebook.tsv``: barcode assignments for each target gene.
+    - ``initiators.tsv``: initiator sequences and related bit information.
+    - ``hcr_probes.yml``: full probe records.
+    - ``hcr_probes_order.yml``: sequences ready for synthesis.
+    - ``hcr_probes.tsv`` / ``hcr_probes.xlsx``: probe sets as tables.
+
+    Intermediate probe databases are also written when
+    ``general.write_intermediate_steps`` is ``True``.
+
+    See :class:`HcrProbeDesigner` for the pipeline description and probe
+    structure.
+
+    :param config: Pipeline configuration loaded from the YAML config file. It is
+        updated in place by :func:`_preprocess_config` before the pipeline runs.
     :type config: dict
+    :return: None
+    :rtype: None
     """
 
-    ##### preprocess the config file #####
     config_dict = _preprocess_config(config)
 
-    ##### initialize probe designer pipeline #####
     pipeline = HcrProbeDesigner(
         write_intermediate_steps=config_dict["general"]["write_intermediate_steps"],
         dir_output=config_dict["general"]["dir_output"],
         n_jobs=config_dict["general"]["n_jobs"],
     )
 
-    ##### design target probes #####
     target_probe_database = pipeline.design_target_probes(
         target_probes_parameters=config_dict["target_probes"],
     )
 
-    ##### design initiators (codebook + initiator table) #####
     codebook, initiator_table = pipeline.design_initiators(
         region_ids=list(target_probe_database.database.keys()),
         initiator_probe_parameters=config_dict["initiator_probes"],
     )
 
-    ##### assemble hybridization probes #####
     config_dict["hybridization_probes"]["codebook"] = codebook
     config_dict["hybridization_probes"]["initiator_table"] = initiator_table
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
@@ -974,7 +1466,6 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
         hybridization_probe_parameters=config_dict["hybridization_probes"],
     )
 
-    ##### write outputs #####
     pipeline.generate_output(
         oligo_database=hybridization_probe_database,
         codebook=codebook,
@@ -983,16 +1474,23 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    """
+    Run the HCR probe design pipeline from the command line.
 
+    Parses the required ``-c``/``--config`` argument, loads the YAML configuration
+    file, and configures the library logger to write under the configured output
+    directory. It then calls :func:`hcr_probe_designer`.
+
+    :return: None
+    :rtype: None
+    """
     print("--------------START PIPELINE--------------")
 
     args = base_parser()
 
-    ##### read the config file #####
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
 
-    # setup logger now that we know the output directory
     configure_root_logger(
         dir_output=config["general"]["dir_output"],
         pipeline_name="hcr_probe_designer",
