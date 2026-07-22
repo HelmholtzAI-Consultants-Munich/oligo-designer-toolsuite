@@ -311,7 +311,7 @@ class SeqFishPlusProbeDesigner:
         2. Retrieves the corresponding readout probe sequences from the readout probe table
         3. Assembles the hybridization probe sequence with the structure:
            [reverse_complement(readout_probe_1)] + [reverse_complement(readout_probe_2)] + "T" +
-           [target_probes] + "T" + [reverse_complement(readout_probe_3)] + [reverse_complement(readout_probe_4)]
+           [target_probe] + "T" + [reverse_complement(readout_probe_3)] + [reverse_complement(readout_probe_4)]
 
         The readout probes are reverse-complemented because they will hybridize to the overhang sequences
         embedded in the hybridization probe. The single "T" nucleotides serve as spacers between the
