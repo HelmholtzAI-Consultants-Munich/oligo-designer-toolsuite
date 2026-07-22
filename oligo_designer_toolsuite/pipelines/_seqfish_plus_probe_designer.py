@@ -1272,12 +1272,16 @@ class ReadoutProbeDesigner:
             """
             # Final-round pseudocolor is a parity checksum over the free rounds.
             pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
-            assert n_pseudocolors > max(
-                pseudocolors
-            ), f"The number of pseudocolor is {n_pseudocolors}, while the barcode contains {max(pseudocolors)} pseudocolors."
-            assert (
-                n_channels > channel
-            ), f"The number of channles is {n_channels}, while the barcode contains {channel} channels."
+            if max(pseudocolors) >= n_pseudocolors:
+                raise ConfigurationError(
+                    f"Barcode references pseudocolor index {max(pseudocolors)} but only "
+                    f"{n_pseudocolors} pseudocolors are configured."
+                )
+            if channel >= n_channels:
+                raise ConfigurationError(
+                    f"Barcode references channel index {channel} but only "
+                    f"{n_channels} channels are configured."
+                )
             n_barcode_rounds = len(pseudocolors)
             barcode = np.zeros(n_channels * n_pseudocolors * n_barcode_rounds, dtype=np.int8)
             for i, pseudocolor in enumerate(pseudocolors):
@@ -1727,7 +1731,7 @@ class ReadoutProbeDesigner:
         :return: Readout probe table indexed by ``bit``, with barcode round,
             pseudocolor, channel, and sequence columns.
         :rtype: pd.DataFrame
-        :raises AssertionError: If fewer readout probes are available than are
+        :raises ConfigurationError: If fewer readout probes are available than are
             needed to fill all barcode bits.
         """
         n_channels = len(channels_ids)
@@ -1735,9 +1739,12 @@ class ReadoutProbeDesigner:
         readout_probes = readout_probe_database.get_oligoid_sequence_mapping(
             sequence_type="oligo", sequence_to_upper=False
         )
-        assert (
-            len(readout_probes) >= n_bits
-        ), f"There are less readout probes ({len(readout_probes)}) than bits ({n_bits})."
+        if len(readout_probes) < n_bits:
+            raise ConfigurationError(
+                f"Only {len(readout_probes)} readout probes are available but "
+                f"{n_bits} bits are required. Increase ``initial_num_sequences`` or "
+                f"relax the readout-probe filters to yield more candidates."
+            )
         readout_probe_table = pd.DataFrame(
             columns=[
                 "bit",

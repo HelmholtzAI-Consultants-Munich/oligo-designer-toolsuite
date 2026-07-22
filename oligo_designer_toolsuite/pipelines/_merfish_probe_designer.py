@@ -1855,14 +1855,17 @@ class ReadoutProbeDesigner:
         :return: Readout probe table indexed by ``bit``, with channel, probe ID, and
             sequence columns.
         :rtype: pd.DataFrame
-        :raises AssertionError: If fewer than ``n_bits`` readout probes are available.
+        :raises ConfigurationError: If fewer than ``n_bits`` readout probes are available.
         """
         readout_probes = oligo_database.get_oligoid_sequence_mapping(
             sequence_type="oligo", sequence_to_upper=False
         )
-        assert (
-            len(readout_probes) >= n_bits
-        ), f"There are less readout probes ({len(readout_probes)}) than bits ({n_bits})."
+        if len(readout_probes) < n_bits:
+            raise ConfigurationError(
+                f"Only {len(readout_probes)} readout probes are available but "
+                f"{n_bits} bits are required. Increase ``initial_num_sequences`` or "
+                f"relax the readout-probe filters to yield more candidates."
+            )
         readout_probe_table = pd.DataFrame(
             columns=["bit", "channel", "readout_probe_id", "readout_probe_sequence"],
             index=list(range(n_bits)),
