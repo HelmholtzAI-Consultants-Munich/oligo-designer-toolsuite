@@ -318,7 +318,7 @@ class MerfishProbeDesigner:
         1. Looks up the region's barcode in the codebook to identify which two readout probes are assigned
         2. Retrieves the corresponding readout probe sequences from the readout probe table
         3. Assembles the hybridization probe sequence with the structure:
-           [reverse_complement(readout_probe_1)] + "A" + [target_probes] + "A" + [reverse_complement(readout_probe_2)]
+           [reverse_complement(readout_probe_1)] + "A" + [target_probe] + "A" + [reverse_complement(readout_probe_2)]
 
         The readout probes are reverse-complemented because they will hybridize to the barcode sequences
         embedded in the hybridization probe. The single "A" nucleotides serve as spacers between the
