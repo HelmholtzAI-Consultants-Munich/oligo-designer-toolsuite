@@ -791,7 +791,8 @@ class BedParser:
         Load genomic intervals from a BED file.
 
         Ignores blank lines and UCSC header or comment lines that start with
-        ``track``, ``browser``, or ``#``. Interval starts in the result are 0-based.
+        ``track``, ``browser``, or ``#``. Those lines are expected only at the
+        start of the file. Interval starts in the result are 0-based.
 
         For very large files, pass ``chunksize`` to read the intervals in batches
         instead of loading the whole table at once.
@@ -804,17 +805,24 @@ class BedParser:
         :return: Table of intervals, or a chunk iterator when ``chunksize`` is set.
         :rtype: pd.DataFrame | Any
         """
+        # Header lines (track/browser/#/blank) are only at the top; stop at first data row.
+        skiprows: list[int] = []
         with open(filepath) as handle:
-            skiprows = [i for i, line in enumerate(handle) if not self._is_bed_data_line(line)]
+            for i, line in enumerate(handle):
+                if self._is_bed_data_line(line):
+                    break
+                skiprows.append(i)
 
-        return pd.read_csv(
+        dataframe = pd.read_csv(
             filepath,
             sep="\t",
             header=None,
             names=names,
+            comment="#",
             skiprows=skiprows,
             **kwargs,
         )
+        return dataframe
 
     def _is_bed_data_line(self, line: str) -> bool:
         """
