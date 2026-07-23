@@ -10,14 +10,7 @@ from abc import abstractmethod
 import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
-
-try:
-    from oligo_designer_toolsuite_ai_filters.api import APIBase
-
-    HAS_AI_FILTERS = True
-except ImportError:
-    APIBase = object  # keeps `class DummyAPI(APIBase)` definable
-    HAS_AI_FILTERS = False
+from oligo_designer_toolsuite_ai_filters.api import APIBase
 
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import (
@@ -524,8 +517,7 @@ class DummyAPI(APIBase):
         return predictions
 
 
-@unittest.skipUnless(HAS_AI_FILTERS, "requires optional 'ai-filters' extra")
-class TestHybridizationProbabilityBlastn(unittest.TestCase):
+class TestHybridizationProbabilityBalstn(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_path = os.path.join(os.getcwd(), "tmp_output_hybridization_probability_filter_blast")
 
@@ -740,7 +732,6 @@ class TestHybridizationProbabilityBlastn(unittest.TestCase):
         ), f"The Blast ai filter didn't return the expected gapped references. \n\nExpected:\n{expected_gapped_references}\n\nGot:\n{gapped_references}"
 
 
-@unittest.skipUnless(HAS_AI_FILTERS, "requires optional 'ai-filters' extra")
 class TestHybridizationProbabilityBowtie(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_path = os.path.join(os.getcwd(), "tmp_output_hybridization_probability_filter_bowtie")
