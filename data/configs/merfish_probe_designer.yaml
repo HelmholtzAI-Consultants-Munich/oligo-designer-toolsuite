@@ -111,7 +111,7 @@ readout_probes:
     file: null # data/functional_oligos/merfish_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
     n_bits: 16 # Number of bits in each barcode.
     min_hamming_dist: 4 # Minimum Hamming distance between any two valid barcodes (MHD4 = 4 for single-bit error correction).
-    hamming_weight: 2 # Number of bits set to 1 in each barcode (MERFISH standard = 2).
+    hamming_weight: 2 # Number of bits set to 1 in each barcode (MERFISH standard = 2). Equals readout overhangs per encoding probe (first half 5' of target, second half 3').
 
   readout_probe_table:
     source: generate # "generate" (default) | "load"

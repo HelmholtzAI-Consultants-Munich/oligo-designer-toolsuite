@@ -123,15 +123,17 @@ class SeqFishPlusProbeDesigner:
     Each encoding probe contains:
 
     - a target-binding sequence that is complementary to the RNA,
-    - four readout-binding overhangs that encode the gene barcode,
+    - one readout-binding overhang per barcode round (``n_barcode_rounds``),
     - short spacer bases between the target-binding and readout-binding parts.
 
-    A common seqFISH+ encoding probe layout is::
+    A common seqFISH+ encoding probe layout (four barcode rounds) is::
 
         [Overhang I] + [Overhang II] + [spacer] + [target-binding sequence]
         + [spacer] + [Overhang III] + [Overhang IV]
 
-    In the original seqFISH+ design, the target-binding sequence was typically
+    With a configurable number of rounds, the first half of the overhangs are
+    placed 5' of the target and the second half 3' of the target. In the
+    original seqFISH+ design, the target-binding sequence was typically
     28 nucleotides long, and each readout-binding overhang was 15 nucleotides
     long. The exact lengths depend on the design settings used in the pipeline.
 
@@ -206,8 +208,8 @@ class SeqFishPlusProbeDesigner:
 
     3. **Encoding probe assembly**
 
-       Combine target-binding sequences with four assigned readout-binding
-       overhangs according to the codebook.
+       Combine target-binding sequences with assigned readout-binding overhangs
+       according to the codebook.
 
     4. **Primer handling**
 
@@ -349,108 +351,117 @@ class SeqFishPlusProbeDesigner:
             codebook=codebook,
             region_ids=region_ids,
             codebook_source=codebook_source,
+            hamming_weight=readout_probe_parameters["codebook"]["n_barcode_rounds"],
         )
 
         return codebook, readout_probe_table
 
     def assemble_hybridization_probes(
         self,
-        target_probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
+        readout_probe_parameters: dict,
     ) -> OligoDatabase:
         """
         Build the seqFISH+ hybridization probes.
 
-        This step combines each RNA-binding target sequence with the four readout
-        barcode sequences assigned by the codebook. The target-binding part keeps
-        the probe on the RNA, while the readout barcodes are used during imaging
-        rounds.
+        Combine each RNA-binding target sequence with the readout-binding sequences
+        assigned by the codebook. Each gene gets one overhang for every barcode
+        round (``n_barcode_rounds``). The target-binding part keeps the probe on
+        the RNA. The overhangs are read out during imaging.
 
-        A simplified layout is::
+        Overhangs are split evenly around the target: the first half sit 5' of the
+        target and the second half sit 3' of it. A simplified layout is::
 
-            [rc(readout barcode 1)] + [rc(readout barcode 2)] + [T]
+            [rc(readout overhangs, 5' half)] + [T]
             + [target-binding sequence] + [T]
-            + [rc(readout barcode 3)] + [rc(readout barcode 4)]
+            + [rc(readout overhangs, 3' half)]
 
         The assembled sequences are added to the existing probe database.
 
-        :param target_probe_database: Database returned by
+        :param oligo_database: Database returned by
             :py:meth:`design_target_probes`. This database is updated with the
             assembled hybridization probe sequences.
-        :type target_probe_database: OligoDatabase
+        :type oligo_database: OligoDatabase
         :param codebook: Table assigning target regions to readout barcode bits.
             Rows are target regions and columns are barcode bits.
         :type codebook: pd.DataFrame
         :param readout_probe_table: Table linking each barcode bit to its readout
             probe sequence and related readout information.
         :type readout_probe_table: pd.DataFrame
+        :param readout_probe_parameters: Settings from the ``readout_probes`` section
+            of the pipeline config. This includes the codebook settings and the
+            readout probe table settings.
+        :type readout_probe_parameters: dict
         :return: Database with seqFISH+ hybridization probe sequences added.
         :rtype: OligoDatabase
+        :raises ConfigurationError: If a region has a number of active bits that
+            does not equal ``n_barcode_rounds``.
         """
-        region_ids = list(target_probe_database.database.keys())
+        region_ids = list(oligo_database.database.keys())
+        n_barcode_rounds = readout_probe_parameters["codebook"]["n_barcode_rounds"]
+        readout_sequence_types = [f"sequence_readout_probe_{i}" for i in range(1, n_barcode_rounds + 1)]
 
-        target_probe_database.set_database_sequence_types(
+        oligo_database.set_database_sequence_types(
             [
                 "sequence_target",
-                "sequence_readout_probe_1",
-                "sequence_readout_probe_2",
-                "sequence_readout_probe_3",
-                "sequence_readout_probe_4",
+                *readout_sequence_types,
                 "sequence_hybridization_probe",
             ]
         )
 
+        n_left = n_barcode_rounds // 2
+
         for region_id in region_ids:
             barcode = codebook.loc[region_id]
             bits = barcode[barcode == 1].index
-            readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
-            # Weight-4 codebook (n_barcode_rounds=4): active bits map to overhangs 1..4.
-            sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
-            sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
-            sequence_readout_probe_3 = readout_probe_sequences.iloc[2]
-            sequence_readout_probe_4 = readout_probe_sequences.iloc[3]
+            readout_probe_sequences = list(readout_probe_table.loc[bits, "readout_probe_sequence"])
+            if len(readout_probe_sequences) != n_barcode_rounds:
+                raise ConfigurationError(
+                    f"Region '{region_id}' has {len(readout_probe_sequences)} active barcode bit(s), "
+                    f"but n_barcode_rounds={n_barcode_rounds}."
+                )
 
-            probe_ids = list(target_probe_database.database[region_id].keys())
+            left_readout_sequences = readout_probe_sequences[:n_left]
+            right_readout_sequences = readout_probe_sequences[n_left:]
+
+            probe_ids = list(oligo_database.database[region_id].keys())
             new_properties: dict[str, dict[str, str]] = {probe_id: {} for probe_id in probe_ids}
 
             for probe_id in probe_ids:
 
                 new_properties[probe_id]["sequence_target"] = format_sequence(
-                    database=target_probe_database,
+                    database=oligo_database,
                     property="target",
                     region_id=region_id,
                     oligo_id=probe_id,
                 )
 
-                new_properties[probe_id]["sequence_readout_probe_1"] = sequence_readout_probe_1
-                new_properties[probe_id]["sequence_readout_probe_2"] = sequence_readout_probe_2
-                new_properties[probe_id]["sequence_readout_probe_3"] = sequence_readout_probe_3
-                new_properties[probe_id]["sequence_readout_probe_4"] = sequence_readout_probe_4
+                for i, sequence in enumerate(readout_probe_sequences, start=1):
+                    new_properties[probe_id][f"sequence_readout_probe_{i}"] = sequence
 
                 # RC so fluorescent readout oligos can anneal to these overhangs on the probe.
                 new_properties[probe_id]["sequence_hybridization_probe"] = (
-                    str(Seq(sequence_readout_probe_1).reverse_complement())
-                    + str(Seq(sequence_readout_probe_2).reverse_complement())
+                    "".join(str(Seq(sequence).reverse_complement()) for sequence in left_readout_sequences)
                     + "T"
                     + format_sequence(
-                        database=target_probe_database,
+                        database=oligo_database,
                         property="oligo",
                         region_id=region_id,
                         oligo_id=probe_id,
                     )
                     + "T"
-                    + str(Seq(sequence_readout_probe_3).reverse_complement())
-                    + str(Seq(sequence_readout_probe_4).reverse_complement())
+                    + "".join(str(Seq(sequence).reverse_complement()) for sequence in right_readout_sequences)
                 )
 
-            target_probe_database.update_oligo_properties(new_properties)
+            oligo_database.update_oligo_properties(new_properties)
 
-        return target_probe_database
+        return oligo_database
 
     def design_primers(
         self,
-        hybridization_probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         primer_parameters: dict,
     ) -> tuple[str, str]:
         """
@@ -464,10 +475,10 @@ class SeqFishPlusProbeDesigner:
         When a forward primer is generated, the assembled hybridization probes are
         also used to avoid primers that bind the probe body.
 
-        :param hybridization_probe_database: Database returned by
+        :param oligo_database: Database returned by
             :py:meth:`assemble_hybridization_probes`. The hybridization probe
             sequences are used when generating a new forward primer.
-        :type hybridization_probe_database: OligoDatabase
+        :type oligo_database: OligoDatabase
         :param primer_parameters: Settings from the ``primers`` section of the
             pipeline config. This includes the forward and reverse primer entries
             and their sequences or design settings.
@@ -476,7 +487,7 @@ class SeqFishPlusProbeDesigner:
         :rtype: tuple[str, str]
         """
         # Dump hybridization probes so primer design can reject primers that anneal to them.
-        file_fasta_hybridization_probes_database = hybridization_probe_database.write_database_to_fasta(
+        file_fasta_hybridization_probes_database = oligo_database.write_database_to_fasta(
             filename="db_reference_hybridization_probes",
             save_description=False,
             region_ids=None,
@@ -518,7 +529,7 @@ class SeqFishPlusProbeDesigner:
 
     def assemble_dna_template_probes(
         self,
-        hybridization_probe_database: OligoDatabase,
+        oligo_database: OligoDatabase,
         forward_primer_sequence: str,
         reverse_primer_sequence: str,
     ) -> OligoDatabase:
@@ -533,10 +544,10 @@ class SeqFishPlusProbeDesigner:
 
             [forward primer] + [hybridization probe] + [reverse primer]
 
-        :param hybridization_probe_database: Database returned by
+        :param oligo_database: Database returned by
             :py:meth:`assemble_hybridization_probes`. This database is updated with
             the DNA template sequences.
-        :type hybridization_probe_database: OligoDatabase
+        :type oligo_database: OligoDatabase
         :param forward_primer_sequence: Forward primer sequence used to amplify the
             DNA template probe library.
         :type forward_primer_sequence: str
@@ -546,8 +557,8 @@ class SeqFishPlusProbeDesigner:
         :return: Database with DNA template probe sequences added.
         :rtype: OligoDatabase
         """
-        region_ids = list(hybridization_probe_database.database.keys())
-        hybridization_probe_database.set_database_sequence_types(
+        region_ids = list(oligo_database.database.keys())
+        oligo_database.set_database_sequence_types(
             [
                 "sequence_forward_primer",
                 "sequence_reverse_primer",
@@ -556,7 +567,7 @@ class SeqFishPlusProbeDesigner:
         )
 
         for region_id in region_ids:
-            probe_ids = list(hybridization_probe_database.database[region_id].keys())
+            probe_ids = list(oligo_database.database[region_id].keys())
             new_properties: dict[str, dict[str, str]] = {probe_id: {} for probe_id in probe_ids}
 
             for probe_id in probe_ids:
@@ -566,7 +577,7 @@ class SeqFishPlusProbeDesigner:
                 new_properties[probe_id]["sequence_dna_template_probe"] = (
                     forward_primer_sequence
                     + format_sequence(
-                        database=hybridization_probe_database,
+                        database=oligo_database,
                         property="sequence_hybridization_probe",
                         region_id=region_id,
                         oligo_id=probe_id,
@@ -574,26 +585,28 @@ class SeqFishPlusProbeDesigner:
                     + reverse_primer_sequence
                 )
 
-            hybridization_probe_database.update_oligo_properties(new_properties)
+            oligo_database.update_oligo_properties(new_properties)
 
-        return hybridization_probe_database
+        return oligo_database
 
     def generate_output(
         self,
         oligo_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
+        readout_probe_parameters: dict,
         output_properties: list[str] | None = None,
     ) -> None:
         """
         Write the completed seqFISH+ probe design to files.
 
-        This step saves the final probe database, the codebook, and the readout
-        probe table. It also writes an order-ready file that contains the DNA
-        template probe sequences and readout probe sequences needed for synthesis.
+        Save the final probe database, the codebook, and the readout probe table.
+        Also write an order-ready file with the DNA template sequences and the
+        readout sequences needed for synthesis.
 
-        If no output properties are provided, a default set of probe annotations and
-        sequence fields is written.
+        If no output properties are provided, a default set of annotations and
+        sequence fields is written, including one readout sequence field for each
+        barcode round.
 
         :param oligo_database: Database returned by
             :py:meth:`assemble_dna_template_probes`.
@@ -604,11 +617,18 @@ class SeqFishPlusProbeDesigner:
         :param readout_probe_table: Table linking each barcode bit to its readout
             probe sequence and related readout information.
         :type readout_probe_table: pd.DataFrame
+        :param readout_probe_parameters: Settings from the ``readout_probes`` section
+            of the pipeline config. This includes the codebook settings and the
+            readout probe table settings.
+        :type readout_probe_parameters: dict
         :param output_properties: Probe properties to include in the detailed output
             files. If ``None``, a default set of annotations and sequences is used.
         :type output_properties: list[str] | None
         :return: None
+        :rtype: None
         """
+        n_barcode_rounds = readout_probe_parameters["codebook"]["n_barcode_rounds"]
+        readout_sequence_properties = [f"sequence_readout_probe_{i}" for i in range(1, n_barcode_rounds + 1)]
         if output_properties is None:
             output_properties = [
                 "source",
@@ -624,10 +644,7 @@ class SeqFishPlusProbeDesigner:
                 "transcript_id",
                 "exon_number",
                 "sequence_target",
-                "sequence_readout_probe_1",
-                "sequence_readout_probe_2",
-                "sequence_readout_probe_3",
-                "sequence_readout_probe_4",
+                *readout_sequence_properties,
                 "sequence_hybridization_probe",
                 "sequence_forward_primer",
                 "sequence_reverse_primer",
@@ -653,10 +670,7 @@ class SeqFishPlusProbeDesigner:
         oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_dna_template_probe",
-                "sequence_readout_probe_1",
-                "sequence_readout_probe_2",
-                "sequence_readout_probe_3",
-                "sequence_readout_probe_4",
+                *readout_sequence_properties,
             ],
             ascending=True,
             filename="seqfish_plus_probes_order",
@@ -1243,7 +1257,7 @@ class ReadoutProbeDesigner:
             ``n_pseudocolors``, and ``channels_ids``.
         :type codebook_parameters: dict
         :return: Codebook table with target regions as rows and barcode bits as
-            columns.
+            columns. Each row has one active bit per barcode round.
         :rtype: pd.DataFrame
         :raises ConfigurationError: If there are not enough valid barcodes for all
             requested target regions.
@@ -1253,11 +1267,11 @@ class ReadoutProbeDesigner:
             pseudocolors: list, channel: int, n_pseudocolors: int, n_channels: int
         ) -> np.ndarray:
             """
-            Convert one pseudocolor and channel choice into a binary barcode.
+            Build one seqFISH+ barcode from free-round pseudocolors and a channel.
 
-            The method appends a parity pseudocolor for the final barcode round and
-            then sets one active bit for each round. Bit positions are arranged by
-            barcode round, then pseudocolor, then channel.
+            The last round is filled in as a parity check over the free rounds. That
+            extra round helps catch decoding errors later. The result has one active
+            bit per barcode round.
 
             :param pseudocolors: Pseudocolor indices for the free barcode rounds.
             :type pseudocolors: list
@@ -1269,6 +1283,8 @@ class ReadoutProbeDesigner:
             :type n_channels: int
             :return: Barcode vector with one active bit per barcode round.
             :rtype: np.ndarray
+            :raises ConfigurationError: If a pseudocolor or channel index falls
+                outside the configured ranges.
             """
             # Final-round pseudocolor is a parity checksum over the free rounds.
             pseudocolors = pseudocolors + [sum(pseudocolors) % n_pseudocolors]
@@ -1436,6 +1452,7 @@ class ReadoutProbeDesigner:
         codebook: pd.DataFrame | None = None,
         region_ids: list[str] | None = None,
         codebook_source: str | None = None,
+        hamming_weight: int | None = None,
     ) -> None:
         """
         Check the codebook and/or readout probe table.
@@ -1443,7 +1460,9 @@ class ReadoutProbeDesigner:
         This method can check either table on its own, or both together. When a
         codebook is provided, it must contain all requested target regions, use
         ``gene_name`` as the row index, and contain only ``0`` and ``1`` values in
-        its bit columns.
+        its bit columns. Each target region must have exactly one active bit per
+        barcode round. Pass that round count as ``hamming_weight`` (the same value
+        as ``n_barcode_rounds`` in the codebook config).
 
         When a readout probe table is provided, it must include a valid DNA
         sequence, barcode round, pseudocolor, and channel for each bit. If a
@@ -1471,11 +1490,16 @@ class ReadoutProbeDesigner:
         :param codebook_source: File path or source label for the codebook. Used
             in error messages when the codebook is checked.
         :type codebook_source: str | None
+        :param hamming_weight: Expected number of active bits in each codebook
+            row. Required when a codebook is checked. For seqFISH+, pass
+            ``n_barcode_rounds`` from the codebook config.
+        :type hamming_weight: int | None
         :return: None
         :rtype: None
         :raises ValueError: If a table is checked without its required companion
-            arguments (for example ``region_ids`` / ``codebook_source`` with a
-            codebook, or ``readout_probe_table_source`` with a readout probe table).
+            arguments (for example ``region_ids`` / ``codebook_source`` /
+            ``hamming_weight`` with a codebook, or ``readout_probe_table_source``
+            with a readout probe table).
         :raises FileFormatError: If the codebook or readout probe table is missing
             required information or contains invalid values.
         """
@@ -1484,11 +1508,13 @@ class ReadoutProbeDesigner:
                 raise ValueError("region_ids must be provided when validating a codebook.")
             if codebook_source is None:
                 raise ValueError("codebook_source must be provided when validating a codebook.")
+            if hamming_weight is None:
+                raise ValueError("hamming_weight must be provided when validating a codebook.")
             validate_codebook(
                 codebook=codebook,
                 region_ids=region_ids,
                 source=codebook_source,
-                expected_hamming_weight=None,
+                expected_hamming_weight=hamming_weight,
                 index_name="gene_name",
             )
         if readout_probe_table is not None:
@@ -1979,6 +2005,8 @@ class PrimerDesigner:
         :type forward_primer: str
         :param reverse_primer: Reverse primer sequence to check.
         :type reverse_primer: str
+        :return: None
+        :rtype: None
         :raises FileFormatError: If either primer is empty or contains characters
             other than ``A``, ``C``, ``G``, and ``T``.
         """
@@ -2434,18 +2462,19 @@ def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
     )
 
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
-        target_probe_database=target_probe_database,
+        oligo_database=target_probe_database,
         codebook=codebook,
         readout_probe_table=readout_probe_table,
+        readout_probe_parameters=config_dict["readout_probes"],
     )
 
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
-        hybridization_probe_database=hybridization_probe_database,
+        oligo_database=hybridization_probe_database,
         primer_parameters=config_dict["primers"],
     )
 
     dna_template_probe_database = pipeline.assemble_dna_template_probes(
-        hybridization_probe_database=hybridization_probe_database,
+        oligo_database=hybridization_probe_database,
         reverse_primer_sequence=reverse_primer_sequence,
         forward_primer_sequence=forward_primer_sequence,
     )
@@ -2454,6 +2483,7 @@ def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
         oligo_database=dna_template_probe_database,
         codebook=codebook,
         readout_probe_table=readout_probe_table,
+        readout_probe_parameters=config_dict["readout_probes"],
     )
 
 

@@ -129,15 +129,16 @@ class MerfishProbeDesigner:
     Each encoding probe contains:
 
     - a target-binding sequence that is complementary to the RNA,
-    - two readout-binding sequences that represent active bits in the gene
-      barcode,
+    - one readout-binding sequence per active barcode bit (``hamming_weight``),
     - short spacer bases between the target-binding and readout-binding parts.
 
-    A common MERFISH probe layout is::
+    A common MERFISH probe layout (Hamming weight 2) is::
 
         [Readout-binding sequence 1] + [spacer] + [target-binding sequence]
         + [spacer] + [Readout-binding sequence 2]
 
+    With a configurable Hamming weight, the first half of the readout-binding
+    sequences are placed 5' of the target and the second half 3' of the target.
     The target-binding region is often around 30 nucleotides, and each
     readout-binding sequence is often around 20 nucleotides. The exact lengths
     depend on the protocol and on the design settings used in the pipeline.
@@ -378,19 +379,22 @@ class MerfishProbeDesigner:
         oligo_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
+        readout_probe_parameters: dict,
     ) -> OligoDatabase:
         """
         Build the MERFISH encoding probes.
 
-        This step combines each RNA-binding target sequence with the two readout
-        barcode sequences assigned by the codebook. The target-binding part keeps
-        the probe on the RNA, while the readout barcodes are used during imaging
-        rounds.
+        Combine each RNA-binding target sequence with the readout-binding sequences
+        assigned by the codebook. Each gene gets one overhang for every active
+        barcode bit (``hamming_weight``). The target-binding part keeps the probe
+        on the RNA. The overhangs are read out during imaging.
 
-        A simplified layout is::
+        Overhangs are split evenly around the target: the first half sit 5' of the
+        target and the second half sit 3' of it. A simplified layout is::
 
-            [rc(readout barcode 1)] + [A] + [target-binding sequence] + [A]
-            + [rc(readout barcode 2)]
+            [rc(readout overhangs, 5' half)] + [A]
+            + [target-binding sequence] + [A]
+            + [rc(readout overhangs, 3' half)]
 
         The assembled sequences are added to the existing probe database.
 
@@ -403,27 +407,41 @@ class MerfishProbeDesigner:
         :param readout_probe_table: Table linking each barcode bit to its readout
             probe sequence and related readout information.
         :type readout_probe_table: pd.DataFrame
+        :param readout_probe_parameters: Settings from the ``readout_probes`` section
+            of the pipeline config. This includes the codebook settings and the
+            readout probe table settings.
+        :type readout_probe_parameters: dict
         :return: Database with MERFISH encoding probe sequences added.
         :rtype: OligoDatabase
+        :raises ConfigurationError: If a region has a number of active bits that
+            does not equal ``hamming_weight``.
         """
         region_ids = list(oligo_database.database.keys())
+        hamming_weight = readout_probe_parameters["codebook"]["hamming_weight"]
+        readout_sequence_types = [f"sequence_readout_probe_{i}" for i in range(1, hamming_weight + 1)]
 
         oligo_database.set_database_sequence_types(
             [
                 "sequence_target",
-                "sequence_readout_probe_1",
-                "sequence_readout_probe_2",
+                *readout_sequence_types,
                 "sequence_hybridization_probe",
             ]
         )
 
+        n_left = hamming_weight // 2
+
         for region_id in region_ids:
             barcode = codebook.loc[region_id]
             bits = barcode[barcode == 1].index
-            readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
-            # Weight-2 barcode: first and second active bits map to the two readout sites.
-            sequence_readout_probe_1 = readout_probe_sequences.iloc[0]
-            sequence_readout_probe_2 = readout_probe_sequences.iloc[1]
+            readout_probe_sequences = list(readout_probe_table.loc[bits, "readout_probe_sequence"])
+            if len(readout_probe_sequences) != hamming_weight:
+                raise ConfigurationError(
+                    f"Region '{region_id}' has {len(readout_probe_sequences)} active barcode bit(s), "
+                    f"but hamming_weight={hamming_weight}."
+                )
+
+            left_readout_sequences = readout_probe_sequences[:n_left]
+            right_readout_sequences = readout_probe_sequences[n_left:]
 
             probe_ids = list(oligo_database.database[region_id].keys())
             new_properties: dict[str, dict[str, str]] = {probe_id: {} for probe_id in probe_ids}
@@ -437,12 +455,12 @@ class MerfishProbeDesigner:
                     oligo_id=probe_id,
                 )
 
-                new_properties[probe_id]["sequence_readout_probe_1"] = sequence_readout_probe_1
-                new_properties[probe_id]["sequence_readout_probe_2"] = sequence_readout_probe_2
+                for i, sequence in enumerate(readout_probe_sequences, start=1):
+                    new_properties[probe_id][f"sequence_readout_probe_{i}"] = sequence
 
                 # Encoding probe stores RC of each readout so the fluorescent oligo can bind.
                 new_properties[probe_id]["sequence_hybridization_probe"] = (
-                    str(Seq(sequence_readout_probe_1).reverse_complement())
+                    "".join(str(Seq(sequence).reverse_complement()) for sequence in left_readout_sequences)
                     + "A"
                     + format_sequence(
                         database=oligo_database,
@@ -451,7 +469,7 @@ class MerfishProbeDesigner:
                         oligo_id=probe_id,
                     )
                     + "A"
-                    + str(Seq(sequence_readout_probe_2).reverse_complement())
+                    + "".join(str(Seq(sequence).reverse_complement()) for sequence in right_readout_sequences)
                 )
 
             oligo_database.update_oligo_properties(new_properties)
@@ -593,17 +611,19 @@ class MerfishProbeDesigner:
         oligo_database: OligoDatabase,
         codebook: pd.DataFrame,
         readout_probe_table: pd.DataFrame,
+        readout_probe_parameters: dict,
         output_properties: list[str] | None = None,
     ) -> None:
         """
         Write the completed MERFISH probe design to files.
 
-        This step saves the final probe database, the codebook, and the readout
-        probe table. It also writes an order-ready file that contains the DNA
-        template probe sequences and readout probe sequences needed for synthesis.
+        Save the final probe database, the codebook, and the readout probe table.
+        Also write an order-ready file with the DNA template sequences and the
+        readout sequences needed for synthesis.
 
-        If no output properties are provided, a default set of probe annotations and
-        sequence fields is written.
+        If no output properties are provided, a default set of annotations and
+        sequence fields is written, including one readout sequence field for each
+        active barcode bit.
 
         :param oligo_database: Database returned by
             :py:meth:`assemble_dna_template_probes`.
@@ -614,11 +634,18 @@ class MerfishProbeDesigner:
         :param readout_probe_table: Table linking each barcode bit to its readout
             probe sequence and related readout information.
         :type readout_probe_table: pd.DataFrame
+        :param readout_probe_parameters: Settings from the ``readout_probes`` section
+            of the pipeline config. This includes the codebook settings and the
+            readout probe table settings.
+        :type readout_probe_parameters: dict
         :param output_properties: Probe properties to include in the detailed output
             files. If ``None``, a default set of annotations and sequences is used.
         :type output_properties: list[str] | None
         :return: None
+        :rtype: None
         """
+        hamming_weight = readout_probe_parameters["codebook"]["hamming_weight"]
+        readout_sequence_properties = [f"sequence_readout_probe_{i}" for i in range(1, hamming_weight + 1)]
         if output_properties is None:
             output_properties = [
                 "source",
@@ -634,8 +661,7 @@ class MerfishProbeDesigner:
                 "transcript_id",
                 "exon_number",
                 "sequence_target",
-                "sequence_readout_probe_1",
-                "sequence_readout_probe_2",
+                *readout_sequence_properties,
                 "sequence_hybridization_probe",
                 "sequence_forward_primer",
                 "sequence_reverse_primer",
@@ -661,8 +687,7 @@ class MerfishProbeDesigner:
         oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_dna_template_probe",
-                "sequence_readout_probe_1",
-                "sequence_readout_probe_2",
+                *readout_sequence_properties,
             ],
             ascending=True,
             filename="merfish_probes_order",
@@ -1275,17 +1300,15 @@ class ReadoutProbeDesigner:
         must differ from each other. Larger distances make decoding more robust to
         missed or extra signals, but leave fewer usable barcodes.
 
-        The method enumerates barcodes with the requested weight and keeps those that
-        stay far enough from the barcodes already accepted. Unused bit columns are
-        kept as all-zero columns so the codebook stays aligned with the full readout
-        probe set.
+        Barcodes that pass those rules are assigned to the requested target regions.
+        Unused bit columns stay as all-zero columns so the codebook stays aligned
+        with the full readout probe set.
 
         :param region_ids: Target regions that need barcode assignments, usually
             gene names or gene IDs.
         :type region_ids: list[str]
         :param codebook_parameters: Settings from the ``readout_probes.codebook``
-            section of the pipeline config. This includes ``n_bits``,
-            ``hamming_weight``, and ``min_hamming_dist``.
+            section of the pipeline config.
         :type codebook_parameters: dict
         :return: Codebook table with target regions as rows and barcode bits as
             columns. Each row contains exactly ``hamming_weight`` active bits.
@@ -1296,13 +1319,9 @@ class ReadoutProbeDesigner:
 
         def _generate_barcode(raw_barcode: list, n_bits: int) -> np.ndarray:
             """
-            Convert a list of active bit positions into a binary barcode.
+            Build one MERFISH barcode from the chosen active bit positions.
 
-            The ``raw_barcode`` list contains the indices of the bits that should be
-            set to ``1``. The method turns this choice into a barcode vector of length
-            ``n_bits``.
-
-            :param raw_barcode: Indices of the active bits in the barcode.
+            :param raw_barcode: Indices of the bits that should be set to ``1``.
             :type raw_barcode: list
             :param n_bits: Total number of bit columns in the codebook.
             :type n_bits: int
@@ -2085,6 +2104,8 @@ class PrimerDesigner:
         :type forward_primer: str
         :param reverse_primer: Reverse primer sequence to check.
         :type reverse_primer: str
+        :return: None
+        :rtype: None
         :raises FileFormatError: If either primer is empty or contains characters
             other than ``A``, ``C``, ``G``, and ``T``.
         """
@@ -2630,11 +2651,11 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         readout_probe_parameters=config_dict["readout_probes"],
     )
 
-    # Runtime-derived codebook and readout table are not in the YAML; pass them in.
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
         oligo_database=target_probe_database,
         codebook=codebook,
         readout_probe_table=readout_probe_table,
+        readout_probe_parameters=config_dict["readout_probes"],
     )
 
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
@@ -2642,7 +2663,6 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         primer_parameters=config_dict["primers"],
     )
 
-    # Primers are also runtime-derived; pass them into DNA-template assembly.
     dna_template_probe_database = pipeline.assemble_dna_template_probes(
         oligo_database=hybridization_probe_database,
         reverse_primer_sequence=reverse_primer_sequence,
@@ -2653,6 +2673,7 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
         oligo_database=dna_template_probe_database,
         codebook=codebook,
         readout_probe_table=readout_probe_table,
+        readout_probe_parameters=config_dict["readout_probes"],
     )
 
 
