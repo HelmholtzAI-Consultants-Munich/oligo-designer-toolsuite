@@ -75,7 +75,7 @@ Oligo Filtering
 The *Oligo Filtering* block offers diverse filtering modules that ensure that the oligos comply with experimental requirements.
 These modules comprise filters based on the physical properties of the oligo sequence, such as melting temperature and GC content, as well as the specificity of the oligos with respect to their target region.
 Here, the latter refers to deleting oligos that have unintended but suitable binding sites outside the targeted region of the genome, which would compromise the results of experiments.
-Such off-target hits are identified using alignment methods like as Bowtie, Blast or AI filters.
+Such off-target hits are identified using alignment methods like as Bowtie or Blast.
 
 Oligo Selection
 ----------------
