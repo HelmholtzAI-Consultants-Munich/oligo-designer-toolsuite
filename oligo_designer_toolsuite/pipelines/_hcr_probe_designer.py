@@ -404,8 +404,6 @@ class HcrProbeDesigner:
         :rtype: OligoDatabase
         """
         linker_sequence = hybridization_probe_parameters["linker_sequence"]
-        codebook = hybridization_probe_parameters["codebook"]
-        initiator_table = hybridization_probe_parameters["initiator_table"]
 
         region_ids = list(oligo_database.database.keys())
 
@@ -547,6 +545,12 @@ class HcrProbeDesigner:
             filename="hcr_probes",
         )
 
+        oligo_database.write_oligosets_to_table(
+            properties=output_properties,
+            ascending=True,
+            filename="hcr_probes",
+        )
+
         oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_hybridization_probe_L",
@@ -556,12 +560,6 @@ class HcrProbeDesigner:
             ],
             ascending=True,
             filename="hcr_probes_order",
-        )
-
-        oligo_database.write_oligosets_to_table(
-            properties=output_properties,
-            ascending=True,
-            filename="hcr_probes",
         )
 
 

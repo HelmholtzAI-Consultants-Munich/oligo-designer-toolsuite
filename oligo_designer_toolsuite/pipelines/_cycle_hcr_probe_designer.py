@@ -541,14 +541,14 @@ class CycleHCRProbeDesigner:
 
         if primer_parameters["forward_primer"]["source"] == "load":
             forward_primer_sequence = primer_designer.load_forward_primer(
-                forward_primer_sequence=primer_parameters["forward_primer"]["sequence"]
+                sequence=primer_parameters["forward_primer"]["sequence"]
             )
         else:
             forward_primer_sequence = primer_designer.generate_forward_primer()
 
         if primer_parameters["reverse_primer"]["source"] == "load":
             reverse_primer_sequence = primer_designer.load_reverse_primer(
-                reverse_primer_sequence=primer_parameters["reverse_primer"]["sequence"]
+                sequence=primer_parameters["reverse_primer"]["sequence"]
             )
         else:
             reverse_primer_sequence = primer_designer.generate_reverse_primer()
@@ -711,6 +711,7 @@ class CycleHCRProbeDesigner:
             files. If ``None``, a default set of annotations and sequences is used.
         :type output_properties: list[str] | None
         :return: None
+        :rtype: None
         """
         if output_properties is None:
             output_properties = [
@@ -750,6 +751,12 @@ class CycleHCRProbeDesigner:
             filename="cyclehcr_probes",
         )
 
+        oligo_database.write_oligosets_to_table(
+            properties=output_properties,
+            ascending=True,
+            filename="cyclehcr_probes",
+        )
+
         oligo_database.write_ready_to_order_yaml(
             properties=[
                 "sequence_dna_template_probe_L",
@@ -759,12 +766,6 @@ class CycleHCRProbeDesigner:
             ],
             ascending=True,
             filename="cyclehcr_probes_order",
-        )
-
-        oligo_database.write_oligosets_to_table(
-            properties=output_properties,
-            ascending=True,
-            filename="cyclehcr_probes",
         )
 
 
@@ -1773,7 +1774,7 @@ class PrimerDesigner:
         self.dir_output = os.path.abspath(dir_output)
         self.n_jobs = n_jobs
 
-    def load_reverse_primer(self, reverse_primer_sequence: str) -> str:
+    def load_reverse_primer(self, sequence: str) -> str:
         """
         Load the reverse primer sequence from the config.
 
@@ -1781,13 +1782,13 @@ class PrimerDesigner:
         DNA template probe pool. This method trims surrounding whitespace. The
         sequence itself is checked later by :py:meth:`validate`.
 
-        :param reverse_primer_sequence: Reverse primer sequence used for PCR
-            amplification of the DNA template probes.
-        :type reverse_primer_sequence: str
-        :return: Cleaned reverse primer sequence.
+        :param sequence: Reverse primer sequence used for PCR amplification of the
+            DNA template probes.
+        :type sequence: str
+        :return: Reverse primer sequence ready for validation.
         :rtype: str
         """
-        reverse_primer = str(reverse_primer_sequence).strip()
+        reverse_primer = str(sequence).strip()
         return reverse_primer
 
     def generate_reverse_primer(self) -> str:
@@ -1807,7 +1808,7 @@ class PrimerDesigner:
             "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
         )
 
-    def load_forward_primer(self, forward_primer_sequence: str) -> str:
+    def load_forward_primer(self, sequence: str) -> str:
         """
         Load the forward primer sequence from the config.
 
@@ -1815,13 +1816,13 @@ class PrimerDesigner:
         DNA template probe pool. This method trims surrounding whitespace. The
         sequence itself is checked later by :py:meth:`validate`.
 
-        :param forward_primer_sequence: Forward primer sequence used for PCR
-            amplification of the DNA template probes.
-        :type forward_primer_sequence: str
-        :return: Cleaned forward primer sequence.
+        :param sequence: Forward primer sequence used for PCR amplification of the
+            DNA template probes.
+        :type sequence: str
+        :return: Forward primer sequence ready for validation.
         :rtype: str
         """
-        forward_primer = str(forward_primer_sequence).strip()
+        forward_primer = str(sequence).strip()
         return forward_primer
 
     def generate_forward_primer(self) -> str:
