@@ -95,7 +95,7 @@ target_probes:
       n_sets: 3 # Number of probe sets to generate per gene.
       set_size_min: 3 # Minimum set size. Genes that cannot form a set of at least this size are reported as insufficient.
       set_size_opt: 5 # Preferred (optimal) number of oligos per set.
-      distance_between_target_probes: 0 # Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).
+      distance_between_probes: 0 # Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).
       n_attempts_graph: 50 # Number of randomized graph attempts used to diversify set selection.
       n_attempts_clique_enum: 50 # Maximum cliques enumerated per graph attempt.
       diversification_fraction: 0.1 # Fraction of oligos removed from the graph in each attempt to increase set diversity.

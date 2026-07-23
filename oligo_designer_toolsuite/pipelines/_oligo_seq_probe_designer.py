@@ -972,7 +972,7 @@ class TargetProbeDesigner:
             set_scoring=set_scoring,
             set_size_opt=independent_set_selection["set_size_opt"],
             set_size_min=independent_set_selection["set_size_min"],
-            distance_between_oligos=independent_set_selection["distance_between_target_probes"],
+            distance_between_oligos=independent_set_selection["distance_between_probes"],
             n_attempts_graph=independent_set_selection["n_attempts_graph"],
             n_attempts_clique_enum=independent_set_selection["n_attempts_clique_enum"],
             diversification_fraction=independent_set_selection["diversification_fraction"],
