@@ -365,6 +365,8 @@ class HcrProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         hybridization_probe_parameters: dict,
+        codebook: pd.DataFrame,
+        initiator_table: pd.DataFrame,
     ) -> OligoDatabase:
         """
         Build the final HCR probe sequences.
@@ -389,9 +391,15 @@ class HcrProbeDesigner:
             This database is updated with the assembled HCR probe sequences.
         :type oligo_database: OligoDatabase
         :param hybridization_probe_parameters: Settings from the
-            ``hybridization_probes`` section of the pipeline config. This section
-            must include the linker sequence, codebook, and initiator table.
+            ``hybridization_probes`` section of the pipeline config, including the
+            linker sequence.
         :type hybridization_probe_parameters: dict
+        :param codebook: Table returned by :py:meth:`design_initiators`. Rows are
+            target regions and columns are barcode bits.
+        :type codebook: pd.DataFrame
+        :param initiator_table: Table returned by :py:meth:`design_initiators`.
+            Links each amplifier bit to its left and right half-initiator sequences.
+        :type initiator_table: pd.DataFrame
         :return: Database with left and right HCR probe sequences added.
         :rtype: OligoDatabase
         """
@@ -503,6 +511,7 @@ class HcrProbeDesigner:
             files. If ``None``, a default set of annotations and sequences is used.
         :type output_properties: list[str] | None
         :return: None
+        :rtype: None
         """
         if output_properties is None:
             output_properties = [
@@ -1496,12 +1505,11 @@ def hcr_probe_designer(config: dict[str, Any]) -> None:
         initiator_probe_parameters=config_dict["initiator_probes"],
     )
 
-    # Runtime-derived tables are not in the YAML; inject them before assembly.
-    config_dict["hybridization_probes"]["codebook"] = codebook
-    config_dict["hybridization_probes"]["initiator_table"] = initiator_table
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
         oligo_database=target_probe_database,
         hybridization_probe_parameters=config_dict["hybridization_probes"],
+        codebook=codebook,
+        initiator_table=initiator_table,
     )
 
     pipeline.generate_output(

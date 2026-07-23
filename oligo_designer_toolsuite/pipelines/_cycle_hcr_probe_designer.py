@@ -397,6 +397,8 @@ class CycleHCRProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         hybridization_probe_parameters: dict,
+        codebook: pd.DataFrame,
+        readout_probe_table: pd.DataFrame,
     ) -> OligoDatabase:
         """
         Build the CycleHCR primary probes.
@@ -420,15 +422,20 @@ class CycleHCRProbeDesigner:
             This database is updated with the assembled primary probe sequences.
         :type oligo_database: OligoDatabase
         :param hybridization_probe_parameters: Settings from the
-            ``hybridization_probes`` section of the pipeline config. This section
-            must include the linker sequence, codebook, and readout probe table.
+            ``hybridization_probes`` section of the pipeline config, including the
+            linker sequence.
         :type hybridization_probe_parameters: dict
+        :param codebook: Table returned by :py:meth:`design_readout_probes`. Rows
+            are target regions and columns are barcode bits.
+        :type codebook: pd.DataFrame
+        :param readout_probe_table: Table returned by
+            :py:meth:`design_readout_probes`. Links each barcode bit to its readout
+            probe sequence.
+        :type readout_probe_table: pd.DataFrame
         :return: Database with left and right CycleHCR primary probe sequences added.
         :rtype: OligoDatabase
         """
         linker_sequence = hybridization_probe_parameters["linker_sequence"]
-        codebook = hybridization_probe_parameters["codebook"]
-        readout_probe_table = hybridization_probe_parameters["readout_probe_table"]
 
         region_ids = list(oligo_database.database.keys())
 
@@ -557,6 +564,8 @@ class CycleHCRProbeDesigner:
         self,
         oligo_database: OligoDatabase,
         hybridization_probe_parameters: dict,
+        forward_primer_sequence: str,
+        reverse_primer_sequence: str,
     ) -> OligoDatabase:
         """
         Build the synthesis-ready DNA template probes.
@@ -584,16 +593,19 @@ class CycleHCRProbeDesigner:
             the DNA template sequences.
         :type oligo_database: OligoDatabase
         :param hybridization_probe_parameters: Settings from the
-            ``hybridization_probes`` section of the pipeline config. This section
-            must include the linker sequence and the forward and reverse primer
-            sequences.
+            ``hybridization_probes`` section of the pipeline config, including the
+            linker sequence.
         :type hybridization_probe_parameters: dict
+        :param forward_primer_sequence: Forward primer sequence returned by
+            :py:meth:`design_primers`.
+        :type forward_primer_sequence: str
+        :param reverse_primer_sequence: Reverse primer sequence returned by
+            :py:meth:`design_primers`.
+        :type reverse_primer_sequence: str
         :return: Database with left and right DNA template probe sequences added.
         :rtype: OligoDatabase
         """
         linker_sequence = hybridization_probe_parameters["linker_sequence"]
-        forward_primer_sequence = hybridization_probe_parameters["forward_primer_sequence"]
-        reverse_primer_sequence = hybridization_probe_parameters["reverse_primer_sequence"]
 
         region_ids = list(oligo_database.database.keys())
         oligo_database.set_database_sequence_types(
@@ -1995,23 +2007,22 @@ def cycle_hcr_probe_designer(config: dict[str, Any]) -> None:
         readout_probe_parameters=config_dict["readout_probes"],
     )
 
-    # Runtime-derived tables are not in the YAML; inject them before assembly.
-    config_dict["hybridization_probes"]["codebook"] = codebook
-    config_dict["hybridization_probes"]["readout_probe_table"] = readout_probe_table
     hybridization_probe_database = pipeline.assemble_hybridization_probes(
         oligo_database=target_probe_database,
         hybridization_probe_parameters=config_dict["hybridization_probes"],
+        codebook=codebook,
+        readout_probe_table=readout_probe_table,
     )
 
     reverse_primer_sequence, forward_primer_sequence = pipeline.design_primers(
         primer_parameters=config_dict["primers"],
     )
 
-    config_dict["hybridization_probes"]["forward_primer_sequence"] = forward_primer_sequence
-    config_dict["hybridization_probes"]["reverse_primer_sequence"] = reverse_primer_sequence
     dna_template_probe_database = pipeline.assemble_dna_template_probes(
         oligo_database=hybridization_probe_database,
         hybridization_probe_parameters=config_dict["hybridization_probes"],
+        forward_primer_sequence=forward_primer_sequence,
+        reverse_primer_sequence=reverse_primer_sequence,
     )
 
     pipeline.generate_output(
