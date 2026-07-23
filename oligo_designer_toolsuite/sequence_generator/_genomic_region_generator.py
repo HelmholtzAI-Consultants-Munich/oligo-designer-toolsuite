@@ -1358,7 +1358,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
         dir_output: str = "output",
     ) -> None:
         """Constructor for the EnsemblGenomicRegionGenerator class."""
-        files_source = "Ensemble"
+        files_source = "Ensembl"
         if species is None:
             species = "homo_sapiens"
             logger.warning(f"No species defined. Using default species {species}!")

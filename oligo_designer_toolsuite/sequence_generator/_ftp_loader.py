@@ -262,9 +262,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
     UNSUPPORTED_TAXA: set[str] = {"mitochondrion", "plasmids", "plastid"}
     # Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory.
     # 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'.
-    # 'latest_assembly_version' directory is available for all species and contains the latest assembly.
+    # 'latest_assembly_versions' directory is available for all species and contains the latest assembly.
     # 'reference' directory contains the reference genome. This is only available for a subset of species.
-    # 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_version'
+    # 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_versions'
     ALLOWED_ASSEMBLY_SOURCES: set[str] = {
         "auto",
         "annotation_releases",

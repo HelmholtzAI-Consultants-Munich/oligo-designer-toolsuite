@@ -2,29 +2,31 @@
 ### BASIC PARAMETERS ###
 #######################
 
+schema_version: 2
+
 ### General parameters
 dir_output: output_genomic_region_generator_ncbi # name of the directory where the output files will be written
 
 ### Parameters for genome and gene annotation
-source: ncbi # required: indicate that ncbi annotation should be used
-source_params:
+annotation:
+  source: ncbi # required: indicate that ncbi annotation should be used
+  # required: How do you want to specify which genome you want to use? Possible values are 'species' and 'assembly'.
+  # For 'species', parameters needs the arguments 'taxon', 'species', 'assembly_source' and 'annotation_release'.
+  # For 'assembly', parameters needs the arguments 'refseq_assembly_accession' and 'assembly_name'.
   mode: species # required: How do you want to specify which genome you want to use? Possible values are 'species' and 'assembly'.
-  # For 'species', source_params needs the arguments 'taxon', 'species', 'assembly_source' and 'annotation_release'.
-  # For 'assembly', source_params needs the arguments 'refseq_assembly_accession' and 'assembly_name'.
-
-  # Mode 'species': set taxon/species/assembly_source/annotation_release
-  taxon: vertebrate_mammalian # required in Mode 'species'; supported taxa are: archaea, bacteria, fungi, invertebrate, metagenomes, plants, protozoa, unknown, vertebrate_mammalian, vertebrate_other, viral
-  species: Homo_sapiens # required in Mode 'species'; species name in NCBI download format
-  annotation_release: 110 # required in Mode 'species'; use release number only with assembly_source=annotation_releases; otherwise set to 'current'
-  assembly_source: auto # optional in Mode 'species': auto, annotation_releases, latest_assembly_versions, reference. Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory.
-  # 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'.
-  # 'latest_assembly_version' directory is available for all species and contains the latest assembly.
-  # 'reference' directory contains the reference genome. This is only available for a subset of species.
-  # 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_version'
-
-  # Mode 'assembly': set both fields below
-  # refseq_assembly_accession: GCF_000001405.38
-  # assembly_name: GRCh38.p12
+  parameters:
+    # Mode 'species': set taxon/species/assembly_source/annotation_release
+    taxon: vertebrate_mammalian # required in Mode 'species'; supported taxa are: archaea, bacteria, fungi, invertebrate, metagenomes, plant, plants, protozoa, unknown, vertebrate_mammalian, vertebrate_other, viral
+    species: Homo_sapiens # required in Mode 'species'; species name in NCBI download format
+    assembly_source: auto # optional in Mode 'species': auto, annotation_releases, latest_assembly_versions, reference. Determines how the assembly for a species is selected from the possible sources within the NCBI FTP directory.
+    # 'annotation_releases' directory, should exist for all eukaryotic species and contains assemblies annotated with different annotation versions and the annotation version can be specified by 'annotation_release'.
+    # 'latest_assembly_versions' directory is available for all species and contains the latest assembly.
+    # 'reference' directory contains the reference genome. This is only available for a subset of species.
+    # 'auto' automatically selects an assembly source in the following order (if available): 'annotation_releases', 'latest_assembly_versions'
+    annotation_release: "current" # required in Mode 'species'; use release number only with assembly_source=annotation_releases; otherwise set to 'current'
+    # Mode 'assembly': set both fields below
+    # refseq_assembly_accession: GCF_000001405.38
+    # assembly_name: GRCh38.p12
 
 ### Parameters for sequences generation
 # List of genomic regions that should be generated, set the genomic regions you want to generate to true
@@ -37,6 +39,6 @@ genomic_regions:
   cds: false
   intron: false
 
-# If exon_exon_junction is ste to true, specify the block size, i.e. +/- "block_size" bp around the junction
+# If exon_exon_junction is set to true, specify the block size, i.e. +/- "block_size" bp around the junction
 # Hint: it does not make sense to set the block size larger than the maximum oligo length
 exon_exon_junction_block_size: 50

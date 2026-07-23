@@ -7,8 +7,10 @@ import os
 from pathlib import Path
 
 import yaml
+from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
+from oligo_designer_toolsuite.config import GenomicRegionGeneratorConfig
 from oligo_designer_toolsuite.pipelines._utils import base_log_parameters, base_parser
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
@@ -39,23 +41,22 @@ class GenomicRegionGenerator:
 
     def load_annotations(
         self,
-        source: str,
-        source_params: dict,
+        annotation: dict,
     ) -> CustomGenomicRegionGenerator:
         """
         Loads annotations from the specified source (NCBI, Ensembl, or custom files).
 
-        :param source: The source of the annotations. Options: 'ncbi', 'ensembl', 'custom'.
-        :type source: str
-        :param source_params: Parameters required for loading the annotations depending on the source.
-            If source is 'ncbi', it must contain 'mode'. The remaining required keys depend on that mode:
+        :param annotation: Parameters required for loading the annotations depending on the source.
+            It needs to include the keys 'source' and 'parameters'.
+            If source is 'ncbi', it additionally must contain the key 'mode'.
+            The remaining required keys depend on that mode:
             for taxonomy/species-based modes, provide 'taxon', 'species', and 'annotation_release';
             for 'assembly' mode, provide the assembly identifier via 'refseq_assembly_accession' and/or
             'assembly_name'. 'assembly_source' may also be provided when applicable.
             If source is 'ensembl', it should contain 'species' and 'annotation_release'.
             If source is 'custom', it should contain 'file_annotation', 'file_sequence', 'files_source',
             'species', 'annotation_release', and 'genome_assembly'.
-        :type source_params: dict
+        :type annotation: dict
         :return: An instance of the corresponding region generator class based on the source.
         :rtype: CustomGenomicRegionGenerator
         """
@@ -72,43 +73,44 @@ class GenomicRegionGenerator:
         ) = None
 
         ##### loading annotations from different sources #####
-        if source == "ncbi":
-            if source_params["mode"] is None:
-                raise ConfigurationError(
-                    "For source='ncbi', source_params parameter 'mode' must be provided."
-                )
+        if annotation["source"] == "ncbi":
+            if annotation["mode"] is None:
+                raise ConfigurationError("For source='ncbi', annotation parameter 'mode' must be provided.")
             # dowload the fasta files formthe NCBI server
+            # use get syntax for the parameters because depending on the mode,
+            # they can be missing because they are not needed for the selected source
+            # therefore, return None in this case
             region_generator = NcbiGenomicRegionGenerator(
-                mode=source_params["mode"],
-                taxon=source_params["taxon"],
-                species=source_params["species"],
-                annotation_release=source_params["annotation_release"],
-                assembly_source=source_params["assembly_source"],
-                refseq_assembly_accession=source_params["refseq_assembly_accession"],
-                assembly_name=source_params["assembly_name"],
+                mode=annotation["mode"],
+                taxon=annotation.get("parameters", {}).get("taxon"),
+                species=annotation.get("parameters", {}).get("species"),
+                annotation_release=annotation.get("parameters", {}).get("annotation_release"),
+                assembly_source=annotation.get("parameters", {}).get("assembly_source"),
+                refseq_assembly_accession=annotation.get("parameters", {}).get("refseq_assembly_accession"),
+                assembly_name=annotation.get("parameters", {}).get("assembly_name"),
                 dir_output=self.dir_output,
             )
-        elif source == "ensembl":
+        elif annotation["source"] == "ensembl":
             # dowload the fasta files formthe NCBI server
             region_generator = EnsemblGenomicRegionGenerator(
-                species=source_params["species"],
-                annotation_release=source_params["annotation_release"],
+                species=annotation["parameters"]["species"],
+                annotation_release=annotation["parameters"]["annotation_release"],
                 dir_output=self.dir_output,
             )
-        elif source == "custom":
+        elif annotation["source"] == "custom":
             # use already dowloaded files
             region_generator = CustomGenomicRegionGenerator(
-                annotation_file=source_params["file_annotation"],
-                sequence_file=source_params["file_sequence"],
-                files_source=source_params["files_source"],
-                species=source_params["species"],
-                annotation_release=source_params["annotation_release"],
-                genome_assembly=source_params["genome_assembly"],
+                annotation_file=annotation["parameters"]["file_annotation"],
+                sequence_file=annotation["parameters"]["file_sequence"],
+                files_source=annotation["parameters"]["files_source"],
+                species=annotation["parameters"]["species"],
+                annotation_release=annotation["parameters"]["annotation_release"],
+                genome_assembly=annotation["parameters"]["genome_assembly"],
                 dir_output=self.dir_output,
             )
         else:
             raise ConfigurationError(
-                f"Source '{source}' is not supported. Supported sources are: 'NCBI', 'Ensembl', or 'custom'."
+                f"Source '{annotation['source']}' is not supported. Supported sources are: 'NCBI', 'Ensembl', or 'custom'."
             )
 
         ##### save annotation information #####
@@ -179,7 +181,7 @@ def main() -> None:
     """
     Main function to execute the genomic region generation pipeline.
 
-    The pipeline reads a configuration file, initializes a `GenomicRegionGenerator`,
+    The pipeline reads a configuration file, validates it, initializes a `GenomicRegionGenerator`,
     loads annotations from the specified source, and generates genomic regions based on the provided configuration.
 
     :param args: Command-line arguments parsed using the base parser. The arguments include:
@@ -191,7 +193,15 @@ def main() -> None:
 
     # read the config file
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config_validated = GenomicRegionGeneratorConfig.model_validate(config_raw)
+    except ValidationError as e:
+        print(f"Invalid configuration file:\n{e}")
+        raise
+
+    config = config_validated.model_dump()
 
     pipeline = GenomicRegionGenerator(dir_output=config["dir_output"])
 
@@ -204,8 +214,7 @@ def main() -> None:
 
     # generate the genomic regions
     region_generator = pipeline.load_annotations(
-        source=config["source"],
-        source_params=config["source_params"],
+        annotation=config["annotation"],
     )
 
     files_fasta = pipeline.generate_genomic_regions(
