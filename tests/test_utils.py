@@ -504,9 +504,6 @@ class TestBedParser(unittest.TestCase):
         assert list(bed["start"]) == [0, 10, 20, 30, 40]
 
     def test_convert_start_0_to_1_and_1_to_0(self) -> None:
-        assert self.parser.convert_start(99, "0-based", "1-based") == 100
-        assert self.parser.convert_start(100, "1-based", "0-based") == 99
-
         starts = pd.Series([0, 10, 20])
         converted = self.parser.convert_start(starts, "0-based", "1-based")
         pd.testing.assert_series_equal(converted, pd.Series([1, 11, 21]))
@@ -515,14 +512,16 @@ class TestBedParser(unittest.TestCase):
         pd.testing.assert_series_equal(roundtrip, starts)
 
     def test_convert_start_same_indexing_is_identity(self) -> None:
-        assert self.parser.convert_start(50, "0-based", "0-based") == 50
-        assert self.parser.convert_start(50, "1-based", "1-based") == 50
+        starts = pd.Series([50, 100])
+        pd.testing.assert_series_equal(self.parser.convert_start(starts, "0-based", "0-based"), starts)
+        pd.testing.assert_series_equal(self.parser.convert_start(starts, "1-based", "1-based"), starts)
 
     def test_convert_start_invalid_indexing_raises(self) -> None:
+        starts = pd.Series([10])
         with self.assertRaises(ConfigurationError):
-            self.parser.convert_start(10, "zero", "1-based")
+            self.parser.convert_start(starts, "zero", "1-based")
         with self.assertRaises(ConfigurationError):
-            self.parser.convert_start(10, "0-based", "one")
+            self.parser.convert_start(starts, "0-based", "one")
 
     def test_chromosome_length_file_keeps_first_row_with_header_none(self) -> None:
         # chrom.sizes / bedtools -g files are headerless; header=0 would drop the first chromosome.

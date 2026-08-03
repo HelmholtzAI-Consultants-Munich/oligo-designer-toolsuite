@@ -55,11 +55,17 @@ class CustomGenomicRegionGenerator:
     labels. Region extractors (gene, exon, intron, CDS, UTR, intergenic, exon-exon junction)
     write one FASTA file per region type.
 
-    Each sequence header starts with ``>`` and holds region ID, optional metadata, and
-    coordinates (chromosome, start, end, strand). Coordinates in the header are 1-based.
-    The region ID is required; other fields are optional.
+    Coordinate indexing:
 
-    Output Format (per sequence)::
+    Annotation files (GFF/GTF) use 1-based starts. Sequence extraction writes temporary
+    BED files, which use 0-based starts. FASTA headers written by this class also use
+    1-based starts so they stay aligned with the annotation.
+
+    Each sequence header starts with ``>`` and holds region ID, optional metadata, and
+    coordinates (chromosome, start, end, strand). The region ID is required; other
+    fields are optional.
+
+    Output Format (per sequence):
 
         >{region_id}::{additional information}::{chromosome}:{start}-{end}({strand})
         sequence
@@ -158,10 +164,10 @@ class CustomGenomicRegionGenerator:
         Build FASTA sequences for gene intervals from gene annotations.
 
         Loads gene features from the annotation, labels each with source and gene ID
-        metadata, and writes the sequences to a FASTA file. Coordinates in the FASTA
-        header are 1-based; BED used for extraction uses 0-based starts.
+        metadata, and writes the sequences to a FASTA file. FASTA headers use
+        1-based coordinates.
 
-        Output Format (per sequence)::
+        Output Format (per sequence):
 
             >{gene_id}::source={source};species={species};annotation_release={annotation_release};
             genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id}
@@ -188,7 +194,7 @@ class CustomGenomicRegionGenerator:
         )
         annotation["region"] = self._get_annotation_region(annotation)
 
-        # add BED12 fields
+        # BED12 fields: start must be 0-based for BED sequence extraction.
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
@@ -214,10 +220,10 @@ class CustomGenomicRegionGenerator:
 
         For each chromosome, gaps between genes are taken separately on the plus
         and minus strands. Chromosome lengths come from the genome FASTA. The
-        resulting intervals are written to a FASTA file. Coordinates in the FASTA
-        header are 1-based; BED used for extraction uses 0-based starts.
+        resulting intervals are written to a FASTA file. FASTA headers use
+        1-based coordinates.
 
-        Output Format (per sequence)::
+        Output Format (per sequence):
 
             >{intergenic_region_id}::source={source};species={species};annotation_release={annotation_release};
             genome_assembly={genome_assembly};regiontype={regiontype}::{chromosome}:{start}-{end}({strand})
@@ -279,7 +285,7 @@ class CustomGenomicRegionGenerator:
                 intergenic_annotation.append(
                     _compute_intergenic_annotation_strand(
                         seqid=seqid,
-                        gene_annotatio=gene_annotation_plusstrand,
+                        gene_annotation=gene_annotation_plusstrand,
                         strand="+",
                         file_chromosome_length=file_chromosome_length,
                     )
@@ -287,7 +293,7 @@ class CustomGenomicRegionGenerator:
                 intergenic_annotation.append(
                     _compute_intergenic_annotation_strand(
                         seqid=seqid,
-                        gene_annotatio=gene_annotation_minusstrand,
+                        gene_annotation=gene_annotation_minusstrand,
                         strand="-",
                         file_chromosome_length=file_chromosome_length,
                     )
@@ -297,7 +303,7 @@ class CustomGenomicRegionGenerator:
             return intergenic_annotation_df
 
         def _compute_intergenic_annotation_strand(
-            seqid: str, gene_annotatio: pd.DataFrame, strand: str, file_chromosome_length: str
+            seqid: str, gene_annotation: pd.DataFrame, strand: str, file_chromosome_length: str
         ) -> pd.DataFrame:
             """
             Find intergenic intervals on one chromosome and strand.
@@ -308,8 +314,8 @@ class CustomGenomicRegionGenerator:
 
             :param seqid: Chromosome or sequence name.
             :type seqid: str
-            :param gene_annotatio: Gene intervals on this chromosome and strand.
-            :type gene_annotatio: pd.DataFrame
+            :param gene_annotation: Gene intervals on this chromosome and strand.
+            :type gene_annotation: pd.DataFrame
             :param strand: Strand to process (``+`` or ``-``).
             :type strand: str
             :param file_chromosome_length: Path to the chrom.sizes file with sequence lengths.
@@ -320,7 +326,7 @@ class CustomGenomicRegionGenerator:
             """
 
             # case 1: no annotated genes on the respective chromosome and strand
-            if gene_annotatio.empty:
+            if gene_annotation.empty:
                 chromosome_length = pd.read_csv(
                     file_chromosome_length, sep="\t", header=None, names=["seqid", "length"]
                 )
@@ -330,6 +336,7 @@ class CustomGenomicRegionGenerator:
                     region_id_name = "InterRegMinus"
                 else:
                     raise ConfigurationError(f"Invalid strand value: '{strand}'. Expected '+' or '-'.")
+                # Whole chromosome is intergenic: BED start 0, header start 1.
                 intergenic_annotation = pd.DataFrame(
                     {
                         "seqid": seqid,
@@ -348,8 +355,8 @@ class CustomGenomicRegionGenerator:
                 file_bed_out = os.path.join(self.dir_output, "annotation_out.bed")
 
                 # save the annotation as bed file
-                gene_annotatio = gene_annotatio.sort_values(by="start")
-                self.bed_parser.write_bed(gene_annotatio, file_bed_in)
+                gene_annotation = gene_annotation.sort_values(by="start")
+                self.bed_parser.write_bed(gene_annotation, file_bed_in)
 
                 # get complementary regions
                 get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out)
@@ -358,6 +365,7 @@ class CustomGenomicRegionGenerator:
                 intergenic_annotation = self.bed_parser.read_bed(
                     file_bed_out, names=["seqid", "start_0base", "end"]
                 )
+                # bedtools complement returns BED (0-based); convert for FASTA headers.
                 intergenic_annotation["start_1base"] = self.bed_parser.convert_start(
                     intergenic_annotation["start_0base"], "0-based", "1-based"
                 )
@@ -395,7 +403,7 @@ class CustomGenomicRegionGenerator:
         )
         annotation["region"] = self._get_annotation_region(annotation)
 
-        # add BED12 fields
+        # BED12 fields: start must be 0-based for BED sequence extraction.
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
@@ -424,10 +432,9 @@ class CustomGenomicRegionGenerator:
 
         Optionally merges exons that share the same start and end but come from
         different transcripts. FASTA headers include transcript IDs, exon numbers,
-        and the total transcript count per gene. Coordinates in the FASTA header
-        are 1-based; BED used for extraction uses 0-based starts.
+        and the total transcript count per gene. Headers use 1-based coordinates.
 
-        Output Format (per sequence)::
+        Output Format (per sequence):
 
             >{gene_id}::source={source};species={species};annotation_release={annotation_release};
             genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
@@ -462,7 +469,7 @@ class CustomGenomicRegionGenerator:
         # add transcript counts for each gene
         annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
-        # add BED12 fields
+        # BED12 fields: start must be 0-based for BED sequence extraction.
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
@@ -497,10 +504,9 @@ class CustomGenomicRegionGenerator:
         Introns are the gaps between consecutive exons within each transcript.
         Optionally merges introns that share the same start and end but come from
         different transcripts. FASTA headers include transcript IDs and intron
-        numbers. Coordinates in the FASTA header are 1-based; BED used for
-        extraction uses 0-based starts.
+        numbers. Headers use 1-based coordinates.
 
-        Output Format (per sequence)::
+        Output Format (per sequence):
 
             >{gene_id}::source={source};species={species};annotation_release={annotation_release};
             genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
@@ -606,7 +612,7 @@ class CustomGenomicRegionGenerator:
         if collapse_duplicated_regions:
             annotation = self._collapse_duplicated_regions(annotation)
 
-        # add BED12 fields
+        # BED12 fields: start must be 0-based for BED sequence extraction.
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
@@ -640,10 +646,10 @@ class CustomGenomicRegionGenerator:
 
         Optionally merges CDS intervals that share the same start and end but come
         from different transcripts. FASTA headers include transcript IDs, exon
-        numbers, and the total transcript count per gene. Coordinates in the FASTA
-        header are 1-based; BED used for extraction uses 0-based starts.
+        numbers, and the total transcript count per gene. Headers use 1-based
+        coordinates.
 
-        Output Format (per sequence)::
+        Output Format (per sequence):
 
             >{gene_id}::source={source};species={species};annotation_release={annotation_release};
             genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
@@ -677,7 +683,7 @@ class CustomGenomicRegionGenerator:
         # add transcript counts for each gene
         annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
-        # add BED12 fields
+        # BED12 fields: start must be 0-based for BED sequence extraction.
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
@@ -717,10 +723,9 @@ class CustomGenomicRegionGenerator:
         Derives 5' and/or 3' untranslated regions from exon spans outside the CDS
         boundaries of each transcript. Use ``five_prime`` and ``three_prime`` to
         choose which ends to keep. Optionally merges UTRs with identical coordinates.
-        Coordinates in the FASTA header are 1-based; BED used for extraction uses
-        0-based starts.
+        FASTA headers use 1-based coordinates.
 
-        Output Format (per sequence)::
+        Output Format (per sequence):
 
             >{gene_id}::source={source};species={species};annotation_release={annotation_release};
             genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
@@ -778,6 +783,7 @@ class CustomGenomicRegionGenerator:
                 UTR_right = copy.deepcopy(exons)
                 UTR_right = UTR_right[UTR_right.end > cds_end]
                 UTR_right.type = UTR_right_type
+                # Keep 1-based and 0-based starts aligned when trimming to the CDS edge.
                 UTR_right.loc[UTR_right["start_1base"] <= cds_end, "start_1base"] = cds_end + 1
                 UTR_right.loc[(UTR_right["start_0base"] + 1) <= cds_end, "start_0base"] = cds_end
                 utrs.append(UTR_right)
@@ -822,7 +828,7 @@ class CustomGenomicRegionGenerator:
         # add transcript counts for each gene
         annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
-        # add BED12 fields
+        # BED12 fields: start must be 0-based for BED sequence extraction.
         annotation["start"] = annotation["start_0base"]
         annotation["score"] = 0
         annotation["fasta_header"] = (
@@ -864,10 +870,10 @@ class CustomGenomicRegionGenerator:
         For consecutive exons in a transcript, takes ``block_size`` bases on each
         side of the junction (or the full exon if shorter). Optionally merges
         junctions with identical coordinates from different transcripts. FASTA
-        headers include transcript IDs and joined exon numbers. Coordinates in
-        the FASTA header are 1-based; BED used for extraction uses 0-based starts.
+        headers include transcript IDs and joined exon numbers. Headers use
+        1-based coordinates.
 
-        Output Format (per sequence)::
+        Output Format (per sequence):
 
             >{gene_id}::source={source};species={species};annotation_release={annotation_release};
             genome_assembly={genome_assembly};regiontype={regiontype};gene_id={gene_id};transcript_id={transcript_id_a},
@@ -973,7 +979,7 @@ class CustomGenomicRegionGenerator:
                                     for attributes in exons_small
                                 ]
                             )
-                        # return region in 1-base offset
+                        # Header coords are 1-based; start_up/end_down below stay 0-based for BED.
                         region_up = f"{seqid}:{start_up + 1}-{start_up+block_size_up}({strand})"
                         region_down = f"{seqid}:{(end_down-block_size_down) + 1}-{end_down}({strand})"
                         junction_list.append(
@@ -1047,7 +1053,7 @@ class CustomGenomicRegionGenerator:
         # add transcript counts for each gene
         annotation, annotation_transcript_inf = self._add_transcript_counts(annotation)
 
-        # add BED12 fields
+        # BED12 fields: junction "start" is already 0-based from the exon walk above.
         annotation["score"] = 0
         annotation["thickStart"] = annotation["start"]
         annotation["thickEnd"] = annotation["end"]
@@ -1085,20 +1091,19 @@ class CustomGenomicRegionGenerator:
         Load the parsed GFF annotation and add 0-based and 1-based start columns.
 
         Reads the pickled annotation written at construction time. GFF starts are
-        1-based; a matching 0-based start column is added for BED-style extraction.
+        1-based and kept as ``start_1base`` for FASTA headers. A matching
+        ``start_0base`` column is added for BED-style sequence extraction.
 
         :return: Annotation table with ``start_1base`` and ``start_0base`` columns.
         :rtype: pd.DataFrame
         """
-        # read annotation file and store in dataframe
         annotation: pd.DataFrame = self.gff_parser.load_annotation_from_pickle(self.parsed_annotation_file)
 
-        # required to ensure that sorting is done correctly
+        # Required so numeric sorting of genomic coordinates is correct.
         annotation.start = annotation.start.astype("int")
         annotation.end = annotation.end.astype("int")
 
-        # add both annotations to dataframe: GFF 1-base offset and BED 0-base offset
-        # since we read in a GFF file, the start coordinates are 1-base offset
+        # GFF starts are 1-based; keep both so headers and BED extraction stay aligned.
         annotation.rename(columns={"start": "start_1base"}, inplace=True)
         annotation["start_0base"] = annotation.start_1base - 1
 
@@ -1195,7 +1200,7 @@ class CustomGenomicRegionGenerator:
         Format each annotation row as a 1-based coordinate string for FASTA headers.
 
         Builds ``seqid:start-end(strand)`` from ``seqid``, ``start_1base``, ``end``,
-        and ``strand``.
+        and ``strand``. Uses 1-based starts so the header matches GFF/GTF coordinates.
 
         :param annotation: Annotation rows with coordinate and strand columns.
         :type annotation: pd.DataFrame
@@ -1226,9 +1231,9 @@ class CustomGenomicRegionGenerator:
         Write sequences for annotated intervals to a FASTA file.
 
         Intervals are written as a temporary BED file with
-        :class:`~oligo_designer_toolsuite.utils.BedParser` (0-based starts), then
-        sequences are pulled from the genome FASTA. The temporary BED file is
-        removed afterward.
+        :class:`~oligo_designer_toolsuite.utils.BedParser`, then sequences are
+        pulled from the genome FASTA. The BED ``start`` column must already be
+        0-based. The temporary BED file is removed afterward.
 
         :param annotation: Intervals to extract. Must include the columns needed for BED and FASTA headers.
         :type annotation: pd.DataFrame
@@ -1244,12 +1249,11 @@ class CustomGenomicRegionGenerator:
         annotation = annotation.sort_values(by=["fasta_header"])
         annotation.reset_index(inplace=True, drop=True)
 
-        # save the annotation as bed file
+        # BED extraction expects 0-based starts (usually annotation["start"] = start_0base upstream).
         id = random.randint(0, 10000000)
         file_bed = safe_append_filename(self.dir_output, f"annotation_{id}.bed")
         self.bed_parser.write_bed(annotation, file_bed)
 
-        # create the fasta file
         get_sequence_from_annotation(
             file_bed,
             self.sequence_file,

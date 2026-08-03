@@ -864,10 +864,10 @@ class BedParser:
 
     def convert_start(
         self,
-        start_coordinates: Any,
+        start_coordinates: pd.Series,
         from_indexing: str,
         to_indexing: str,
-    ) -> Any:
+    ) -> pd.Series:
         """
         Convert interval start positions between 0-based and 1-based indexing.
 
@@ -875,14 +875,14 @@ class BedParser:
         GFF/GTF or region-generator FASTA headers (1-based). Ends are unchanged
         in the usual half-open BED and inclusive GFF conventions.
 
-        :param start_coordinates: One start position or a series of starts.
-        :type start_coordinates: Any
+        :param start_coordinates: Series of start positions to convert.
+        :type start_coordinates: pd.Series
         :param from_indexing: Current indexing, ``0-based`` or ``1-based``.
         :type from_indexing: str
         :param to_indexing: Desired indexing, ``0-based`` or ``1-based``.
         :type to_indexing: str
-        :return: Converted start(s), same type as ``start_coordinates``.
-        :rtype: Any
+        :return: Converted start positions.
+        :rtype: pd.Series
         :raises ConfigurationError: If ``from_indexing`` or ``to_indexing`` is not supported.
         """
         if from_indexing not in self.VALID_INDEXINGS:
