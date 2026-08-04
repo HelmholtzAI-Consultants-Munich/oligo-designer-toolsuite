@@ -178,7 +178,7 @@ class TargetProbeGlobal(BaseModel):
     )
 
 
-class TargetProbe(BaseModel):
+class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     oligo_generation: TargetProbeOligoGeneration
@@ -197,4 +197,4 @@ class OligoSeqProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
-    target_probes: TargetProbe
+    target_probes: TargetProbes

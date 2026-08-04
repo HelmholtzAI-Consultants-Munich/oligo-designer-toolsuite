@@ -1,12 +1,8 @@
 """
-Shared helper functions for probe-design pipelines.
+Shared helpers for the probe-design pipelines.
 
-This module contains small utility functions that are used across several
-pipelines in :mod:`oligo_designer_toolsuite.pipelines`.
-
-Keeping these functions in one place avoids repeated code and makes pipeline
-behavior easier to maintain. When a helper is fixed or improved here, all
-pipelines that use it benefit from the change.
+Covers CLI entry, logging, and config/table checks used across the assay-specific
+pipeline modules in :mod:`oligo_designer_toolsuite.pipelines`.
 """
 
 ############################################
@@ -32,21 +28,28 @@ F = TypeVar("F", bound=Callable[..., Any])
 ############################################
 
 
-def base_parser() -> dict[str, Any]:
+def base_parser(*, prog: str, usage: str, description: str | None = None) -> dict[str, Any]:
     """
     Read the common command-line arguments used by pipeline entry points.
 
     Each probe-designer command accepts a ``-c / --config`` argument that points
-    to a YAML configuration file. This helper handles that shared argument so
-    individual pipeline ``main()`` functions can stay short and consistent.
+    to a YAML configuration file. Pass pipeline-specific ``prog``, ``usage``, and
+    ``description`` so ``--help`` matches the command that was invoked.
 
+    :param prog: Program name shown in help (for example ``"MERFISH Probe Designer"``).
+    :type prog: str
+    :param usage: Usage line shown in help (for example
+        ``"merfish_probe_designer [options]"``).
+    :type usage: str
+    :param description: Longer help text, usually the calling module's ``__doc__``.
+    :type description: str | None
     :return: Parsed command-line arguments as a dictionary.
     :rtype: dict[str, Any]
     """
     parser = ArgumentParser(
-        prog="Genomic Region Generator",
-        usage="genomic_region_generation [options]",
-        description=__doc__,
+        prog=prog,
+        usage=usage,
+        description=description,
         formatter_class=RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -185,46 +188,6 @@ def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
             )
 
             return oligo_database
-
-        return cast(F, wrapper)
-
-    return decorator
-
-
-def pipeline_step_advanced(step_name: str) -> Callable[[F], F]:
-    """
-    Add detailed logging around a pipeline step.
-
-    Use this decorator for steps that return an :class:`OligoDatabase` together
-    with additional values. The decorator logs the parameters, compares the
-    database before and after the step, and reports how many regions and oligos
-    were removed.
-
-    :param step_name: Name shown in the log for this pipeline step.
-    :type step_name: str
-    :return: Decorator for the wrapped pipeline step.
-    :rtype: Callable[[F], F]
-    """
-
-    def decorator(function: F) -> F:
-        """Return the instrumented replacement for ``function``."""
-
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            """Run ``function``, logging parameters plus before/after database sizes."""
-            logger.info(f"Parameters {step_name}:")
-            oligo_database = log_parameters_and_get_db(function, args, kwargs)
-
-            num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
-
-            oligo_database, *returned_values = function(*args, **kwargs)
-
-            num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
-            logger.info(
-                f"Step - {step_name}: database contains {num_oligos_after} oligos from {num_genes_after} regions, "
-                f"{num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} regions removed."
-            )
-
-            return oligo_database, *returned_values
 
         return cast(F, wrapper)
 

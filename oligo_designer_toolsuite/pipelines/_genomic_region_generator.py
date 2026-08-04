@@ -268,7 +268,11 @@ def main() -> None:
     :rtype: None
     """
     print("--------------START PIPELINE--------------")
-    args = base_parser()
+    args = base_parser(
+        prog="Genomic Region Generator",
+        usage="genomic_region_generator [options]",
+        description=__doc__,
+    )
 
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)

@@ -1132,7 +1132,11 @@ def main() -> None:
     """
     print("--------------START PIPELINE--------------")
 
-    args = base_parser()
+    args = base_parser(
+        prog="Oligo-seq Probe Designer",
+        usage="oligo_seq_probe_designer [options]",
+        description=__doc__,
+    )
 
     with open(args["config"], "r") as handle:
         config_raw = yaml.safe_load(handle)

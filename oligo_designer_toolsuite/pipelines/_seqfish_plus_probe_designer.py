@@ -486,7 +486,8 @@ class SeqFishPlusProbeDesigner:
         :return: Reverse primer sequence and forward primer sequence.
         :rtype: tuple[str, str]
         """
-        # Dump hybridization probes so primer design can reject primers that anneal to them.
+        # Hybridization probes are written as a FASTA reference so generated primers
+        # that anneal to the probe body are rejected.
         file_fasta_hybridization_probes_database = oligo_database.write_database_to_fasta(
             filename="db_reference_hybridization_probes",
             save_description=False,
@@ -2500,7 +2501,11 @@ def main() -> None:
     """
     print("--------------START PIPELINE--------------")
 
-    args = base_parser()
+    args = base_parser(
+        prog="seqFISH+ Probe Designer",
+        usage="seqfish_plus_probe_designer [options]",
+        description=__doc__,
+    )
 
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)

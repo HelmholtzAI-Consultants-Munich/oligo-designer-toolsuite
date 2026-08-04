@@ -1535,7 +1535,7 @@ class DetectionOligoDesigner:
             marker.
         :rtype: str
         """
-        # Attach the dye on the end with fewer nearby T's so UNG sites stay away from the label.
+        # Attach the dye on the end with fewer nearby T's so uracil cleavage sites stay away from the label.
         if oligo.find("T") < oligo[::-1].find("T"):
             fluorophor_pos = "left"
         else:
@@ -1757,7 +1757,11 @@ def main() -> None:
     """
     print("--------------START PIPELINE--------------")
 
-    args = base_parser()
+    args = base_parser(
+        prog="SCRINSHOT Probe Designer",
+        usage="scrinshot_probe_designer [options]",
+        description=__doc__,
+    )
 
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)

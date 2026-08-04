@@ -2046,7 +2046,11 @@ def main() -> None:
     """
     print("--------------START PIPELINE--------------")
 
-    args = base_parser()
+    args = base_parser(
+        prog="CycleHCR Probe Designer",
+        usage="cycle_hcr_probe_designer [options]",
+        description=__doc__,
+    )
 
     with open(args["config"], "r") as handle:
         config = yaml.safe_load(handle)
