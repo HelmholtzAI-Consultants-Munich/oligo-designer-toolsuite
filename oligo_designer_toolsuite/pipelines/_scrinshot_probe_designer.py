@@ -685,10 +685,10 @@ class TargetProbeDesigner:
 
         # Arm Tm/length and ligation_site are needed before seed-region BLAST and backbone assembly.
         padlock_arms_property = PadlockArmsProperty(
-            arm_length_min=padlock_arms_parameters["padlock_arm_length_min"],
-            arm_Tm_dif_max=padlock_arms_parameters["padlock_arm_Tm_dif_max"],
-            arm_Tm_min=padlock_arms_parameters["padlock_arm_Tm_min"],
-            arm_Tm_max=padlock_arms_parameters["padlock_arm_Tm_max"],
+            arm_length_min=padlock_arms_parameters["length_min"],
+            arm_Tm_dif_max=padlock_arms_parameters["Tm_dif_max"],
+            arm_Tm_min=padlock_arms_parameters["Tm_min"],
+            arm_Tm_max=padlock_arms_parameters["Tm_max"],
             Tm_parameters=padlock_arms_parameters["Tm_parameters"],
             Tm_chem_correction_parameters=padlock_arms_parameters["Tm_chem_correction_parameters"],
             Tm_salt_correction_parameters=padlock_arms_parameters["Tm_salt_correction_parameters"],
@@ -1575,8 +1575,9 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
     """
     Prepare the SCRINSHOT config before the pipeline runs.
 
-    This step updates the config in place so later design stages can read ready-to-use
-    settings. It resolves melting-temperature tables for both target probes and the
+    This step converts the configuration to a dict and updates the config in place
+    so later design stages can read ready-to-use settings.
+    It resolves melting-temperature tables for both target probes and the
     detection oligo, turns off unused temperature corrections, and copies the shared
     temperature settings into the filters and scoring steps that need them.
 
@@ -1585,9 +1586,9 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
     concrete list of target regions. If no gene list is provided, all regions in the
     input FASTA files are used.
 
-    :param config: Pipeline configuration loaded from the YAML config file.
-    :type config: dict
-    :return: The same config dict, updated with the prepared settings.
+    :param config: Validated pipeline configuration.
+    :type config: ScrinshotProbeDesignerConfig
+    :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
 
@@ -1618,10 +1619,10 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
         "oligo_length_min": config["detection_oligo"]["oligo_generation"]["oligo_length_min"],
         "oligo_length_max": config["detection_oligo"]["oligo_generation"]["oligo_length_max"],
         "min_thymines": config["detection_oligo"]["oligo_generation"]["min_thymines"],
-        "padlock_arm_length_min": config["target_probe"]["padlock_arms_properties"]["length_min"],
-        "padlock_arm_Tm_dif_max": config["target_probe"]["padlock_arms_properties"]["Tm_dif_max"],
-        "padlock_arm_Tm_min": config["target_probe"]["padlock_arms_properties"]["Tm_min"],
-        "padlock_arm_Tm_max": config["target_probe"]["padlock_arms_properties"]["Tm_max"],
+        "padlock_arm_length_min": config["target_probes"]["padlock_arms_properties"]["length_min"],
+        "padlock_arm_Tm_dif_max": config["target_probes"]["padlock_arms_properties"]["Tm_dif_max"],
+        "padlock_arm_Tm_min": config["target_probes"]["padlock_arms_properties"]["Tm_min"],
+        "padlock_arm_Tm_max": config["target_probes"]["padlock_arms_properties"]["Tm_max"],
         "Tm_parameters": target_probe_Tm_parameters,
         "Tm_chem_correction_parameters": target_probe_Tm_chem_correction_parameters,
         "Tm_salt_correction_parameters": target_probe_Tm_salt_correction_parameters,
@@ -1712,9 +1713,9 @@ def scrinshot_probe_designer(config: ScrinshotProbeDesignerConfig) -> None:
     See :class:`ScrinshotProbeDesigner` for the pipeline description and probe
     structure.
 
-    :param config: Pipeline configuration loaded from the YAML config file. It is
+    :param config: Validated pipeline configuration. It is converted to a dict and
         updated in place by :func:`_preprocess_config` before the pipeline runs.
-    :type config: dict
+    :type config: ScrinshotProbeDesignerConfig
     :return: None
     :rtype: None
     """
