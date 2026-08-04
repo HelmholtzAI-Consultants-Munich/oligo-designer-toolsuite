@@ -40,9 +40,14 @@ class TestOligoSeqYaml(unittest.TestCase):
         cfg2 = OligoSeqProbeDesignerConfig.model_validate(cfg.model_dump())
         assert cfg == cfg2
 
-    def test_readout_probe_field_forbidden(self) -> None:
+    def test_unknown_top_level_field_forbidden(self) -> None:
         # OligoSeq has no readout_probe section; extra="forbid" must reject it
         raw = _load("oligo_seq_probe_designer.yaml")
         raw["readout_probe"] = {"file_readout_probe_table": "p.csv"}
         with self.assertRaises(ValidationError):
             OligoSeqProbeDesignerConfig.model_validate(raw)
+
+    def test_json_schema(self) -> None:
+        schema = OligoSeqProbeDesignerConfig.model_json_schema()
+        assert schema["title"] == "OligoSeqProbeDesignerConfig"
+        assert "target_probe" in schema["properties"]

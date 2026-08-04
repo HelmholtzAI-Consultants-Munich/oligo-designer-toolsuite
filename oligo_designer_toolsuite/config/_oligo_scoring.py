@@ -23,7 +23,7 @@ class IndependentSetSelection(BaseModel):
     set_size_opt: PositiveInt = Field(
         description="Optimal size (number of probes) for each oligo set. The set selection algorithm will attempt to generate sets of this size, but may produce sets with fewer probes if constraints cannot be met.",
     )
-    distance_between_target_probes: int = Field(
+    distance_between_probes: int = Field(
         description="How much overlap should be allowed between oligos, e.g. if oligos can overlap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x.",
     )
     n_attempts_graph: PositiveInt = Field(
