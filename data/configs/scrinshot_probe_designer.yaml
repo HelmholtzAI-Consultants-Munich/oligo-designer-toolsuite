@@ -13,7 +13,7 @@ general:
 ### USER PARAMETERS ###
 #######################
 
-target_probe:
+target_probes:
   oligo_generation:
     file_region_ids: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
     files_fasta_probe_database: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
@@ -54,11 +54,6 @@ target_probe:
       Tm_max: 75 # Maximum melting temperature (°C). Oligos above this are rejected.
 
   specificity_filters:
-    cross_hybridization_blastn_filter: # Remove oligos that may cross-hybridize with each other (BLAST-based).
-      enabled: true # Turn this filter on or off.
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10} # BLAST options for the cross-hybridization search.
-      hit_parameters: {"coverage": 80} # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
-
     specificity_blastn_filter: # Ensure oligo specificity against a reference database (BLAST-based).
       enabled: true # Turn this filter on or off.
       ligation_region_size: 5 # Size of the seed region around the ligation site for BLAST seed region filter; set to 0 to skip seed-region filtering.
@@ -67,6 +62,11 @@ target_probe:
       files_fasta_reference_database: # FASTA file(s) used as reference for the specificity BLASTN search. Use genomic_region_generator for custom reference sets.
       - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
       - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+    cross_hybridization_blastn_filter: # Remove oligos that may cross-hybridize with each other (BLAST-based).
+      enabled: true # Turn this filter on or off.
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10} # BLAST options for the cross-hybridization search.
+      hit_parameters: {"coverage": 80} # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
 
   probe_set_selection: # Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
     independent_set_selection:

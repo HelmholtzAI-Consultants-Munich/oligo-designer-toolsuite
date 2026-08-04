@@ -1,10 +1,16 @@
+"""
+Shared helpers for the probe-design pipelines.
+
+Covers CLI entry, logging, and config/table checks used across the assay-specific
+pipeline modules in :mod:`oligo_designer_toolsuite.pipelines`.
+"""
+
 ############################################
 # imports
 ############################################
 
 import inspect
 import sys
-import warnings
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from typing import Any, Callable, TypeVar, cast
 
@@ -22,11 +28,28 @@ F = TypeVar("F", bound=Callable[..., Any])
 ############################################
 
 
-def base_parser() -> dict[str, Any]:
+def base_parser(*, prog: str, usage: str, description: str | None = None) -> dict[str, Any]:
+    """
+    Read the common command-line arguments used by pipeline entry points.
+
+    Each probe-designer command accepts a ``-c / --config`` argument that points
+    to a YAML configuration file. Pass pipeline-specific ``prog``, ``usage``, and
+    ``description`` so ``--help`` matches the command that was invoked.
+
+    :param prog: Program name shown in help (for example ``"MERFISH Probe Designer"``).
+    :type prog: str
+    :param usage: Usage line shown in help (for example
+        ``"merfish_probe_designer [options]"``).
+    :type usage: str
+    :param description: Longer help text, usually the calling module's ``__doc__``.
+    :type description: str | None
+    :return: Parsed command-line arguments as a dictionary.
+    :rtype: dict[str, Any]
+    """
     parser = ArgumentParser(
-        prog="Genomic Region Generator",
-        usage="genomic_region_generation [options]",
-        description=__doc__,
+        prog=prog,
+        usage=usage,
+        description=description,
         formatter_class=RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -43,9 +66,13 @@ def base_parser() -> dict[str, Any]:
 
 def base_log_parameters(parameters: dict[str, Any]) -> None:
     """
-    Log all parameters from a dictionary, excluding 'self'.
+    Write pipeline parameters to the log.
 
-    :param parameters: Dictionary of parameters to log.
+    This is used at the start of a run to record the configuration that was
+    actually used. The ``self`` entry is ignored, which makes the function safe
+    to use with parameters collected from class methods.
+
+    :param parameters: Parameter names and values to log.
     :type parameters: dict[str, Any]
     """
     for key, value in parameters.items():
@@ -55,15 +82,20 @@ def base_log_parameters(parameters: dict[str, Any]) -> None:
 
 def log_parameters_and_get_db(func: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
     """
-    Log function parameters and return the oligo_database argument if present.
+    Log the parameters passed to a pipeline step.
 
-    :param func: The function to inspect.
+    The function combines positional arguments, keyword arguments, and default
+    values into one complete view of the call. If the step receives an
+    ``oligo_database`` argument, that database is returned so decorators can
+    report how the step changed the number of regions and oligos.
+
+    :param func: Function whose call should be logged.
     :type func: Callable[..., Any]
     :param args: Positional arguments passed to the function.
     :type args: tuple[Any, ...]
     :param kwargs: Keyword arguments passed to the function.
     :type kwargs: dict[str, Any]
-    :return: The oligo_database argument if present, otherwise None.
+    :return: The ``oligo_database`` argument if present, otherwise ``None``.
     :rtype: Any
     """
     sig = inspect.signature(func)
@@ -80,11 +112,15 @@ def log_parameters_and_get_db(func: Callable[..., Any], args: tuple[Any, ...], k
 
 def get_oligo_database_info(oligo_database: dict[str, dict[str, Any]]) -> tuple[int, int]:
     """
-    Get information about the number of regions and oligos in a database.
+    Count how many regions and oligos are stored in a database.
 
-    :param oligo_database: Dictionary containing region IDs as keys and oligo dictionaries as values.
+    This is mainly used for logging after filtering steps. It gives a compact
+    summary of how many regions are still represented and how many candidate
+    oligos remain in total.
+
+    :param oligo_database: Raw database dictionary with regions as top-level keys.
     :type oligo_database: dict[str, dict[str, Any]]
-    :return: Tuple containing (number of regions, total number of oligos).
+    :return: Number of regions and total number of oligos.
     :rtype: tuple[int, int]
     """
     num_genes = len(oligo_database)
@@ -94,14 +130,15 @@ def get_oligo_database_info(oligo_database: dict[str, dict[str, Any]]) -> tuple[
 
 def get_oligo_length_min_max_from_database(oligo_database: OligoDatabase) -> tuple[int, int]:
     """
-    Get the minimum and maximum oligo lengths from the database.
+    Find the shortest and longest oligo in the database.
 
-    This function iterates through all oligos in the database to find the
-    minimum and maximum length values.
+    Some downstream steps need to know the actual length range of the remaining
+    oligos. This helper scans the current database and returns the minimum and
+    maximum sequence length.
 
-    :param oligo_database: The OligoDatabase instance to query.
+    :param oligo_database: Oligo database to inspect.
     :type oligo_database: OligoDatabase
-    :return: A tuple containing (minimum_length, maximum_length).
+    :return: Minimum and maximum oligo length in bases.
     :rtype: tuple[int, int]
     """
     oligo_length_min = sys.maxsize
@@ -123,16 +160,23 @@ def get_oligo_length_min_max_from_database(oligo_database: OligoDatabase) -> tup
 
 def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
     """
-    Decorator for basic pipeline steps that logs parameters and tracks database info.
+    Add standard logging around a pipeline step.
 
-    :param step_name: Name of the pipeline step.
+    Use this decorator for steps that return only an :class:`OligoDatabase`.
+    It logs the step parameters before the function runs and reports how many
+    regions and oligos are present afterwards.
+
+    :param step_name: Name shown in the log for this pipeline step.
     :type step_name: str
-    :return: Decorator function.
+    :return: Decorator for the wrapped pipeline step.
     :rtype: Callable[[F], F]
     """
 
     def decorator(function: F) -> F:
+        """Return the instrumented replacement for ``function``."""
+
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            """Run ``function``, logging its parameters and the resulting database size."""
             logger.info(f"Parameters {step_name}:")
             log_parameters_and_get_db(function, args, kwargs)
 
@@ -150,67 +194,44 @@ def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
     return decorator
 
 
-def pipeline_step_advanced(step_name: str) -> Callable[[F], F]:
-    """
-    Decorator for advanced pipeline steps that logs parameters and tracks database changes.
-
-    :param step_name: Name of the pipeline step.
-    :type step_name: str
-    :return: Decorator function.
-    :rtype: Callable[[F], F]
-    """
-
-    def decorator(function: F) -> F:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            logger.info(f"Parameters {step_name}:")
-            oligo_database = log_parameters_and_get_db(function, args, kwargs)
-
-            num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
-
-            oligo_database, *returned_values = function(*args, **kwargs)
-
-            num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
-            logger.info(
-                f"Step - {step_name}: database contains {num_oligos_after} oligos from {num_genes_after} regions, "
-                f"{num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} regions removed."
-            )
-
-            return oligo_database, *returned_values
-
-        return cast(F, wrapper)
-
-    return decorator
-
-
 def check_content_oligo_database(oligo_database: OligoDatabase) -> None:
     """
-    Check if the oligo database is empty and exit if it is.
+    Stop the pipeline if no candidate oligos are left.
 
-    :param oligo_database: The OligoDatabase instance to check.
+    Filtering can remove all regions from the database. When that happens, the
+    pipeline cannot produce useful output. This helper stops the run early and
+    writes a clear message instead of letting a later step fail with a less
+    helpful error.
+
+    :param oligo_database: Oligo database to check.
     :type oligo_database: OligoDatabase
-    :raises SystemExit: If the database is empty, exits with status code 1.
+    :raises SystemExit: If the database contains no regions.
     """
     if len(oligo_database.get_regionid_list()) == 0:
         logger.error("The oligo database is empty. Exiting program...")
         print("The oligo database is empty. Exiting program...")
-        sys.exit(1)  # Exit the program with a status code of 1
+        sys.exit(1)
 
 
 def format_sequence(database: OligoDatabase, property: str, region_id: str, oligo_id: str) -> str:
     """
-    Get a sequence property as a string from the database, raising an error if not available.
+    Return a sequence property as a plain string.
 
-    :param database: The OligoDatabase instance to query.
+    This helper is used when a database property is expected to be a single DNA
+    sequence. It retrieves the value and checks that it is a string before the
+    sequence is used by downstream code.
+
+    :param database: Oligo database to query.
     :type database: OligoDatabase
-    :param property: The property name to retrieve.
+    :param property: Name of the sequence property to retrieve.
     :type property: str
-    :param region_id: The region ID to query.
+    :param region_id: Region that contains the oligo.
     :type region_id: str
-    :param oligo_id: The oligo ID to query.
+    :param oligo_id: Oligo whose property should be returned.
     :type oligo_id: str
-    :return: The sequence as a string.
+    :return: Sequence value as a string.
     :rtype: str
-    :raises ValueError: If the property value is not a string.
+    :raises ValueError: If the retrieved value is not a string.
     """
     value = database.get_oligo_property_value(
         property=property,
@@ -225,15 +246,16 @@ def format_sequence(database: OligoDatabase, property: str, region_id: str, olig
 
 def preprocess_tm_parameters(tm_parameters: dict[str, Any]) -> dict[str, Any]:
     """
-    Preprocess melting temperature parameters by converting string table names to actual table objects.
+    Prepare melting-temperature settings from a config file.
 
-    This function modifies the tm_parameters dictionary in place, converting the string names
-    for nn_table, tmm_table, imm_table, and de_table to their corresponding table objects
-    from Bio.SeqUtils.MeltingTemp.
+    Config files store melting-temperature table names as readable strings, such
+    as ``"DNA_NN4"``. The Biopython Tm functions expect the matching table
+    objects instead. This helper replaces the configured table names with the
+    objects used during calculation.
 
-    :param tm_parameters: Dictionary containing melting temperature parameters with string table names.
+    :param tm_parameters: Melting-temperature parameter dictionary.
     :type tm_parameters: dict[str, Any]
-    :return: The modified dictionary with table objects instead of string names.
+    :return: Updated parameter dictionary.
     :rtype: dict[str, Any]
     """
     for key in ("nn_table", "tmm_table", "imm_table", "de_table"):
@@ -251,26 +273,29 @@ def validate_codebook(
     index_name: str = "region_id",
 ) -> None:
     """
-    Validate a codebook DataFrame against the expected format.
+    Check that a codebook has the expected format.
 
-    The codebook is expected to have ``index_name`` as the index and one or more
-    ``bit_*`` columns containing binary (0/1) values. All ``region_ids`` requested
-    by the caller must be present in the index. If ``expected_hamming_weight`` is
-    provided, each row must have exactly that many bits set; otherwise each row
-    must have at least one bit set.
+    A codebook assigns each region to a binary barcode. Rows represent regions,
+    columns represent bits, and each value must be ``0`` or ``1``. This helper
+    checks that the table is complete, has no duplicated regions or bit columns,
+    contains only valid binary values, and covers all requested regions.
 
-    :param codebook: Codebook with ``index_name`` as the index and ``bit_*`` columns.
+    If an expected Hamming weight is given, every row must contain exactly that
+    number of active bits. Otherwise, each row must contain at least one active
+    bit.
+
+    :param codebook: Codebook table to validate.
     :type codebook: pd.DataFrame
-    :param region_ids: Region IDs required to be present in the codebook index.
+    :param region_ids: Region IDs that must be present in the codebook.
     :type region_ids: list[str]
-    :param source: Source identifier (e.g. filename) used in error messages.
+    :param source: Name or path used to identify the codebook in error messages.
     :type source: str
-    :param expected_hamming_weight: Required number of bits set per row, or ``None``
-        to require at least one bit set per row.
+    :param expected_hamming_weight: Required number of active bits per row, or
+        ``None`` to allow variable-weight codes.
     :type expected_hamming_weight: int | None
-    :param index_name: Expected name of the codebook index column.
+    :param index_name: Expected name of the codebook index.
     :type index_name: str
-    :raises FileFormatError: If any validation check fails.
+    :raises FileFormatError: If the codebook is incomplete or incorrectly formatted.
     """
     if codebook.index.name != index_name:
         raise FileFormatError(
@@ -333,35 +358,38 @@ def validate_codebook(
 
 def validate_bit_mapping_table(
     table: pd.DataFrame,
-    codebook: pd.DataFrame,
+    codebook: pd.DataFrame | None = None,
     *,
     source: str,
     required_columns: list[str],
     sequence_columns: list[str],
 ) -> None:
     """
-    Validate a bit-indexed mapping table against a codebook.
+    Check a table that maps codebook bits to probe sequences.
 
-    The table is expected to have ``bit`` as the index and to contain all of
-    ``required_columns``. Every ``bit_*`` column present in ``codebook`` must have
-    a corresponding row in the table. Values in ``sequence_columns`` must be
-    non-empty DNA sequences containing only A/C/G/T (case-insensitive). A warning
-    is emitted (not an error) when the table contains bits that are not referenced
-    by any codebook column.
+    These tables connect each codebook bit to a sequence, such as a readout
+    probe or initiator. The table must have one row per bit, contain the required
+    columns, and provide valid DNA sequences in the selected sequence columns.
 
-    :param table: Bit-indexed table (e.g. initiator or readout probe table).
+    When a codebook is provided, this helper also checks that every bit used in
+    the codebook has a matching row in the table. Extra rows are allowed, which
+    makes it possible to use a larger readout set with a smaller codebook.
+
+    :param table: Bit mapping table to validate.
     :type table: pd.DataFrame
-    :param codebook: Codebook whose ``bit_*`` columns drive the set of required bits.
-    :type codebook: pd.DataFrame
-    :param source: Source identifier (e.g. filename) used in error messages.
+    :param codebook: Optional codebook used to check bit coverage.
+    :type codebook: pd.DataFrame | None
+    :param source: Name or path used to identify the table in error messages.
     :type source: str
     :param required_columns: Columns that must be present in the table.
     :type required_columns: list[str]
-    :param sequence_columns: Subset of ``required_columns`` whose values must be
-        valid DNA sequences.
+    :param sequence_columns: Columns that must contain valid DNA sequences.
     :type sequence_columns: list[str]
-    :raises FileFormatError: If any validation check fails.
+    :raises FileFormatError: If the table is incomplete or incorrectly formatted.
     """
+    if len(table) == 0:
+        raise FileFormatError(f"Table '{source}' is empty. Expected at least one bit-indexed row.")
+
     if table.index.name != "bit":
         raise FileFormatError(f"Table '{source}' must use 'bit' as the index, got '{table.index.name}'.")
 
@@ -376,20 +404,14 @@ def validate_bit_mapping_table(
             f"Required columns are: {required_columns}."
         )
 
-    required_bits = set(codebook.columns)
-    table_bits = set(table.index)
-    missing_bits = required_bits - table_bits
-    if missing_bits:
-        raise FileFormatError(
-            f"Table '{source}' is missing entries for codebook bits: {sorted(missing_bits)}."
-        )
-
-    unused_bits = table_bits - required_bits
-    if unused_bits:
-        warnings.warn(
-            f"Table '{source}' contains bits not referenced by the codebook: {sorted(unused_bits)}.",
-            stacklevel=2,
-        )
+    if codebook is not None:
+        required_bits = set(codebook.columns)
+        table_bits = set(table.index)
+        missing_bits = required_bits - table_bits
+        if missing_bits:
+            raise FileFormatError(
+                f"Table '{source}' is missing entries for codebook bits: {sorted(missing_bits)}."
+            )
 
     for column in sequence_columns:
         invalid_bits = [
@@ -406,17 +428,17 @@ def validate_bit_mapping_table(
 
 def validate_primer_sequence(sequence: str, *, source: str) -> None:
     """
-    Validate that a primer sequence is a non-empty DNA string (A/C/G/T only).
+    Check that a primer is written as a valid DNA sequence.
 
-    Thin wrapper around :func:`check_if_dna_sequence` that raises a
-    ``FileFormatError`` with a ``source``-tagged message so all callers report
-    errors consistently.
+    A valid primer must be a non-empty string containing only ``A``, ``C``,
+    ``G``, and ``T``. The ``source`` label is included in error messages so it
+    is clear which primer caused the problem.
 
-    :param sequence: The primer sequence to validate.
+    :param sequence: Primer sequence to check.
     :type sequence: str
-    :param source: Identifier (e.g. ``"forward_primer"``) used in error messages.
+    :param source: Primer label used in error messages.
     :type source: str
-    :raises FileFormatError: If the value is not a non-empty DNA sequence.
+    :raises FileFormatError: If the primer is empty or contains invalid characters.
     """
     if not isinstance(sequence, str) or not check_if_dna_sequence(sequence):
         raise FileFormatError(
@@ -429,31 +451,26 @@ def get_highly_abundant_kmer_sequences(
     kmer_abundance_threshold: dict[int, float],
 ) -> list[str]:
     """
-    Get highly abundant k-mer sequences by identifying k-mers that exceed specified thresholds.
+    Find k-mers that occur too often in the reference sequences.
 
-    This function counts k-mer abundances in FASTA files and identifies k-mers that exceed
-    the specified abundance thresholds. These high-abundance k-mers are added to the list
-    of highly abundant k-mer sequences, which can be used to filter out sequences during probe design.
+    Very common k-mers can make probes less specific because they appear in many
+    places. This helper counts k-mers in one or more FASTA files and returns the
+    sequences whose abundance is above the chosen threshold for their length.
 
-    :param files_fasta: Path(s) to FASTA file(s) to analyze. Can be a single file path (str)
-                        or a list of file paths (list[str]).
+    :param files_fasta: FASTA file path or list of FASTA file paths to scan.
     :type files_fasta: str | list[str]
-    :param kmer_abundance_threshold: Dictionary mapping k-mer length (int) to maximum allowed
-                                     abundance threshold (float). K-mers exceeding this threshold
-                                     will be added to highly abundant k-mer sequences.
+    :param kmer_abundance_threshold: Maximum allowed abundance for each k-mer length.
     :type kmer_abundance_threshold: dict[int, float]
-    :return: List of highly abundant k-mer sequences containing identified high-abundance k-mers.
+    :return: K-mer sequences that exceed their abundance threshold.
     :rtype: list[str]
     """
     highly_abundant_kmer_sequences: list[str] = []
 
-    # Count k-mer abundances
     kmer_abundance = count_kmer_abundance(
         files_fasta=files_fasta,
         k=list(kmer_abundance_threshold.keys()),
     )
 
-    # Identify high-abundance k-mers and add them to highly abundant k-mer sequences
     for k, v in kmer_abundance.items():
         for kmer, abundance in v.items():
             if abundance > kmer_abundance_threshold[k]:

@@ -1,239 +1,254 @@
+#########################
+### HIDDEN PARAMETERS ###
+#########################
+
+schema_version: 2
+
+general:
+  n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
+  dir_output: output_merfish_probe_designer # name of the directory where the output files will be written
+  write_intermediate_steps: true # if true, saves intermediate results after each step
+
 #######################
 ### USER PARAMETERS ###
 #######################
 
-### General parameters
-### -----------------------------------------------
-n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-dir_output: output_merfish_probe_designer # name of the directory where the output files will be written
-write_intermediate_steps: true # if true, writes the oligo sequences after each step of the pipeline into a csv file
+target_probes:
+  oligo_generation:
+    file_region_ids: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
+    files_fasta_probe_database: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
+      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+    probe_length_min: 30 # Minimum allowed oligo length (bases).
+    probe_length_max: 30 # Maximum allowed oligo length (bases).
 
-### Target Probe Parameters
-### -----------------------------------------------
-file_regions: data/genes/custom_3.txt # file with a list the genes used to generate the probe sequences, leave empty if all the genes are used
-files_fasta_target_probe_database: # fasta file with sequences form which the probes should be generated. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-files_fasta_reference_database_target_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-target_probe_length_min: 30 #min length of probe
-target_probe_length_max: 30 #max length of probe
-target_probe_isoform_consensus: 50 #min isoform consesnsus for probes, i.e. how many transcripts of the total number of transcripts of a gene are covered by the probe, given in %
-target_probe_GC_content_min: 43 # minimum GC content of oligos
-target_probe_GC_content_opt: 55 # max and min values are defiend above
-target_probe_GC_content_max: 63 # maximum GC content of oligos
-target_probe_Tm_min: 66 # minimum melting temperature of oligos
-target_probe_Tm_opt: 72 # max and min values are defiend above
-target_probe_Tm_max: 76 # maximum melting temperature of oligos
-target_probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
-  A: 6
-  T: 6
-  C: 6
-  G: 6
-target_probe_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-n_sets: 3 # number of sets to generate
-set_size_min: 50 # minimum size of probe sets (in case there exist no set of the optimal size) -> genes with less oligos will be filtered out and stored in regions_with_insufficient_oligos_for_db_probes
-set_size_opt: 50 # optimal size of probe sets
-distance_between_target_probes: 0 # how much overlap should be allowed between oligos, e.g. if oligos can overlpap x bases choose -x, if oligos can be next to one another choose 0, if oligos should be x bases apart choose x
-target_probe_GC_weight: 1 # weight of the GC content of the probe in the efficiency score
-target_probe_Tm_weight: 1 # weight of the Tm of the probe in the efficiency score
-target_probe_isoform_weight: 2 # weight of the Tm of the probe in the efficiency score
+  property_filters:
+    isoform_consensus_filter: # Require oligos to be supported by a minimum fraction of gene transcripts.
+      enabled: true # Turn this filter on or off.
+      isoform_consensus: 50 # Minimum isoform consensus (%). Oligos must be covered by at least this fraction of a gene's transcripts.
 
+    hard_masked_sequences_filter: # Exclude oligos overlapping hard-masked (e.g. N) regions in the reference.
+      enabled: true # Turn this filter on or off.
 
-### Readout Probe Parameters
-### -----------------------------------------------
-files_fasta_reference_database_readout_probe: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-readout_probe_length: 20 # length of readout probes
-readout_probe_base_probabilities: # probabilities of each base for random readout probe sequence generation
-  A: 0.25
-  C: 0.00
-  G: 0.50
-  T: 0.25
-readout_probe_GC_content_min: 40 # minimum GC content of oligos
-readout_probe_GC_content_max: 50 # maximum GC content of oligos
-readout_probe_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
-  G: 3
-readout_probe_set_size: 16 # total number of readout probes
-readout_probe_homogeneous_properties_weights: # readout probes in one set should have similar properties, the weighted sum of variance of the properties is minimized
-  TmNN_oligo: 1.0 # melting temperature
-  GC_content_oligo: 1.0 # GC content
-n_bits: 16 # number of bits contained in each barcode
-min_hamming_dist: 4 # minimum distance between two valid barcodes
-hamming_weight: 2 # number of bits containing one in each barcode
-channels_ids: # names of fluorescent channels
-  - Alexa488
-  - Cy3b
-  - Alexa647
+    soft_masked_sequences_filter: # Exclude oligos overlapping soft-masked (lowercase) regions in the reference.
+      enabled: true # Turn this filter on or off.
 
+    homopolymeric_runs_filter: # Exclude oligos containing long homopolymeric runs (e.g. AAAAAA).
+      enabled: true # Turn this filter on or off.
+      homopolymeric_base_n: {"A": 6, "T": 6, "C": 6, "G": 6} # Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.
 
-### Primer Parameters
-### -----------------------------------------------
-files_fasta_reference_database_primer: # fasta file with sequences used as reference for the specificity filters. Hint: use the genomic_region_generator pipeline to create fasta files of genomic regions of interest
-  - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-  - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-reverse_primer_sequence: CCCTATAGTGAGTCGTATTA # defaults to reverse complement of 20 nt T7 promoter sequence, change if different sequence desired
-primer_length: 20 # length of forward primer
-primer_base_probabilities: # probabilities of each base for random primer sequence generation
-  A: 0.25
-  C: 0.25
-  G: 0.25
-  T: 0.25
-primer_GC_content_min: 50 # minimum GC content of oligos
-primer_GC_content_max: 65 # maximum GC content of oligos
-primer_number_GC_GCclamp: 1
-primer_number_three_prime_base_GCclamp: 2
-primer_homopolymeric_base_n: # minimum number of nucleotides to consider it a homopolymeric run per base
-  A: 4
-  T: 4
-  C: 4
-  G: 4
-primer_max_len_selfcomplement: 6
-primer_max_len_complement_reverse_primer: 5
-primer_Tm_min: 60
-primer_Tm_max: 75
-primer_T_secondary_structure: 76 # Temperature at which the free energy is calculated
-primer_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
+    GC_content_filter: # Enforce GC content within a specified range.
+      enabled: true # Turn this filter on or off.
+      GC_content_min: 43 # Minimum GC content (%). Oligos below this are rejected.
+      GC_content_max: 63 # Maximum GC content (%). Oligos above this are rejected.
 
-############################
-### DEVELOPER PARAMETERS ###
-############################
+    Tm_filter: # Enforce melting temperature (Tm) within a range (uses Tm parameters below).
+      enabled: true # Turn this filter on or off.
+      Tm_min: 66 # Minimum melting temperature (°C). Oligos below this are rejected.
+      Tm_max: 76 # Maximum melting temperature (°C). Oligos above this are rejected.
 
-### Target Probe Parameters
-### -----------------------------------------------
-# Parameters for property filters
-# The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
-# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-target_probe_Tm_parameters:
-  nn_table: DNA_NN4 # SantaLucia (2004) taken from Moffitt (2016)
-  tmm_table: DNA_TMM1 #default
-  imm_table: DNA_IMM1 #default
-  de_table: DNA_DE1 #default
-  dnac1: 5 #[nM] taken from Moffitt (2016)
-  dnac2: 0 #[nM] taken from Moffitt (2016)
-  saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
-  Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
-  K: 0 #[mM] default
-  Tris: 0 #[mM] default
-  Mg: 0 #[mM] default
-  dNTPs: 0 #[mM] default
-target_probe_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
-target_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-target_probe_secondary_structures_threshold_deltaG: 0 # threshold for the secondary structure free energy -> oligo rejected if it presents a structure with a negative free energy at the defined temperature
-# Specificity filter with BlastN
-target_probe_specificity_blastn_search_parameters:
-  -perc_identity: 80
-  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  -word_size: 10
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-target_probe_specificity_blastn_hit_parameters:
-  min_alignment_length: 17 # can be turned into coverage
-# Crosshybridization filter with BlastN
-target_probe_cross_hybridization_blastn_search_parameters:
-  -perc_identity: 80
-  -strand: "minus" # this parameter is fixed
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-target_probe_cross_hybridization_blastn_hit_parameters:
-  min_alignment_length: 17 # can be turned into coverage
-# Parameters for the oligo set selection
-n_attempts_graph: 50 # number of randomized graph attempts (diversification)
-n_attempts_clique_enum: 50 # max cliques enumerated per graph attempt
-diversification_fraction: 0.1 # fraction of oligos to remove from the graph to create diversity in the set selection
-jaccard_opt: 0.5 # optimal maximum Jaccard overlap between selected sets
-jaccard_step: 0.1 # step size for the Jaccard overlap if not enough sets are found
+    secondary_structure_filter: # Reject oligos with stable secondary structure at the given temperature.
+      enabled: true # Turn this filter on or off.
+      T: 76 # Temperature (°C) at which secondary structure free energy is evaluated.
+      thr_DG: 0 # Free-energy threshold (kcal/mol). Oligos with ΔG ≤ thr_DG (stable structure) are rejected.
 
+  specificity_filters:
+    specificity_blastn_filter: # Ensure oligo specificity against a reference database (BLAST-based).
+      enabled: true # Turn this filter on or off.
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000} # BLAST options for the specificity search.
+      hit_parameters: {"min_alignment_length": 17} # Hit criteria. Hits satisfying these lead to oligo rejection.
+      files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter. Use genomic_region_generator for custom reference sets.
+        - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+        - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
-### Readout Probe Parameters
-### -----------------------------------------------
-readout_probe_initial_num_sequences: 100000 # if not enough readout probes can be generated, increase this number
-# Parameters for property filters
-readout_probe_Tm_parameters:
-  nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
-  tmm_table: DNA_TMM1 #default
-  imm_table: DNA_IMM1 #default
-  de_table: DNA_DE1 #default
-  dnac1: 25 #default
-  dnac2: 25 #default
-  saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
-  Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
-  K: 0 #[mM] default
-  Tris: 0 #[mM] default
-  Mg: 0 #[mM] default
-  dNTPs: 0 #[mM] default
-readout_probe_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
-readout_probe_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-# Specificity filter with BlastN
-readout_probe_specificity_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-readout_probe_specificity_blastn_hit_parameters:
-  min_alignment_length: 11 # can be turned into coverage
-# Crosshybridization filter with BlastN
-readout_probe_cross_hybridization_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus" # this parameter is fixed
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-readout_probe_cross_hybridization_blastn_hit_parameters:
-  min_alignment_length: 11 # can be turned into coverage
-# Parameters for the oligo set selection
-readout_probe_n_combinations: 100000 # number of random combinations of readout probe sets to iteratte through
+    cross_hybridization_blastn_filter: # Remove oligos that may cross-hybridize to other probes (BLAST-based).
+      enabled: true # Turn this filter on or off.
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10} # BLAST options for the cross-hybridization search.
+      hit_parameters: {"min_alignment_length": 17} # Hit criteria. Hits satisfying these lead to oligo rejection.
 
-### Primer Parameters
-### -----------------------------------------------
-primer_initial_num_sequences: 1000000 # if no primer can be generated, increase this number
-# Parameters for property filters
-# The melting temperature is used in 2 different stages (property filters and padlock detection probe design), where a few parameters are shared and the others differ.
-# parameters for melting temperature -> for more information on parameters, see: https://biopython.org/docs/1.75/api/Bio.SeqUtils.MeltingTemp.html#Bio.SeqUtils.MeltingTemp.Tm_NN
-primer_Tm_parameters:
-  nn_table: DNA_NN4 #S antaLucia (2004) taken from Moffitt (2016)
-  tmm_table: DNA_TMM1 #default
-  imm_table: DNA_IMM1 #default
-  de_table: DNA_DE1 #default
-  dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
-  dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
-  saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
-  Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
-  K: 0 #[mM] default
-  Tris: 0 #[mM] default
-  Mg: 0 #[mM] default
-  dNTPs: 0 #[mM] default
-primer_Tm_chem_correction_parameters: null # if chem correction desired, please add parameters below
-primer_Tm_salt_correction_parameters: null # if salt correction desired, please add parameters below
-# Specificity filter with BlastN against reference
-primer_specificity_refrence_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-primer_specificity_refrence_blastn_hit_parameters:
-  min_alignment_length: 14 # can be turned into coverage
-# Specificity filter with BlastN against hybridization rpobes
-primer_specificity_hybridization_probes_blastn_search_parameters:
-  -perc_identity: 100
-  -strand: "minus" # this parameter is fixed, if reference is whole genome, consider using "both"
-  -word_size: 7
-  -dust: "no"
-  -soft_masking: "false"
-  -max_target_seqs: 10
-  -max_hsps: 1000
-primer_specificity_hybridization_probes_blastn_hit_parameters:
-  min_alignment_length: 11 # can be turned into coverage
+  probe_set_selection: # Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
+    independent_set_selection:
+      n_sets: 3 # Number of probe sets to generate per gene.
+      set_size_min: 50 # Minimum set size. Genes that cannot form a set of at least this size are reported as insufficient.
+      set_size_opt: 50 # Preferred (optimal) number of oligos per set.
+      distance_between_probes: 0 # Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).
+      n_attempts_graph: 50 # Number of randomized graph attempts used to diversify set selection.
+      n_attempts_clique_enum: 50 # Maximum cliques enumerated per graph attempt.
+      diversification_fraction: 0.1 # Fraction of oligos removed from the graph in each attempt to increase set diversity.
+      jaccard_opt: 0.5 # Target maximum Jaccard similarity between selected sets; lower = more distinct sets.
+      jaccard_step: 0.1 # Step size for relaxing Jaccard threshold when too few sets are found.
+    GC_content_score:
+      weight: 1 # Weight for GC content in the set-selection scoring function.
+      GC_content_opt: 55 # Target (optimal) GC content (%) for scoring.
+    Tm_score:
+      weight: 1 # Weight for Tm in the set-selection scoring function.
+      Tm_opt: 72 # Target (optimal) Tm (°C) for scoring.
+    isoform_consensus_score:
+      weight: 2 # Weight for isoform coverage in the set-selection scoring function.
+
+  global_parameters:
+    Tm_parameters:
+      nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
+      tmm_table: DNA_TMM1 # default
+      imm_table: DNA_IMM1 # default
+      de_table: DNA_DE1 # default
+      dnac1: 5 #[nM] taken from Moffitt (2016)
+      dnac2: 0 #[nM] taken from Moffitt (2016)
+      saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
+      Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
+      K: 0 #[mM] default
+      Tris: 0 #[mM] default
+      Mg: 0 #[mM] default
+      dNTPs: 0 #[mM] default
+    Tm_chem_correction_parameters:
+      enabled: false
+    Tm_salt_correction_parameters:
+      enabled: false
+
+readout_probes:
+  codebook:
+    source: generate # "generate" (default) | "load"
+    file: null # data/functional_oligos/merfish_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
+    n_bits: 16 # Number of bits in each barcode.
+    min_hamming_dist: 4 # Minimum Hamming distance between any two valid barcodes (MHD4 = 4 for single-bit error correction).
+    hamming_weight: 2 # Number of bits set to 1 in each barcode (MERFISH standard = 2). Equals readout overhangs per encoding probe (first half 5' of target, second half 3').
+
+  readout_probe_table:
+    source: generate # "generate" (default) | "load"
+    file: null # data/functional_oligos/merfish_readout_probes_load_codebook.tsv # Only used when source = load. Bit-indexed table with columns: "channel", "readout_probe_id", "readout_probe_sequence".
+    channels_ids: ["Alexa488", "Cy3b", "Alexa647"] # Fluorescence channels used for round-robin channel assignment across bits.
+
+    oligo_generation:
+      probe_length: 20 # Length (bases) of each random readout probe.
+      base_probabilities: {"A": 0.25, "C": 0.00, "G": 0.50, "T": 0.25} # Per-base probability used to generate random readout-probe sequences.
+      initial_num_sequences: 100000 # Number of random sequences to generate before filtering.
+
+    property_filters:
+      homopolymeric_runs_filter: # Exclude probes containing long homopolymeric runs.
+        enabled: true # Turn this filter on or off.
+        homopolymeric_base_n: {"G": 3} # Minimum run length per base to count as homopolymeric (any base not listed is unrestricted).
+
+      GC_content_filter: # Enforce GC content within a specified range.
+        enabled: true # Turn this filter on or off.
+        GC_content_min: 40 # Minimum GC content (%). Probes below this are rejected.
+        GC_content_max: 50 # Maximum GC content (%). Probes above this are rejected.
+
+    specificity_filters:
+      specificity_blastn_filter: # Remove readout probes with significant hits to the reference (BLAST-based).
+        enabled: true # Turn this filter on or off.
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        hit_parameters: {"min_alignment_length": 11}
+        files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter.
+          - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+          - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+      cross_hybridization_blastn_filter: # Remove readout probes that cross-hybridize to each other (BLAST-based).
+        enabled: true # Turn this filter on or off.
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+        hit_parameters: {"min_alignment_length": 11}
+
+    probe_set_selection: # Select a set of readout probes with homogeneous Tm / GC content (uses HomogeneousPropertyOligoSelection).
+      set_size: 16 # Total number of readout probes to select (must equal n_bits so each bit gets a probe).
+      n_combinations: 100000 # Number of candidate sets to evaluate; higher values may find better sets but increase computation time.
+      homogeneous_properties_weights: # Weights for property homogeneity in the score minimised across the set (weighted sum of variances).
+        TmNN_oligo: 1.0 # Melting temperature.
+        GC_content_oligo: 1.0 # GC content.
+
+    global_parameters:
+      Tm_parameters:
+        nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
+        tmm_table: DNA_TMM1 # default
+        imm_table: DNA_IMM1 # default
+        de_table: DNA_DE1 # default
+        dnac1: 25 # default
+        dnac2: 25 # default
+        saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
+        Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
+        K: 0 #[mM] default
+        Tris: 0 #[mM] default
+        Mg: 0 #[mM] default
+        dNTPs: 0 #[mM] default
+      Tm_chem_correction_parameters:
+        enabled: false
+      Tm_salt_correction_parameters:
+        enabled: false
+
+primers:
+  forward_primer:
+    source: generate # "generate" (default) | "load"
+    sequence: null # ACGT... # Only used when source = load.
+
+    oligo_generation:
+      probe_length: 20 # Length (bases) of each generated primer.
+      base_probabilities: {"A": 0.25, "C": 0.25, "G": 0.25, "T": 0.25} # Per-base probability used to generate random primer sequences.
+      initial_num_sequences: 1000000 # Number of random sequences to generate before filtering.
+
+    property_filters:
+      homopolymeric_runs_filter:
+        enabled: true
+        homopolymeric_base_n: {"A": 4, "T": 4, "C": 4, "G": 4}
+
+      GC_content_filter: # Enforce GC content within a specified range.
+        enabled: true
+        GC_content_min: 50
+        GC_content_max: 65
+
+      GC_clamp_filter: # Require G/C nucleotides at the 3' end of the primer for stable binding.
+        enabled: true
+        number_GC_GCclamp: 1 # Minimum number of G or C nucleotides required at the 3' end.
+        number_three_prime_base_GCclamp: 2 # Number of bases from the 3' end to consider for the GC clamp.
+
+      self_complementarity_filter: # Limit self-complementarity to avoid hairpins.
+        enabled: true
+        max_len_selfcomplement: 6
+
+      complement_reverse_primer_filter: # Limit complementarity between the forward primer and the (known) reverse primer to prevent primer-dimer formation.
+        enabled: true
+        max_len_complement: 5
+
+      Tm_filter:
+        enabled: true
+        Tm_min: 60
+        Tm_max: 75
+
+      secondary_structure_filter:
+        enabled: true
+        T: 76
+        thr_DG: 0
+
+    specificity_filters:
+      specificity_blastn_filter: # Ensure primer specificity against a reference database (BLAST-based).
+        enabled: true
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        hit_parameters: {"min_alignment_length": 14}
+        files_fasta_reference_database: # FASTA file(s) used as reference for primer specificity.
+          - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+          - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+      hybridization_probes_blastn_filter: # Remove primers that match the assembled hybridization probes (BLAST-based).
+        enabled: true
+        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        hit_parameters: {"min_alignment_length": 11}
+
+    global_parameters:
+      Tm_parameters:
+        nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
+        tmm_table: DNA_TMM1 # default
+        imm_table: DNA_IMM1 # default
+        de_table: DNA_DE1 # default
+        dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
+        dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
+        saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
+        Na: 300 #[mM] 0.3M, taken from https://github.com/ZhuangLab/MERFISH_analysis
+        K: 0 #[mM] default
+        Tris: 0 #[mM] default
+        Mg: 0 #[mM] default
+        dNTPs: 0 #[mM] default
+      Tm_chem_correction_parameters:
+        enabled: false
+      Tm_salt_correction_parameters:
+        enabled: false
+
+  reverse_primer:
+    source: load # "generate" (not yet implemented) | "load" (default)
+    sequence: CCCTATAGTGAGTCGTATTA # Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.
