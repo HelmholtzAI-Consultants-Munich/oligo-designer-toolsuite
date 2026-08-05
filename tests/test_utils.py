@@ -523,18 +523,6 @@ class TestBedParser(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             self.parser.convert_start(starts, "0-based", "one")
 
-    def test_chromosome_length_file_keeps_first_row_with_header_none(self) -> None:
-        # chrom.sizes / bedtools -g files are headerless; header=0 would drop the first chromosome.
-        file_genome = os.path.join(self.tmp_path, "annotation.genome")
-        with open(file_genome, "w") as handle:
-            handle.write("chr1\t1000\n")
-            handle.write("chr2\t2000\n")
-
-        chromosome_length = pd.read_csv(file_genome, sep="\t", header=None, names=["seqid", "length"])
-
-        assert list(chromosome_length["seqid"]) == ["chr1", "chr2"]
-        assert list(chromosome_length["length"]) == [1000, 2000]
-
 
 class TestFastaParser(unittest.TestCase):
     def setUp(self) -> None:

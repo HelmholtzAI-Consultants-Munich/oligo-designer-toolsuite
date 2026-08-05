@@ -233,27 +233,6 @@ class CustomGenomicRegionGenerator:
         :rtype: str
         """
 
-        def _get_chromosome_length() -> str:
-            """
-            Write chromosome lengths from the genome FASTA to a chrom.sizes file.
-
-            The file is used by bedtools when finding regions outside annotated
-            genes. Each line is ``seqid`` and length, tab-separated, with no header.
-
-            :return: Path to the chromosome-length file.
-            :rtype: str
-            """
-            chromosome_lengths = {}
-            for rec in SeqIO.parse(self.sequence_file, "fasta"):
-                chromosome_lengths[rec.id] = len(rec.seq)
-
-            file_chromosome_length = os.path.join(self.dir_output, "annotation.genome")
-            with open(file_chromosome_length, "w") as handle:
-                for key, value in sorted(chromosome_lengths.items()):
-                    handle.write(f"{key}\t{value}\n")
-
-            return file_chromosome_length
-
         def _compute_intergenic_annotation(
             annotation: pd.DataFrame, file_chromosome_length: str
         ) -> pd.DataFrame:
@@ -386,7 +365,7 @@ class CustomGenomicRegionGenerator:
             return intergenic_annotation
 
         # save chromosome sizes as genome file
-        file_chromosome_length = _get_chromosome_length()
+        file_chromosome_length = self._get_chromosome_length()
 
         # get gene annotation entries
         annotation = self._load_annotation()
@@ -1085,6 +1064,27 @@ class CustomGenomicRegionGenerator:
         del annotation
 
         return file_fasta
+
+    def _get_chromosome_length(self) -> str:
+        """
+        Write chromosome lengths from the genome FASTA to a chrom.sizes file.
+
+        The file is used by bedtools when finding regions outside annotated
+        genes. Each line is ``seqid`` and length, tab-separated, with no header.
+
+        :return: Path to the chromosome-length file.
+        :rtype: str
+        """
+        chromosome_lengths = {}
+        for rec in SeqIO.parse(self.sequence_file, "fasta"):
+            chromosome_lengths[rec.id] = len(rec.seq)
+
+        file_chromosome_length = os.path.join(self.dir_output, "annotation.genome")
+        with open(file_chromosome_length, "w") as handle:
+            for key, value in sorted(chromosome_lengths.items()):
+                handle.write(f"{key}\t{value}\n")
+
+        return file_chromosome_length
 
     def _load_annotation(self) -> pd.DataFrame:
         """
