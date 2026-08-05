@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Callable, cast
 from unittest.mock import patch
 
-import pandas as pd
 from Bio import SeqIO
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
@@ -628,9 +627,7 @@ class GenomicRegionGeneratorBase(unittest.TestCase, ABC):
         file_chromosome_length = self.region_generator._get_chromosome_length()
 
         # Same load path as get_sequence_intergenic when a chromosome has no genes.
-        chromosome_length = pd.read_csv(
-            file_chromosome_length, sep="\t", header=None, names=["seqid", "length"]
-        )
+        chromosome_length = self.region_generator._read_chromosome_length_file(file_chromosome_length)
         assert list(chromosome_length["seqid"]) == ["chr1", "chr2"]
         assert list(chromosome_length["length"]) == [1000, 2000]
 

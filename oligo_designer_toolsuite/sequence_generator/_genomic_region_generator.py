@@ -306,9 +306,7 @@ class CustomGenomicRegionGenerator:
 
             # case 1: no annotated genes on the respective chromosome and strand
             if gene_annotation.empty:
-                chromosome_length = pd.read_csv(
-                    file_chromosome_length, sep="\t", header=None, names=["seqid", "length"]
-                )
+                chromosome_length = self._read_chromosome_length_file(file_chromosome_length)
                 if strand == "+":
                     region_id_name = "InterRegPlus"
                 elif strand == "-":
@@ -1085,6 +1083,20 @@ class CustomGenomicRegionGenerator:
                 handle.write(f"{key}\t{value}\n")
 
         return file_chromosome_length
+
+    def _read_chromosome_length_file(self, file_chromosome_length: str) -> pd.DataFrame:
+        """
+        Read chromosome lengths from a file.
+
+        Reads the chromosome lengths from a file and returns a DataFrame with
+        ``seqid`` and ``length`` columns.
+
+        :param file_chromosome_length: Path to the chromosome length file.
+        :type file_chromosome_length: str
+        :return: DataFrame with ``seqid`` and ``length`` columns.
+        :rtype: pd.DataFrame
+        """
+        return pd.read_csv(file_chromosome_length, sep="\t", header=None, names=["seqid", "length"])
 
     def _load_annotation(self) -> pd.DataFrame:
         """
