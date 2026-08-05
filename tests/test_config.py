@@ -5,6 +5,7 @@ import yaml
 from pydantic import ValidationError
 
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
+from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 
 _CONFIGS = Path("data/configs")
 
@@ -51,3 +52,35 @@ class TestOligoSeqYaml(unittest.TestCase):
         schema = OligoSeqProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "OligoSeqProbeDesignerConfig"
         assert "target_probe" in schema["properties"]
+
+
+# ---------------------------------------------------------------------------
+# ScrinshotProbeDesignerConfig
+# ---------------------------------------------------------------------------
+
+
+class TestScrinshotYaml(unittest.TestCase):
+    def test_parses(self) -> None:
+        raw = _load("scrinshot_probe_designer.yaml")
+        cfg = ScrinshotProbeDesignerConfig.model_validate(raw)
+        assert cfg.schema_version == 2
+        assert cfg.general.write_intermediate_steps is True
+
+    def test_round_trip(self) -> None:
+        raw = _load("scrinshot_probe_designer.yaml")
+        cfg = ScrinshotProbeDesignerConfig.model_validate(raw)
+        cfg2 = ScrinshotProbeDesignerConfig.model_validate(cfg.model_dump())
+        assert cfg == cfg2
+
+    def test_unknown_top_level_field_forbidden(self) -> None:
+        # Scrinshot has no readout_probe section; extra="forbid" must reject it
+        raw = _load("scrinshot_probe_designer.yaml")
+        raw["readout_probe"] = {"file_readout_probe_table": "p.csv"}
+        with self.assertRaises(ValidationError):
+            ScrinshotProbeDesignerConfig.model_validate(raw)
+
+    def test_json_schema(self) -> None:
+        schema = ScrinshotProbeDesignerConfig.model_json_schema()
+        assert schema["title"] == "ScrinshotProbeDesignerConfig"
+        assert "target_probe" in schema["properties"]
+        assert "detection_oligo" in schema["properties"]

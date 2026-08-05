@@ -75,7 +75,7 @@ TmMinT = Annotated[
 TmMaxT = Annotated[
     NonNegativeFloat,
     Field(
-        description="Maximum melting temperature (Tm) in degrees Celsius for target probes. Probes with calculated Tm above this value will be filtered out. This value is also used as the optimal Tm target in probe scoring."
+        description="Maximum melting temperature (Tm) in degrees Celsius for probes. Probes with calculated Tm above this value will be filtered out."
     ),
 ]
 TmOptT = Annotated[
