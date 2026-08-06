@@ -1388,7 +1388,7 @@ def _preprocess_config(config_validated: HcrProbeDesignerConfig) -> dict[str, An
     list of target regions. If no gene list is provided, all regions in the input
     FASTA files are used.
 
-    :param config_validated: Validated pipeline configuration.
+    :param config_validated: Validated pipeline configuration (pydantic model).
     :type config_validated: HcrProbeDesignerConfig
     :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
@@ -1484,9 +1484,9 @@ def hcr_probe_designer(config: HcrProbeDesignerConfig) -> None:
     See :class:`HcrProbeDesigner` for the pipeline description and probe
     structure.
 
-    :param config: Pipeline configuration loaded from the YAML config file. It is
+    :param config: Validated pipeline configuration. It is converted to a dict and
         updated in place by :func:`_preprocess_config` before the pipeline runs.
-    :type config: dict
+    :type config: HcrProbeDesignerConfig
     :return: None
     :rtype: None
     """

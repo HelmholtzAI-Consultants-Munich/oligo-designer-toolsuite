@@ -1586,8 +1586,8 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
     concrete list of target regions. If no gene list is provided, all regions in the
     input FASTA files are used.
 
-    :param config: Validated pipeline configuration.
-    :type config: ScrinshotProbeDesignerConfig
+    :param config_validated: Validated pipeline configuration (pydantic model).
+    :type config_validated: ScrinshotProbeDesignerConfig
     :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
