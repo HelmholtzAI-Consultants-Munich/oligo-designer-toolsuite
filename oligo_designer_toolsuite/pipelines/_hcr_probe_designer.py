@@ -1377,8 +1377,9 @@ def _preprocess_config(config_validated: HcrProbeDesignerConfig) -> dict[str, An
     """
     Prepare the HCR config before the pipeline runs.
 
-    This step updates the config in place so later design stages can read ready-to-use
-    settings. It resolves melting-temperature tables, turns off unused temperature
+    This step converts the configuration to a dict and updates the config in place
+    so later design stages can read ready-to-use settings.
+    It resolves melting-temperature tables, turns off unused temperature
     corrections, and copies the shared temperature settings into the filters that
     need them.
 
@@ -1387,9 +1388,9 @@ def _preprocess_config(config_validated: HcrProbeDesignerConfig) -> dict[str, An
     list of target regions. If no gene list is provided, all regions in the input
     FASTA files are used.
 
-    :param config: Pipeline configuration loaded from the YAML config file.
-    :type config: dict
-    :return: The same config dict, updated with the prepared settings.
+    :param config_validated: Validated pipeline configuration.
+    :type config_validated: HcrProbeDesignerConfig
+    :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
 
@@ -1451,7 +1452,7 @@ def _preprocess_config(config_validated: HcrProbeDesignerConfig) -> dict[str, An
 
 def hcr_probe_designer(config: HcrProbeDesignerConfig) -> None:
     """
-    Run the HCR probe design pipeline from a config dict.
+    Run the HCR probe design pipeline from a validated configuration (pydantic model).
 
     This function prepares the config with :func:`_preprocess_config`, then runs
     :class:`HcrProbeDesigner` end to end. It designs target probes, loads or creates
