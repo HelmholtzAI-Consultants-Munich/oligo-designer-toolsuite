@@ -119,22 +119,22 @@ class TargetProbeOligoGeneration(BaseModel):
 class PadlockArmsProperties(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    padlock_arm_length_min: PositiveInt = Field(
+    length_min: PositiveInt = Field(
         description="Minimum length (bases) for each padlock arm.",
         default=10,
     )
-    padlock_arm_Tm_dif_max: NonNegativeFloat = Field(
+    Tm_dif_max: NonNegativeFloat = Field(
         description="Maximum Tm difference (°C) between the two padlock arms.",
         default=2,
     )
-    padlock_arm_Tm_min: TmMinT = 50
-    padlock_arm_Tm_max: TmMaxT = 60
+    Tm_min: TmMinT = 50
+    Tm_max: TmMaxT = 60
 
     @model_validator(mode="after")
     def _check_min_max(self) -> Self:
-        if self.padlock_arm_Tm_min > self.padlock_arm_Tm_max:
+        if self.Tm_min > self.Tm_max:
             raise ValueError(
-                f"'padlock_arm_Tm_min' ({self.padlock_arm_Tm_min}) must be <= 'padlock_arm_Tm_max' ({self.padlock_arm_Tm_max})"
+                f"'padlock_arm_Tm_min' ({self.Tm_min}) must be <= 'padlock_arm_Tm_max' ({self.Tm_max})"
             )
         return self
 
@@ -225,7 +225,7 @@ class TargetProbeGlobal(BaseModel):
     )
 
 
-class TargetProbe(BaseModel):
+class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     oligo_generation: TargetProbeOligoGeneration
@@ -314,5 +314,5 @@ class ScrinshotProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
-    target_probe: TargetProbe
+    target_probes: TargetProbes
     detection_oligo: DetectionOligo
