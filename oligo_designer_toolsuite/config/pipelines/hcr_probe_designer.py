@@ -192,7 +192,7 @@ class TargetProbeGlobal(BaseModel):
     )
 
 
-class TargetProbe(BaseModel):
+class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     oligo_generation: TargetProbeOligoGeneration
@@ -206,13 +206,8 @@ class TargetProbe(BaseModel):
 # Initiator probes
 ############################################
 
-# HCR only supports source="load" at the moment: InitiatorDesigner.generate_codebook and
-# generate_initiator_table both raise FeatureNotImplementedError. Modelling `source` as
-# Literal["load"] rejects source="generate" at validation. When generation is implemented,
-# introduce a discriminated union on `source`.
 
-
-class HcrCodebook(BaseModel):
+class HcrCodebookLoad(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: Literal["load"] = "load"
@@ -221,13 +216,33 @@ class HcrCodebook(BaseModel):
     )
 
 
-class HcrInitiatorTable(BaseModel):
+class HcrCodebookGenerate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    source: Literal["generate"] = "generate"
+
+
+HcrCodebook = Annotated[HcrCodebookLoad | HcrCodebookGenerate, Field(discriminator="source")]
+
+
+class HcrInitiatorTableLoad(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: Literal["load"] = "load"
     file: str = Field(
         description="Path to the bit-indexed initiator table (csv/tsv) with columns 'bit', 'initiator_L_sequence', and 'initiator_R_sequence'."
     )
+
+
+class HcrInitiatorTableGenerate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    source: Literal["generate"] = "generate"
+
+
+HcrInitiatorTable = Annotated[
+    HcrInitiatorTableLoad | HcrInitiatorTableGenerate, Field(discriminator="source")
+]
 
 
 class InitiatorProbes(BaseModel):
@@ -265,6 +280,6 @@ class HcrProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
-    target_probe: TargetProbe
+    target_probes: TargetProbes
     initiator_probes: InitiatorProbes
     hybridization_probes: HybridizationProbes

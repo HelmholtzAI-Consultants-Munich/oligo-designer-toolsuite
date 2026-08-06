@@ -112,20 +112,8 @@ class TestHcrYaml(unittest.TestCase):
         with self.assertRaises(ValidationError):
             HcrProbeDesignerConfig.model_validate(raw)
 
-    def test_codebook_generate_rejected(self) -> None:
-        # Generation of codebook/initiator table is not implemented for HCR; only "load" is allowed
-        raw = _load("hcr_probe_designer.yaml")
-        raw["initiator_probes"]["codebook"]["source"] = "generate"
-        with self.assertRaises(ValidationError):
-            HcrProbeDesignerConfig.model_validate(raw)
-
-        raw = _load("hcr_probe_designer.yaml")
-        raw["initiator_probes"]["initiator_table"]["source"] = "generate"
-        with self.assertRaises(ValidationError):
-            HcrProbeDesignerConfig.model_validate(raw)
-
     def test_json_schema(self) -> None:
         schema = HcrProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "HcrProbeDesignerConfig"
-        assert "target_probe" in schema["properties"]
+        assert "target_probes" in schema["properties"]
         assert "initiator_probes" in schema["properties"]
