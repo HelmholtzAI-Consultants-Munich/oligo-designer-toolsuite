@@ -1009,8 +1009,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
     regions. If no gene list is provided, all regions in the input FASTA files are
     used.
 
-    :param config_validated: Pipeline configuration that has already passed pydantic
-        validation.
+    :param config_validated: Validated pipeline configuration (pydantic model).
     :type config_validated: OligoSeqProbeDesignerConfig
     :return: A config dict updated with the prepared settings.
     :rtype: dict

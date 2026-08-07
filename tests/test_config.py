@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
+from oligo_designer_toolsuite.config.pipelines.hcr_probe_designer import HcrProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 
@@ -51,7 +52,7 @@ class TestOligoSeqYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = OligoSeqProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "OligoSeqProbeDesignerConfig"
-        assert "target_probe" in schema["properties"]
+        assert "target_probes" in schema["properties"]
 
 
 # ---------------------------------------------------------------------------
@@ -82,5 +83,37 @@ class TestScrinshotYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = ScrinshotProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "ScrinshotProbeDesignerConfig"
-        assert "target_probe" in schema["properties"]
+        assert "target_probes" in schema["properties"]
         assert "detection_oligo" in schema["properties"]
+
+
+# ---------------------------------------------------------------------------
+# HcrProbeDesignerConfig
+# ---------------------------------------------------------------------------
+
+
+class TestHcrYaml(unittest.TestCase):
+    def test_parses(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HcrProbeDesignerConfig.model_validate(raw)
+        assert cfg.schema_version == 2
+        assert cfg.general.write_intermediate_steps is True
+
+    def test_round_trip(self) -> None:
+        raw = _load("hcr_probe_designer.yaml")
+        cfg = HcrProbeDesignerConfig.model_validate(raw)
+        cfg2 = HcrProbeDesignerConfig.model_validate(cfg.model_dump())
+        assert cfg == cfg2
+
+    def test_unknown_top_level_field_forbidden(self) -> None:
+        # HCR has no readout_probe section; extra="forbid" must reject it
+        raw = _load("hcr_probe_designer.yaml")
+        raw["readout_probe"] = {"file_readout_probe_table": "p.csv"}
+        with self.assertRaises(ValidationError):
+            HcrProbeDesignerConfig.model_validate(raw)
+
+    def test_json_schema(self) -> None:
+        schema = HcrProbeDesignerConfig.model_json_schema()
+        assert schema["title"] == "HcrProbeDesignerConfig"
+        assert "target_probes" in schema["properties"]
+        assert "initiator_probes" in schema["properties"]
