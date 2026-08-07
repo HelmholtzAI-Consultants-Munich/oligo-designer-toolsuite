@@ -170,5 +170,5 @@ class TestCycleHcrYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = CycleHcrProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "CycleHcrProbeDesignerConfig"
-        assert "target_probe" in schema["properties"]
+        assert "target_probes" in schema["properties"]
         assert "readout_probes" in schema["properties"]

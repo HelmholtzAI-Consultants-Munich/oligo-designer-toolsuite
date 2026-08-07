@@ -201,7 +201,7 @@ class TargetProbeGlobal(BaseModel):
     )
 
 
-class TargetProbe(BaseModel):
+class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     oligo_generation: TargetProbeOligoGeneration
@@ -322,7 +322,7 @@ class CycleHcrProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
-    target_probe: TargetProbe
+    target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers
     hybridization_probes: HybridizationProbes
