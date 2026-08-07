@@ -77,9 +77,16 @@ class TargetedExonsScore(ScoreBaseConfig):
     )
 
 
-class GCContentScore(ScoreBaseConfig):
-    GC_content_min: GCContentMinT
+class UTRScore(ScoreBaseConfig):
+    pass
+
+
+class GCContentScoreBasic(ScoreBaseConfig):
     GC_content_opt: GCContentOptT
+
+
+class GCContentScoreExpanded(GCContentScoreBasic):
+    GC_content_min: GCContentMinT
     GC_content_max: GCContentMaxT
 
     @model_validator(mode="after")

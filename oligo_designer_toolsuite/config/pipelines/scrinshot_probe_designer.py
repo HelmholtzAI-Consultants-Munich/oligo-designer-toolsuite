@@ -24,7 +24,7 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    GCContentScore,
+    GCContentScoreExpanded,
     IndependentSetSelection,
     IsoformConsensusScore,
     TmScore,
@@ -191,7 +191,7 @@ class TargetProbeProbeSetSelection(BaseModel):
         jaccard_step=0.1,
     )
     isoform_consensus_score: IsoformConsensusScore = IsoformConsensusScore(weight=2)
-    GC_content_score: GCContentScore = GCContentScore(
+    GC_content_score: GCContentScoreExpanded = GCContentScoreExpanded(
         weight=1, GC_content_min=40, GC_content_opt=50, GC_content_max=60
     )
     Tm_score: TmScore = TmScore(weight=1, Tm_min=65, Tm_opt=70, Tm_max=75)
