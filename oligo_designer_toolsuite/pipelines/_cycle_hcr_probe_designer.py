@@ -24,12 +24,14 @@ import numpy as np
 import pandas as pd
 import yaml
 from Bio.SeqUtils import Seq
+from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import (
     ConfigurationError,
     FeatureNotImplementedError,
     FileFormatError,
 )
+from oligo_designer_toolsuite.config import CycleHcrProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     AverageSetScoring,
@@ -1866,25 +1868,28 @@ class PrimerDesigner:
 ############################################
 
 
-def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
+def _preprocess_config(config_validated: CycleHcrProbeDesignerConfig) -> dict[str, Any]:
     """
     Prepare the CycleHCR config before the pipeline runs.
 
-    This step updates the config in place so later design stages can read ready-to-use
-    settings. It resolves melting-temperature tables, turns off unused temperature
-    corrections, and copies the shared temperature settings into the filters and
-    scoring steps that need them.
+    This step converts the validated pydantic config to a plain dict and updates it
+    so later design stages can read ready-to-use settings. It resolves
+    melting-temperature tables, turns off unused temperature corrections, and copies
+    the shared temperature settings into the filters and scoring steps that need
+    them.
 
     It also derives the full probe length and the left/right junction position from
     the arm and gap lengths, and expands an optional gene-list file into a concrete
     list of target regions. If no gene list is provided, all regions in the input
     FASTA files are used.
 
-    :param config: Pipeline configuration loaded from the YAML config file.
-    :type config: dict
-    :return: The same config dict, updated with the prepared settings.
+    :param config_validated: Validated pipeline configuration (pydantic model).
+    :type config_validated: CycleHcrProbeDesignerConfig
+    :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
+
+    config = config_validated.model_dump()
 
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
@@ -1948,9 +1953,9 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def cycle_hcr_probe_designer(config: dict[str, Any]) -> None:
+def cycle_hcr_probe_designer(config: CycleHcrProbeDesignerConfig) -> None:
     """
-    Run the CycleHCR probe design pipeline from a config dict.
+    Run the CycleHCR probe design pipeline from a validated configuration (pydantic model).
 
     This function prepares the config with :func:`_preprocess_config`, then runs
     :class:`CycleHCRProbeDesigner` end to end. It designs target probes, loads or
@@ -1984,9 +1989,9 @@ def cycle_hcr_probe_designer(config: dict[str, Any]) -> None:
     See :class:`CycleHCRProbeDesigner` for the pipeline description and probe
     structure.
 
-    :param config: Pipeline configuration loaded from the YAML config file. It is
-        updated in place by :func:`_preprocess_config` before the pipeline runs.
-    :type config: dict
+    :param config: Validated pipeline configuration. It is converted and prepared by
+        :func:`_preprocess_config` before the pipeline runs.
+    :type config: CycleHcrProbeDesignerConfig
     :return: None
     :rtype: None
     """
@@ -2053,14 +2058,20 @@ def main() -> None:
     )
 
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
+
+    try:
+        config_validated = CycleHcrProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        print(f"Invalid configuration file:\n{e}")
+        raise
 
     configure_root_logger(
-        dir_output=config["general"]["dir_output"],
+        dir_output=config_validated.general.dir_output,
         pipeline_name="cyclehcr_probe_designer",
     )
 
-    cycle_hcr_probe_designer(config)
+    cycle_hcr_probe_designer(config_validated)
 
     print("--------------END PIPELINE--------------")
 
