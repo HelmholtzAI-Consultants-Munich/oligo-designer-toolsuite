@@ -1011,7 +1011,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
 
     :param config_validated: Validated pipeline configuration (pydantic model).
     :type config_validated: OligoSeqProbeDesignerConfig
-    :return: A config dict updated with the prepared settings.
+    :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
     config = config_validated.model_dump()
@@ -1067,7 +1067,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
 
 def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
     """
-    Run the Oligo-seq probe design pipeline from a config dict.
+    Run the Oligo-seq probe design pipeline from a validated configuration (pydantic model).
 
     This function prepares the config with :func:`_preprocess_config`, then runs
     :class:`OligoSeqProbeDesigner` end to end. It designs target probes and writes

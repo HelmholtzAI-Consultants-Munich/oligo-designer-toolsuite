@@ -1872,19 +1872,20 @@ def _preprocess_config(config_validated: CycleHcrProbeDesignerConfig) -> dict[st
     """
     Prepare the CycleHCR config before the pipeline runs.
 
-    This step updates the config in place so later design stages can read ready-to-use
-    settings. It resolves melting-temperature tables, turns off unused temperature
-    corrections, and copies the shared temperature settings into the filters and
-    scoring steps that need them.
+    This step converts the validated pydantic config to a plain dict and updates it
+    so later design stages can read ready-to-use settings. It resolves
+    melting-temperature tables, turns off unused temperature corrections, and copies
+    the shared temperature settings into the filters and scoring steps that need
+    them.
 
     It also derives the full probe length and the left/right junction position from
     the arm and gap lengths, and expands an optional gene-list file into a concrete
     list of target regions. If no gene list is provided, all regions in the input
     FASTA files are used.
 
-    :param config: Pipeline configuration loaded from the YAML config file.
-    :type config: dict
-    :return: The same config dict, updated with the prepared settings.
+    :param config_validated: Validated pipeline configuration (pydantic model).
+    :type config_validated: CycleHcrProbeDesignerConfig
+    :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
 
@@ -1954,7 +1955,7 @@ def _preprocess_config(config_validated: CycleHcrProbeDesignerConfig) -> dict[st
 
 def cycle_hcr_probe_designer(config: CycleHcrProbeDesignerConfig) -> None:
     """
-    Run the CycleHCR probe design pipeline from a config dict.
+    Run the CycleHCR probe design pipeline from a validated configuration (pydantic model).
 
     This function prepares the config with :func:`_preprocess_config`, then runs
     :class:`CycleHCRProbeDesigner` end to end. It designs target probes, loads or
