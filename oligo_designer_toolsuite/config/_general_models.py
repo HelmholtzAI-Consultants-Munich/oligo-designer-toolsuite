@@ -33,6 +33,22 @@ class HomopolymericRunThreshold(BaseModel):
     G: PositiveInt | None = None
 
 
+class BaseProbabilities(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    A: float = Field(ge=0, le=1, description="Probability of base 'A' when generating random sequences.")
+    C: float = Field(ge=0, le=1, description="Probability of base 'C' when generating random sequences.")
+    G: float = Field(ge=0, le=1, description="Probability of base 'G' when generating random sequences.")
+    T: float = Field(ge=0, le=1, description="Probability of base 'T' when generating random sequences.")
+
+    @model_validator(mode="after")
+    def _check_sum(self) -> Self:
+        total = self.A + self.C + self.G + self.T
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(f"Base probabilities must sum to 1.0 (got {total}).")
+        return self
+
+
 class BlastnSearchParameters(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
 

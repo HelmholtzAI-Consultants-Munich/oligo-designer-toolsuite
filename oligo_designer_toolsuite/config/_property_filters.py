@@ -141,7 +141,7 @@ class SelfComplementarityFilterEnabled(FilterBaseConfigEnabled):
     max_len_selfcomplement: Annotated[
         NonNegativeInt,
         Field(
-            description="Maximum allowable length of self-complementary sequences. Probes with longer self-complementary regions can form hairpins and reduce hybridization efficiency."
+            description="Maximum allowable length of self-complementary sequences. Probes with longer self-complementary regions can form hairpins."
         ),
     ]
 
@@ -167,6 +167,43 @@ class TmFilterEnabled(FilterBaseConfigEnabled):
 
 
 TmFilterConfig = Annotated[TmFilterEnabled | TmFilterDisabled, Field(discriminator="enabled")]
+
+
+class GCClampFilterDisabled(FilterBaseConfigDisabled):
+    pass
+
+
+class GCClampFilterEnabled(FilterBaseConfigEnabled):
+    number_GC_GCclamp: Annotated[
+        PositiveInt,
+        Field(description="Minimum number of G or C nucleotides required at the 3' end."),
+    ]
+    number_three_prime_base_GCclamp: Annotated[
+        PositiveInt,
+        Field(description="Number of bases from the 3' end to consider for the GC clamp."),
+    ]
+
+
+GCClampFilterConfig = Annotated[GCClampFilterEnabled | GCClampFilterDisabled, Field(discriminator="enabled")]
+
+
+class ComplementReversePrimerFilterDisabled(FilterBaseConfigDisabled):
+    pass
+
+
+class ComplementReversePrimerFilterEnabled(FilterBaseConfigEnabled):
+    max_len_complement: Annotated[
+        NonNegativeInt,
+        Field(
+            description="Maximum allowable length of complementarity between the forward primer and the (known) reverse primer, to prevent primer-dimer formation."
+        ),
+    ]
+
+
+ComplementReversePrimerFilterConfig = Annotated[
+    ComplementReversePrimerFilterEnabled | ComplementReversePrimerFilterDisabled,
+    Field(discriminator="enabled"),
+]
 
 
 class SecondaryStructureFilterDisabled(FilterBaseConfigDisabled):

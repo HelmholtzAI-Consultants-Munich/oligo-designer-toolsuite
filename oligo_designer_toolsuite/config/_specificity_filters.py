@@ -82,6 +82,31 @@ SpecificityBlastnFilterConfig = Annotated[
 ]
 
 
+class HybridizationProbesBlastnFilterDisabled(FilterBaseConfigDisabled):
+    pass
+
+
+class HybridizationProbesBlastnFilterEnabled(FilterBaseConfigEnabled):
+    search_parameters: Annotated[
+        BlastnSearchParameters,
+        Field(
+            description="BLASTN search parameters for filtering primers that match the assembled hybridization probes."
+        ),
+    ]
+    hit_parameters: Annotated[
+        BlastnHitParameters,
+        Field(
+            description="Parameters for filtering BLASTN hits against the hybridization probes. Use either coverage or min_alignment_length."
+        ),
+    ]
+
+
+HybridizationProbesBlastnFilterConfig = Annotated[
+    HybridizationProbesBlastnFilterEnabled | HybridizationProbesBlastnFilterDisabled,
+    Field(discriminator="enabled"),
+]
+
+
 class VariantFilterDisabled(FilterBaseConfigDisabled):
     pass
 
