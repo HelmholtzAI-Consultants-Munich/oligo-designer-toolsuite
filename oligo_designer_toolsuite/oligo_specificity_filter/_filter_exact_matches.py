@@ -181,6 +181,7 @@ class ExactMatchFilter(BaseSpecificityFilter):
 
         This function takes a list of sequences, converts them to uppercase, and identifies sequences that appear more than once.
         It returns a list of these duplicated sequences, which can be used for further analysis or filtering.
+        If a sequence occurs more than twice, the output will only include it a single time.
 
         :param sequences: A list of sequences to be checked for duplicates.
         :type sequences: list[str]
@@ -192,17 +193,17 @@ class ExactMatchFilter(BaseSpecificityFilter):
 
         # keep track of seen sequences and found duplicates
         seen: set[str] = set()
-        duplicated_sequences = []
+        duplicated_sequences = set()
 
         # find the duplicates within the database
         for sequence in sequences:
             if sequence in seen:
                 # sequence was seen before -> duplicate
-                duplicated_sequences.append(sequence)
+                duplicated_sequences.add(sequence)
             else:
                 seen.add(sequence)
 
-        return duplicated_sequences
+        return list(duplicated_sequences)
 
     def _run_filter(
         self,
