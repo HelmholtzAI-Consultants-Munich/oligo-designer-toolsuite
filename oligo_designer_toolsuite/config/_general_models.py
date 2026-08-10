@@ -27,10 +27,22 @@ class General(BaseModel):
 
 class HomopolymericRunThreshold(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    A: PositiveInt | None = None
-    T: PositiveInt | None = None
-    C: PositiveInt | None = None
-    G: PositiveInt | None = None
+    A: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
+    T: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
+    C: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
+    G: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
 
 
 class BaseProbabilities(BaseModel):

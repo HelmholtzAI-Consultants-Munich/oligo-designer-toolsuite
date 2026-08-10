@@ -41,13 +41,11 @@ class CrossHybridizationBlastnFilterDisabled(FilterBaseConfigDisabled):
 class CrossHybridizationBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
-        Field(description="Parameters for BLASTN searches used in cross-hybridization filtering."),
+        Field(description="BLAST options for the cross-hybridization search."),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
-        Field(
-            description="Parameters for filtering BLASTN hits in cross-hybridization searches. Use either coverage or min_alignment_length."
-        ),
+        Field(description="Hit criteria. Hits satisfying these lead to oligo rejection."),
     ]
 
 

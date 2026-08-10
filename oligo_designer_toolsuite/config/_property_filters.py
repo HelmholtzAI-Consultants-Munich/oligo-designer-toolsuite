@@ -34,7 +34,7 @@ class IsoformConsensusFilterEnabled(FilterBaseConfigEnabled):
     isoform_consensus: Annotated[
         float,
         Field(
-            description="Threshold for isoform consensus filtering in %. Probes with isoform consensus values below this threshold will be filtered out. This ensures that selected probes target sequences that are conserved across multiple transcript isoforms.",
+            description="Minimum isoform consensus (%). Oligos must be covered by at least this fraction of a gene's transcripts.",
             ge=0,
             le=100,
         ),
@@ -78,7 +78,9 @@ class HomopolymericRunsFilterDisabled(FilterBaseConfigDisabled):
 class HomopolymericRunsFilterEnabled(FilterBaseConfigEnabled):
     homopolymeric_base_n: Annotated[
         HomopolymericRunThreshold,
-        Field(description="minimum number of nucleotides to consider it a homopolymeric run per base"),
+        Field(
+            description="Minimum run length per base to count as homopolymeric (any base not listed is unrestricted). Oligos with longer runs are rejected."
+        ),
     ]
 
 

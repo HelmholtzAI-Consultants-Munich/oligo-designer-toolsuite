@@ -30,17 +30,13 @@ VCFReferenceDatabaseT = Annotated[
     ),
 ]
 
-LengthMinT = Annotated[
-    NonNegativeInt, Field(description="Minimum length (in nucleotides) for oligo sequences.")
-]
-LengthMaxT = Annotated[
-    NonNegativeInt, Field(description="Maximum length (in nucleotides) for probe sequences.")
-]
+LengthMinT = Annotated[NonNegativeInt, Field(description=" Minimum allowed oligo length (bases)")]
+LengthMaxT = Annotated[NonNegativeInt, Field(description="Maximum allowed oligo length (bases).")]
 
 GCContentMinT = Annotated[
     float,
     Field(
-        description="Minimum GC content (in %) for probes. Probes with GC content below this value will be filtered out/rejected.",
+        description="Minimum GC content (%). Oligos below this are rejected.",
         ge=0,
         le=100,
     ),
@@ -48,7 +44,7 @@ GCContentMinT = Annotated[
 GCContentMaxT = Annotated[
     float,
     Field(
-        description="Maximum GC content (in %) for probes. Probes with GC content above this value will be filtered out/rejected.",
+        description="Maximum GC content (%). Oligos above this are rejected.",
         ge=0,
         le=100,
     ),
@@ -56,7 +52,7 @@ GCContentMaxT = Annotated[
 GCContentOptT = Annotated[
     float,
     Field(
-        description="Optimal GC content (in %) for target probes. Used in scoring to prioritize probes closer to this value.",
+        description="Target (optimal) GC content (%) for scoring.",
         ge=0,
         le=100,
     ),
@@ -68,33 +64,25 @@ FractionT = Annotated[float, Field(ge=0, le=1)]
 
 TmMinT = Annotated[
     NonNegativeFloat,
-    Field(
-        description="Minimum melting temperature (Tm) in degrees Celsius for probes. Probes with calculated Tm below this value will be filtered out."
-    ),
+    Field(description="Minimum melting temperature (°C). Oligos below this are rejected."),
 ]
 TmMaxT = Annotated[
     NonNegativeFloat,
-    Field(
-        description="Maximum melting temperature (Tm) in degrees Celsius for probes. Probes with calculated Tm above this value will be filtered out."
-    ),
+    Field(description="Maximum melting temperature (°C). Oligos above this are rejected."),
 ]
 TmOptT = Annotated[
     NonNegativeFloat,
-    Field(
-        description="Optimal melting temperature (Tm) for oligos in degrees Celsius. Used in scoring to prioritize probes closer to this value."
-    ),
+    Field(description="Target (optimal) Tm (°C) for scoring."),
 ]
 
 TSecondaryStructureT = Annotated[
     PositiveInt,
-    Field(
-        description="Temperature in degrees Celsius at which to evaluate secondary structure formation (free energy calculation). Secondary structures that form at this temperature can interfere with probe binding."
-    ),
+    Field(description="Temperature (°C) at which secondary structure free energy is evaluated."),
 ]
 
 SecondaryStructuresThresholdDeltaGT = Annotated[
     float,
     Field(
-        description="DeltaG threshold (in kcal/mol) for secondary structure stability. Probes with secondary structures having deltaG values more negative (more stable) than this threshold will be filtered out.",
+        description="Free-energy threshold (kcal/mol). Oligos with ΔG ≤ thr_DG (stable structure) are rejected.",
     ),
 ]
