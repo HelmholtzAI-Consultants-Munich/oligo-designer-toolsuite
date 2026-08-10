@@ -814,10 +814,17 @@ class OligoDatabase:
         """
         Writes a YAML file that only contains order information for the oligosets.
 
+        :param properties: A list of properties to include in the YAML file.
+        :type properties: str | list[str]
+        :param ascending: If True, sort oligosets by score in ascending order (the smaller the score the better the oligo set);
+            otherwise, in descending order (the higher the score the better the oligo set).
+        :type ascending: bool
         :param filename: Base name for the output YAML file, defaults to "ready_to_order".
         :type filename: str
         :param dir_output: Directory path where output files will be saved.
         :type dir_output: str
+        :param region_ids: Region identifier(s) to process. Can be a single region ID (str) or a list of region IDs (list[str]). If None, all regions in the database are processed, defaults to None.
+        :type region_ids: str | list[str] | None, optional
         :return: None
         """
         properties = cast_to_list(properties)

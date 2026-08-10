@@ -526,7 +526,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
         raise FeatureNotImplementedError("AI filters not supported for Bowtie2.")
 
     def _add_alignment_gaps(
-        self, search_results: pd.DataFrame, queries: list, references: list
+        self, table_hits: pd.DataFrame, queries: list, references: list
     ) -> tuple[list, list]:
         """
         Raises an error indicating that AI filters are not supported for Bowtie2.
