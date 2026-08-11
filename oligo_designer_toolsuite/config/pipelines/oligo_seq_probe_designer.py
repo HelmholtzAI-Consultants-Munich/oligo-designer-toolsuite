@@ -20,7 +20,7 @@ from oligo_designer_toolsuite.config._oligo_scoring import (
     IndependentSetSelection,
     IsoformConsensusScore,
     TargetedExonsScore,
-    TmScore,
+    TmScoreNormalized,
     UniformDistanceScore,
 )
 from oligo_designer_toolsuite.config._property_filters import (
@@ -190,7 +190,7 @@ class TargetProbeProbeSetSelection(BaseModel):
     GC_content_score: GCContentScoreExpanded = GCContentScoreExpanded(
         weight=1, GC_content_min=45, GC_content_opt=55, GC_content_max=65
     )
-    Tm_score: TmScore = TmScore(weight=1, Tm_min=50, Tm_opt=60, Tm_max=70)
+    Tm_score: TmScoreNormalized = TmScoreNormalized(weight=1, Tm_min=50, Tm_opt=60, Tm_max=70)
 
 
 class TargetProbeGlobal(BaseModel):
