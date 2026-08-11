@@ -86,3 +86,13 @@ SecondaryStructuresThresholdDeltaGT = Annotated[
         description="Free-energy threshold (kcal/mol). Oligos with ΔG ≤ thr_DG (stable structure) are rejected.",
     ),
 ]
+
+HomogeneousPropertiesWeightsT = Annotated[
+    dict[str, float],
+    Field(
+        min_length=1,
+        description=(
+            "Weights for property homogeneity in the score minimised across the set (weighted sum of variances)."
+        ),
+    ),
+]

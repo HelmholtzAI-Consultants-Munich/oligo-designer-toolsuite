@@ -150,9 +150,7 @@ readout_probes:
     probe_set_selection: # Select a set of readout probes with homogeneous Tm / GC content (uses HomogeneousPropertyOligoSelection).
       set_size: 16 # Total number of readout probes to select (must equal n_bits so each bit gets a probe).
       n_combinations: 100000 # Number of candidate sets to evaluate; higher values may find better sets but increase computation time.
-      homogeneous_properties_weights: # Weights for property homogeneity in the score minimised across the set (weighted sum of variances).
-        TmNN_oligo: 1.0 # Melting temperature.
-        GC_content_oligo: 1.0 # GC content.
+      homogeneous_properties_weights: {TmNN_oligo: 1.0, GC_content_oligo: 1.0} # Weights for property homogeneity in the score minimised across the set (weighted sum of variances).
 
     global_parameters:
       Tm_parameters:
