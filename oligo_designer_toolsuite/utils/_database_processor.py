@@ -2,12 +2,12 @@
 # imports
 ############################################
 
-import warnings
 from typing import Any
 
 from effidict import EffiDict, LRUReplacement, PickleBackend
 
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
+from oligo_designer_toolsuite.utils._logging import logger
 
 from ._checkers_and_helpers import cast_to_list, cast_to_list_of_lists
 
@@ -168,7 +168,7 @@ def collapse_properties_for_duplicated_sequences(
                 oligo_properties[key] = values
             else:
                 if key in database_sequence_types and oligo_properties[key] != values:
-                    warnings.warn(
+                    logger.warning(
                         f"Values for key {key} are different in the two oligo_properties dictionaries."
                     )
                 elif key not in database_sequence_types:
@@ -198,7 +198,7 @@ def check_if_region_in_database(
     keys = list(database.keys())
     for region_id in region_ids:
         if region_id not in keys:
-            warnings.warn(f"Region {region_id} not available in reference file.")
+            logger.warning(f"Region {region_id} not available in reference file.")
             if write_regions_with_insufficient_oligos:
                 with open(file_removed_regions, "a") as hanlde:
                     hanlde.write(f"{region_id}\t{'Not in Annotation'}\n")

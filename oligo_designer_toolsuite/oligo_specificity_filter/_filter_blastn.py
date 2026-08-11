@@ -4,7 +4,6 @@
 
 import os
 import subprocess
-import warnings
 from abc import abstractmethod
 
 import numpy as np
@@ -20,6 +19,7 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
     SeedregionSiteProperty,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
+from oligo_designer_toolsuite.utils import logger
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 from ..utils._sequence_processor import get_sequence_from_annotation
@@ -217,7 +217,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         """
         if "min_alignment_length" in self.hit_parameters.keys():
             if "coverage" in self.hit_parameters.keys():
-                warnings.warn(
+                logger.warning(
                     "Both, 'min_alignment_length' and 'coverage' parameters were provided. Using 'min_alignment_length' parameter."
                 )
             min_alignment_length = self.hit_parameters["min_alignment_length"]
@@ -590,7 +590,7 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         """
         if "min_alignment_length" in self.hit_parameters.keys():
             if "coverage" in self.hit_parameters.keys():
-                warnings.warn(
+                logger.warning(
                     "Both, 'min_alignment_length' and 'coverage' parameters were provided. Using 'min_alignment_length' parameter."
                 )
             min_alignment_length = self.hit_parameters["min_alignment_length"]
@@ -732,7 +732,10 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         ]
         calculator = PropertyCalculator(properties=properties)
         oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type=self.sequence_type, n_jobs=1
+            oligo_database=oligo_database,
+            sequence_type=self.sequence_type,
+            region_ids=region_id,
+            n_jobs=1,
         )
 
         seedregion = oligo_database.get_oligo_property_table(
@@ -848,7 +851,10 @@ class BlastNSeedregionSiteFilter(BlastNSeedregionFilterBase):
         ]
         calculator = PropertyCalculator(properties=properties)
         oligo_database = calculator.apply(
-            oligo_database=oligo_database, sequence_type=self.sequence_type, n_jobs=1
+            oligo_database=oligo_database,
+            sequence_type=self.sequence_type,
+            region_ids=region_id,
+            n_jobs=1,
         )
 
         seedregion = oligo_database.get_oligo_property_table(

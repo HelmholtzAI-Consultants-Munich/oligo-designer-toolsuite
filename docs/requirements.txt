@@ -15,7 +15,6 @@ argparse
 numpy
 pandas
 scipy
-iteration_utilities
 Bio
 pyyaml
 networkx

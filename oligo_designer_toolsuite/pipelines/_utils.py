@@ -3,69 +3,20 @@
 ############################################
 
 import inspect
-import logging
-import os
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from datetime import datetime
 from typing import Any, Callable, TypeVar, cast
 
 from Bio.SeqUtils import MeltingTemp as mt
 
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.utils import count_kmer_abundance
+from oligo_designer_toolsuite.utils import count_kmer_abundance, logger
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 ############################################
 # Utils functions
 ############################################
-
-
-def setup_logging(
-    dir_output: str,
-    pipeline_name: str,
-    log_level: int = logging.NOTSET,
-    include_console: bool = False,
-    log_start_message: bool = False,
-) -> None:
-    """
-    Set up logging configuration for a pipeline.
-
-    This function creates a consistent logging setup across all pipelines, creating a log file
-    in the output directory and optionally writing to the console.
-
-    :param dir_output: Directory path where output files will be saved.
-    :type dir_output: str
-    :param pipeline_name: Name of the pipeline (used in log file name).
-    :type pipeline_name: str
-    :param log_level: Logging level (default: logging.NOTSET).
-    :type log_level: int
-    :param include_console: Whether to also log to console (default: False).
-    :type include_console: bool
-    :param log_start_message: Whether to log a "START PIPELINE" message (default: False).
-    :type log_start_message: bool
-    """
-    timestamp = datetime.now()
-    file_logger = os.path.join(
-        dir_output,
-        f"log_{pipeline_name}_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
-    )
-
-    handlers: list[logging.Handler] = [logging.FileHandler(file_logger)]
-    if include_console:
-        handlers.append(logging.StreamHandler())
-
-    logging.basicConfig(
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        level=log_level,
-        handlers=handlers,
-        force=True,  # Force reconfiguration if logging was already configured
-    )
-    logging.captureWarnings(True)
-
-    if log_start_message:
-        logging.info("--------------START PIPELINE--------------")
 
 
 def base_parser() -> dict[str, Any]:
@@ -96,7 +47,7 @@ def base_log_parameters(parameters: dict[str, Any]) -> None:
     """
     for key, value in parameters.items():
         if key != "self":
-            logging.info("Parameter: %s = %s", key, value)
+            logger.info("Parameter: %s = %s", key, value)
 
 
 def log_parameters_and_get_db(func: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
@@ -116,10 +67,10 @@ def log_parameters_and_get_db(func: Callable[..., Any], args: tuple[Any, ...], k
     bound_args = sig.bind(*args, **kwargs)
     bound_args.apply_defaults()
 
-    logging.info("Function: %s", func.__name__)
+    logger.info("Function: %s", func.__name__)
     for name, value in bound_args.arguments.items():
         if name != "self":
-            logging.info("Parameter: %s = %s", name, value)
+            logger.info("Parameter: %s = %s", name, value)
 
     return bound_args.arguments.get("oligo_database")
 
@@ -179,13 +130,13 @@ def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
 
     def decorator(function: F) -> F:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            logging.info(f"Parameters {step_name}:")
+            logger.info(f"Parameters {step_name}:")
             log_parameters_and_get_db(function, args, kwargs)
 
             oligo_database = function(*args, **kwargs)
 
             num_genes, num_oligos = get_oligo_database_info(oligo_database.database)
-            logging.info(
+            logger.info(
                 f"Step - {step_name}: database contains {num_oligos} oligos from {num_genes} regions."
             )
 
@@ -208,7 +159,7 @@ def pipeline_step_advanced(step_name: str) -> Callable[[F], F]:
 
     def decorator(function: F) -> F:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            logging.info(f"Parameters {step_name}:")
+            logger.info(f"Parameters {step_name}:")
             oligo_database = log_parameters_and_get_db(function, args, kwargs)
 
             num_genes_before, num_oligos_before = get_oligo_database_info(oligo_database.database)
@@ -216,7 +167,7 @@ def pipeline_step_advanced(step_name: str) -> Callable[[F], F]:
             oligo_database, *returned_values = function(*args, **kwargs)
 
             num_genes_after, num_oligos_after = get_oligo_database_info(oligo_database.database)
-            logging.info(
+            logger.info(
                 f"Step - {step_name}: database contains {num_oligos_after} oligos from {num_genes_after} regions, "
                 f"{num_oligos_before - num_oligos_after} oligos and {num_genes_before - num_genes_after} regions removed."
             )
@@ -237,7 +188,7 @@ def check_content_oligo_database(oligo_database: OligoDatabase) -> None:
     :raises SystemExit: If the database is empty, exits with status code 1.
     """
     if len(oligo_database.get_regionid_list()) == 0:
-        logging.error("The oligo database is empty. Exiting program...")
+        logger.error("The oligo database is empty. Exiting program...")
         print("The oligo database is empty. Exiting program...")
         sys.exit(1)  # Exit the program with a status code of 1
 
@@ -321,7 +272,7 @@ def get_highly_abundant_kmer_sequences(
     for k, v in kmer_abundance.items():
         for kmer, abundance in v.items():
             if abundance > kmer_abundance_threshold[k]:
-                logging.info(
+                logger.info(
                     f"K-mer {kmer} has abundance {abundance} which is greater than the threshold {kmer_abundance_threshold[k]}"
                 )
                 highly_abundant_kmer_sequences.append(kmer)
