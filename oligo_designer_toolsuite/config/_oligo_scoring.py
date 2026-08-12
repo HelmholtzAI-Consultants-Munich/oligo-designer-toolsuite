@@ -94,14 +94,14 @@ class UTRScore(BaseModel):
     )
 
 
-class GCContentScoreBasic(BaseModel):
+class GCContentScore(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     weight: float = Field(description="Weight for GC content in the set-selection scoring function.")
     GC_content_opt: GCContentOptT
 
 
-class GCContentScoreExpanded(GCContentScoreBasic):
+class GCContentScoreNormalized(GCContentScore):
     GC_content_min: GCContentMinT
     GC_content_max: GCContentMaxT
 
