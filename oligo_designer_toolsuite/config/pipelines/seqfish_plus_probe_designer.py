@@ -246,7 +246,7 @@ class SeqfishPlusCodebookBase(BaseModel):
 
 class SeqfishPlusCodebookLoad(SeqfishPlusCodebookBase):
 
-    source: Literal["load"]
+    source: Literal["load"] = "load"
     file: str = Field(
         description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
     )
@@ -276,7 +276,7 @@ SeqfishPlusCodebook = Annotated[
 class SeqfishPlusReadoutProbeTableLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["load"]
+    source: Literal["load"] = "load"
     file: str = Field(
         description="Only used when source = load. Path to the bit-indexed readout probe table (csv/tsv) with columns 'barcode_round', 'pseudocolor', 'channel', and 'readout_probe_sequence'."
     )
@@ -367,7 +367,7 @@ class ReadoutProbes(BaseModel):
 class SeqfishPlusForwardPrimerLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["load"]
+    source: Literal["load"] = "load"
     sequence: DRNAT = Field(description="Only used when source = load.")
 
 
