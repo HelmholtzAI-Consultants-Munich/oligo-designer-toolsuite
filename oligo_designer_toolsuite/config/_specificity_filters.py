@@ -5,6 +5,10 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 from oligo_designer_toolsuite.config._general_models import BlastnHitParameters, BlastnSearchParameters
 from oligo_designer_toolsuite.config._types import FilesFastaReferenceDatabaseT, VCFReferenceDatabaseT
 
+SPECIFICITY_TARGET_DESC = "Ensure oligo specificity against a reference database (BLAST-based)."
+SPECIFICITY_READOUT_DESC = "Remove readout probes with significant hits to the reference (BLAST-based)."
+SPECIFICITY_PRIMER_DESC = "Ensure primer specificity against a reference database (BLAST-based)."
+
 
 class FilterBaseConfigEnabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -39,9 +43,14 @@ class CrossHybridizationBlastnFilterDisabled(FilterBaseConfigDisabled):
 
 
 class CrossHybridizationBlastnFilterEnabled(FilterBaseConfigEnabled):
+    """Remove oligos that may cross-hybridize to other probes (BLAST-based)."""
+
     search_parameters: Annotated[
         BlastnSearchParameters,
-        Field(description="BLAST options for the cross-hybridization search."),
+        Field(
+            description="BLAST options for the cross-hybridization search.",
+            json_schema_extra={"x-collapsed": True},
+        ),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
@@ -63,13 +72,14 @@ class SpecificityBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
-            description="BLASTN search parameters for specificity filtering. These parameters control how BLASTN searches are performed to identify off-target binding sites."
+            description="BLAST options for the specificity search.",
+            json_schema_extra={"x-collapsed": True},
         ),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
         Field(
-            description="Parameters for filtering BLASTN hits during specificity analysis. Use either coverage or min_alignment_length."
+            description="Hit criteria (either coverage % or mininum alignment length). Hits satisfying these lead to oligo rejection."
         ),
     ]
     files_fasta_reference_database: FilesFastaReferenceDatabaseT
@@ -88,7 +98,8 @@ class HybridizationProbesBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
-            description="BLASTN search parameters for filtering primers that match the assembled hybridization probes."
+            description="BLASTN search parameters for filtering primers that match the assembled hybridization probes.",
+            json_schema_extra={"x-collapsed": True},
         ),
     ]
     hit_parameters: Annotated[
@@ -101,7 +112,10 @@ class HybridizationProbesBlastnFilterEnabled(FilterBaseConfigEnabled):
 
 HybridizationProbesBlastnFilterConfig = Annotated[
     HybridizationProbesBlastnFilterEnabled | HybridizationProbesBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(
+        discriminator="enabled",
+        description="Remove primers that match the assembled hybridization probes (BLAST-based).",
+    ),
 ]
 
 

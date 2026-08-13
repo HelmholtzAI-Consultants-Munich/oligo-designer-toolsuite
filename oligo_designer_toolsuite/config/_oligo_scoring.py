@@ -10,18 +10,25 @@ from oligo_designer_toolsuite.config._types import (
     TmOptT,
 )
 
+PROBE_SET_SELECTION_DESC = (
+    "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
+)
+
 
 class IndependentSetSelection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     n_sets: PositiveInt = Field(
         description="Number of probe sets to generate per gene.",
+        json_schema_extra={"x-quick-setting": True},
     )
     set_size_min: PositiveInt = Field(
         description="Minimum set size. Genes that cannot form a set of at least this size are reported as insufficient.",
+        json_schema_extra={"x-quick-setting": True},
     )
     set_size_opt: PositiveInt = Field(
         description="Preferred (optimal) number of oligos per set.",
+        json_schema_extra={"x-quick-setting": True},
     )
     distance_between_probes: int = Field(
         description="Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).",
@@ -94,14 +101,14 @@ class UTRScore(BaseModel):
     )
 
 
-class GCContentScoreBasic(BaseModel):
+class GCContentScore(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     weight: float = Field(description="Weight for GC content in the set-selection scoring function.")
     GC_content_opt: GCContentOptT
 
 
-class GCContentScoreExpanded(GCContentScoreBasic):
+class GCContentScoreNormalized(GCContentScore):
     GC_content_min: GCContentMinT
     GC_content_max: GCContentMaxT
 

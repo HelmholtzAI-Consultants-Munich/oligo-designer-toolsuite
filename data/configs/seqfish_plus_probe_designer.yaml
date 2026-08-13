@@ -52,7 +52,7 @@ target_probes:
       enabled: true # Turn this filter on or off.
       search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000} # BLAST options for the specificity search.
       hit_parameters: {"min_alignment_length": 15} # Hit criteria. Hits satisfying these lead to oligo rejection.
-      files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter. Use genomic_region_generator for custom reference sets.
+      files_fasta_reference_database: # FASTA file(s) used as reference for specificity.
         - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
         - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
@@ -112,7 +112,7 @@ readout_probes:
         enabled: true # Turn this filter on or off.
         search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
         hit_parameters: {"min_alignment_length": 10}
-        files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter.
+        files_fasta_reference_database: # FASTA file(s) used as reference for specificity.
           - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
           - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
@@ -169,7 +169,7 @@ primers:
         enabled: true
         search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
         hit_parameters: {"min_alignment_length": 14}
-        files_fasta_reference_database: # FASTA file(s) used as reference for primer specificity.
+        files_fasta_reference_database: # FASTA file(s) used as reference for specificity.
           - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
           - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 

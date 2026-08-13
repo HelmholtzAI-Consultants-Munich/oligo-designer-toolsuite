@@ -5,22 +5,20 @@ from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveInt
 RegionListT = Annotated[
     str | None,
     Field(
-        description="File with a list the genes used to generate the probe sequences, leave empty if all the genes are used. For examples, see 'data/genes'."
+        description="Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA."
     ),
 ]
 FastaFileListT = Annotated[list[str], Field(min_length=1)]
 FilesFastaDatabaseT = Annotated[
     FastaFileListT,
     Field(
-        description="List of paths to FASTA file(s) containing sequences from which probes will be generated. These files should contain genomic regions of interest (e.g., exons, exon-exon junctions). Hint: use the genomic_region_generator pipeline to create FASTA files of genomic regions of interest. For examples, see 'data/genomic_regions'."
+        description="FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.."
     ),
 ]
 
 FilesFastaReferenceDatabaseT = Annotated[
     FastaFileListT,
-    Field(
-        description="List of paths to FASTA file(s) containing reference sequences against which specificity will be evaluated. These typically include the entire genome or transcriptome to identify off-target binding sites. Hint: use the genomic_region_generator pipeline to create FASTA files of genomic regions of interest. For examples, see 'data/genomic_regions'."
-    ),
+    Field(description="FASTA file(s) used as reference for specificity."),
 ]
 
 VCFReferenceDatabaseT = Annotated[
@@ -30,7 +28,7 @@ VCFReferenceDatabaseT = Annotated[
     ),
 ]
 
-LengthMinT = Annotated[NonNegativeInt, Field(description=" Minimum allowed oligo length (bases)")]
+LengthMinT = Annotated[NonNegativeInt, Field(description="Minimum allowed oligo length (bases)")]
 LengthMaxT = Annotated[NonNegativeInt, Field(description="Maximum allowed oligo length (bases).")]
 
 GCContentMinT = Annotated[
