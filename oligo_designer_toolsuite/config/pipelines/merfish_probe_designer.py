@@ -276,10 +276,12 @@ class MerfishCodebookBase(BaseModel):
     n_bits: PositiveInt = Field(
         description="Number of bits in each barcode.",
         default=16,
+        json_schema_extra={"x-quick-setting": True},
     )
     hamming_weight: PositiveInt = Field(
         description="Number of bits set to 1 in each barcode (MERFISH standard = 2). Equals readout overhangs per encoding probe (first half 5' of target, second half 3').",
         default=2,
+        json_schema_extra={"x-quick-setting": True},
     )
 
 
