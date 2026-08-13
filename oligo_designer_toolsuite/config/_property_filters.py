@@ -18,12 +18,12 @@ from oligo_designer_toolsuite.config._types import (
 
 class FilterBaseConfigEnabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    enabled: Literal[True]
+    enabled: Literal[True] = Field(description="Turn this filter on or off.")
 
 
 class FilterBaseConfigDisabled(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    enabled: Literal[False]
+    enabled: Literal[False] = Field(description="Turn this filter on or off.")
 
 
 class IsoformConsensusFilterDisabled(FilterBaseConfigDisabled):
@@ -42,7 +42,11 @@ class IsoformConsensusFilterEnabled(FilterBaseConfigEnabled):
 
 
 IsoformConsensusFilterConfig = Annotated[
-    IsoformConsensusFilterEnabled | IsoformConsensusFilterDisabled, Field(discriminator="enabled")
+    IsoformConsensusFilterEnabled | IsoformConsensusFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Require oligos to be supported by a minimum fraction of gene transcripts.",
+    ),
 ]
 
 
@@ -62,11 +66,15 @@ TargetedExonsFilterConfig = Annotated[
 
 
 class HardMaskedFilterConfig(BaseModel):
+    """Exclude oligos overlapping hard-masked (e.g. N) regions in the reference."""
+
     model_config = ConfigDict(extra="forbid")
     enabled: bool
 
 
 class SoftMaskedFilterConfig(BaseModel):
+    """Exclude oligos overlapping soft-masked (lowercase) regions in the reference."""
+
     model_config = ConfigDict(extra="forbid")
     enabled: bool
 
@@ -85,7 +93,10 @@ class HomopolymericRunsFilterEnabled(FilterBaseConfigEnabled):
 
 
 HomopolymericRunsFilterConfig = Annotated[
-    HomopolymericRunsFilterEnabled | HomopolymericRunsFilterDisabled, Field(discriminator="enabled")
+    HomopolymericRunsFilterEnabled | HomopolymericRunsFilterDisabled,
+    Field(
+        discriminator="enabled", description="Exclude oligos containing long homopolymeric runs (e.g. AAAAA)."
+    ),
 ]
 
 
@@ -107,7 +118,8 @@ class GCContentFilterEnabled(FilterBaseConfigEnabled):
 
 
 GCContentFilterConfig = Annotated[
-    GCContentFilterEnabled | GCContentFilterDisabled, Field(discriminator="enabled")
+    GCContentFilterEnabled | GCContentFilterDisabled,
+    Field(discriminator="enabled", description="Enforce GC content within a specified range."),
 ]
 
 
@@ -149,7 +161,8 @@ class SelfComplementarityFilterEnabled(FilterBaseConfigEnabled):
 
 
 SelfComplementarityFilterConfig = Annotated[
-    SelfComplementarityFilterEnabled | SelfComplementarityFilterDisabled, Field(discriminator="enabled")
+    SelfComplementarityFilterEnabled | SelfComplementarityFilterDisabled,
+    Field(discriminator="enabled", description="Limit self-complementarity to avoid hairpins."),
 ]
 
 
@@ -186,7 +199,13 @@ class GCClampFilterEnabled(FilterBaseConfigEnabled):
     ]
 
 
-GCClampFilterConfig = Annotated[GCClampFilterEnabled | GCClampFilterDisabled, Field(discriminator="enabled")]
+GCClampFilterConfig = Annotated[
+    GCClampFilterEnabled | GCClampFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Require G/C nucleotides at the 3' end of the primer for stable binding.",
+    ),
+]
 
 
 class ComplementReversePrimerFilterDisabled(FilterBaseConfigDisabled):
@@ -204,7 +223,10 @@ class ComplementReversePrimerFilterEnabled(FilterBaseConfigEnabled):
 
 ComplementReversePrimerFilterConfig = Annotated[
     ComplementReversePrimerFilterEnabled | ComplementReversePrimerFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(
+        discriminator="enabled",
+        description="Limit complementarity between the forward primer and the (known) reverse primer to prevent primer-dimer formation.",
+    ),
 ]
 
 
@@ -218,5 +240,9 @@ class SecondaryStructureFilterEnabled(FilterBaseConfigEnabled):
 
 
 SecondaryStructureFilterConfig = Annotated[
-    SecondaryStructureFilterEnabled | SecondaryStructureFilterDisabled, Field(discriminator="enabled")
+    SecondaryStructureFilterEnabled | SecondaryStructureFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Reject oligos with stable secondary structure at the given temperature.",
+    ),
 ]

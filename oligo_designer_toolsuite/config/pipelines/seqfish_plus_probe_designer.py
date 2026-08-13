@@ -22,7 +22,8 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    GCContentScoreBasic,
+    PROBE_SET_SELECTION_DESC,
+    GCContentScore,
     IndependentSetSelection,
     UTRScore,
 )
@@ -47,6 +48,9 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_PRIMER_DESC,
+    SPECIFICITY_READOUT_DESC,
+    SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterConfig,
     CrossHybridizationBlastnFilterEnabled,
     HybridizationProbesBlastnFilterConfig,
@@ -77,27 +81,21 @@ class SeqfishPlusSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled
 
 
 class SeqfishPlusTargetSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = Field(
-        default=BlastnSearchParameters(
-            perc_identity=100,
-            strand="minus",
-            word_size=7,
-            dust="no",
-            soft_masking=False,
-            max_target_seqs=10,
-            max_hsps=1000,
-        ),
-        description="BLAST options for the specificity search.",
+    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
+        perc_identity=100,
+        strand="minus",
+        word_size=7,
+        dust="no",
+        soft_masking=False,
+        max_target_seqs=10,
+        max_hsps=1000,
     )
-    hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParameters(min_alignment_length=15),
-        description="Hit criteria. Hits satisfying these lead to oligo rejection.",
-    )
+    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=15)
 
 
 SeqfishPlusTargetSpecificityBlastnFilterConfig = Annotated[
     SeqfishPlusTargetSpecificityBlastnFilterEnabled | SeqfishPlusSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(discriminator="enabled", description=SPECIFICITY_TARGET_DESC),
 ]
 
 
@@ -116,7 +114,7 @@ class SeqfishPlusReadoutSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEn
 
 SeqfishPlusReadoutSpecificityBlastnFilterConfig = Annotated[
     SeqfishPlusReadoutSpecificityBlastnFilterEnabled | SeqfishPlusSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(discriminator="enabled", description=SPECIFICITY_READOUT_DESC),
 ]
 
 
@@ -135,7 +133,7 @@ class SeqfishPlusPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEna
 
 SeqfishPlusPrimerSpecificityBlastnFilterConfig = Annotated[
     SeqfishPlusPrimerSpecificityBlastnFilterEnabled | SeqfishPlusSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(discriminator="enabled", description=SPECIFICITY_PRIMER_DESC),
 ]
 
 
@@ -164,42 +162,28 @@ class TargetProbeOligoGeneration(BaseModel):
 class TargetProbePropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    isoform_consensus_filter: IsoformConsensusFilterConfig = Field(
-        default=IsoformConsensusFilterEnabled(enabled=True, isoform_consensus=100),
-        description="Require oligos to be supported by a minimum fraction of gene transcripts.",
+    isoform_consensus_filter: IsoformConsensusFilterConfig = IsoformConsensusFilterEnabled(
+        enabled=True, isoform_consensus=100
     )
-    hard_masked_sequences_filter: HardMaskedFilterConfig = Field(
-        default=HardMaskedFilterConfig(enabled=True),
-        description="Exclude oligos overlapping hard-masked (e.g. N) regions in the reference.",
+    hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
+    soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
+    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
+        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=5, T=5, C=5, G=5)
     )
-    soft_masked_sequences_filter: SoftMaskedFilterConfig = Field(
-        default=SoftMaskedFilterConfig(enabled=True),
-        description="Exclude oligos overlapping soft-masked (lowercase) regions in the reference.",
+    GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
+        enabled=True, GC_content_min=45, GC_content_max=65
     )
-    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = Field(
-        default=HomopolymericRunsFilterEnabled(
-            enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=5, T=5, C=5, G=5)
-        ),
-        description="Exclude oligos containing long homopolymeric runs (e.g. AAAAA).",
-    )
-    GC_content_filter: GCContentFilterConfig = Field(
-        default=GCContentFilterEnabled(enabled=True, GC_content_min=45, GC_content_max=65),
-        description="Enforce GC content within a specified range.",
-    )
-    secondary_structure_filter: SecondaryStructureFilterConfig = Field(
-        default=SecondaryStructureFilterEnabled(enabled=True, T=76, thr_DG=0),
-        description="Reject oligos with stable secondary structure at the given temperature.",
+    secondary_structure_filter: SecondaryStructureFilterConfig = SecondaryStructureFilterEnabled(
+        enabled=True, T=76, thr_DG=0
     )
 
 
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SeqfishPlusTargetSpecificityBlastnFilterConfig = Field(
-        description="Ensure oligo specificity against a reference database (BLAST-based)."
-    )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = Field(
-        default=CrossHybridizationBlastnFilterEnabled(
+    specificity_blastn_filter: SeqfishPlusTargetSpecificityBlastnFilterConfig
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
+        CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
@@ -210,8 +194,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 max_target_seqs=10,
             ),
             hit_parameters=BlastnHitParameters(min_alignment_length=17),
-        ),
-        description="Remove oligos that may cross-hybridize to other probes (BLAST-based).",
+        )
     )
 
 
@@ -229,7 +212,7 @@ class TargetProbeProbeSetSelection(BaseModel):
         jaccard_opt=0.5,
         jaccard_step=0.1,
     )
-    GC_content_score: GCContentScoreBasic = GCContentScoreBasic(weight=1, GC_content_opt=55)
+    GC_content_score: GCContentScore = GCContentScore(weight=1, GC_content_opt=55)
     UTR_score: UTRScore = UTRScore(weight=10)
 
 
@@ -239,9 +222,7 @@ class TargetProbes(BaseModel):
     oligo_generation: TargetProbeOligoGeneration
     property_filters: TargetProbePropertyFilter
     specificity_filters: TargetProbeSpecificityFilter
-    probe_set_selection: TargetProbeProbeSetSelection = Field(
-        description="Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
-    )
+    probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
 
 
 ############################################
@@ -258,7 +239,7 @@ class SeqfishPlusCodebookLoad(BaseModel):
 
     source: Literal["load"]
     file: str = Field(
-        description="Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
+        description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
     )
     n_barcode_rounds: PositiveInt = Field(
         description="Number of barcode rounds. Equals active bits per gene and readout overhangs per encoding probe (first half 5' of target, second half 3').",
@@ -293,7 +274,10 @@ class SeqfishPlusCodebookGenerate(BaseModel):
 
 
 SeqfishPlusCodebook = Annotated[
-    SeqfishPlusCodebookLoad | SeqfishPlusCodebookGenerate, Field(discriminator="source")
+    # use this order so that react-jsonschema-forms in ODT-Cloud selects the first
+    # model as a default when no defaults are specified (as is currently the case)
+    SeqfishPlusCodebookGenerate | SeqfishPlusCodebookLoad,
+    Field(discriminator="source"),
 ]
 
 
@@ -302,7 +286,7 @@ class SeqfishPlusReadoutProbeTableLoad(BaseModel):
 
     source: Literal["load"]
     file: str = Field(
-        description="Path to the bit-indexed readout probe table (csv/tsv) with columns 'barcode_round', 'pseudocolor', 'channel', and 'readout_probe_sequence'."
+        description="Only used when source = load. Path to the bit-indexed readout probe table (csv/tsv) with columns 'barcode_round', 'pseudocolor', 'channel', and 'readout_probe_sequence'."
     )
 
 
@@ -326,26 +310,20 @@ class SeqfishPlusReadoutProbeOligoGeneration(BaseModel):
 class SeqfishPlusReadoutProbePropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = Field(
-        default=HomopolymericRunsFilterEnabled(
-            enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(G=3)
-        ),
-        description="Exclude probes containing long homopolymeric runs.",
+    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
+        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(G=3)
     )
-    GC_content_filter: GCContentFilterConfig = Field(
-        default=GCContentFilterEnabled(enabled=True, GC_content_min=40, GC_content_max=60),
-        description="Enforce GC content within a specified range.",
+    GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
+        enabled=True, GC_content_min=40, GC_content_max=60
     )
 
 
 class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SeqfishPlusReadoutSpecificityBlastnFilterConfig = Field(
-        description="Remove readout probes with significant hits to the reference (BLAST-based)."
-    )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = Field(
-        default=CrossHybridizationBlastnFilterEnabled(
+    specificity_blastn_filter: SeqfishPlusReadoutSpecificityBlastnFilterConfig
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
+        CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -356,8 +334,7 @@ class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
                 max_target_seqs=10,
             ),
             hit_parameters=BlastnHitParameters(min_alignment_length=10),
-        ),
-        description="Remove readout probes that cross-hybridize to each other (BLAST-based).",
+        )
     )
 
 
@@ -365,20 +342,23 @@ class SeqfishPlusReadoutProbeTableGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: SeqfishPlusReadoutProbeOligoGeneration = SeqfishPlusReadoutProbeOligoGeneration()
-    property_filters: SeqfishPlusReadoutProbePropertyFilter = SeqfishPlusReadoutProbePropertyFilter()
+    oligo_generation: SeqfishPlusReadoutProbeOligoGeneration
+    property_filters: SeqfishPlusReadoutProbePropertyFilter
     specificity_filters: SeqfishPlusReadoutProbeSpecificityFilter
 
 
 SeqfishPlusReadoutProbeTable = Annotated[
-    SeqfishPlusReadoutProbeTableLoad | SeqfishPlusReadoutProbeTableGenerate, Field(discriminator="source")
+    # use this order so that react-jsonschema-forms in ODT-Cloud selects the first
+    # model as a default when no defaults are specified (as is currently the case)
+    SeqfishPlusReadoutProbeTableGenerate | SeqfishPlusReadoutProbeTableLoad,
+    Field(discriminator="source"),
 ]
 
 
 class ReadoutProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    codebook: SeqfishPlusCodebook = SeqfishPlusCodebookGenerate()
+    codebook: SeqfishPlusCodebook
     readout_probe_table: SeqfishPlusReadoutProbeTable
 
 
@@ -396,9 +376,7 @@ class SeqfishPlusForwardPrimerLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["load"]
-    sequence: DRNAT = Field(
-        description="Forward primer sequence placed at the 5' end of the DNA template probe."
-    )
+    sequence: DRNAT = Field(description="Only used when source = load.")
 
 
 class SeqfishPlusForwardPrimerOligoGeneration(BaseModel):
@@ -424,21 +402,17 @@ class SeqfishPlusForwardPrimerPropertyFilter(BaseModel):
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
         enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4)
     )
-    GC_content_filter: GCContentFilterConfig = Field(
-        default=GCContentFilterEnabled(enabled=True, GC_content_min=50, GC_content_max=65),
-        description="Enforce GC content within a specified range.",
+    GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
+        enabled=True, GC_content_min=50, GC_content_max=65
     )
-    GC_clamp_filter: GCClampFilterConfig = Field(
-        default=GCClampFilterEnabled(enabled=True, number_GC_GCclamp=1, number_three_prime_base_GCclamp=2),
-        description="Require G/C nucleotides at the 3' end of the primer for stable binding.",
+    GC_clamp_filter: GCClampFilterConfig = GCClampFilterEnabled(
+        enabled=True, number_GC_GCclamp=1, number_three_prime_base_GCclamp=2
     )
-    self_complementarity_filter: SelfComplementarityFilterConfig = Field(
-        default=SelfComplementarityFilterEnabled(enabled=True, max_len_selfcomplement=6),
-        description="Limit self-complementarity to avoid hairpins.",
+    self_complementarity_filter: SelfComplementarityFilterConfig = SelfComplementarityFilterEnabled(
+        enabled=True, max_len_selfcomplement=6
     )
-    complement_reverse_primer_filter: ComplementReversePrimerFilterConfig = Field(
-        default=ComplementReversePrimerFilterEnabled(enabled=True, max_len_complement=5),
-        description="Limit complementarity between the forward primer and the (known) reverse primer to prevent primer-dimer formation.",
+    complement_reverse_primer_filter: ComplementReversePrimerFilterConfig = (
+        ComplementReversePrimerFilterEnabled(enabled=True, max_len_complement=5)
     )
     Tm_filter: TmFilterConfig = TmFilterEnabled(enabled=True, Tm_min=60, Tm_max=75)
     secondary_structure_filter: SecondaryStructureFilterConfig = SecondaryStructureFilterEnabled(
@@ -449,11 +423,9 @@ class SeqfishPlusForwardPrimerPropertyFilter(BaseModel):
 class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SeqfishPlusPrimerSpecificityBlastnFilterConfig = Field(
-        description="Ensure primer specificity against a reference database (BLAST-based)."
-    )
-    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = Field(
-        default=HybridizationProbesBlastnFilterEnabled(
+    specificity_blastn_filter: SeqfishPlusPrimerSpecificityBlastnFilterConfig
+    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = (
+        HybridizationProbesBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -465,8 +437,7 @@ class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
                 max_hsps=1000,
             ),
             hit_parameters=BlastnHitParameters(min_alignment_length=11),
-        ),
-        description="Remove primers that match the assembled hybridization probes (BLAST-based).",
+        )
     )
 
 
@@ -499,14 +470,17 @@ class SeqfishPlusForwardPrimerGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: SeqfishPlusForwardPrimerOligoGeneration = SeqfishPlusForwardPrimerOligoGeneration()
-    property_filters: SeqfishPlusForwardPrimerPropertyFilter = SeqfishPlusForwardPrimerPropertyFilter()
+    oligo_generation: SeqfishPlusForwardPrimerOligoGeneration
+    property_filters: SeqfishPlusForwardPrimerPropertyFilter
     specificity_filters: SeqfishPlusForwardPrimerSpecificityFilter
-    global_parameters: SeqfishPlusForwardPrimerGlobal = SeqfishPlusForwardPrimerGlobal()
+    global_parameters: SeqfishPlusForwardPrimerGlobal
 
 
 SeqfishPlusForwardPrimer = Annotated[
-    SeqfishPlusForwardPrimerLoad | SeqfishPlusForwardPrimerGenerate, Field(discriminator="source")
+    # use this order so that react-jsonschema-forms in ODT-Cloud selects the first
+    # model as a default when no defaults are specified (as is currently the case)
+    SeqfishPlusForwardPrimerGenerate | SeqfishPlusForwardPrimerLoad,
+    Field(discriminator="source"),
 ]
 
 
@@ -515,7 +489,7 @@ class SeqfishPlusReversePrimer(BaseModel):
 
     source: Literal["load"] = "load"
     sequence: DRNAT = Field(
-        description="Reverse primer sequence placed at the 3' end of the DNA template probe. The default is the reverse complement of the 20 nt T7 promoter sequence.",
+        description="Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.",
         default="CCCTATAGTGAGTCGTATTA",
     )
 
@@ -524,7 +498,7 @@ class Primers(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     forward_primer: SeqfishPlusForwardPrimer
-    reverse_primer: SeqfishPlusReversePrimer = SeqfishPlusReversePrimer()
+    reverse_primer: SeqfishPlusReversePrimer
 
 
 ############################################
