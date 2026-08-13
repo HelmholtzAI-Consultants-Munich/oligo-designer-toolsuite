@@ -49,6 +49,8 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_PRIMER_DESC,
+    SPECIFICITY_READOUT_DESC,
     SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterConfig,
     CrossHybridizationBlastnFilterEnabled,
@@ -120,7 +122,7 @@ class MerfishReadoutSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnable
 
 MerfishReadoutSpecificityBlastnFilterConfig = Annotated[
     MerfishReadoutSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(discriminator="enabled", description=SPECIFICITY_READOUT_DESC),
 ]
 
 
@@ -139,7 +141,7 @@ class MerfishPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled
 
 MerfishPrimerSpecificityBlastnFilterConfig = Annotated[
     MerfishPrimerSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(discriminator="enabled", description=SPECIFICITY_PRIMER_DESC),
 ]
 
 
@@ -268,44 +270,46 @@ class TargetProbes(BaseModel):
 # extra="ignore" so the shipped YAML validates in either branch.
 
 
-class MerfishCodebookLoad(BaseModel):
+class MerfishCodebookBase(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["load"]
-    file: str = Field(
-        description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
-    )
-    hamming_weight: PositiveInt = Field(
-        description="Number of bits set to 1 in each barcode (MERFISH standard = 2). Equals readout overhangs per encoding probe (first half 5' of target, second half 3').",
-        default=2,
-    )
-
-
-class MerfishCodebookGenerate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    source: Literal["generate"]
     n_bits: PositiveInt = Field(
         description="Number of bits in each barcode.",
         default=16,
     )
-    min_hamming_dist: PositiveInt = Field(
-        description="Minimum Hamming distance between any two valid barcodes (MHD4 = 4 for single-bit error correction).",
-        default=4,
-    )
     hamming_weight: PositiveInt = Field(
         description="Number of bits set to 1 in each barcode (MERFISH standard = 2). Equals readout overhangs per encoding probe (first half 5' of target, second half 3').",
         default=2,
     )
 
 
-MerfishCodebook = Annotated[MerfishCodebookLoad | MerfishCodebookGenerate, Field(discriminator="source")]
+class MerfishCodebookLoad(MerfishCodebookBase):
+    source: Literal["load"] = "load"
+    file: str = Field(
+        description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
+    )
+
+
+class MerfishCodebookGenerate(MerfishCodebookBase):
+    source: Literal["generate"] = "generate"
+    min_hamming_dist: PositiveInt = Field(
+        description="Minimum Hamming distance between any two valid barcodes (MHD4 = 4 for single-bit error correction).",
+        default=4,
+    )
+
+
+MerfishCodebook = Annotated[
+    # use this order so that react-jsonschema-forms in ODT-Cloud selects the first
+    # model as a default when no defaults are specified (as is currently the case)
+    MerfishCodebookGenerate | MerfishCodebookLoad,
+    Field(discriminator="source"),
+]
 
 
 class MerfishReadoutProbeTableLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["load"]
+    source: Literal["load"] = "load"
     file: str = Field(
         description="Path to the bit-indexed readout probe table (csv/tsv) with columns 'channel', 'readout_probe_id', 'readout_probe_sequence'."
     )
@@ -331,26 +335,20 @@ class MerfishReadoutProbeOligoGeneration(BaseModel):
 class MerfishReadoutProbePropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = Field(
-        default=HomopolymericRunsFilterEnabled(
-            enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(G=3)
-        ),
-        description="Exclude probes containing long homopolymeric runs.",
+    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
+        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(G=3)
     )
-    GC_content_filter: GCContentFilterConfig = Field(
-        default=GCContentFilterEnabled(enabled=True, GC_content_min=40, GC_content_max=50),
-        description="Enforce GC content within a specified range.",
+    GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
+        enabled=True, GC_content_min=40, GC_content_max=50
     )
 
 
 class MerfishReadoutProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishReadoutSpecificityBlastnFilterConfig = Field(
-        description="Remove readout probes with significant hits to the reference (BLAST-based)."
-    )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = Field(
-        default=CrossHybridizationBlastnFilterEnabled(
+    specificity_blastn_filter: MerfishReadoutSpecificityBlastnFilterConfig
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
+        CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -361,8 +359,7 @@ class MerfishReadoutProbeSpecificityFilter(BaseModel):
                 max_target_seqs=10,
             ),
             hit_parameters=BlastnHitParameters(min_alignment_length=11),
-        ),
-        description="Remove readout probes that cross-hybridize to each other (BLAST-based).",
+        )
     )
 
 
@@ -408,7 +405,7 @@ class MerfishReadoutProbesGlobal(BaseModel):
 class MerfishReadoutProbeTableGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["generate"]
+    source: Literal["generate"] = "generate"
     channels_ids: list[str] = Field(
         description="Fluorescence channels used for round-robin channel assignment across bits.",
         default=["Alexa488", "Cy3b", "Alexa647"],
@@ -421,7 +418,10 @@ class MerfishReadoutProbeTableGenerate(BaseModel):
 
 
 MerfishReadoutProbeTable = Annotated[
-    MerfishReadoutProbeTableLoad | MerfishReadoutProbeTableGenerate, Field(discriminator="source")
+    # use this order so that react-jsonschema-forms in ODT-Cloud selects the first
+    # model as a default when no defaults are specified (as is currently the case)
+    MerfishReadoutProbeTableGenerate | MerfishReadoutProbeTableLoad,
+    Field(discriminator="source"),
 ]
 
 
@@ -445,10 +445,8 @@ class ReadoutProbes(BaseModel):
 class MerfishForwardPrimerLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["load"]
-    sequence: DRNAT = Field(
-        description="Forward primer sequence placed at the 5' end of the DNA template probe."
-    )
+    source: Literal["load"] = "load"
+    sequence: DRNAT = Field(description="Only used when source = load.")
 
 
 class MerfishForwardPrimerOligoGeneration(BaseModel):
@@ -474,21 +472,17 @@ class MerfishForwardPrimerPropertyFilter(BaseModel):
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
         enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4)
     )
-    GC_content_filter: GCContentFilterConfig = Field(
-        default=GCContentFilterEnabled(enabled=True, GC_content_min=50, GC_content_max=65),
-        description="Enforce GC content within a specified range.",
+    GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
+        enabled=True, GC_content_min=50, GC_content_max=65
     )
-    GC_clamp_filter: GCClampFilterConfig = Field(
-        default=GCClampFilterEnabled(enabled=True, number_GC_GCclamp=1, number_three_prime_base_GCclamp=2),
-        description="Require G/C nucleotides at the 3' end of the primer for stable binding.",
+    GC_clamp_filter: GCClampFilterConfig = GCClampFilterEnabled(
+        enabled=True, number_GC_GCclamp=1, number_three_prime_base_GCclamp=2
     )
-    self_complementarity_filter: SelfComplementarityFilterConfig = Field(
-        default=SelfComplementarityFilterEnabled(enabled=True, max_len_selfcomplement=6),
-        description="Limit self-complementarity to avoid hairpins.",
+    self_complementarity_filter: SelfComplementarityFilterConfig = SelfComplementarityFilterEnabled(
+        enabled=True, max_len_selfcomplement=6
     )
-    complement_reverse_primer_filter: ComplementReversePrimerFilterConfig = Field(
-        default=ComplementReversePrimerFilterEnabled(enabled=True, max_len_complement=5),
-        description="Limit complementarity between the forward primer and the (known) reverse primer to prevent primer-dimer formation.",
+    complement_reverse_primer_filter: ComplementReversePrimerFilterConfig = (
+        ComplementReversePrimerFilterEnabled(enabled=True, max_len_complement=5)
     )
     Tm_filter: TmFilterConfig = TmFilterEnabled(enabled=True, Tm_min=60, Tm_max=75)
     secondary_structure_filter: SecondaryStructureFilterConfig = SecondaryStructureFilterEnabled(
@@ -499,11 +493,9 @@ class MerfishForwardPrimerPropertyFilter(BaseModel):
 class MerfishForwardPrimerSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishPrimerSpecificityBlastnFilterConfig = Field(
-        description="Ensure primer specificity against a reference database (BLAST-based)."
-    )
-    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = Field(
-        default=HybridizationProbesBlastnFilterEnabled(
+    specificity_blastn_filter: MerfishPrimerSpecificityBlastnFilterConfig
+    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = (
+        HybridizationProbesBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -515,8 +507,7 @@ class MerfishForwardPrimerSpecificityFilter(BaseModel):
                 max_hsps=1000,
             ),
             hit_parameters=BlastnHitParameters(min_alignment_length=11),
-        ),
-        description="Remove primers that match the assembled hybridization probes (BLAST-based).",
+        )
     )
 
 
@@ -556,7 +547,10 @@ class MerfishForwardPrimerGenerate(BaseModel):
 
 
 MerfishForwardPrimer = Annotated[
-    MerfishForwardPrimerLoad | MerfishForwardPrimerGenerate, Field(discriminator="source")
+    # use this order so that react-jsonschema-forms in ODT-Cloud selects the first
+    # model as a default when no defaults are specified (as is currently the case)
+    MerfishForwardPrimerGenerate | MerfishForwardPrimerLoad,
+    Field(discriminator="source"),
 ]
 
 
@@ -565,7 +559,7 @@ class MerfishReversePrimer(BaseModel):
 
     source: Literal["load"] = "load"
     sequence: DRNAT = Field(
-        description="Reverse primer sequence placed at the 3' end of the DNA template probe. The default is the reverse complement of the 20 nt T7 promoter sequence.",
+        description="The default is the reverse complement of 20 nt T7 promoter sequence. Only used when source = load.",
         default="CCCTATAGTGAGTCGTATTA",
     )
 
@@ -574,7 +568,7 @@ class Primers(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     forward_primer: MerfishForwardPrimer
-    reverse_primer: MerfishReversePrimer = MerfishReversePrimer()
+    reverse_primer: MerfishReversePrimer
 
 
 ############################################
