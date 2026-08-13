@@ -242,21 +242,11 @@ class SeqfishPlusCodebookBase(BaseModel):
         default=4,
         json_schema_extra={"x-quick-setting": True},
     )
-    n_pseudocolors: PositiveInt = Field(
-        description="Number of pseudocolors per round.",
-        default=4,
-        json_schema_extra={"x-quick-setting": True},
-    )
-    channels_ids: list[str] = Field(
-        description="Fluorescence channels used in the experiment.",
-        default=["Alexa488", "Cy3b", "Alexa647"],
-        json_schema_extra={"x-quick-setting": True},
-    )
 
 
 class SeqfishPlusCodebookLoad(SeqfishPlusCodebookBase):
 
-    source: Literal["load"]
+    source: Literal["load"] = "load"
     file: str = Field(
         description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
     )
@@ -265,6 +255,14 @@ class SeqfishPlusCodebookLoad(SeqfishPlusCodebookBase):
 class SeqfishPlusCodebookGenerate(SeqfishPlusCodebookBase):
 
     source: Literal["generate"] = "generate"
+    n_pseudocolors: PositiveInt = Field(
+        description="Number of pseudocolors per round.",
+        default=4,
+    )
+    channels_ids: list[str] = Field(
+        description="Fluorescence channels used in the experiment.",
+        default=["Alexa488", "Cy3b", "Alexa647"],
+    )
 
 
 SeqfishPlusCodebook = Annotated[
@@ -278,7 +276,7 @@ SeqfishPlusCodebook = Annotated[
 class SeqfishPlusReadoutProbeTableLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["load"]
+    source: Literal["load"] = "load"
     file: str = Field(
         description="Only used when source = load. Path to the bit-indexed readout probe table (csv/tsv) with columns 'barcode_round', 'pseudocolor', 'channel', and 'readout_probe_sequence'."
     )
@@ -369,7 +367,7 @@ class ReadoutProbes(BaseModel):
 class SeqfishPlusForwardPrimerLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["load"]
+    source: Literal["load"] = "load"
     sequence: DRNAT = Field(description="Only used when source = load.")
 
 
