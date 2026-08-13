@@ -47,7 +47,10 @@ class CrossHybridizationBlastnFilterEnabled(FilterBaseConfigEnabled):
 
     search_parameters: Annotated[
         BlastnSearchParameters,
-        Field(description="BLAST options for the cross-hybridization search."),
+        Field(
+            description="BLAST options for the cross-hybridization search.",
+            json_schema_extra={"x-collapsed": True},
+        ),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
@@ -68,7 +71,10 @@ class SpecificityBlastnFilterDisabled(FilterBaseConfigDisabled):
 class SpecificityBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
-        Field(description="BLAST options for the specificity search."),
+        Field(
+            description="BLAST options for the specificity search.",
+            json_schema_extra={"x-collapsed": True},
+        ),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
@@ -92,7 +98,8 @@ class HybridizationProbesBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
-            description="BLASTN search parameters for filtering primers that match the assembled hybridization probes."
+            description="BLASTN search parameters for filtering primers that match the assembled hybridization probes.",
+            json_schema_extra={"x-collapsed": True},
         ),
     ]
     hit_parameters: Annotated[

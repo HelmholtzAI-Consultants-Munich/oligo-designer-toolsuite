@@ -20,12 +20,15 @@ class IndependentSetSelection(BaseModel):
 
     n_sets: PositiveInt = Field(
         description="Number of probe sets to generate per gene.",
+        json_schema_extra={"x-quick-setting": True},
     )
     set_size_min: PositiveInt = Field(
         description="Minimum set size. Genes that cannot form a set of at least this size are reported as insufficient.",
+        json_schema_extra={"x-quick-setting": True},
     )
     set_size_opt: PositiveInt = Field(
         description="Preferred (optimal) number of oligos per set.",
+        json_schema_extra={"x-quick-setting": True},
     )
     distance_between_probes: int = Field(
         description="Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).",
