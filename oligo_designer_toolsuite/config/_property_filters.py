@@ -181,7 +181,13 @@ class TmFilterEnabled(FilterBaseConfigEnabled):
         return self
 
 
-TmFilterConfig = Annotated[TmFilterEnabled | TmFilterDisabled, Field(discriminator="enabled")]
+TmFilterConfig = Annotated[
+    TmFilterEnabled | TmFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Enforce melting temperature (Tm) within a range (additionally uses Tm parameters).",
+    ),
+]
 
 
 class GCClampFilterDisabled(FilterBaseConfigDisabled):

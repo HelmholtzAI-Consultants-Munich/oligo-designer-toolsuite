@@ -22,7 +22,8 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    GCContentScoreBasic,
+    PROBE_SET_SELECTION_DESC,
+    GCContentScore,
     IndependentSetSelection,
     IsoformConsensusScore,
     TmScore,
@@ -48,6 +49,7 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterConfig,
     CrossHybridizationBlastnFilterEnabled,
     HybridizationProbesBlastnFilterConfig,
@@ -99,7 +101,7 @@ class MerfishTargetSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled
 
 MerfishTargetSpecificityBlastnFilterConfig = Annotated[
     MerfishTargetSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(discriminator="enabled", description=SPECIFICITY_TARGET_DESC),
 ]
 
 
@@ -151,8 +153,8 @@ class TargetProbeOligoGeneration(BaseModel):
 
     file_region_ids: RegionListT
     files_fasta_probe_database: FilesFastaDatabaseT
-    probe_length_min: LengthMinT = 30
-    probe_length_max: LengthMaxT = 30
+    probe_length_min: LengthMinT = Field(default=30, json_schema_extra={"x-quick-setting": True})
+    probe_length_max: LengthMaxT = Field(default=30, json_schema_extra={"x-quick-setting": True})
 
     @model_validator(mode="after")
     def _check_min_max(self) -> Self:
@@ -166,46 +168,29 @@ class TargetProbeOligoGeneration(BaseModel):
 class TargetProbePropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    isoform_consensus_filter: IsoformConsensusFilterConfig = Field(
-        default=IsoformConsensusFilterEnabled(enabled=True, isoform_consensus=50),
-        description="Require oligos to be supported by a minimum fraction of gene transcripts.",
+    isoform_consensus_filter: IsoformConsensusFilterConfig = IsoformConsensusFilterEnabled(
+        enabled=True, isoform_consensus=50
     )
-    hard_masked_sequences_filter: HardMaskedFilterConfig = Field(
-        default=HardMaskedFilterConfig(enabled=True),
-        description="Exclude oligos overlapping hard-masked (e.g. N) regions in the reference.",
+    hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
+    soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
+    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
+        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6)
     )
-    soft_masked_sequences_filter: SoftMaskedFilterConfig = Field(
-        default=SoftMaskedFilterConfig(enabled=True),
-        description="Exclude oligos overlapping soft-masked (lowercase) regions in the reference.",
+    GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
+        enabled=True, GC_content_min=43, GC_content_max=63
     )
-    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = Field(
-        default=HomopolymericRunsFilterEnabled(
-            enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6)
-        ),
-        description="Exclude oligos containing long homopolymeric runs (e.g. AAAAA).",
-    )
-    GC_content_filter: GCContentFilterConfig = Field(
-        default=GCContentFilterEnabled(enabled=True, GC_content_min=43, GC_content_max=63),
-        description="Enforce GC content within a specified range.",
-    )
-    Tm_filter: TmFilterConfig = Field(
-        default=TmFilterEnabled(enabled=True, Tm_min=66, Tm_max=76),
-        description="Enforce melting temperature (Tm) within a range (uses Tm parameters below).",
-    )
-    secondary_structure_filter: SecondaryStructureFilterConfig = Field(
-        default=SecondaryStructureFilterEnabled(enabled=True, T=76, thr_DG=0),
-        description="Reject oligos with stable secondary structure at the given temperature.",
+    Tm_filter: TmFilterConfig = TmFilterEnabled(enabled=True, Tm_min=66, Tm_max=76)
+    secondary_structure_filter: SecondaryStructureFilterConfig = SecondaryStructureFilterEnabled(
+        enabled=True, T=76, thr_DG=0
     )
 
 
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishTargetSpecificityBlastnFilterConfig = Field(
-        description="Ensure oligo specificity against a reference database (BLAST-based)."
-    )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = Field(
-        default=CrossHybridizationBlastnFilterEnabled(
+    specificity_blastn_filter: MerfishTargetSpecificityBlastnFilterConfig
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
+        CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
@@ -216,8 +201,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 max_target_seqs=10,
             ),
             hit_parameters=BlastnHitParameters(min_alignment_length=17),
-        ),
-        description="Remove oligos that may cross-hybridize to other probes (BLAST-based).",
+        )
     )
 
 
@@ -235,7 +219,7 @@ class TargetProbeProbeSetSelection(BaseModel):
         jaccard_opt=0.5,
         jaccard_step=0.1,
     )
-    GC_content_score: GCContentScoreBasic = GCContentScoreBasic(weight=1, GC_content_opt=55)
+    GC_content_score: GCContentScore = GCContentScore(weight=1, GC_content_opt=55)
     Tm_score: TmScore = TmScore(weight=1, Tm_opt=72)
     isoform_consensus_score: IsoformConsensusScore = IsoformConsensusScore(weight=2)
 
@@ -271,9 +255,7 @@ class TargetProbes(BaseModel):
     oligo_generation: TargetProbeOligoGeneration
     property_filters: TargetProbePropertyFilter
     specificity_filters: TargetProbeSpecificityFilter
-    probe_set_selection: TargetProbeProbeSetSelection = Field(
-        description="Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
-    )
+    probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
     global_parameters: TargetProbeGlobal
 
 
@@ -291,7 +273,7 @@ class MerfishCodebookLoad(BaseModel):
 
     source: Literal["load"]
     file: str = Field(
-        description="Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
+        description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
     )
     hamming_weight: PositiveInt = Field(
         description="Number of bits set to 1 in each barcode (MERFISH standard = 2). Equals readout overhangs per encoding probe (first half 5' of target, second half 3').",
@@ -302,7 +284,7 @@ class MerfishCodebookLoad(BaseModel):
 class MerfishCodebookGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["generate"] = "generate"
+    source: Literal["generate"]
     n_bits: PositiveInt = Field(
         description="Number of bits in each barcode.",
         default=16,
@@ -426,7 +408,7 @@ class MerfishReadoutProbesGlobal(BaseModel):
 class MerfishReadoutProbeTableGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["generate"] = "generate"
+    source: Literal["generate"]
     channels_ids: list[str] = Field(
         description="Fluorescence channels used for round-robin channel assignment across bits.",
         default=["Alexa488", "Cy3b", "Alexa647"],
@@ -446,7 +428,7 @@ MerfishReadoutProbeTable = Annotated[
 class ReadoutProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    codebook: MerfishCodebook = MerfishCodebookGenerate()
+    codebook: MerfishCodebook
     readout_probe_table: MerfishReadoutProbeTable
 
 
