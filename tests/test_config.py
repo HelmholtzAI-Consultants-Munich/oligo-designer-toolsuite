@@ -8,6 +8,9 @@ from oligo_designer_toolsuite.config.pipelines.cycle_hcr_probe_designer import C
 from oligo_designer_toolsuite.config.pipelines.hcr_probe_designer import HcrProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
+from oligo_designer_toolsuite.config.pipelines.seqfish_plus_probe_designer import (
+    SeqfishPlusProbeDesignerConfig,
+)
 
 _CONFIGS = Path("data/configs")
 
@@ -172,3 +175,65 @@ class TestCycleHcrYaml(unittest.TestCase):
         assert schema["title"] == "CycleHcrProbeDesignerConfig"
         assert "target_probes" in schema["properties"]
         assert "readout_probes" in schema["properties"]
+
+
+# ---------------------------------------------------------------------------
+# SeqfishPlusProbeDesignerConfig
+# ---------------------------------------------------------------------------
+
+
+class TestSeqfishYaml(unittest.TestCase):
+    def test_parses(self) -> None:
+        raw = _load("seqfish_plus_probe_designer.yaml")
+        cfg = SeqfishPlusProbeDesignerConfig.model_validate(raw)
+        assert cfg.schema_version == 2
+        assert cfg.general.write_intermediate_steps is True
+
+    def test_round_trip(self) -> None:
+        raw = _load("seqfish_plus_probe_designer.yaml")
+        cfg = SeqfishPlusProbeDesignerConfig.model_validate(raw)
+        cfg2 = SeqfishPlusProbeDesignerConfig.model_validate(cfg.model_dump())
+        assert cfg == cfg2
+
+    def test_unknown_top_level_field_forbidden(self) -> None:
+        # seqFISH+ has no initiator_probes section; extra="forbid" must reject it
+        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw["initiator_probes"] = {"linker_sequence": "AA"}
+        with self.assertRaises(ValidationError):
+            SeqfishPlusProbeDesignerConfig.model_validate(raw)
+
+    def test_codebook_load_experiment_params_survive_dump(self) -> None:
+        # A loaded codebook still needs n_barcode_rounds / n_pseudocolors / channels_ids
+        # downstream, so they must survive model_dump() even under extra="ignore".
+        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw["readout_probes"]["codebook"] = {"source": "load", "file": "codebook.tsv"}
+        dumped = SeqfishPlusProbeDesignerConfig.model_validate(raw).model_dump()
+        codebook = dumped["readout_probes"]["codebook"]
+        assert codebook["n_barcode_rounds"] == 4
+        assert codebook["n_pseudocolors"] == 4
+        assert codebook["channels_ids"] == ["Alexa488", "Cy3b", "Alexa647"]
+
+    def test_reverse_primer_generate_rejected(self) -> None:
+        # Reverse primer generation is not implemented; only "load" is allowed
+        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw["primers"]["reverse_primer"]["source"] = "generate"
+        with self.assertRaises(ValidationError):
+            SeqfishPlusProbeDesignerConfig.model_validate(raw)
+
+    def test_base_probabilities_must_sum_to_one(self) -> None:
+        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw["readout_probes"]["readout_probe_table"]["oligo_generation"]["base_probabilities"] = {
+            "A": 0.5,
+            "C": 0.5,
+            "G": 0.5,
+            "T": 0.5,
+        }
+        with self.assertRaises(ValidationError):
+            SeqfishPlusProbeDesignerConfig.model_validate(raw)
+
+    def test_json_schema(self) -> None:
+        schema = SeqfishPlusProbeDesignerConfig.model_json_schema()
+        assert schema["title"] == "SeqfishPlusProbeDesignerConfig"
+        assert "target_probes" in schema["properties"]
+        assert "readout_probes" in schema["properties"]
+        assert "primers" in schema["properties"]

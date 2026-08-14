@@ -27,10 +27,38 @@ class General(BaseModel):
 
 class HomopolymericRunThreshold(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    A: PositiveInt | None = None
-    T: PositiveInt | None = None
-    C: PositiveInt | None = None
-    G: PositiveInt | None = None
+    A: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
+    T: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
+    C: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
+    G: PositiveInt | None = Field(
+        default=None,
+        description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
+    )
+
+
+class BaseProbabilities(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    A: float = Field(ge=0, le=1, description="Probability of base 'A' when generating random sequences.")
+    C: float = Field(ge=0, le=1, description="Probability of base 'C' when generating random sequences.")
+    G: float = Field(ge=0, le=1, description="Probability of base 'G' when generating random sequences.")
+    T: float = Field(ge=0, le=1, description="Probability of base 'T' when generating random sequences.")
+
+    @model_validator(mode="after")
+    def _check_sum(self) -> Self:
+        total = self.A + self.C + self.G + self.T
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(f"Base probabilities must sum to 1.0 (got {total}).")
+        return self
 
 
 class BlastnSearchParameters(BaseModel):

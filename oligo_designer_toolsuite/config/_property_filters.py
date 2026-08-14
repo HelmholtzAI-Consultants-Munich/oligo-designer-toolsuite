@@ -18,12 +18,12 @@ from oligo_designer_toolsuite.config._types import (
 
 class FilterBaseConfigEnabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    enabled: Literal[True]
+    enabled: Literal[True] = Field(description="Turn this filter on or off.")
 
 
 class FilterBaseConfigDisabled(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    enabled: Literal[False]
+    enabled: Literal[False] = Field(description="Turn this filter on or off.")
 
 
 class IsoformConsensusFilterDisabled(FilterBaseConfigDisabled):
@@ -34,7 +34,7 @@ class IsoformConsensusFilterEnabled(FilterBaseConfigEnabled):
     isoform_consensus: Annotated[
         float,
         Field(
-            description="Threshold for isoform consensus filtering in %. Probes with isoform consensus values below this threshold will be filtered out. This ensures that selected probes target sequences that are conserved across multiple transcript isoforms.",
+            description="Minimum isoform consensus (%). Oligos must be covered by at least this fraction of a gene's transcripts.",
             ge=0,
             le=100,
         ),
@@ -42,7 +42,11 @@ class IsoformConsensusFilterEnabled(FilterBaseConfigEnabled):
 
 
 IsoformConsensusFilterConfig = Annotated[
-    IsoformConsensusFilterEnabled | IsoformConsensusFilterDisabled, Field(discriminator="enabled")
+    IsoformConsensusFilterEnabled | IsoformConsensusFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Require oligos to be supported by a minimum fraction of gene transcripts.",
+    ),
 ]
 
 
@@ -62,11 +66,15 @@ TargetedExonsFilterConfig = Annotated[
 
 
 class HardMaskedFilterConfig(BaseModel):
+    """Exclude oligos overlapping hard-masked (e.g. N) regions in the reference."""
+
     model_config = ConfigDict(extra="forbid")
     enabled: bool
 
 
 class SoftMaskedFilterConfig(BaseModel):
+    """Exclude oligos overlapping soft-masked (lowercase) regions in the reference."""
+
     model_config = ConfigDict(extra="forbid")
     enabled: bool
 
@@ -78,12 +86,17 @@ class HomopolymericRunsFilterDisabled(FilterBaseConfigDisabled):
 class HomopolymericRunsFilterEnabled(FilterBaseConfigEnabled):
     homopolymeric_base_n: Annotated[
         HomopolymericRunThreshold,
-        Field(description="minimum number of nucleotides to consider it a homopolymeric run per base"),
+        Field(
+            description="Minimum run length per base to count as homopolymeric (any base not listed is unrestricted). Oligos with longer runs are rejected."
+        ),
     ]
 
 
 HomopolymericRunsFilterConfig = Annotated[
-    HomopolymericRunsFilterEnabled | HomopolymericRunsFilterDisabled, Field(discriminator="enabled")
+    HomopolymericRunsFilterEnabled | HomopolymericRunsFilterDisabled,
+    Field(
+        discriminator="enabled", description="Exclude oligos containing long homopolymeric runs (e.g. AAAAA)."
+    ),
 ]
 
 
@@ -105,7 +118,8 @@ class GCContentFilterEnabled(FilterBaseConfigEnabled):
 
 
 GCContentFilterConfig = Annotated[
-    GCContentFilterEnabled | GCContentFilterDisabled, Field(discriminator="enabled")
+    GCContentFilterEnabled | GCContentFilterDisabled,
+    Field(discriminator="enabled", description="Enforce GC content within a specified range."),
 ]
 
 
@@ -141,13 +155,14 @@ class SelfComplementarityFilterEnabled(FilterBaseConfigEnabled):
     max_len_selfcomplement: Annotated[
         NonNegativeInt,
         Field(
-            description="Maximum allowable length of self-complementary sequences. Probes with longer self-complementary regions can form hairpins and reduce hybridization efficiency."
+            description="Maximum allowable length of self-complementary sequences. Probes with longer self-complementary regions can form hairpins."
         ),
     ]
 
 
 SelfComplementarityFilterConfig = Annotated[
-    SelfComplementarityFilterEnabled | SelfComplementarityFilterDisabled, Field(discriminator="enabled")
+    SelfComplementarityFilterEnabled | SelfComplementarityFilterDisabled,
+    Field(discriminator="enabled", description="Limit self-complementarity to avoid hairpins."),
 ]
 
 
@@ -169,6 +184,52 @@ class TmFilterEnabled(FilterBaseConfigEnabled):
 TmFilterConfig = Annotated[TmFilterEnabled | TmFilterDisabled, Field(discriminator="enabled")]
 
 
+class GCClampFilterDisabled(FilterBaseConfigDisabled):
+    pass
+
+
+class GCClampFilterEnabled(FilterBaseConfigEnabled):
+    number_GC_GCclamp: Annotated[
+        PositiveInt,
+        Field(description="Minimum number of G or C nucleotides required at the 3' end."),
+    ]
+    number_three_prime_base_GCclamp: Annotated[
+        PositiveInt,
+        Field(description="Number of bases from the 3' end to consider for the GC clamp."),
+    ]
+
+
+GCClampFilterConfig = Annotated[
+    GCClampFilterEnabled | GCClampFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Require G/C nucleotides at the 3' end of the primer for stable binding.",
+    ),
+]
+
+
+class ComplementReversePrimerFilterDisabled(FilterBaseConfigDisabled):
+    pass
+
+
+class ComplementReversePrimerFilterEnabled(FilterBaseConfigEnabled):
+    max_len_complement: Annotated[
+        NonNegativeInt,
+        Field(
+            description="Maximum allowable length of complementarity between the forward primer and the (known) reverse primer, to prevent primer-dimer formation."
+        ),
+    ]
+
+
+ComplementReversePrimerFilterConfig = Annotated[
+    ComplementReversePrimerFilterEnabled | ComplementReversePrimerFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Limit complementarity between the forward primer and the (known) reverse primer to prevent primer-dimer formation.",
+    ),
+]
+
+
 class SecondaryStructureFilterDisabled(FilterBaseConfigDisabled):
     pass
 
@@ -179,5 +240,9 @@ class SecondaryStructureFilterEnabled(FilterBaseConfigEnabled):
 
 
 SecondaryStructureFilterConfig = Annotated[
-    SecondaryStructureFilterEnabled | SecondaryStructureFilterDisabled, Field(discriminator="enabled")
+    SecondaryStructureFilterEnabled | SecondaryStructureFilterDisabled,
+    Field(
+        discriminator="enabled",
+        description="Reject oligos with stable secondary structure at the given temperature.",
+    ),
 ]
