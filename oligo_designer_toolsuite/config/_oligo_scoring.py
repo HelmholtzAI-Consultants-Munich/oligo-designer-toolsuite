@@ -125,8 +125,12 @@ class TmScore(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     weight: float = Field(description="Weight for Tm in the set-selection scoring function.")
-    Tm_min: TmMinT
     Tm_opt: TmOptT
+
+
+class TmScoreNormalized(TmScore):
+
+    Tm_min: TmMinT
     Tm_max: TmMaxT
 
     @model_validator(mode="after")

@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from oligo_designer_toolsuite.config.pipelines.cycle_hcr_probe_designer import CycleHcrProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.hcr_probe_designer import HcrProbeDesignerConfig
+from oligo_designer_toolsuite.config.pipelines.merfish_probe_designer import MerfishProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.seqfish_plus_probe_designer import (
@@ -234,6 +235,58 @@ class TestSeqfishYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = SeqfishPlusProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "SeqfishPlusProbeDesignerConfig"
+        assert "target_probes" in schema["properties"]
+        assert "readout_probes" in schema["properties"]
+        assert "primers" in schema["properties"]
+
+
+# ---------------------------------------------------------------------------
+# MerfishProbeDesignerConfig
+# ---------------------------------------------------------------------------
+
+
+class TestMerfishYaml(unittest.TestCase):
+    def test_parses(self) -> None:
+        raw = _load("merfish_probe_designer.yaml")
+        cfg = MerfishProbeDesignerConfig.model_validate(raw)
+        assert cfg.schema_version == 2
+        assert cfg.general.write_intermediate_steps is True
+
+    def test_round_trip(self) -> None:
+        raw = _load("merfish_probe_designer.yaml")
+        cfg = MerfishProbeDesignerConfig.model_validate(raw)
+        cfg2 = MerfishProbeDesignerConfig.model_validate(cfg.model_dump())
+        assert cfg == cfg2
+
+    def test_unknown_top_level_field_forbidden(self) -> None:
+        # MERFISH has no initiator_probes section; extra="forbid" must reject it
+        raw = _load("merfish_probe_designer.yaml")
+        raw["initiator_probes"] = {"linker_sequence": "AA"}
+        with self.assertRaises(ValidationError):
+            MerfishProbeDesignerConfig.model_validate(raw)
+
+    def test_codebook_load_hamming_weight_survives_dump(self) -> None:
+        # A loaded codebook needs hamming_weight downstream and n_bits
+        # if the readoutprobe table is generated, so they must
+        # survive model_dump().
+        raw = _load("merfish_probe_designer.yaml")
+        raw["readout_probes"]["codebook"] = {"source": "load", "file": "codebook.tsv"}
+        dumped = MerfishProbeDesignerConfig.model_validate(raw).model_dump()
+        codebook = dumped["readout_probes"]["codebook"]
+        assert codebook["source"] == "load"
+        assert codebook["hamming_weight"] == 2
+        assert codebook["n_bits"] == 16
+
+    def test_reverse_primer_generate_rejected(self) -> None:
+        # Reverse primer generation is not implemented; only "load" is allowed
+        raw = _load("merfish_probe_designer.yaml")
+        raw["primers"]["reverse_primer"]["source"] = "generate"
+        with self.assertRaises(ValidationError):
+            MerfishProbeDesignerConfig.model_validate(raw)
+
+    def test_json_schema(self) -> None:
+        schema = MerfishProbeDesignerConfig.model_json_schema()
+        assert schema["title"] == "MerfishProbeDesignerConfig"
         assert "target_probes" in schema["properties"]
         assert "readout_probes" in schema["properties"]
         assert "primers" in schema["properties"]

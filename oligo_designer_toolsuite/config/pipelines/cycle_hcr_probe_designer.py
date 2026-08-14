@@ -22,7 +22,7 @@ from oligo_designer_toolsuite.config._general_models import (
 from oligo_designer_toolsuite.config._oligo_scoring import (
     IndependentSetSelection,
     IsoformConsensusScore,
-    ScoreBaseConfig,
+    TmScore,
 )
 from oligo_designer_toolsuite.config._property_filters import (
     GCContentFilterConfig,
@@ -48,7 +48,6 @@ from oligo_designer_toolsuite.config._types import (
     DRNAT,
     FilesFastaDatabaseT,
     RegionListT,
-    TmOptT,
 )
 
 ############################################
@@ -86,12 +85,6 @@ CycleHcrSpecificityBlastnFilterConfig = Annotated[
     CycleHcrSpecificityBlastnFilterEnabled | CycleHcrSpecificityBlastnFilterDisabled,
     Field(discriminator="enabled"),
 ]
-
-
-class CycleHcrTmScore(ScoreBaseConfig):
-    # CycleHCR only scores against a single optimal Tm (weight + Tm_opt); the generic TmScore
-    # additionally requires Tm_min/Tm_max, which the CycleHCR YAML does not provide.
-    Tm_opt: TmOptT
 
 
 ############################################
@@ -173,7 +166,7 @@ class TargetProbeProbeSetSelection(BaseModel):
         jaccard_step=0.1,
     )
     isoform_consensus_score: IsoformConsensusScore = IsoformConsensusScore(weight=10)
-    Tm_score: CycleHcrTmScore = CycleHcrTmScore(weight=1, Tm_opt=75)
+    Tm_score: TmScore = TmScore(weight=1, Tm_opt=75)
 
 
 class TargetProbeGlobal(BaseModel):

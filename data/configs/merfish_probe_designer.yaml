@@ -57,7 +57,7 @@ target_probes:
       enabled: true # Turn this filter on or off.
       search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000} # BLAST options for the specificity search.
       hit_parameters: {"min_alignment_length": 17} # Hit criteria. Hits satisfying these lead to oligo rejection.
-      files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter. Use genomic_region_generator for custom reference sets.
+      files_fasta_reference_database: # FASTA file(s) used as reference for specificity.
         - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
         - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
@@ -138,7 +138,7 @@ readout_probes:
         enabled: true # Turn this filter on or off.
         search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
         hit_parameters: {"min_alignment_length": 11}
-        files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Shared with the cross-hybridization filter.
+        files_fasta_reference_database: # FASTA file(s) used as reference for specificity.
           - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
           - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
@@ -150,9 +150,7 @@ readout_probes:
     probe_set_selection: # Select a set of readout probes with homogeneous Tm / GC content (uses HomogeneousPropertyOligoSelection).
       set_size: 16 # Total number of readout probes to select (must equal n_bits so each bit gets a probe).
       n_combinations: 100000 # Number of candidate sets to evaluate; higher values may find better sets but increase computation time.
-      homogeneous_properties_weights: # Weights for property homogeneity in the score minimised across the set (weighted sum of variances).
-        TmNN_oligo: 1.0 # Melting temperature.
-        GC_content_oligo: 1.0 # GC content.
+      homogeneous_properties_weights: {TmNN_oligo: 1.0, GC_content_oligo: 1.0} # Weights for property homogeneity in the score minimised across the set (weighted sum of variances).
 
     global_parameters:
       Tm_parameters:
