@@ -55,12 +55,14 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     CrossHybridizationBlastnFilterEnabled,
     HybridizationProbesBlastnFilterConfig,
     HybridizationProbesBlastnFilterEnabled,
+    SpecificityBlastnFilterConfig,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     DRNAT,
     FilesFastaDatabaseT,
+    FilesFastaReferenceDatabaseT,
     LengthMaxT,
     LengthMinT,
     RegionListT,
@@ -78,44 +80,6 @@ from oligo_designer_toolsuite.config._types import (
 
 class SeqfishPlusSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
     pass
-
-
-class SeqfishPlusTargetSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=7,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=15)
-
-
-SeqfishPlusTargetSpecificityBlastnFilterConfig = Annotated[
-    SeqfishPlusTargetSpecificityBlastnFilterEnabled | SeqfishPlusSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_TARGET_DESC),
-]
-
-
-class SeqfishPlusReadoutSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=7,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=10)
-
-
-SeqfishPlusReadoutSpecificityBlastnFilterConfig = Annotated[
-    SeqfishPlusReadoutSpecificityBlastnFilterEnabled | SeqfishPlusSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_READOUT_DESC),
-]
 
 
 class SeqfishPlusPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
@@ -138,6 +102,19 @@ SeqfishPlusPrimerSpecificityBlastnFilterConfig = Annotated[
 
 
 ############################################
+# Required parameters
+############################################
+
+
+class RequiredParameters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    targets: RegionListT
+    target_genome: FilesFastaDatabaseT
+    reference_genome: FilesFastaReferenceDatabaseT
+
+
+############################################
 # Target probe
 ############################################
 
@@ -145,8 +122,6 @@ SeqfishPlusPrimerSpecificityBlastnFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: RegionListT
-    files_fasta_probe_database: FilesFastaDatabaseT
     probe_length_min: LengthMinT = Field(default=28, json_schema_extra={"x-quick-setting": True})
     probe_length_max: LengthMaxT = Field(default=28, json_schema_extra={"x-quick-setting": True})
 
@@ -181,7 +156,22 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SeqfishPlusTargetSpecificityBlastnFilterConfig
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=100,
+                strand="minus",
+                word_size=7,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParameters(min_alignment_length=15),
+        ),
+        description=SPECIFICITY_TARGET_DESC,
+    )
     cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
         CrossHybridizationBlastnFilterEnabled(
             enabled=True,
@@ -315,7 +305,22 @@ class SeqfishPlusReadoutProbePropertyFilter(BaseModel):
 class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SeqfishPlusReadoutSpecificityBlastnFilterConfig
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=100,
+                strand="minus",
+                word_size=7,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParameters(min_alignment_length=10),
+        ),
+        description=SPECIFICITY_READOUT_DESC,
+    )
     cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
         CrossHybridizationBlastnFilterEnabled(
             enabled=True,
@@ -417,7 +422,22 @@ class SeqfishPlusForwardPrimerPropertyFilter(BaseModel):
 class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SeqfishPlusPrimerSpecificityBlastnFilterConfig
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=100,
+                strand="minus",
+                word_size=7,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParameters(min_alignment_length=14),
+        ),
+        description=SPECIFICITY_PRIMER_DESC,
+    )
     hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = (
         HybridizationProbesBlastnFilterEnabled(
             enabled=True,
@@ -508,7 +528,7 @@ class SeqfishPlusProbeDesignerConfig(BaseModel):
         dir_output="output_SeqfishPlusplus_probe_designer",
         write_intermediate_steps=True,
     )
-
+    required_parameters: RequiredParameters
     target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers

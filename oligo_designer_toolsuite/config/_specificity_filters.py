@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from oligo_designer_toolsuite.config._general_models import BlastnHitParameters, BlastnSearchParameters
-from oligo_designer_toolsuite.config._types import FilesFastaReferenceDatabaseT, VCFReferenceDatabaseT
+from oligo_designer_toolsuite.config._types import VCFReferenceDatabaseT
 
 SPECIFICITY_TARGET_DESC = "Ensure oligo specificity against a reference database (BLAST-based)."
 SPECIFICITY_READOUT_DESC = "Remove readout probes with significant hits to the reference (BLAST-based)."
@@ -43,8 +43,6 @@ class CrossHybridizationBlastnFilterDisabled(FilterBaseConfigDisabled):
 
 
 class CrossHybridizationBlastnFilterEnabled(FilterBaseConfigEnabled):
-    """Remove oligos that may cross-hybridize to other probes (BLAST-based)."""
-
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
@@ -60,7 +58,10 @@ class CrossHybridizationBlastnFilterEnabled(FilterBaseConfigEnabled):
 
 CrossHybridizationBlastnFilterConfig = Annotated[
     CrossHybridizationBlastnFilterEnabled | CrossHybridizationBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    Field(
+        discriminator="enabled",
+        description="Remove oligos that may cross-hybridize to other probes (BLAST-based).",
+    ),
 ]
 
 
@@ -82,7 +83,6 @@ class SpecificityBlastnFilterEnabled(FilterBaseConfigEnabled):
             description="Hit criteria (either coverage % or mininum alignment length). Hits satisfying these lead to oligo rejection."
         ),
     ]
-    files_fasta_reference_database: FilesFastaReferenceDatabaseT
 
 
 SpecificityBlastnFilterConfig = Annotated[
