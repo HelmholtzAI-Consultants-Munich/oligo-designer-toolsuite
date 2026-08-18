@@ -77,6 +77,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
+    apply_required_parameters,
     base_log_parameters,
     base_parser,
     check_content_oligo_database,
@@ -2470,6 +2471,8 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
     regions. If no gene list is provided, all regions in the input FASTA files are
     used.
 
+    Lastly, it inserts the parameters from required_parameters into the correct sections.
+
     :param config_validated: Validated pipeline configuration (pydantic model).
     :type config_validated: MerfishProbeDesignerConfig
     :return: The configuration converted to a dict, updated with the prepared settings.
@@ -2477,6 +2480,8 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
     """
 
     config = config_validated.model_dump()
+
+    apply_required_parameters(config)
 
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
@@ -2526,8 +2531,13 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
         "target_probes"
     ]["property_filters"]["GC_content_filter"]["GC_content_max"]
 
-    # Same Tm prep when readout sequences are generated rather than loaded.
+    # Readout probes only carry specificity filters and Tm settings when they are
+    # generated rather than loaded.
     if config["readout_probes"]["readout_probe_table"]["source"] == "generate":
+        config["readout_probes"]["readout_probe_table"]["specificity_filters"]["specificity_blastn_filter"][
+            "files_fasta_reference_database"
+        ] = config["required_parameters"]["reference_genome"]
+
         config["readout_probes"]["readout_probe_table"]["global_parameters"]["Tm_parameters"] = (
             preprocess_tm_parameters(
                 config["readout_probes"]["readout_probe_table"]["global_parameters"]["Tm_parameters"]
@@ -2556,8 +2566,12 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
             "parameters"
         ]
 
-    # Same Tm prep when the forward primer is generated rather than loaded.
+    # Same for the forward primer when it is generated rather than loaded.
     if config["primers"]["forward_primer"]["source"] == "generate":
+        config["primers"]["forward_primer"]["specificity_filters"]["specificity_blastn_filter"][
+            "files_fasta_reference_database"
+        ] = config["required_parameters"]["reference_genome"]
+
         config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"]
         )

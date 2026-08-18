@@ -14,6 +14,7 @@ from oligo_designer_toolsuite.config._general_models import (
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
+    RequiredParameters,
     TmChemCorrectionParameters,
     TmChemCorrectionParametersDisabled,
     TmParameters,
@@ -40,24 +41,17 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterConfig,
     CrossHybridizationBlastnFilterEnabled,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
-from oligo_designer_toolsuite.config._types import (
-    DRNAT,
-    FilesFastaDatabaseT,
-    RegionListT,
-)
+from oligo_designer_toolsuite.config._types import DRNAT
 
 ############################################
 # CycleHCR-specific overrides
 ############################################
-
-
-class CycleHcrSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
-    pass
 
 
 class CycleHcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
@@ -83,8 +77,8 @@ class CycleHcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
 
 
 CycleHcrSpecificityBlastnFilterConfig = Annotated[
-    CycleHcrSpecificityBlastnFilterEnabled | CycleHcrSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    CycleHcrSpecificityBlastnFilterEnabled | SpecificityBlastnFilterDisabled,
+    Field(discriminator="enabled", description=SPECIFICITY_TARGET_DESC),
 ]
 
 
@@ -96,8 +90,6 @@ CycleHcrSpecificityBlastnFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: RegionListT
-    files_fasta_probe_database: FilesFastaDatabaseT
     L_probe_sequence_length: PositiveInt = Field(
         description="Length (bases) of the L arm of the probe; L + gap + R equals the total probe length.",
         default=45,
@@ -316,6 +308,7 @@ class CycleHcrProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
+    required_parameters: RequiredParameters
     target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers

@@ -17,6 +17,7 @@ from oligo_designer_toolsuite.config._general_models import (
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
+    RequiredParameters,
     TmChemCorrectionParameters,
     TmChemCorrectionParametersDetails,
     TmChemCorrectionParametersEnabled,
@@ -43,16 +44,15 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterConfig,
     CrossHybridizationBlastnFilterEnabled,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
-    FilesFastaDatabaseT,
     LengthMaxT,
     LengthMinT,
-    RegionListT,
     TmMaxT,
     TmMinT,
     TmOptT,
@@ -61,10 +61,6 @@ from oligo_designer_toolsuite.config._types import (
 ############################################
 # SCRINSHOT-specific overrides
 ############################################
-
-
-class ScrinshotSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
-    pass
 
 
 class ScrinshotSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
@@ -90,8 +86,8 @@ class ScrinshotSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
 
 
 ScrinshotSpecificityBlastnFilterConfig = Annotated[
-    ScrinshotSpecificityBlastnFilterEnabled | ScrinshotSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
+    ScrinshotSpecificityBlastnFilterEnabled | SpecificityBlastnFilterDisabled,
+    Field(discriminator="enabled", description=SPECIFICITY_TARGET_DESC),
 ]
 
 
@@ -103,8 +99,6 @@ ScrinshotSpecificityBlastnFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: RegionListT
-    files_fasta_probe_database: FilesFastaDatabaseT
     probe_length_min: LengthMinT = 40
     probe_length_max: LengthMaxT = 45
 
@@ -315,5 +309,6 @@ class ScrinshotProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
+    required_parameters: RequiredParameters
     target_probes: TargetProbes
     detection_oligo: DetectionOligo

@@ -70,6 +70,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
+    apply_required_parameters,
     base_log_parameters,
     base_parser,
     check_content_oligo_database,
@@ -2374,20 +2375,15 @@ def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict
 
     config = config_validated.model_dump()
 
-    config["target_probes"]["oligo_generation"]["file_region_ids"] = config["required_parameters"]["targets"]
-    config["target_probes"]["oligo_generation"]["files_fasta_probe_database"] = config["required_parameters"][
-        "target_genome"
-    ]
-    files_fasta_reference_database = config["required_parameters"]["reference_genome"]
-    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"][
-        "files_fasta_reference_database"
-    ] = files_fasta_reference_database
-    config["readout_probes"]["readout_probe_table"]["specificity_filters"]["specificity_blastn_filter"][
-        "files_fasta_reference_database"
-    ] = files_fasta_reference_database
-    config["primers"]["forward_primer"]["specificity_filters"]["specificity_blastn_filter"][
-        "files_fasta_reference_database"
-    ] = files_fasta_reference_database
+    apply_required_parameters(config)
+
+    # Readout probes and the forward primer only carry specificity filters when they
+    # are generated rather than loaded.
+    readout_probe_table_cfg = config["readout_probes"]["readout_probe_table"]
+    if readout_probe_table_cfg["source"] == "generate":
+        readout_probe_table_cfg["specificity_filters"]["specificity_blastn_filter"][
+            "files_fasta_reference_database"
+        ] = config["required_parameters"]["reference_genome"]
 
     file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
@@ -2402,6 +2398,10 @@ def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict
 
     forward_primer_cfg = config["primers"]["forward_primer"]
     if forward_primer_cfg["source"] == "generate":
+        forward_primer_cfg["specificity_filters"]["specificity_blastn_filter"][
+            "files_fasta_reference_database"
+        ] = config["required_parameters"]["reference_genome"]
+
         # Resolve Tm table names and blank disabled chem/salt corrections to None so
         # downstream filters treat None as "no correction" without checking the flag.
         global_parameters = forward_primer_cfg["global_parameters"]
@@ -2538,6 +2538,7 @@ def main() -> None:
         print(f"Invalid configuration file:\n{e}")
         raise
 
+    # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
         dir_output=config_validated.general.dir_output,
         pipeline_name="seqfishplus_probe_designer",

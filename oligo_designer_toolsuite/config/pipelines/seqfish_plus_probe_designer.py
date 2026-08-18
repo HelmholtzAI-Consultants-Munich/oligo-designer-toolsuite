@@ -11,11 +11,11 @@ from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
     BaseProbabilities,
-    BlastnHitParameters,
     BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
+    RequiredParameters,
     TmChemCorrectionParameters,
     TmChemCorrectionParametersDisabled,
     TmParameters,
@@ -57,63 +57,13 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     HybridizationProbesBlastnFilterConfig,
     HybridizationProbesBlastnFilterEnabled,
     SpecificityBlastnFilterConfig,
-    SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     DRNAT,
-    FilesFastaDatabaseT,
-    FilesFastaReferenceDatabaseT,
     LengthMaxT,
     LengthMinT,
-    RegionListT,
 )
-
-############################################
-# seqFISH+-specific overrides
-############################################
-
-# The specificity BLASTN filter carries a required reference-database path
-# (files_fasta_reference_database, no default). These subclasses only set the
-# seqFISH+ default search/hit parameters; the path stays required, so the whole
-# filter must be supplied by the user.
-
-
-class SeqfishPlusSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
-    pass
-
-
-class SeqfishPlusPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=7,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParametersMinAlignmentLength(value=14)
-
-
-SeqfishPlusPrimerSpecificityBlastnFilterConfig = Annotated[
-    SeqfishPlusPrimerSpecificityBlastnFilterEnabled | SeqfishPlusSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_PRIMER_DESC),
-]
-
-
-############################################
-# Required parameters
-############################################
-
-
-class RequiredParameters(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    targets: RegionListT
-    target_genome: FilesFastaDatabaseT
-    reference_genome: FilesFastaReferenceDatabaseT
-
 
 ############################################
 # Target probe

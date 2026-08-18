@@ -4,11 +4,11 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
-    BlastnHitParameters,
     BlastnHitParametersCoverage,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
+    RequiredParameters,
     TmChemCorrectionParameters,
     TmChemCorrectionParametersDetails,
     TmChemCorrectionParametersEnabled,
@@ -45,42 +45,24 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterConfig,
     CrossHybridizationBlastnFilterEnabled,
     ReadLengthBiasFilterConfig,
     ReadLengthBiasFilterEnabled,
-    SpecificityBlastnFilterDisabled,
+    SpecificityBlastnFilterConfig,
     SpecificityBlastnFilterEnabled,
     VariantFilterDisabled,
     VariantFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
-    FilesFastaDatabaseT,
     LengthMaxT,
     LengthMinT,
-    RegionListT,
 )
 
 ############################################
 # Oligoseq-specific overrides
 ############################################
-
-
-class OligoSeqSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
-    pass
-
-
-class OligoSeqSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=80, strand="minus", word_size=10
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParametersCoverage(value=50)
-
-
-OligoSeqSpecificityBlastnFilterConfig = Annotated[
-    OligoSeqSpecificityBlastnFilterEnabled | OligoSeqSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled"),
-]
 
 
 class OligoSeqVariantFilterDisabled(VariantFilterDisabled):
@@ -107,8 +89,6 @@ OligoSeqVariantFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: RegionListT
-    files_fasta_probe_database: FilesFastaDatabaseT
     probe_length_min: LengthMinT = 26
     probe_length_max: LengthMaxT = 30
     probe_split_region: PositiveInt = Field(
@@ -167,7 +147,14 @@ class TargetProbeSpecificityFilter(BaseModel):
             hit_parameters=BlastnHitParametersCoverage(value=50),
         )
     )
-    specificity_blastn_filter: OligoSeqSpecificityBlastnFilterConfig
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
+            hit_parameters=BlastnHitParametersCoverage(value=50),
+        ),
+        description=SPECIFICITY_TARGET_DESC,
+    )
     variant_filter: OligoSeqVariantFilterConfig
 
 
@@ -245,4 +232,5 @@ class OligoSeqProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
+    required_parameters: RequiredParameters
     target_probes: TargetProbes

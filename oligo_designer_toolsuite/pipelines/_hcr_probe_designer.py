@@ -65,6 +65,7 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
+    apply_required_parameters,
     base_log_parameters,
     base_parser,
     check_content_oligo_database,
@@ -1388,6 +1389,8 @@ def _preprocess_config(config_validated: HcrProbeDesignerConfig) -> dict[str, An
     list of target regions. If no gene list is provided, all regions in the input
     FASTA files are used.
 
+    Lastly, it inserts the parameters from required_parameters into the correct sections.
+
     :param config_validated: Validated pipeline configuration (pydantic model).
     :type config_validated: HcrProbeDesignerConfig
     :return: The configuration converted to a dict, updated with the prepared settings.
@@ -1395,6 +1398,8 @@ def _preprocess_config(config_validated: HcrProbeDesignerConfig) -> dict[str, An
     """
 
     config = config_validated.model_dump()
+
+    apply_required_parameters(config)
 
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.

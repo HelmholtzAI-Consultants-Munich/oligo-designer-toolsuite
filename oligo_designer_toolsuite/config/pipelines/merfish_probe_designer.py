@@ -11,11 +11,11 @@ from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
     BaseProbabilities,
-    BlastnHitParameters,
     BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
+    RequiredParameters,
     TmChemCorrectionParameters,
     TmChemCorrectionParametersDisabled,
     TmParameters,
@@ -57,94 +57,15 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     CrossHybridizationBlastnFilterEnabled,
     HybridizationProbesBlastnFilterConfig,
     HybridizationProbesBlastnFilterEnabled,
-    SpecificityBlastnFilterDisabled,
+    SpecificityBlastnFilterConfig,
     SpecificityBlastnFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     DRNAT,
-    FilesFastaDatabaseT,
     HomogeneousPropertiesWeightsT,
     LengthMaxT,
     LengthMinT,
-    RegionListT,
 )
-
-############################################
-# MERFISH-specific overrides
-############################################
-
-# The specificity BLASTN filter carries a required reference-database path
-# (files_fasta_reference_database, no default). These subclasses only set the
-# MERFISH default search/hit parameters; the path stays required, so the whole
-# filter must be supplied by the user.
-
-
-class MerfishSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
-    pass
-
-
-class MerfishTargetSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = Field(
-        default=BlastnSearchParameters(
-            perc_identity=80,
-            strand="minus",
-            word_size=10,
-            dust="no",
-            soft_masking=False,
-            max_target_seqs=10,
-            max_hsps=1000,
-        ),
-        description="BLAST options for the specificity search.",
-    )
-    hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParametersMinAlignmentLength(value=17),
-        description="Hit criteria. Hits satisfying these lead to oligo rejection.",
-    )
-
-
-MerfishTargetSpecificityBlastnFilterConfig = Annotated[
-    MerfishTargetSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_TARGET_DESC),
-]
-
-
-class MerfishReadoutSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=7,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParametersMinAlignmentLength(value=11)
-
-
-MerfishReadoutSpecificityBlastnFilterConfig = Annotated[
-    MerfishReadoutSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_READOUT_DESC),
-]
-
-
-class MerfishPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=7,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParametersMinAlignmentLength(value=14)
-
-
-MerfishPrimerSpecificityBlastnFilterConfig = Annotated[
-    MerfishPrimerSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_PRIMER_DESC),
-]
-
 
 ############################################
 # Target probe
@@ -154,8 +75,6 @@ MerfishPrimerSpecificityBlastnFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: RegionListT
-    files_fasta_probe_database: FilesFastaDatabaseT
     probe_length_min: LengthMinT = Field(default=30, json_schema_extra={"x-quick-setting": True})
     probe_length_max: LengthMaxT = Field(default=30, json_schema_extra={"x-quick-setting": True})
 
@@ -191,7 +110,22 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishTargetSpecificityBlastnFilterConfig
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=80,
+                strand="minus",
+                word_size=10,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=17),
+        ),
+        description=SPECIFICITY_TARGET_DESC,
+    )
     cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
         CrossHybridizationBlastnFilterEnabled(
             enabled=True,
@@ -349,7 +283,22 @@ class MerfishReadoutProbePropertyFilter(BaseModel):
 class MerfishReadoutProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishReadoutSpecificityBlastnFilterConfig
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=100,
+                strand="minus",
+                word_size=7,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=11),
+        ),
+        description=SPECIFICITY_READOUT_DESC,
+    )
     cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
         CrossHybridizationBlastnFilterEnabled(
             enabled=True,
@@ -496,7 +445,22 @@ class MerfishForwardPrimerPropertyFilter(BaseModel):
 class MerfishForwardPrimerSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishPrimerSpecificityBlastnFilterConfig
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=100,
+                strand="minus",
+                word_size=7,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=14),
+        ),
+        description=SPECIFICITY_PRIMER_DESC,
+    )
     hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = (
         HybridizationProbesBlastnFilterEnabled(
             enabled=True,
@@ -588,6 +552,7 @@ class MerfishProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
+    required_parameters: RequiredParameters
     target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers

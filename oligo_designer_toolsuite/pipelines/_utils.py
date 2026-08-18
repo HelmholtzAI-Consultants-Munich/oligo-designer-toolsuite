@@ -264,6 +264,27 @@ def preprocess_tm_parameters(tm_parameters: dict[str, Any]) -> dict[str, Any]:
     return tm_parameters
 
 
+def apply_required_parameters(config: dict[str, Any]) -> None:
+    """
+    Copy the entries of ``required_parameters`` into the sections that consume them.
+
+    Config files collect the gene list and the FASTA files that every run needs in a
+    single ``required_parameters`` section for better user experience. The helper writes
+    them to the entries the pipelines expect. This only covers the cases that are the same
+    across all pipelines; some pipelines might need additional copies.
+
+    :param config: Configuration dictionary, updated in place.
+    :type config: dict[str, Any]
+    """
+    required_parameters = config["required_parameters"]
+    oligo_generation = config["target_probes"]["oligo_generation"]
+    oligo_generation["file_region_ids"] = required_parameters["targets"]
+    oligo_generation["files_fasta_probe_database"] = required_parameters["target_genome"]
+    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"][
+        "files_fasta_reference_database"
+    ] = required_parameters["reference_genome"]
+
+
 def validate_codebook(
     codebook: pd.DataFrame,
     region_ids: list[str],

@@ -13,12 +13,16 @@ general:
 ### USER PARAMETERS ###
 #######################
 
-target_probes:
-  oligo_generation:
-    file_region_ids: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
-    files_fasta_probe_database: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
+required_parameters:
+  targets: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
+  target_genome: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
       - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
       - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+  reference_genome: # FASTA file(s) used as reference for specificity.
+      - data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+
+target_probes:
+  oligo_generation:
     L_probe_sequence_length: 25 # Length (bases) of the L arm of the probe; L + gap + R should equal the total probe length, e.g. 25 + 2 + 25 = 52.
     gap_sequence_length: 2 # Length (bases) of the spacer between the L and R arms (covers the ligation site).
     R_probe_sequence_length: 25 # Length (bases) of the R arm of the probe; L + gap + R should equal the total probe length, e.g. 25 + 2 + 25 = 52.
@@ -61,8 +65,6 @@ target_probes:
       hit_parameters: # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
         hit_criterion: "coverage"
         value: 90
-      files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Use genomic_region_generator for custom reference sets.
-        - data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
     cross_hybridization_blastn_filter: # Remove L/R arms that may cross-hybridize to off-target sequences (BLAST-based).
       enabled: true # Turn this filter on or off.

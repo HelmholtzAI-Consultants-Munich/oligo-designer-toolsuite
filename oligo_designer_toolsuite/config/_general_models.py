@@ -13,6 +13,12 @@ from pydantic import (
 )
 from typing_extensions import Self
 
+from oligo_designer_toolsuite.config._types import (
+    FilesFastaDatabaseT,
+    FilesFastaReferenceDatabaseT,
+    RegionListT,
+)
+
 
 class General(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -23,6 +29,14 @@ class General(BaseModel):
     write_intermediate_steps: bool = Field(
         description="if true, writes the oligo sequences after each step of the pipeline into a csv file",
     )
+
+
+class RequiredParameters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    targets: RegionListT
+    target_genome: FilesFastaDatabaseT
+    reference_genome: FilesFastaReferenceDatabaseT
 
 
 class HomopolymericRunThreshold(BaseModel):
