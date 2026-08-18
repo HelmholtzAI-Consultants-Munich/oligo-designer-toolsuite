@@ -353,33 +353,31 @@ class BlastnSearchParameters(BaseModel):
         }
 
 
-class BlastnHitParameters(BaseModel):
+class BlastnHitParametersCoverage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    coverage: float | None = Field(
-        default=None,
+    hit_criterion: Literal["coverage"] = "coverage"
+
+    value: float = Field(
         ge=0,
         le=100,
         description="Coverage in %, alternatively, min_alignment_length can be used",
     )
-    min_alignment_length: NonNegativeInt | None = Field(
-        default=None,
+
+
+class BlastnHitParametersMinAlignmentLength(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    hit_criterion: Literal["min_alignment_length"] = "min_alignment_length"
+
+    value: NonNegativeInt = Field(
         description="Number of nucleotides for alignment, alternatively, coverage can be used",
     )
 
-    @model_validator(mode="after")
-    def _check_mutually_exclusive(self) -> Self:
-        if (self.coverage is None) == (self.min_alignment_length is None):
-            raise ValueError("Exactly one of 'coverage' or 'min_alignment_length' must be set.")
-        return self
 
-    @model_serializer
-    def serialize(self) -> dict:
-        return {
-            self.__class__.model_fields[name].serialization_alias or name: value
-            for name, value in self.__dict__.items()
-            if value is not None
-        }
+BlastnHitParameters = Annotated[
+    BlastnHitParametersCoverage | BlastnHitParametersMinAlignmentLength, Field(discriminator="hit_criterion")
+]
 
 
 class TmParameters(BaseModel):

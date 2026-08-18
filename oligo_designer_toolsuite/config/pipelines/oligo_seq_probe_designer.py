@@ -5,6 +5,7 @@ from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
     BlastnHitParameters,
+    BlastnHitParametersCoverage,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
@@ -73,7 +74,7 @@ class OligoSeqSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
     search_parameters: BlastnSearchParameters = BlastnSearchParameters(
         perc_identity=80, strand="minus", word_size=10
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(coverage=50)
+    hit_parameters: BlastnHitParameters = BlastnHitParametersCoverage(value=50)
 
 
 OligoSeqSpecificityBlastnFilterConfig = Annotated[
@@ -163,7 +164,7 @@ class TargetProbeSpecificityFilter(BaseModel):
         CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
-            hit_parameters=BlastnHitParameters(coverage=50),
+            hit_parameters=BlastnHitParametersCoverage(value=50),
         )
     )
     specificity_blastn_filter: OligoSeqSpecificityBlastnFilterConfig

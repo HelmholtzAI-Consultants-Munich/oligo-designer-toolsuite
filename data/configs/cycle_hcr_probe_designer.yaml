@@ -58,14 +58,18 @@ target_probes:
       enabled: true # Turn this filter on or off.
       junction_region_size: 13 # Size of the seed region around the junction site for the BLAST seed-region filter; set to 0 to skip seed-region filtering.
       search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000} # BLAST options for the specificity search.
-      hit_parameters: {"coverage": 90} # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+      hit_parameters: # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+        hit_criterion: "coverage"
+        value: 90
       files_fasta_reference_database: # FASTA file(s) used as reference for specificity. Use genomic_region_generator for custom reference sets.
         - data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
 
     cross_hybridization_blastn_filter: # Remove L/R arms that may cross-hybridize to off-target sequences (BLAST-based).
       enabled: true # Turn this filter on or off.
       search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10} # BLAST options for the cross-hybridization search.
-      hit_parameters: {"coverage": 90} # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+      hit_parameters: # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+        hit_criterion: "coverage"
+        value: 90
 
   probe_set_selection: # Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
     independent_set_selection:

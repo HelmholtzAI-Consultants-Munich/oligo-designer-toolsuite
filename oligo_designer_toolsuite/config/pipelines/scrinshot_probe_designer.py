@@ -13,6 +13,7 @@ from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
     BlastnHitParameters,
+    BlastnHitParametersCoverage,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
@@ -76,7 +77,7 @@ class ScrinshotSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
         max_target_seqs=10,
         max_hsps=1000,
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(coverage=50)
+    hit_parameters: BlastnHitParameters = BlastnHitParametersCoverage(value=50)
     ligation_region_size: NonNegativeInt = Field(
         description=(
             "Size of the seed region around the ligation site for BLASTN seed-region filtering. "
@@ -170,7 +171,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(coverage=80),
+            hit_parameters=BlastnHitParametersCoverage(value=80),
         )
     )
     specificity_blastn_filter: ScrinshotSpecificityBlastnFilterConfig

@@ -12,6 +12,7 @@ from typing_extensions import Self
 from oligo_designer_toolsuite.config._general_models import (
     BaseProbabilities,
     BlastnHitParameters,
+    BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
@@ -92,7 +93,7 @@ class SeqfishPlusPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEna
         max_target_seqs=10,
         max_hsps=1000,
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=14)
+    hit_parameters: BlastnHitParameters = BlastnHitParametersMinAlignmentLength(value=14)
 
 
 SeqfishPlusPrimerSpecificityBlastnFilterConfig = Annotated[
@@ -168,7 +169,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 max_target_seqs=10,
                 max_hsps=1000,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=15),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=15),
         ),
         description=SPECIFICITY_TARGET_DESC,
     )
@@ -183,7 +184,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=17),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=17),
         )
     )
 
@@ -317,7 +318,7 @@ class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
                 max_target_seqs=10,
                 max_hsps=1000,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=10),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=10),
         ),
         description=SPECIFICITY_READOUT_DESC,
     )
@@ -332,7 +333,7 @@ class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=10),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=10),
         )
     )
 
@@ -434,7 +435,7 @@ class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
                 max_target_seqs=10,
                 max_hsps=1000,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=14),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=14),
         ),
         description=SPECIFICITY_PRIMER_DESC,
     )
@@ -450,7 +451,7 @@ class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
                 max_target_seqs=10,
                 max_hsps=1000,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=11),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=11),
         )
     )
 

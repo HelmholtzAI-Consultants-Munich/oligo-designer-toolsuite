@@ -10,6 +10,7 @@ from pydantic import (
 
 from oligo_designer_toolsuite.config._general_models import (
     BlastnHitParameters,
+    BlastnHitParametersCoverage,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
@@ -77,7 +78,7 @@ class HcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
         max_target_seqs=10,
         max_hsps=1000,
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(coverage=90)
+    hit_parameters: BlastnHitParameters = BlastnHitParametersCoverage(value=90)
 
 
 HcrSpecificityBlastnFilterConfig = Annotated[
@@ -144,7 +145,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(coverage=90),
+            hit_parameters=BlastnHitParametersCoverage(value=90),
         )
     )
     specificity_blastn_filter: HcrSpecificityBlastnFilterConfig

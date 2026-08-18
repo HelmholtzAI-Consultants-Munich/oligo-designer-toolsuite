@@ -12,6 +12,7 @@ from typing_extensions import Self
 from oligo_designer_toolsuite.config._general_models import (
     BaseProbabilities,
     BlastnHitParameters,
+    BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
@@ -96,7 +97,7 @@ class MerfishTargetSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled
         description="BLAST options for the specificity search.",
     )
     hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParameters(min_alignment_length=17),
+        default=BlastnHitParametersMinAlignmentLength(value=17),
         description="Hit criteria. Hits satisfying these lead to oligo rejection.",
     )
 
@@ -117,7 +118,7 @@ class MerfishReadoutSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnable
         max_target_seqs=10,
         max_hsps=1000,
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=11)
+    hit_parameters: BlastnHitParameters = BlastnHitParametersMinAlignmentLength(value=11)
 
 
 MerfishReadoutSpecificityBlastnFilterConfig = Annotated[
@@ -136,7 +137,7 @@ class MerfishPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled
         max_target_seqs=10,
         max_hsps=1000,
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=14)
+    hit_parameters: BlastnHitParameters = BlastnHitParametersMinAlignmentLength(value=14)
 
 
 MerfishPrimerSpecificityBlastnFilterConfig = Annotated[
@@ -202,7 +203,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=17),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=17),
         )
     )
 
@@ -360,7 +361,7 @@ class MerfishReadoutProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=11),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=11),
         )
     )
 
@@ -508,7 +509,7 @@ class MerfishForwardPrimerSpecificityFilter(BaseModel):
                 max_target_seqs=10,
                 max_hsps=1000,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=11),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=11),
         )
     )
 
