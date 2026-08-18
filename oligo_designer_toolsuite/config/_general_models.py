@@ -177,7 +177,7 @@ class BlastnSearchParameters(BaseModel):
         serialization_alias="-soft_masking",
         description="Apply filtering locations as soft masks (i.e., only for finding initial matches).",
     )
-    lcase_masking: Literal[""] | None = Field(
+    lcase_masking: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-lcase_masking", "lcase_masking"),
         serialization_alias="-lcase_masking",
@@ -250,7 +250,7 @@ class BlastnSearchParameters(BaseModel):
         gt=0,
         lt=0.5,
     )
-    subject_besthit: Literal[""] | None = Field(
+    subject_besthit: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-subject_besthit", "subject_besthit"),
         serialization_alias="-subject_besthit",
@@ -308,7 +308,7 @@ class BlastnSearchParameters(BaseModel):
         serialization_alias="-xdrop_gap_final",
         description="X-dropoff value (in bits) for final gapped alignment.",
     )
-    no_greedy: Literal[""] | None = Field(
+    no_greedy: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-no_greedy", "no_greedy"),
         serialization_alias="-no_greedy",
@@ -320,7 +320,7 @@ class BlastnSearchParameters(BaseModel):
         serialization_alias="-min_raw_gapped_score",
         description="Minimum raw gapped score to keep an alignment in the preliminary gapped and trace-back stages. Normally set based upon expect value.",
     )
-    ungapped: Literal[""] | None = Field(
+    ungapped: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-ungapped", "ungapped"),
         serialization_alias="-ungapped",
