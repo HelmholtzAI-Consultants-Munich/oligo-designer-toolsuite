@@ -134,7 +134,8 @@ class TargetProbePropertyFilter(BaseModel):
     )
 
 
-class TargetProbeSpecificityFilter(BaseModel):
+# can be used to be adapted in the frontend
+class TargetProbeSpecificityFilterBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     read_length_bias_filter: ReadLengthBiasFilterConfig = ReadLengthBiasFilterEnabled(
@@ -155,6 +156,9 @@ class TargetProbeSpecificityFilter(BaseModel):
         ),
         description=SPECIFICITY_TARGET_DESC,
     )
+
+
+class TargetProbeSpecificityFilter(TargetProbeSpecificityFilterBase):
     variant_filter: OligoSeqVariantFilterConfig
 
 
@@ -223,9 +227,14 @@ class TargetProbes(BaseModel):
 ############################################
 
 
-class OligoSeqProbeDesignerConfig(BaseModel):
+# can be used to be adjusted in the frontend
+class OligoSeqProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
+    target_probes: TargetProbes
+
+
+class OligoSeqProbeDesignerConfig(OligoSeqProbeDesignerConfigBase):
     general: General = General(
         n_jobs=4,
         dir_output="output_oligo_seq_probe_designer",
@@ -233,4 +242,3 @@ class OligoSeqProbeDesignerConfig(BaseModel):
     )
 
     required_parameters: RequiredParameters
-    target_probes: TargetProbes
