@@ -146,7 +146,7 @@ class HomopolymericRunsFilter(BasePropertyFilter):
                     f"DNA sequences must contain only A, C, T, G (and optionally U) characters."
                 )
         # create all homopolymeric runs
-        self.homopolymeric_runs = [base.upper() * n for base, n in base_n.items()]
+        self.homopolymeric_runs = [base.upper() * n for base, n in base_n.items() if n is not None]
 
     def apply(self, sequence: str) -> bool:
         """
