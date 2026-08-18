@@ -25,12 +25,14 @@ import numpy as np
 import pandas as pd
 import yaml
 from Bio.SeqUtils import Seq
+from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import (
     ConfigurationError,
     FeatureNotImplementedError,
     FileFormatError,
 )
+from oligo_designer_toolsuite.config import SeqfishPlusProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     DeviationFromOptimalGCContentScorer,
@@ -2346,12 +2348,13 @@ class PrimerDesigner:
 ############################################
 
 
-def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
+def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict[str, Any]:
     """
     Prepare the seqFISH+ config before the pipeline runs.
 
-    This step updates the config in place so later design stages can read ready-to-use
-    settings. Target-probe design in this pipeline does not use melting-temperature
+    This step converts the validated pydantic config to a plain dict and updates it
+    so later design stages can read ready-to-use settings. Target-probe design in this
+    pipeline does not use melting-temperature
     settings. When the forward primer is generated rather than loaded, this step also
     resolves melting-temperature tables, turns off unused temperature corrections,
     and copies the shared temperature settings into the forward-primer filter that
@@ -2361,11 +2364,30 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     regions. If no gene list is provided, all regions in the input FASTA files are
     used.
 
-    :param config: Pipeline configuration loaded from the YAML config file.
-    :type config: dict
-    :return: The same config dict, updated with the prepared settings.
+    Lastly, it inserts the parameters from required_parameters into the correct sections.
+
+    :param config_validated: Validated pipeline configuration (pydantic model).
+    :type config_validated: SeqfishPlusProbeDesignerConfig
+    :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
+
+    config = config_validated.model_dump()
+
+    config["target_probes"]["oligo_generation"]["file_region_ids"] = config["required_parameters"]["targets"]
+    config["target_probes"]["oligo_generation"]["files_fasta_probe_database"] = config["required_parameters"][
+        "target_genome"
+    ]
+    files_fasta_reference_database = config["required_parameters"]["reference_genome"]
+    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"][
+        "files_fasta_reference_database"
+    ] = files_fasta_reference_database
+    config["readout_probes"]["readout_probe_table"]["specificity_filters"]["specificity_blastn_filter"][
+        "files_fasta_reference_database"
+    ] = files_fasta_reference_database
+    config["primers"]["forward_primer"]["specificity_filters"]["specificity_blastn_filter"][
+        "files_fasta_reference_database"
+    ] = files_fasta_reference_database
 
     file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
@@ -2403,9 +2425,9 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
+def seqfish_plus_probe_designer(config: SeqfishPlusProbeDesignerConfig) -> None:
     """
-    Run the seqFISH+ probe design pipeline from a config dict.
+    Run the seqFISH+ probe design pipeline from a validated configuration (pydantic model).
 
     This function prepares the config with :func:`_preprocess_config`, then runs
     :class:`SeqFishPlusProbeDesigner` end to end. It designs target probes, loads or
@@ -2438,9 +2460,9 @@ def seqfish_plus_probe_designer(config: dict[str, Any]) -> None:
     See :class:`SeqFishPlusProbeDesigner` for the pipeline description and probe
     structure.
 
-    :param config: Pipeline configuration loaded from the YAML config file. It is
-        updated in place by :func:`_preprocess_config` before the pipeline runs.
-    :type config: dict
+    :param config: Validated pipeline configuration. It is converted and prepared by
+        :func:`_preprocess_config` before the pipeline runs.
+    :type config: SeqfishPlusProbeDesignerConfig
     :return: None
     :rtype: None
     """
@@ -2508,15 +2530,20 @@ def main() -> None:
     )
 
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
 
-    # Configure logging only after dir_output is known so the log file lands there.
+    try:
+        config_validated = SeqfishPlusProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        print(f"Invalid configuration file:\n{e}")
+        raise
+
     configure_root_logger(
-        dir_output=config["general"]["dir_output"],
+        dir_output=config_validated.general.dir_output,
         pipeline_name="seqfishplus_probe_designer",
     )
 
-    seqfish_plus_probe_designer(config)
+    seqfish_plus_probe_designer(config_validated)
 
     print("--------------END PIPELINE--------------")
 
