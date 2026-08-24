@@ -22,4 +22,3 @@ joblib
 joblib_progress
 seqfold
 effidict
-oligo-designer-toolsuite-ai-filters

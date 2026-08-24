@@ -6,11 +6,9 @@ import os
 import subprocess
 from abc import abstractmethod
 
-import numpy as np
 import pandas as pd
-from Bio import SeqIO
 
-from oligo_designer_toolsuite._exceptions import ConfigurationError, DatabaseError, FileFormatError
+from oligo_designer_toolsuite._exceptions import ConfigurationError, DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_calculator import (
     BaseProperty,
@@ -21,8 +19,6 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
 from oligo_designer_toolsuite.utils import logger
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
-
-from ..utils._sequence_processor import get_sequence_from_annotation
 
 ############################################
 # Oligo Blast Filter Classes
@@ -49,9 +45,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
     - strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus. Default: both
     - perc_identity: Percent identity cutoff. Default: 0
     All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
-
-    The hits returned by BLASTN can be further filtered using machine learning models. For more information regarding which filters are available
-    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
     :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
     :type remove_hits: bool
@@ -241,235 +234,6 @@ class BlastNFilter(AlignmentSpecificityFilter):
         ]
 
         return blast_table_hits
-
-    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str) -> list:
-        """
-        Generates reference sequences from BLAST hits and returns them in a padded format.
-
-        This function takes a DataFrame of BLAST hits and processes it to generate a list of reference sequences.
-        The function creates a BED file based on the hits, retrieves the corresponding sequences from the reference genome,
-        and then pads the sequences as necessary to ensure they align correctly with the query sequences.
-
-        :param table_hits: DataFrame containing BLAST search hits.
-        :type table_hits: pd.DataFrame
-        :param file_reference: Path to the reference genome file.
-        :type file_reference: str
-        :param region_id: Region ID to process.
-        :type region_id: str
-        :return: A list of padded reference sequences.
-        :rtype: list
-        """
-        required_fields = [
-            "query",
-            "reference",
-            "alignment_length",
-            "query_start",
-            "query_end",
-            "query_length",
-            "query_sequence",
-            "reference_start",
-            "reference_end",
-            "reference_sequence",
-            "reference_strand",
-        ]
-        if not all(field in self.names_search_output for field in required_fields):
-            missing_fields = [field for field in required_fields if field not in self.names_search_output]
-            raise FileFormatError(
-                f"Required fields are missing in the search results: {missing_fields}. "
-                f"All of the following fields are required: {required_fields}."
-            )
-        # set the positions to a 0-based index
-        table_hits = self._0_index_coordinates(table_hits)
-        # Calculate adjusted "start" and "end" for BED format based on strand
-        table_hits = self._extend_reference_start_end_coordinates(table_hits)
-
-        # create bed file
-        bed = pd.DataFrame(
-            {
-                "chr": table_hits["reference"],
-                "start": table_hits["start"],
-                "end": table_hits["end"],
-                "name": table_hits["query"],
-                "score": 0,
-                "strand": table_hits["reference_strand"].map({"plus": "+", "minus": "-"}),
-            }
-        )
-
-        # adjust for possible overflows (e.g. new coordinates are not included in the gene boundaries)
-        # additionally we store how muchpadding we have to do to have two seqeunces of the same length
-        bed = self._remove_overflows(bed, file_reference)
-        file_bed = safe_append_filename(self.dir_output, f"references_{region_id}.bed")
-        bed.to_csv(
-            file_bed,
-            sep="\t",
-            index=False,
-            header=False,
-            columns=["chr", "start", "end", "name", "score", "strand"],
-        )
-        # generate the fasta file
-        references_fasta_file = safe_append_filename(self.dir_output, f"references_{region_id}.fasta")
-        get_sequence_from_annotation(
-            file_bed, file_reference, references_fasta_file, strand=True, nameOnly=True
-        )
-
-        references = [off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")]
-        references_padded = self._pad_overflows(bed, references)
-
-        os.remove(references_fasta_file)
-        os.remove(file_bed)
-        return references_padded
-
-    def _0_index_coordinates(self, table_hits: pd.DataFrame) -> pd.DataFrame:
-        """
-        Adjusts BLAST hit coordinates to a 0-based index system.
-
-        This method modifies the coordinates in the BLAST hits DataFrame to follow a 0-based indexing system,
-        which is commonly used in bioinformatics formats like BED files.
-        The adjustments are made based on the strand orientation of the sequences,
-        ensuring that the coordinates are accurate for both plus and minus strands.
-
-        :param table_hits: DataFrame containing the BLAST hits with coordinates to be adjusted.
-        :type table_hits: pd.DataFrame
-        :return: DataFrame with adjusted 0-based coordinates.
-        :rtype: pd.DataFrame
-        """
-        table_hits["query_start_corr"] = table_hits["query_start"] - 1
-        table_hits["reference_start_corr"] = np.where(
-            table_hits["reference_strand"] == "plus",
-            table_hits["reference_start"] - 1,
-            table_hits["reference_start"],
-        )
-        table_hits["reference_end_corr"] = np.where(
-            table_hits["reference_strand"] == "minus",
-            table_hits["reference_end"] - 1,
-            table_hits["reference_end"],
-        )
-        return table_hits
-
-    def _extend_reference_start_end_coordinates(self, table_hits: pd.DataFrame) -> pd.DataFrame:
-        """
-        Extends the reference start and end coordinates for BLAST hits.
-
-        This function calculates and extends the start and end coordinates of reference sequences based on the alignment's strand orientation.
-        The adjustments ensure the coordinates fully encompass the aligned query sequence in the reference genome.
-
-        :param table_hits: DataFrame containing BLAST hits with corrected 0-based reference coordinates.
-        :type table_hits: pd.DataFrame
-        :return: DataFrame with extended start and end coordinates for reference sequences.
-        :rtype: pd.DataFrame
-        """
-        table_hits["start"] = np.where(
-            table_hits["reference_strand"] == "plus",
-            table_hits["reference_start_corr"] - table_hits["query_start_corr"],
-            table_hits["reference_end_corr"] - (table_hits["query_length"] - table_hits["query_end"]),
-        )
-        table_hits["end"] = np.where(
-            table_hits["reference_strand"] == "plus",
-            table_hits["reference_end_corr"] + (table_hits["query_length"] - table_hits["query_end"]),
-            table_hits["reference_start_corr"] + table_hits["query_start_corr"],
-        )
-        return table_hits
-
-    def _remove_overflows(self, bed: pd.DataFrame, file_reference: str) -> pd.DataFrame:
-        """
-        Removes coordinate overflows in BED format entries relative to reference sequences.
-
-        This function adjusts the start and end coordinates in a BED file to ensure they fit within the boundaries of the reference sequence.
-        It calculates and corrects overflows that occur when coordinates extend beyond the reference sequence's length, ensuring the adjusted coordinates are valid.
-
-        :param bed: DataFrame containing BED format data with start and end coordinates.
-        :type bed: pd.DataFrame
-        :param file_reference: Path to the reference sequence file in FASTA format.
-        :type file_reference: str
-        :return: DataFrame with corrected start and end coordinates and calculated overflows.
-        :rtype: pd.DataFrame
-        """
-        bed["overflow_start"] = bed["start"].apply(lambda x: -x if x < 0 else 0)
-        bed["start"] = bed["start"].apply(lambda x: x if x >= 0 else 0)
-
-        records = SeqIO.parse(file_reference, "fasta")
-        regions_length = {record.id: len(record.seq) for record in records}
-        bed["len_region"] = bed["chr"].map(regions_length)
-
-        bed["overflow_end"] = bed[["end", "len_region"]].apply(
-            lambda x: x["end"] - x["len_region"] if x["end"] > x["len_region"] else 0,
-            axis=1,
-        )
-        bed["end"] = bed[["end", "len_region"]].apply(
-            lambda x: x["end"] if x["end"] <= x["len_region"] else x["len_region"],
-            axis=1,
-        )
-        return bed
-
-    def _pad_overflows(self, bed: pd.DataFrame, references: list) -> list:
-        """
-        Pads sequence references to account for coordinate overflows.
-
-        This function adjusts sequence references by adding padding to account for any overflows that
-        occur when sequence coordinates exceed the boundaries of the reference sequence.
-        The padding is added at the beginning or end of the sequence depending on the strand direction.
-
-        :param bed: DataFrame containing BED format data, including overflow calculations.
-        :type bed: pd.DataFrame
-        :param references: List of sequence references extracted from the reference file.
-        :type references: list
-        :return: List of padded sequence references with overflow accounted for.
-        :rtype: list
-        """
-        references_padded = []
-        for reference, overflow_start, overflow_end, strand in zip(
-            references, bed["overflow_start"], bed["overflow_end"], bed["strand"]
-        ):
-            padding_start = "-" * overflow_start
-            padding_end = "-" * overflow_end
-            if strand == "+":
-                reference = padding_start + reference + padding_end
-            elif strand == "-":
-                reference = padding_end + reference + padding_start
-
-            references_padded.append(reference)
-        return references_padded
-
-    def _add_alignment_gaps(
-        self, table_hits: pd.DataFrame, queries: list, references: list
-    ) -> tuple[list, list]:
-        """
-        Aligns query and reference sequences by introducing gaps based on alignment hits.
-
-        This function adjusts query and reference sequences by inserting gaps at specific positions,
-        aligning them according to the provided alignment hits.
-        The gaps are added to match the alignment patterns derived from the sequence comparisons.
-
-        :param table_hits: DataFrame containing information about the alignment hits, including gap positions.
-        :type table_hits: pd.DataFrame
-        :param queries: List of query sequences to be aligned.
-        :type queries: list
-        :param references: List of reference sequences to be aligned.
-        :type references: list
-        :return: A tuple containing the gapped query and reference sequences.
-        :rtype: tuple[list, list]
-        """
-
-        def add_gaps(seq: str, gaps: list) -> str:
-            for gap in gaps:
-                seq = seq[:gap] + "-" + seq[gap:]
-            return seq
-
-        table_hits["query_gaps"] = (
-            table_hits["query_sequence"].apply(lambda x: np.where(np.array(list(x)) == "-")[0])
-            + table_hits["query_start"]
-            - 1  # blastn has 1-based indices
-        )
-        table_hits["reference_gaps"] = (
-            table_hits["reference_sequence"].apply(lambda x: np.where(np.array(list(x)) == "-")[0])
-            + table_hits["query_start"]
-            - 1
-        )
-        gapped_queries = [add_gaps(query, gaps) for query, gaps in zip(queries, table_hits["query_gaps"])]
-        gapped_references = [
-            add_gaps(reference, gaps) for reference, gaps in zip(references, table_hits["reference_gaps"])
-        ]
-        return gapped_queries, gapped_references
 
 
 ############################################
