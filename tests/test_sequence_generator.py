@@ -24,7 +24,7 @@ from oligo_designer_toolsuite.sequence_generator import (
     FtpLoaderNCBI,
     OligoSequenceGenerator,
 )
-from oligo_designer_toolsuite.utils import FastaParser, check_if_dna_sequence
+from oligo_designer_toolsuite.utils import FastaParser, check_if_dna_sequence, get_complement_regions
 
 from .expected_values_region_generator import (
     EXPECTED_HEADER_VALUES_BACTERIA_NCBI,
@@ -613,6 +613,36 @@ class GenomicRegionGeneratorBase(unittest.TestCase, ABC):
 
     def test_intron(self) -> None:
         self._run_generation_test("intron", self.region_generator.get_sequence_intron)
+
+    def test_chromosome_length_file_keeps_first_row_with_header_none(self) -> None:
+        # chrom.sizes / bedtools -g files are headerless; header=0 would drop the first chromosome.
+        file_fasta = os.path.join(self.tmp_path, "genome.fna")
+        with open(file_fasta, "w") as handle:
+            handle.write(">chr1\n")
+            handle.write("A" * 1000 + "\n")
+            handle.write(">chr2\n")
+            handle.write("C" * 2000 + "\n")
+
+        self.region_generator.sequence_file = file_fasta
+        file_chromosome_length = self.region_generator._get_chromosome_length()
+
+        # Same load path as get_sequence_intergenic when a chromosome has no genes.
+        chromosome_length = self.region_generator._read_chromosome_length_file(file_chromosome_length)
+        assert list(chromosome_length["seqid"]) == ["chr1", "chr2"]
+        assert list(chromosome_length["length"]) == [1000, 2000]
+
+        # Same file is the -g argument to bedtools complement via get_complement_regions.
+        file_bed_in = os.path.join(self.tmp_path, "annotation_in.bed")
+        file_bed_out = os.path.join(self.tmp_path, "annotation_out.bed")
+        with open(file_bed_in, "w") as handle:
+            handle.write("chr1\t100\t200\n")
+
+        get_complement_regions(file_bed_in, file_chromosome_length, file_bed_out)
+
+        complement = self.region_generator.bed_parser.read_bed(file_bed_out, names=["seqid", "start", "end"])
+        assert list(complement["seqid"]) == ["chr1", "chr1"]
+        assert list(complement["start"]) == [0, 200]
+        assert list(complement["end"]) == [100, 1000]
 
 
 class TestGenomicRegionGeneratorNCBI(GenomicRegionGeneratorBase):

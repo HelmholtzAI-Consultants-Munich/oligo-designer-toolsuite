@@ -1888,8 +1888,8 @@ def main() -> None:
 
     ##### read the genes file #####
     if config["file_regions"] is None:
-        logger.warning(
-            "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
+        print(
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
         region_ids = None
     else:
