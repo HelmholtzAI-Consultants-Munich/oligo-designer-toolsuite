@@ -42,8 +42,8 @@ from oligo_designer_toolsuite.config._property_filters import (
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterConfig,
-    CrossHybridizationBlastnFilterEnabled,
+    CrossHybridizationBlastnFilterCoverageConfig,
+    CrossHybridizationBlastnFilterCoverageEnabled,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
@@ -93,14 +93,17 @@ class TargetProbeOligoGeneration(BaseModel):
     L_probe_sequence_length: PositiveInt = Field(
         description="Length (bases) of the L arm of the probe; L + gap + R equals the total probe length.",
         default=45,
+        json_schema_extra={"x-quick-setting": True},
     )
     gap_sequence_length: NonNegativeInt = Field(
         description="Length (bases) of the spacer between the L and R arms (covers the junction site).",
         default=2,
+        json_schema_extra={"x-quick-setting": True},
     )
     R_probe_sequence_length: PositiveInt = Field(
         description="Length (bases) of the R arm of the probe; L + gap + R equals the total probe length.",
         default=45,
+        json_schema_extra={"x-quick-setting": True},
     )
 
 
@@ -113,7 +116,8 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=False)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=30, GC_content_max=90
@@ -127,8 +131,8 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
+        CrossHybridizationBlastnFilterCoverageEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -227,6 +231,7 @@ class CycleHcrCodebookGenerate(BaseModel):
             "n_readout_probes_LR * n_channels regions."
         ),
         default=4,
+        json_schema_extra={"x-quick-setting": True},
     )
 
 
@@ -299,9 +304,17 @@ class HybridizationProbes(BaseModel):
 ############################################
 
 
-class CycleHcrProbeDesignerConfig(BaseModel):
+# The front end builds its form from this, so `general` stays out of it.
+class CycleHcrProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
+    target_probes: TargetProbes
+    readout_probes: ReadoutProbes
+    primers: Primers
+    hybridization_probes: HybridizationProbes
+
+
+class CycleHcrProbeDesignerConfig(CycleHcrProbeDesignerConfigBase):
     general: General = General(
         n_jobs=4,
         dir_output="output_cyclehcr_probe_designer",
@@ -309,7 +322,3 @@ class CycleHcrProbeDesignerConfig(BaseModel):
     )
 
     required_parameters: RequiredParameters
-    target_probes: TargetProbes
-    readout_probes: ReadoutProbes
-    primers: Primers
-    hybridization_probes: HybridizationProbes

@@ -53,12 +53,12 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_PRIMER_DESC,
     SPECIFICITY_READOUT_DESC,
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterConfig,
-    CrossHybridizationBlastnFilterEnabled,
-    HybridizationProbesBlastnFilterConfig,
-    HybridizationProbesBlastnFilterEnabled,
-    SpecificityBlastnFilterConfig,
-    SpecificityBlastnFilterEnabled,
+    CrossHybridizationBlastnFilterMinAlignmentConfig,
+    CrossHybridizationBlastnFilterMinAlignmentEnabled,
+    HybridizationProbesBlastnFilterMinAlignmentConfig,
+    HybridizationProbesBlastnFilterMinAlignmentEnabled,
+    SpecificityBlastnFilterMinAlignmentConfig,
+    SpecificityBlastnFilterMinAlignmentEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     DRNAT,
@@ -96,7 +96,8 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=43, GC_content_max=63
@@ -110,8 +111,8 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
-        default=SpecificityBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
+        default=SpecificityBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
@@ -126,8 +127,8 @@ class TargetProbeSpecificityFilter(BaseModel):
         ),
         description=SPECIFICITY_TARGET_DESC,
     )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterMinAlignmentConfig = (
+        CrossHybridizationBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
@@ -232,6 +233,7 @@ class MerfishCodebookGenerate(MerfishCodebookBase):
     min_hamming_dist: PositiveInt = Field(
         description="Minimum Hamming distance between any two valid barcodes (MHD4 = 4 for single-bit error correction).",
         default=4,
+        json_schema_extra={"x-quick-setting": True},
     )
 
 
@@ -283,8 +285,8 @@ class MerfishReadoutProbePropertyFilter(BaseModel):
 class MerfishReadoutProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
-        default=SpecificityBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
+        default=SpecificityBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -299,8 +301,8 @@ class MerfishReadoutProbeSpecificityFilter(BaseModel):
         ),
         description=SPECIFICITY_READOUT_DESC,
     )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterMinAlignmentConfig = (
+        CrossHybridizationBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -326,7 +328,10 @@ class MerfishReadoutProbeSetSelection(BaseModel):
         default=100000,
         description="Number of candidate sets to evaluate; higher values may find better sets but increase computation time.",
     )
-    homogeneous_properties_weights: HomogeneousPropertiesWeightsT = {"TmNN_oligo": 1, "GC_content_oligo": 1.0}
+    homogeneous_properties_weights: HomogeneousPropertiesWeightsT = {
+        "TmNN_oligo": 1,
+        "GC_content_oligo": 1.0,
+    }
 
 
 class MerfishReadoutProbesGlobal(BaseModel):
@@ -361,6 +366,7 @@ class MerfishReadoutProbeTableGenerate(BaseModel):
     channels_ids: list[str] = Field(
         description="Fluorescence channels used for round-robin channel assignment across bits.",
         default=["Alexa488", "Cy3b", "Alexa647"],
+        json_schema_extra={"x-quick-setting": True},
     )
     oligo_generation: MerfishReadoutProbeOligoGeneration
     property_filters: MerfishReadoutProbePropertyFilter
@@ -422,7 +428,8 @@ class MerfishForwardPrimerPropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=50, GC_content_max=65
@@ -445,8 +452,8 @@ class MerfishForwardPrimerPropertyFilter(BaseModel):
 class MerfishForwardPrimerSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
-        default=SpecificityBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
+        default=SpecificityBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -461,8 +468,8 @@ class MerfishForwardPrimerSpecificityFilter(BaseModel):
         ),
         description=SPECIFICITY_PRIMER_DESC,
     )
-    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = (
-        HybridizationProbesBlastnFilterEnabled(
+    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterMinAlignmentConfig = (
+        HybridizationProbesBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -543,9 +550,16 @@ class Primers(BaseModel):
 ############################################
 
 
-class MerfishProbeDesignerConfig(BaseModel):
+# The front end builds its form from this, so `general` stays out of it.
+class MerfishProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
+    target_probes: TargetProbes
+    readout_probes: ReadoutProbes
+    primers: Primers
+
+
+class MerfishProbeDesignerConfig(MerfishProbeDesignerConfigBase):
     general: General = General(
         n_jobs=4,
         dir_output="output_Merfishplus_probe_designer",
@@ -553,6 +567,3 @@ class MerfishProbeDesignerConfig(BaseModel):
     )
 
     required_parameters: RequiredParameters
-    target_probes: TargetProbes
-    readout_probes: ReadoutProbes
-    primers: Primers

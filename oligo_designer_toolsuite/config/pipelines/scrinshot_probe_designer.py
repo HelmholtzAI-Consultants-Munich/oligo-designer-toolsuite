@@ -45,8 +45,8 @@ from oligo_designer_toolsuite.config._property_filters import (
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterConfig,
-    CrossHybridizationBlastnFilterEnabled,
+    CrossHybridizationBlastnFilterCoverageConfig,
+    CrossHybridizationBlastnFilterCoverageEnabled,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
@@ -99,8 +99,8 @@ ScrinshotSpecificityBlastnFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    probe_length_min: LengthMinT = 40
-    probe_length_max: LengthMaxT = 45
+    probe_length_min: LengthMinT = Field(default=40, json_schema_extra={"x-quick-setting": True})
+    probe_length_max: LengthMaxT = Field(default=45, json_schema_extra={"x-quick-setting": True})
 
     @model_validator(mode="after")
     def _check_min_max(self) -> Self:
@@ -143,7 +143,8 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=5, T=5, C=5, G=5)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=5, T=5, C=5, G=5),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=40, GC_content_max=60
@@ -154,8 +155,8 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
+        CrossHybridizationBlastnFilterCoverageEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
@@ -242,12 +243,14 @@ class DetectionOligoOligoGeneration(BaseModel):
     min_thymines: PositiveInt = Field(
         description="Minimal number of thymines (T) in the detection oligo (required for UNG cleavage after U-substitution).",
         default=2,
+        json_schema_extra={"x-quick-setting": True},
     )
-    oligo_length_min: LengthMinT = 15
-    oligo_length_max: LengthMaxT = 40
+    oligo_length_min: LengthMinT = Field(default=15, json_schema_extra={"x-quick-setting": True})
+    oligo_length_max: LengthMaxT = Field(default=40, json_schema_extra={"x-quick-setting": True})
     U_distance: PositiveInt = Field(
         description="Preferred minimum distance (bases) between consecutive uracils.",
         default=5,
+        json_schema_extra={"x-quick-setting": True},
     )
     Tm_opt: TmOptT = 56
 
@@ -300,9 +303,15 @@ class DetectionOligo(BaseModel):
 ############################################
 
 
-class ScrinshotProbeDesignerConfig(BaseModel):
+# The front end builds its form from this, so `general` stays out of it.
+class ScrinshotProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
+    target_probes: TargetProbes
+    detection_oligo: DetectionOligo
+
+
+class ScrinshotProbeDesignerConfig(ScrinshotProbeDesignerConfigBase):
     general: General = General(
         n_jobs=4,
         dir_output="output_scrinshot_probe_designer",
@@ -310,5 +319,3 @@ class ScrinshotProbeDesignerConfig(BaseModel):
     )
 
     required_parameters: RequiredParameters
-    target_probes: TargetProbes
-    detection_oligo: DetectionOligo
