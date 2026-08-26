@@ -64,14 +64,20 @@ class CycleHcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
         ),
         default=13,
     )
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=10,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
+    # redeclared to change the defaults below; description/x-collapsed restated since
+    # redeclaring a field replaces its whole FieldInfo
+    search_parameters: BlastnSearchParameters = Field(
+        default=BlastnSearchParameters(
+            perc_identity=100,
+            strand="minus",
+            word_size=10,
+            dust="no",
+            soft_masking=False,
+            max_target_seqs=10,
+            max_hsps=1000,
+        ),
+        description=SpecificityBlastnFilterEnabled.model_fields["search_parameters"].description,
+        json_schema_extra={"x-collapsed": True},
     )
     hit_parameters: BlastnHitParameters = BlastnHitParametersCoverage(value=90)
 
