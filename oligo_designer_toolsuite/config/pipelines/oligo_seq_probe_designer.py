@@ -4,6 +4,11 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
+    GLOBAL_PARAMETERS_DESC,
+    OLIGO_GENERATION_DESC,
+    PROPERTY_FILTERS_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BlastnHitParametersCoverage,
     BlastnSearchParameters,
     General,
@@ -17,6 +22,7 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
+    PROBE_SET_SELECTION_DESC,
     GCContentScoreNormalized,
     IndependentSetSelection,
     IsoformConsensusScore,
@@ -217,11 +223,11 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
-    probe_set_selection: TargetProbeProbeSetSelection
-    global_parameters: TargetProbeGlobal
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
+    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -243,4 +249,4 @@ class OligoSeqProbeDesignerConfig(OligoSeqProbeDesignerConfigBase):
         write_intermediate_steps=True,
     )
 
-    required_parameters: RequiredParameters
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

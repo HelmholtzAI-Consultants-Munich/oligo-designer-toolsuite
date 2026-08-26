@@ -10,6 +10,13 @@ from pydantic import (
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
+    FORWARD_PRIMER_DESC,
+    GLOBAL_PARAMETERS_DESC,
+    OLIGO_GENERATION_DESC,
+    PROPERTY_FILTERS_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    REVERSE_PRIMER_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BaseProbabilities,
     BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
@@ -161,9 +168,9 @@ class TargetProbeProbeSetSelection(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
 
 
@@ -292,8 +299,10 @@ class SeqfishPlusReadoutProbeTableGenerate(BaseModel):
 
     source: Literal["generate"] = "generate"
     oligo_generation: SeqfishPlusReadoutProbeOligoGeneration
-    property_filters: SeqfishPlusReadoutProbePropertyFilter
-    specificity_filters: SeqfishPlusReadoutProbeSpecificityFilter
+    property_filters: SeqfishPlusReadoutProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: SeqfishPlusReadoutProbeSpecificityFilter = Field(
+        description=SPECIFICITY_FILTERS_DESC
+    )
 
 
 SeqfishPlusReadoutProbeTable = Annotated[
@@ -436,9 +445,11 @@ class SeqfishPlusForwardPrimerGenerate(BaseModel):
 
     source: Literal["generate"] = "generate"
     oligo_generation: SeqfishPlusForwardPrimerOligoGeneration
-    property_filters: SeqfishPlusForwardPrimerPropertyFilter
-    specificity_filters: SeqfishPlusForwardPrimerSpecificityFilter
-    global_parameters: SeqfishPlusForwardPrimerGlobal
+    property_filters: SeqfishPlusForwardPrimerPropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: SeqfishPlusForwardPrimerSpecificityFilter = Field(
+        description=SPECIFICITY_FILTERS_DESC
+    )
+    global_parameters: SeqfishPlusForwardPrimerGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 SeqfishPlusForwardPrimer = Annotated[
@@ -462,8 +473,8 @@ class SeqfishPlusReversePrimer(BaseModel):
 class Primers(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    forward_primer: SeqfishPlusForwardPrimer
-    reverse_primer: SeqfishPlusReversePrimer
+    forward_primer: SeqfishPlusForwardPrimer = Field(description=FORWARD_PRIMER_DESC)
+    reverse_primer: SeqfishPlusReversePrimer = Field(description=REVERSE_PRIMER_DESC)
 
 
 ############################################
@@ -487,4 +498,4 @@ class SeqfishPlusProbeDesignerConfig(SeqfishPlusProbeDesignerConfigBase):
         write_intermediate_steps=True,
     )
 
-    required_parameters: RequiredParameters
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

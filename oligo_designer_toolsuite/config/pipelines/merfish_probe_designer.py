@@ -10,6 +10,15 @@ from pydantic import (
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
+    CODEBOOK_DESC,
+    FORWARD_PRIMER_DESC,
+    GLOBAL_PARAMETERS_DESC,
+    OLIGO_GENERATION_DESC,
+    PROPERTY_FILTERS_DESC,
+    READOUT_PROBE_TABLE_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    REVERSE_PRIMER_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BaseProbabilities,
     BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
@@ -190,11 +199,11 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    global_parameters: TargetProbeGlobal
+    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -369,10 +378,10 @@ class MerfishReadoutProbeTableGenerate(BaseModel):
         json_schema_extra={"x-quick-setting": True},
     )
     oligo_generation: MerfishReadoutProbeOligoGeneration
-    property_filters: MerfishReadoutProbePropertyFilter
-    specificity_filters: MerfishReadoutProbeSpecificityFilter
-    probe_set_selection: MerfishReadoutProbeSetSelection
-    global_parameters: MerfishReadoutProbesGlobal
+    property_filters: MerfishReadoutProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: MerfishReadoutProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    probe_set_selection: MerfishReadoutProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
+    global_parameters: MerfishReadoutProbesGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 MerfishReadoutProbeTable = Annotated[
@@ -386,8 +395,8 @@ MerfishReadoutProbeTable = Annotated[
 class ReadoutProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    codebook: MerfishCodebook
-    readout_probe_table: MerfishReadoutProbeTable
+    codebook: MerfishCodebook = Field(description=CODEBOOK_DESC)
+    readout_probe_table: MerfishReadoutProbeTable = Field(description=READOUT_PROBE_TABLE_DESC)
 
 
 ############################################
@@ -515,9 +524,13 @@ class MerfishForwardPrimerGenerate(BaseModel):
 
     source: Literal["generate"] = "generate"
     oligo_generation: MerfishForwardPrimerOligoGeneration = MerfishForwardPrimerOligoGeneration()
-    property_filters: MerfishForwardPrimerPropertyFilter = MerfishForwardPrimerPropertyFilter()
-    specificity_filters: MerfishForwardPrimerSpecificityFilter
-    global_parameters: MerfishForwardPrimerGlobal = MerfishForwardPrimerGlobal()
+    property_filters: MerfishForwardPrimerPropertyFilter = Field(
+        default=MerfishForwardPrimerPropertyFilter(), description=PROPERTY_FILTERS_DESC
+    )
+    specificity_filters: MerfishForwardPrimerSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    global_parameters: MerfishForwardPrimerGlobal = Field(
+        default=MerfishForwardPrimerGlobal(), description=GLOBAL_PARAMETERS_DESC
+    )
 
 
 MerfishForwardPrimer = Annotated[
@@ -541,8 +554,8 @@ class MerfishReversePrimer(BaseModel):
 class Primers(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    forward_primer: MerfishForwardPrimer
-    reverse_primer: MerfishReversePrimer
+    forward_primer: MerfishForwardPrimer = Field(description=FORWARD_PRIMER_DESC)
+    reverse_primer: MerfishReversePrimer = Field(description=REVERSE_PRIMER_DESC)
 
 
 ############################################
@@ -566,4 +579,4 @@ class MerfishProbeDesignerConfig(MerfishProbeDesignerConfigBase):
         write_intermediate_steps=True,
     )
 
-    required_parameters: RequiredParameters
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

@@ -12,6 +12,11 @@ from pydantic import (
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
+    GLOBAL_PARAMETERS_DESC,
+    OLIGO_GENERATION_DESC,
+    PROPERTY_FILTERS_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BlastnHitParameters,
     BlastnHitParametersCoverage,
     BlastnSearchParameters,
@@ -26,6 +31,7 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
+    PROBE_SET_SELECTION_DESC,
     GCContentScoreNormalized,
     IndependentSetSelection,
     IsoformConsensusScore,
@@ -57,6 +63,9 @@ from oligo_designer_toolsuite.config._types import (
     TmMinT,
     TmOptT,
 )
+
+PADLOCK_ARMS_PROPERTIES_DESC = "Parameters that determine properties of the padlock arms."
+DETECTION_OLIGO_GENERATION_DESC = "Parameters that determine length and melting temperature of the probes."
 
 ############################################
 # SCRINSHOT-specific overrides
@@ -228,12 +237,12 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    padlock_arms_properties: PadlockArmsProperties
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
-    probe_set_selection: TargetProbeProbeSetSelection
-    global_parameters: TargetProbeGlobal
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    padlock_arms_properties: PadlockArmsProperties = Field(description=PADLOCK_ARMS_PROPERTIES_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
+    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -298,8 +307,8 @@ class DetectionOligoGlobal(BaseModel):
 class DetectionOligo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: DetectionOligoOligoGeneration
-    global_parameters: DetectionOligoGlobal
+    oligo_generation: DetectionOligoOligoGeneration = Field(description=DETECTION_OLIGO_GENERATION_DESC)
+    global_parameters: DetectionOligoGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -322,4 +331,4 @@ class ScrinshotProbeDesignerConfig(ScrinshotProbeDesignerConfigBase):
         write_intermediate_steps=True,
     )
 
-    required_parameters: RequiredParameters
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

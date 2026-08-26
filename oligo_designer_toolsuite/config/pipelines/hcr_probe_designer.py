@@ -9,6 +9,13 @@ from pydantic import (
 )
 
 from oligo_designer_toolsuite.config._general_models import (
+    CODEBOOK_DESC,
+    GLOBAL_PARAMETERS_DESC,
+    INITIATOR_TABLE_DESC,
+    OLIGO_GENERATION_DESC,
+    PROPERTY_FILTERS_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BlastnHitParameters,
     BlastnHitParametersCoverage,
     BlastnSearchParameters,
@@ -22,6 +29,7 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
+    PROBE_SET_SELECTION_DESC,
     IndependentSetSelection,
     IsoformConsensusScore,
 )
@@ -196,11 +204,11 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
-    probe_set_selection: TargetProbeProbeSetSelection
-    global_parameters: TargetProbeGlobal
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
+    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -249,8 +257,8 @@ HcrInitiatorTable = Annotated[
 class InitiatorProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    codebook: HcrCodebook
-    initiator_table: HcrInitiatorTable
+    codebook: HcrCodebook = Field(description=CODEBOOK_DESC)
+    initiator_table: HcrInitiatorTable = Field(description=INITIATOR_TABLE_DESC)
 
 
 ############################################
@@ -288,4 +296,4 @@ class HcrProbeDesignerConfig(HcrProbeDesignerConfigBase):
         write_intermediate_steps=True,
     )
 
-    required_parameters: RequiredParameters
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)
