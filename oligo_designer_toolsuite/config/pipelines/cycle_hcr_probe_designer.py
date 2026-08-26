@@ -64,8 +64,6 @@ class CycleHcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
         ),
         default=13,
     )
-    # redeclared to change the defaults below; description/x-collapsed restated since
-    # redeclaring a field replaces its whole FieldInfo
     search_parameters: BlastnSearchParameters = Field(
         default=BlastnSearchParameters(
             perc_identity=100,
@@ -237,7 +235,6 @@ class CycleHcrCodebookGenerate(BaseModel):
             "n_readout_probes_LR * n_channels regions."
         ),
         default=4,
-        json_schema_extra={"x-quick-setting": True},
     )
 
 

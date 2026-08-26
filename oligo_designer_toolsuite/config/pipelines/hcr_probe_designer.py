@@ -63,8 +63,6 @@ class HcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
         ),
         default=0,
     )
-    # redeclared to change the defaults below; description/x-collapsed restated since
-    # redeclaring a field replaces its whole FieldInfo
     search_parameters: BlastnSearchParameters = Field(
         default=BlastnSearchParameters(
             perc_identity=100,
