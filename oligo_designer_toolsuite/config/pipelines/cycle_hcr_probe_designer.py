@@ -48,8 +48,8 @@ from oligo_designer_toolsuite.config._property_filters import (
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterCoverageConfig,
-    CrossHybridizationBlastnFilterCoverageEnabled,
+    CrossHybridizationBlastnFilterConfig,
+    CrossHybridizationBlastnFilterEnabled,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
@@ -141,8 +141,8 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
-        CrossHybridizationBlastnFilterCoverageEnabled(
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
+        CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
