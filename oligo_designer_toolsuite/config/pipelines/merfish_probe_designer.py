@@ -377,11 +377,23 @@ class MerfishReadoutProbeTableGenerate(BaseModel):
         default=["Alexa488", "Cy3b", "Alexa647"],
         json_schema_extra={"x-quick-setting": True},
     )
-    oligo_generation: MerfishReadoutProbeOligoGeneration
-    property_filters: MerfishReadoutProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
-    specificity_filters: MerfishReadoutProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
-    probe_set_selection: MerfishReadoutProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    global_parameters: MerfishReadoutProbesGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
+    oligo_generation: MerfishReadoutProbeOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
+    property_filters: MerfishReadoutProbePropertyFilter = Field(
+        description=PROPERTY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    specificity_filters: MerfishReadoutProbeSpecificityFilter = Field(
+        description=SPECIFICITY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    probe_set_selection: MerfishReadoutProbeSetSelection = Field(
+        description=PROBE_SET_SELECTION_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    global_parameters: MerfishReadoutProbesGlobal = Field(
+        description=GLOBAL_PARAMETERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
 
 
 MerfishReadoutProbeTable = Annotated[
@@ -523,13 +535,23 @@ class MerfishForwardPrimerGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: MerfishForwardPrimerOligoGeneration = MerfishForwardPrimerOligoGeneration()
-    property_filters: MerfishForwardPrimerPropertyFilter = Field(
-        default=MerfishForwardPrimerPropertyFilter(), description=PROPERTY_FILTERS_DESC
+    oligo_generation: MerfishForwardPrimerOligoGeneration = Field(
+        default=MerfishForwardPrimerOligoGeneration(),
+        json_schema_extra={"x-collapsed": True},
     )
-    specificity_filters: MerfishForwardPrimerSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    property_filters: MerfishForwardPrimerPropertyFilter = Field(
+        default=MerfishForwardPrimerPropertyFilter(),
+        description=PROPERTY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    specificity_filters: MerfishForwardPrimerSpecificityFilter = Field(
+        description=SPECIFICITY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
     global_parameters: MerfishForwardPrimerGlobal = Field(
-        default=MerfishForwardPrimerGlobal(), description=GLOBAL_PARAMETERS_DESC
+        default=MerfishForwardPrimerGlobal(),
+        description=GLOBAL_PARAMETERS_DESC,
+        json_schema_extra={"x-collapsed": True},
     )
 
 

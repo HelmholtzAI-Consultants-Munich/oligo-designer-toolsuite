@@ -298,10 +298,14 @@ class SeqfishPlusReadoutProbeTableGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: SeqfishPlusReadoutProbeOligoGeneration
-    property_filters: SeqfishPlusReadoutProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    oligo_generation: SeqfishPlusReadoutProbeOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
+    property_filters: SeqfishPlusReadoutProbePropertyFilter = Field(
+        description=PROPERTY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
     specificity_filters: SeqfishPlusReadoutProbeSpecificityFilter = Field(
-        description=SPECIFICITY_FILTERS_DESC
+        description=SPECIFICITY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
     )
 
 
@@ -444,12 +448,19 @@ class SeqfishPlusForwardPrimerGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: SeqfishPlusForwardPrimerOligoGeneration
-    property_filters: SeqfishPlusForwardPrimerPropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
-    specificity_filters: SeqfishPlusForwardPrimerSpecificityFilter = Field(
-        description=SPECIFICITY_FILTERS_DESC
+    oligo_generation: SeqfishPlusForwardPrimerOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
+    property_filters: SeqfishPlusForwardPrimerPropertyFilter = Field(
+        description=PROPERTY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
     )
-    global_parameters: SeqfishPlusForwardPrimerGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
+    specificity_filters: SeqfishPlusForwardPrimerSpecificityFilter = Field(
+        description=SPECIFICITY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    global_parameters: SeqfishPlusForwardPrimerGlobal = Field(
+        description=GLOBAL_PARAMETERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
 
 
 SeqfishPlusForwardPrimer = Annotated[
