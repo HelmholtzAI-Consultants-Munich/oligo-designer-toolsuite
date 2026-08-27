@@ -3,6 +3,12 @@ name: Create and publish Docker image
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      odt_ref:
+        description: "Git ref of oligo-designer-toolsuite to install in the image (tag, branch or commit SHA). Also used as the image tag."
+        required: true
+        default: main
 
 env:
   REGISTRY: ghcr.io
@@ -22,7 +28,11 @@ jobs:
           images: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/odt
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
+            type=raw,value=${{ inputs.odt_ref }},enable=${{ github.event_name == 'workflow_dispatch' }}
+          # only add the `latest` tag when a new tag triggers this workflow
+          flavor: |
+            latest=${{ github.event_name == 'push' }}
 
       - name: Log in to the Container registry
         uses: docker/login-action@v4
@@ -43,6 +53,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
-            ODT_REF=${{ github.event.release.tag_name }}
+            ODT_REF=${{ inputs.odt_ref || github.ref_name }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
