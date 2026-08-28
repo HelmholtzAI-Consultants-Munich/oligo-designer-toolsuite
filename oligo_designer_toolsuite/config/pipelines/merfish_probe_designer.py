@@ -66,8 +66,6 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     CrossHybridizationBlastnFilterMinAlignmentEnabled,
     HybridizationProbesBlastnFilterMinAlignmentConfig,
     HybridizationProbesBlastnFilterMinAlignmentEnabled,
-    SpecificityBlastnFilterConfig,
-    SpecificityBlastnFilterEnabled,
     SpecificityBlastnFilterMinAlignmentConfig,
     SpecificityBlastnFilterMinAlignmentEnabled,
 )
@@ -122,8 +120,8 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
-        default=SpecificityBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
+        default=SpecificityBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
