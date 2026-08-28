@@ -57,6 +57,11 @@ If you would like to modify an existing pipeline for adjusted experimental setti
 
 <!-- LINK INSTALLATION START -->
 
+You have two options:
+
+1. Installation via [conda](#requirements)
+2. Using a [docker container](#docker)
+
 ### Requirements
 
 This package was tested for ***Python 3.10 - 3.12*** on ***Linux (x64)*** and ***macOS (arm64)*** but not tested on Windows.
@@ -121,6 +126,33 @@ cd oligo-designer-toolsuite
 - Development installation as python package (run inside directory):
 
 		pip install -e .[dev]
+
+### Docker
+
+Alternatively, you can use our docker container:
+
+```
+# for this, you need to have docker installed
+docker pull ghcr.io/helmholtzai-consultants-munich/odt:latest
+# check that the container works
+docker run -it --rm odt:latest genomic_region_generator --help
+```
+
+You can convert the docker container to an apptainer container and execute commands:
+
+```
+apptainer build odt_latest.sif docker://ghcr.io/helmholtzai-consultants-munich/odt:latest
+apptainer exec odt_latest.sif genomic_region_generator --help
+```
+
+Internally, the container uses micromamba. In case you want to use `apptainer shell`, you need to execute
+the following:
+
+```
+apptainer shell odt_latest.sif
+eval "$(micromamba shell hook --shell bash)"
+micromamba activate
+```
 
 
 <!-- LINK INSTALLATION END -->
