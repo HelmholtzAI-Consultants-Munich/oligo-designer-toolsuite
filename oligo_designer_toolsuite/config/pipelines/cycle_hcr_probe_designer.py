@@ -11,6 +11,7 @@ from pydantic import (
 from oligo_designer_toolsuite.config._general_models import (
     GLOBAL_PARAMETERS_DESC,
     OLIGO_GENERATION_DESC,
+    PROBE_SET_SELECTION_DESC,
     PROPERTY_FILTERS_DESC,
     REQUIRED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
@@ -27,7 +28,6 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    PROBE_SET_SELECTION_DESC,
     IndependentSetSelection,
     IsoformConsensusScore,
     TmScore,
@@ -47,6 +47,8 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_HIT_PARAMS_DESC,
+    SPECIFICITY_SEARCH_PARAMS_DESC,
     SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterCoverageConfig,
     CrossHybridizationBlastnFilterCoverageEnabled,
@@ -80,10 +82,13 @@ class CycleHcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
             max_target_seqs=10,
             max_hsps=1000,
         ),
-        description=SpecificityBlastnFilterEnabled.model_fields["search_parameters"].description,
+        description=SPECIFICITY_SEARCH_PARAMS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParametersCoverage(value=90)
+    hit_parameters: BlastnHitParameters = Field(
+        default=BlastnHitParametersCoverage(value=90),
+        description=SPECIFICITY_HIT_PARAMS_DESC,
+    )
 
 
 CycleHcrSpecificityBlastnFilterConfig = Annotated[

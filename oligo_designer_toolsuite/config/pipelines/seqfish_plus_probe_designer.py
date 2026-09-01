@@ -13,6 +13,7 @@ from oligo_designer_toolsuite.config._general_models import (
     FORWARD_PRIMER_DESC,
     GLOBAL_PARAMETERS_DESC,
     OLIGO_GENERATION_DESC,
+    PROBE_SET_SELECTION_DESC,
     PROPERTY_FILTERS_DESC,
     REQUIRED_PARAMETERS_DESC,
     REVERSE_PRIMER_DESC,
@@ -30,7 +31,6 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    PROBE_SET_SELECTION_DESC,
     GCContentScore,
     IndependentSetSelection,
     UTRScore,

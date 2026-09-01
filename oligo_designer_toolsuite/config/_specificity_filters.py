@@ -15,6 +15,20 @@ SPECIFICITY_READOUT_DESC = "Remove readout probes with significant hits to the r
 SPECIFICITY_PRIMER_DESC = "Ensure primer specificity against a reference database (BLAST-based)."
 CROSS_HYBRIDIZATION_DESC = "Remove oligos that may cross-hybridize to other probes (BLAST-based)."
 HYBRIDIZATION_PROBES_DESC = "Remove primers that match the assembled hybridization probes (BLAST-based)."
+SPECIFICITY_SEARCH_PARAMS_DESC = "BLAST options for the specificity search."
+SPECIFICITY_HIT_PARAMS_DESC = (
+    "Hit criteria (either coverage % or minimum alignment length). Hits satisfying these lead to "
+    "oligo rejection."
+)
+CROSS_HYBRIDIZATION_SEARCH_PARAMS_DESC = "BLAST options for the cross-hybridization search."
+CROSS_HYBRIDIZATION_HIT_PARAMS_DESC = "Hit criteria. Hits satisfying these lead to oligo rejection."
+HYBRIDIZATION_PROBES_SEARCH_PARAMS_DESC = (
+    "BLASTN search parameters for filtering primers that match the assembled hybridization probes."
+)
+HYBRIDIZATION_PROBES_HIT_PARAMS_DESC = (
+    "Parameters for filtering BLASTN hits against the hybridization probes. Use either coverage or "
+    "min_alignment_length."
+)
 
 
 class FilterBaseConfigEnabled(BaseModel):
@@ -53,13 +67,13 @@ class CrossHybridizationBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
-            description="BLAST options for the cross-hybridization search.",
+            description=CROSS_HYBRIDIZATION_SEARCH_PARAMS_DESC,
             json_schema_extra={"x-collapsed": True},
         ),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
-        Field(description="Hit criteria. Hits satisfying these lead to oligo rejection."),
+        Field(description=CROSS_HYBRIDIZATION_HIT_PARAMS_DESC),
     ]
 
 
@@ -80,15 +94,13 @@ class SpecificityBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
-            description="BLAST options for the specificity search.",
+            description=SPECIFICITY_SEARCH_PARAMS_DESC,
             json_schema_extra={"x-collapsed": True},
         ),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
-        Field(
-            description="Hit criteria (either coverage % or mininum alignment length). Hits satisfying these lead to oligo rejection."
-        ),
+        Field(description=SPECIFICITY_HIT_PARAMS_DESC),
     ]
 
 
@@ -105,15 +117,13 @@ class HybridizationProbesBlastnFilterEnabled(FilterBaseConfigEnabled):
     search_parameters: Annotated[
         BlastnSearchParameters,
         Field(
-            description="BLASTN search parameters for filtering primers that match the assembled hybridization probes.",
+            description=HYBRIDIZATION_PROBES_SEARCH_PARAMS_DESC,
             json_schema_extra={"x-collapsed": True},
         ),
     ]
     hit_parameters: Annotated[
         BlastnHitParameters,
-        Field(
-            description="Parameters for filtering BLASTN hits against the hybridization probes. Use either coverage or min_alignment_length."
-        ),
+        Field(description=HYBRIDIZATION_PROBES_HIT_PARAMS_DESC),
     ]
 
 
@@ -141,22 +151,26 @@ class VariantFilterEnabled(FilterBaseConfigEnabled):
 VariantFilterConfig = Annotated[VariantFilterEnabled | VariantFilterDisabled, Field(discriminator="enabled")]
 
 
-# Variants that set the hit criterion on `hit_parameters` itself, not on an enclosing config.
+# Variants of the filters above that set the default hit criterion (coverage vs. minimum
+# alignment length) on the `hit_parameters` field itself, not on an enclosing config class.
 #
-# A JSON Schema consumer picks the branch from a default on the field; one further out is not
-# read, so it falls back to the first branch while the outer value still merges in. That made
-# `value=15` meant as 15 bases arrive as 15 % coverage -- silently, both being plain numbers.
-# Coverage variants are needed for the same reason: otherwise a pipeline is correct only while
-# coverage stays declared first.
+# The ODT-Cloud form (react-jsonschema-form) preselects a union branch from the default on the
+# field itself; a default declared further out is ignored for that choice, though its values
+# still merge in. A pipeline defaulting a whole filter section to min-alignment `value=15` was
+# therefore rendered as the coverage branch: "at least 15 aligned bases" became "15 % coverage",
+# with no error, both being plain numbers. These variants put the default where the form reads
+# it. Coverage variants exist too, so a coverage pipeline does not depend on coverage staying
+# the first branch of the union.
 #
-# Values are placeholders, overridden per call site. `description` is restated because
-# redeclaring a field replaces its whole FieldInfo.
+# The `value` defaults here are placeholders; each pipeline overrides them at its call site.
+# `description` is restated because redeclaring a field replaces its whole FieldInfo,
+# description included.
 
 
 class SpecificityBlastnFilterMinAlignmentEnabled(SpecificityBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
         default=BlastnHitParametersMinAlignmentLength(value=15),
-        description=SpecificityBlastnFilterEnabled.model_fields["hit_parameters"].description,
+        description=SPECIFICITY_HIT_PARAMS_DESC,
     )
 
 
@@ -169,7 +183,7 @@ SpecificityBlastnFilterMinAlignmentConfig = Annotated[
 class SpecificityBlastnFilterCoverageEnabled(SpecificityBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
         default=BlastnHitParametersCoverage(value=50),
-        description=SpecificityBlastnFilterEnabled.model_fields["hit_parameters"].description,
+        description=SPECIFICITY_HIT_PARAMS_DESC,
     )
 
 
@@ -182,7 +196,7 @@ SpecificityBlastnFilterCoverageConfig = Annotated[
 class CrossHybridizationBlastnFilterMinAlignmentEnabled(CrossHybridizationBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
         default=BlastnHitParametersMinAlignmentLength(value=17),
-        description=CrossHybridizationBlastnFilterEnabled.model_fields["hit_parameters"].description,
+        description=CROSS_HYBRIDIZATION_HIT_PARAMS_DESC,
     )
 
 
@@ -195,7 +209,7 @@ CrossHybridizationBlastnFilterMinAlignmentConfig = Annotated[
 class CrossHybridizationBlastnFilterCoverageEnabled(CrossHybridizationBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
         default=BlastnHitParametersCoverage(value=50),
-        description=CrossHybridizationBlastnFilterEnabled.model_fields["hit_parameters"].description,
+        description=CROSS_HYBRIDIZATION_HIT_PARAMS_DESC,
     )
 
 
@@ -208,7 +222,7 @@ CrossHybridizationBlastnFilterCoverageConfig = Annotated[
 class HybridizationProbesBlastnFilterMinAlignmentEnabled(HybridizationProbesBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
         default=BlastnHitParametersMinAlignmentLength(value=11),
-        description=HybridizationProbesBlastnFilterEnabled.model_fields["hit_parameters"].description,
+        description=HYBRIDIZATION_PROBES_HIT_PARAMS_DESC,
     )
 
 

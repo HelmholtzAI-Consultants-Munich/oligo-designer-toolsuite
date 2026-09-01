@@ -6,6 +6,7 @@ from typing_extensions import Self
 from oligo_designer_toolsuite.config._general_models import (
     GLOBAL_PARAMETERS_DESC,
     OLIGO_GENERATION_DESC,
+    PROBE_SET_SELECTION_DESC,
     PROPERTY_FILTERS_DESC,
     REQUIRED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
@@ -22,7 +23,6 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    PROBE_SET_SELECTION_DESC,
     GCContentScoreNormalized,
     IndependentSetSelection,
     IsoformConsensusScore,

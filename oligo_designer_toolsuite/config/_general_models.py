@@ -30,6 +30,9 @@ PROPERTY_FILTERS_DESC = (
     "Parameters for filters that depend on properties of the filters (e.g., melting temperature)."
 )
 SPECIFICITY_FILTERS_DESC = "Parameters for filters that test the specificity of the probes."
+PROBE_SET_SELECTION_DESC = (
+    "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
+)
 GLOBAL_PARAMETERS_DESC = (
     "Parameters for melting temperature computation that are reused for different filtering and "
     "scoring methods."
