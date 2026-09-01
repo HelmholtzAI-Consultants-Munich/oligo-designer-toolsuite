@@ -142,6 +142,7 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    specificity_blastn_filter: HcrSpecificityBlastnFilterConfig
     cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
         CrossHybridizationBlastnFilterCoverageEnabled(
             enabled=True,
@@ -156,7 +157,6 @@ class TargetProbeSpecificityFilter(BaseModel):
             hit_parameters=BlastnHitParametersCoverage(value=90),
         )
     )
-    specificity_blastn_filter: HcrSpecificityBlastnFilterConfig
 
 
 class TargetProbeProbeSetSelection(BaseModel):

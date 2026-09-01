@@ -149,13 +149,6 @@ class TargetProbeSpecificityFilterBase(BaseModel):
     read_length_bias_filter: ReadLengthBiasFilterConfig = ReadLengthBiasFilterEnabled(
         enabled=True, read_length_bias=20
     )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
-        CrossHybridizationBlastnFilterCoverageEnabled(
-            enabled=True,
-            search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
-            hit_parameters=BlastnHitParametersCoverage(value=50),
-        )
-    )
     specificity_blastn_filter: SpecificityBlastnFilterCoverageConfig = Field(
         default=SpecificityBlastnFilterCoverageEnabled(
             enabled=True,
@@ -163,6 +156,13 @@ class TargetProbeSpecificityFilterBase(BaseModel):
             hit_parameters=BlastnHitParametersCoverage(value=50),
         ),
         description=SPECIFICITY_TARGET_DESC,
+    )
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
+        CrossHybridizationBlastnFilterCoverageEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
+            hit_parameters=BlastnHitParametersCoverage(value=50),
+        )
     )
 
 
