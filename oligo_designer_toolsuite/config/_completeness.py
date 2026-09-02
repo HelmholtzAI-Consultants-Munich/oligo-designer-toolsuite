@@ -27,7 +27,7 @@ from oligo_designer_toolsuite._exceptions import ConfigurationError
 # Completeness check
 ############################################
 
-SPARSE_MARKER = "x-config-sparse"
+ALLOW_INCOMPLETE_MARKER = "x-allow-incomplete"
 
 
 class MissingConfigKey(NamedTuple):
@@ -70,7 +70,7 @@ def _accepted_keys(name: str, field: FieldInfo) -> list[str]:
     if field.alias is not None:
         keys.append(field.alias)
     keys.append(name)
-    return keys
+    return list(dict.fromkeys(keys))
 
 
 def _preferred_key(name: str, field: FieldInfo) -> str:
@@ -89,11 +89,11 @@ def _preferred_key(name: str, field: FieldInfo) -> str:
     return _accepted_keys(name, field)[0]
 
 
-def _is_sparse(model: type[BaseModel]) -> bool:
+def _allows_incomplete(model: type[BaseModel]) -> bool:
     """
-    Report whether a model may be filled in partially.
+    Report whether a model is allowed to leave parameters unset.
 
-    A sparse model passes its fields on to an external tool and drops the unset ones when it is
+    Such a model passes its fields on to an external tool and drops the unset ones when it is
     serialized, so an omitted key means "do not pass this option" rather than "use a default".
 
     :param model: Model to check.
@@ -102,7 +102,7 @@ def _is_sparse(model: type[BaseModel]) -> bool:
     :rtype: bool
     """
     json_schema_extra = model.model_config.get("json_schema_extra")
-    return isinstance(json_schema_extra, dict) and bool(json_schema_extra.get(SPARSE_MARKER))
+    return isinstance(json_schema_extra, dict) and bool(json_schema_extra.get(ALLOW_INCOMPLETE_MARKER))
 
 
 def find_missing_config_keys(
@@ -132,7 +132,7 @@ def find_missing_config_keys(
     """
     missing = [] if missing is None else missing
     model = type(config)
-    if _is_sparse(model) or not isinstance(config_raw, Mapping):
+    if _allows_incomplete(model) or not isinstance(config_raw, Mapping):
         return missing
 
     for name, field in model.model_fields.items():

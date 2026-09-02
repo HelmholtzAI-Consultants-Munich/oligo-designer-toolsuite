@@ -371,7 +371,7 @@ class TestConfigCompleteness(unittest.TestCase):
 
         assert [entry for entry in self._merfish(raw) if "Tm_filter" in entry.path] == []
 
-    def test_sparse_model_is_exempt(self) -> None:
+    def test_model_allowing_incomplete_is_exempt(self) -> None:
         """An unset BLAST option means the flag is not passed, so it needs no value."""
         raw = _load("merfish_probe_designer.yaml")
         filters = raw["target_probes"]["specificity_filters"]["specificity_blastn_filter"]

@@ -76,7 +76,7 @@ class BaseProbabilities(BaseModel):
 
 
 class BlastnSearchParameters(BaseModel):
-    # `x-config-sparse` exempts this model from the completeness check (see `_completeness.py`):
+    # `x-allow-incomplete` exempts this model from the completeness check (see `_completeness.py`):
     # these are BLAST flags, so an option left out is not passed rather than defaulted, and the
     # serializer below drops every None, so a complete file could not be written anyway. A block
     # that is written is taken as written, no enclosing default merges into it.
@@ -84,7 +84,7 @@ class BlastnSearchParameters(BaseModel):
         extra="forbid",
         validate_by_name=True,
         validate_by_alias=True,
-        json_schema_extra={"x-config-sparse": True},
+        json_schema_extra={"x-allow-incomplete": True},
     )
 
     # don't allow
