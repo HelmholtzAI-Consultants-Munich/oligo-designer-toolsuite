@@ -15,13 +15,17 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from typing import Any, Callable, TypeVar, cast
 
 import pandas as pd
+import yaml
 from Bio.SeqUtils import MeltingTemp as mt
+from pydantic import BaseModel, ValidationError
 
-from oligo_designer_toolsuite._exceptions import FileFormatError
+from oligo_designer_toolsuite._exceptions import ConfigurationError, FileFormatError
+from oligo_designer_toolsuite.config._completeness import check_config_complete
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.utils import check_if_dna_sequence, count_kmer_abundance, logger
 
 F = TypeVar("F", bound=Callable[..., Any])
+ConfigT = TypeVar("ConfigT", bound=BaseModel)
 
 ############################################
 # Utils functions
@@ -62,6 +66,40 @@ def base_parser(*, prog: str, usage: str, description: str | None = None) -> dic
     )
     args = parser.parse_args()
     return vars(args)
+
+
+def load_config(file_config: str, model: type[ConfigT]) -> ConfigT:
+    """
+    Read a configuration file and check it against the configuration model of a pipeline.
+
+    The file has to set every parameter of the model. A parameter that is left out resolves to a
+    different value depending on how much of its section is left out with it, so the parameters
+    that are missing are reported together with the value that was used so far.
+
+    :param file_config: Path to the config file in yaml format.
+    :type file_config: str
+    :param model: Configuration model of the pipeline.
+    :type model: type[ConfigT]
+    :return: The validated configuration.
+    :rtype: ConfigT
+    :raises SystemExit: If the file does not match the model or leaves parameters unset.
+    """
+    with open(file_config, "r") as handle:
+        config_raw = yaml.safe_load(handle)
+
+    # Reported and exited rather than raised: both messages are written for the person running the
+    # command, and a traceback would print the whole report a second time.
+    try:
+        config_validated = model.model_validate(config_raw)
+    except ValidationError as error:
+        sys.exit(f"Invalid configuration file:\n{error}")
+
+    try:
+        check_config_complete(config_validated, config_raw, source=file_config)
+    except ConfigurationError as error:
+        sys.exit(f"Incomplete configuration file:\n{error}")
+
+    return config_validated
 
 
 def base_log_parameters(parameters: dict[str, Any]) -> None:

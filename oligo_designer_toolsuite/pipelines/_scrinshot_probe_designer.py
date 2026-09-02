@@ -21,10 +21,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-import yaml
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
-from pydantic import ValidationError
 
 from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
@@ -75,6 +73,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     base_log_parameters,
     base_parser,
     check_content_oligo_database,
+    load_config,
     pipeline_step_basic,
     preprocess_tm_parameters,
 )
@@ -1769,14 +1768,7 @@ def main() -> None:
         description=__doc__,
     )
 
-    with open(args["config"], "r") as handle:
-        config_raw = yaml.safe_load(handle)
-
-    try:
-        config_validated = ScrinshotProbeDesignerConfig.model_validate(config_raw)
-    except ValidationError as e:
-        print(f"Invalid configuration file:\n{e}")
-        raise
+    config_validated = load_config(args["config"], ScrinshotProbeDesignerConfig)
 
     # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
