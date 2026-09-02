@@ -18,9 +18,6 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-import yaml
-from pydantic import ValidationError
-
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
@@ -72,6 +69,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
     check_content_oligo_database,
     get_highly_abundant_kmer_sequences,
+    load_config,
     pipeline_step_basic,
     preprocess_tm_parameters,
 )
@@ -1133,6 +1131,7 @@ def main() -> None:
     :rtype: None
     :raises pydantic.ValidationError: If the configuration file fails schema
         validation.
+    :raises ConfigurationError: If the configuration file leaves parameters unset.
     """
     print("--------------START PIPELINE--------------")
 
@@ -1142,14 +1141,7 @@ def main() -> None:
         description=__doc__,
     )
 
-    with open(args["config"], "r") as handle:
-        config_raw = yaml.safe_load(handle)
-
-    try:
-        config_validated = OligoSeqProbeDesignerConfig.model_validate(config_raw)
-    except ValidationError as e:
-        print("Invalid configuration file:\n%s", e)
-        raise
+    config_validated = load_config(args["config"], OligoSeqProbeDesignerConfig)
 
     # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(

@@ -20,8 +20,6 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import yaml
-from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import (
     FeatureNotImplementedError,
@@ -70,6 +68,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
     check_content_oligo_database,
     format_sequence,
+    load_config,
     pipeline_step_basic,
     preprocess_tm_parameters,
     validate_bit_mapping_table,
@@ -1546,14 +1545,7 @@ def main() -> None:
         description=__doc__,
     )
 
-    with open(args["config"], "r") as handle:
-        config_raw = yaml.safe_load(handle)
-
-    try:
-        config_validated = HcrProbeDesignerConfig.model_validate(config_raw)
-    except ValidationError as e:
-        print(f"Invalid configuration file:\n{e}")
-        raise
+    config_validated = load_config(args["config"], HcrProbeDesignerConfig)
 
     # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(

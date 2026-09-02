@@ -22,9 +22,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import yaml
 from Bio.SeqUtils import Seq
-from pydantic import ValidationError
 
 from oligo_designer_toolsuite._exceptions import (
     ConfigurationError,
@@ -75,6 +73,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     base_parser,
     check_content_oligo_database,
     format_sequence,
+    load_config,
     pipeline_step_basic,
     preprocess_tm_parameters,
     validate_bit_mapping_table,
@@ -2062,14 +2061,7 @@ def main() -> None:
         description=__doc__,
     )
 
-    with open(args["config"], "r") as handle:
-        config_raw = yaml.safe_load(handle)
-
-    try:
-        config_validated = CycleHcrProbeDesignerConfig.model_validate(config_raw)
-    except ValidationError as e:
-        print(f"Invalid configuration file:\n{e}")
-        raise
+    config_validated = load_config(args["config"], CycleHcrProbeDesignerConfig)
 
     configure_root_logger(
         dir_output=config_validated.general.dir_output,

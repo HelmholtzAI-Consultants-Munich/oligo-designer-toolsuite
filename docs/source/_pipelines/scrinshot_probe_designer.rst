@@ -26,7 +26,7 @@ To create SCRINSHOT probes you can run the pipeline with
 
 where:
 
-``-c``: config file, which contains parameter settings, specific to SCRINSHOT probe design, `scrinshot_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/scrinshot_probe_designer.yaml>`__ contains default parameter settings
+``-c``: config file, which contains parameter settings, specific to SCRINSHOT probe design, `scrinshot_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/scrinshot_probe_designer.yaml>`__ contains a complete set of recommended parameters
 
 All steps and config parameters will be documented in a log file, that is saved in the defined output directory.
 The logging file will have the format: ``log_scrinshot_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
@@ -163,7 +163,7 @@ The output is stored in two separate files:
 - ``padlock_probes_order.yml``: contains for each probe the sequences of the padlock probe and the detection oligo.
 - ``padlock_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific properties.
 
-All default parameters can be found in the `scrinshot_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/scrinshot_probe_designer.yaml>`__ config file provided along the repository.
+A complete configuration with the recommended parameters can be found in the `scrinshot_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/scrinshot_probe_designer.yaml>`__ config file provided along the repository. Every parameter has to be set.
 
 
 .. [1] Mekki, I., Campi, F., Kuemmerle, L. B., ... & Barros de Andrade e Sousa, L. (2023). Oligo Designer Toolsuite. Zenodo, https://doi.org/10.5281/zenodo.7823048
