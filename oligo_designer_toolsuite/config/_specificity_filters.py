@@ -154,13 +154,29 @@ VariantFilterConfig = Annotated[VariantFilterEnabled | VariantFilterDisabled, Fi
 # Variants of the filters above that set the default hit criterion (coverage vs. minimum
 # alignment length) on the `hit_parameters` field itself, not on an enclosing config class.
 #
-# The ODT-Cloud form (react-jsonschema-form) preselects a union branch from the default on the
-# field itself; a default declared further out is ignored for that choice, though its values
-# still merge in. A pipeline defaulting a whole filter section to min-alignment `value=15` was
-# therefore rendered as the coverage branch: "at least 15 aligned bases" became "15 % coverage",
-# with no error, both being plain numbers. These variants put the default where the form reads
-# it. Coverage variants exist too, so a coverage pipeline does not depend on coverage staying
-# the first branch of the union.
+# `hit_parameters` is a union discriminated on `hit_criterion`, declared in `_general_models.py`
+# as `BlastnHitParametersCoverage | BlastnHitParametersMinAlignmentLength`. The ODT-Cloud form
+# (react-jsonschema-form) has to pick one of the two before the user has typed anything, and it
+# reads only the default on `hit_parameters` itself. Take `MerfishProbeDesignerConfig`, which
+# before these variants existed declared its target probe filter as:
+#
+#     specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+#         default=SpecificityBlastnFilterEnabled(
+#             ...,
+#             hit_parameters=BlastnHitParametersMinAlignmentLength(value=17),
+#         ),
+#     )
+#
+# That default sits on `specificity_blastn_filter`, one level above the field the form reads,
+# so `SpecificityBlastnFilterEnabled.hit_parameters` reached the schema with no default of its
+# own. The form fell back to the first branch of the union, `BlastnHitParametersCoverage`, and
+# filled it with the 17 from the enclosing default: "at least 17 aligned bases" was rendered as
+# "17 % coverage", with no error, both being plain numbers.
+#
+# `SpecificityBlastnFilterMinAlignmentEnabled` below redeclares `hit_parameters` with a
+# min-alignment default, which puts it where the form looks; the pipeline then defaults the
+# section to that variant instead. Coverage variants exist for the same reason, so a coverage
+# pipeline does not depend on coverage staying the first branch of the union.
 #
 # The `value` defaults here are placeholders; each pipeline overrides them at its call site.
 # `description` is restated because redeclaring a field replaces its whole FieldInfo,
