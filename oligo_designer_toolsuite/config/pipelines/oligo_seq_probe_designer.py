@@ -4,6 +4,12 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
+    GLOBAL_PARAMETERS_DESC,
+    OLIGO_GENERATION_DESC,
+    PROBE_SET_SELECTION_DESC,
+    PROPERTY_FILTERS_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BlastnHitParametersCoverage,
     BlastnSearchParameters,
     General,
@@ -46,12 +52,12 @@ from oligo_designer_toolsuite.config._property_filters import (
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterConfig,
-    CrossHybridizationBlastnFilterEnabled,
+    CrossHybridizationBlastnFilterCoverageConfig,
+    CrossHybridizationBlastnFilterCoverageEnabled,
     ReadLengthBiasFilterConfig,
     ReadLengthBiasFilterEnabled,
-    SpecificityBlastnFilterConfig,
-    SpecificityBlastnFilterEnabled,
+    SpecificityBlastnFilterCoverageConfig,
+    SpecificityBlastnFilterCoverageEnabled,
     VariantFilterDisabled,
     VariantFilterEnabled,
 )
@@ -77,7 +83,8 @@ class OligoSeqVariantFilterEnabled(VariantFilterEnabled):
 
 
 OligoSeqVariantFilterConfig = Annotated[
-    OligoSeqVariantFilterEnabled | OligoSeqVariantFilterDisabled, Field(discriminator="enabled")
+    OligoSeqVariantFilterEnabled | OligoSeqVariantFilterDisabled,
+    Field(discriminator="enabled"),
 ]
 
 
@@ -89,8 +96,8 @@ OligoSeqVariantFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    probe_length_min: LengthMinT = 26
-    probe_length_max: LengthMaxT = 30
+    probe_length_min: LengthMinT = Field(default=26, json_schema_extra={"x-quick-setting": True})
+    probe_length_max: LengthMaxT = Field(default=30, json_schema_extra={"x-quick-setting": True})
     probe_split_region: PositiveInt = Field(
         description="Minimum number of bases covering the exon junction, i.e. the oligo should contain at least x bases upstream/downstream of the junction.",
         default=4,
@@ -115,7 +122,8 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=45, GC_content_max=65
@@ -141,20 +149,20 @@ class TargetProbeSpecificityFilterBase(BaseModel):
     read_length_bias_filter: ReadLengthBiasFilterConfig = ReadLengthBiasFilterEnabled(
         enabled=True, read_length_bias=20
     )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
-            enabled=True,
-            search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
-            hit_parameters=BlastnHitParametersCoverage(value=50),
-        )
-    )
-    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
-        default=SpecificityBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterCoverageConfig = Field(
+        default=SpecificityBlastnFilterCoverageEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
             hit_parameters=BlastnHitParametersCoverage(value=50),
         ),
         description=SPECIFICITY_TARGET_DESC,
+    )
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
+        CrossHybridizationBlastnFilterCoverageEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(perc_identity=80, strand="minus", word_size=10),
+            hit_parameters=BlastnHitParametersCoverage(value=50),
+        )
     )
 
 
@@ -215,11 +223,11 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
-    probe_set_selection: TargetProbeProbeSetSelection
-    global_parameters: TargetProbeGlobal
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
+    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -227,7 +235,7 @@ class TargetProbes(BaseModel):
 ############################################
 
 
-# can be used to be adjusted in the frontend
+# The front end builds its form from this, so `general` stays out of it.
 class OligoSeqProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
@@ -241,4 +249,4 @@ class OligoSeqProbeDesignerConfig(OligoSeqProbeDesignerConfigBase):
         write_intermediate_steps=True,
     )
 
-    required_parameters: RequiredParameters
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

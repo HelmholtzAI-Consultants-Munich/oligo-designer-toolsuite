@@ -9,6 +9,14 @@ from pydantic import (
 )
 
 from oligo_designer_toolsuite.config._general_models import (
+    CODEBOOK_DESC,
+    GLOBAL_PARAMETERS_DESC,
+    INITIATOR_TABLE_DESC,
+    OLIGO_GENERATION_DESC,
+    PROBE_SET_SELECTION_DESC,
+    PROPERTY_FILTERS_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BlastnHitParameters,
     BlastnHitParametersCoverage,
     BlastnSearchParameters,
@@ -40,9 +48,11 @@ from oligo_designer_toolsuite.config._property_filters import (
     TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
+    SPECIFICITY_HIT_PARAMS_DESC,
+    SPECIFICITY_SEARCH_PARAMS_DESC,
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterConfig,
-    CrossHybridizationBlastnFilterEnabled,
+    CrossHybridizationBlastnFilterCoverageConfig,
+    CrossHybridizationBlastnFilterCoverageEnabled,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
@@ -63,16 +73,23 @@ class HcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
         ),
         default=0,
     )
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=10,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
+    search_parameters: BlastnSearchParameters = Field(
+        default=BlastnSearchParameters(
+            perc_identity=100,
+            strand="minus",
+            word_size=10,
+            dust="no",
+            soft_masking=False,
+            max_target_seqs=10,
+            max_hsps=1000,
+        ),
+        description=SPECIFICITY_SEARCH_PARAMS_DESC,
+        json_schema_extra={"x-collapsed": True},
     )
-    hit_parameters: BlastnHitParameters = BlastnHitParametersCoverage(value=90)
+    hit_parameters: BlastnHitParameters = Field(
+        default=BlastnHitParametersCoverage(value=90),
+        description=SPECIFICITY_HIT_PARAMS_DESC,
+    )
 
 
 HcrSpecificityBlastnFilterConfig = Annotated[
@@ -81,7 +98,7 @@ HcrSpecificityBlastnFilterConfig = Annotated[
 ]
 
 
-############################################
+############################################ add here expanding toggle
 # Target probe
 ############################################
 
@@ -92,14 +109,17 @@ class TargetProbeOligoGeneration(BaseModel):
     L_probe_sequence_length: PositiveInt = Field(
         description="Length (bases) of the L arm of the probe; L + gap + R equals the total probe length.",
         default=25,
+        json_schema_extra={"x-quick-setting": True},
     )
     gap_sequence_length: NonNegativeInt = Field(
         description="Length (bases) of the spacer between the L and R arms (covers the ligation site).",
         default=2,
+        json_schema_extra={"x-quick-setting": True},
     )
     R_probe_sequence_length: PositiveInt = Field(
         description="Length (bases) of the R arm of the probe; L + gap + R equals the total probe length.",
         default=25,
+        json_schema_extra={"x-quick-setting": True},
     )
 
 
@@ -112,7 +132,8 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=False)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=40, GC_content_max=65
@@ -126,8 +147,9 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
+    specificity_blastn_filter: HcrSpecificityBlastnFilterConfig
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
+        CrossHybridizationBlastnFilterCoverageEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -140,7 +162,6 @@ class TargetProbeSpecificityFilter(BaseModel):
             hit_parameters=BlastnHitParametersCoverage(value=90),
         )
     )
-    specificity_blastn_filter: HcrSpecificityBlastnFilterConfig
 
 
 class TargetProbeProbeSetSelection(BaseModel):
@@ -188,11 +209,11 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
-    probe_set_selection: TargetProbeProbeSetSelection
-    global_parameters: TargetProbeGlobal
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
+    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -241,8 +262,8 @@ HcrInitiatorTable = Annotated[
 class InitiatorProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    codebook: HcrCodebook
-    initiator_table: HcrInitiatorTable
+    codebook: HcrCodebook = Field(description=CODEBOOK_DESC)
+    initiator_table: HcrInitiatorTable = Field(description=INITIATOR_TABLE_DESC)
 
 
 ############################################
@@ -264,16 +285,20 @@ class HybridizationProbes(BaseModel):
 ############################################
 
 
-class HcrProbeDesignerConfig(BaseModel):
+# The front end builds its form from this, so `general` stays out of it.
+class HcrProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
+    target_probes: TargetProbes
+    initiator_probes: InitiatorProbes
+    hybridization_probes: HybridizationProbes
+
+
+class HcrProbeDesignerConfig(HcrProbeDesignerConfigBase):
     general: General = General(
         n_jobs=4,
         dir_output="output_hcr_probe_designer",
         write_intermediate_steps=True,
     )
 
-    required_parameters: RequiredParameters
-    target_probes: TargetProbes
-    initiator_probes: InitiatorProbes
-    hybridization_probes: HybridizationProbes
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

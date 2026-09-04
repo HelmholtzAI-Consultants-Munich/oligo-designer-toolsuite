@@ -20,6 +20,30 @@ from oligo_designer_toolsuite.config._types import (
 )
 
 
+# High-level descriptions of the config sections, shown as the section's help text in the form.
+REQUIRED_PARAMETERS_DESC = (
+    "Parameters required for target probe generation. The reference genome is reused for all "
+    "specificity filters for all probes."
+)
+OLIGO_GENERATION_DESC = "Parameters that determine length and spacing of the probes."
+PROPERTY_FILTERS_DESC = (
+    "Parameters for filters that depend on properties of the filters (e.g., melting temperature)."
+)
+SPECIFICITY_FILTERS_DESC = "Parameters for filters that test the specificity of the probes."
+PROBE_SET_SELECTION_DESC = (
+    "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
+)
+GLOBAL_PARAMETERS_DESC = (
+    "Parameters for melting temperature computation that are reused for different filtering and "
+    "scoring methods."
+)
+CODEBOOK_DESC = "Parameters that determine the codebook generation or loading."
+READOUT_PROBE_TABLE_DESC = "Parameters that determine the readout probe table generation or loading."
+INITIATOR_TABLE_DESC = "Parameters that determine the initiator table generation or loading."
+FORWARD_PRIMER_DESC = "Parameters that determine the forward primer generation or loading."
+REVERSE_PRIMER_DESC = "Parameters that determine the reverse primer generation or loading."
+
+
 class General(BaseModel):
     model_config = ConfigDict(extra="forbid")
     n_jobs: PositiveInt = Field(
