@@ -1076,7 +1076,7 @@ def oligo_seq_probe_designer(config: OligoSeqProbeDesignerConfig) -> None:
 
     1. Reads the gene IDs file (if provided) or uses all genes from FASTA files
     2. Preprocesses melting temperature parameters for target probes
-    3. Preprocesses alignment method parameters for hybridization probability and cross-hybridization
+    3. Preprocesses alignment method parameters for specificity and cross-hybridization
        filtering (BLASTN or Bowtie)
     4. Initializes the OligoSeqProbeDesigner pipeline
     5. Designs target probes for specified genes
@@ -1117,7 +1117,7 @@ def main() -> None:
     2. Reads the configuration YAML file containing all pipeline parameters
     3. Reads the gene IDs file (if provided) or uses all genes from FASTA files
     4. Preprocesses melting temperature parameters for target probes
-    5. Preprocesses alignment method parameters for hybridization probability and cross-hybridization
+    5. Preprocesses alignment method parameters for specificity and cross-hybridization
        filtering (BLASTN or Bowtie)
     6. Initializes the OligoSeqProbeDesigner pipeline
     7. Designs target probes for specified genes
