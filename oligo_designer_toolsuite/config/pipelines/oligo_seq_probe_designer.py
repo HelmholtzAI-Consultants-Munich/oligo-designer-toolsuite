@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 from typing_extensions import Self
@@ -16,11 +16,11 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    GCContentScore,
+    GCContentScoreNormalized,
     IndependentSetSelection,
     IsoformConsensusScore,
     TargetedExonsScore,
-    TmScore,
+    TmScoreNormalized,
     UniformDistanceScore,
 )
 from oligo_designer_toolsuite.config._property_filters import (
@@ -48,6 +48,10 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     CrossHybridizationBlastnFilterEnabled,
     ReadLengthBiasFilterConfig,
     ReadLengthBiasFilterEnabled,
+    SpecificityBlastnFilterDisabled,
+    SpecificityBlastnFilterEnabled,
+    VariantFilterDisabled,
+    VariantFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     FilesFastaDatabaseT,
@@ -55,10 +59,48 @@ from oligo_designer_toolsuite.config._types import (
     LengthMinT,
     RegionListT,
 )
-from oligo_designer_toolsuite.config.overrides.oligo_seq_probe_designer_overrides import (
-    OligoSeqSpecificityBlastnFilterConfig,
-    OligoSeqVariantFilterConfig,
-)
+
+############################################
+# Oligoseq-specific overrides
+############################################
+
+
+class OligoSeqSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
+    pass
+
+
+class OligoSeqSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
+    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
+        perc_identity=80, strand="minus", word_size=10
+    )
+    hit_parameters: BlastnHitParameters = BlastnHitParameters(coverage=50)
+
+
+OligoSeqSpecificityBlastnFilterConfig = Annotated[
+    OligoSeqSpecificityBlastnFilterEnabled | OligoSeqSpecificityBlastnFilterDisabled,
+    Field(discriminator="enabled"),
+]
+
+
+class OligoSeqVariantFilterDisabled(VariantFilterDisabled):
+    pass
+
+
+class OligoSeqVariantFilterEnabled(VariantFilterEnabled):
+    action: Annotated[
+        Literal["flag", "filter"],
+        Field(description="Action for variant-overlapping oligos: 'flag' (mark only) or 'filter' (exclude)."),
+    ] = "flag"
+
+
+OligoSeqVariantFilterConfig = Annotated[
+    OligoSeqVariantFilterEnabled | OligoSeqVariantFilterDisabled, Field(discriminator="enabled")
+]
+
+
+############################################
+# Target probe
+############################################
 
 
 class TargetProbeOligoGeneration(BaseModel):
@@ -135,7 +177,7 @@ class TargetProbeProbeSetSelection(BaseModel):
         n_sets=3,
         set_size_min=3,
         set_size_opt=5,
-        distance_between_target_probes=0,
+        distance_between_probes=0,
         n_attempts_graph=50,
         n_attempts_clique_enum=50,
         diversification_fraction=0.1,
@@ -145,10 +187,10 @@ class TargetProbeProbeSetSelection(BaseModel):
     uniform_distance_score: UniformDistanceScore = UniformDistanceScore(weight=1)
     isoform_consensus_score: IsoformConsensusScore = IsoformConsensusScore(weight=1)
     targeted_exons_score: TargetedExonsScore = TargetedExonsScore(weight=0, targeted_exons=[])
-    GC_content_score: GCContentScore = GCContentScore(
+    GC_content_score: GCContentScoreNormalized = GCContentScoreNormalized(
         weight=1, GC_content_min=45, GC_content_opt=55, GC_content_max=65
     )
-    Tm_score: TmScore = TmScore(weight=1, Tm_min=50, Tm_opt=60, Tm_max=70)
+    Tm_score: TmScoreNormalized = TmScoreNormalized(weight=1, Tm_min=50, Tm_opt=60, Tm_max=70)
 
 
 class TargetProbeGlobal(BaseModel):
@@ -178,7 +220,7 @@ class TargetProbeGlobal(BaseModel):
     )
 
 
-class TargetProbe(BaseModel):
+class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     oligo_generation: TargetProbeOligoGeneration
@@ -186,6 +228,11 @@ class TargetProbe(BaseModel):
     specificity_filters: TargetProbeSpecificityFilter
     probe_set_selection: TargetProbeProbeSetSelection
     global_parameters: TargetProbeGlobal
+
+
+############################################
+# Top level
+############################################
 
 
 class OligoSeqProbeDesignerConfig(BaseModel):
@@ -197,4 +244,4 @@ class OligoSeqProbeDesignerConfig(BaseModel):
         write_intermediate_steps=True,
     )
 
-    target_probe: TargetProbe
+    target_probes: TargetProbes

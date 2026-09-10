@@ -13,7 +13,10 @@ from typing import Any
 
 import yaml
 
+from oligo_designer_toolsuite.config.pipelines.cycle_hcr_probe_designer import CycleHcrProbeDesignerConfig
+from oligo_designer_toolsuite.config.pipelines.hcr_probe_designer import HcrProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
+from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 
 ############################################
 # Setup
@@ -121,8 +124,8 @@ class TestOligoSeqProbeDesigner(PipelinesBase, unittest.TestCase):
 class TestScrinshotProbeDesigner(PipelinesBase, unittest.TestCase):
     def setup_output_dir(self) -> Any:
         with open(CONFIG_SCRINSHOT_PROBE_DESIGNER, "r") as handle:
-            config = yaml.safe_load(handle)
-        dir_output = config.get("dir_output")
+            config = ScrinshotProbeDesignerConfig(**yaml.safe_load(handle))
+        dir_output = config.general.dir_output
         if dir_output is None:
             return tempfile.mkdtemp()
         return os.path.abspath(dir_output)
@@ -138,7 +141,7 @@ class TestSeqfishplusProbeDesigner(PipelinesBase, unittest.TestCase):
     def setup_output_dir(self) -> Any:
         with open(CONFIG_SEQFISHPLUS_PROBE_DESIGNER, "r") as handle:
             config = yaml.safe_load(handle)
-        dir_output = config.get("dir_output")
+        dir_output = config.get("general", {}).get("dir_output")
         if dir_output is None:
             return tempfile.mkdtemp()
         return os.path.abspath(dir_output)
@@ -154,7 +157,7 @@ class TestMerfishProbeDesigner(PipelinesBase, unittest.TestCase):
     def setup_output_dir(self) -> Any:
         with open(CONFIG_MERFISH_PROBE_DESIGNER, "r") as handle:
             config = yaml.safe_load(handle)
-        dir_output = config.get("dir_output")
+        dir_output = config.get("general", {}).get("dir_output")
         if dir_output is None:
             return tempfile.mkdtemp()
         return os.path.abspath(dir_output)
@@ -169,8 +172,8 @@ class TestMerfishProbeDesigner(PipelinesBase, unittest.TestCase):
 class TestCycleHCRProbeDesigner(PipelinesBase, unittest.TestCase):
     def setup_output_dir(self) -> Any:
         with open(CONFIG_CYCLEHCR_PROBE_DESIGNER, "r") as handle:
-            config = yaml.safe_load(handle)
-        dir_output = config.get("dir_output")
+            config = CycleHcrProbeDesignerConfig(**yaml.safe_load(handle))
+        dir_output = config.general.dir_output
         if dir_output is None:
             return tempfile.mkdtemp()
         return os.path.abspath(dir_output)
@@ -185,8 +188,8 @@ class TestCycleHCRProbeDesigner(PipelinesBase, unittest.TestCase):
 class TestHCRProbeDesigner(PipelinesBase, unittest.TestCase):
     def setup_output_dir(self) -> Any:
         with open(CONFIG_HCR_PROBE_DESIGNER, "r") as handle:
-            config = yaml.safe_load(handle)
-        dir_output = config.get("dir_output")
+            config = HcrProbeDesignerConfig(**yaml.safe_load(handle))
+        dir_output = config.general.dir_output
         if dir_output is None:
             return tempfile.mkdtemp()
         return os.path.abspath(dir_output)
