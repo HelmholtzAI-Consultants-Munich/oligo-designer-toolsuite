@@ -15,7 +15,6 @@ argparse
 numpy
 pandas
 scipy
-iteration_utilities
 Bio
 pyyaml
 networkx
@@ -23,4 +22,3 @@ joblib
 joblib_progress
 seqfold
 effidict
-oligo-designer-toolsuite-ai-filters

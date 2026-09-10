@@ -83,8 +83,8 @@ class DeviationFromOptimalGCContentScorer(SequencePropertyScorer):
         :type oligo_id: str
         :param sequence_type: Type of sequence being processed.
         :type sequence_type: str
-        :param kwargs: Additional keyword arguments.
-        :type kwargs: dict[str, Any]
+        :param \\**_: Additional ignored keyword arguments.
+        :type \\**_: dict[str, Any]
         :return: Weighted score based on GC content deviation.
         :rtype: float
         """
@@ -154,8 +154,8 @@ class DeviationFromOptimalTmScorer(SequencePropertyScorer):
         :type oligo_id: str
         :param sequence_type: Type of sequence being processed.
         :type sequence_type: str
-        :param kwargs: Additional keyword arguments.
-        :type kwargs: dict[str, Any]
+        :param \\**_: Additional ignored keyword arguments.
+        :type \\**_: dict[str, Any]
         :return: Weighted score based on Tm deviation.
         :rtype: float
         """
@@ -231,8 +231,8 @@ class NormalizedDeviationFromOptimalGCContentScorer(SequencePropertyScorer):
         :type oligo_id: str
         :param sequence_type: Type of sequence being processed.
         :type sequence_type: str
-        :param kwargs: Additional keyword arguments.
-        :type kwargs: dict[str, Any]
+        :param \\**_: Additional ignored keyword arguments.
+        :type \\**_: dict[str, Any]
         :return: Weighted score based on normalized GC content deviation.
         :rtype: float
         """
@@ -319,8 +319,8 @@ class NormalizedDeviationFromOptimalTmScorer(SequencePropertyScorer):
         :type oligo_id: str
         :param sequence_type: Type of sequence being processed.
         :type sequence_type: str
-        :param kwargs: Additional keyword arguments.
-        :type kwargs: dict[str, Any]
+        :param \\**_: Additional ignored keyword arguments.
+        :type \\**_: dict[str, Any]
         :return: Weighted score based on normalized Tm deviation.
         :rtype: float
         """

@@ -9,7 +9,7 @@ from joblib_progress import joblib_progress
 
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_calculator import BaseProperty
-from oligo_designer_toolsuite.utils import check_if_key_in_database
+from oligo_designer_toolsuite.utils import cast_to_list, check_if_key_in_database
 
 ############################################
 # Property Calculator Class
@@ -31,15 +31,27 @@ class PropertyCalculator:
         """Constructor for the PropertyCalculator class."""
         self.properties = properties
 
-    def apply(self, oligo_database: OligoDatabase, sequence_type: str, n_jobs: int = 1) -> OligoDatabase:
+    def apply(
+        self,
+        oligo_database: OligoDatabase,
+        sequence_type: str,
+        region_ids: str | list[str] | None = None,
+        n_jobs: int = 1,
+    ) -> OligoDatabase:
         """
-        Apply the property calculators to all oligonucleotides in the OligoDatabase and update
+        Apply the property calculators to oligonucleotides in the OligoDatabase and update
         the database with the calculated property values.
+
+        By default all regions are processed. Pass ``region_ids`` to limit calculation to one
+        or more regions.
 
         :param oligo_database: The OligoDatabase instance containing oligonucleotide sequences and their associated properties. This database stores oligo data organized by genomic regions and can be used for filtering, property calculations, set generation, and output operations.
         :type oligo_database: OligoDatabase
         :param sequence_type: Type of sequence being processed.
         :type sequence_type: str
+        :param region_ids: If provided, only oligos in these regions are processed. Can be a single region ID (str)
+                           or a list of region IDs (list[str]). Otherwise all regions are processed.
+        :type region_ids: str | list[str] | None
         :param n_jobs: Number of parallel jobs to use for processing. Defaults to 1.
         :type n_jobs: int
         :return: The updated OligoDatabase with the calculated properties.
@@ -49,7 +61,9 @@ class PropertyCalculator:
             oligo_database.database, sequence_type
         ), f"Sequence type '{sequence_type}' not found in database."
 
-        region_ids = list(oligo_database.database.keys())
+        region_ids = (
+            cast_to_list(region_ids) if region_ids is not None else list(oligo_database.database.keys())
+        )
         with joblib_progress(description="Property Calculator", total=len(region_ids)):
             Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
                 delayed(self._calculate_region)(oligo_database, region_id, sequence_type)

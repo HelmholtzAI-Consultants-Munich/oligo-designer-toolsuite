@@ -7,7 +7,6 @@ from ._filter_blastn import BlastNFilter, BlastNSeedregionFilter, BlastNSeedregi
 from ._filter_bowtie import Bowtie2Filter, BowtieFilter
 from ._filter_cross_hybridization import CrossHybridizationFilter
 from ._filter_exact_matches import ExactMatchFilter
-from ._filter_hybridization_probability import HybridizationProbabilityFilter
 from ._filter_variants import VariantsFilter
 from ._policies import (
     BaseFilterPolicy,
@@ -28,7 +27,6 @@ __all__ = [
     "BowtieFilter",
     "Bowtie2Filter",
     "CrossHybridizationFilter",
-    "HybridizationProbabilityFilter",
     "VariantsFilter",
     "BaseFilterPolicy",
     "RemoveAllFilterPolicy",

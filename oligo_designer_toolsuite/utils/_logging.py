@@ -2,10 +2,10 @@
 # imports
 ############################################
 
-from pathlib import Path
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
 
 ############################################
 # Logging utils
@@ -35,8 +35,6 @@ def configure_root_logger(
     :type log_level: int
     :param include_console: Whether to also log to console (default: False).
     :type include_console: bool
-    :param log_start_message: Whether to log a "START PIPELINE" message (default: False).
-    :type log_start_message: bool
     """
     timestamp = datetime.now()
 

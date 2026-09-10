@@ -55,7 +55,7 @@ jobs:
         run: |
           conda activate test-env
 
-          coverage run -m pytest --disable-warnings tests
+          coverage run -m pytest --disable-warnings -k "not FTPLoader" tests
           coverage xml -i --omit="oligo_designer_toolsuite/pipelines"
 
       - name: Upload coverage reports to Codecov

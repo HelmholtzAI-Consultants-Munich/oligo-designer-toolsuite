@@ -1,0 +1,13 @@
+name: odt
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip>=25.1
+  - blast>=2.15.0
+  - bedtools>=2.30
+  - bowtie>=1.3.1
+  - bowtie2>=2.5
+  - samtools>=1.22
+  - bcftools>=1.22

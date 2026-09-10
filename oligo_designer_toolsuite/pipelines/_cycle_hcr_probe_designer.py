@@ -1941,9 +1941,8 @@ def _preprocess_config(config_validated: CycleHcrProbeDesignerConfig) -> dict[st
 
     file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:
-        logger.warning(
-            "No gene list file was provided! All genes from fasta file are used to generate the probes. "
-            "This choice can use a lot of resources."
+        print(
+            "No gene list file was provided! All genes from fasta file are used to generate the probes. This choice can use a lot of resources."
         )
         config["target_probes"]["oligo_generation"]["region_ids"] = None
     else:

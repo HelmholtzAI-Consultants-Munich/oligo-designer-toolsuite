@@ -19,6 +19,7 @@ from joblib_progress import joblib_progress
 from oligo_designer_toolsuite._constants import SEPARATOR_OLIGO_ID
 from oligo_designer_toolsuite._exceptions import DatabaseError, FileFormatError
 from oligo_designer_toolsuite.utils import (
+    BedParser,
     CustomYamlDumper,
     FastaParser,
     cast_to_list,
@@ -89,6 +90,7 @@ class OligoDatabase:
         self._dir_cache_files = safe_append_filename(self.dir_output, "cache_files")
 
         self.fasta_parser = FastaParser()
+        self.bed_parser = BedParser()
 
         # Initialize databse object
         backend = PickleBackend(storage_path=self._dir_cache_files)
@@ -540,6 +542,9 @@ class OligoDatabase:
         which can be used for downstream analysis. Entries which contain None for either
         chromosome, start, end or strand will be removed before the content is written to BED file.
 
+        Coordinates stored in the database (and in region-generator FASTA headers) are 1-based.
+        BED requires 0-based starts, so starts are converted before writing.
+
         :param filename: Name of the output BED file (without extension). Default is "db_oligo".
         :type filename: str
         :param dir_output: Directory path where output files will be saved.
@@ -572,10 +577,14 @@ class OligoDatabase:
             ["chromosome", "start", "end", "strand"], ignore_index=True
         )
         property_table_extended["score"] = "."
+        property_table_extended["start"] = self.bed_parser.convert_start(
+            property_table_extended["start"], "1-based", "0-based"
+        )
 
-        # save tabel content as BED file
-        property_table_extended[["chromosome", "start", "end", "oligo_id", "score", "strand"]].to_csv(
-            file_bed, sep="\t", header=False, index=False
+        self.bed_parser.write_bed(
+            property_table_extended,
+            file_bed,
+            columns=["chromosome", "start", "end", "oligo_id", "score", "strand"],
         )
 
         return file_bed
@@ -805,10 +814,17 @@ class OligoDatabase:
         """
         Writes a YAML file that only contains order information for the oligosets.
 
+        :param properties: A list of properties to include in the YAML file.
+        :type properties: str | list[str]
+        :param ascending: If True, sort oligosets by score in ascending order (the smaller the score the better the oligo set);
+            otherwise, in descending order (the higher the score the better the oligo set).
+        :type ascending: bool
         :param filename: Base name for the output YAML file, defaults to "ready_to_order".
         :type filename: str
         :param dir_output: Directory path where output files will be saved.
         :type dir_output: str
+        :param region_ids: Region identifier(s) to process. Can be a single region ID (str) or a list of region IDs (list[str]). If None, all regions in the database are processed, defaults to None.
+        :type region_ids: str | list[str] | None, optional
         :return: None
         """
         properties = cast_to_list(properties)

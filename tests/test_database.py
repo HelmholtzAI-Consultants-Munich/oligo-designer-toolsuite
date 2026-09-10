@@ -11,7 +11,7 @@ import yaml
 
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import FastaParser, VCFParser, check_tsv_format
+from oligo_designer_toolsuite.utils import BedParser, FastaParser, VCFParser, check_tsv_format
 
 ############################################
 # setup
@@ -299,11 +299,12 @@ class TestOligoDatabase(unittest.TestCase):
 
         assert check_tsv_format(file_bed) == True, f"error: wrong file format"
 
-        bed_table = pd.read_csv(
-            file_bed, sep="\t", names=["chromosome", "start", "end", "name", "score", "strand"]
+        # DB/FASTA coordinates are 1-based; BED export must use 0-based starts.
+        bed_table = BedParser().read_bed(
+            file_bed, names=["chromosome", "start", "end", "name", "score", "strand"]
         )
 
-        assert bed_table.loc[0, "start"] == 70289456
+        assert bed_table.loc[0, "start"] == 70289455
         assert bed_table.loc[0, "end"] == 70289485
 
     def test_write_oligosets_to_yaml(self) -> None:
