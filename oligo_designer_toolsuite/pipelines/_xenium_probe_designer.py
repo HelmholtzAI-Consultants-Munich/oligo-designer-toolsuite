@@ -72,7 +72,7 @@ from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 class XeniumProbeDesigner:
     """
-    A class for designing padlock probes for Scrinshot experiments.
+    A class for designing padlock probes for Xenium experiments.
 
     A padlock probe contains a constant backbone sequence of 53 nucleotides (nt) and
     the 5’- and 3’- arms, which are complementary to the corresponding mRNA sequence.
@@ -88,7 +88,7 @@ class XeniumProbeDesigner:
     """
 
     def __init__(self, write_intermediate_steps: bool, dir_output: str, n_jobs: int) -> None:
-        """Constructor for the ScrinshotProbeDesigner class."""
+        """Constructor for the XeniumProbeDesigner class."""
         print('Runing Xenium pipeline')
         ##### create the output folder #####
         self.dir_output = os.path.abspath(dir_output)
@@ -98,7 +98,7 @@ class XeniumProbeDesigner:
         timestamp = datetime.now()
         file_logger = os.path.join(
             self.dir_output,
-            f"log_scrinshot_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
+            f"log_Xenium_probe_designer_{timestamp.year}-{timestamp.month}-{timestamp.day}-{timestamp.hour}-{timestamp.minute}.txt",
         )
         logging.getLogger("log_name")
         logging.basicConfig(
@@ -198,7 +198,7 @@ class XeniumProbeDesigner:
         detection_oligo_Tm_salt_correction_parameters: dict = None,
     ):
         """
-        Set developer-specific parameters for scrinshot probe designer pipeline.
+        Set developer-specific parameters for Xenium probe designer pipeline.
         These parameters can be used to customize and fine-tune the pipeline.
 
         :param target_probe_specificity_blastn_search_parameters: Parameters for BlastN search in specificity filtering.
@@ -661,7 +661,7 @@ class XeniumProbeDesigner:
         ],
     ) -> None:
         """
-        Generate the final output files for the Scrinshot probe design pipeline.
+        Generate the final output files for the Xenium probe design pipeline.
 
         :param oligo_database: The oligo database containing final designed probes and attributes.
         :type oligo_database: OligoDatabase
@@ -719,11 +719,11 @@ class XeniumProbeDesigner:
 
 
 ############################################
-# Scrinshot Target Probe Designer
+# Xenium Target Probe Designer
 ############################################
 class TargetProbeDesigner:
     """
-    A class for designing target probes for Scrinshot experiments.
+    A class for designing target probes for Xenium experiments.
     This class provides methods for creating, filtering, and scoring oligos based
     on specific properties and designing oligo sets for targeted probes.
 
@@ -1199,7 +1199,7 @@ class TargetProbeDesigner:
 
 
 ############################################
-# Scrinshot Detection Oligo Designer
+# Xenium Detection Oligo Designer
 ############################################
 class DetectionOligoDesigner:
     """
@@ -1545,13 +1545,13 @@ class DetectionOligoDesigner:
 
 
 ############################################
-# SCRINSHOT Probe Designer Pipeline
+# Xenium Probe Designer Pipeline
 ############################################
 
 
 def main():
     """
-    Main function for running the ScrinshotProbeDesigner pipeline. This function reads the configuration file,
+    Main function for running the XeniumProbeDesigner pipeline. This function reads the configuration file,
     processes gene IDs, initializes the probe designer, sets developer parameters, and executes probe design
     and output generation steps.
 
