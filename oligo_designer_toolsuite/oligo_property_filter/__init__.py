@@ -19,6 +19,7 @@ from ._filter_experiment_unspecific import (
     ThreePrimeSequenceFilter,
 )
 from ._property_filter import PropertyFilter
+from ._filter_experiment_unspecific import MeltingTemperaturePrimer3Filter
 
 __all__ = [
     "PropertyFilter",
