@@ -138,7 +138,7 @@ class DetectionOligoFilter(BasePropertyFilter):
         Tm_parameters: dict,
         Tm_salt_correction_parameters: dict | None = None,
         Tm_chem_correction_parameters: dict | None = None,
-        self.invalid_ligation_bps = invalid_ligation_bps
+        invalid_ligation_bps: list[str] | None = None,
     ) -> None:
         """Constructor for the DetectionOligoFilter class."""
         super().__init__()
