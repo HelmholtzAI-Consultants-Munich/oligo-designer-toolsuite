@@ -66,6 +66,13 @@ from oligo_designer_toolsuite.pipelines._utils import (
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
 
 ############################################
+# Xenium-specific parameters
+############################################
+
+XENIUM_INVALID_LIGATION_BPS = ["CG", "GT", "GG", "GC"]
+
+
+############################################
 # Xenium Probe Designer
 ############################################
 
@@ -306,9 +313,9 @@ class XeniumProbeDesigner:
         target_probe_GC_content_opt: float = 50,
         target_probe_GC_content_max: float = 60,
         target_probe_GC_weight: float = 1,
-        target_probe_Tm_min: float = 65,
+        target_probe_Tm_min: float = 68,
         target_probe_Tm_opt: float = 70,
-        target_probe_Tm_max: float = 75,
+        target_probe_Tm_max: float = 82,
         target_probe_Tm_weight: float = 1,
         target_probe_homopolymeric_base_n: dict = {"A": 5, "T": 5, "C": 5, "G": 5},
         detection_oligo_min_thymines: int = 2,
@@ -317,11 +324,11 @@ class XeniumProbeDesigner:
         target_probe_padlock_arm_length_min: int = 10,
         target_probe_padlock_arm_Tm_dif_max: float = 2,
         target_probe_padlock_arm_Tm_min: float = 50,
-        target_probe_padlock_arm_Tm_max: float = 60,
+        target_probe_padlock_arm_Tm_max: float = 70,
         target_probe_ligation_region_size: int = 5,
         set_size_min: int = 3,
         set_size_opt: int = 5,
-        distance_between_target_probes: int = 0,
+        distance_between_target_probes: int = 10,
         n_sets: int = 100,
     ) -> OligoDatabase:
         """
@@ -905,6 +912,7 @@ class TargetProbeDesigner:
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
             Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+            invalid_ligation_bps=XENIUM_INVALID_LIGATION_BPS,
         )
 
         filters = [
@@ -1002,6 +1010,7 @@ class TargetProbeDesigner:
             Tm_parameters=Tm_parameters,
             Tm_chem_correction_parameters=Tm_chem_correction_parameters,
             Tm_salt_correction_parameters=Tm_salt_correction_parameters,
+            invalid_ligation_bps=XENIUM_INVALID_LIGATION_BPS
         )
         calculator = PropertyCalculator(properties=[padlock_arms_property])
         oligo_database = calculator.apply(
@@ -1457,7 +1466,7 @@ class DetectionOligoDesigner:
         :param oligo: The initial oligo sequence.
         :type oligo: str
         :param cut_from_right: Whether to start trimming from the right end.
-        :type cut_from_right: bool
+        :type cut_from_right: boolspacing
         :param oligo_length_min: Minimum allowable length for the oligo.
         :type oligo_length_min: int
         :param min_thymines: Minimum number of thymine bases required in the oligo.

@@ -282,6 +282,7 @@ def calc_padlock_arms(
     Tm_parameters: dict,
     Tm_salt_correction_parameters: dict | None = None,
     Tm_chem_correction_parameters: dict | None = None,
+    invalid_ligation_bps: list[str] | None = None,
 ) -> tuple[float | None, float | None, int | None]:
     """Calculate the melting temperatures (Tm) of padlock probe arms and determine the ligation site.
 
@@ -319,8 +320,24 @@ def calc_padlock_arms(
     Tm_found = False
     sign_factor = 1  # switch between positive and negative shift
     shift = 1  # distance of ligation site shift
-
+    # No ligation-site restriction unless explicitly provided
+    invalid_ligation_bps = set(invalid_ligation_bps or [])
+    
     while arms_long_enough and not Tm_found:
+
+        ligation_bps = sequence[ligation_site - 1 : ligation_site + 1]
+
+        if ligation_bps in invalid_ligation_bps:
+            ligation_site += sign_factor * shift
+            sign_factor *= -1
+            shift += 1
+
+            arms_long_enough = (ligation_site >= arm_length_min) and (
+                (len_sequence - ligation_site) >= arm_length_min
+            )
+
+            continue
+            
         Tm_arm1 = calc_tm_nn(
             sequence[:ligation_site],
             Tm_parameters,
