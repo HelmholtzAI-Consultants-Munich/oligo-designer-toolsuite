@@ -16,16 +16,12 @@ from oligo_designer_toolsuite.config._general_models import (
     REQUIRED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
     BlastnHitParameters,
-    BlastnHitParametersCoverage,
     BlastnSearchParameters,
     General,
-    HomopolymericRunThreshold,
     RequiredParameters,
     TmChemCorrectionParameters,
-    TmChemCorrectionParametersDisabled,
     TmParameters,
     TmSaltCorrectionParameters,
-    TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
     IndependentSetSelection,
@@ -34,24 +30,18 @@ from oligo_designer_toolsuite.config._oligo_scoring import (
 )
 from oligo_designer_toolsuite.config._property_filters import (
     GCContentFilterConfig,
-    GCContentFilterEnabled,
     HardMaskedFilterConfig,
     HomopolymericRunsFilterConfig,
-    HomopolymericRunsFilterEnabled,
     IsoformConsensusFilterConfig,
-    IsoformConsensusFilterEnabled,
     SecondaryStructureFilterConfig,
-    SecondaryStructureFilterEnabled,
     SoftMaskedFilterConfig,
     TmFilterConfig,
-    TmFilterEnabled,
 )
 from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_HIT_PARAMS_DESC,
     SPECIFICITY_SEARCH_PARAMS_DESC,
     SPECIFICITY_TARGET_DESC,
     CrossHybridizationBlastnFilterCoverageConfig,
-    CrossHybridizationBlastnFilterCoverageEnabled,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
@@ -70,23 +60,12 @@ class CycleHcrSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
             "where BLASTN hits cover the junction region regardless of the coverage threshold. "
             "If 0, full-length specificity filtering is performed instead."
         ),
-        default=13,
     )
     search_parameters: BlastnSearchParameters = Field(
-        default=BlastnSearchParameters(
-            perc_identity=100,
-            strand="minus",
-            word_size=10,
-            dust="no",
-            soft_masking=False,
-            max_target_seqs=10,
-            max_hsps=1000,
-        ),
         description=SPECIFICITY_SEARCH_PARAMS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
     hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParametersCoverage(value=90),
         description=SPECIFICITY_HIT_PARAMS_DESC,
     )
 
@@ -107,17 +86,14 @@ class TargetProbeOligoGeneration(BaseModel):
 
     L_probe_sequence_length: PositiveInt = Field(
         description="Length (bases) of the L arm of the probe; L + gap + R equals the total probe length.",
-        default=45,
         json_schema_extra={"x-quick-setting": True},
     )
     gap_sequence_length: NonNegativeInt = Field(
         description="Length (bases) of the spacer between the L and R arms (covers the junction site).",
-        default=2,
         json_schema_extra={"x-quick-setting": True},
     )
     R_probe_sequence_length: PositiveInt = Field(
         description="Length (bases) of the R arm of the probe; L + gap + R equals the total probe length.",
-        default=45,
         json_schema_extra={"x-quick-setting": True},
     )
 
@@ -125,85 +101,36 @@ class TargetProbeOligoGeneration(BaseModel):
 class TargetProbePropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    isoform_consensus_filter: IsoformConsensusFilterConfig = IsoformConsensusFilterEnabled(
-        enabled=True, isoform_consensus=0
-    )
-    hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
-    soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=False)
-    homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True,
-        homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6),
-    )
-    GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
-        enabled=True, GC_content_min=30, GC_content_max=90
-    )
-    Tm_filter: TmFilterConfig = TmFilterEnabled(enabled=True, Tm_min=75, Tm_max=100)
-    secondary_structure_filter: SecondaryStructureFilterConfig = SecondaryStructureFilterEnabled(
-        enabled=True, T=90, thr_DG=0
-    )
+    isoform_consensus_filter: IsoformConsensusFilterConfig
+    hard_masked_sequences_filter: HardMaskedFilterConfig
+    soft_masked_sequences_filter: SoftMaskedFilterConfig
+    homopolymeric_runs_filter: HomopolymericRunsFilterConfig
+    GC_content_filter: GCContentFilterConfig
+    Tm_filter: TmFilterConfig
+    secondary_structure_filter: SecondaryStructureFilterConfig
 
 
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     specificity_blastn_filter: CycleHcrSpecificityBlastnFilterConfig
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig = (
-        CrossHybridizationBlastnFilterCoverageEnabled(
-            enabled=True,
-            search_parameters=BlastnSearchParameters(
-                perc_identity=100,
-                strand="minus",
-                word_size=7,
-                dust="no",
-                soft_masking=False,
-                max_target_seqs=10,
-            ),
-            hit_parameters=BlastnHitParametersCoverage(value=90),
-        )
-    )
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig
 
 
 class TargetProbeProbeSetSelection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    independent_set_selection: IndependentSetSelection = IndependentSetSelection(
-        n_sets=3,
-        set_size_min=10,
-        set_size_opt=25,
-        distance_between_probes=2,
-        n_attempts_graph=50,
-        n_attempts_clique_enum=50,
-        diversification_fraction=0.1,
-        jaccard_opt=0.5,
-        jaccard_step=0.1,
-    )
-    isoform_consensus_score: IsoformConsensusScore = IsoformConsensusScore(weight=10)
-    Tm_score: TmScore = TmScore(weight=1, Tm_opt=75)
+    independent_set_selection: IndependentSetSelection
+    isoform_consensus_score: IsoformConsensusScore
+    Tm_score: TmScore
 
 
 class TargetProbeGlobal(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters = TmParameters(
-        nn_table="DNA_NN3",
-        tmm_table="DNA_TMM1",
-        imm_table="DNA_IMM1",
-        de_table="DNA_DE1",
-        dnac1=25,
-        dnac2=25,
-        saltcorr=0,
-        Na=50,
-        K=0,
-        Tris=0,
-        Mg=0,
-        dNTPs=0,
-    )
-    Tm_chem_correction_parameters: TmChemCorrectionParameters = TmChemCorrectionParametersDisabled(
-        enabled=False
-    )
-    Tm_salt_correction_parameters: TmSaltCorrectionParameters = TmSaltCorrectionParametersDisabled(
-        enabled=False
-    )
+    Tm_parameters: TmParameters
+    Tm_chem_correction_parameters: TmChemCorrectionParameters
+    Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
 
 class TargetProbes(BaseModel):
@@ -245,7 +172,6 @@ class CycleHcrCodebookGenerate(BaseModel):
             "0, 2, or 4 are achievable. 4 enables single-bit error detection but limits capacity to "
             "n_readout_probes_LR * n_channels regions."
         ),
-        default=4,
     )
 
 
@@ -258,7 +184,7 @@ CycleHcrCodebook = Annotated[
 class CycleHcrReadoutProbeTable(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    source: Literal["load"] = "load"
+    source: Literal["load"]
     file: str = Field(
         description="Path to the readout probe table (csv/tsv) with columns 'channel', 'readout_probe_id', 'readout_probe_sequence', and 'L/R'. Bit handling depends on codebook.source: when codebook.source = 'load' the file MUST also contain a 'bit' column whose values match the codebook columns (the user is responsible for that mapping); when codebook.source = 'generate' any 'bit' column is ignored and bits are reassigned deterministically by sorting on (readout_probe_id, channel, L/R)."
     )
@@ -267,7 +193,7 @@ class CycleHcrReadoutProbeTable(BaseModel):
 class ReadoutProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    codebook: CycleHcrCodebook = CycleHcrCodebookGenerate()
+    codebook: CycleHcrCodebook
     readout_probe_table: CycleHcrReadoutProbeTable
 
 
@@ -282,7 +208,7 @@ class ReadoutProbes(BaseModel):
 class CycleHcrPrimer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    source: Literal["load"] = "load"
+    source: Literal["load"]
     sequence: DRNAT
 
 
@@ -290,11 +216,9 @@ class Primers(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     forward_primer: CycleHcrPrimer = Field(
-        default=CycleHcrPrimer(sequence="TAATACGACTCACTATAGCGTCATC"),
         description="Forward PCR primer placed at the 5' end of the DNA template probe. The default is the T7 promoter sequence.",
     )
     reverse_primer: CycleHcrPrimer = Field(
-        default=CycleHcrPrimer(sequence="CGACACCGAACGTGCGACAA"),
         description="Reverse PCR primer placed at the 3' end of the DNA template probe.",
     )
 
@@ -309,7 +233,6 @@ class HybridizationProbes(BaseModel):
 
     linker_sequence: DRNAT = Field(
         description="Linker sequence between the target-binding L/R arm and the readout-probe barcode (used by both hybridization and DNA template assembly).",
-        default="TT",
     )
 
 
@@ -321,7 +244,7 @@ class HybridizationProbes(BaseModel):
 # The front end builds its form from this, so `general` stays out of it.
 class CycleHcrProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    schema_version: Literal[2] = 2
+    schema_version: Literal[2]
     target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers
@@ -329,10 +252,6 @@ class CycleHcrProbeDesignerConfigBase(BaseModel):
 
 
 class CycleHcrProbeDesignerConfig(CycleHcrProbeDesignerConfigBase):
-    general: General = General(
-        n_jobs=4,
-        dir_output="output_cyclehcr_probe_designer",
-        write_intermediate_steps=True,
-    )
+    general: General
 
     required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

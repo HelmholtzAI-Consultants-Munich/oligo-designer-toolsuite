@@ -4,8 +4,6 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from oligo_designer_toolsuite.config._general_models import (
     BlastnHitParameters,
-    BlastnHitParametersCoverage,
-    BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
 )
 from oligo_designer_toolsuite.config._types import VCFReferenceDatabaseT
@@ -185,7 +183,6 @@ VariantFilterConfig = Annotated[VariantFilterEnabled | VariantFilterDisabled, Fi
 
 class SpecificityBlastnFilterMinAlignmentEnabled(SpecificityBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParametersMinAlignmentLength(value=15),
         description=SPECIFICITY_HIT_PARAMS_DESC,
     )
 
@@ -198,7 +195,6 @@ SpecificityBlastnFilterMinAlignmentConfig = Annotated[
 
 class SpecificityBlastnFilterCoverageEnabled(SpecificityBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParametersCoverage(value=50),
         description=SPECIFICITY_HIT_PARAMS_DESC,
     )
 
@@ -211,7 +207,6 @@ SpecificityBlastnFilterCoverageConfig = Annotated[
 
 class CrossHybridizationBlastnFilterMinAlignmentEnabled(CrossHybridizationBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParametersMinAlignmentLength(value=17),
         description=CROSS_HYBRIDIZATION_HIT_PARAMS_DESC,
     )
 
@@ -224,7 +219,6 @@ CrossHybridizationBlastnFilterMinAlignmentConfig = Annotated[
 
 class CrossHybridizationBlastnFilterCoverageEnabled(CrossHybridizationBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParametersCoverage(value=50),
         description=CROSS_HYBRIDIZATION_HIT_PARAMS_DESC,
     )
 
@@ -237,7 +231,6 @@ CrossHybridizationBlastnFilterCoverageConfig = Annotated[
 
 class HybridizationProbesBlastnFilterMinAlignmentEnabled(HybridizationProbesBlastnFilterEnabled):
     hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParametersMinAlignmentLength(value=11),
         description=HYBRIDIZATION_PROBES_HIT_PARAMS_DESC,
     )
 
