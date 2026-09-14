@@ -3,6 +3,8 @@
 ############################################
 
 import csv
+import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
 
 import yaml
 
-from oligo_designer_toolsuite._exceptions import ConfigurationError
+from oligo_designer_toolsuite._exceptions import ConfigurationError, ExternalToolError
 
 ############################################
 # Collection of utility functions
@@ -229,3 +231,24 @@ def safe_append_filename(dir_path: str, file_name: str) -> str:
     if not resolved_path.name == file_name:
         raise ConfigurationError(f"Invalid file name: {file_name}. The resolved file name does not match.")
     return str(joined_path)
+
+
+def run_external_tool(args: list[str], cwd: str | None = None, stdout: Any = subprocess.DEVNULL) -> None:
+    """
+    Run a command line tool and raise an error that says why it failed.
+
+    The tool's error output is still printed to the console, as before.
+
+    :param args: The tool name followed by its arguments.
+    :type args: list[str]
+    :param cwd: Working directory for the tool.
+    :type cwd: str | None
+    :param stdout: Where the tool's standard output goes. Discarded by default.
+    :type stdout: Any
+    :raises ExternalToolError: If the tool exits with a non-zero status.
+    """
+    result = subprocess.run(args, cwd=cwd, stdout=stdout, stderr=subprocess.PIPE, text=True, errors="replace")
+    sys.stderr.write(result.stderr)
+    if result.returncode != 0:
+        reason = result.stderr.strip() or "no error output"
+        raise ExternalToolError(f"{args[0]} failed with exit status {result.returncode}: {reason}")

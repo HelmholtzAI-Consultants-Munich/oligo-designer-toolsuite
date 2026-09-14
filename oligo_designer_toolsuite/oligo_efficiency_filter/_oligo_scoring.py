@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 
+from oligo_designer_toolsuite._exceptions import DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.utils import check_if_key_in_database
 
@@ -61,9 +62,8 @@ class OligoScoring:
         :rtype: pd.Series
         """
 
-        assert check_if_key_in_database(
-            oligo_database.database, sequence_type
-        ), f"Sequence type '{sequence_type}' not found in database."
+        if not check_if_key_in_database(oligo_database.database, sequence_type):
+            raise DatabaseError(f"Sequence type '{sequence_type}' not found in database.")
 
         oligos_scores = pd.Series(index=oligo_ids, dtype=float)
         for oligo_id in oligo_ids:

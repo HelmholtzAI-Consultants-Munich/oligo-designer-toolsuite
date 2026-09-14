@@ -17,7 +17,7 @@ from typing import Any, Callable, TypeVar, cast
 import pandas as pd
 from Bio.SeqUtils import MeltingTemp as mt
 
-from oligo_designer_toolsuite._exceptions import FileFormatError
+from oligo_designer_toolsuite._exceptions import EmptyResultError, FileFormatError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.utils import check_if_dna_sequence, count_kmer_abundance, logger
 
@@ -194,7 +194,7 @@ def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
     return decorator
 
 
-def check_content_oligo_database(oligo_database: OligoDatabase) -> None:
+def check_content_oligo_database(oligo_database: OligoDatabase, *, message: str | None = None) -> None:
     """
     Stop the pipeline if no candidate oligos are left.
 
@@ -205,12 +205,16 @@ def check_content_oligo_database(oligo_database: OligoDatabase) -> None:
 
     :param oligo_database: Oligo database to check.
     :type oligo_database: OligoDatabase
-    :raises SystemExit: If the database contains no regions.
+    :param message: Reason to report instead of the default.
+    :type message: str | None
+    :raises EmptyResultError: If the database contains no regions.
     """
     if len(oligo_database.get_regionid_list()) == 0:
         logger.error("The oligo database is empty. Exiting program...")
         print("The oligo database is empty. Exiting program...")
-        sys.exit(1)
+        raise EmptyResultError(
+            message or "No oligos are left after filtering. Please relax the filter settings."
+        )
 
 
 def format_sequence(database: OligoDatabase, property: str, region_id: str, oligo_id: str) -> str:

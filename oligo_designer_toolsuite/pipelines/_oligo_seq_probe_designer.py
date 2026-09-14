@@ -557,6 +557,10 @@ class TargetProbeDesigner:
             region_ids=region_ids,
         )
         oligo_database.set_database_sequence_types(["target", "oligo", "oligo_short"])
+        # An empty database would otherwise fail below on missing sequence types.
+        check_content_oligo_database(
+            oligo_database, message="No sequences were found for the requested regions."
+        )
 
         # Register oligo_short now so the read-length-bias filter can fill it later.
         # Probe strand is the reverse complement of the transcript ("target") window.

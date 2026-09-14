@@ -3,7 +3,6 @@
 ############################################
 
 import os
-import subprocess
 from abc import abstractmethod
 
 import pandas as pd
@@ -18,7 +17,7 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
 from oligo_designer_toolsuite.utils import logger
-from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
+from oligo_designer_toolsuite.utils._checkers_and_helpers import run_external_tool, safe_append_filename
 
 ############################################
 # Oligo Blast Filter Classes
@@ -115,7 +114,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
         ## Create blast index
         args = ["makeblastdb", "-dbtype", "nucl", "-out", file_reference, "-in", file_reference]
 
-        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
+        run_external_tool(args, cwd=self.dir_output)
 
         return file_reference
 
@@ -168,7 +167,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
             if str(value) != "":
                 args.append(str(value))
 
-        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
+        run_external_tool(args, cwd=self.dir_output)
 
         # read the reuslts of the blast seatch
         blast_results = self._read_search_output(
