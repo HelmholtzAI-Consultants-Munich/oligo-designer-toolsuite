@@ -10,14 +10,6 @@ from pydantic import (
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
-    FORWARD_PRIMER_DESC,
-    GLOBAL_PARAMETERS_DESC,
-    OLIGO_GENERATION_DESC,
-    PROBE_SET_SELECTION_DESC,
-    PROPERTY_FILTERS_DESC,
-    REQUIRED_PARAMETERS_DESC,
-    REVERSE_PRIMER_DESC,
-    SPECIFICITY_FILTERS_DESC,
     BaseProbabilities,
     BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
@@ -31,6 +23,7 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
+    PROBE_SET_SELECTION_DESC,
     GCContentScore,
     IndependentSetSelection,
     UTRScore,
@@ -59,12 +52,12 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_PRIMER_DESC,
     SPECIFICITY_READOUT_DESC,
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterMinAlignmentConfig,
-    CrossHybridizationBlastnFilterMinAlignmentEnabled,
-    HybridizationProbesBlastnFilterMinAlignmentConfig,
-    HybridizationProbesBlastnFilterMinAlignmentEnabled,
-    SpecificityBlastnFilterMinAlignmentConfig,
-    SpecificityBlastnFilterMinAlignmentEnabled,
+    CrossHybridizationBlastnFilterConfig,
+    CrossHybridizationBlastnFilterEnabled,
+    HybridizationProbesBlastnFilterConfig,
+    HybridizationProbesBlastnFilterEnabled,
+    SpecificityBlastnFilterConfig,
+    SpecificityBlastnFilterEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     DRNAT,
@@ -101,8 +94,7 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True,
-        homopolymeric_base_n=HomopolymericRunThreshold(A=5, T=5, C=5, G=5),
+        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=5, T=5, C=5, G=5)
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=45, GC_content_max=65
@@ -115,8 +107,8 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
-        default=SpecificityBlastnFilterMinAlignmentEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -131,8 +123,8 @@ class TargetProbeSpecificityFilter(BaseModel):
         ),
         description=SPECIFICITY_TARGET_DESC,
     )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterMinAlignmentConfig = (
-        CrossHybridizationBlastnFilterMinAlignmentEnabled(
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
+        CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
@@ -168,9 +160,9 @@ class TargetProbeProbeSetSelection(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
-    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
-    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
+    oligo_generation: TargetProbeOligoGeneration
+    property_filters: TargetProbePropertyFilter
+    specificity_filters: TargetProbeSpecificityFilter
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
 
 
@@ -204,6 +196,7 @@ class SeqfishPlusCodebookBase(BaseModel):
 
 
 class SeqfishPlusCodebookLoad(SeqfishPlusCodebookBase):
+
     source: Literal["load"] = "load"
     file: str = Field(
         description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
@@ -211,6 +204,7 @@ class SeqfishPlusCodebookLoad(SeqfishPlusCodebookBase):
 
 
 class SeqfishPlusCodebookGenerate(SeqfishPlusCodebookBase):
+
     source: Literal["generate"] = "generate"
 
 
@@ -262,8 +256,8 @@ class SeqfishPlusReadoutProbePropertyFilter(BaseModel):
 class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
-        default=SpecificityBlastnFilterMinAlignmentEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -278,8 +272,8 @@ class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
         ),
         description=SPECIFICITY_READOUT_DESC,
     )
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterMinAlignmentConfig = (
-        CrossHybridizationBlastnFilterMinAlignmentEnabled(
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
+        CrossHybridizationBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -298,15 +292,9 @@ class SeqfishPlusReadoutProbeTableGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: SeqfishPlusReadoutProbeOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
-    property_filters: SeqfishPlusReadoutProbePropertyFilter = Field(
-        description=PROPERTY_FILTERS_DESC,
-        json_schema_extra={"x-collapsed": True},
-    )
-    specificity_filters: SeqfishPlusReadoutProbeSpecificityFilter = Field(
-        description=SPECIFICITY_FILTERS_DESC,
-        json_schema_extra={"x-collapsed": True},
-    )
+    oligo_generation: SeqfishPlusReadoutProbeOligoGeneration
+    property_filters: SeqfishPlusReadoutProbePropertyFilter
+    specificity_filters: SeqfishPlusReadoutProbeSpecificityFilter
 
 
 SeqfishPlusReadoutProbeTable = Annotated[
@@ -362,8 +350,7 @@ class SeqfishPlusForwardPrimerPropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True,
-        homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4),
+        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4)
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=50, GC_content_max=65
@@ -386,8 +373,8 @@ class SeqfishPlusForwardPrimerPropertyFilter(BaseModel):
 class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
-        default=SpecificityBlastnFilterMinAlignmentEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterConfig = Field(
+        default=SpecificityBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -402,8 +389,8 @@ class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
         ),
         description=SPECIFICITY_PRIMER_DESC,
     )
-    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterMinAlignmentConfig = (
-        HybridizationProbesBlastnFilterMinAlignmentEnabled(
+    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = (
+        HybridizationProbesBlastnFilterEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -448,19 +435,10 @@ class SeqfishPlusForwardPrimerGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: SeqfishPlusForwardPrimerOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
-    property_filters: SeqfishPlusForwardPrimerPropertyFilter = Field(
-        description=PROPERTY_FILTERS_DESC,
-        json_schema_extra={"x-collapsed": True},
-    )
-    specificity_filters: SeqfishPlusForwardPrimerSpecificityFilter = Field(
-        description=SPECIFICITY_FILTERS_DESC,
-        json_schema_extra={"x-collapsed": True},
-    )
-    global_parameters: SeqfishPlusForwardPrimerGlobal = Field(
-        description=GLOBAL_PARAMETERS_DESC,
-        json_schema_extra={"x-collapsed": True},
-    )
+    oligo_generation: SeqfishPlusForwardPrimerOligoGeneration
+    property_filters: SeqfishPlusForwardPrimerPropertyFilter
+    specificity_filters: SeqfishPlusForwardPrimerSpecificityFilter
+    global_parameters: SeqfishPlusForwardPrimerGlobal
 
 
 SeqfishPlusForwardPrimer = Annotated[
@@ -484,8 +462,8 @@ class SeqfishPlusReversePrimer(BaseModel):
 class Primers(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    forward_primer: SeqfishPlusForwardPrimer = Field(description=FORWARD_PRIMER_DESC)
-    reverse_primer: SeqfishPlusReversePrimer = Field(description=REVERSE_PRIMER_DESC)
+    forward_primer: SeqfishPlusForwardPrimer
+    reverse_primer: SeqfishPlusReversePrimer
 
 
 ############################################
@@ -493,20 +471,15 @@ class Primers(BaseModel):
 ############################################
 
 
-# The front end builds its form from this, so `general` stays out of it.
-class SeqfishPlusProbeDesignerConfigBase(BaseModel):
+class SeqfishPlusProbeDesignerConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
-    target_probes: TargetProbes
-    readout_probes: ReadoutProbes
-    primers: Primers
-
-
-class SeqfishPlusProbeDesignerConfig(SeqfishPlusProbeDesignerConfigBase):
     general: General = General(
         n_jobs=4,
         dir_output="output_SeqfishPlusplus_probe_designer",
         write_intermediate_steps=True,
     )
-
-    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)
+    required_parameters: RequiredParameters
+    target_probes: TargetProbes
+    readout_probes: ReadoutProbes
+    primers: Primers

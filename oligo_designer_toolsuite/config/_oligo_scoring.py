@@ -10,6 +10,10 @@ from oligo_designer_toolsuite.config._types import (
     TmOptT,
 )
 
+PROBE_SET_SELECTION_DESC = (
+    "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
+)
+
 
 class IndependentSetSelection(BaseModel):
     model_config = ConfigDict(extra="forbid")
