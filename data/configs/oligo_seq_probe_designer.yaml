@@ -6,7 +6,7 @@ schema_version: 2
 
 general:
   n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-  dir_output: output_oligo_seq_probe_designer # name of the directory where the output files will be written
+  dir_output: "output_oligo_seq_probe_designer" # name of the directory where the output files will be written
   write_intermediate_steps: true # if true, saves intermediate results after each step
 
 #######################
@@ -14,13 +14,13 @@ general:
 #######################
 
 required_parameters:
-  targets: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
+  targets: "data/genes/custom_3.txt" # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
   target_genome: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
-      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+      - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
   reference_genome: # FASTA file(s) used as reference for specificity.
-      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+      - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
 
 target_probes:
   oligo_generation:
@@ -93,7 +93,7 @@ target_probes:
     variant_filter: # Flag or exclude oligos overlapping variants from VCF files.
       enabled: true # Turn this filter on or off.
       files_vcf_reference_database: # VCF file(s) with reference variants. Oligos overlapping these can be flagged or removed depending on action.
-        - data/annotations/custom_GCF_000001405.40.chr16.vcf
+        - "data/annotations/custom_GCF_000001405.40.chr16.vcf"
       action: "flag" # Action for variant-overlapping oligos: "flag" (mark only) or "filter" (exclude).
 
   probe_set_selection: # Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
@@ -126,12 +126,12 @@ target_probes:
       Tm_max: 70 # Maximum melting temperature (°C). Oligos above this are rejected.
 
 
-  global_parameters:
+  shared_parameters:
     Tm_parameters:
-      nn_table: DNA_NN3
-      tmm_table: DNA_TMM1
-      imm_table: DNA_IMM1
-      de_table: DNA_DE1
+      nn_table: "DNA_NN3"
+      tmm_table: "DNA_TMM1"
+      imm_table: "DNA_IMM1"
+      de_table: "DNA_DE1"
       dnac1: 50 #[nM]
       dnac2: 0 #[nM]
       saltcorr: 7

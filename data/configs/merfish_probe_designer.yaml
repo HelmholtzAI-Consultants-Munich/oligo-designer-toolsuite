@@ -6,7 +6,7 @@ schema_version: 2
 
 general:
   n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-  dir_output: output_merfish_probe_designer # name of the directory where the output files will be written
+  dir_output: "output_merfish_probe_designer" # name of the directory where the output files will be written
   write_intermediate_steps: true # if true, saves intermediate results after each step
 
 #######################
@@ -14,13 +14,13 @@ general:
 #######################
 
 required_parameters:
-  targets: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
+  targets: "data/genes/custom_3.txt" # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
   target_genome: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
-      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+      - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
   reference_genome: # FASTA file(s) used as reference for specificity.
-      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+      - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
 
 target_probes:
   oligo_generation:
@@ -92,12 +92,12 @@ target_probes:
     isoform_consensus_score:
       weight: 2 # Weight for isoform coverage in the set-selection scoring function.
 
-  global_parameters:
+  shared_parameters:
     Tm_parameters:
-      nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
-      tmm_table: DNA_TMM1 # default
-      imm_table: DNA_IMM1 # default
-      de_table: DNA_DE1 # default
+      nn_table: "DNA_NN4" # SantaLucia (2004), taken from Moffitt (2016)
+      tmm_table: "DNA_TMM1" # default
+      imm_table: "DNA_IMM1" # default
+      de_table: "DNA_DE1" # default
       dnac1: 5 #[nM] taken from Moffitt (2016)
       dnac2: 0 #[nM] taken from Moffitt (2016)
       saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
@@ -113,14 +113,14 @@ target_probes:
 
 readout_probes:
   codebook:
-    source: generate # "generate" (default) | "load"
+    source: "generate" # "generate" (default) | "load"
     file: null # data/functional_oligos/merfish_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
     n_bits: 16 # Number of bits in each barcode.
     min_hamming_dist: 4 # Minimum Hamming distance between any two valid barcodes (MHD4 = 4 for single-bit error correction).
     hamming_weight: 2 # Number of bits set to 1 in each barcode (MERFISH standard = 2). Equals readout overhangs per encoding probe (first half 5' of target, second half 3').
 
   readout_probe_table:
-    source: generate # "generate" (default) | "load"
+    source: "generate" # "generate" (default) | "load"
     file: null # data/functional_oligos/merfish_readout_probes_load_codebook.tsv # Only used when source = load. Bit-indexed table with columns: "channel", "readout_probe_id", "readout_probe_sequence".
     channels_ids: ["Alexa488", "Cy3b", "Alexa647"] # Fluorescence channels used for round-robin channel assignment across bits.
 
@@ -159,12 +159,12 @@ readout_probes:
       n_combinations: 100000 # Number of candidate sets to evaluate; higher values may find better sets but increase computation time.
       homogeneous_properties_weights: {TmNN_oligo: 1.0, GC_content_oligo: 1.0} # Weights for property homogeneity in the score minimised across the set (weighted sum of variances).
 
-    global_parameters:
+    shared_parameters:
       Tm_parameters:
-        nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
-        tmm_table: DNA_TMM1 # default
-        imm_table: DNA_IMM1 # default
-        de_table: DNA_DE1 # default
+        nn_table: "DNA_NN4" # SantaLucia (2004), taken from Moffitt (2016)
+        tmm_table: "DNA_TMM1" # default
+        imm_table: "DNA_IMM1" # default
+        de_table: "DNA_DE1" # default
         dnac1: 25 # default
         dnac2: 25 # default
         saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
@@ -180,7 +180,7 @@ readout_probes:
 
 primers:
   forward_primer:
-    source: generate # "generate" (default) | "load"
+    source: "generate" # "generate" (default) | "load"
     sequence: null # ACGT... # Only used when source = load.
 
     oligo_generation:
@@ -236,12 +236,12 @@ primers:
           hit_criterion: "min_alignment_length"
           value: 11
 
-    global_parameters:
+    shared_parameters:
       Tm_parameters:
-        nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
-        tmm_table: DNA_TMM1 # default
-        imm_table: DNA_IMM1 # default
-        de_table: DNA_DE1 # default
+        nn_table: "DNA_NN4" # SantaLucia (2004), taken from Moffitt (2016)
+        tmm_table: "DNA_TMM1" # default
+        imm_table: "DNA_IMM1" # default
+        de_table: "DNA_DE1" # default
         dnac1: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
         dnac2: 250 #[nM] taken from https://github.com/ZhuangLab/MERFISH_analysis
         saltcorr: 5 # correction for deltaS, taken from https://github.com/ZhuangLab/MERFISH_analysis
@@ -256,5 +256,5 @@ primers:
         enabled: false
 
   reverse_primer:
-    source: load # "generate" (not yet implemented) | "load" (default)
-    sequence: CCCTATAGTGAGTCGTATTA # Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.
+    source: "load" # "generate" (not yet implemented) | "load" (default)
+    sequence: "CCCTATAGTGAGTCGTATTA" # Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.

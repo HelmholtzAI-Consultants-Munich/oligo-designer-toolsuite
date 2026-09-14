@@ -1024,19 +1024,19 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes"]:
-        config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-            config[section]["global_parameters"]["Tm_parameters"]
+        config[section]["shared_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
+            config[section]["shared_parameters"]["Tm_parameters"]
         )
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config[section]["global_parameters"][correction]
+            correction_cfg = config[section]["shared_parameters"][correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["shared_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["shared_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["shared_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 

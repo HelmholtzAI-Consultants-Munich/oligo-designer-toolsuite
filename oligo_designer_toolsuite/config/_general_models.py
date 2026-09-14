@@ -32,7 +32,7 @@ SPECIFICITY_FILTERS_DESC = "Parameters for filters that test the specificity of 
 PROBE_SET_SELECTION_DESC = (
     "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
 )
-GLOBAL_PARAMETERS_DESC = (
+SHARED_PARAMETERS_DESC = (
     "Parameters for melting temperature computation that are reused for different filtering and "
     "scoring methods."
 )
@@ -41,6 +41,7 @@ READOUT_PROBE_TABLE_DESC = "Parameters that determine the readout probe table ge
 INITIATOR_TABLE_DESC = "Parameters that determine the initiator table generation or loading."
 FORWARD_PRIMER_DESC = "Parameters that determine the forward primer generation or loading."
 REVERSE_PRIMER_DESC = "Parameters that determine the reverse primer generation or loading."
+SCHEMA_VERSION_DESC = "Config file format version, do not edit"
 
 
 class General(BaseModel):

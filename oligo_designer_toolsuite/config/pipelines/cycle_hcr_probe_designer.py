@@ -9,11 +9,12 @@ from pydantic import (
 )
 
 from oligo_designer_toolsuite.config._general_models import (
-    GLOBAL_PARAMETERS_DESC,
     OLIGO_GENERATION_DESC,
     PROBE_SET_SELECTION_DESC,
     PROPERTY_FILTERS_DESC,
     REQUIRED_PARAMETERS_DESC,
+    SCHEMA_VERSION_DESC,
+    SHARED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
     BlastnHitParameters,
     BlastnSearchParameters,
@@ -29,6 +30,8 @@ from oligo_designer_toolsuite.config._oligo_scoring import (
     TmScore,
 )
 from oligo_designer_toolsuite.config._property_filters import (
+    HARDMASKED_DESC,
+    SOFTMASKED_DESC,
     GCContentFilterConfig,
     HardMaskedFilterConfig,
     HomopolymericRunsFilterConfig,
@@ -41,7 +44,7 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_HIT_PARAMS_DESC,
     SPECIFICITY_SEARCH_PARAMS_DESC,
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterCoverageConfig,
+    CrossHybridizationBlastnFilterConfig,
     SpecificityBlastnFilterDisabled,
     SpecificityBlastnFilterEnabled,
 )
@@ -102,8 +105,8 @@ class TargetProbePropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     isoform_consensus_filter: IsoformConsensusFilterConfig
-    hard_masked_sequences_filter: HardMaskedFilterConfig
-    soft_masked_sequences_filter: SoftMaskedFilterConfig
+    hard_masked_sequences_filter: HardMaskedFilterConfig = Field(description=HARDMASKED_DESC)
+    soft_masked_sequences_filter: SoftMaskedFilterConfig = Field(description=SOFTMASKED_DESC)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig
     GC_content_filter: GCContentFilterConfig
     Tm_filter: TmFilterConfig
@@ -114,7 +117,7 @@ class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     specificity_blastn_filter: CycleHcrSpecificityBlastnFilterConfig
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterCoverageConfig
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig
 
 
 class TargetProbeProbeSetSelection(BaseModel):
@@ -125,7 +128,7 @@ class TargetProbeProbeSetSelection(BaseModel):
     Tm_score: TmScore
 
 
-class TargetProbeGlobal(BaseModel):
+class TargetProbeShared(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     Tm_parameters: TmParameters
@@ -140,7 +143,7 @@ class TargetProbes(BaseModel):
     property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
     specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
+    shared_parameters: TargetProbeShared = Field(description=SHARED_PARAMETERS_DESC)
 
 
 ############################################
@@ -165,7 +168,7 @@ class CycleHcrCodebookLoad(BaseModel):
 class CycleHcrCodebookGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source: Literal["generate"] = "generate"
+    source: Literal["generate"]
     min_hamming_distance: Literal[0, 2, 4] = Field(
         description=(
             "Required minimum Hamming distance between codewords. Codewords have weight 2, so only "
@@ -244,7 +247,7 @@ class HybridizationProbes(BaseModel):
 # The front end builds its form from this, so `general` stays out of it.
 class CycleHcrProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    schema_version: Literal[2]
+    schema_version: Literal[2] = Field(description=SCHEMA_VERSION_DESC)
     target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers

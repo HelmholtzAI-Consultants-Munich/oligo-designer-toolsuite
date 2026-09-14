@@ -15,6 +15,9 @@ from oligo_designer_toolsuite.config._types import (
     TSecondaryStructureT,
 )
 
+HARDMASKED_DESC = "Exclude oligos overlapping hard-masked (e.g. N) regions in the reference."
+SOFTMASKED_DESC = "Exclude oligos overlapping soft-masked (lowercase) regions in the reference."
+
 
 class FilterBaseConfigEnabled(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -66,14 +69,12 @@ TargetedExonsFilterConfig = Annotated[
 
 
 class HardMaskedFilterConfig(BaseModel):
-    """Exclude oligos overlapping hard-masked (e.g. N) regions in the reference."""
 
     model_config = ConfigDict(extra="forbid")
     enabled: bool = Field(description="Turn this filter on or off.")
 
 
 class SoftMaskedFilterConfig(BaseModel):
-    """Exclude oligos overlapping soft-masked (lowercase) regions in the reference."""
 
     model_config = ConfigDict(extra="forbid")
     enabled: bool = Field(description="Turn this filter on or off.")

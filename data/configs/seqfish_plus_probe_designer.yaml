@@ -6,7 +6,7 @@ schema_version: 2
 
 general:
   n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-  dir_output: output_seqfishplus_probe_designer # name of the directory where the output files will be written
+  dir_output: "output_seqfishplus_probe_designer" # name of the directory where the output files will be written
   write_intermediate_steps: true # if true, saves intermediate results after each step
 
 #######################
@@ -14,13 +14,13 @@ general:
 #######################
 
 required_parameters:
-  targets: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
+  targets: "data/genes/custom_3.txt" # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
   target_genome: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
-      - data/genomic_regions/cds_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-      - data/genomic_regions/utr_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/cds_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+      - "data/genomic_regions/utr_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
   reference_genome: # FASTA file(s) used as reference for specificity.
-      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+      - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
 
 target_probes:
   oligo_generation:
@@ -87,7 +87,7 @@ target_probes:
 readout_probes:
 
   codebook:
-    source: generate # "generate" (default) | "load"
+    source: "generate" # "generate" (default) | "load"
     file: null # data/functional_oligos/seqfish_plus_codebook.tsv # Only used when source = load. Codebook file: columns = "bits", rows = "gene_name".
 
     n_barcode_rounds: 4 # Number of barcode rounds. Equals active bits per gene and readout overhangs per encoding probe (first half 5' of target, second half 3').
@@ -95,7 +95,7 @@ readout_probes:
     channels_ids: ["Alexa488", "Cy3b", "Alexa647"] # Fluorescence channels used in the experiment.
 
   readout_probe_table:
-    source: generate # "generate" (default) | "load"
+    source: "generate" # "generate" (default) | "load"
     file: null # data/functional_oligos/seqfish_plus_readout_probes_load_codebook.tsv # Only used when source = load. Bit-indexed table with columns: "barcode_round", "pseudocolor", "channel", "readout_probe_sequence".
 
     oligo_generation:
@@ -130,7 +130,7 @@ readout_probes:
 
 primers:
   forward_primer:
-    source: generate # "generate" (default) | "load"
+    source: "generate" # "generate" (default) | "load"
     sequence: null # ACGT... # Only used when source = load.
 
     oligo_generation:
@@ -186,12 +186,12 @@ primers:
           hit_criterion: "min_alignment_length"
           value: 11
 
-    global_parameters:
+    shared_parameters:
       Tm_parameters:
-        nn_table: DNA_NN4 # SantaLucia (2004), taken from Moffitt (2016)
-        tmm_table: DNA_TMM1
-        imm_table: DNA_IMM1
-        de_table: DNA_DE1
+        nn_table: "DNA_NN4" # SantaLucia (2004), taken from Moffitt (2016)
+        tmm_table: "DNA_TMM1"
+        imm_table: "DNA_IMM1"
+        de_table: "DNA_DE1"
         dnac1: 250 #[nM]
         dnac2: 250 #[nM]
         saltcorr: 5
@@ -206,5 +206,5 @@ primers:
         enabled: false
 
   reverse_primer:
-    source: load # "generate" (not yet implemented) | "load" (default)
-    sequence: CCCTATAGTGAGTCGTATTA # Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.
+    source: "load" # "generate" (not yet implemented) | "load" (default)
+    sequence: "CCCTATAGTGAGTCGTATTA" # Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.

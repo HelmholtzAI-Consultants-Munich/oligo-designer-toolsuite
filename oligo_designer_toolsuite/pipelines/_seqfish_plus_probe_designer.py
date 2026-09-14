@@ -2404,22 +2404,22 @@ def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict
 
         # Resolve Tm table names and blank disabled chem/salt corrections to None so
         # downstream filters treat None as "no correction" without checking the flag.
-        global_parameters = forward_primer_cfg["global_parameters"]
-        global_parameters["Tm_parameters"] = preprocess_tm_parameters(global_parameters["Tm_parameters"])
+        shared_parameters = forward_primer_cfg["shared_parameters"]
+        shared_parameters["Tm_parameters"] = preprocess_tm_parameters(shared_parameters["Tm_parameters"])
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = global_parameters[correction]
+            correction_cfg = shared_parameters[correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
         # Inline shared Tm settings into the forward-primer Tm filter.
-        forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_parameters"] = global_parameters[
+        forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_parameters"] = shared_parameters[
             "Tm_parameters"
         ]
         forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_chem_correction_parameters"] = (
-            global_parameters["Tm_chem_correction_parameters"]["parameters"]
+            shared_parameters["Tm_chem_correction_parameters"]["parameters"]
         )
         forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_salt_correction_parameters"] = (
-            global_parameters["Tm_salt_correction_parameters"]["parameters"]
+            shared_parameters["Tm_salt_correction_parameters"]["parameters"]
         )
 
     return config

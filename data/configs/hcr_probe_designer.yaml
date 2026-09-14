@@ -6,7 +6,7 @@ schema_version: 2
 
 general:
   n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-  dir_output: output_hcr_probe_designer # name of the directory where the output files will be written
+  dir_output: "output_hcr_probe_designer" # name of the directory where the output files will be written
   write_intermediate_steps: true # if true, saves intermediate results after each step
 
 #######################
@@ -14,12 +14,12 @@ general:
 #######################
 
 required_parameters:
-  targets: data/genes/custom_3.txt # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
+  targets: "data/genes/custom_3.txt" # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
   target_genome: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
-      - data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
-      - data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+      - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
   reference_genome: # FASTA file(s) used as reference for specificity.
-      - data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna
+      - "data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
 
 target_probes:
   oligo_generation:
@@ -87,12 +87,12 @@ target_probes:
     isoform_consensus_score:
       weight: 1 # Weight for isoform coverage in the set-selection scoring function.
 
-  global_parameters:
+  shared_parameters:
     Tm_parameters:
-      nn_table: DNA_NN3 # default
-      tmm_table: DNA_TMM1 # default
-      imm_table: DNA_IMM1 # default
-      de_table: DNA_DE1 # default
+      nn_table: "DNA_NN3" # default
+      tmm_table: "DNA_TMM1" # default
+      imm_table: "DNA_IMM1" # default
+      de_table: "DNA_DE1" # default
       dnac1: 25 #[nM]
       dnac2: 25 #[nM]
       saltcorr: 0
@@ -108,11 +108,11 @@ target_probes:
 
 initiator_probes:
   codebook:
-    source: load # "generate" | "load" (default)
-    file: data/functional_oligos/hcr_codebook.tsv # Codebook file: columns = "bits", rows = "gene_name"; entries are 0/1 bit-encodings for each gene.
+    source: "load" # "generate" | "load" (default)
+    file: "data/functional_oligos/hcr_codebook.tsv" # Codebook file: columns = "bits", rows = "gene_name"; entries are 0/1 bit-encodings for each gene.
   initiator_table:
-    source: load # "generate" | "load" (default)
-    file: data/functional_oligos/hcr_initiators_load_codebook.tsv # csv/tsv file containing the initiator table with the columns "bit", "initiator_L_sequence", and "initiator_R_sequence".
+    source: "load" # "generate" | "load" (default)
+    file: "data/functional_oligos/hcr_initiators_load_codebook.tsv" # csv/tsv file containing the initiator table with the columns "bit", "initiator_L_sequence", and "initiator_R_sequence".
 
 hybridization_probes:
-  linker_sequence: AA # Linker sequence between the initiator and the target-binding L/R arm.
+  linker_sequence: "AA" # Linker sequence between the initiator and the target-binding L/R arm.

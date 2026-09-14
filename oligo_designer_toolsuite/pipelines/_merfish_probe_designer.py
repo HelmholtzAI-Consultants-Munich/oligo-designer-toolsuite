@@ -2485,19 +2485,19 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
 
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
-    config["target_probes"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-        config["target_probes"]["global_parameters"]["Tm_parameters"]
+    config["target_probes"]["shared_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
+        config["target_probes"]["shared_parameters"]["Tm_parameters"]
     )
     for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-        correction_cfg = config["target_probes"]["global_parameters"][correction]
+        correction_cfg = config["target_probes"]["shared_parameters"][correction]
         if not correction_cfg["enabled"]:
             correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["shared_parameters"]["Tm_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["shared_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["shared_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
@@ -2538,29 +2538,29 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
             "files_fasta_reference_database"
         ] = config["required_parameters"]["reference_genome"]
 
-        config["readout_probes"]["readout_probe_table"]["global_parameters"]["Tm_parameters"] = (
+        config["readout_probes"]["readout_probe_table"]["shared_parameters"]["Tm_parameters"] = (
             preprocess_tm_parameters(
-                config["readout_probes"]["readout_probe_table"]["global_parameters"]["Tm_parameters"]
+                config["readout_probes"]["readout_probe_table"]["shared_parameters"]["Tm_parameters"]
             )
         )
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config["readout_probes"]["readout_probe_table"]["global_parameters"][correction]
+            correction_cfg = config["readout_probes"]["readout_probe_table"]["shared_parameters"][correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
         config["readout_probes"]["readout_probe_table"]["probe_set_selection"]["Tm_parameters"] = config[
             "readout_probes"
-        ]["readout_probe_table"]["global_parameters"]["Tm_parameters"]
+        ]["readout_probe_table"]["shared_parameters"]["Tm_parameters"]
         config["readout_probes"]["readout_probe_table"]["probe_set_selection"][
             "Tm_chem_correction_parameters"
-        ] = config["readout_probes"]["readout_probe_table"]["global_parameters"][
+        ] = config["readout_probes"]["readout_probe_table"]["shared_parameters"][
             "Tm_chem_correction_parameters"
         ][
             "parameters"
         ]
         config["readout_probes"]["readout_probe_table"]["probe_set_selection"][
             "Tm_salt_correction_parameters"
-        ] = config["readout_probes"]["readout_probe_table"]["global_parameters"][
+        ] = config["readout_probes"]["readout_probe_table"]["shared_parameters"][
             "Tm_salt_correction_parameters"
         ][
             "parameters"
@@ -2572,19 +2572,19 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
             "files_fasta_reference_database"
         ] = config["required_parameters"]["reference_genome"]
 
-        config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-            config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"]
+        config["primers"]["forward_primer"]["shared_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
+            config["primers"]["forward_primer"]["shared_parameters"]["Tm_parameters"]
         )
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config["primers"]["forward_primer"]["global_parameters"][correction]
+            correction_cfg = config["primers"]["forward_primer"]["shared_parameters"][correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-        primer_Tm_parameters = config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"]
-        primer_Tm_chem_correction_parameters = config["primers"]["forward_primer"]["global_parameters"][
+        primer_Tm_parameters = config["primers"]["forward_primer"]["shared_parameters"]["Tm_parameters"]
+        primer_Tm_chem_correction_parameters = config["primers"]["forward_primer"]["shared_parameters"][
             "Tm_chem_correction_parameters"
         ]["parameters"]
-        primer_Tm_salt_correction_parameters = config["primers"]["forward_primer"]["global_parameters"][
+        primer_Tm_salt_correction_parameters = config["primers"]["forward_primer"]["shared_parameters"][
             "Tm_salt_correction_parameters"
         ]["parameters"]
 

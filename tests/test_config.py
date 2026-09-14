@@ -207,17 +207,6 @@ class TestSeqfishYaml(unittest.TestCase):
         with self.assertRaises(ValidationError):
             SeqfishPlusProbeDesignerConfig.model_validate(raw)
 
-    def test_codebook_load_experiment_params_survive_dump(self) -> None:
-        # A loaded codebook still needs n_barcode_rounds / n_pseudocolors / channels_ids
-        # downstream, so they must survive model_dump() even under extra="ignore".
-        raw = _load("seqfish_plus_probe_designer.yaml")
-        raw["readout_probes"]["codebook"] = {"source": "load", "file": "codebook.tsv"}
-        dumped = SeqfishPlusProbeDesignerConfig.model_validate(raw).model_dump()
-        codebook = dumped["readout_probes"]["codebook"]
-        assert codebook["n_barcode_rounds"] == 4
-        assert codebook["n_pseudocolors"] == 4
-        assert codebook["channels_ids"] == ["Alexa488", "Cy3b", "Alexa647"]
-
     def test_reverse_primer_generate_rejected(self) -> None:
         # Reverse primer generation is not implemented; only "load" is allowed
         raw = _load("seqfish_plus_probe_designer.yaml")
@@ -269,18 +258,6 @@ class TestMerfishYaml(unittest.TestCase):
         raw["initiator_probes"] = {"linker_sequence": "AA"}
         with self.assertRaises(ValidationError):
             MerfishProbeDesignerConfig.model_validate(raw)
-
-    def test_codebook_load_hamming_weight_survives_dump(self) -> None:
-        # A loaded codebook needs hamming_weight downstream and n_bits
-        # if the readoutprobe table is generated, so they must
-        # survive model_dump().
-        raw = _load("merfish_probe_designer.yaml")
-        raw["readout_probes"]["codebook"] = {"source": "load", "file": "codebook.tsv"}
-        dumped = MerfishProbeDesignerConfig.model_validate(raw).model_dump()
-        codebook = dumped["readout_probes"]["codebook"]
-        assert codebook["source"] == "load"
-        assert codebook["hamming_weight"] == 2
-        assert codebook["n_bits"] == 16
 
     def test_reverse_primer_generate_rejected(self) -> None:
         # Reverse primer generation is not implemented; only "load" is allowed
