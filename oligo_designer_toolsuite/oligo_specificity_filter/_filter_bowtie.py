@@ -3,14 +3,13 @@
 ############################################
 
 import os
-import subprocess
 
 import pandas as pd
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError, DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
-from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
+from oligo_designer_toolsuite.utils._checkers_and_helpers import run_external_tool, safe_append_filename
 
 ############################################
 # Oligo Bowtie Filter Classes
@@ -108,7 +107,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
             file_reference,
         ]
 
-        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
+        run_external_tool(args, cwd=self.dir_output)
 
         return file_reference
 
@@ -163,7 +162,7 @@ class BowtieFilter(AlignmentSpecificityFilter):
         args.append(file_oligo_database)
         args.append(file_bowtie_results)
 
-        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
+        run_external_tool(args, cwd=self.dir_output)
 
         # read the reuslts of the bowtie search
         bowtie_results = self._read_search_output(
@@ -310,7 +309,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             file_reference,
         ]
 
-        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
+        run_external_tool(args, cwd=self.dir_output)
 
         return file_reference
 
@@ -367,7 +366,7 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
 
         args.extend(["-U", file_oligo_database, "-S", file_bowtie_results])
 
-        subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
+        run_external_tool(args, cwd=self.dir_output)
 
         # read the reuslts of the bowtie seatch
         bowtie_results = self._read_search_output(

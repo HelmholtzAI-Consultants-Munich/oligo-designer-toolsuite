@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, get_args
 
 from oligo_designer_toolsuite._constants import _TYPES_REF
-from oligo_designer_toolsuite._exceptions import DatabaseError
+from oligo_designer_toolsuite._exceptions import ConfigurationError, DatabaseError
 from oligo_designer_toolsuite.utils import FastaParser, VCFParser, cast_to_list, remove_index_files
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
@@ -80,7 +80,8 @@ class ReferenceDatabase:
 
         # Check if file type is correct
         options = get_args(_TYPES_REF)
-        assert file_type in options, f"Sequence type not supported! '{file_type}' is not in {options}."
+        if file_type not in options:
+            raise ConfigurationError(f"Sequence type not supported! '{file_type}' is not in {options}.")
         files = cast_to_list(files)
 
         # remove all files if database should be overwritten

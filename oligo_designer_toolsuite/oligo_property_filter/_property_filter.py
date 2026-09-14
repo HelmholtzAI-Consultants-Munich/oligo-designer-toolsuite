@@ -6,6 +6,7 @@
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
+from oligo_designer_toolsuite._exceptions import DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_filter import BasePropertyFilter
 from oligo_designer_toolsuite.utils import check_if_key_in_database
@@ -48,9 +49,8 @@ class PropertyFilter:
         :return: The filtered OligoDatabase.
         :rtype: OligoDatabase
         """
-        assert check_if_key_in_database(
-            oligo_database.database, sequence_type
-        ), f"Sequence type '{sequence_type}' not found in database."
+        if not check_if_key_in_database(oligo_database.database, sequence_type):
+            raise DatabaseError(f"Sequence type '{sequence_type}' not found in database.")
 
         region_ids = list(oligo_database.database.keys())
         with joblib_progress(description="Property Filter", total=len(region_ids)):

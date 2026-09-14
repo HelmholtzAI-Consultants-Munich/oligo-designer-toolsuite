@@ -27,7 +27,7 @@ from oligo_designer_toolsuite._constants import (
 )
 from oligo_designer_toolsuite._exceptions import ConfigurationError, FileFormatError
 
-from ._checkers_and_helpers import cast_to_list
+from ._checkers_and_helpers import cast_to_list, run_external_tool
 
 ############################################
 # GFF Parser Class
@@ -736,19 +736,19 @@ class VCFParser:
                 compressed_files_to_cleanup.append(file_vcf_compressed)
 
                 args_compress = ["bcftools", "view", "-O", "z", "-o", file_vcf_compressed, file_vcf]
-                subprocess.run(args_compress, check=True, stdout=subprocess.DEVNULL)
+                run_external_tool(args_compress)
 
                 file_vcf = file_vcf_compressed
 
             args_sort = ["bcftools", "sort", file_vcf, "-Oz", "-o", file_vcf]
-            subprocess.run(args_sort, check=True, stdout=subprocess.DEVNULL)
+            run_external_tool(args_sort)
 
             args_index = ["bcftools", "index", "-f", file_vcf]
-            subprocess.run(args_index, check=True, stdout=subprocess.DEVNULL)
+            run_external_tool(args_index)
 
             args.append(file_vcf)
 
-        subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+        run_external_tool(args)
 
         # Clean up compressed files and their index files
         for file_vcf_compressed in compressed_files_to_cleanup:
