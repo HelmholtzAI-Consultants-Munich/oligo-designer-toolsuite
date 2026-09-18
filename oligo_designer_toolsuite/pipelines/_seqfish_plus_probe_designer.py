@@ -70,7 +70,6 @@ from oligo_designer_toolsuite.oligo_specificity_filter import (
     SpecificityFilter,
 )
 from oligo_designer_toolsuite.pipelines._utils import (
-    apply_required_parameters,
     base_log_parameters,
     base_parser,
     check_content_oligo_database,
@@ -2375,7 +2374,15 @@ def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict
 
     config = config_validated.model_dump()
 
-    apply_required_parameters(config)
+    # inline the required parameters into the correct position in the config dict
+    required_parameters = config["required_parameters"]
+    config["target_probes"]["oligo_generation"]["file_region_ids"] = required_parameters["targets"]
+    config["target_probes"]["oligo_generation"]["files_fasta_probe_database"] = required_parameters[
+        "target_genome"
+    ]
+    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"][
+        "files_fasta_reference_database"
+    ] = required_parameters["reference_genome"]
 
     # Readout probes and the forward primer only carry specificity filters when they
     # are generated rather than loaded.
