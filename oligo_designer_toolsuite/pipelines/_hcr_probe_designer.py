@@ -1132,8 +1132,7 @@ class TargetProbeDesigner:
         """
         isoform_consensus_scorer = IsoformConsensusScorer(score_weight=isoform_consensus_score["weight"])
         oligos_scoring = OligoScoring(scorers=[isoform_consensus_scorer])
-        # ascending=False: higher aggregate (isoform) scores win.
-        set_scoring = AverageSetScoring(ascending=False)
+        set_scoring = AverageSetScoring(ascending=True)
 
         base_log_parameters({"Set Selection": "Independent Sets"})
         oligoset_generator = IndependentSetsOligoSelection(
