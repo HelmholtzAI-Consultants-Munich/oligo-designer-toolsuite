@@ -12,7 +12,7 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
 from oligo_designer_toolsuite.oligo_property_filter import BasePropertyFilter
 
 from ..utils._checkers_and_helpers import check_if_dna_sequence
-
+import primer3
 ############################################
 # Oligo Property Filter Classes
 ############################################
@@ -327,7 +327,6 @@ class GCClampFilter(BasePropertyFilter):
                 return True
         return False
 
-
 class MeltingTemperatureNNFilter(BasePropertyFilter):
     """
     A filter class that evaluates sequences based on their melting temperature (Tm) using the nearest-neighbor thermodynamic model.
@@ -388,6 +387,63 @@ class MeltingTemperatureNNFilter(BasePropertyFilter):
             self.Tm_salt_correction_parameters,
             self.Tm_chem_correction_parameters,
         )
+        if self.Tm_min < Tm < self.Tm_max:
+            return True
+        return False
+
+class MeltingTemperaturePrimer3Filter(BasePropertyFilter):
+    """
+    A filter class that evaluates sequences based on their melting temperature (Tm),
+    calculated with primer3 using a fixed, experiment-unspecific set of thermodynamic
+    parameters (rather than parameters supplied per-pipeline, as in
+    :class:`MeltingTemperatureNNFilter`).
+ 
+    This filter is used by the Xenium probe design pipeline, e.g.:
+ 
+        for i in $(seq 330 10 340); do
+            config="YOUR_PATH_TO_SAVE_WHERE_YOUR_YAML_FILES/config_xenium_${i}.yaml"
+            xenium_probe_designer -c "$config"
+        done
+ 
+    :param Tm_min: The minimum acceptable melting temperature.
+    :type Tm_min: float
+    :param Tm_max: The maximum acceptable melting temperature.
+    :type Tm_max: float
+    """
+ 
+    def __init__(self, Tm_min: float, Tm_max: float) -> None:
+        """Constructor for the MeltingTemperaturePrimer3Filter class."""
+        super().__init__()
+        if Tm_max <= Tm_min:
+            raise ConfigurationError(f"Tm_max ({Tm_max}) must be greater than Tm_min ({Tm_min}).")
+        self.Tm_min = Tm_min
+        self.Tm_max = Tm_max
+ 
+    def apply(self, sequence: str) -> bool:
+        """
+        Calculate the melting temperature of the given sequence using primer3 and
+        check if it lies between the specified minimum and maximum Tm values.
+ 
+        :param sequence: The nucleotide sequence.
+        :type sequence: str
+        :return: `True` if the sequence's Tm is within the specified range, `False` otherwise.
+        :rtype: bool
+        """
+        Tm = primer3.bindings.calc_tm(
+            sequence,
+            mv_conc=10.0,
+            dv_conc=20,
+            dntp_conc=10,
+            dna_conc=5000,
+            dmso_conc=0.0,
+            dmso_fact=0.6,
+            formamide_conc=0.0,
+            annealing_temp_c=-10.0,
+            max_nn_length=60,
+            tm_method="santalucia",
+            salt_corrections_method="schildkraut",
+        )
+ 
         if self.Tm_min < Tm < self.Tm_max:
             return True
         return False

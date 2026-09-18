@@ -138,6 +138,7 @@ class DetectionOligoFilter(BasePropertyFilter):
         Tm_parameters: dict,
         Tm_salt_correction_parameters: dict | None = None,
         Tm_chem_correction_parameters: dict | None = None,
+        invalid_ligation_bps: list[str] | None = None,
     ) -> None:
         """Constructor for the DetectionOligoFilter class."""
         super().__init__()
@@ -155,6 +156,7 @@ class DetectionOligoFilter(BasePropertyFilter):
         self.Tm_parameters = Tm_parameters
         self.Tm_salt_correction_parameters = Tm_salt_correction_parameters
         self.Tm_chem_correction_parameters = Tm_chem_correction_parameters
+        self.invalid_ligation_bps = invalid_ligation_bps
 
     def apply(self, sequence: str) -> bool:
         """
@@ -175,6 +177,7 @@ class DetectionOligoFilter(BasePropertyFilter):
             Tm_parameters=self.Tm_parameters,
             Tm_salt_correction_parameters=self.Tm_salt_correction_parameters,
             Tm_chem_correction_parameters=self.Tm_chem_correction_parameters,
+            invalid_ligation_bps=self.invalid_ligation_bps,
         )
         if not ligation_site:
             return False
