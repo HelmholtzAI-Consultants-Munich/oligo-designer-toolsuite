@@ -57,6 +57,7 @@ class TestOligoSeqYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = OligoSeqProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "OligoSeqProbeDesignerConfig"
+        assert "required_parameters" in schema["properties"]
         assert "target_probes" in schema["properties"]
 
 
@@ -88,6 +89,7 @@ class TestScrinshotYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = ScrinshotProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "ScrinshotProbeDesignerConfig"
+        assert "required_parameters" in schema["properties"]
         assert "target_probes" in schema["properties"]
         assert "detection_oligo" in schema["properties"]
 
@@ -120,6 +122,7 @@ class TestHcrYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = HcrProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "HcrProbeDesignerConfig"
+        assert "required_parameters" in schema["properties"]
         assert "target_probes" in schema["properties"]
         assert "initiator_probes" in schema["properties"]
 
@@ -174,6 +177,7 @@ class TestCycleHcrYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = CycleHcrProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "CycleHcrProbeDesignerConfig"
+        assert "required_parameters" in schema["properties"]
         assert "target_probes" in schema["properties"]
         assert "readout_probes" in schema["properties"]
 
@@ -235,6 +239,7 @@ class TestSeqfishYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = SeqfishPlusProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "SeqfishPlusProbeDesignerConfig"
+        assert "required_parameters" in schema["properties"]
         assert "target_probes" in schema["properties"]
         assert "readout_probes" in schema["properties"]
         assert "primers" in schema["properties"]
@@ -287,6 +292,7 @@ class TestMerfishYaml(unittest.TestCase):
     def test_json_schema(self) -> None:
         schema = MerfishProbeDesignerConfig.model_json_schema()
         assert schema["title"] == "MerfishProbeDesignerConfig"
+        assert "required_parameters" in schema["properties"]
         assert "target_probes" in schema["properties"]
         assert "readout_probes" in schema["properties"]
         assert "primers" in schema["properties"]

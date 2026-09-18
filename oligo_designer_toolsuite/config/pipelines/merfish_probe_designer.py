@@ -10,11 +10,22 @@ from pydantic import (
 from typing_extensions import Self
 
 from oligo_designer_toolsuite.config._general_models import (
+    CODEBOOK_DESC,
+    FORWARD_PRIMER_DESC,
+    GLOBAL_PARAMETERS_DESC,
+    OLIGO_GENERATION_DESC,
+    PROBE_SET_SELECTION_DESC,
+    PROPERTY_FILTERS_DESC,
+    READOUT_PROBE_TABLE_DESC,
+    REQUIRED_PARAMETERS_DESC,
+    REVERSE_PRIMER_DESC,
+    SPECIFICITY_FILTERS_DESC,
     BaseProbabilities,
-    BlastnHitParameters,
+    BlastnHitParametersMinAlignmentLength,
     BlastnSearchParameters,
     General,
     HomopolymericRunThreshold,
+    RequiredParameters,
     TmChemCorrectionParameters,
     TmChemCorrectionParametersDisabled,
     TmParameters,
@@ -22,7 +33,6 @@ from oligo_designer_toolsuite.config._general_models import (
     TmSaltCorrectionParametersDisabled,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
-    PROBE_SET_SELECTION_DESC,
     GCContentScore,
     IndependentSetSelection,
     IsoformConsensusScore,
@@ -52,98 +62,19 @@ from oligo_designer_toolsuite.config._specificity_filters import (
     SPECIFICITY_PRIMER_DESC,
     SPECIFICITY_READOUT_DESC,
     SPECIFICITY_TARGET_DESC,
-    CrossHybridizationBlastnFilterConfig,
-    CrossHybridizationBlastnFilterEnabled,
-    HybridizationProbesBlastnFilterConfig,
-    HybridizationProbesBlastnFilterEnabled,
-    SpecificityBlastnFilterDisabled,
-    SpecificityBlastnFilterEnabled,
+    CrossHybridizationBlastnFilterMinAlignmentConfig,
+    CrossHybridizationBlastnFilterMinAlignmentEnabled,
+    HybridizationProbesBlastnFilterMinAlignmentConfig,
+    HybridizationProbesBlastnFilterMinAlignmentEnabled,
+    SpecificityBlastnFilterMinAlignmentConfig,
+    SpecificityBlastnFilterMinAlignmentEnabled,
 )
 from oligo_designer_toolsuite.config._types import (
     DRNAT,
-    FilesFastaDatabaseT,
     HomogeneousPropertiesWeightsT,
     LengthMaxT,
     LengthMinT,
-    RegionListT,
 )
-
-############################################
-# MERFISH-specific overrides
-############################################
-
-# The specificity BLASTN filter carries a required reference-database path
-# (files_fasta_reference_database, no default). These subclasses only set the
-# MERFISH default search/hit parameters; the path stays required, so the whole
-# filter must be supplied by the user.
-
-
-class MerfishSpecificityBlastnFilterDisabled(SpecificityBlastnFilterDisabled):
-    pass
-
-
-class MerfishTargetSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = Field(
-        default=BlastnSearchParameters(
-            perc_identity=80,
-            strand="minus",
-            word_size=10,
-            dust="no",
-            soft_masking=False,
-            max_target_seqs=10,
-            max_hsps=1000,
-        ),
-        description="BLAST options for the specificity search.",
-    )
-    hit_parameters: BlastnHitParameters = Field(
-        default=BlastnHitParameters(min_alignment_length=17),
-        description="Hit criteria. Hits satisfying these lead to oligo rejection.",
-    )
-
-
-MerfishTargetSpecificityBlastnFilterConfig = Annotated[
-    MerfishTargetSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_TARGET_DESC),
-]
-
-
-class MerfishReadoutSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=7,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=11)
-
-
-MerfishReadoutSpecificityBlastnFilterConfig = Annotated[
-    MerfishReadoutSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_READOUT_DESC),
-]
-
-
-class MerfishPrimerSpecificityBlastnFilterEnabled(SpecificityBlastnFilterEnabled):
-    search_parameters: BlastnSearchParameters = BlastnSearchParameters(
-        perc_identity=100,
-        strand="minus",
-        word_size=7,
-        dust="no",
-        soft_masking=False,
-        max_target_seqs=10,
-        max_hsps=1000,
-    )
-    hit_parameters: BlastnHitParameters = BlastnHitParameters(min_alignment_length=14)
-
-
-MerfishPrimerSpecificityBlastnFilterConfig = Annotated[
-    MerfishPrimerSpecificityBlastnFilterEnabled | MerfishSpecificityBlastnFilterDisabled,
-    Field(discriminator="enabled", description=SPECIFICITY_PRIMER_DESC),
-]
-
 
 ############################################
 # Target probe
@@ -153,8 +84,6 @@ MerfishPrimerSpecificityBlastnFilterConfig = Annotated[
 class TargetProbeOligoGeneration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_region_ids: RegionListT
-    files_fasta_probe_database: FilesFastaDatabaseT
     probe_length_min: LengthMinT = Field(default=30, json_schema_extra={"x-quick-setting": True})
     probe_length_max: LengthMaxT = Field(default=30, json_schema_extra={"x-quick-setting": True})
 
@@ -176,7 +105,8 @@ class TargetProbePropertyFilter(BaseModel):
     hard_masked_sequences_filter: HardMaskedFilterConfig = HardMaskedFilterConfig(enabled=True)
     soft_masked_sequences_filter: SoftMaskedFilterConfig = SoftMaskedFilterConfig(enabled=True)
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=6, T=6, C=6, G=6),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=43, GC_content_max=63
@@ -190,9 +120,24 @@ class TargetProbePropertyFilter(BaseModel):
 class TargetProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishTargetSpecificityBlastnFilterConfig
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
+        default=SpecificityBlastnFilterMinAlignmentEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=80,
+                strand="minus",
+                word_size=10,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=17),
+        ),
+        description=SPECIFICITY_TARGET_DESC,
+    )
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterMinAlignmentConfig = (
+        CrossHybridizationBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=80,
@@ -202,7 +147,7 @@ class TargetProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=17),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=17),
         )
     )
 
@@ -254,11 +199,11 @@ class TargetProbeGlobal(BaseModel):
 class TargetProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    oligo_generation: TargetProbeOligoGeneration
-    property_filters: TargetProbePropertyFilter
-    specificity_filters: TargetProbeSpecificityFilter
+    oligo_generation: TargetProbeOligoGeneration = Field(description=OLIGO_GENERATION_DESC)
+    property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
+    specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    global_parameters: TargetProbeGlobal
+    global_parameters: TargetProbeGlobal = Field(description=GLOBAL_PARAMETERS_DESC)
 
 
 ############################################
@@ -297,6 +242,7 @@ class MerfishCodebookGenerate(MerfishCodebookBase):
     min_hamming_dist: PositiveInt = Field(
         description="Minimum Hamming distance between any two valid barcodes (MHD4 = 4 for single-bit error correction).",
         default=4,
+        json_schema_extra={"x-quick-setting": True},
     )
 
 
@@ -348,9 +294,24 @@ class MerfishReadoutProbePropertyFilter(BaseModel):
 class MerfishReadoutProbeSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishReadoutSpecificityBlastnFilterConfig
-    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig = (
-        CrossHybridizationBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
+        default=SpecificityBlastnFilterMinAlignmentEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=100,
+                strand="minus",
+                word_size=7,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=11),
+        ),
+        description=SPECIFICITY_READOUT_DESC,
+    )
+    cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterMinAlignmentConfig = (
+        CrossHybridizationBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -360,7 +321,7 @@ class MerfishReadoutProbeSpecificityFilter(BaseModel):
                 soft_masking=False,
                 max_target_seqs=10,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=11),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=11),
         )
     )
 
@@ -376,7 +337,10 @@ class MerfishReadoutProbeSetSelection(BaseModel):
         default=100000,
         description="Number of candidate sets to evaluate; higher values may find better sets but increase computation time.",
     )
-    homogeneous_properties_weights: HomogeneousPropertiesWeightsT = {"TmNN_oligo": 1, "GC_content_oligo": 1.0}
+    homogeneous_properties_weights: HomogeneousPropertiesWeightsT = {
+        "TmNN_oligo": 1,
+        "GC_content_oligo": 1.0,
+    }
 
 
 class MerfishReadoutProbesGlobal(BaseModel):
@@ -411,12 +375,25 @@ class MerfishReadoutProbeTableGenerate(BaseModel):
     channels_ids: list[str] = Field(
         description="Fluorescence channels used for round-robin channel assignment across bits.",
         default=["Alexa488", "Cy3b", "Alexa647"],
+        json_schema_extra={"x-quick-setting": True},
     )
-    oligo_generation: MerfishReadoutProbeOligoGeneration
-    property_filters: MerfishReadoutProbePropertyFilter
-    specificity_filters: MerfishReadoutProbeSpecificityFilter
-    probe_set_selection: MerfishReadoutProbeSetSelection
-    global_parameters: MerfishReadoutProbesGlobal
+    oligo_generation: MerfishReadoutProbeOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
+    property_filters: MerfishReadoutProbePropertyFilter = Field(
+        description=PROPERTY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    specificity_filters: MerfishReadoutProbeSpecificityFilter = Field(
+        description=SPECIFICITY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    probe_set_selection: MerfishReadoutProbeSetSelection = Field(
+        description=PROBE_SET_SELECTION_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    global_parameters: MerfishReadoutProbesGlobal = Field(
+        description=GLOBAL_PARAMETERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
 
 
 MerfishReadoutProbeTable = Annotated[
@@ -430,8 +407,8 @@ MerfishReadoutProbeTable = Annotated[
 class ReadoutProbes(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    codebook: MerfishCodebook
-    readout_probe_table: MerfishReadoutProbeTable
+    codebook: MerfishCodebook = Field(description=CODEBOOK_DESC)
+    readout_probe_table: MerfishReadoutProbeTable = Field(description=READOUT_PROBE_TABLE_DESC)
 
 
 ############################################
@@ -472,7 +449,8 @@ class MerfishForwardPrimerPropertyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     homopolymeric_runs_filter: HomopolymericRunsFilterConfig = HomopolymericRunsFilterEnabled(
-        enabled=True, homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4)
+        enabled=True,
+        homopolymeric_base_n=HomopolymericRunThreshold(A=4, T=4, C=4, G=4),
     )
     GC_content_filter: GCContentFilterConfig = GCContentFilterEnabled(
         enabled=True, GC_content_min=50, GC_content_max=65
@@ -495,9 +473,8 @@ class MerfishForwardPrimerPropertyFilter(BaseModel):
 class MerfishForwardPrimerSpecificityFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    specificity_blastn_filter: MerfishPrimerSpecificityBlastnFilterConfig
-    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig = (
-        HybridizationProbesBlastnFilterEnabled(
+    specificity_blastn_filter: SpecificityBlastnFilterMinAlignmentConfig = Field(
+        default=SpecificityBlastnFilterMinAlignmentEnabled(
             enabled=True,
             search_parameters=BlastnSearchParameters(
                 perc_identity=100,
@@ -508,7 +485,23 @@ class MerfishForwardPrimerSpecificityFilter(BaseModel):
                 max_target_seqs=10,
                 max_hsps=1000,
             ),
-            hit_parameters=BlastnHitParameters(min_alignment_length=11),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=14),
+        ),
+        description=SPECIFICITY_PRIMER_DESC,
+    )
+    hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterMinAlignmentConfig = (
+        HybridizationProbesBlastnFilterMinAlignmentEnabled(
+            enabled=True,
+            search_parameters=BlastnSearchParameters(
+                perc_identity=100,
+                strand="minus",
+                word_size=7,
+                dust="no",
+                soft_masking=False,
+                max_target_seqs=10,
+                max_hsps=1000,
+            ),
+            hit_parameters=BlastnHitParametersMinAlignmentLength(value=11),
         )
     )
 
@@ -542,10 +535,24 @@ class MerfishForwardPrimerGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"] = "generate"
-    oligo_generation: MerfishForwardPrimerOligoGeneration = MerfishForwardPrimerOligoGeneration()
-    property_filters: MerfishForwardPrimerPropertyFilter = MerfishForwardPrimerPropertyFilter()
-    specificity_filters: MerfishForwardPrimerSpecificityFilter
-    global_parameters: MerfishForwardPrimerGlobal = MerfishForwardPrimerGlobal()
+    oligo_generation: MerfishForwardPrimerOligoGeneration = Field(
+        default=MerfishForwardPrimerOligoGeneration(),
+        json_schema_extra={"x-collapsed": True},
+    )
+    property_filters: MerfishForwardPrimerPropertyFilter = Field(
+        default=MerfishForwardPrimerPropertyFilter(),
+        description=PROPERTY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    specificity_filters: MerfishForwardPrimerSpecificityFilter = Field(
+        description=SPECIFICITY_FILTERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
+    global_parameters: MerfishForwardPrimerGlobal = Field(
+        default=MerfishForwardPrimerGlobal(),
+        description=GLOBAL_PARAMETERS_DESC,
+        json_schema_extra={"x-collapsed": True},
+    )
 
 
 MerfishForwardPrimer = Annotated[
@@ -569,8 +576,8 @@ class MerfishReversePrimer(BaseModel):
 class Primers(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    forward_primer: MerfishForwardPrimer
-    reverse_primer: MerfishReversePrimer
+    forward_primer: MerfishForwardPrimer = Field(description=FORWARD_PRIMER_DESC)
+    reverse_primer: MerfishReversePrimer = Field(description=REVERSE_PRIMER_DESC)
 
 
 ############################################
@@ -578,15 +585,20 @@ class Primers(BaseModel):
 ############################################
 
 
-class MerfishProbeDesignerConfig(BaseModel):
+# The front end builds its form from this, so `general` stays out of it.
+class MerfishProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[2] = 2
+    target_probes: TargetProbes
+    readout_probes: ReadoutProbes
+    primers: Primers
+
+
+class MerfishProbeDesignerConfig(MerfishProbeDesignerConfigBase):
     general: General = General(
         n_jobs=4,
         dir_output="output_Merfishplus_probe_designer",
         write_intermediate_steps=True,
     )
 
-    target_probes: TargetProbes
-    readout_probes: ReadoutProbes
-    primers: Primers
+    required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

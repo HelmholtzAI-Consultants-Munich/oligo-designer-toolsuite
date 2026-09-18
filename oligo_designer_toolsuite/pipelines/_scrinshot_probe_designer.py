@@ -1586,6 +1586,8 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
     concrete list of target regions. If no gene list is provided, all regions in the
     input FASTA files are used.
 
+    Lastly, it inserts the parameters from required_parameters into the correct sections.
+
     :param config_validated: Validated pipeline configuration (pydantic model).
     :type config_validated: ScrinshotProbeDesignerConfig
     :return: The configuration converted to a dict, updated with the prepared settings.
@@ -1593,6 +1595,16 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
     """
 
     config = config_validated.model_dump()
+
+    # inline the required parameters into the correct position in the config dict
+    required_parameters = config["required_parameters"]
+    config["target_probes"]["oligo_generation"]["file_region_ids"] = required_parameters["targets"]
+    config["target_probes"]["oligo_generation"]["files_fasta_probe_database"] = required_parameters[
+        "target_genome"
+    ]
+    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"][
+        "files_fasta_reference_database"
+    ] = required_parameters["reference_genome"]
 
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
