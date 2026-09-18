@@ -23,7 +23,7 @@ from oligo_designer_toolsuite.config._general_models import (
     General,
     RequiredParameters,
     TmChemCorrectionParameters,
-    TmParameters,
+    TmNNParameters,
     TmSaltCorrectionParameters,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
@@ -282,10 +282,10 @@ class SeqfishPlusForwardPrimerSpecificityFilter(BaseModel):
     hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig
 
 
-class SeqfishPlusForwardPrimerShared(BaseModel):
+class SeqfishPlusForwardPrimerTmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters
+    Tm_NN_parameters: TmNNParameters
     Tm_chem_correction_parameters: TmChemCorrectionParameters
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
@@ -303,7 +303,7 @@ class SeqfishPlusForwardPrimerGenerate(BaseModel):
         description=SPECIFICITY_FILTERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
-    shared_parameters: SeqfishPlusForwardPrimerShared = Field(
+    Tm_parameters: SeqfishPlusForwardPrimerTmParameters = Field(
         description=SHARED_PARAMETERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )

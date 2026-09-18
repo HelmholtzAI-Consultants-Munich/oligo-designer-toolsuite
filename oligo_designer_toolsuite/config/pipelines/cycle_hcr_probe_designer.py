@@ -21,7 +21,7 @@ from oligo_designer_toolsuite.config._general_models import (
     General,
     RequiredParameters,
     TmChemCorrectionParameters,
-    TmParameters,
+    TmNNParameters,
     TmSaltCorrectionParameters,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
@@ -128,10 +128,10 @@ class TargetProbeProbeSetSelection(BaseModel):
     Tm_score: TmScore
 
 
-class TargetProbeShared(BaseModel):
+class TargetProbeTmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters
+    Tm_NN_parameters: TmNNParameters
     Tm_chem_correction_parameters: TmChemCorrectionParameters
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
@@ -143,7 +143,7 @@ class TargetProbes(BaseModel):
     property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
     specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    shared_parameters: TargetProbeShared = Field(description=SHARED_PARAMETERS_DESC)
+    Tm_parameters: TargetProbeTmParameters = Field(description=SHARED_PARAMETERS_DESC)
 
 
 ############################################
@@ -169,13 +169,6 @@ class CycleHcrCodebookGenerate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["generate"]
-    min_hamming_distance: Literal[0, 2, 4] = Field(
-        description=(
-            "Required minimum Hamming distance between codewords. Codewords have weight 2, so only "
-            "0, 2, or 4 are achievable. 4 enables single-bit error detection but limits capacity to "
-            "n_readout_probes_LR * n_channels regions."
-        ),
-    )
 
 
 CycleHcrCodebook = Annotated[
@@ -189,7 +182,7 @@ class CycleHcrReadoutProbeTable(BaseModel):
 
     source: Literal["load"]
     file: str = Field(
-        description="Path to the readout probe table (csv/tsv) with columns 'channel', 'readout_probe_id', 'readout_probe_sequence', and 'L/R'. Bit handling depends on codebook.source: when codebook.source = 'load' the file MUST also contain a 'bit' column whose values match the codebook columns (the user is responsible for that mapping); when codebook.source = 'generate' any 'bit' column is ignored and bits are reassigned deterministically by sorting on (readout_probe_id, channel, L/R)."
+        description="Path to the readout probe table (csv/tsv) with columns 'channel', 'readout_probe_id_L', 'readout_probe_sequence_L', 'readout_probe_id_R', and 'readout_probe_sequence_R'. Bit handling depends on codebook.source: when codebook.source = 'load' the file MUST also contain a 'bit' column whose values match the codebook columns (the user is responsible for that mapping); when codebook.source = 'generate' any 'bit' column is deleted and bits are reassigned so channels alternate, then same-row L/R pairs, then mixed L/R combinations."
     )
 
 

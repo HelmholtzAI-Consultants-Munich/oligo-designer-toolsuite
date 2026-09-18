@@ -418,7 +418,7 @@ BlastnHitParameters = Annotated[
 ]
 
 
-class TmParameters(BaseModel):
+class TmNNParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     check: bool = Field(default=True, description="Checks if the sequence is valid for the given method.")
