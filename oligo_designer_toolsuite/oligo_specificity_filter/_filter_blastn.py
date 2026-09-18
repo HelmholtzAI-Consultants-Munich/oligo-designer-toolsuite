@@ -175,20 +175,8 @@ class BlastNFilter(AlignmentSpecificityFilter):
         ]
 
         for parameter, value in self.search_parameters.items():
-            # - search_parameters only contains parameters that are not None
-            # - parameters that have a string/numeric value are always included
-            # - flags can be enabled with True but are still contained when set
-            # to False, so we need to check for that
-            # - soft_masking is a parameter that expects True/False, so we need to keep that
-            if parameter == "-soft_masking":
-                args.append(parameter)
-                args.append(str(value).lower())  # BLAST uses lower case boolean
-            elif isinstance(value, bool):
-                if value:
-                    args.append(parameter)
-            else:
-                args.append(parameter)
-                args.append(str(value))
+            args.append(parameter)
+            args.append(str(value))
 
         subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
 

@@ -19,7 +19,6 @@ from oligo_designer_toolsuite.config._types import (
     RegionListT,
 )
 
-
 # High-level descriptions of the config sections, shown as the section's help text in the form.
 REQUIRED_PARAMETERS_DESC = (
     "Parameters required for target probe generation. The reference genome is reused for all "
@@ -384,11 +383,27 @@ class BlastnSearchParameters(BaseModel):
 
     @model_serializer
     def serialize(self) -> dict:
-        return {
-            self.__class__.model_fields[name].serialization_alias or name: value
-            for name, value in self.__dict__.items()
-            if value is not None
-        }
+        parameters = {}
+        # - parameters that have a string/numeric value are always included (3. if/else branch)
+        # - flags can be enabled with True and disabled with None default or if set to False,
+        #   so we need to check for that. They don't have any value such as other parameters,
+        #   so their value is set to "". The reason they are set up as bool is that it's easier
+        #   that way to render them in ODT-Cloud. (2. if/else branch)
+        # - soft_masking is a parameter that expects True/False, so we need to keep if no matter
+        #   if True/False (1. if/else branch)
+        for name, value in self.__dict__.items():
+            final_parameter_name = self.__class__.model_fields[name].serialization_alias or name
+            if final_parameter_name == "-soft_masking":
+                parameters[final_parameter_name] = str(value).lower()  # BLAST uses lower case boolean
+            elif isinstance(value, bool):
+                if value:
+                    parameters[final_parameter_name] = (
+                        ""  # a flag just needs to be present but doesn't have a value
+                    )
+            else:
+                if value is not None:
+                    parameters[final_parameter_name] = value
+        return parameters
 
 
 class BlastnHitParametersCoverage(BaseModel):
