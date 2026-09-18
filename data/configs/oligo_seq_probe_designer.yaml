@@ -5,125 +5,125 @@
 schema_version: 2
 
 general:
-  n_jobs: 4 # number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this number to decrease runtime
-  dir_output: "output_oligo_seq_probe_designer" # name of the directory where the output files will be written
-  write_intermediate_steps: true # if true, saves intermediate results after each step
+  n_jobs: 4
+  dir_output: "output_oligo_seq_probe_designer"
+  write_intermediate_steps: true
 
 #######################
 ### USER PARAMETERS ###
 #######################
 
 required_parameters:
-  targets: "data/genes/custom_3.txt" # Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
-  target_genome: # FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.
+  targets: "data/genes/custom_3.txt"
+  target_genome:
       - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
       - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
-  reference_genome: # FASTA file(s) used as reference for specificity.
+  reference_genome:
       - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
       - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
 
 target_probes:
   oligo_generation:
-    probe_length_min: 26 # Minimum allowed oligo length (bases).
-    probe_length_max: 30 # Maximum allowed oligo length (bases).
-    probe_split_region: 4 # Minimum bases spanning the exon–exon junction (upstream and downstream) so the oligo is junction-spanning.
+    probe_length_min: 26
+    probe_length_max: 30
+    probe_split_region: 4
 
   property_filters:
-    isoform_consensus_filter: # Require oligos to be supported by a minimum fraction of gene transcripts.
-      enabled: true # Turn this filter on or off.
-      isoform_consensus: 0 # Minimum isoform consensus (%). Oligos must be covered by at least this fraction of a gene's transcripts.
+    isoform_consensus_filter:
+      enabled: true
+      isoform_consensus: 0
 
-    targeted_exons_filter: # Restrict design to specific exon numbers.
-      enabled: false # Turn this filter on or off.
-      targeted_exons: ["1", "2", "3"] # Exon numbers to target. Only oligos in these exons are kept.
+    targeted_exons_filter:
+      enabled: false
+      targeted_exons: ["1", "2", "3"]
 
-    hard_masked_sequences_filter: # Exclude oligos overlapping hard-masked (e.g. N) regions in the reference.
-      enabled: true # Turn this filter on or off.
+    hard_masked_sequences_filter:
+      enabled: true
 
-    soft_masked_sequences_filter: # Exclude oligos overlapping soft-masked (lowercase) regions in the reference.
-      enabled: true # Turn this filter on or off.
+    soft_masked_sequences_filter:
+      enabled: true
 
-    homopolymeric_runs_filter: # Exclude oligos containing long homopolymeric runs (e.g. AAAAAA).
-      enabled: true # Turn this filter on or off.
-      homopolymeric_base_n: {"A": 6, "T": 6, "C": 6, "G": 6} # Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.
+    homopolymeric_runs_filter:
+      enabled: true
+      homopolymeric_base_n: {"A": 6, "T": 6, "C": 6, "G": 6}
 
-    GC_content_filter: # Enforce GC content within a specified range.
-      enabled: true # Turn this filter on or off.
-      GC_content_min: 45 # Minimum GC content (%). Oligos below this are rejected.
-      GC_content_max: 65 # Maximum GC content (%). Oligos above this are rejected.
+    GC_content_filter:
+      enabled: true
+      GC_content_min: 45
+      GC_content_max: 65
 
-    prohibited_sequences_filter: # Exclude oligos containing forbidden motifs and/or over-abundant k-mers.
-      enabled: true # Turn this filter on or off.
-      prohibited_sequences: ["TCT", "CTC"] # Exact sequences forbidden in oligos (e.g. restriction sites). Any oligo containing one is filtered out.
-      kmer_abundance_threshold: {3: 0.0469, 4: 0.0117, 5: 0.0029, 6: 0.00073} # Max allowed k-mer abundance per length (k -> threshold). Empty = no k-mer filtering.
+    prohibited_sequences_filter:
+      enabled: true
+      prohibited_sequences: ["TCT", "CTC"]
+      kmer_abundance_threshold: {3: 0.0469, 4: 0.0117, 5: 0.0029, 6: 0.00073}
 
-    self_complementarity_filter: # Limit self-complementarity to reduce homodimer formation.
-      enabled: true # Turn this filter on or off.
-      max_len_selfcomplement: 10 # Maximum length of self-complementary sequence allowed; longer stretches lead to rejection.
+    self_complementarity_filter:
+      enabled: true
+      max_len_selfcomplement: 10
 
-    Tm_filter: # Enforce melting temperature (Tm) within a range (uses Tm parameters below).
-      enabled: true # Turn this filter on or off.
-      Tm_min: 50 # Minimum melting temperature (°C). Oligos below this are rejected.
-      Tm_max: 70 # Maximum melting temperature (°C). Oligos above this are rejected.
+    Tm_filter:
+      enabled: true
+      Tm_min: 50
+      Tm_max: 70
 
-    secondary_structure_filter: # Reject oligos with stable secondary structure at the given temperature.
-      enabled: true # Turn this filter on or off.
-      T: 37 # Temperature (°C) at which secondary structure free energy is evaluated.
-      thr_DG: 0 # Free-energy threshold (kcal/mol). Oligos with ΔG ≤ thr_DG (stable structure) are rejected.
+    secondary_structure_filter:
+      enabled: true
+      T: 37
+      thr_DG: 0
 
   specificity_filters:
-    read_length_bias_filter: # Avoid oligos whose 5' prefix matches another oligo (reduces ambiguity for short reads).
-      enabled: true # Turn this filter on or off.
-      read_length_bias: 20 # Length of 5' prefix (bases). The first N bases of an oligo must not match the first N bases of another oligo.
+    read_length_bias_filter:
+      enabled: true
+      read_length_bias: 20
 
-    specificity_blastn_filter: # Ensure oligo specificity against a reference database (BLAST-based).
-      enabled: true # Turn this filter on or off.
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10} # BLAST options for the specificity search.
-      hit_parameters: # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+    specificity_blastn_filter:
+      enabled: true
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10}
+      hit_parameters:
         hit_criterion: "coverage"
         value: 50
 
-    cross_hybridization_blastn_filter: # Remove oligos that may cross-hybridize to off-target sequences (BLAST-based).
-      enabled: true # Turn this filter on or off.
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10} # BLAST options for the cross-hybridization search.
-      hit_parameters: # Hit criteria (e.g. coverage %). Hits satisfying these lead to oligo rejection.
+    cross_hybridization_blastn_filter:
+      enabled: true
+      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10}
+      hit_parameters:
         hit_criterion: "coverage"
         value: 50
 
-    variant_filter: # Flag or exclude oligos overlapping variants from VCF files.
-      enabled: true # Turn this filter on or off.
-      files_vcf_reference_database: # VCF file(s) with reference variants. Oligos overlapping these can be flagged or removed depending on action.
+    variant_filter:
+      enabled: true
+      files_vcf_reference_database:
         - "data/annotations/custom_GCF_000001405.40.chr16.vcf"
-      action: "flag" # Action for variant-overlapping oligos: "flag" (mark only) or "filter" (exclude).
+      action: "flag"
 
-  probe_set_selection: # Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
+  probe_set_selection:
     independent_set_selection:
-      n_sets: 3 # Number of probe sets to generate per gene.
-      set_size_min: 3 # Minimum set size. Genes that cannot form a set of at least this size are reported as insufficient.
-      set_size_opt: 5 # Preferred (optimal) number of oligos per set.
-      distance_between_probes: 0 # Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).
-      n_attempts_graph: 50 # Number of randomized graph attempts used to diversify set selection.
-      n_attempts_clique_enum: 50 # Maximum cliques enumerated per graph attempt.
-      diversification_fraction: 0.1 # Fraction of oligos removed from the graph in each attempt to increase set diversity.
-      jaccard_opt: 0.5 # Target maximum Jaccard similarity between selected sets; lower = more distinct sets.
-      jaccard_step: 0.1 # Step size for relaxing Jaccard threshold when too few sets are found.
+      n_sets: 3
+      set_size_min: 3
+      set_size_opt: 5
+      distance_between_probes: 0
+      n_attempts_graph: 50
+      n_attempts_clique_enum: 50
+      diversification_fraction: 0.1
+      jaccard_opt: 0.5
+      jaccard_step: 0.1
     uniform_distance_score:
-      weight: 1 # Weight for uniform spacing in the set-selection scoring function.
+      weight: 1
     isoform_consensus_score:
-      weight: 1 # Weight for isoform coverage in the set-selection scoring function.
+      weight: 1
     targeted_exons_score:
-      weight: 0 # Weight for targeted-exon coverage in the set-selection scoring function.
-      targeted_exons: [] # Exon numbers to favour in set selection.
+      weight: 0
+      targeted_exons: []
     GC_content_score:
-      weight: 1 # Weight for GC content in the set-selection scoring function.
-      GC_content_min: 45 # Minimum GC content (%). Oligos below this are rejected.
-      GC_content_opt: 55 # Target (optimal) GC content (%) for scoring; bounds are from target_probe_GC_content_filter.
-      GC_content_max: 65 # Maximum GC content (%). Oligos above this are rejected.
+      weight: 1
+      GC_content_min: 45
+      GC_content_opt: 55
+      GC_content_max: 65
     Tm_score:
-      weight: 1 # Weight for Tm in the set-selection scoring function.
-      Tm_min: 50 # Minimum melting temperature (°C). Oligos below this are rejected.
-      Tm_opt: 60 # Target (optimal) Tm (°C) for scoring; bounds are from target_probe_melting_temperature_filter.
-      Tm_max: 70 # Maximum melting temperature (°C). Oligos above this are rejected.
+      weight: 1
+      Tm_min: 50
+      Tm_opt: 60
+      Tm_max: 70
 
 
   shared_parameters:
@@ -132,14 +132,14 @@ target_probes:
       tmm_table: "DNA_TMM1"
       imm_table: "DNA_IMM1"
       de_table: "DNA_DE1"
-      dnac1: 50 #[nM]
-      dnac2: 0 #[nM]
+      dnac1: 50
+      dnac2: 0
       saltcorr: 7
-      Na: 1000 #[mM] #1M from probeArray paper
-      K: 0 #[mM]
-      Tris: 0 #[mM]
-      Mg: 0 #[mM]
-      dNTPs: 0 #[mM]
+      Na: 1000
+      K: 0
+      Tris: 0
+      Mg: 0
+      dNTPs: 0
     Tm_chem_correction_parameters:
       enabled: true
       parameters:
