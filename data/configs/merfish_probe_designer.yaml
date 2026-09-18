@@ -1,17 +1,9 @@
-#########################
-### HIDDEN PARAMETERS ###
-#########################
+###############################
+### PROBE DESIGN PARAMETERS ###
+###############################
 
-schema_version: 2
-
-general:
-  n_jobs: 4
-  dir_output: "output_merfish_probe_designer"
-  write_intermediate_steps: true
-
-#######################
-### USER PARAMETERS ###
-#######################
+##### REQUIRED PARAMETERS #####
+# The following parameters need to be adjusted to the target genes you want to design probes for.
 
 required_parameters:
   targets: "data/genes/custom_3.txt"
@@ -21,6 +13,9 @@ required_parameters:
   reference_genome:
       - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
       - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+
+##### TARGET PROBES PARAMETERS #####
+# All following parameters are default parameters taken from TBD
 
 target_probes:
   oligo_generation:
@@ -60,21 +55,21 @@ target_probes:
   specificity_filters:
     specificity_blastn_filter:
       enabled: true
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+      search_parameters: {"-task": "blastn", "-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
       hit_parameters:
         hit_criterion: "min_alignment_length"
         value: 17
 
     cross_hybridization_blastn_filter:
       enabled: true
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+      search_parameters: {"-task": "blastn", "-perc_identity": 80, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
       hit_parameters:
         hit_criterion: "min_alignment_length"
         value: 17
 
   probe_set_selection:
     independent_set_selection:
-      n_sets: 3
+      n_sets: 1
       set_size_min: 50
       set_size_opt: 50
       distance_between_probes: 0
@@ -92,8 +87,8 @@ target_probes:
     isoform_consensus_score:
       weight: 2
 
-  shared_parameters:
-    Tm_parameters:
+  Tm_parameters:
+    Tm_NN_parameters:
       nn_table: "DNA_NN4"
       tmm_table: "DNA_TMM1"
       imm_table: "DNA_IMM1"
@@ -110,6 +105,9 @@ target_probes:
       enabled: false
     Tm_salt_correction_parameters:
       enabled: false
+
+##### READOUT PROBES PARAMETERS #####
+# All following parameters are default parameters taken from TBD
 
 readout_probes:
   codebook:
@@ -142,14 +140,14 @@ readout_probes:
     specificity_filters:
       specificity_blastn_filter:
         enabled: true
-        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
         hit_parameters:
           hit_criterion: "min_alignment_length"
           value: 11
 
       cross_hybridization_blastn_filter:
         enabled: true
-        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+        search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
         hit_parameters:
           hit_criterion: "min_alignment_length"
           value: 11
@@ -159,8 +157,8 @@ readout_probes:
       n_combinations: 100000
       homogeneous_properties_weights: {TmNN_oligo: 1.0, GC_content_oligo: 1.0}
 
-    shared_parameters:
-      Tm_parameters:
+    Tm_parameters:
+      Tm_NN_parameters:
         nn_table: "DNA_NN4"
         tmm_table: "DNA_TMM1"
         imm_table: "DNA_IMM1"
@@ -177,6 +175,9 @@ readout_probes:
         enabled: false
       Tm_salt_correction_parameters:
         enabled: false
+
+##### PRIMERS PARAMETERS #####
+# All following parameters are default parameters taken from TBD
 
 primers:
   forward_primer:
@@ -224,20 +225,20 @@ primers:
     specificity_filters:
       specificity_blastn_filter:
         enabled: true
-        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
         hit_parameters:
           hit_criterion: "min_alignment_length"
           value: 14
 
       hybridization_probes_blastn_filter:
         enabled: true
-        search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+        search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
         hit_parameters:
           hit_criterion: "min_alignment_length"
           value: 11
 
-    shared_parameters:
-      Tm_parameters:
+    Tm_parameters:
+      Tm_NN_parameters:
         nn_table: "DNA_NN4"
         tmm_table: "DNA_TMM1"
         imm_table: "DNA_IMM1"
@@ -258,3 +259,19 @@ primers:
   reverse_primer:
     source: "load"
     sequence: "CCCTATAGTGAGTCGTATTA"
+
+############################
+### EXECUTION PARAMETERS ###
+############################
+
+schema_version: 2
+
+# TODO: add metadata to pydantic model
+#metadata:
+#  protocol: "MERFISH"
+#  source_default_parameters:
+
+general:
+  n_jobs: 4
+  dir_output: "output_merfish_probe_designer"
+  write_intermediate_steps: true

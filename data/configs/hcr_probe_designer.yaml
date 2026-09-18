@@ -1,17 +1,9 @@
-#########################
-### HIDDEN PARAMETERS ###
-#########################
+###############################
+### PROBE DESIGN PARAMETERS ###
+###############################
 
-schema_version: 2
-
-general:
-  n_jobs: 4
-  dir_output: "output_hcr_probe_designer"
-  write_intermediate_steps: true
-
-#######################
-### USER PARAMETERS ###
-#######################
+##### REQUIRED PARAMETERS #####
+# The following parameters need to be adjusted to the target genes you want to design probes for.
 
 required_parameters:
   targets: "data/genes/custom_3.txt"
@@ -20,6 +12,9 @@ required_parameters:
       - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
   reference_genome:
       - "data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+
+##### TARGET PROBES PARAMETERS #####
+# All following parameters are default parameters taken from TBD
 
 target_probes:
   oligo_generation:
@@ -61,21 +56,21 @@ target_probes:
     specificity_blastn_filter:
       enabled: true
       junction_region_size: 0
-      search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+      search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
       hit_parameters:
         hit_criterion: "coverage"
         value: 90
 
     cross_hybridization_blastn_filter:
       enabled: true
-      search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+      search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
       hit_parameters:
         hit_criterion: "coverage"
         value: 90
 
   probe_set_selection:
     independent_set_selection:
-      n_sets: 30
+      n_sets: 1
       set_size_min: 10
       set_size_opt: 25
       distance_between_probes: 2
@@ -87,8 +82,8 @@ target_probes:
     isoform_consensus_score:
       weight: 1
 
-  shared_parameters:
-    Tm_parameters:
+  Tm_parameters:
+    Tm_NN_parameters:
       nn_table: "DNA_NN3"
       tmm_table: "DNA_TMM1"
       imm_table: "DNA_IMM1"
@@ -106,13 +101,36 @@ target_probes:
     Tm_salt_correction_parameters:
       enabled: false
 
+##### INITIATOR PROBES PARAMETERS #####
+# All following parameters are default parameters taken from TBD
+
 initiator_probes:
   codebook:
     source: "load"
-    file: "data/functional_oligos/hcr_codebook.tsv"
+    file: "data/functional_oligos/example_hcr_codebook.tsv"
   initiator_table:
     source: "load"
-    file: "data/functional_oligos/hcr_initiators_load_codebook.tsv"
+    file: "data/functional_oligos/example_hcr_initiators.tsv"
+
+##### HYBRIDIZATION PROBES PARAMETERS #####
+# All following parameters are default parameters taken from TBD
 
 hybridization_probes:
   linker_sequence: "AA"
+
+
+############################
+### EXECUTION PARAMETERS ###
+############################
+
+schema_version: 2
+
+# TODO: add metadata to pydantic model
+#metadata:
+#  protocol: "HCR"
+#  source_default_parameters: 
+
+general:
+  n_jobs: 4
+  dir_output: "output_hcr_probe_designer"
+  write_intermediate_steps: true

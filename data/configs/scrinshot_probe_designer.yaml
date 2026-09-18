@@ -1,17 +1,9 @@
-#########################
-### HIDDEN PARAMETERS ###
-#########################
+###############################
+### PROBE DESIGN PARAMETERS ###
+###############################
 
-schema_version: 2
-
-general:
-  n_jobs: 4
-  dir_output: "output_scrinshot_probe_designer"
-  write_intermediate_steps: true
-
-#######################
-### USER PARAMETERS ###
-#######################
+##### REQUIRED PARAMETERS #####
+# The following parameters need to be adjusted to the target genes you want to design probes for.
 
 required_parameters:
   targets: "data/genes/custom_3.txt"
@@ -21,6 +13,9 @@ required_parameters:
   reference_genome:
       - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
       - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+
+##### TARGET PROBES PARAMETERS #####
+# All following parameters are default parameters taken from TBD
 
 target_probes:
   oligo_generation:
@@ -62,21 +57,21 @@ target_probes:
     specificity_blastn_filter:
       enabled: true
       ligation_region_size: 5
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+      search_parameters: {"-task": "blastn", "-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
       hit_parameters:
         hit_criterion: "coverage"
         value: 50
 
     cross_hybridization_blastn_filter:
       enabled: true
-      search_parameters: {"-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+      search_parameters: {"-task": "blastn", "-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
       hit_parameters:
         hit_criterion: "coverage"
         value: 80
 
   probe_set_selection:
     independent_set_selection:
-      n_sets: 3
+      n_sets: 1
       set_size_min: 3
       set_size_opt: 5
       distance_between_probes: 0
@@ -98,8 +93,8 @@ target_probes:
       Tm_opt: 70
       Tm_max: 75
 
-  shared_parameters:
-    Tm_parameters:
+  Tm_parameters:
+    Tm_NN_parameters:
       nn_table: "DNA_NN3"
       tmm_table: "DNA_TMM1"
       imm_table: "DNA_IMM1"
@@ -124,6 +119,9 @@ target_probes:
     Tm_salt_correction_parameters:
       enabled: false
 
+##### DETECTION OLIGO PARAMETERS #####
+# All following parameters are default parameters taken from TBD
+
 detection_oligo:
   oligo_generation:
     min_thymines: 2
@@ -132,8 +130,8 @@ detection_oligo:
     U_distance: 5
     Tm_opt: 56
 
-  shared_parameters:
-    Tm_parameters:
+  Tm_parameters:
+    Tm_NN_parameters:
       nn_table: "DNA_NN3"
       tmm_table: "DNA_TMM1"
       imm_table: "DNA_IMM1"
@@ -157,3 +155,19 @@ detection_oligo:
         GC: null
     Tm_salt_correction_parameters:
       enabled: false
+
+############################
+### EXECUTION PARAMETERS ###
+############################
+
+schema_version: 2
+
+# TODO: add metadata to pydantic model
+#metadata:
+#  protocol: "Scrinshot"
+#  source_default_parameters:
+
+general:
+  n_jobs: 4
+  dir_output: "output_scrinshot_probe_designer"
+  write_intermediate_steps: true
