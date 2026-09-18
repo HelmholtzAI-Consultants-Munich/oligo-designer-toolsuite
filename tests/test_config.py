@@ -158,7 +158,6 @@ class TestCycleHcrYaml(unittest.TestCase):
         raw["readout_probes"]["codebook"]["source"] = "generate"
         cfg = CycleHcrProbeDesignerConfig.model_validate(raw)
         assert cfg.readout_probes.codebook.source == "generate"
-        assert cfg.readout_probes.codebook.min_hamming_distance in (0, 2, 4)
 
     def test_readout_probe_table_generate_rejected(self) -> None:
         # Readout probe table generation is not implemented; only "load" is allowed

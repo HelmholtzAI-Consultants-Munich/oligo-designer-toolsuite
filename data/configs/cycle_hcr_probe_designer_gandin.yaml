@@ -1,17 +1,9 @@
-schema_version: 2
-
-####################
-### RUN SETTINGS ###
-####################
-
-general:
-  n_jobs: 4
-  dir_output: "output_cyclehcr_probe_designer"
-  write_intermediate_steps: true
-
 ###############################
 ### PROBE DESIGN PARAMETERS ###
 ###############################
+
+##### REQUIRED PARAMETERS #####
+# The following parameters need to be adjusted to the target genes you want to design probes for.
 
 required_parameters:
   targets: "data/genes/custom_3.txt"
@@ -21,6 +13,9 @@ required_parameters:
   reference_genome:
       - "data/genomic_regions/gene_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
 
+##### TARGET PROBES PARAMETERS #####
+# All following parameters are default parameters taken from Gandin et al. (2025)
+
 target_probes:
   oligo_generation:
     L_probe_sequence_length: 45
@@ -29,11 +24,11 @@ target_probes:
 
   property_filters:
     isoform_consensus_filter:
-      enabled: true
+      enabled: false
       isoform_consensus: 0
 
     hard_masked_sequences_filter:
-      enabled: true
+      enabled: false
 
     soft_masked_sequences_filter:
       enabled: false
@@ -49,33 +44,33 @@ target_probes:
 
     Tm_filter:
       enabled: true
-      Tm_min: 75
+      Tm_min: 80
       Tm_max: 100
 
     secondary_structure_filter:
       enabled: true
-      T: 90
+      T: 76
       thr_DG: 0
 
   specificity_filters:
     specificity_blastn_filter:
       enabled: true
-      junction_region_size: 13
-      search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+      junction_region_size: 14
+      search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 11, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 500, "-max_hsps": 1000}
       hit_parameters:
         hit_criterion: "coverage"
         value: 90
 
     cross_hybridization_blastn_filter:
       enabled: true
-      search_parameters: {"-perc_identity": 100, "-strand": "minus", "-word_size": 7, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+      search_parameters: {"-task": "blastn", "-perc_identity": 100, "-strand": "minus", "-word_size": 11, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 5000}
       hit_parameters:
-        hit_criterion: "coverage"
-        value: 90
+        hit_criterion: "min_alignment_length"
+        value: 16
 
   probe_set_selection:
     independent_set_selection:
-      n_sets: 3
+      n_sets: 1
       set_size_min: 10
       set_size_opt: 25
       distance_between_probes: 2
@@ -88,35 +83,41 @@ target_probes:
       weight: 10
     Tm_score:
       weight: 1
-      Tm_opt: 75
+      Tm_opt: 100
 
-  shared_parameters:
-    Tm_parameters:
-      nn_table: "DNA_NN3"
-      tmm_table: "DNA_TMM1"
-      imm_table: "DNA_IMM1"
-      de_table: "DNA_DE1"
-      dnac1: 25
+  Tm_parameters:
+    Tm_NN_parameters:
+      # --- set by Gandin et al. ---
+      nn_table: "DNA_NN3"     
+      saltcorr: 0             
+      Na: 1000               
+      # --- not set by the paper; schema requires a value, these are Biopython defaults ---
+      imm_table: "DNA_IMM1"   
+      de_table: "DNA_DE1"     
+      dnac1: 25               
       dnac2: 25
-      saltcorr: 0
-      Na: 50
       K: 0
       Tris: 0
       Mg: 0
       dNTPs: 0
     Tm_chem_correction_parameters:
-      enabled: false
+      enabled: false          
     Tm_salt_correction_parameters:
-      enabled: false
+      enabled: false         
+
+##### READOUT PROBES PARAMETERS #####
+# All following parameters are default parameters taken from Gandin et al. (2025)
 
 readout_probes:
   codebook:
     source: "generate"
     file:
-    min_hamming_distance: 4
   readout_probe_table:
     source: "load"
-    file: "data/functional_oligos/cycle_hcr_readout_probes_generate_codebook.tsv"
+    file: "data/functional_oligos/cycle_hcr_readout_probes_gandin.tsv"
+
+##### PRIMERS PARAMETERS #####
+# All following parameters are default parameters taken from Gandin et al. (2025)
 
 primers:
   forward_primer:
@@ -126,5 +127,25 @@ primers:
     source: "load"
     sequence: "CGACACCGAACGTGCGACAA"
 
+##### HYBRIDIZATION PROBES PARAMETERS #####
+# All following parameters are default parameters taken from Gandin et al. (2025)
+
 hybridization_probes:
   linker_sequence: "TT"
+
+
+############################
+### EXECUTION PARAMETERS ###
+############################
+
+schema_version: 2
+
+# TODO: add metadata to pydantic model
+#metadata:
+#  protocol: "Cycle-HCR"
+#  source_default_parameters: https://doi.org/10.1126/science.adq2084
+
+general:
+  n_jobs: 4
+  dir_output: "output_cyclehcr_probe_designer"
+  write_intermediate_steps: true
