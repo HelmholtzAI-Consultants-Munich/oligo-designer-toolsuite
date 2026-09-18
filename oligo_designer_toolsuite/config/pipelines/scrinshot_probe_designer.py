@@ -24,7 +24,7 @@ from oligo_designer_toolsuite.config._general_models import (
     General,
     RequiredParameters,
     TmChemCorrectionParameters,
-    TmParameters,
+    TmNNParameters,
     TmSaltCorrectionParameters,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
@@ -159,10 +159,10 @@ class TargetProbeProbeSetSelection(BaseModel):
     Tm_score: TmScoreNormalized
 
 
-class TargetProbeShared(BaseModel):
+class TargetProbeTmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters
+    Tm_NN_parameters: TmNNParameters
     Tm_chem_correction_parameters: TmChemCorrectionParameters
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
@@ -175,7 +175,7 @@ class TargetProbes(BaseModel):
     property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
     specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    shared_parameters: TargetProbeShared = Field(description=SHARED_PARAMETERS_DESC)
+    Tm_parameters: TargetProbeTmParameters = Field(description=SHARED_PARAMETERS_DESC)
 
 
 ############################################
@@ -207,10 +207,10 @@ class DetectionOligoOligoGeneration(BaseModel):
         return self
 
 
-class DetectionOligoShared(BaseModel):
+class DetectionOligoTmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters
+    Tm_NN_parameters: TmNNParameters
     Tm_chem_correction_parameters: TmChemCorrectionParameters
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
@@ -219,7 +219,7 @@ class DetectionOligo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     oligo_generation: DetectionOligoOligoGeneration = Field(description=DETECTION_OLIGO_GENERATION_DESC)
-    shared_parameters: DetectionOligoShared = Field(description=SHARED_PARAMETERS_DESC)
+    Tm_parameters: DetectionOligoTmParameters = Field(description=SHARED_PARAMETERS_DESC)
 
 
 ############################################
