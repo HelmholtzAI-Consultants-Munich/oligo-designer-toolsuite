@@ -81,6 +81,10 @@ class HomopolymericRunThreshold(BaseModel):
         description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
     )
 
+    @model_serializer
+    def serialize(self) -> dict:
+        return {key: value for key, value in self.__dict__.items() if value is not None}
+
 
 class BaseProbabilities(BaseModel):
     model_config = ConfigDict(extra="forbid")
