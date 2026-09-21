@@ -500,50 +500,8 @@ class BlastNSeedregionFilterBase(BlastNFilter):
     - perc_identity: Percent identity cutoff. Default: 0
     All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
 
-    :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
-    :type remove_hits: bool
-    :param search_parameters: Parameters to configure the BLAST search.
-    :type search_parameters: dict
-    :param hit_parameters: Criteria for interpreting BLAST hits.
-    :type hit_parameters: dict
-    :param names_search_output: List of names for the BLAST search output fields.
-    :type names_search_output: list
-    :param filter_name: Name of the filter for identification purposes.
-    :type filter_name: str
-    :param dir_output: Directory path where output files will be saved.
-    :type dir_output: str
+    Constructor parameters are inherited unchanged from :class:`BlastNFilter`.
     """
-
-    def __init__(
-        self,
-        *,
-        remove_hits: bool = True,
-        search_parameters: dict | None = None,
-        hit_parameters: dict,
-        names_search_output: list | None = None,
-        filter_name: str = "blast_filter",
-        dir_output: str = "output",
-    ) -> None:
-        """Constructor for the BlastNSeedregionFilterBase class."""
-        if not search_parameters:
-            search_parameters = {}
-        if not names_search_output:
-            names_search_output = [
-                "query",
-                "reference",
-                "alignment_length",
-                "query_start",
-                "query_end",
-                "query_length",
-            ]
-        super().__init__(
-            remove_hits=remove_hits,
-            search_parameters=search_parameters,
-            hit_parameters=hit_parameters,
-            names_search_output=names_search_output,
-            filter_name=filter_name,
-            dir_output=dir_output,
-        )
 
     @abstractmethod
     def _add_seed_region_information(
@@ -682,17 +640,6 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
         dir_output: str = "output",
     ) -> None:
         """Constructor for the BlastNSeedregionFilter class."""
-        if not search_parameters:
-            search_parameters = {}
-        if not names_search_output:
-            names_search_output = [
-                "query",
-                "reference",
-                "alignment_length",
-                "query_start",
-                "query_end",
-                "query_length",
-            ]
         super().__init__(
             remove_hits=remove_hits,
             search_parameters=search_parameters,
@@ -801,17 +748,6 @@ class BlastNSeedregionSiteFilter(BlastNSeedregionFilterBase):
         dir_output: str = "output",
     ) -> None:
         """Constructor for the BlastNSeedregionSiteFilter class."""
-        if not search_parameters:
-            search_parameters = {}
-        if not names_search_output:
-            names_search_output = [
-                "query",
-                "reference",
-                "alignment_length",
-                "query_start",
-                "query_end",
-                "query_length",
-            ]
         super().__init__(
             remove_hits=remove_hits,
             search_parameters=search_parameters,
