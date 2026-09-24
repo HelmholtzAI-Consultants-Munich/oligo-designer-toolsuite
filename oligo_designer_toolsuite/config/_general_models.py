@@ -397,7 +397,7 @@ class BlastnSearchParameters(BaseModel):
         #   if True/False (1. if/else branch)
         for name, value in self.__dict__.items():
             final_parameter_name = self.__class__.model_fields[name].serialization_alias or name
-            if final_parameter_name == "-soft_masking":
+            if final_parameter_name == "-soft_masking" and value is not None:
                 parameters[final_parameter_name] = str(value).lower()  # BLAST uses lower case boolean
             elif isinstance(value, bool):
                 if value:
