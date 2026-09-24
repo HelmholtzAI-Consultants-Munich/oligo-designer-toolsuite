@@ -1,12 +1,22 @@
 [build-system]
-requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["oligo_designer_toolsuite"]
+packages = ["oligo_designer_toolsuite", "oligo_designer_toolsuite.configs"]
+
+# Ships the example configs in data/configs with the package, without moving them.
+[tool.setuptools.package-dir]
+"oligo_designer_toolsuite.configs" = "data/configs"
+
+[tool.setuptools.package-data]
+"oligo_designer_toolsuite.configs" = ["*.yaml"]
 
 [tool.setuptools_scm]
-write_to = "oligo_designer_toolsuite/_version.py"
+version_file = "oligo_designer_toolsuite/_version.py"
+version_file_template = """__version__ = version = {version!r}
+__commit_id__ = commit_id = {scm_version.node!r}
+"""
 local_scheme = "no-local-version"
 
 [project]
