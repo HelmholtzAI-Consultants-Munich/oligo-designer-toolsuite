@@ -26,7 +26,7 @@ To create SeqFISH+ probes you can run the pipeline with
 
 where:
 
-``-c``: config file, which contains parameter settings, specific to SeqFISH+ probe design, `seqfish_plus_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/seqfish_plus_probe_designer.yaml>`__ contains default parameter settings
+``-c``: config file, which contains parameter settings, specific to SeqFISH+ probe design, `seqfish_plus_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/seqfish_plus_probe_designer.yaml>`__ contains a complete set of recommended parameters
 
 All steps and config parameters will be documented in a log file, that is saved in the defined output directory.
 The logging file will have the format: ``log_seqfish_plus_probe_designer_{year}-{month}-{day}-{hour}-{minute}.txt``.
@@ -186,7 +186,7 @@ The output is stored in two separate files:
 - ``seqfish_plus_probes_order.yml``: contains for each probe the sequences of the seqfish+ probe and the readout probes
 - ``seqfish_plus_probes.yml``: contains a detailed description for each probe, including the sequences of each part of the probe and probe specific properties.
 
-All default parameters can be found in the `seqfish_plus_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/seqfish_plus_probe_designer.yaml>`__ config file provided along the repository.
+A complete configuration with the recommended parameters can be found in the `seqfish_plus_probe_designer.yaml <https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite/blob/main/data/configs/seqfish_plus_probe_designer.yaml>`__ config file provided along the repository. Every parameter has to be set.
 
 .. [1] Mekki, I., Campi, F., Kuemmerle, L. B., ... & Barros de Andrade e Sousa, L. (2023). Oligo Designer Toolsuite. Zenodo, https://doi.org/10.5281/zenodo.7823048
 .. [2] Kuemmerle, L. B., Luecken, M. D., Firsova, A. B., Barros de Andrade e Sousa, L., Straßer, L., Mekki, I. I., ... & Theis, F. J. (2024). Probe set selection for targeted spatial transcriptomics. Nature methods, 1-11. https://doi.org/10.1038/s41592-024-02496-z
