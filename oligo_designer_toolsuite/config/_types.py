@@ -24,6 +24,7 @@ FilesFastaReferenceDatabaseT = Annotated[
 VCFReferenceDatabaseT = Annotated[
     list[str],
     Field(
+        min_length=1,
         description="List of paths to VCF files containing variant information used for filtering probes that overlap with known single nucleotide polymorphisms (SNPs) or other variants. Probes overlapping variants may have reduced specificity.",
     ),
 ]
