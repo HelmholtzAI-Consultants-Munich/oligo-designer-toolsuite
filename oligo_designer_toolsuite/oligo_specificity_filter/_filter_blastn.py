@@ -17,7 +17,6 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
     SeedregionSiteProperty,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
-from oligo_designer_toolsuite.utils import logger
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 ############################################
@@ -62,25 +61,30 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
     def __init__(
         self,
+        *,
         remove_hits: bool = True,
-        search_parameters: dict = {},
-        hit_parameters: dict = {},
-        names_search_output: list = [
-            "query",
-            "reference",
-            "alignment_length",
-            "query_start",
-            "query_end",
-            "query_length",
-        ],
+        search_parameters: dict | None = None,
+        hit_parameters: dict,
+        names_search_output: list | None = None,
         filter_name: str = "blast_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the BlastNFilter class."""
         super().__init__(remove_hits, filter_name, dir_output)
 
+        if not search_parameters:
+            search_parameters = {}
         self.search_parameters = search_parameters
         self.hit_parameters = hit_parameters
+        if not names_search_output:
+            names_search_output = [
+                "query",
+                "reference",
+                "alignment_length",
+                "query_start",
+                "query_end",
+                "query_length",
+            ]
         self.names_search_output = names_search_output
 
         # Define default output format for blast search filter. The fields are:
@@ -165,8 +169,7 @@ class BlastNFilter(AlignmentSpecificityFilter):
 
         for parameter, value in self.search_parameters.items():
             args.append(parameter)
-            if str(value) != "":
-                args.append(str(value))
+            args.append(str(value))
 
         subprocess.run(args, cwd=self.dir_output, check=True, stdout=subprocess.DEVNULL)
 
@@ -208,17 +211,16 @@ class BlastNFilter(AlignmentSpecificityFilter):
         :return: A DataFrame containing the filtered BLAST search hits.
         :rtype: pd.DataFrame
         """
-        if "min_alignment_length" in self.hit_parameters.keys():
-            if "coverage" in self.hit_parameters.keys():
-                logger.warning(
-                    "Both, 'min_alignment_length' and 'coverage' parameters were provided. Using 'min_alignment_length' parameter."
-                )
-            min_alignment_length = self.hit_parameters["min_alignment_length"]
-        elif "coverage" in self.hit_parameters.keys():
-            min_alignment_length = search_results["query_length"] * self.hit_parameters["coverage"] / 100
+        if "hit_criterion" not in self.hit_parameters.keys() or "value" not in self.hit_parameters.keys():
+            raise ConfigurationError(f"You need to provide 'hit_criterion' and 'value'.")
+        hit_criterion = self.hit_parameters["hit_criterion"]
+        if hit_criterion == "coverage":
+            min_alignment_length = search_results["query_length"] * self.hit_parameters["value"] / 100
+        elif hit_criterion == "min_alignment_length":
+            min_alignment_length = self.hit_parameters["value"]
         else:
             raise ConfigurationError(
-                "Please provide either 'coverage' or a 'min_alignment_length' in hit_parameters!"
+                f"Unknown hit_criterion '{hit_criterion}', expected 'coverage' or 'min_alignment_length'."
             )
 
         search_results["min_alignment_length"] = min_alignment_length
@@ -262,51 +264,8 @@ class BlastNSeedregionFilterBase(BlastNFilter):
     - perc_identity: Percent identity cutoff. Default: 0
     All available BlastN search parameters are listed on the NCBI webpage (https://www.ncbi.nlm.nih.gov/books/NBK279684/).
 
-    :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
-    :type remove_hits: bool
-    :param search_parameters: Parameters to configure the BLAST search.
-    :type search_parameters: dict
-    :param hit_parameters: Criteria for interpreting BLAST hits.
-    :type hit_parameters: dict
-    :param names_search_output: List of names for the BLAST search output fields.
-    :type names_search_output: list
-    :param filter_name: Name of the filter for identification purposes.
-    :type filter_name: str
-    :param dir_output: Directory path where output files will be saved.
-    :type dir_output: str
+    Constructor parameters are inherited unchanged from :class:`BlastNFilter`.
     """
-
-    def __init__(
-        self,
-        remove_hits: bool = True,
-        search_parameters: dict | None = None,
-        hit_parameters: dict | None = None,
-        names_search_output: list | None = None,
-        filter_name: str = "blast_filter",
-        dir_output: str = "output",
-    ) -> None:
-        """Constructor for the BlastNSeedregionFilterBase class."""
-        if not search_parameters:
-            search_parameters = {}
-        if not hit_parameters:
-            hit_parameters = {}
-        if not names_search_output:
-            names_search_output = [
-                "query",
-                "reference",
-                "alignment_length",
-                "query_start",
-                "query_end",
-                "query_length",
-            ]
-        super().__init__(
-            remove_hits,
-            search_parameters,
-            hit_parameters,
-            names_search_output,
-            filter_name,
-            dir_output,
-        )
 
     @abstractmethod
     def _add_seed_region_information(
@@ -352,17 +311,16 @@ class BlastNSeedregionFilterBase(BlastNFilter):
         :return: Filtered BLAST search results containing significant hits.
         :rtype: pd.DataFrame
         """
-        if "min_alignment_length" in self.hit_parameters.keys():
-            if "coverage" in self.hit_parameters.keys():
-                logger.warning(
-                    "Both, 'min_alignment_length' and 'coverage' parameters were provided. Using 'min_alignment_length' parameter."
-                )
-            min_alignment_length = self.hit_parameters["min_alignment_length"]
-        elif "coverage" in self.hit_parameters.keys():
-            min_alignment_length = search_results["query_length"] * self.hit_parameters["coverage"] / 100
+        if "hit_criterion" not in self.hit_parameters.keys() or "value" not in self.hit_parameters.keys():
+            raise ConfigurationError(f"You need to provide 'hit_criterion' and 'value'.")
+        hit_criterion = self.hit_parameters["hit_criterion"]
+        if hit_criterion == "coverage":
+            min_alignment_length = search_results["query_length"] * self.hit_parameters["value"] / 100
+        elif hit_criterion == "min_alignment_length":
+            min_alignment_length = self.hit_parameters["value"]
         else:
             raise ConfigurationError(
-                "Please provide either 'coverage' or a 'min_alignment_length' in hit_parameters!"
+                f"Unknown hit_criterion '{hit_criterion}', expected 'coverage' or 'min_alignment_length'."
             )
 
         search_results["min_alignment_length"] = min_alignment_length
@@ -435,36 +393,24 @@ class BlastNSeedregionFilter(BlastNSeedregionFilterBase):
 
     def __init__(
         self,
+        *,
         seedregion_start: int | float,
         seedregion_end: int | float,
         remove_hits: bool = True,
         search_parameters: dict | None = None,
-        hit_parameters: dict | None = None,
+        hit_parameters: dict,
         names_search_output: list | None = None,
         filter_name: str = "blast_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the BlastNSeedregionFilter class."""
-        if not search_parameters:
-            search_parameters = {}
-        if not hit_parameters:
-            hit_parameters = {}
-        if not names_search_output:
-            names_search_output = [
-                "query",
-                "reference",
-                "alignment_length",
-                "query_start",
-                "query_end",
-                "query_length",
-            ]
         super().__init__(
-            remove_hits,
-            search_parameters,
-            hit_parameters,
-            names_search_output,
-            filter_name,
-            dir_output,
+            remove_hits=remove_hits,
+            search_parameters=search_parameters,
+            hit_parameters=hit_parameters,
+            names_search_output=names_search_output,
+            filter_name=filter_name,
+            dir_output=dir_output,
         )
 
         self.seedregion_start = seedregion_start
@@ -558,30 +504,24 @@ class BlastNSeedregionSiteFilter(BlastNSeedregionFilterBase):
 
     def __init__(
         self,
+        *,
         seedregion_size: int,
         seedregion_site_name: str,
         remove_hits: bool = True,
-        search_parameters: dict = {},
-        hit_parameters: dict = {},
-        names_search_output: list = [
-            "query",
-            "reference",
-            "alignment_length",
-            "query_start",
-            "query_end",
-            "query_length",
-        ],
+        search_parameters: dict | None = None,
+        hit_parameters: dict,
+        names_search_output: list | None = None,
         filter_name: str = "blast_filter",
         dir_output: str = "output",
     ) -> None:
         """Constructor for the BlastNSeedregionSiteFilter class."""
         super().__init__(
-            remove_hits,
-            search_parameters,
-            hit_parameters,
-            names_search_output,
-            filter_name,
-            dir_output,
+            remove_hits=remove_hits,
+            search_parameters=search_parameters,
+            hit_parameters=hit_parameters,
+            names_search_output=names_search_output,
+            filter_name=filter_name,
+            dir_output=dir_output,
         )
         self.seedregion_size = seedregion_size
         self.seedregion_site_name = seedregion_site_name

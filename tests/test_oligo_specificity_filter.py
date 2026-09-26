@@ -202,7 +202,7 @@ class TestBlastFilter(AlignmentFilterTestBase, unittest.TestCase):
             "-strand": "plus",
             "-word_size": 10,
         }
-        hit_parameters = {"coverage": 50}
+        hit_parameters = {"hit_criterion": "coverage", "value": 50}
 
         return BlastNFilter(
             search_parameters=blastn_search_parameters,
@@ -241,7 +241,7 @@ class TestBlastNSeedregionSiteFilter(AlignmentFilterTestBase, unittest.TestCase)
             "-strand": "plus",
             "-word_size": 10,
         }
-        hit_parameters = {"coverage": 50}
+        hit_parameters = {"hit_criterion": "coverage", "value": 50}
         seedregion_size = 10
 
         return BlastNSeedregionSiteFilter(
@@ -275,7 +275,7 @@ class TestCrossHybridizationFilter(unittest.TestCase):
             "-strand": "minus",
             "-word_size": 10,
         }
-        self.hit_parameters_crosshyb = {"coverage": 50}
+        self.hit_parameters_crosshyb = {"hit_criterion": "coverage", "value": 50}
 
         # Bowtie parameters
         self.bowtie_search_parameters_crosshyb = {"-n": 3, "-l": 5, "--nofw": ""}

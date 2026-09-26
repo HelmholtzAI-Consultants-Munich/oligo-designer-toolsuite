@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from Bio.SeqUtils import Seq
+from pydantic import ValidationError
 from scipy.spatial.distance import hamming
 
 from oligo_designer_toolsuite._exceptions import (
@@ -31,6 +32,7 @@ from oligo_designer_toolsuite._exceptions import (
     FeatureNotImplementedError,
     FileFormatError,
 )
+from oligo_designer_toolsuite.config import MerfishProbeDesignerConfig
 from oligo_designer_toolsuite.database import OligoDatabase, ReferenceDatabase
 from oligo_designer_toolsuite.oligo_efficiency_filter import (
     IsoformConsensusScorer,
@@ -2449,12 +2451,13 @@ class PrimerDesigner:
 ############################################
 
 
-def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
+def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str, Any]:
     """
     Prepare the MERFISH config before the pipeline runs.
 
-    This step updates the config in place so later design stages can read ready-to-use
-    settings. It resolves melting-temperature tables, turns off unused temperature
+    This step converts the validated pydantic config to a plain dict and updates it
+    so later design stages can read ready-to-use settings.
+    It resolves melting-temperature tables, turns off unused temperature
     corrections, and copies the shared temperature settings into the filters and
     scoring steps that need them.
 
@@ -2467,11 +2470,25 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     regions. If no gene list is provided, all regions in the input FASTA files are
     used.
 
-    :param config: Pipeline configuration loaded from the YAML config file.
-    :type config: dict
-    :return: The same config dict, updated with the prepared settings.
+    Lastly, it inserts the parameters from required_parameters into the correct sections.
+
+    :param config_validated: Validated pipeline configuration (pydantic model).
+    :type config_validated: MerfishProbeDesignerConfig
+    :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
+
+    config = config_validated.model_dump()
+
+    # inline the required parameters into the correct position in the config dict
+    required_parameters = config["required_parameters"]
+    config["target_probes"]["oligo_generation"]["file_region_ids"] = required_parameters["targets"]
+    config["target_probes"]["oligo_generation"]["files_fasta_probe_database"] = required_parameters[
+        "target_genome"
+    ]
+    config["target_probes"]["specificity_filters"]["specificity_blastn_filter"][
+        "files_fasta_reference_database"
+    ] = required_parameters["reference_genome"]
 
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
@@ -2521,8 +2538,13 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
         "target_probes"
     ]["property_filters"]["GC_content_filter"]["GC_content_max"]
 
-    # Same Tm prep when readout sequences are generated rather than loaded.
+    # Readout probes only carry specificity filters and Tm settings when they are
+    # generated rather than loaded.
     if config["readout_probes"]["readout_probe_table"]["source"] == "generate":
+        config["readout_probes"]["readout_probe_table"]["specificity_filters"]["specificity_blastn_filter"][
+            "files_fasta_reference_database"
+        ] = config["required_parameters"]["reference_genome"]
+
         config["readout_probes"]["readout_probe_table"]["global_parameters"]["Tm_parameters"] = (
             preprocess_tm_parameters(
                 config["readout_probes"]["readout_probe_table"]["global_parameters"]["Tm_parameters"]
@@ -2551,8 +2573,12 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
             "parameters"
         ]
 
-    # Same Tm prep when the forward primer is generated rather than loaded.
+    # Same for the forward primer when it is generated rather than loaded.
     if config["primers"]["forward_primer"]["source"] == "generate":
+        config["primers"]["forward_primer"]["specificity_filters"]["specificity_blastn_filter"][
+            "files_fasta_reference_database"
+        ] = config["required_parameters"]["reference_genome"]
+
         config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
             config["primers"]["forward_primer"]["global_parameters"]["Tm_parameters"]
         )
@@ -2593,9 +2619,9 @@ def _preprocess_config(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def merfish_probe_designer(config: dict[str, Any]) -> None:
+def merfish_probe_designer(config: MerfishProbeDesignerConfig) -> None:
     """
-    Run the MERFISH probe design pipeline from a config dict.
+    Run the MERFISH probe design pipeline from a validated configuration (pydantic model).
 
     This function prepares the config with :func:`_preprocess_config`, then runs
     :class:`MerfishProbeDesigner` end to end. It designs target probes, loads or
@@ -2628,9 +2654,9 @@ def merfish_probe_designer(config: dict[str, Any]) -> None:
     See :class:`MerfishProbeDesigner` for the pipeline description and probe
     structure.
 
-    :param config: Pipeline configuration loaded from the YAML config file. It is
-        updated in place by :func:`_preprocess_config` before the pipeline runs.
-    :type config: dict
+    :param config: Validated pipeline configuration. It is converted and prepared by
+        :func:`_preprocess_config` before the pipeline runs.
+    :type config: MerfishProbeDesignerConfig
     :return: None
     :rtype: None
     """
@@ -2698,15 +2724,20 @@ def main() -> None:
     )
 
     with open(args["config"], "r") as handle:
-        config = yaml.safe_load(handle)
+        config_raw = yaml.safe_load(handle)
+    try:
+        config_validated = MerfishProbeDesignerConfig.model_validate(config_raw)
+    except ValidationError as e:
+        print(f"Invalid configuration file:\n{e}")
+        raise
 
     # Configure logging only after dir_output is known so the log file lands there.
     configure_root_logger(
-        dir_output=config["general"]["dir_output"],
+        dir_output=config_validated.general.dir_output,
         pipeline_name="merfish_probe_designer",
     )
 
-    merfish_probe_designer(config)
+    merfish_probe_designer(config_validated)
 
     print("--------------END PIPELINE--------------")
 

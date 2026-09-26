@@ -12,18 +12,19 @@ FastaFileListT = Annotated[list[str], Field(min_length=1)]
 FilesFastaDatabaseT = Annotated[
     FastaFileListT,
     Field(
-        description="FASTA file(s) from which oligo sequences are generated. Use genomic_region_generator for custom regions.."
+        description="FASTA file(s) from which the target oligo sequences are generated. Use genomic_region_generator for custom regions."
     ),
 ]
 
 FilesFastaReferenceDatabaseT = Annotated[
     FastaFileListT,
-    Field(description="FASTA file(s) used as reference for specificity."),
+    Field(description="FASTA file(s) used as reference for all specificity filters (e.g. with BLAST)."),
 ]
 
 VCFReferenceDatabaseT = Annotated[
     list[str],
     Field(
+        min_length=1,
         description="List of paths to VCF files containing variant information used for filtering probes that overlap with known single nucleotide polymorphisms (SNPs) or other variants. Probes overlapping variants may have reduced specificity.",
     ),
 ]

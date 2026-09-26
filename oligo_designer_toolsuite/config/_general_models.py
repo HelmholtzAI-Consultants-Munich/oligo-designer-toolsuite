@@ -13,6 +13,35 @@ from pydantic import (
 )
 from typing_extensions import Self
 
+from oligo_designer_toolsuite.config._types import (
+    FilesFastaDatabaseT,
+    FilesFastaReferenceDatabaseT,
+    RegionListT,
+)
+
+# High-level descriptions of the config sections, shown as the section's help text in the form.
+REQUIRED_PARAMETERS_DESC = (
+    "Parameters required for target probe generation. The reference genome is reused for all "
+    "specificity filters for all probes."
+)
+OLIGO_GENERATION_DESC = "Parameters that determine length and spacing of the probes."
+PROPERTY_FILTERS_DESC = (
+    "Parameters for filters that depend on properties of the filters (e.g., melting temperature)."
+)
+SPECIFICITY_FILTERS_DESC = "Parameters for filters that test the specificity of the probes."
+PROBE_SET_SELECTION_DESC = (
+    "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
+)
+GLOBAL_PARAMETERS_DESC = (
+    "Parameters for melting temperature computation that are reused for different filtering and "
+    "scoring methods."
+)
+CODEBOOK_DESC = "Parameters that determine the codebook generation or loading."
+READOUT_PROBE_TABLE_DESC = "Parameters that determine the readout probe table generation or loading."
+INITIATOR_TABLE_DESC = "Parameters that determine the initiator table generation or loading."
+FORWARD_PRIMER_DESC = "Parameters that determine the forward primer generation or loading."
+REVERSE_PRIMER_DESC = "Parameters that determine the reverse primer generation or loading."
+
 
 class General(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -23,6 +52,14 @@ class General(BaseModel):
     write_intermediate_steps: bool = Field(
         description="if true, writes the oligo sequences after each step of the pipeline into a csv file",
     )
+
+
+class RequiredParameters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    targets: RegionListT
+    target_genome: FilesFastaDatabaseT
+    reference_genome: FilesFastaReferenceDatabaseT
 
 
 class HomopolymericRunThreshold(BaseModel):
@@ -43,6 +80,10 @@ class HomopolymericRunThreshold(BaseModel):
         default=None,
         description=" Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.",
     )
+
+    @model_serializer
+    def serialize(self) -> dict:
+        return {key: value for key, value in self.__dict__.items() if value is not None}
 
 
 class BaseProbabilities(BaseModel):
@@ -177,7 +218,7 @@ class BlastnSearchParameters(BaseModel):
         serialization_alias="-soft_masking",
         description="Apply filtering locations as soft masks (i.e., only for finding initial matches).",
     )
-    lcase_masking: Literal[""] | None = Field(
+    lcase_masking: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-lcase_masking", "lcase_masking"),
         serialization_alias="-lcase_masking",
@@ -250,7 +291,7 @@ class BlastnSearchParameters(BaseModel):
         gt=0,
         lt=0.5,
     )
-    subject_besthit: Literal[""] | None = Field(
+    subject_besthit: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-subject_besthit", "subject_besthit"),
         serialization_alias="-subject_besthit",
@@ -308,7 +349,7 @@ class BlastnSearchParameters(BaseModel):
         serialization_alias="-xdrop_gap_final",
         description="X-dropoff value (in bits) for final gapped alignment.",
     )
-    no_greedy: Literal[""] | None = Field(
+    no_greedy: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-no_greedy", "no_greedy"),
         serialization_alias="-no_greedy",
@@ -320,7 +361,7 @@ class BlastnSearchParameters(BaseModel):
         serialization_alias="-min_raw_gapped_score",
         description="Minimum raw gapped score to keep an alignment in the preliminary gapped and trace-back stages. Normally set based upon expect value.",
     )
-    ungapped: Literal[""] | None = Field(
+    ungapped: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("-ungapped", "ungapped"),
         serialization_alias="-ungapped",
@@ -346,40 +387,54 @@ class BlastnSearchParameters(BaseModel):
 
     @model_serializer
     def serialize(self) -> dict:
-        return {
-            self.__class__.model_fields[name].serialization_alias or name: value
-            for name, value in self.__dict__.items()
-            if value is not None
-        }
+        parameters = {}
+        # - parameters that have a string/numeric value are always included (3. if/else branch)
+        # - flags can be enabled with True and disabled with None default or if set to False,
+        #   so we need to check for that. They don't have any value such as other parameters,
+        #   so their value is set to "". The reason they are set up as bool is that it's easier
+        #   that way to render them in ODT-Cloud. (2. if/else branch)
+        # - soft_masking is a parameter that expects True/False, so we need to keep if no matter
+        #   if True/False (1. if/else branch)
+        for name, value in self.__dict__.items():
+            final_parameter_name = self.__class__.model_fields[name].serialization_alias or name
+            if final_parameter_name == "-soft_masking" and value is not None:
+                parameters[final_parameter_name] = str(value).lower()  # BLAST uses lower case boolean
+            elif isinstance(value, bool):
+                if value:
+                    parameters[final_parameter_name] = (
+                        ""  # a flag just needs to be present but doesn't have a value
+                    )
+            else:
+                if value is not None:
+                    parameters[final_parameter_name] = value
+        return parameters
 
 
-class BlastnHitParameters(BaseModel):
+class BlastnHitParametersCoverage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    coverage: float | None = Field(
-        default=None,
+    hit_criterion: Literal["coverage"] = "coverage"
+
+    value: float = Field(
         ge=0,
         le=100,
         description="Coverage in %, alternatively, min_alignment_length can be used",
     )
-    min_alignment_length: NonNegativeInt | None = Field(
-        default=None,
+
+
+class BlastnHitParametersMinAlignmentLength(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    hit_criterion: Literal["min_alignment_length"] = "min_alignment_length"
+
+    value: NonNegativeInt = Field(
         description="Number of nucleotides for alignment, alternatively, coverage can be used",
     )
 
-    @model_validator(mode="after")
-    def _check_mutually_exclusive(self) -> Self:
-        if (self.coverage is None) == (self.min_alignment_length is None):
-            raise ValueError("Exactly one of 'coverage' or 'min_alignment_length' must be set.")
-        return self
 
-    @model_serializer
-    def serialize(self) -> dict:
-        return {
-            self.__class__.model_fields[name].serialization_alias or name: value
-            for name, value in self.__dict__.items()
-            if value is not None
-        }
+BlastnHitParameters = Annotated[
+    BlastnHitParametersCoverage | BlastnHitParametersMinAlignmentLength, Field(discriminator="hit_criterion")
+]
 
 
 class TmParameters(BaseModel):
