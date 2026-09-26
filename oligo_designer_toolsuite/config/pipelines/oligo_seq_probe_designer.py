@@ -167,7 +167,8 @@ class TargetProbeSpecificityFilterBase(BaseModel):
 
 
 class TargetProbeSpecificityFilter(TargetProbeSpecificityFilterBase):
-    variant_filter: OligoSeqVariantFilterConfig
+    # off by default: it needs VCF files, which most runs don't have
+    variant_filter: OligoSeqVariantFilterConfig = OligoSeqVariantFilterDisabled(enabled=False)
 
 
 class TargetProbeProbeSetSelection(BaseModel):
