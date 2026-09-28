@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "setuptools_scm[toml]>=8"]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -13,10 +13,7 @@ packages = ["oligo_designer_toolsuite", "oligo_designer_toolsuite.configs"]
 "oligo_designer_toolsuite.configs" = ["*.yaml"]
 
 [tool.setuptools_scm]
-version_file = "oligo_designer_toolsuite/_version.py"
-version_file_template = """__version__ = version = {version!r}
-__commit_id__ = commit_id = {scm_version.node!r}
-"""
+write_to = "oligo_designer_toolsuite/_version.py"
 local_scheme = "no-local-version"
 
 [project]
