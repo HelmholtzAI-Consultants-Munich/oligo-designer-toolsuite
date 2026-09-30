@@ -104,6 +104,11 @@ target_probes:
       Tris: 0 #[mM] default
       Mg: 0 #[mM] default
       dNTPs: 0 #[mM] default
+      check: true # Checks if the sequence is valid for the given method.
+      strict: true # Do not allow ambiguous base characters or neighbor duplex keys.
+      c_seq: null # Complementary sequence, needed for mismatch and dangling-end correction.
+      shift: 0 # Shift of the probe sequence on the template sequence.
+      selfcomp: false # Is the sequence self-complementary? If true dnac2 is not considered.
     Tm_chem_correction_parameters:
       enabled: false
     Tm_salt_correction_parameters:
