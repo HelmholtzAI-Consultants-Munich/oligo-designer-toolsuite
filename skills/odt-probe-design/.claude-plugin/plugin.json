@@ -1,0 +1,10 @@
+{
+  "name": "odt-probe-design",
+  "description": "Design FISH/spatial transcriptomics probes with Oligo Designer Toolsuite (ODT) v2.3.0: install check, inputs, parameter discussion, config + run script.",
+  "version": "0.1.0",
+  "author": {
+    "name": "HelmholtzAI-Consultants-Munich"
+  },
+  "repository": "https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite",
+  "license": "MIT"
+}

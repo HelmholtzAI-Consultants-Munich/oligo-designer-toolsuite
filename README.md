@@ -157,6 +157,16 @@ micromamba activate
 
 <!-- LINK INSTALLATION END -->
 
+## LLM integration
+
+If you want to use e.g. Claude or ChatGPT to help you with setting up the config files, you can
+install our skill:
+
+```
+/plugin marketplace add HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite
+/plugin install odt-probe-design@oligo-designer-toolsuite
+```
+
 ## Contributing
 
 <!-- LINK CONTRIBUTION START -->
