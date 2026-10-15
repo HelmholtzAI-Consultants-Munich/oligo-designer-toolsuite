@@ -1016,7 +1016,7 @@ def _preprocess_config(config_validated: OligoSeqProbeDesignerConfig) -> dict[st
     :return: The configuration converted to a dict, updated with the prepared settings.
     :rtype: dict
     """
-    config = config_validated.model_dump()
+    config = config_validated.model_dump(context={"convert_to_blast_cli": True})
 
     # inline the required parameters into the correct position in the config dict
     required_parameters = config["required_parameters"]

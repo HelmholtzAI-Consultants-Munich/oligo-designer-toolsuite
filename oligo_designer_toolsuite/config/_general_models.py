@@ -8,6 +8,7 @@ from pydantic import (
     NonNegativeInt,
     NonPositiveInt,
     PositiveInt,
+    SerializationInfo,
     model_serializer,
     model_validator,
 )
@@ -386,8 +387,13 @@ class BlastnSearchParameters(BaseModel):
     # remote
 
     @model_serializer
-    def serialize(self) -> dict:
+    def serialize(self, info: SerializationInfo) -> dict:
         parameters = {}
+        # the following conversion is needed to have the parameters in the format that BLAST
+        # expects as CLI parameters. However, this is only needed when the models are dumped
+        # in ODT. In ODT-Cloud, the models are dumped to JSON to generate the UI inputs. There,
+        # the conversion leads to default data that does not confirm to the model spec and raises
+        # an error. Therefore, this conversion is behind the context "convert_to_blast_cli"
         # - parameters that have a string/numeric value are always included (3. if/else branch)
         # - flags can be enabled with True and disabled with None default or if set to False,
         #   so we need to check for that. They don't have any value such as other parameters,
@@ -396,10 +402,13 @@ class BlastnSearchParameters(BaseModel):
         # - soft_masking is a parameter that expects True/False, so we need to keep if no matter
         #   if True/False (1. if/else branch)
         for name, value in self.__dict__.items():
+            blast_cli = bool(info.context and info.context.get("convert_to_blast_cli"))
             final_parameter_name = self.__class__.model_fields[name].serialization_alias or name
             if final_parameter_name == "-soft_masking" and value is not None:
-                parameters[final_parameter_name] = str(value).lower()  # BLAST uses lower case boolean
-            elif isinstance(value, bool):
+                parameters[final_parameter_name] = (
+                    str(value).lower() if blast_cli else value
+                )  # BLAST uses lower case boolean
+            elif blast_cli and isinstance(value, bool):
                 if value:
                     parameters[final_parameter_name] = (
                         ""  # a flag just needs to be present but doesn't have a value
