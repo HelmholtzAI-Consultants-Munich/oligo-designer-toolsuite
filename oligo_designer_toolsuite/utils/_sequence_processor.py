@@ -3,12 +3,11 @@
 ############################################
 
 import os
-import subprocess
 from collections import Counter
 
 from Bio import SeqIO
 
-from ._checkers_and_helpers import cast_to_list, safe_append_filename
+from ._checkers_and_helpers import cast_to_list, run_external_tool, safe_append_filename
 from ._sequence_parser import FastaParser
 
 ############################################
@@ -53,7 +52,7 @@ def get_sequence_from_annotation(
     if name:
         args.append("-name")
 
-    subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+    run_external_tool(args)
 
 
 def get_complement_regions(file_bed_in: str, file_chromosome_length: str, file_bed_out: str) -> None:
@@ -71,7 +70,7 @@ def get_complement_regions(file_bed_in: str, file_chromosome_length: str, file_b
 
     # redirect stdout to output file
     with open(file_bed_out, "w") as f:
-        subprocess.run(args, stdout=f, check=True)
+        run_external_tool(args, stdout=f)
 
 
 def get_intersection(file_A: str, file_B: list[str] | str, file_bed_out: str) -> None:
@@ -104,7 +103,7 @@ def get_intersection(file_A: str, file_B: list[str] | str, file_bed_out: str) ->
 
     # redirect stdout to output file
     with open(file_bed_out, "w") as f:
-        subprocess.run(args, stdout=f, check=True)
+        run_external_tool(args, stdout=f)
 
 
 def append_nucleotide_to_sequences(input_fasta: str, nucleotide: str) -> str:

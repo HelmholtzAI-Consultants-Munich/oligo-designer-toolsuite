@@ -7,6 +7,7 @@ from typing import Any
 from joblib import Parallel, delayed
 from joblib_progress import joblib_progress
 
+from oligo_designer_toolsuite._exceptions import DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_property_calculator import BaseProperty
 from oligo_designer_toolsuite.utils import cast_to_list, check_if_key_in_database
@@ -57,9 +58,8 @@ class PropertyCalculator:
         :return: The updated OligoDatabase with the calculated properties.
         :rtype: OligoDatabase
         """
-        assert check_if_key_in_database(
-            oligo_database.database, sequence_type
-        ), f"Sequence type '{sequence_type}' not found in database."
+        if not check_if_key_in_database(oligo_database.database, sequence_type):
+            raise DatabaseError(f"Sequence type '{sequence_type}' not found in database.")
 
         region_ids = (
             cast_to_list(region_ids) if region_ids is not None else list(oligo_database.database.keys())

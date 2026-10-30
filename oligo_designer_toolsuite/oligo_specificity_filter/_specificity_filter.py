@@ -3,6 +3,7 @@
 ############################################
 
 
+from oligo_designer_toolsuite._exceptions import DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import BaseSpecificityFilter
 from oligo_designer_toolsuite.utils import check_if_key_in_database
@@ -54,9 +55,8 @@ class SpecificityFilter:
         :rtype: OligoDatabase
         """
         if sequence_type is not None:
-            assert check_if_key_in_database(
-                oligo_database.database, sequence_type
-            ), f"Sequence type '{sequence_type}' not found in database."
+            if not check_if_key_in_database(oligo_database.database, sequence_type):
+                raise DatabaseError(f"Sequence type '{sequence_type}' not found in database.")
 
         for specificity_filter in self.filters:
             oligo_database = specificity_filter.apply(

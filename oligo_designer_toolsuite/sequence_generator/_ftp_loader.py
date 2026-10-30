@@ -7,7 +7,7 @@ import itertools
 import os
 import re
 import shutil
-from ftplib import FTP, error_perm
+from ftplib import FTP, all_errors, error_perm
 from pathlib import Path
 from typing import IO, get_args
 
@@ -15,8 +15,27 @@ import pandas as pd
 from Bio import SeqIO
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
-from oligo_designer_toolsuite._exceptions import ConfigurationError
+from oligo_designer_toolsuite._exceptions import ConfigurationError, NetworkError
 from oligo_designer_toolsuite.utils import logger
+
+
+def _connect(ftp_link: str) -> FTP:
+    """
+    Open an anonymous FTP connection.
+
+    :param ftp_link: Address of the FTP server.
+    :type ftp_link: str
+    :raises NetworkError: If the server cannot be reached or refuses the login.
+    :return: The logged-in FTP connection.
+    :rtype: FTP
+    """
+    try:
+        ftp = FTP(ftp_link)
+        ftp.login()
+        return ftp
+    except all_errors as error:
+        raise NetworkError(f"Could not connect to {ftp_link}. Please try again later.") from error
+
 
 ############################################
 # FTP Classes
@@ -48,8 +67,7 @@ class BaseFtpLoader:
         :return: The path to the downloaded file.
         :rtype: str
         """
-        ftp = FTP(ftp_link)
-        ftp.login()  # login to ftp server
+        ftp = _connect(ftp_link)
         ftp.cwd(ftp_directory)  # move to directory
 
         files = ftp.nlst()
@@ -110,7 +128,8 @@ class BaseFtpLoader:
         :type file_type: _TYPES_FILE ["gff", "gtf", "fasta"]
         """
         options = get_args(_TYPES_FILE)
-        assert file_type in options, f"File type not supported! '{file_type}' is not in {options}."
+        if file_type not in options:
+            raise ConfigurationError(f"File type not supported! '{file_type}' is not in {options}.")
 
     def _check_sequence_nature_type(self, sequence_nature: _TYPES_FILE_SEQ) -> None:
         """
@@ -120,9 +139,10 @@ class BaseFtpLoader:
         :type sequence_nature: _TYPES_FILE_SEQ["dna", "ncrna"]
         """
         options = get_args(_TYPES_FILE_SEQ)
-        assert (
-            sequence_nature in options
-        ), f"Sequence nature type not supported! '{sequence_nature}' is not in {options}."
+        if sequence_nature not in options:
+            raise ConfigurationError(
+                f"Sequence nature type not supported! '{sequence_nature}' is not in {options}."
+            )
 
 
 class FtpLoaderEnsembl(BaseFtpLoader):
@@ -585,8 +605,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
     def _resolve_assembly_directory(self, ftp_directory: str) -> str:
         assembly_dir = f"{ftp_directory}{self.assembly_accession}_{self.assembly_name}"
         assembly_dir = assembly_dir.replace(" ", "_")
-        ftp = FTP(self.ftp_link)
-        ftp.login()
+        ftp = _connect(self.ftp_link)
         try:
             ftp.cwd(assembly_dir)
             return assembly_dir
@@ -596,8 +615,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
             ftp.quit()
 
     def _list_ftp_entries(self, ftp_directory: str) -> list[str]:
-        ftp = FTP(self.ftp_link)
-        ftp.login()
+        ftp = _connect(self.ftp_link)
         ftp.cwd(ftp_directory)
         entries = ftp.nlst()
         ftp.quit()

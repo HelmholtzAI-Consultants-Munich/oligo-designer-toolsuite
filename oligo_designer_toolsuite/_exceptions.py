@@ -50,3 +50,28 @@ class FeatureNotImplementedError(OligoDesignerError):
     This exception is used when a method or feature is planned but not yet
     implemented in the codebase.
     """
+
+
+class ExternalToolError(OligoDesignerError):
+    """
+    Raised when an external command line tool such as BLAST, Bowtie, bcftools or bedtools fails.
+    """
+
+
+class NetworkError(OligoDesignerError):
+    """
+    Raised when a remote server such as the NCBI or Ensembl FTP server cannot be reached.
+    """
+
+
+class EmptyResultError(OligoDesignerError, SystemExit):
+    """
+    Raised when no oligos are left to continue with.
+
+    Inherits from SystemExit so an uncaught error still ends a command line run with
+    exit code 1 and no traceback, like the ``sys.exit(1)`` it replaces.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.code = 1
