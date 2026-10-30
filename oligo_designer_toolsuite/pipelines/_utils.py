@@ -194,7 +194,7 @@ def pipeline_step_basic(step_name: str) -> Callable[[F], F]:
     return decorator
 
 
-def check_content_oligo_database(oligo_database: OligoDatabase, *, message: str | None = None) -> None:
+def check_content_oligo_database(oligo_database: OligoDatabase) -> None:
     """
     Stop the pipeline if no candidate oligos are left.
 
@@ -210,11 +210,9 @@ def check_content_oligo_database(oligo_database: OligoDatabase, *, message: str 
     :raises EmptyResultError: If the database contains no regions.
     """
     if len(oligo_database.get_regionid_list()) == 0:
-        logger.error("The oligo database is empty. Exiting program...")
-        print("The oligo database is empty. Exiting program...")
-        raise EmptyResultError(
-            message or "No oligos are left after filtering. Please relax the filter settings."
-        )
+        logger.error("No oligos are left after filtering. Exiting program...")
+        print("No oligos are left after filtering. Exiting program...")
+        raise EmptyResultError("No oligos are left after filtering. Please change the filter settings.")
 
 
 def format_sequence(database: OligoDatabase, property: str, region_id: str, oligo_id: str) -> str:
