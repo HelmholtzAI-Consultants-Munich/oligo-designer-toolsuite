@@ -21,6 +21,7 @@ from oligo_designer_toolsuite.config._general_models import (
     BlastnHitParameters,
     BlastnSearchParameters,
     General,
+    ProtocolMetadata,
     RequiredParameters,
     TmChemCorrectionParameters,
     TmNNParameters,
@@ -225,5 +226,6 @@ class HcrProbeDesignerConfigBase(BaseModel):
 
 class HcrProbeDesignerConfig(HcrProbeDesignerConfigBase):
     general: General
+    metadata: ProtocolMetadata
 
     required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

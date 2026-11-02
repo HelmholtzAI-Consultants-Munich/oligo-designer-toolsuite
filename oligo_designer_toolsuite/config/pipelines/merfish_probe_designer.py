@@ -23,6 +23,7 @@ from oligo_designer_toolsuite.config._general_models import (
     TM_PARAMETERS_DESC,
     BaseProbabilities,
     General,
+    ProtocolMetadata,
     RequiredParameters,
     TmChemCorrectionParameters,
     TmNNParameters,
@@ -398,5 +399,6 @@ class MerfishProbeDesignerConfigBase(BaseModel):
 
 class MerfishProbeDesignerConfig(MerfishProbeDesignerConfigBase):
     general: General
+    metadata: ProtocolMetadata
 
     required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)

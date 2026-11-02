@@ -88,22 +88,22 @@ target_probes:
   Tm_parameters:
     Tm_NN_parameters:
       # --- set by Gandin et al. ---
-      nn_table: "DNA_NN3"     
-      saltcorr: 0             
-      Na: 1000               
+      nn_table: "DNA_NN3"
+      saltcorr: 0
+      Na: 1000
       # --- not set by the paper; schema requires a value, these are Biopython defaults ---
-      imm_table: "DNA_IMM1"   
-      de_table: "DNA_DE1"     
-      dnac1: 25               
+      imm_table: "DNA_IMM1"
+      de_table: "DNA_DE1"
+      dnac1: 25
       dnac2: 25
       K: 0
       Tris: 0
       Mg: 0
       dNTPs: 0
     Tm_chem_correction_parameters:
-      enabled: false          
+      enabled: false
     Tm_salt_correction_parameters:
-      enabled: false         
+      enabled: false
 
 ##### READOUT PROBES PARAMETERS #####
 # All following parameters are default parameters taken from Gandin et al. (2025)
@@ -140,10 +140,10 @@ hybridization_probes:
 
 schema_version: 2
 
-# TODO: add metadata to pydantic model
-#metadata:
-#  protocol: "Cycle-HCR"
-#  source_default_parameters: https://doi.org/10.1126/science.adq2084
+metadata:
+  protocol: "Cycle-HCR"
+  source_default_parameters: https://doi.org/10.1126/science.adq2084
+  name_default_parameters: "Gandin et al."
 
 general:
   n_jobs: 4

@@ -12,6 +12,7 @@ from oligo_designer_toolsuite.config._general_models import (
     SPECIFICITY_FILTERS_DESC,
     TM_PARAMETERS_DESC,
     General,
+    ProtocolMetadata,
     RequiredParameters,
     TmChemCorrectionParameters,
     TmNNParameters,
@@ -170,5 +171,6 @@ class OligoSeqProbeDesignerConfigBase(BaseModel):
 
 class OligoSeqProbeDesignerConfig(OligoSeqProbeDesignerConfigBase):
     general: General
+    metadata: ProtocolMetadata
 
     required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)
