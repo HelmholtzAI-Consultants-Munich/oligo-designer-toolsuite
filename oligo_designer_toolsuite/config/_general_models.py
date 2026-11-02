@@ -5,6 +5,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    HttpUrl,
     NonNegativeInt,
     NonPositiveInt,
     PositiveInt,
@@ -558,3 +559,17 @@ class TmSaltCorrectionParametersDisabled(BaseModel):
 TmSaltCorrectionParameters = Annotated[
     TmSaltCorrectionParametersEnabled | TmSaltCorrectionParametersDisabled, Field(discriminator="enabled")
 ]
+
+
+class ProtocolMetadata(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    protocol: Literal["Cycle-HCR", "HCR", "MERFISH", "Oligo-Seq", "Scrinshot", "SeqFish+"] = Field(
+        description="Name of the protocol for which oligos are designed."
+    )
+    source_default_parameters: HttpUrl = Field(
+        description="Link to the paper from which the default parameters are taken."
+    )
+    name_default_parameters: str = Field(
+        description="Name of the source of the default parameters, e.g. the first author of the paper."
+    )

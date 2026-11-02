@@ -162,10 +162,10 @@ detection_oligo:
 
 schema_version: 2
 
-# TODO: add metadata to pydantic model
-#metadata:
-#  protocol: "Scrinshot"
-#  source_default_parameters:
+metadata:
+  protocol: "Scrinshot"
+  source_default_parameters: https://example.com/
+  name_default_parameters: "TBD"
 
 general:
   n_jobs: 4

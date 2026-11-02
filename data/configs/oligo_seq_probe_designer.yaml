@@ -153,10 +153,10 @@ target_probes:
 
 schema_version: 2
 
-# TODO: add metadata to pydantic model
-#metadata:
-#  protocol: "Oligo-Seq"
-#  source_default_parameters:
+metadata:
+  protocol: "Oligo-Seq"
+  source_default_parameters: https://example.com/
+  name_default_parameters: "TBD"
 
 general:
   n_jobs: 4
