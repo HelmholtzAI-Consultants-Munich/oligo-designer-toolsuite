@@ -14,7 +14,6 @@ structure. See :func:`cycle_hcr_probe_designer` for the config-driven workflow.
 # imports
 ############################################
 
-import itertools
 import os
 import shutil
 from pathlib import Path
@@ -361,9 +360,13 @@ class CycleHCRProbeDesigner:
             logger.info(
                 f"Loaded readout probes table from file and retrieved {len(readout_probe_table)} readout probes."
             )
-        else:
+        elif readout_probe_parameters["readout_probe_table"]["source"] == "generate":
             readout_probe_table = readout_probe_designer.generate_readout_probe_table()
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
+        else:
+            raise ConfigurationError(
+                f"Invalid source for readout probe table: {readout_probe_parameters['readout_probe_table']['source']}"
+            )
 
         # Table-only validation: catch structural issues (index name, columns, DNA validity)
         # before generate_codebook consumes the table.
@@ -1450,7 +1453,7 @@ class ReadoutProbeDesigner:
         self,
         region_ids: list[str],
         readout_probe_table: pd.DataFrame,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> pd.DataFrame:
         """
         Generate a CycleHCR codebook from the readout probe table.
 
@@ -1481,7 +1484,7 @@ class ReadoutProbeDesigner:
         :return: Codebook table with target regions as rows and barcode bits as
             columns, and the readout probe table indexed by those bits. Each
             codebook row contains exactly one active bit.
-        :rtype: tuple[pd.DataFrame, pd.DataFrame]
+        :rtype: pd.DataFrame
         :raises ConfigurationError: If there are not enough available barcodes for
             all target regions.
         """
