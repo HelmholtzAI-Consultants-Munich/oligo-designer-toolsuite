@@ -23,6 +23,50 @@ CONFIG_CYCLEHCR_PROBE_DESIGNER = "data/configs/cycle_hcr_probe_designer_gandin.y
 CONFIG_HCR_PROBE_DESIGNER = "data/configs/hcr_probe_designer.yaml"
 
 
+import pandas as pd
+
+# TODO: add test for the pydantic vallidation of cycleHCR readout probe tables
+readout_probe_table_incorrect = pd.DataFrame(
+    {
+        "channel": [561, 488, 561, 488],
+        "readout_probe_id_L": ["leftA", "P488L_1", "P561L_2", "probeL"],
+        "readout_probe_sequence_L": [
+            "TCTAACATCGTGGA",
+            "TCATCTCAGTTAGT",
+            "TACGACCTATGTAA",
+            "TGAATGACTTCTGG",
+        ],
+        "readout_probe_id_R": ["rightA", "P488R_5", "P561R_2", "probeR"],
+        "readout_probe_sequence_R": [
+            "TACCAGAATAACGG",
+            "TACTTACTCAGCAC",
+            "GCATACAACTTCTC",
+            "TAGGTAACATCTGA",
+        ],
+    }
+)
+
+readout_probe_table_correct = pd.DataFrame(
+    {
+        "channel": [488, 488, 561, 561],
+        "readout_probe_id_L": ["P488L_1", "P488L_2", "P561L_1", "P561L_2"],
+        "readout_probe_sequence_L": [
+            "TCATCTCAGTTAGT",
+            "TGAATGACTTCTGG",
+            "TCTAACATCGTGGA",
+            "TACGACCTATGTAA",
+        ],
+        "readout_probe_id_R": ["P488R_1", "P488R_2", "P561R_1", "P561R_2"],
+        "readout_probe_sequence_R": [
+            "TACTTACTCAGCAC",
+            "TAGGTAACATCTGA",
+            "TACCAGAATAACGG",
+            "GCATACAACTTCTC",
+        ],
+    }
+)
+
+
 def _load(filename: str) -> dict:
     with open(_CONFIGS / filename) as fh:
         data = yaml.safe_load(fh)
