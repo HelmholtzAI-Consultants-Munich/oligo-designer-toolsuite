@@ -19,8 +19,8 @@ from oligo_designer_toolsuite.config._general_models import (
     REQUIRED_PARAMETERS_DESC,
     REVERSE_PRIMER_DESC,
     SCHEMA_VERSION_DESC,
-    SHARED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
+    TM_PARAMETERS_DESC,
     BaseProbabilities,
     General,
     RequiredParameters,
@@ -128,7 +128,7 @@ class TargetProbes(BaseModel):
     property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
     specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    Tm_parameters: TargetProbeTmParameters = Field(description=SHARED_PARAMETERS_DESC)
+    Tm_parameters: TargetProbeTmParameters = Field(description=TM_PARAMETERS_DESC)
 
 
 ############################################
@@ -257,7 +257,7 @@ class MerfishReadoutProbeTableGenerate(BaseModel):
         json_schema_extra={"x-collapsed": True},
     )
     Tm_parameters: MerfishReadoutProbesTmParameters = Field(
-        description=SHARED_PARAMETERS_DESC,
+        description=TM_PARAMETERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
 
@@ -353,7 +353,7 @@ class MerfishForwardPrimerGenerate(BaseModel):
         json_schema_extra={"x-collapsed": True},
     )
     Tm_parameters: MerfishForwardPrimerTmParameters = Field(
-        description=SHARED_PARAMETERS_DESC,
+        description=TM_PARAMETERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
 

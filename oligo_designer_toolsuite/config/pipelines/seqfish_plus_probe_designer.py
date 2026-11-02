@@ -17,8 +17,8 @@ from oligo_designer_toolsuite.config._general_models import (
     REQUIRED_PARAMETERS_DESC,
     REVERSE_PRIMER_DESC,
     SCHEMA_VERSION_DESC,
-    SHARED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
+    TM_PARAMETERS_DESC,
     BaseProbabilities,
     General,
     RequiredParameters,
@@ -304,7 +304,7 @@ class SeqfishPlusForwardPrimerGenerate(BaseModel):
         json_schema_extra={"x-collapsed": True},
     )
     Tm_parameters: SeqfishPlusForwardPrimerTmParameters = Field(
-        description=SHARED_PARAMETERS_DESC,
+        description=TM_PARAMETERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
 

@@ -32,7 +32,7 @@ SPECIFICITY_FILTERS_DESC = "Parameters for filters that test the specificity of 
 PROBE_SET_SELECTION_DESC = (
     "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
 )
-SHARED_PARAMETERS_DESC = (
+TM_PARAMETERS_DESC = (
     "Parameters for melting temperature computation that are reused for different filtering and "
     "scoring methods."
 )

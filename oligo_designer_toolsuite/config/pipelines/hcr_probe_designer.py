@@ -16,8 +16,8 @@ from oligo_designer_toolsuite.config._general_models import (
     PROPERTY_FILTERS_DESC,
     REQUIRED_PARAMETERS_DESC,
     SCHEMA_VERSION_DESC,
-    SHARED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
+    TM_PARAMETERS_DESC,
     BlastnHitParameters,
     BlastnSearchParameters,
     General,
@@ -143,7 +143,7 @@ class TargetProbes(BaseModel):
     property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
     specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    Tm_parameters: TargetProbeTmParameters = Field(description=SHARED_PARAMETERS_DESC)
+    Tm_parameters: TargetProbeTmParameters = Field(description=TM_PARAMETERS_DESC)
 
 
 ############################################

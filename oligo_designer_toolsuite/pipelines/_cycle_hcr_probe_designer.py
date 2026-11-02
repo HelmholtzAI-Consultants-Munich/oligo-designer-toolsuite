@@ -1526,7 +1526,7 @@ class ReadoutProbeDesigner:
         column is left unchanged.
 
         If the codebook will be generated, any existing ``bit`` column is deleted.
-        Bits are assigned later by :py:meth:`generate_codebook`.
+        Bits are then reassigned in this method after expanding/sorting L/R combinations.
 
         Column and sequence checks are done later by :py:meth:`validate`.
 
