@@ -5,6 +5,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    HttpUrl,
     NonNegativeInt,
     NonPositiveInt,
     PositiveInt,
@@ -32,7 +33,7 @@ SPECIFICITY_FILTERS_DESC = "Parameters for filters that test the specificity of 
 PROBE_SET_SELECTION_DESC = (
     "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
 )
-SHARED_PARAMETERS_DESC = (
+TM_PARAMETERS_DESC = (
     "Parameters for melting temperature computation that are reused for different filtering and "
     "scoring methods."
 )
@@ -418,7 +419,7 @@ BlastnHitParameters = Annotated[
 ]
 
 
-class TmParameters(BaseModel):
+class TmNNParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     check: bool = Field(default=True, description="Checks if the sequence is valid for the given method.")
@@ -558,3 +559,17 @@ class TmSaltCorrectionParametersDisabled(BaseModel):
 TmSaltCorrectionParameters = Annotated[
     TmSaltCorrectionParametersEnabled | TmSaltCorrectionParametersDisabled, Field(discriminator="enabled")
 ]
+
+
+class ProtocolMetadata(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    protocol: Literal["Cycle-HCR", "HCR", "MERFISH", "Oligo-Seq", "Scrinshot", "SeqFish+"] = Field(
+        description="Name of the protocol for which oligos are designed."
+    )
+    source_default_parameters: HttpUrl = Field(
+        description="Link to the paper from which the default parameters are taken."
+    )
+    name_default_parameters: str = Field(
+        description="Name of the source of the default parameters, e.g. the first author of the paper."
+    )

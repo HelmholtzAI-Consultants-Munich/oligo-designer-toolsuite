@@ -1602,19 +1602,19 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes", "detection_oligo"]:
-        config[section]["shared_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-            config[section]["shared_parameters"]["Tm_parameters"]
+        config[section]["Tm_parameters"]["Tm_NN_parameters"] = preprocess_tm_parameters(
+            config[section]["Tm_parameters"]["Tm_NN_parameters"]
         )
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config[section]["shared_parameters"][correction]
+            correction_cfg = config[section]["Tm_parameters"][correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probes"]["shared_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probes"]["shared_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["Tm_parameters"]["Tm_NN_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["Tm_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probes"]["shared_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["Tm_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
@@ -1658,11 +1658,11 @@ def _preprocess_config(config_validated: ScrinshotProbeDesignerConfig) -> dict[s
         "Tm_salt_correction_parameters"
     ] = target_probe_Tm_salt_correction_parameters
 
-    detection_oligo_Tm_parameters = config["detection_oligo"]["shared_parameters"]["Tm_parameters"]
-    detection_oligo_Tm_chem_correction_parameters = config["detection_oligo"]["shared_parameters"][
+    detection_oligo_Tm_parameters = config["detection_oligo"]["Tm_parameters"]["Tm_NN_parameters"]
+    detection_oligo_Tm_chem_correction_parameters = config["detection_oligo"]["Tm_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    detection_oligo_Tm_salt_correction_parameters = config["detection_oligo"]["shared_parameters"][
+    detection_oligo_Tm_salt_correction_parameters = config["detection_oligo"]["Tm_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 
