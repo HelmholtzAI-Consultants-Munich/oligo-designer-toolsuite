@@ -353,10 +353,14 @@ class CycleHCRProbeDesigner:
 
         if readout_probe_parameters["readout_probe_table"]["source"] == "load":
             readout_probe_table = readout_probe_designer.load_readout_probe_table(
-                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"],
+                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["load_parameters"][
+                    "file"
+                ],
                 codebook_source=readout_probe_parameters["codebook"]["source"],
             )
-            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
+            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["load_parameters"][
+                "file"
+            ]
             logger.info(
                 f"Loaded readout probes table from file and retrieved {len(readout_probe_table)} readout probes."
             )
@@ -377,9 +381,9 @@ class CycleHCRProbeDesigner:
 
         if readout_probe_parameters["codebook"]["source"] == "load":
             codebook = readout_probe_designer.load_codebook(
-                file_codebook=readout_probe_parameters["codebook"]["file"]
+                file_codebook=readout_probe_parameters["codebook"]["load_parameters"]["file"]
             )
-            codebook_source = readout_probe_parameters["codebook"]["file"]
+            codebook_source = readout_probe_parameters["codebook"]["load_parameters"]["file"]
         else:
             codebook = readout_probe_designer.generate_codebook(
                 region_ids=region_ids,
@@ -545,14 +549,14 @@ class CycleHCRProbeDesigner:
 
         if primer_parameters["forward_primer"]["source"] == "load":
             forward_primer_sequence = primer_designer.load_forward_primer(
-                sequence=primer_parameters["forward_primer"]["sequence"]
+                sequence=primer_parameters["forward_primer"]["load_parameters"]["sequence"]
             )
         else:
             forward_primer_sequence = primer_designer.generate_forward_primer()
 
         if primer_parameters["reverse_primer"]["source"] == "load":
             reverse_primer_sequence = primer_designer.load_reverse_primer(
-                sequence=primer_parameters["reverse_primer"]["sequence"]
+                sequence=primer_parameters["reverse_primer"]["load_parameters"]["sequence"]
             )
         else:
             reverse_primer_sequence = primer_designer.generate_reverse_primer()
@@ -1756,7 +1760,7 @@ class PrimerDesigner:
         """
         raise FeatureNotImplementedError(
             "Generation of reverse primer is not yet implemented. "
-            "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
+            "Please provide a reverse_primer.load_parameters.sequence parameter and set reverse_primer.source to 'load'."
         )
 
     def load_forward_primer(self, sequence: str) -> str:
@@ -1790,7 +1794,7 @@ class PrimerDesigner:
         """
         raise FeatureNotImplementedError(
             "Generation of forward primer is not yet implemented. "
-            "Please provide a forward_primer.sequence parameter and set forward_primer.source to 'load'."
+            "Please provide a forward_primer.load_parameters.sequence parameter and set forward_primer.source to 'load'."
         )
 
     def validate(self, forward_primer: str, reverse_primer: str) -> None:

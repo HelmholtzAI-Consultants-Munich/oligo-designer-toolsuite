@@ -329,9 +329,9 @@ class HcrProbeDesigner:
 
         if initiator_probe_parameters["initiator_table"]["source"] == "load":
             initiator_table = initiator_designer.load_initiator_table(
-                file_initiator_table=initiator_probe_parameters["initiator_table"]["file"]
+                file_initiator_table=initiator_probe_parameters["initiator_table"]["load_parameters"]["file"]
             )
-            initiator_table_source = initiator_probe_parameters["initiator_table"]["file"]
+            initiator_table_source = initiator_probe_parameters["initiator_table"]["load_parameters"]["file"]
             logger.info(f"Loaded initiator table from file and retrieved {len(initiator_table)} initiators.")
         else:
             initiator_table = initiator_designer.generate_initiator_table()
@@ -346,9 +346,9 @@ class HcrProbeDesigner:
 
         if initiator_probe_parameters["codebook"]["source"] == "load":
             codebook = initiator_designer.load_codebook(
-                file_codebook=initiator_probe_parameters["codebook"]["file"]
+                file_codebook=initiator_probe_parameters["codebook"]["load_parameters"]["file"]
             )
-            codebook_source = initiator_probe_parameters["codebook"]["file"]
+            codebook_source = initiator_probe_parameters["codebook"]["load_parameters"]["file"]
         else:
             codebook = initiator_designer.generate_codebook(region_ids=region_ids)
             codebook_source = initiator_probe_parameters["codebook"]["source"]
@@ -1246,7 +1246,7 @@ class InitiatorDesigner:
         """
         raise FeatureNotImplementedError(
             "Generation of codebook is not yet implemented. "
-            "Please provide a codebook.file parameter and set codebook.source to 'load'."
+            "Please provide a codebook.load_parameters.file parameter and set codebook.source to 'load'."
         )
 
     def load_initiator_table(self, file_initiator_table: str) -> pd.DataFrame:
@@ -1288,7 +1288,7 @@ class InitiatorDesigner:
         """
         raise FeatureNotImplementedError(
             "Generation of initiator table is not yet implemented. "
-            "Please provide an initiator_table.file parameter and set initiator_table.source to 'load'."
+            "Please provide an initiator_table.load_parameters.file parameter and set initiator_table.source to 'load'."
         )
 
     def validate(

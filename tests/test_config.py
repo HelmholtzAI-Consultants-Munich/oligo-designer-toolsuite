@@ -1,19 +1,19 @@
 import unittest
-from pathlib import Path
 
 import yaml
 from pydantic import ValidationError
 
 from oligo_designer_toolsuite.config.pipelines.cycle_hcr_probe_designer import CycleHcrProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.hcr_probe_designer import HcrProbeDesignerConfig
-from oligo_designer_toolsuite.config.pipelines.merfish_probe_designer import MerfishProbeDesignerConfig
+from oligo_designer_toolsuite.config.pipelines.merfish_probe_designer import (
+    MerfishForwardPrimerLoad,
+    MerfishProbeDesignerConfig,
+)
 from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.scrinshot_probe_designer import ScrinshotProbeDesignerConfig
 from oligo_designer_toolsuite.config.pipelines.seqfish_plus_probe_designer import (
     SeqfishPlusProbeDesignerConfig,
 )
-
-_CONFIGS = Path("data/configs")
 
 CONFIG_OLIGO_SEQ_PROBE_DESIGNER = "data/configs/oligo_seq_probe_designer.yaml"
 CONFIG_SCRINSHOT_PROBE_DESIGNER = "data/configs/scrinshot_probe_designer.yaml"
@@ -24,7 +24,7 @@ CONFIG_HCR_PROBE_DESIGNER = "data/configs/hcr_probe_designer.yaml"
 
 
 def _load(filename: str) -> dict:
-    with open(_CONFIGS / filename) as fh:
+    with open(filename) as fh:
         data = yaml.safe_load(fh)
         if not isinstance(data, dict):
             raise TypeError
@@ -110,7 +110,7 @@ class TestHcrYaml(unittest.TestCase):
     def test_parses(self) -> None:
         raw = _load(CONFIG_HCR_PROBE_DESIGNER)
         cfg = HcrProbeDesignerConfig.model_validate(raw)
-        assert cfg.schema_version == 2
+        assert cfg.schema_version == 3
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
@@ -143,7 +143,7 @@ class TestCycleHcrYaml(unittest.TestCase):
     def test_parses(self) -> None:
         raw = _load(CONFIG_CYCLEHCR_PROBE_DESIGNER)
         cfg = CycleHcrProbeDesignerConfig.model_validate(raw)
-        assert cfg.schema_version == 2
+        assert cfg.schema_version == 3
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
@@ -197,7 +197,7 @@ class TestSeqfishYaml(unittest.TestCase):
     def test_parses(self) -> None:
         raw = _load(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)
         cfg = SeqfishPlusProbeDesignerConfig.model_validate(raw)
-        assert cfg.schema_version == 2
+        assert cfg.schema_version == 3
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
@@ -222,7 +222,9 @@ class TestSeqfishYaml(unittest.TestCase):
 
     def test_base_probabilities_must_sum_to_one(self) -> None:
         raw = _load(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)
-        raw["readout_probes"]["readout_probe_table"]["oligo_generation"]["base_probabilities"] = {
+        raw["readout_probes"]["readout_probe_table"]["generate_parameters"]["oligo_generation"][
+            "base_probabilities"
+        ] = {
             "A": 0.5,
             "C": 0.5,
             "G": 0.5,
@@ -249,7 +251,7 @@ class TestMerfishYaml(unittest.TestCase):
     def test_parses(self) -> None:
         raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
         cfg = MerfishProbeDesignerConfig.model_validate(raw)
-        assert cfg.schema_version == 2
+        assert cfg.schema_version == 3
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
@@ -269,6 +271,22 @@ class TestMerfishYaml(unittest.TestCase):
         # Reverse primer generation is not implemented; only "load" is allowed
         raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
         raw["primers"]["reverse_primer"]["source"] = "generate"
+        with self.assertRaises(ValidationError):
+            MerfishProbeDesignerConfig.model_validate(raw)
+
+    def test_forward_primer_load_ignores_generate_parameters(self) -> None:
+        # The shipped YAML carries both blocks; switching source to "load" ignores generate_parameters
+        raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
+        raw["primers"]["forward_primer"]["source"] = "load"
+        raw["primers"]["forward_primer"]["load_parameters"]["sequence"] = "TAATACGACTCACTATAGGG"
+        cfg = MerfishProbeDesignerConfig.model_validate(raw)
+        assert isinstance(cfg.primers.forward_primer, MerfishForwardPrimerLoad)
+        assert cfg.primers.forward_primer.load_parameters.sequence == "TAATACGACTCACTATAGGG"
+        assert "generate_parameters" not in cfg.model_dump()["primers"]["forward_primer"]
+
+    def test_unknown_field_in_generate_parameters_forbidden(self) -> None:
+        raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
+        raw["readout_probes"]["codebook"]["generate_parameters"]["min_hamming_distance"] = 4
         with self.assertRaises(ValidationError):
             MerfishProbeDesignerConfig.model_validate(raw)
 

@@ -107,10 +107,12 @@ target_probes:
 initiator_probes:
   codebook:
     source: "load"
-    file: "data/functional_oligos/example_hcr_codebook.tsv"
+    load_parameters:
+      file: "data/functional_oligos/example_hcr_codebook.tsv"
   initiator_table:
     source: "load"
-    file: "data/functional_oligos/example_hcr_initiators.tsv"
+    load_parameters:
+      file: "data/functional_oligos/example_hcr_initiators.tsv"
 
 ##### HYBRIDIZATION PROBES PARAMETERS #####
 # All following parameters are default parameters taken from TBD
@@ -123,12 +125,12 @@ hybridization_probes:
 ### EXECUTION PARAMETERS ###
 ############################
 
-schema_version: 2
+schema_version: 3
 
 # TODO: add metadata to pydantic model
 #metadata:
 #  protocol: "HCR"
-#  source_default_parameters: 
+#  source_default_parameters:
 
 general:
   n_jobs: 4

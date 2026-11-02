@@ -325,9 +325,9 @@ class SeqFishPlusProbeDesigner:
 
         if readout_probe_parameters["codebook"]["source"] == "load":
             codebook = readout_probe_designer.load_codebook(
-                file_codebook=readout_probe_parameters["codebook"]["file"]
+                file_codebook=readout_probe_parameters["codebook"]["load_parameters"]["file"]
             )
-            codebook_source = readout_probe_parameters["codebook"]["file"]
+            codebook_source = readout_probe_parameters["codebook"]["load_parameters"]["file"]
         else:
             codebook = readout_probe_designer.generate_codebook(
                 region_ids=region_ids,
@@ -337,12 +337,18 @@ class SeqFishPlusProbeDesigner:
 
         if readout_probe_parameters["readout_probe_table"]["source"] == "load":
             readout_probe_table = readout_probe_designer.load_readout_probe_table(
-                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"]
+                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["load_parameters"][
+                    "file"
+                ]
             )
-            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
+            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["load_parameters"][
+                "file"
+            ]
         else:
             readout_probe_table = readout_probe_designer.generate_readout_probe_table(
-                readout_probe_parameters=readout_probe_parameters["readout_probe_table"],
+                readout_probe_parameters=readout_probe_parameters["readout_probe_table"][
+                    "generate_parameters"
+                ],
                 codebook_parameters=readout_probe_parameters["codebook"],
                 write_intermediate_steps=self.write_intermediate_steps,
             )
@@ -505,18 +511,18 @@ class SeqFishPlusProbeDesigner:
 
         if primer_parameters["reverse_primer"]["source"] == "load":
             reverse_primer_sequence = primer_designer.load_reverse_primer(
-                sequence=primer_parameters["reverse_primer"]["sequence"]
+                sequence=primer_parameters["reverse_primer"]["load_parameters"]["sequence"]
             )
         else:
             reverse_primer_sequence = primer_designer.generate_reverse_primer()
 
         if primer_parameters["forward_primer"]["source"] == "load":
             forward_primer_sequence = primer_designer.load_forward_primer(
-                sequence=primer_parameters["forward_primer"]["sequence"]
+                sequence=primer_parameters["forward_primer"]["load_parameters"]["sequence"]
             )
         else:
             forward_primer_sequence = primer_designer.generate_forward_primer(
-                parameters=primer_parameters["forward_primer"],
+                parameters=primer_parameters["forward_primer"]["generate_parameters"],
                 reverse_primer_sequence=reverse_primer_sequence,
                 file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
                 write_intermediate_steps=self.write_intermediate_steps,
@@ -1889,7 +1895,7 @@ class PrimerDesigner:
         """
         raise FeatureNotImplementedError(
             "Generation of the reverse primer is not yet implemented. "
-            "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
+            "Please provide a reverse_primer.load_parameters.sequence parameter and set reverse_primer.source to 'load'."
         )
 
     def load_forward_primer(self, sequence: str) -> str:
@@ -2381,7 +2387,7 @@ def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict
     # are generated rather than loaded.
     readout_probe_table_cfg = config["readout_probes"]["readout_probe_table"]
     if readout_probe_table_cfg["source"] == "generate":
-        readout_probe_table_cfg["specificity_filters"]["specificity_blastn_filter"][
+        readout_probe_table_cfg["generate_parameters"]["specificity_filters"]["specificity_blastn_filter"][
             "files_fasta_reference_database"
         ] = config["required_parameters"]["reference_genome"]
 
@@ -2396,8 +2402,8 @@ def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict
         with open(file_region_ids) as f:
             config["target_probes"]["oligo_generation"]["region_ids"] = sorted({line.rstrip() for line in f})
 
-    forward_primer_cfg = config["primers"]["forward_primer"]
-    if forward_primer_cfg["source"] == "generate":
+    if config["primers"]["forward_primer"]["source"] == "generate":
+        forward_primer_cfg = config["primers"]["forward_primer"]["generate_parameters"]
         forward_primer_cfg["specificity_filters"]["specificity_blastn_filter"][
             "files_fasta_reference_database"
         ] = config["required_parameters"]["reference_genome"]
@@ -2415,12 +2421,12 @@ def _preprocess_config(config_validated: SeqfishPlusProbeDesignerConfig) -> dict
         forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_parameters"] = tm_parameters[
             "Tm_NN_parameters"
         ]
-        forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_chem_correction_parameters"] = (
-            tm_parameters["Tm_chem_correction_parameters"]["parameters"]
-        )
-        forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_salt_correction_parameters"] = (
-            tm_parameters["Tm_salt_correction_parameters"]["parameters"]
-        )
+        forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_chem_correction_parameters"] = tm_parameters[
+            "Tm_chem_correction_parameters"
+        ]["parameters"]
+        forward_primer_cfg["property_filters"]["Tm_filter"]["Tm_salt_correction_parameters"] = tm_parameters[
+            "Tm_salt_correction_parameters"
+        ]["parameters"]
 
     return config
 

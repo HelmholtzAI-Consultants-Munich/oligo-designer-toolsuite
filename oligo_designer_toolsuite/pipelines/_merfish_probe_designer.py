@@ -343,9 +343,9 @@ class MerfishProbeDesigner:
 
         if readout_probe_parameters["codebook"]["source"] == "load":
             codebook = readout_probe_designer.load_codebook(
-                file_codebook=readout_probe_parameters["codebook"]["file"]
+                file_codebook=readout_probe_parameters["codebook"]["load_parameters"]["file"]
             )
-            codebook_source = readout_probe_parameters["codebook"]["file"]
+            codebook_source = readout_probe_parameters["codebook"]["load_parameters"]["file"]
         else:
             codebook = readout_probe_designer.generate_codebook(
                 region_ids=region_ids,
@@ -355,12 +355,18 @@ class MerfishProbeDesigner:
 
         if readout_probe_parameters["readout_probe_table"]["source"] == "load":
             readout_probe_table = readout_probe_designer.load_readout_probe_table(
-                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["file"]
+                file_readout_probe_table=readout_probe_parameters["readout_probe_table"]["load_parameters"][
+                    "file"
+                ]
             )
-            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["file"]
+            readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["load_parameters"][
+                "file"
+            ]
         else:
             readout_probe_table = readout_probe_designer.generate_readout_probe_table(
-                readout_probe_parameters=readout_probe_parameters["readout_probe_table"],
+                readout_probe_parameters=readout_probe_parameters["readout_probe_table"][
+                    "generate_parameters"
+                ],
                 codebook_parameters=readout_probe_parameters["codebook"],
                 write_intermediate_steps=self.write_intermediate_steps,
             )
@@ -522,18 +528,18 @@ class MerfishProbeDesigner:
 
         if primer_parameters["reverse_primer"]["source"] == "load":
             reverse_primer_sequence = primer_designer.load_reverse_primer(
-                sequence=primer_parameters["reverse_primer"]["sequence"]
+                sequence=primer_parameters["reverse_primer"]["load_parameters"]["sequence"]
             )
         else:
             reverse_primer_sequence = primer_designer.generate_reverse_primer()
 
         if primer_parameters["forward_primer"]["source"] == "load":
             forward_primer_sequence = primer_designer.load_forward_primer(
-                sequence=primer_parameters["forward_primer"]["sequence"]
+                sequence=primer_parameters["forward_primer"]["load_parameters"]["sequence"]
             )
         else:
             forward_primer_sequence = primer_designer.generate_forward_primer(
-                parameters=primer_parameters["forward_primer"],
+                parameters=primer_parameters["forward_primer"]["generate_parameters"],
                 reverse_primer_sequence=reverse_primer_sequence,
                 file_fasta_hybridization_probes_database=file_fasta_hybridization_probes_database,
                 write_intermediate_steps=self.write_intermediate_steps,
@@ -1338,7 +1344,7 @@ class ReadoutProbeDesigner:
             return barcode
 
         n_bits = codebook_parameters["n_bits"]
-        min_hamming_dist = codebook_parameters["min_hamming_dist"]
+        min_hamming_dist = codebook_parameters["generate_parameters"]["min_hamming_dist"]
         hamming_weight = codebook_parameters["hamming_weight"]
 
         n_regions = len(region_ids)
@@ -1988,7 +1994,7 @@ class PrimerDesigner:
         """
         raise FeatureNotImplementedError(
             "Generation of the reverse primer is not yet implemented. "
-            "Please provide a reverse_primer.sequence parameter and set reverse_primer.source to 'load'."
+            "Please provide a reverse_primer.load_parameters.sequence parameter and set reverse_primer.source to 'load'."
         )
 
     def load_forward_primer(self, sequence: str) -> str:
@@ -2534,69 +2540,49 @@ def _preprocess_config(config_validated: MerfishProbeDesignerConfig) -> dict[str
     # Readout probes only carry specificity filters and Tm settings when they are
     # generated rather than loaded.
     if config["readout_probes"]["readout_probe_table"]["source"] == "generate":
-        config["readout_probes"]["readout_probe_table"]["specificity_filters"]["specificity_blastn_filter"][
+        readout_probe_table_cfg = config["readout_probes"]["readout_probe_table"]["generate_parameters"]
+        readout_probe_table_cfg["specificity_filters"]["specificity_blastn_filter"][
             "files_fasta_reference_database"
         ] = config["required_parameters"]["reference_genome"]
 
-        config["readout_probes"]["readout_probe_table"]["Tm_parameters"]["Tm_NN_parameters"] = (
-            preprocess_tm_parameters(
-                config["readout_probes"]["readout_probe_table"]["Tm_parameters"]["Tm_NN_parameters"]
-            )
-        )
+        tm_parameters = readout_probe_table_cfg["Tm_parameters"]
+        tm_parameters["Tm_NN_parameters"] = preprocess_tm_parameters(tm_parameters["Tm_NN_parameters"])
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config["readout_probes"]["readout_probe_table"]["Tm_parameters"][correction]
+            correction_cfg = tm_parameters[correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-        config["readout_probes"]["readout_probe_table"]["probe_set_selection"]["Tm_parameters"] = config[
-            "readout_probes"
-        ]["readout_probe_table"]["Tm_parameters"]["Tm_NN_parameters"]
-        config["readout_probes"]["readout_probe_table"]["probe_set_selection"][
+        probe_set_selection_cfg = readout_probe_table_cfg["probe_set_selection"]
+        probe_set_selection_cfg["Tm_parameters"] = tm_parameters["Tm_NN_parameters"]
+        probe_set_selection_cfg["Tm_chem_correction_parameters"] = tm_parameters[
             "Tm_chem_correction_parameters"
-        ] = config["readout_probes"]["readout_probe_table"]["Tm_parameters"][
-            "Tm_chem_correction_parameters"
-        ][
-            "parameters"
-        ]
-        config["readout_probes"]["readout_probe_table"]["probe_set_selection"][
+        ]["parameters"]
+        probe_set_selection_cfg["Tm_salt_correction_parameters"] = tm_parameters[
             "Tm_salt_correction_parameters"
-        ] = config["readout_probes"]["readout_probe_table"]["Tm_parameters"][
-            "Tm_salt_correction_parameters"
-        ][
-            "parameters"
-        ]
+        ]["parameters"]
 
     # Same for the forward primer when it is generated rather than loaded.
     if config["primers"]["forward_primer"]["source"] == "generate":
-        config["primers"]["forward_primer"]["specificity_filters"]["specificity_blastn_filter"][
+        forward_primer_cfg = config["primers"]["forward_primer"]["generate_parameters"]
+        forward_primer_cfg["specificity_filters"]["specificity_blastn_filter"][
             "files_fasta_reference_database"
         ] = config["required_parameters"]["reference_genome"]
 
-        config["primers"]["forward_primer"]["Tm_parameters"]["Tm_NN_parameters"] = preprocess_tm_parameters(
-            config["primers"]["forward_primer"]["Tm_parameters"]["Tm_NN_parameters"]
-        )
+        tm_parameters = forward_primer_cfg["Tm_parameters"]
+        tm_parameters["Tm_NN_parameters"] = preprocess_tm_parameters(tm_parameters["Tm_NN_parameters"])
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config["primers"]["forward_primer"]["Tm_parameters"][correction]
+            correction_cfg = tm_parameters[correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-        primer_Tm_parameters = config["primers"]["forward_primer"]["Tm_parameters"]["Tm_NN_parameters"]
-        primer_Tm_chem_correction_parameters = config["primers"]["forward_primer"]["Tm_parameters"][
-            "Tm_chem_correction_parameters"
-        ]["parameters"]
-        primer_Tm_salt_correction_parameters = config["primers"]["forward_primer"]["Tm_parameters"][
-            "Tm_salt_correction_parameters"
-        ]["parameters"]
-
-        config["primers"]["forward_primer"]["property_filters"]["Tm_filter"][
-            "Tm_parameters"
-        ] = primer_Tm_parameters
-        config["primers"]["forward_primer"]["property_filters"]["Tm_filter"][
-            "Tm_chem_correction_parameters"
-        ] = primer_Tm_chem_correction_parameters
-        config["primers"]["forward_primer"]["property_filters"]["Tm_filter"][
-            "Tm_salt_correction_parameters"
-        ] = primer_Tm_salt_correction_parameters
+        tm_filter_cfg = forward_primer_cfg["property_filters"]["Tm_filter"]
+        tm_filter_cfg["Tm_parameters"] = tm_parameters["Tm_NN_parameters"]
+        tm_filter_cfg["Tm_chem_correction_parameters"] = tm_parameters["Tm_chem_correction_parameters"][
+            "parameters"
+        ]
+        tm_filter_cfg["Tm_salt_correction_parameters"] = tm_parameters["Tm_salt_correction_parameters"][
+            "parameters"
+        ]
 
     file_region_ids = config["target_probes"]["oligo_generation"]["file_region_ids"]
     if file_region_ids is None:

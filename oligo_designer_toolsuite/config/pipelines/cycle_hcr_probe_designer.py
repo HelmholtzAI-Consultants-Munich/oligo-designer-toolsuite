@@ -151,18 +151,24 @@ class TargetProbes(BaseModel):
 ############################################
 
 # The codebook supports both source="load" and source="generate" for CycleHCR. `extra="ignore"`
-# lets the shipped YAML carry both `file` and `min_hamming_distance` under `codebook`.
+# lets the shipped YAML carry `load_parameters` under `codebook` when source="generate".
 # The readout probe table only supports source="load" (generate_readout_probe_table raises
 # FeatureNotImplementedError), so `source` is modelled as Literal["load"] to reject "generate".
+
+
+class CycleHcrCodebookLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file: str = Field(
+        description="Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene. An example file can be found at: data/functional_oligos/cycle_hcr_codebook.tsv; codebook file."
+    )
 
 
 class CycleHcrCodebookLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["load"]
-    file: str = Field(
-        description="Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene. An example file can be found at: data/functional_oligos/cycle_hcr_codebook.tsv; codebook file."
-    )
+    load_parameters: CycleHcrCodebookLoadArguments
 
 
 class CycleHcrCodebookGenerate(BaseModel):
@@ -177,13 +183,19 @@ CycleHcrCodebook = Annotated[
 ]
 
 
+class CycleHcrReadoutProbeTableLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file: str = Field(
+        description="Path to the readout probe table (csv/tsv) with columns 'channel', 'readout_probe_id_L', 'readout_probe_sequence_L', 'readout_probe_id_R', and 'readout_probe_sequence_R'. Bit handling depends on codebook.source: when codebook.source = 'load' the file MUST also contain a 'bit' column whose values match the codebook columns (the user is responsible for that mapping); when codebook.source = 'generate' any 'bit' column is deleted and bits are reassigned so channels alternate, then same-row L/R pairs, then mixed L/R combinations."
+    )
+
+
 class CycleHcrReadoutProbeTable(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: Literal["load"]
-    file: str = Field(
-        description="Path to the readout probe table (csv/tsv) with columns 'channel', 'readout_probe_id_L', 'readout_probe_sequence_L', 'readout_probe_id_R', and 'readout_probe_sequence_R'. Bit handling depends on codebook.source: when codebook.source = 'load' the file MUST also contain a 'bit' column whose values match the codebook columns (the user is responsible for that mapping); when codebook.source = 'generate' any 'bit' column is deleted and bits are reassigned so channels alternate, then same-row L/R pairs, then mixed L/R combinations."
-    )
+    load_parameters: CycleHcrReadoutProbeTableLoadArguments
 
 
 class ReadoutProbes(BaseModel):
@@ -201,11 +213,17 @@ class ReadoutProbes(BaseModel):
 # FeatureNotImplementedError), so `source` is modelled as Literal["load"] to reject "generate".
 
 
+class PrimerLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sequence: DRNAT
+
+
 class CycleHcrPrimer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: Literal["load"]
-    sequence: DRNAT
+    load_parameters: PrimerLoadArguments
 
 
 class Primers(BaseModel):
@@ -240,7 +258,7 @@ class HybridizationProbes(BaseModel):
 # The front end builds its form from this, so `general` stays out of it.
 class CycleHcrProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    schema_version: Literal[2] = Field(description=SCHEMA_VERSION_DESC)
+    schema_version: Literal[3] = Field(description=SCHEMA_VERSION_DESC)
     target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers

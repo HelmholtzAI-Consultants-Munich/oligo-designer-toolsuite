@@ -88,22 +88,22 @@ target_probes:
   Tm_parameters:
     Tm_NN_parameters:
       # --- set by Gandin et al. ---
-      nn_table: "DNA_NN3"     
-      saltcorr: 0             
-      Na: 1000               
+      nn_table: "DNA_NN3"
+      saltcorr: 0
+      Na: 1000
       # --- not set by the paper; schema requires a value, these are Biopython defaults ---
-      imm_table: "DNA_IMM1"   
-      de_table: "DNA_DE1"     
-      dnac1: 25               
+      imm_table: "DNA_IMM1"
+      de_table: "DNA_DE1"
+      dnac1: 25
       dnac2: 25
       K: 0
       Tris: 0
       Mg: 0
       dNTPs: 0
     Tm_chem_correction_parameters:
-      enabled: false          
+      enabled: false
     Tm_salt_correction_parameters:
-      enabled: false         
+      enabled: false
 
 ##### READOUT PROBES PARAMETERS #####
 # All following parameters are default parameters taken from Gandin et al. (2025)
@@ -111,10 +111,12 @@ target_probes:
 readout_probes:
   codebook:
     source: "generate"
-    file:
+    load_parameters:
+      file:
   readout_probe_table:
     source: "load"
-    file: "data/functional_oligos/cycle_hcr_readout_probes_gandin.tsv"
+    load_parameters:
+      file: "data/functional_oligos/cycle_hcr_readout_probes_gandin.tsv"
 
 ##### PRIMERS PARAMETERS #####
 # All following parameters are default parameters taken from Gandin et al. (2025)
@@ -122,10 +124,12 @@ readout_probes:
 primers:
   forward_primer:
     source: "load"
-    sequence: "TAATACGACTCACTATAGCGTCATC"
+    load_parameters:
+      sequence: "TAATACGACTCACTATAGCGTCATC"
   reverse_primer:
     source: "load"
-    sequence: "CGACACCGAACGTGCGACAA"
+    load_parameters:
+      sequence: "CGACACCGAACGTGCGACAA"
 
 ##### HYBRIDIZATION PROBES PARAMETERS #####
 # All following parameters are default parameters taken from Gandin et al. (2025)
@@ -138,7 +142,7 @@ hybridization_probes:
 ### EXECUTION PARAMETERS ###
 ############################
 
-schema_version: 2
+schema_version: 3
 
 # TODO: add metadata to pydantic model
 #metadata:

@@ -151,13 +151,19 @@ class TargetProbes(BaseModel):
 ############################################
 
 
+class HcrCodebookLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file: str = Field(
+        description="Path to the codebook file: columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
+    )
+
+
 class HcrCodebookLoad(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: Literal["load"]
-    file: str = Field(
-        description="Path to the codebook file: columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
-    )
+    load_parameters: HcrCodebookLoadArguments
 
 
 class HcrCodebookGenerate(BaseModel):
@@ -169,13 +175,19 @@ class HcrCodebookGenerate(BaseModel):
 HcrCodebook = Annotated[HcrCodebookLoad | HcrCodebookGenerate, Field(discriminator="source")]
 
 
+class HcrInitiatorTableLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file: str = Field(
+        description="Path to the bit-indexed initiator table (csv/tsv) with columns 'bit', 'initiator_L_sequence', and 'initiator_R_sequence'."
+    )
+
+
 class HcrInitiatorTableLoad(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: Literal["load"]
-    file: str = Field(
-        description="Path to the bit-indexed initiator table (csv/tsv) with columns 'bit', 'initiator_L_sequence', and 'initiator_R_sequence'."
-    )
+    load_parameters: HcrInitiatorTableLoadArguments
 
 
 class HcrInitiatorTableGenerate(BaseModel):
@@ -217,7 +229,7 @@ class HybridizationProbes(BaseModel):
 # The front end builds its form from this, so `general` stays out of it.
 class HcrProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    schema_version: Literal[2] = Field(description=SCHEMA_VERSION_DESC)
+    schema_version: Literal[3] = Field(description=SCHEMA_VERSION_DESC)
     target_probes: TargetProbes
     initiator_probes: InitiatorProbes
     hybridization_probes: HybridizationProbes

@@ -121,8 +121,9 @@ class TargetProbes(BaseModel):
 ############################################
 
 # The codebook and readout-probe table support both source="load" and
-# source="generate", modelled as discriminated unions on `source`. Both use
-# extra="ignore" so the shipped YAML validates in either branch.
+# source="generate", modelled as discriminated unions on `source`. Source-specific
+# settings live under `load_parameters` / `generate_parameters`. The outer models use
+# extra="ignore" so the shipped YAML can carry both blocks and validates in either branch.
 
 
 class SeqfishPlusCodebookBase(BaseModel):
@@ -142,11 +143,17 @@ class SeqfishPlusCodebookBase(BaseModel):
     )
 
 
+class SeqfishPlusCodebookLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file: str = Field(
+        description="Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
+    )
+
+
 class SeqfishPlusCodebookLoad(SeqfishPlusCodebookBase):
     source: Literal["load"]
-    file: str = Field(
-        description="Only used when source = load. Path to the codebook file (csv/tsv): columns = 'bits', rows = 'gene_name'; entries are 0/1 bit-encodings for each gene."
-    )
+    load_parameters: SeqfishPlusCodebookLoadArguments
 
 
 class SeqfishPlusCodebookGenerate(SeqfishPlusCodebookBase):
@@ -161,13 +168,19 @@ SeqfishPlusCodebook = Annotated[
 ]
 
 
+class SeqfishPlusReadoutProbeTableLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file: str = Field(
+        description="Path to the bit-indexed readout probe table (csv/tsv) with columns 'barcode_round', 'pseudocolor', 'channel', and 'readout_probe_sequence'."
+    )
+
+
 class SeqfishPlusReadoutProbeTableLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["load"]
-    file: str = Field(
-        description="Only used when source = load. Path to the bit-indexed readout probe table (csv/tsv) with columns 'barcode_round', 'pseudocolor', 'channel', and 'readout_probe_sequence'."
-    )
+    load_parameters: SeqfishPlusReadoutProbeTableLoadArguments
 
 
 class SeqfishPlusReadoutProbeOligoGeneration(BaseModel):
@@ -200,10 +213,9 @@ class SeqfishPlusReadoutProbeSpecificityFilter(BaseModel):
     cross_hybridization_blastn_filter: CrossHybridizationBlastnFilterConfig
 
 
-class SeqfishPlusReadoutProbeTableGenerate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+class SeqfishPlusReadoutProbeTableGenerateArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    source: Literal["generate"]
     oligo_generation: SeqfishPlusReadoutProbeOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
     property_filters: SeqfishPlusReadoutProbePropertyFilter = Field(
         description=PROPERTY_FILTERS_DESC,
@@ -213,6 +225,13 @@ class SeqfishPlusReadoutProbeTableGenerate(BaseModel):
         description=SPECIFICITY_FILTERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
+
+
+class SeqfishPlusReadoutProbeTableGenerate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    source: Literal["generate"]
+    generate_parameters: SeqfishPlusReadoutProbeTableGenerateArguments
 
 
 SeqfishPlusReadoutProbeTable = Annotated[
@@ -236,15 +255,22 @@ class ReadoutProbes(BaseModel):
 
 # The forward primer supports source="load" (provide a sequence) and
 # source="generate" (design one), modelled as a discriminated union on `source`
-# with extra="ignore". The reverse primer only supports source="load"
+# with extra="ignore"; source-specific settings live under `load_parameters` /
+# `generate_parameters`. The reverse primer only supports source="load"
 # (generate_reverse_primer raises FeatureNotImplementedError).
+
+
+class PrimerLoadArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sequence: DRNAT
 
 
 class SeqfishPlusForwardPrimerLoad(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source: Literal["load"]
-    sequence: DRNAT = Field(description="Only used when source = load.")
+    load_parameters: PrimerLoadArguments
 
 
 class SeqfishPlusForwardPrimerOligoGeneration(BaseModel):
@@ -290,10 +316,9 @@ class SeqfishPlusForwardPrimerTmParameters(BaseModel):
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
 
-class SeqfishPlusForwardPrimerGenerate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+class SeqfishPlusForwardPrimerGenerateArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    source: Literal["generate"]
     oligo_generation: SeqfishPlusForwardPrimerOligoGeneration = Field(json_schema_extra={"x-collapsed": True})
     property_filters: SeqfishPlusForwardPrimerPropertyFilter = Field(
         description=PROPERTY_FILTERS_DESC,
@@ -309,6 +334,13 @@ class SeqfishPlusForwardPrimerGenerate(BaseModel):
     )
 
 
+class SeqfishPlusForwardPrimerGenerate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    source: Literal["generate"]
+    generate_parameters: SeqfishPlusForwardPrimerGenerateArguments
+
+
 SeqfishPlusForwardPrimer = Annotated[
     # use this order so that react-jsonschema-forms in ODT-Cloud selects the first
     # model as a default when no defaults are specified (as is currently the case)
@@ -321,8 +353,8 @@ class SeqfishPlusReversePrimer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: Literal["load"]
-    sequence: DRNAT = Field(
-        description="Reverse complement of 20 nt T7 promoter sequence. Only used when source = load.",
+    load_parameters: PrimerLoadArguments = Field(
+        description="The default sequence is the reverse complement of 20 nt T7 promoter sequence.",
     )
 
 
@@ -341,7 +373,7 @@ class Primers(BaseModel):
 # The front end builds its form from this, so `general` stays out of it.
 class SeqfishPlusProbeDesignerConfigBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    schema_version: Literal[2] = Field(description=SCHEMA_VERSION_DESC)
+    schema_version: Literal[3] = Field(description=SCHEMA_VERSION_DESC)
     target_probes: TargetProbes
     readout_probes: ReadoutProbes
     primers: Primers
