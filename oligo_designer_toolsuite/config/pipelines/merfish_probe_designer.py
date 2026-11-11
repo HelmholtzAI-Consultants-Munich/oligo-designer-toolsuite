@@ -19,13 +19,14 @@ from oligo_designer_toolsuite.config._general_models import (
     REQUIRED_PARAMETERS_DESC,
     REVERSE_PRIMER_DESC,
     SCHEMA_VERSION_DESC,
-    SHARED_PARAMETERS_DESC,
     SPECIFICITY_FILTERS_DESC,
+    TM_PARAMETERS_DESC,
     BaseProbabilities,
     General,
+    ProtocolMetadata,
     RequiredParameters,
     TmChemCorrectionParameters,
-    TmParameters,
+    TmNNParameters,
     TmSaltCorrectionParameters,
 )
 from oligo_designer_toolsuite.config._oligo_scoring import (
@@ -113,10 +114,10 @@ class TargetProbeProbeSetSelection(BaseModel):
     isoform_consensus_score: IsoformConsensusScore
 
 
-class TargetProbeShared(BaseModel):
+class TargetProbeTmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters
+    Tm_NN_parameters: TmNNParameters
     Tm_chem_correction_parameters: TmChemCorrectionParameters
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
@@ -128,7 +129,7 @@ class TargetProbes(BaseModel):
     property_filters: TargetProbePropertyFilter = Field(description=PROPERTY_FILTERS_DESC)
     specificity_filters: TargetProbeSpecificityFilter = Field(description=SPECIFICITY_FILTERS_DESC)
     probe_set_selection: TargetProbeProbeSetSelection = Field(description=PROBE_SET_SELECTION_DESC)
-    shared_parameters: TargetProbeShared = Field(description=SHARED_PARAMETERS_DESC)
+    Tm_parameters: TargetProbeTmParameters = Field(description=TM_PARAMETERS_DESC)
 
 
 ############################################
@@ -227,10 +228,10 @@ class MerfishReadoutProbeSetSelection(BaseModel):
     homogeneous_properties_weights: HomogeneousPropertiesWeightsT
 
 
-class MerfishReadoutProbesShared(BaseModel):
+class MerfishReadoutProbesTmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters
+    Tm_NN_parameters: TmNNParameters
     Tm_chem_correction_parameters: TmChemCorrectionParameters
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
@@ -256,8 +257,8 @@ class MerfishReadoutProbeTableGenerate(BaseModel):
         description=PROBE_SET_SELECTION_DESC,
         json_schema_extra={"x-collapsed": True},
     )
-    shared_parameters: MerfishReadoutProbesShared = Field(
-        description=SHARED_PARAMETERS_DESC,
+    Tm_parameters: MerfishReadoutProbesTmParameters = Field(
+        description=TM_PARAMETERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
 
@@ -329,10 +330,10 @@ class MerfishForwardPrimerSpecificityFilter(BaseModel):
     hybridization_probes_blastn_filter: HybridizationProbesBlastnFilterConfig
 
 
-class MerfishForwardPrimerShared(BaseModel):
+class MerfishForwardPrimerTmParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Tm_parameters: TmParameters
+    Tm_NN_parameters: TmNNParameters
     Tm_chem_correction_parameters: TmChemCorrectionParameters
     Tm_salt_correction_parameters: TmSaltCorrectionParameters
 
@@ -352,8 +353,8 @@ class MerfishForwardPrimerGenerate(BaseModel):
         description=SPECIFICITY_FILTERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
-    shared_parameters: MerfishForwardPrimerShared = Field(
-        description=SHARED_PARAMETERS_DESC,
+    Tm_parameters: MerfishForwardPrimerTmParameters = Field(
+        description=TM_PARAMETERS_DESC,
         json_schema_extra={"x-collapsed": True},
     )
 
@@ -398,5 +399,6 @@ class MerfishProbeDesignerConfigBase(BaseModel):
 
 class MerfishProbeDesignerConfig(MerfishProbeDesignerConfigBase):
     general: General
+    metadata: ProtocolMetadata
 
     required_parameters: RequiredParameters = Field(description=REQUIRED_PARAMETERS_DESC)
