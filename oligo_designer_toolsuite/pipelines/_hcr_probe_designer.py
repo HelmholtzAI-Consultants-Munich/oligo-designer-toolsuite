@@ -1131,8 +1131,7 @@ class TargetProbeDesigner:
         """
         isoform_consensus_scorer = IsoformConsensusScorer(score_weight=isoform_consensus_score["weight"])
         oligos_scoring = OligoScoring(scorers=[isoform_consensus_scorer])
-        # ascending=False: higher aggregate (isoform) scores win.
-        set_scoring = AverageSetScoring(ascending=False)
+        set_scoring = AverageSetScoring(ascending=True)
 
         base_log_parameters({"Set Selection": "Independent Sets"})
         oligoset_generator = IndependentSetsOligoSelection(
@@ -1411,19 +1410,19 @@ def _preprocess_config(config_validated: HcrProbeDesignerConfig) -> dict[str, An
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes"]:
-        config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-            config[section]["global_parameters"]["Tm_parameters"]
+        config[section]["Tm_parameters"]["Tm_NN_parameters"] = preprocess_tm_parameters(
+            config[section]["Tm_parameters"]["Tm_NN_parameters"]
         )
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config[section]["global_parameters"][correction]
+            correction_cfg = config[section]["Tm_parameters"][correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["Tm_parameters"]["Tm_NN_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["Tm_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["Tm_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 

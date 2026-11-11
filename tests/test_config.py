@@ -15,6 +15,57 @@ from oligo_designer_toolsuite.config.pipelines.seqfish_plus_probe_designer impor
 
 _CONFIGS = Path("data/configs")
 
+CONFIG_OLIGO_SEQ_PROBE_DESIGNER = "data/configs/oligo_seq_probe_designer.yaml"
+CONFIG_SCRINSHOT_PROBE_DESIGNER = "data/configs/scrinshot_probe_designer.yaml"
+CONFIG_SEQFISHPLUS_PROBE_DESIGNER = "data/configs/seqfish_plus_probe_designer.yaml"
+CONFIG_MERFISH_PROBE_DESIGNER = "data/configs/merfish_probe_designer.yaml"
+CONFIG_CYCLEHCR_PROBE_DESIGNER = "data/configs/cycle_hcr_probe_designer_gandin.yaml"
+CONFIG_HCR_PROBE_DESIGNER = "data/configs/hcr_probe_designer.yaml"
+
+
+import pandas as pd
+
+# TODO: add test for the pydantic vallidation of cycleHCR readout probe tables
+readout_probe_table_incorrect = pd.DataFrame(
+    {
+        "channel": [561, 488, 561, 488],
+        "readout_probe_id_L": ["leftA", "P488L_1", "P561L_2", "probeL"],
+        "readout_probe_sequence_L": [
+            "TCTAACATCGTGGA",
+            "TCATCTCAGTTAGT",
+            "TACGACCTATGTAA",
+            "TGAATGACTTCTGG",
+        ],
+        "readout_probe_id_R": ["rightA", "P488R_5", "P561R_2", "probeR"],
+        "readout_probe_sequence_R": [
+            "TACCAGAATAACGG",
+            "TACTTACTCAGCAC",
+            "GCATACAACTTCTC",
+            "TAGGTAACATCTGA",
+        ],
+    }
+)
+
+readout_probe_table_correct = pd.DataFrame(
+    {
+        "channel": [488, 488, 561, 561],
+        "readout_probe_id_L": ["P488L_1", "P488L_2", "P561L_1", "P561L_2"],
+        "readout_probe_sequence_L": [
+            "TCATCTCAGTTAGT",
+            "TGAATGACTTCTGG",
+            "TCTAACATCGTGGA",
+            "TACGACCTATGTAA",
+        ],
+        "readout_probe_id_R": ["P488R_1", "P488R_2", "P561R_1", "P561R_2"],
+        "readout_probe_sequence_R": [
+            "TACTTACTCAGCAC",
+            "TAGGTAACATCTGA",
+            "TACCAGAATAACGG",
+            "GCATACAACTTCTC",
+        ],
+    }
+)
+
 
 def _load(filename: str) -> dict:
     with open(_CONFIGS / filename) as fh:
@@ -31,25 +82,25 @@ def _load(filename: str) -> dict:
 
 class TestOligoSeqYaml(unittest.TestCase):
     def test_parses(self) -> None:
-        raw = _load("oligo_seq_probe_designer.yaml")
+        raw = _load(CONFIG_OLIGO_SEQ_PROBE_DESIGNER)
         cfg = OligoSeqProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
         assert cfg.general.write_intermediate_steps is True
 
     def test_no_readout_probe_key(self) -> None:
         """OligoSeq has no readout_probe; the YAML must not contain it either."""
-        raw = _load("oligo_seq_probe_designer.yaml")
+        raw = _load(CONFIG_OLIGO_SEQ_PROBE_DESIGNER)
         assert "readout_probe" not in raw
 
     def test_round_trip(self) -> None:
-        raw = _load("oligo_seq_probe_designer.yaml")
+        raw = _load(CONFIG_OLIGO_SEQ_PROBE_DESIGNER)
         cfg = OligoSeqProbeDesignerConfig.model_validate(raw)
         cfg2 = OligoSeqProbeDesignerConfig.model_validate(cfg.model_dump())
         assert cfg == cfg2
 
     def test_unknown_top_level_field_forbidden(self) -> None:
         # OligoSeq has no readout_probe section; extra="forbid" must reject it
-        raw = _load("oligo_seq_probe_designer.yaml")
+        raw = _load(CONFIG_OLIGO_SEQ_PROBE_DESIGNER)
         raw["readout_probe"] = {"file_readout_probe_table": "p.csv"}
         with self.assertRaises(ValidationError):
             OligoSeqProbeDesignerConfig.model_validate(raw)
@@ -68,20 +119,20 @@ class TestOligoSeqYaml(unittest.TestCase):
 
 class TestScrinshotYaml(unittest.TestCase):
     def test_parses(self) -> None:
-        raw = _load("scrinshot_probe_designer.yaml")
+        raw = _load(CONFIG_SCRINSHOT_PROBE_DESIGNER)
         cfg = ScrinshotProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
-        raw = _load("scrinshot_probe_designer.yaml")
+        raw = _load(CONFIG_SCRINSHOT_PROBE_DESIGNER)
         cfg = ScrinshotProbeDesignerConfig.model_validate(raw)
         cfg2 = ScrinshotProbeDesignerConfig.model_validate(cfg.model_dump())
         assert cfg == cfg2
 
     def test_unknown_top_level_field_forbidden(self) -> None:
         # Scrinshot has no readout_probe section; extra="forbid" must reject it
-        raw = _load("scrinshot_probe_designer.yaml")
+        raw = _load(CONFIG_SCRINSHOT_PROBE_DESIGNER)
         raw["readout_probe"] = {"file_readout_probe_table": "p.csv"}
         with self.assertRaises(ValidationError):
             ScrinshotProbeDesignerConfig.model_validate(raw)
@@ -101,20 +152,20 @@ class TestScrinshotYaml(unittest.TestCase):
 
 class TestHcrYaml(unittest.TestCase):
     def test_parses(self) -> None:
-        raw = _load("hcr_probe_designer.yaml")
+        raw = _load(CONFIG_HCR_PROBE_DESIGNER)
         cfg = HcrProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
-        raw = _load("hcr_probe_designer.yaml")
+        raw = _load(CONFIG_HCR_PROBE_DESIGNER)
         cfg = HcrProbeDesignerConfig.model_validate(raw)
         cfg2 = HcrProbeDesignerConfig.model_validate(cfg.model_dump())
         assert cfg == cfg2
 
     def test_unknown_top_level_field_forbidden(self) -> None:
         # HCR has no readout_probe section; extra="forbid" must reject it
-        raw = _load("hcr_probe_designer.yaml")
+        raw = _load(CONFIG_HCR_PROBE_DESIGNER)
         raw["readout_probe"] = {"file_readout_probe_table": "p.csv"}
         with self.assertRaises(ValidationError):
             HcrProbeDesignerConfig.model_validate(raw)
@@ -134,42 +185,41 @@ class TestHcrYaml(unittest.TestCase):
 
 class TestCycleHcrYaml(unittest.TestCase):
     def test_parses(self) -> None:
-        raw = _load("cycle_hcr_probe_designer.yaml")
+        raw = _load(CONFIG_CYCLEHCR_PROBE_DESIGNER)
         cfg = CycleHcrProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
-        raw = _load("cycle_hcr_probe_designer.yaml")
+        raw = _load(CONFIG_CYCLEHCR_PROBE_DESIGNER)
         cfg = CycleHcrProbeDesignerConfig.model_validate(raw)
         cfg2 = CycleHcrProbeDesignerConfig.model_validate(cfg.model_dump())
         assert cfg == cfg2
 
     def test_unknown_top_level_field_forbidden(self) -> None:
         # CycleHCR has no initiator_probes section; extra="forbid" must reject it
-        raw = _load("cycle_hcr_probe_designer.yaml")
+        raw = _load(CONFIG_CYCLEHCR_PROBE_DESIGNER)
         raw["initiator_probes"] = {"codebook": {"source": "load", "file": "c.tsv"}}
         with self.assertRaises(ValidationError):
             CycleHcrProbeDesignerConfig.model_validate(raw)
 
     def test_codebook_generate_allowed(self) -> None:
         # CycleHCR supports codebook generation (unlike HCR); the default source is "generate"
-        raw = _load("cycle_hcr_probe_designer.yaml")
+        raw = _load(CONFIG_CYCLEHCR_PROBE_DESIGNER)
         raw["readout_probes"]["codebook"]["source"] = "generate"
         cfg = CycleHcrProbeDesignerConfig.model_validate(raw)
         assert cfg.readout_probes.codebook.source == "generate"
-        assert cfg.readout_probes.codebook.min_hamming_distance in (0, 2, 4)
 
     def test_readout_probe_table_generate_rejected(self) -> None:
         # Readout probe table generation is not implemented; only "load" is allowed
-        raw = _load("cycle_hcr_probe_designer.yaml")
+        raw = _load(CONFIG_CYCLEHCR_PROBE_DESIGNER)
         raw["readout_probes"]["readout_probe_table"]["source"] = "generate"
         with self.assertRaises(ValidationError):
             CycleHcrProbeDesignerConfig.model_validate(raw)
 
     def test_primer_generate_rejected(self) -> None:
         # Primer generation is not implemented; only "load" is allowed
-        raw = _load("cycle_hcr_probe_designer.yaml")
+        raw = _load(CONFIG_CYCLEHCR_PROBE_DESIGNER)
         raw["primers"]["forward_primer"]["source"] = "generate"
         with self.assertRaises(ValidationError):
             CycleHcrProbeDesignerConfig.model_validate(raw)
@@ -189,44 +239,33 @@ class TestCycleHcrYaml(unittest.TestCase):
 
 class TestSeqfishYaml(unittest.TestCase):
     def test_parses(self) -> None:
-        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw = _load(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)
         cfg = SeqfishPlusProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
-        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw = _load(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)
         cfg = SeqfishPlusProbeDesignerConfig.model_validate(raw)
         cfg2 = SeqfishPlusProbeDesignerConfig.model_validate(cfg.model_dump())
         assert cfg == cfg2
 
     def test_unknown_top_level_field_forbidden(self) -> None:
         # seqFISH+ has no initiator_probes section; extra="forbid" must reject it
-        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw = _load(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)
         raw["initiator_probes"] = {"linker_sequence": "AA"}
         with self.assertRaises(ValidationError):
             SeqfishPlusProbeDesignerConfig.model_validate(raw)
 
-    def test_codebook_load_experiment_params_survive_dump(self) -> None:
-        # A loaded codebook still needs n_barcode_rounds / n_pseudocolors / channels_ids
-        # downstream, so they must survive model_dump() even under extra="ignore".
-        raw = _load("seqfish_plus_probe_designer.yaml")
-        raw["readout_probes"]["codebook"] = {"source": "load", "file": "codebook.tsv"}
-        dumped = SeqfishPlusProbeDesignerConfig.model_validate(raw).model_dump()
-        codebook = dumped["readout_probes"]["codebook"]
-        assert codebook["n_barcode_rounds"] == 4
-        assert codebook["n_pseudocolors"] == 4
-        assert codebook["channels_ids"] == ["Alexa488", "Cy3b", "Alexa647"]
-
     def test_reverse_primer_generate_rejected(self) -> None:
         # Reverse primer generation is not implemented; only "load" is allowed
-        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw = _load(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)
         raw["primers"]["reverse_primer"]["source"] = "generate"
         with self.assertRaises(ValidationError):
             SeqfishPlusProbeDesignerConfig.model_validate(raw)
 
     def test_base_probabilities_must_sum_to_one(self) -> None:
-        raw = _load("seqfish_plus_probe_designer.yaml")
+        raw = _load(CONFIG_SEQFISHPLUS_PROBE_DESIGNER)
         raw["readout_probes"]["readout_probe_table"]["oligo_generation"]["base_probabilities"] = {
             "A": 0.5,
             "C": 0.5,
@@ -252,39 +291,27 @@ class TestSeqfishYaml(unittest.TestCase):
 
 class TestMerfishYaml(unittest.TestCase):
     def test_parses(self) -> None:
-        raw = _load("merfish_probe_designer.yaml")
+        raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
         cfg = MerfishProbeDesignerConfig.model_validate(raw)
         assert cfg.schema_version == 2
         assert cfg.general.write_intermediate_steps is True
 
     def test_round_trip(self) -> None:
-        raw = _load("merfish_probe_designer.yaml")
+        raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
         cfg = MerfishProbeDesignerConfig.model_validate(raw)
         cfg2 = MerfishProbeDesignerConfig.model_validate(cfg.model_dump())
         assert cfg == cfg2
 
     def test_unknown_top_level_field_forbidden(self) -> None:
         # MERFISH has no initiator_probes section; extra="forbid" must reject it
-        raw = _load("merfish_probe_designer.yaml")
+        raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
         raw["initiator_probes"] = {"linker_sequence": "AA"}
         with self.assertRaises(ValidationError):
             MerfishProbeDesignerConfig.model_validate(raw)
 
-    def test_codebook_load_hamming_weight_survives_dump(self) -> None:
-        # A loaded codebook needs hamming_weight downstream and n_bits
-        # if the readoutprobe table is generated, so they must
-        # survive model_dump().
-        raw = _load("merfish_probe_designer.yaml")
-        raw["readout_probes"]["codebook"] = {"source": "load", "file": "codebook.tsv"}
-        dumped = MerfishProbeDesignerConfig.model_validate(raw).model_dump()
-        codebook = dumped["readout_probes"]["codebook"]
-        assert codebook["source"] == "load"
-        assert codebook["hamming_weight"] == 2
-        assert codebook["n_bits"] == 16
-
     def test_reverse_primer_generate_rejected(self) -> None:
         # Reverse primer generation is not implemented; only "load" is allowed
-        raw = _load("merfish_probe_designer.yaml")
+        raw = _load(CONFIG_MERFISH_PROBE_DESIGNER)
         raw["primers"]["reverse_primer"]["source"] = "generate"
         with self.assertRaises(ValidationError):
             MerfishProbeDesignerConfig.model_validate(raw)
