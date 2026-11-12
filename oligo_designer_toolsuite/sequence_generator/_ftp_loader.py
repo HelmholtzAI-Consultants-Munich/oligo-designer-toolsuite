@@ -2,6 +2,19 @@
 # imports
 ############################################
 
+from collections.abc import Callable
+from collections import defaultdict
+import subprocess
+from dataclasses import dataclass
+from typing import override
+from abc import abstractmethod
+from typing import ClassVar
+from abc import ABC
+import hashlib
+import datetime
+from email.utils import parsedate_to_datetime
+from email.utils import formatdate
+import requests
 import gzip
 import itertools
 import os
@@ -22,8 +35,28 @@ from oligo_designer_toolsuite.utils import logger
 # FTP Classes
 ############################################
 
+@dataclass(frozen=True)
+class GenomicEntity:
+    """Genomic entity for use with genomic databases."""
 
-class BaseFtpLoader:
+    taxon: str | None
+    species: str
+    release: str
+
+
+@dataclass(frozen=True)
+class GenomicEntityContext:
+    """Context about a genomic entity for genomic databases."""
+
+    annotation_remote_dir: str
+    annotation_remote_filename: str
+    sequence_remote_dir: str
+    sequence_remote_filename: str
+    annotation_release: str
+    genome_assembly: str
+    accession: str | None  # Ensembl doesn't use GCF/GCA accessions in filenames
+
+class BaseGenomicDatabase(ABC):
     """
     A base class for downloading files via FTP and postprocessing the downloaded files.
 
@@ -31,43 +64,403 @@ class BaseFtpLoader:
     :type dir_output: str
     """
 
-    def __init__(self, dir_output: str) -> None:
-        """Constructor for the BaseFtpLoader class."""
-        self.dir_output = dir_output
+    """The base class of genomic databases, which serve as our interfaces with public services like Ensembl and NCBI.
 
-    def _download(self, ftp_link: str, ftp_directory: str, file_name: str) -> str:
+    Notes:
+        This is a base class and should not be used directly.
+        For details on the caching procedure see 'Caching FASTA Files' in the developer documentation.
+
+    Class Variables:
+        name {str} -- Name of the genomic database.
+        host {str} -- Hostname of the genomic database service.
+        base_path {str} -- Path to the subdirectory containing genomic files.
+        checksums_filename {str} -- Filename of checksum files for this database.
+    """
+
+    name: ClassVar[str]
+    host: ClassVar[str]
+    base_path: ClassVar[str]
+    checksums_filename: ClassVar[str]
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        allowlist: set[str] | None = None,
+        download_chunk_size: int = 10 * 1024 * 1024
+    ) -> None:
+        """Initializes the genomic database.
+
+        Keyword Arguments:
+            cache_dir {pathlib.Path | None} -- Path to the local directory to use as a download cache. (default: {None})
+            allowlist {set[str] | None} -- Set of subdirectories. If provided, queries will be limited to these. (default: {None})
         """
-        Downloads a file from an FTP server.
+        self.cache_dir = cache_dir
+        self.allowlist = allowlist
+        self.DOWNLOAD_CHUNK_SIZE = download_chunk_size
 
-        :param ftp_link: The link to the FTP server.
-        :type ftp_link: str
-        :param ftp_directory: The directory on the FTP server where the file is located.
-        :type ftp_directory: str
-        :param file_name: The name of the file to download, can be a regex pattern.
-        :type file_name: str
-        :return: The path to the downloaded file.
-        :rtype: str
+    # ---- Directory Discovery ----
+    def _get_subdirs(self, ftp: FTP) -> list[str]:
+        """Retrieves a list of subdirectories at the current FTP cursor.
+
+        Notes:
+            This does not use ftplib.FTP.mlsd as Ensembl's FTP server does not support that option.
+
+        Arguments:
+            ftp {ftplib.FTP} -- Active FTP handler.
+
+        Returns:
+            list[str] -- list of subdirectories at the current FTP cursor.
         """
-        ftp = FTP(ftp_link)
-        ftp.login()  # login to ftp server
-        ftp.cwd(ftp_directory)  # move to directory
+        file_lines: list[str] = []
+        ftp.dir(file_lines.append)
 
-        files = ftp.nlst()
-        file_output = None
+        def parse_file_line(line: str) -> tuple[str, str]:
+            """Parses filename and file permissions from a line returned by ftplib.FTP.dir.
 
-        for file in files:
-            if re.match(file_name, file):
-                file_output = os.path.join(self.dir_output, file)
-                ftp.retrbinary("RETR " + file, open(file_output, "wb").write)
+            Arguments:
+                line {str} -- Line returned from ftplib.FTP.dir.
 
-        ftp.quit()
+            Returns:
+                tuple[str, str] -- (filename, file permissions).
+            """
+            perms, *_, filename = line.split(maxsplit=8)
+            # Normalize file permissions
+            perms = perms.lower()
+            # The filename might be a symbolic link (e.g. "current -> release-116")
+            # Split this to just get the link's name (e.g. "current")
+            filename = filename.split(maxsplit=1)[0]
+            return filename, perms
 
-        if file_output is None:
-            raise FileNotFoundError(f"File '{file_name}' not found on FTP server.")
+        def is_likely_directory(filename: str, perms: str) -> bool:
+            """Checks whether a file is likely a directory.
 
-        return file_output
+            Notes:
+                Returns True for symbolic links if is does not have specific file extensions.
+                As this is a very inaccurate heuristic, the function may misclassify symbolic links.
 
-    def _decompress_gzip(self, file_gzip: str) -> str:
+            Arguments:
+                filename {str} -- Filename to check.
+                perms {str} -- Permissions of the file.
+
+            Returns:
+                bool -- Whether the file is likely a directory.
+            """
+            non_dir_extensions = {"txt", "pdf", "gz"}
+            _, _, file_suffix = filename.rpartition(".")
+
+            return perms[0] == "d" or (perms[0] == "l" and file_suffix not in non_dir_extensions)
+
+        dirs = [
+            filename
+            for filename, perms in map(parse_file_line, file_lines)
+            if is_likely_directory(filename, perms)
+        ]
+
+        return sorted(dirs)  # sort for determinism
+
+    def _filter_allowlist(self, dirs: list[str]) -> list[str]:
+        """Filters the directories according to the allowlist.
+
+        Arguments:
+            dirs {list[str]} -- list of directories.
+
+        Returns:
+            list[str] -- list of all directories that are also in the allowlist.
+        """
+        if self.allowlist is not None:
+            return sorted(list(set(dirs).intersection(self.allowlist)))  # sort for determinism
+        return dirs
+
+    def _get_subdirectories(self, dirs: list[str], ftp: FTP) -> dict[str, list[str]]:
+        """Retrieves all subdirectories of all directories in dirs.
+
+        Arguments:
+            dirs {list[str]} -- list of directories.
+            ftp {ftplib.FTP} -- Active FTP handler.
+
+        Returns:
+            dict[str, list[str]] -- dict mapping directories from dirs to their respective subdirectories.
+        """
+        subdirectories_by_directory: dict[str, list[str]] = {}
+        for dir in dirs:
+            _ = ftp.cwd(f"{self.base_path}/{dir}")
+            subdirectories_by_directory[dir] = self._get_subdirs(ftp)
+        return subdirectories_by_directory
+
+    @abstractmethod
+    def _build_species_mapping(self, species_dirs: dict[str, list[str]]) -> dict[str, list[str]]:
+        """Builds the result of fetch_species_mapping.
+
+        Arguments:
+            species_dirs {dict[str, list[str]]} -- dict mapping directories their respective subdirectories.
+
+        Notes:
+            This is an abstract method and must be implemented by subclasses.
+
+        Returns:
+            dict[str, list[str]] -- dict mapping genomic categories to specific variants.
+        """
+        pass
+
+    def fetch_species_mapping(self) -> dict[str, list[str]]:
+        """Fetches all available species for this genomic database.
+
+        Notes:
+            For Ensembl, this returns a dict mapping species to their available annotation releases.
+            For NCBI, this returns a dict mapping taxons to their respective species.
+            This may be confusing and is unfortunate from a maintainability standpoint.
+
+        Returns:
+            dict[str, list[str]] -- dict mapping genomic categories to specific variants.
+        """
+        with FTP(self.host) as ftp:
+            ftp.login()
+            ftp.cwd(self.base_path)
+            top_dirs = self._get_subdirs(ftp)
+            top_dirs = self._filter_allowlist(top_dirs)
+            species_dirs = self._get_subdirectories(top_dirs, ftp)
+        return self._build_species_mapping(species_dirs)
+
+    # ---- Genomic Asset Fetching ----
+    def _download(self, dir: str, remote_filename: str) -> Path:
+        """Downloads a remote file if it changed.
+
+        Arguments:
+            dir {str} -- Remote directory where the to-be-dowloaded file is located.
+            remote_filename {str} -- Name of the remote file to download.
+
+        Notes:
+            This function avoids redownloads if the file is already present and up-to-date.
+            Since compressed files are deleted after extraction, this does not suffice as
+            a caching solution for genomic downloads - see _download_and_process for that.
+
+        Raises:
+            RuntimeError: No caching directory set for genomic downloads.
+
+        Returns:
+            pathlib.Path -- Local file path of the downloaded resource.
+        """
+        url = f"https://{self.host}/{dir}/{remote_filename}"
+        url_hash = hashlib.md5(url.encode()).hexdigest()
+
+        # Build local file path to save file at
+        if self.cache_dir is None:
+            raise RuntimeError("No caching directory set for genomic downloads.")
+        file_path = (self.cache_dir / self.name / f"{url_hash}-{remote_filename}").resolve()
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        headers: dict[str, str] = {}
+
+        # Check whether the file was downloaded before
+        if file_path.exists():
+            mtime = file_path.stat().st_mtime
+            headers["if-modified-since"] = formatdate(mtime, usegmt=True)
+
+        with requests.get(url, headers=headers, stream=True) as response:
+            response.raise_for_status()
+
+            if response.status_code == requests.codes.not_modified:
+                # Local file is already up-to-date
+                return file_path
+
+            if response.status_code == requests.codes.ok:
+                # Download the remote file
+                with open(file_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=self.DOWNLOAD_CHUNK_SIZE):
+                        f.write(chunk)
+
+                # Set local modification time to remote's 'last-modified' to use for future requests
+                if last_modified := response.headers.get("last-modified"):
+                    new_mtime = parsedate_to_datetime(last_modified).timestamp()
+                    os.utime(file_path, times=(datetime.datetime.now().timestamp(), new_mtime))
+        return file_path
+
+    @abstractmethod
+    def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:
+        """Checks whether a file maches the expected checksum.
+
+        Arguments:
+            file_path {pathlib.Path} -- Path to a local file.
+            expected_checksum {str} -- Expected checksum of the file.
+
+        Notes:
+            This is an abstract method and must be implemented by subclasses.
+
+        Returns:
+            bool -- Whether the file matches the expected checksum.
+        """
+        pass
+
+    def _download_and_process(self, dir: str, remote_filename: str, expected_checksum: str | None) -> Path:
+        """Downloads a remote file and processes it as needed.
+
+        Arguments:
+            dir {str} -- Remote directory where the to-be-dowloaded file is located.
+            remote_filename {str} -- Name of the remote file to download.
+            expected_checksum {str | None} -- Expected checksum of the file.
+
+        Notes:
+            Processing includes optional verification of a checksum and extraction of .gz files.
+
+            This function is decorated with our file cache to serve as the level 2 cache.
+            Since expected_checksum is part of the caching key and the download of checksums
+            is not being cached, a redownload will occur if the checksum changes.
+
+        Raises:
+            RuntimeError: Checksum for provided file does not match.
+
+        Returns:
+            pathlib.Path -- Local file path of the downloaded resource.
+        """
+        file_path = self._download(dir, remote_filename)
+
+        # Verify checksum if provided. On mismatch, delete the cached file and retry the
+        # download once before giving up.
+        if expected_checksum is not None and not self._matches_checksum(file_path, expected_checksum):
+            file_path.unlink(missing_ok=True)
+            file_path = self._download(dir, remote_filename)
+            if not self._matches_checksum(file_path, expected_checksum):
+                raise RuntimeError(f"Checksum for {remote_filename} does not match.")
+
+        # Extract file if extension is .gz
+        if file_path.suffix == ".gz":
+            file_path = self._decompress_gzip(file_path)
+
+        return file_path
+
+    @abstractmethod
+    def _get_entity_context(self, entity: GenomicEntity) -> GenomicEntityContext:
+        """Retrieves context for a genomic entity.
+
+        Arguments:
+            entity {GenomicEntity} -- Genomic entity to get context for.
+
+        Notes:
+            This is an abstract method and must be implemented by subclasses.
+
+        Returns:
+            GenomicEntityContext -- Context for the requested entity.
+        """
+        pass
+
+    def _parse_checksum_line(self, line: str) -> tuple[str, str]:
+        """Parses a line of a checksums file.
+
+        Arguments:
+            line {str} -- Line of a checksums file.
+
+        Notes:
+            Expects checksum lines to start with a checksum and end in a filename with
+            an arbitrary amount of other data points inbetween, separated by whitespace.
+            If filenames start with "./", this prefix will be removed.
+
+            Subclasses may want to override this method for their specific checksums file format.
+
+        Raises:
+            ValueError: Parsing was unsuccessful.
+
+        Returns:
+            tuple[str, str] -- (filename, checksum).
+        """
+        checksum, *_, filename = line.strip().split()
+        filename = filename.removeprefix("./")
+        return filename, checksum
+
+    def _get_checksum_map(self, context: GenomicEntityContext) -> dict[str, str]:
+        """Returns map of filenames to their respective checksum.
+
+        Arguments:
+            context {GenomicEntityContext} -- Context for the requested entity.
+
+        Returns:
+            dict[str, str] -- dict mapping filenames to their respective checksum.
+        """
+        # Combined checksum map for annotation (GTF) and sequence (FASTA) files
+        filename_to_checksum_map: dict[str, str] = {}
+
+        # Use a set for both directories -> if they are equal, the checksums are only downloaded once
+        for dir in {context.annotation_remote_dir, context.sequence_remote_dir}:
+            # Always download without caching in case checksums changed
+            checksums_path = self._download(dir, self.checksums_filename)
+            with open(checksums_path) as checksums_file:
+                for line in checksums_file:
+                    try:
+                        filename, checksum = self._parse_checksum_line(line)
+                        filename_to_checksum_map[filename] = checksum
+                    except ValueError:
+                        pass
+
+        return filename_to_checksum_map
+
+    def _get_checksum(self, checksum_map: dict[str, str], filename: str) -> str:
+        """Gets a checksum from a checksum map and handles key errors.
+
+        Arguments:
+            checksum_map {dict[str, str]} -- dict mapping filenames to their respective checksum.
+            filename {str} -- Name of the file to look up in the checksum map.
+
+        Notes:
+            This method's purpose is to map the usual KeyError to a custom RuntimeError
+            for easier downstream error catching and handling.
+
+        Raises:
+            RuntimeError: File not found in checksum map.
+
+        Returns:
+            str -- Checksum of the specified file.
+        """
+        try:
+            return checksum_map[filename]
+        except KeyError as e:
+            raise RuntimeError(
+                f"Required file missing in {self.name}'s {self.checksums_filename}: {e}"
+            ) from e
+
+
+    def fetch_genomic_entity(self, entity: GenomicEntity) -> dict[str, str]:
+        """Fetches genomic entity from cache or downloads it if not cached yet.
+
+        Arguments:
+            entity {GenomicEntity} -- Genomic entity to fetch.
+
+        Raises:
+            RuntimeError: No cache_dir was set.
+            RuntimeError: A resource cannot be located.
+            RuntimeError: A download fails.
+            RuntimeError: A checksum cannot be verified.
+
+        Returns:
+            dict[str, str] -- dict containing the file paths and the resolved release and assembly.
+        """
+
+        # Obtain GenomicEntityContext (file names, location, etc.) using subclass-specific implementation
+        context = self._get_entity_context(entity)
+        # Obtain filename-to-checksum map
+        checksum_map = self._get_checksum_map(context)
+
+        # --- Annotation (GTF) ---
+        # Verify checksum is known
+        annotation_checksum = self._get_checksum(checksum_map, context.annotation_remote_filename)
+        # Download from source, verify checksum of compressed file and extract if necessary
+        annotation_file = self._download_and_process(
+            context.annotation_remote_dir, context.annotation_remote_filename, annotation_checksum
+        )
+
+        # --- Sequence (FASTA) ---
+        # Verify checksum is known
+        sequence_checksum = self._get_checksum(checksum_map, context.sequence_remote_filename)
+        # Download from source, verify checksum of compressed file and extract if necessary
+        sequence_file = self._download_and_process(
+            context.sequence_remote_dir, context.sequence_remote_filename, sequence_checksum
+        )
+
+        return {
+            "annotation_file": str(annotation_file),
+            "sequence_file": str(sequence_file),
+            "annotation_release": context.annotation_release,
+            "genome_assembly": context.genome_assembly,
+        }
+
+    def _decompress_gzip(self, file_path: Path) -> Path:
         """
         Decompresses a .gz file and removes the original compressed file.
 
@@ -76,31 +469,17 @@ class BaseFtpLoader:
         :return: The path to the decompressed file.
         :rtype: str
         """
-        file_output = file_gzip.split(".gz")[0]
-        with gzip.open(file_gzip, "rb") as f_in:
-            with open(file_output, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        os.remove(file_gzip)
 
-        return file_output
+        extracted_file_path = file_path.with_suffix("")  # remove .gz extension
+        with gzip.open(file_path, "rb") as archive:
+            with open(extracted_file_path, "wb") as extract:
+                shutil.copyfileobj(archive, extract)
 
-    def _download_and_decompress(self, ftp_link: str, ftp_directory: str, file_name: str) -> str:
-        """
-        Downloads a file from an FTP server, decompresses it, and returns the path to the decompressed file.
+            # Delete compressed file
+            file_path.unlink()
+            file_path = extracted_file_path
 
-        :param ftp_link: The link to the FTP server.
-        :type ftp_link: str
-        :param ftp_directory: The directory on the FTP server where the file is located.
-        :type ftp_directory: str
-        :param file_name: The name of the file to download, can be a regex pattern.
-        :type file_name: str
-        :return: The path to the decompressed file.
-        :rtype: str
-        """
-        file_download = self._download(ftp_link, ftp_directory, file_name)
-        file_unzipped = self._decompress_gzip(file_download)
-
-        return file_unzipped
+        return file_path
 
     def _check_file_type(self, file_type: _TYPES_FILE) -> None:
         """
@@ -110,7 +489,9 @@ class BaseFtpLoader:
         :type file_type: _TYPES_FILE ["gff", "gtf", "fasta"]
         """
         options = get_args(_TYPES_FILE)
-        assert file_type in options, f"File type not supported! '{file_type}' is not in {options}."
+        assert file_type in options, (
+            f"File type not supported! '{file_type}' is not in {options}."
+        )
 
     def _check_sequence_nature_type(self, sequence_nature: _TYPES_FILE_SEQ) -> None:
         """
@@ -120,12 +501,31 @@ class BaseFtpLoader:
         :type sequence_nature: _TYPES_FILE_SEQ["dna", "ncrna"]
         """
         options = get_args(_TYPES_FILE_SEQ)
-        assert (
-            sequence_nature in options
-        ), f"Sequence nature type not supported! '{sequence_nature}' is not in {options}."
+        assert sequence_nature in options, (
+            f"Sequence nature type not supported! '{sequence_nature}' is not in {options}."
+        )
+
+    def _get_exact_filename(self, ftp_directory: str, ftp_filename: str) -> str:
+        ftp = FTP(self.host)
+        ftp.login()  # login to ftp server
+        ftp.cwd(ftp_directory)  # move to directory
+
+        files = ftp.nlst()
+        exact_file_name = None
+
+        for file in files:
+            if re.match(ftp_filename, file):
+                exact_file_name = file
+
+        ftp.quit()
+
+        if exact_file_name is None:
+            raise FileNotFoundError(f"File '{ftp_filename}' not found on FTP server.")
+        
+        return exact_file_name
 
 
-class FtpLoaderEnsembl(BaseFtpLoader):
+class EnsemblGenomicDatabase(BaseGenomicDatabase):
     """
     A class for downloading genomic data from the Ensembl FTP server.
 
@@ -140,10 +540,16 @@ class FtpLoaderEnsembl(BaseFtpLoader):
     :param annotation_release: The Ensembl annotation release version (e.g., '104').
     :type annotation_release: str
     """
+    """A genomic database to interface with Ensembl."""
+
+    name: ClassVar[str] = "ensembl"
+    host: ClassVar[str] = "ftp.ensembl.org"
+    base_path: ClassVar[str] = "/pub"
+    checksums_filename: ClassVar[str] = "CHECKSUMS"
 
     def __init__(self, dir_output: str, species: str, annotation_release: str) -> None:
         """Constructor for the FtpLoaderEnsembl class."""
-        super().__init__(dir_output)
+        super().__init__(Path(dir_output))
         self.species = species
         self.annotation_release = annotation_release
         self.assembly_name = ""
@@ -159,68 +565,170 @@ class FtpLoaderEnsembl(BaseFtpLoader):
             "fasta": "dna_sm.primary_assembly.fa.gz",  # soft-masked version of the genome
         }
 
-    def download_files(
-        self, file_type: _TYPES_FILE, sequence_nature: _TYPES_FILE_SEQ = "dna"
-    ) -> tuple[str, str, str]:
+    # ---- Directory Discovery ----
+    @override
+    def _get_subdirectories(self, dirs: list[str], ftp: FTP) -> dict[str, list[str]]:
+        """Retrieves all species for each release directory in dirs.
+
+        Arguments:
+            dirs {list[str]} -- list of release directories.
+            ftp {ftplib.FTP} -- Active FTP handler.
+
+        Returns:
+            dict[str, list[str]] -- dict mapping releases from dirs to their respective species.
         """
-        Downloads and decompresses genomic data files from the Ensembl FTP server.
+        lookup_dirs = [f"{dir}/fasta" for dir in dirs]
+        return super()._get_subdirectories(lookup_dirs, ftp)
 
-        :param file_type: The type of file to be downloaded.
-        :type file_type: _TYPES_FILE ["gff", "gtf", "fasta"]
-        :param sequence_nature: The nature of the sequence.
-        :type sequence_nature: _TYPES_FILE_SEQ["dna", "ncrna"]
-        :return: A tuple containing the path to the downloaded file, the annotation release version, and the assembly name.
-        :rtype: tuple[str, str, str]
+    @override
+    def _build_species_mapping(self, species_dirs: dict[str, list[str]]) -> dict[str, list[str]]:
+        """Builds the result of fetch_species_mapping.
+
+        Arguments:
+            species_dirs {list[str]} -- dict mapping release directories to their respective species.
+
+        Returns:
+            dict[str, list[str]] -- dict mapping species to their available annotation releases.
         """
-        self._check_file_type(file_type)
-        self._check_sequence_nature_type(sequence_nature)
 
-        ftp_directory, ftp_file = self._get_params(file_type, sequence_nature)
-        dowloaded_file = self._download_and_decompress(self.ftp_link, ftp_directory, ftp_file)
+        def format_release_name(release_name: str) -> str:
+            """Formats the release naming such that numeric releases are reduced to the plain number.
 
-        match = re.search("\\.([^\\.]*)\\.", Path(dowloaded_file).name)
-        if match is not None:
-            self.assembly_name = match.group().replace(".", "")
+            Arguments:
+                release_name {str} -- Name of the release to format.
 
-        return dowloaded_file, self.annotation_release, self.assembly_name
+            Returns:
+                str -- Formatted release name.
+            """
+            return release_name.removeprefix("release-").removesuffix("/fasta")
 
-    def _get_params(self, file_type: _TYPES_FILE, sequence_nature: _TYPES_FILE_SEQ) -> tuple[str, str]:
+        def reverse_list_dict(
+            original_dict: dict[str, list[str]], key_formatter: Callable[[str], str]
+        ) -> dict[str, list[str]]:
+            """Reverses a dict of lists such that each list element is mapped to a list of keys it's contained in.
+
+            Arguments:
+                original_dict {dict[str, list[str]]} -- dict of lists.
+                key_formatter {Callable[[str], str]} -- Function that formats keys before they are added to a result list.
+
+            Returns:
+                dict[str, list[str]] -- Reversed dict.
+            """
+            reversed_dict = defaultdict(list)
+            for key, value_list in original_dict.items():
+                for value in value_list:
+                    reversed_dict[value].append(key_formatter(key))
+            return dict(reversed_dict)
+
+        # Turn version->list-of-species map into species->list-of-versions map
+        return reverse_list_dict(species_dirs, format_release_name)
+
+    # ---- Genomic Asset Fetching ----
+    @override
+    def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:
+        """Checks whether a file maches the expected checksum from the CHECKSUMS file using the 'sum' command.
+
+        Arguments:
+            file_path {pathlib.Path} -- Path to a local file.
+            expected_checksum {str} -- Expected checksum of the file.
+
+        Notes:
+            The checksum type used is a 16-bit BSD checksum. There does not seem to be a
+            neater Python implementation for this than simply calling the `sum` command.
+
+        Returns:
+            bool -- Whether the file matches the expected checksum.
+        """
+        try:
+            result = subprocess.run(["sum", file_path], capture_output=True, check=True, text=True)
+            computed_checksum = result.stdout.split(maxsplit=1)[0]
+            return computed_checksum == expected_checksum
+        except subprocess.CalledProcessError:
+            return False
+
+    @override
+    def _get_entity_context(self, entity: GenomicEntity) -> GenomicEntityContext:
+        """Retrieves context for a genomic entity.
+
+        Arguments:
+            entity {GenomicEntity} -- Genomic entity to get context for.
+
+        Returns:
+            GenomicEntityContext -- Context for the requested entity.
+        """
+
+        # resolve current to actual release
+        annotation_release = self._get_annotation_release(entity.release)
+
+        # Resolve filenames, remote directories and assembly
+        sequence_remote_dir, sequence_remote_filename = self._get_fasta_params("dna")
+        annotation_remote_dir, annotation_remote_filename = self._get_gtf_or_gff_params()
+
+        genome_assembly = self._get_genome_assembly(annotation_remote_filename, sequence_remote_filename)
+
+        return GenomicEntityContext(
+            annotation_remote_dir,
+            annotation_remote_filename,
+            sequence_remote_dir,
+            sequence_remote_filename,
+            annotation_release,
+            genome_assembly,
+            accession=None,
+        )
+
+    def _get_annotation_release(self, annotation_release: str) -> str:
         """
         Constructs the FTP directory path and file name based on the file type and sequence nature.
 
-        :param file_type: The type of file to be downloaded.
-        :type file_type: _TYPES_FILE ["gff", "gtf", "fasta"]
-        :param sequence_nature: The nature of the sequence.
-        :type sequence_nature: _TYPES_FILE_SEQ["dna", "ncrna"]
-        :return: A tuple containing the FTP directory path and the file name.
-        :rtype: tuple[str, str]
+        :param annotation_release: The user set annotation release, which is either a number or 'current'
+        :type annotation_release: str
+        :return: The annotation release that can be downloaded from Ensembl.
+        :rtype: str
         """
-        Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-
         if self.annotation_release == "current":
-            file_version = self._download(self.ftp_link, "pub/", "VERSION")
+            file_version = self._download(self.ftp_link, "pub/VERSION",)
             with open(file_version, "r") as handle:
-                self.annotation_release = handle.readline().strip()
-            os.remove(file_version)
+                annotation_release =  handle.readline().strip()
+            os.remove(file_version) 
 
-        if file_type.casefold() == "fasta".casefold():
-            ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder[file_type]}/{self.species}/{sequence_nature}/"
-            if sequence_nature == "dna":
-                ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.file_type_ending[file_type]}"
-            else:
-                ftp_file = (
-                    f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{sequence_nature}.fa.gz"
-                )
+        return annotation_release
+    
+    def _get_fasta_params(self, sequence_nature: _TYPES_FILE_SEQ ) -> tuple[str, str]:
+        ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder['fasta']}/{self.species}/{sequence_nature}/"
+        if sequence_nature == "dna":
+            ftp_file =  f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.file_type_ending['fasta']}"
         else:
-            ftp_directory = (
-                f"pub/release-{self.annotation_release}/{self.file_type_folder[file_type]}/{self.species}/"
-            )
-            ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.annotation_release}.{self.file_type_ending[file_type]}"
+            ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{sequence_nature}.fa.gz"
 
-        return ftp_directory, ftp_file
+        return ftp_directory, self._get_exact_filename(ftp_directory, ftp_file)
+
+    def _get_gtf_or_gff_params(self) -> tuple[str,str]:
+        # TODO: how to handle missing file types here? Passthrough?
+        ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder['gtf']}/{self.species}/"
+        ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.annotation_release}.{self.file_type_ending['gtf']}"
+
+        return ftp_directory, self._get_exact_filename(ftp_directory, ftp_file)
+
+    def _parse_assembly_from_filename(self, file_name: str) -> str | None:
+        match = re.search("\\.([^\\.]*)\\.", file_name)
+        return match.group().replace(".", "") if match is not None else None
+    
+    def _get_genome_assembly(self, annotation_filename: str, sequence_filename: str) -> str:
+        # Try to parse assembly from annotation filename
+        # e.g. Homo_sapiens.GRCh38.116.gtf.gz -> GRCh38
+        # e.g. Acanthochromis_polyacanthus.ASM210954v1.116.gtf.gz -> ASM210954v1
+        assembly_from_annotation = self._parse_assembly_from_filename(annotation_filename)
+
+        # Try to parse assembly from sequence filename
+        # e.g. Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz -> GRCh38
+        # e.g. Acanthochromis_polyacanthus.ASM210954v1.dna.toplevel.fa.gz -> ASM210954v1
+        assembly_from_sequence = self._parse_assembly_from_filename(sequence_filename)
+
+        # Prefer assembly parsed from sequence; assembly parsed from annotation as fallback
+        return assembly_from_sequence or assembly_from_annotation or "unknown"
 
 
-class FtpLoaderNCBI(BaseFtpLoader):
+class FtpLoaderNCBI(BaseGenomicDatabase):
     """
     A class for downloading and processing genomic data files from the NCBI FTP server.
 
@@ -249,14 +757,26 @@ class FtpLoaderNCBI(BaseFtpLoader):
         "archaea": {"latest_assembly_versions", "reference"},
         "bacteria": {"latest_assembly_versions", "reference"},
         "fungi": {"latest_assembly_versions", "reference"},
-        "invertebrate": {"annotation_releases", "latest_assembly_versions", "reference"},
+        "invertebrate": {
+            "annotation_releases",
+            "latest_assembly_versions",
+            "reference",
+        },
         "metagenomes": {"latest_assembly_versions"},
         "plant": {"annotation_releases", "latest_assembly_versions", "reference"},
         "plants": {"annotation_releases", "latest_assembly_versions", "reference"},
         "protozoa": {"latest_assembly_versions", "reference"},
         "unknown": {"latest_assembly_versions"},
-        "vertebrate_mammalian": {"annotation_releases", "latest_assembly_versions", "reference"},
-        "vertebrate_other": {"annotation_releases", "latest_assembly_versions", "reference"},
+        "vertebrate_mammalian": {
+            "annotation_releases",
+            "latest_assembly_versions",
+            "reference",
+        },
+        "vertebrate_other": {
+            "annotation_releases",
+            "latest_assembly_versions",
+            "reference",
+        },
         "viral": {"latest_assembly_versions"},
     }
     UNSUPPORTED_TAXA: set[str] = {"mitochondrion", "plasmids", "plastid"}
@@ -285,7 +805,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
         assembly_name: str | None = None,
     ) -> None:
         """Constructor for the FtpLoaderNCBI class."""
-        super().__init__(dir_output)
+        super().__init__(Path(dir_output))
         self.mode = mode
         self.taxon = taxon
         self.species = species
@@ -293,7 +813,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
         self.annotation_release_from_ncbi = "no_annotation_info"
         self.assembly_source = assembly_source
         self.assembly_name = assembly_name if assembly_name is not None else ""
-        self.assembly_accession = refseq_assembly_accession if refseq_assembly_accession is not None else ""
+        self.assembly_accession = (
+            refseq_assembly_accession if refseq_assembly_accession is not None else ""
+        )
 
         self.ftp_link = "ftp.ncbi.nlm.nih.gov"
 
@@ -325,7 +847,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
         ftp_directory, ftp_file, ftp_file_chr_mapping = self._get_params(file_type)
 
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_file_chr_mapping)
-        dowloaded_file = self._download_and_decompress(self.ftp_link, ftp_directory, ftp_file)
+        dowloaded_file = self._download_and_decompress(
+            self.ftp_link, ftp_directory, ftp_file
+        )
 
         self.file_type_function[file_type](dowloaded_file, mapping)
 
@@ -368,7 +892,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
             self._resolve_annotation_metadata(ftp_directory)
 
         ftp_file = f"{self.assembly_accession}_{self.assembly_name}_{self.file_type_ending[file_type]}"
-        ftp_file_chr_mapping = f"{self.assembly_accession}_{self.assembly_name}_assembly_report.txt"
+        ftp_file_chr_mapping = (
+            f"{self.assembly_accession}_{self.assembly_name}_assembly_report.txt"
+        )
 
         return ftp_directory, ftp_file, ftp_file_chr_mapping
 
@@ -386,7 +912,10 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 raise ConfigurationError(
                     "In mode='assembly', both 'refseq_assembly_accession' and 'assembly_name' must be provided."
                 )
-            if any(param is not None for param in (self.taxon, self.species, self.annotation_release)):
+            if any(
+                param is not None
+                for param in (self.taxon, self.species, self.annotation_release)
+            ):
                 raise ConfigurationError(
                     "In mode='assembly', taxon/species/annotation_release must not be provided."
                 )
@@ -400,7 +929,11 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 raise ConfigurationError(
                     "In mode='species', refseq_assembly_accession/assembly_name must not be provided."
                 )
-            if self.taxon is None or self.species is None or self.annotation_release is None:
+            if (
+                self.taxon is None
+                or self.species is None
+                or self.annotation_release is None
+            ):
                 raise ConfigurationError(
                     "In mode='species', 'taxon', 'species', and 'annotation_release' must be provided."
                 )
@@ -412,7 +945,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
         if self.taxon is None:
             raise ConfigurationError("Taxon is not defined.")
         if self.taxon in self.UNSUPPORTED_TAXA:
-            raise ConfigurationError(f"Taxon '{self.taxon}' is not supported for automated NCBI downloads.")
+            raise ConfigurationError(
+                f"Taxon '{self.taxon}' is not supported for automated NCBI downloads."
+            )
         if self.taxon not in self.SUPPORTED_TAXA_SOURCES:
             supported_taxa = ", ".join(sorted(self.SUPPORTED_TAXA_SOURCES))
             raise ConfigurationError(
@@ -426,7 +961,10 @@ class FtpLoaderNCBI(BaseFtpLoader):
             )
 
         available_sources = self.SUPPORTED_TAXA_SOURCES[self.taxon]
-        if self.assembly_source != "auto" and self.assembly_source not in available_sources:
+        if (
+            self.assembly_source != "auto"
+            and self.assembly_source not in available_sources
+        ):
             supported_sources = ", ".join(sorted(available_sources))
             raise ConfigurationError(
                 f"assembly_source '{self.assembly_source}' is not available for taxon '{self.taxon}'. "
@@ -435,7 +973,10 @@ class FtpLoaderNCBI(BaseFtpLoader):
 
         if self.annotation_release != "current" and (
             self.assembly_source in {"latest_assembly_versions", "reference"}
-            or (self.assembly_source == "auto" and "annotation_releases" not in available_sources)
+            or (
+                self.assembly_source == "auto"
+                and "annotation_releases" not in available_sources
+            )
         ):
             raise ConfigurationError(
                 "A numeric annotation_release is only supported with assembly_source='annotation_releases'. "
@@ -508,7 +1049,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 f"Invalid RefSeq assembly accession '{self.assembly_accession}'. "
                 "Expected format like 'GCF_000001405.38'."
             )
-        chunks = [accession_number[i : i + 3] for i in range(0, len(accession_number), 3)]
+        chunks = [
+            accession_number[i : i + 3] for i in range(0, len(accession_number), 3)
+        ]
         grouped_number_path = "/".join(chunks)
         return (
             f"genomes/all/{accession_prefix}/{grouped_number_path}/"
@@ -571,12 +1114,16 @@ class FtpLoaderNCBI(BaseFtpLoader):
         this is not found, keep the default value ("no_annotation_info").
         """
         try:
-            file_readme = self._download(self.ftp_link, ftp_directory, r"README_(?!patch_release\.txt$).*")
+            file_readme = self._download(
+                self.ftp_link, ftp_directory, r"README_(?!patch_release\.txt$).*"
+            )
             with open(file_readme, "r") as handle:
                 for line in handle:
                     if line.startswith("ANNOTATION RELEASE NAME:"):
                         annotation_release_name = line.split(":", 1)[1].strip()
-                        self.annotation_release_from_ncbi = annotation_release_name.replace(" ", "_")
+                        self.annotation_release_from_ncbi = (
+                            annotation_release_name.replace(" ", "_")
+                        )
                         break
             os.remove(file_readme)
         except FileNotFoundError:
@@ -603,7 +1150,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
         ftp.quit()
         return entries
 
-    def _download_mapping_chr_names(self, ftp_directory: str, ftp_file_chr_mapping: str) -> dict:
+    def _download_mapping_chr_names(
+        self, ftp_directory: str, ftp_file_chr_mapping: str
+    ) -> dict:
         """
         Downloads and processes the chromosome name mapping file from the NCBI FTP server.
 
@@ -617,22 +1166,32 @@ class FtpLoaderNCBI(BaseFtpLoader):
         :return: A dictionary mapping RefSeq accession numbers to chromosome or scaffold names.
         :rtype: dict
         """
-        file_mapping = self._download(self.ftp_link, ftp_directory, ftp_file_chr_mapping)
+        file_mapping = self._download(
+            self.ftp_link, ftp_directory, ftp_file_chr_mapping
+        )
 
         # skip comment lines but keep last comment line for header
         with open(file_mapping) as handle:
-            *_comments, names = itertools.takewhile(lambda line: line.startswith("#"), handle)
+            *_comments, names = itertools.takewhile(
+                lambda line: line.startswith("#"), handle
+            )
             names_list = names[1:].split()
 
-        assembly_report = pd.read_table(file_mapping, names=names_list, sep="\t", comment="#")
+        assembly_report = pd.read_table(
+            file_mapping, names=names_list, sep="\t", comment="#"
+        )
 
-        mapping_chromosome_df = assembly_report[assembly_report["Sequence-Role"] == "assembled-molecule"]
+        mapping_chromosome_df = assembly_report[
+            assembly_report["Sequence-Role"] == "assembled-molecule"
+        ]
         mapping_chromosome = pd.Series(
             mapping_chromosome_df["Sequence-Name"].values,
             index=mapping_chromosome_df["RefSeq-Accn"],
         ).to_dict()
 
-        mapping_scaffolds_df = assembly_report[assembly_report["Sequence-Role"] != "assembled-molecule"]
+        mapping_scaffolds_df = assembly_report[
+            assembly_report["Sequence-Role"] != "assembled-molecule"
+        ]
         mapping_scaffolds = pd.Series(
             mapping_scaffolds_df["GenBank-Accn"].values,
             index=mapping_scaffolds_df["RefSeq-Accn"],
@@ -660,7 +1219,9 @@ class FtpLoaderNCBI(BaseFtpLoader):
         # write comment lines to new file
         with open(file_tmp, "w") as handle_out:
             with open(ftp_file) as handle_in:
-                *_comments, names = itertools.takewhile(lambda line: line.startswith("#"), handle_in)
+                *_comments, names = itertools.takewhile(
+                    lambda line: line.startswith("#"), handle_in
+                )
                 handle_out.write(names)
 
             # read gtf file without comment lines
@@ -708,11 +1269,15 @@ class FtpLoaderNCBI(BaseFtpLoader):
                 if accession_number in mapping:
                     chromosome_sequnece.id = mapping[accession_number]
                     chromosome_sequnece.name = mapping[accession_number]
-                    chromosome_sequnece.description = chromosome_sequnece.description.replace(
-                        accession_number, mapping[accession_number]
+                    chromosome_sequnece.description = (
+                        chromosome_sequnece.description.replace(
+                            accession_number, mapping[accession_number]
+                        )
                     )
                     SeqIO.write(chromosome_sequnece, handle, "fasta")
                 else:
-                    logger.warning("No mapping for accession number: {}".format(accession_number))
+                    logger.warning(
+                        "No mapping for accession number: {}".format(accession_number)
+                    )
 
         os.replace(file_tmp, ftp_file)
