@@ -5,11 +5,17 @@
 ##### REQUIRED PARAMETERS #####
 # The following parameters need to be adjusted to the target genes you want to design probes for.
 
+#: Parameters required for target probe generation. The reference genome is reused for all specificity filters
+#: for all probes.
 required_parameters:
+  #: Path to file listing gene/region IDs to design probes for. Empty = use all genes from the FASTA.
   targets: "data/genes/custom_3.txt"
+  #: FASTA file(s) from which the target oligo sequences are generated. Use genomic_region_generator for
+  #: custom regions.
   target_genome:
       - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
       - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
+  #: FASTA file(s) used as reference for all specificity filters (e.g. with BLAST).
   reference_genome:
       - "data/genomic_regions/exon_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
       - "data/genomic_regions/exon_exon_junction_annotation_source-NCBI_species-Homo_sapiens_annotation_release-110_genome_assemly-GRCh38.fna"
@@ -18,156 +24,296 @@ required_parameters:
 # All following parameters are default parameters taken from TBD
 
 target_probes:
+  #: Parameters that determine length and spacing of the probes.
   oligo_generation:
+    #: Minimum allowed oligo length (bases)
     probe_length_min: 40
+    #: Maximum allowed oligo length (bases).
     probe_length_max: 45
 
+  #: Parameters that determine properties of the padlock arms.
   padlock_arms_properties:
+    #: Minimum length (bases) for each padlock arm.
     length_min: 10
+    #: Maximum Tm difference (°C) between the two padlock arms.
     Tm_dif_max: 2
+    #: Minimum melting temperature (°C). Oligos below this are rejected.
     Tm_min: 50
+    #: Maximum melting temperature (°C). Oligos above this are rejected.
     Tm_max: 60
 
+  #: Parameters for filters that depend on properties of the filters (e.g., melting temperature).
   property_filters:
+    #: Require oligos to be supported by a minimum fraction of gene transcripts.
     isoform_consensus_filter:
+      #: Turn this filter on or off.
       enabled: true
+      #: Minimum isoform consensus (%). Oligos must be covered by at least this fraction of a gene's
+      #: transcripts.
       isoform_consensus: 50
 
+    #: Exclude oligos overlapping hard-masked (e.g. N) regions in the reference.
     hard_masked_sequences_filter:
+      #: Turn this filter on or off.
       enabled: true
 
+    #: Exclude oligos overlapping soft-masked (lowercase) regions in the reference.
     soft_masked_sequences_filter:
+      #: Turn this filter on or off.
       enabled: true
 
+    #: Exclude oligos containing long homopolymeric runs (e.g. AAAAA).
     homopolymeric_runs_filter:
+      #: Turn this filter on or off.
       enabled: true
+      #: Minimum run length per base to count as homopolymeric (any base not listed is unrestricted). Oligos
+      #: with longer runs are rejected.
+      #:   A: Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.
+      #:   T: Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.
+      #:   C: Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.
+      #:   G: Minimum run length per base to count as homopolymeric. Oligos with longer runs are rejected.
       homopolymeric_base_n: {"A": 5, "T": 5, "C": 5, "G": 5}
 
+    #: Enforce GC content within a specified range.
     GC_content_filter:
+      #: Turn this filter on or off.
       enabled: true
+      #: Minimum GC content (%). Oligos below this are rejected.
       GC_content_min: 40
+      #: Maximum GC content (%). Oligos above this are rejected.
       GC_content_max: 60
 
+    #: Enforce melting temperature (Tm) within a range (additionally uses Tm parameters).
     Tm_filter:
+      #: Turn this filter on or off.
       enabled: true
+      #: Minimum melting temperature (°C). Oligos below this are rejected.
       Tm_min: 65
+      #: Maximum melting temperature (°C). Oligos above this are rejected.
       Tm_max: 75
 
+  #: Parameters for filters that test the specificity of the probes.
   specificity_filters:
+    #: Ensure oligo specificity against a reference database (BLAST-based).
     specificity_blastn_filter:
       enabled: true
+      #: Size of the seed region around the ligation site for BLASTN seed-region filtering. If > 0, seed-based
+      #: filtering is applied around the ligation site, removing all probeswhere BLASTN hits cover the
+      #: junction region regardless of the coverage threshold. If 0, full-length specificity filtering is
+      #: performed instead.
       ligation_region_size: 5
+      #: BLAST options for the specificity search.
+      #:   -task: Supported tasks.
+      #:   -perc_identity: Percent identity cutoff.
+      #:   -strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus.
+      #:   -word_size: Length of initial exact match.
+      #:   -dust: Filter query sequence with dust.
+      #:   -soft_masking: Apply filtering locations as soft masks (i.e., only for finding initial matches).
+      #:   -max_target_seqs: Maximum number of aligned sequences to keep.
+      #:   -max_hsps: Set maximum number of HSPs per subject sequence to save for each query.
       search_parameters: {"-task": "blastn", "-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10, "-max_hsps": 1000}
+      #: Hit criteria (either coverage % or minimum alignment length). Hits satisfying these lead to oligo
+      #: rejection.
       hit_parameters:
         hit_criterion: "coverage"
+        #: Coverage in %, alternatively, min_alignment_length can be used
         value: 50
 
+    #: Remove oligos that may cross-hybridize to other probes (BLAST-based).
     cross_hybridization_blastn_filter:
       enabled: true
+      #: BLAST options for the cross-hybridization search.
+      #:   -task: Supported tasks.
+      #:   -perc_identity: Percent identity cutoff.
+      #:   -strand: Query strand(s) to search against database/subject. Choice of both, minus, or plus.
+      #:   -word_size: Length of initial exact match.
+      #:   -dust: Filter query sequence with dust.
+      #:   -soft_masking: Apply filtering locations as soft masks (i.e., only for finding initial matches).
+      #:   -max_target_seqs: Maximum number of aligned sequences to keep.
       search_parameters: {"-task": "blastn", "-perc_identity": 80, "-strand": "minus", "-word_size": 10, "-dust": "no", "-soft_masking": "false", "-max_target_seqs": 10}
+      #: Hit criteria. Hits satisfying these lead to oligo rejection.
       hit_parameters:
         hit_criterion: "coverage"
+        #: Coverage in %, alternatively, min_alignment_length can be used
         value: 80
 
+  #: Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification).
   probe_set_selection:
     independent_set_selection:
+      #: Number of probe sets to generate per gene.
       n_sets: 1
+      #: Minimum set size. Genes that cannot form a set of at least this size are reported as insufficient.
       set_size_min: 3
+      #: Preferred (optimal) number of oligos per set.
       set_size_opt: 5
+      #: Required spacing: negative = allow overlap (bases), 0 = adjacent OK, positive = minimum gap (bases).
       distance_between_probes: 0
+      #: Number of randomized graph attempts used to diversify set selection.
       n_attempts_graph: 20
+      #: Maximum cliques enumerated per graph attempt.
       n_attempts_clique_enum: 70
+      #: Fraction of oligos removed from the graph in each attempt to increase set diversity.
       diversification_fraction: 0.1
+      #: Target maximum Jaccard similarity between selected sets; lower = more distinct sets.
       jaccard_opt: 0.5
+      #: Step size for relaxing Jaccard threshold when too few sets are found.
       jaccard_step: 0.1
     isoform_consensus_score:
+      #: Weight for isoform coverage in the set-selection scoring function.
       weight: 2
     GC_content_score:
+      #: Weight for GC content in the set-selection scoring function.
       weight: 1
+      #: Minimum GC content (%). Oligos below this are rejected.
       GC_content_min: 40
+      #: Target (optimal) GC content (%) for scoring.
       GC_content_opt: 50
+      #: Maximum GC content (%). Oligos above this are rejected.
       GC_content_max: 60
     Tm_score:
+      #: Weight for Tm in the set-selection scoring function.
       weight: 1
+      #: Minimum melting temperature (°C). Oligos below this are rejected.
       Tm_min: 65
+      #: Target (optimal) Tm (°C) for scoring.
       Tm_opt: 70
+      #: Maximum melting temperature (°C). Oligos above this are rejected.
       Tm_max: 75
 
+  #: Parameters for melting temperature computation that are reused for different filtering and scoring
+  #: methods.
   Tm_parameters:
     Tm_NN_parameters:
+      #: Thermodynamic NN values.
       nn_table: "DNA_NN3"
+      #: Thermodynamic values for terminal mismatches.
       tmm_table: "DNA_TMM1"
+      #: Thermodynamic values for internal mismatches, may include insosine mismatches.
       imm_table: "DNA_IMM1"
+      #: Thermodynamic values for dangling ends.
       de_table: "DNA_DE1"
+      #: Concentration of the higher concentrated strand [nM].
       dnac1: 50
+      #: Concentration of the lower concentrated strand [nM].
       dnac2: 0
+      #: Salt correction method, see Bio.SeqUtils.MeltingTemp.salt_correction.
       saltcorr: 7
+      #: Concentration of the ions [mM].
       Na: 39
+      #: Concentration of the ions [mM].
       K: 75
+      #: Concentration of the ions [mM].
       Tris: 20
+      #: Concentration of the ions [mM].
       Mg: 10
+      #: Concentration of the ions [mM].
       dNTPs: 0
     Tm_chem_correction_parameters:
+      #: Should chem correction be used in the calculation of the melting temperature?
       enabled: true
       parameters:
+        #: Percent DMSO
         DMSO: 0
+        #: How much Tm should decrease per percent DMSO
         DMSOfactor: 0.75
+        #: Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2).
         fmd: 20
+        #: How much Tm should decrease per percent formamide
         fmdfactor: 0.65
+        #: Tm = Tm - factor(%formamide) (Default); Tm = Tm + (0.453(f(GC)) - 2.88) x [formamide]
         fmdmethod: 1
+        #: GC content in percent.
         GC: null
     Tm_salt_correction_parameters:
+      #: Should salt correction be used in the calculation of the melting temperature?
       enabled: false
 
 ##### DETECTION OLIGO PARAMETERS #####
 # All following parameters are default parameters taken from TBD
 
 detection_oligo:
+  #: Parameters that determine length and melting temperature of the probes.
   oligo_generation:
+    #: Minimal number of thymines (T) in the detection oligo (required for UNG cleavage after U-substitution).
     min_thymines: 2
+    #: Minimum allowed oligo length (bases)
     oligo_length_min: 15
+    #: Maximum allowed oligo length (bases).
     oligo_length_max: 40
+    #: Preferred minimum distance (bases) between consecutive uracils.
     U_distance: 5
+    #: Target (optimal) Tm (°C) for scoring.
     Tm_opt: 56
 
+  #: Parameters for melting temperature computation that are reused for different filtering and scoring
+  #: methods.
   Tm_parameters:
     Tm_NN_parameters:
+      #: Thermodynamic NN values.
       nn_table: "DNA_NN3"
+      #: Thermodynamic values for terminal mismatches.
       tmm_table: "DNA_TMM1"
+      #: Thermodynamic values for internal mismatches, may include insosine mismatches.
       imm_table: "DNA_IMM1"
+      #: Thermodynamic values for dangling ends.
       de_table: "DNA_DE1"
+      #: Concentration of the higher concentrated strand [nM].
       dnac1: 50
+      #: Concentration of the lower concentrated strand [nM].
       dnac2: 0
+      #: Salt correction method, see Bio.SeqUtils.MeltingTemp.salt_correction.
       saltcorr: 7
+      #: Concentration of the ions [mM].
       Na: 39
+      #: Concentration of the ions [mM].
       K: 0
+      #: Concentration of the ions [mM].
       Tris: 0
+      #: Concentration of the ions [mM].
       Mg: 0
+      #: Concentration of the ions [mM].
       dNTPs: 0
     Tm_chem_correction_parameters:
+      #: Should chem correction be used in the calculation of the melting temperature?
       enabled: true
       parameters:
+        #: Percent DMSO
         DMSO: 0
+        #: How much Tm should decrease per percent DMSO
         DMSOfactor: 0.75
+        #: Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2).
         fmd: 30
+        #: How much Tm should decrease per percent formamide
         fmdfactor: 0.65
+        #: Tm = Tm - factor(%formamide) (Default); Tm = Tm + (0.453(f(GC)) - 2.88) x [formamide]
         fmdmethod: 1
+        #: GC content in percent.
         GC: null
     Tm_salt_correction_parameters:
+      #: Should salt correction be used in the calculation of the melting temperature?
       enabled: false
 
 ############################
 ### EXECUTION PARAMETERS ###
 ############################
 
+#: Config file format version, do not edit
 schema_version: 2
 
 metadata:
+  #: Name of the protocol for which oligos are designed.
   protocol: "Scrinshot"
+  #: Link to the paper from which the default parameters are taken.
   source_default_parameters: https://example.com/
+  #: Name of the source of the default parameters, e.g. the first author of the paper.
   name_default_parameters: "TBD"
 
 general:
+  #: number of cores used to run the pipeline and 2*n_jobs +1 of regions that should be stored in cache. If
+  #: memory consumption of pipeline is too high reduce this number, if a lot of RAM is available increase this
+  #: number to decrease runtime
   n_jobs: 4
+  #: name of the directory where the output files will be written
   dir_output: "output_scrinshot_probe_designer"
+  #: if true, writes the oligo sequences after each step of the pipeline into a csv file
   write_intermediate_steps: true
