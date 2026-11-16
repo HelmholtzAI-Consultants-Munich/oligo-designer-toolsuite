@@ -61,7 +61,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     preprocess_tm_parameters,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import configure_root_logger, logger
+from oligo_designer_toolsuite.utils import configure_root_logger, is_none, logger
 
 ############################################
 # SCRINSHOT Probe Designer
@@ -615,7 +615,10 @@ class ScrinshotProbeDesigner:
 
             for index in range(len(oligo_sets_region.index)):
                 for column in oligo_sets_oligo_columns:
-                    oligo_id = str(oligo_sets_region.loc[index, column])
+                    oligo_id = oligo_sets_region.loc[index, column]
+                    if is_none(oligo_id):
+                        continue
+                    oligo_id = str(oligo_id)
                     barcode: str = barcodes[region_idx]
 
                     ligation_site = oligo_database.get_oligo_property_value(
@@ -1624,7 +1627,10 @@ class DetectionOligoDesigner:
 
         for index in range(len(oligosets_region.index)):
             for column in oligosets_oligo_columns:
-                oligo_id = str(oligosets_region.loc[index, column])
+                oligo_id = oligosets_region.loc[index, column]
+                if is_none(oligo_id):
+                    continue
+                oligo_id = str(oligo_id)
 
                 ligation_site = oligo_database.get_oligo_property_value(
                     property="ligation_site", region_id=region_id, oligo_id=oligo_id, flatten=True

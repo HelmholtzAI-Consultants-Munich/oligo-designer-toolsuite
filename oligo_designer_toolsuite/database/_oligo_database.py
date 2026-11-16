@@ -30,6 +30,7 @@ from oligo_designer_toolsuite.utils import (
     collapse_properties_for_duplicated_sequences,
     flatten_property_list,
     format_oligo_properties,
+    is_none,
     logger,
     merge_databases,
 )
@@ -695,6 +696,8 @@ class OligoDatabase:
                 }
 
                 for oligo_idx, oligo_id in enumerate(oligoset):
+                    if is_none(oligo_id):
+                        continue
                     yaml_dict_oligo_entry = {"oligo_id": oligo_id}
 
                     # iterate through all properties that should be written
@@ -748,6 +751,8 @@ class OligoDatabase:
             for oligoset_idx, oligoset in oligosets_region.iterrows():
                 oligoset_id = f"oligoset_{oligoset_idx + 1}"
                 for oligo_id in oligoset:
+                    if is_none(oligo_id):
+                        continue
                     entry = {
                         "region_id": region_id,
                         "oligoset_id": oligoset_id,
@@ -849,6 +854,8 @@ class OligoDatabase:
                 oligoset_id = f"oligoset_{oligoset_idx + 1}"
                 yaml_dict[region_id][oligoset_id] = {}
                 for oligo_id in oligoset:
+                    if is_none(oligo_id):
+                        continue
                     entry = {}
                     for property in properties:
                         if property in self.database[region_id][oligo_id]:
