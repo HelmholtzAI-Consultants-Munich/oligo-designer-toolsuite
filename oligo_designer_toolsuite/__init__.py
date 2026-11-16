@@ -16,6 +16,7 @@ Submodules:
 from . import (
     config,
     database,
+    ftp_loader,
     oligo_efficiency_filter,
     oligo_property_filter,
     oligo_selection,
@@ -35,4 +36,5 @@ __all__ = [
     "pipelines",
     "sequence_generator",
     "utils",
+    "ftp_loader",
 ]

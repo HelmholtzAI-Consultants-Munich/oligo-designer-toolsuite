@@ -12,8 +12,6 @@ annotation and sequence from NCBI or Ensembl first.
 # imports
 ############################################
 
-from oligo_designer_toolsuite.sequence_generator._ftp_loader import GenomicEntity
-from oligo_designer_toolsuite.sequence_generator._ftp_loader import EnsemblGenomicDatabase
 import copy
 import os
 import random
@@ -22,6 +20,7 @@ from typing import Callable, Iterable
 import numpy as np
 import pandas as pd
 
+from oligo_designer_toolsuite.ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI, GenomicEntity
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 pd.options.mode.chained_assignment = None
@@ -35,7 +34,6 @@ from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
 )
 from oligo_designer_toolsuite._exceptions import ConfigurationError
-from oligo_designer_toolsuite.sequence_generator import FtpLoaderNCBI
 from oligo_designer_toolsuite.utils import (
     BedParser,
     GffParser,
@@ -1402,6 +1400,9 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
+        # TODO: seperate Genomic Entity
+        genomic_entity = GenomicEntity(taxon, "", "")
+
         ftp = FtpLoaderNCBI(
             self.dir_output,
             mode=mode,
@@ -1412,8 +1413,12 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
             refseq_assembly_accession=refseq_assembly_accession,
             assembly_name=assembly_name,
         )
-        annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
-        sequence_file, _, _ = ftp.download_files("fasta")
+        fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
+
+        annotation_file = fetched_genomic_entity["annotation_file"]
+        annotation_release = fetched_genomic_entity["annotation_release"]
+        genome_assembly = fetched_genomic_entity["genome_assembly"]
+        sequence_file = fetched_genomic_entity["sequence_file"]
 
         super().__init__(
             annotation_file,
@@ -1464,9 +1469,9 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         genomic_entity = GenomicEntity(None, species, annotation_release)
 
-        db = EnsemblGenomicDatabase(self.dir_output, species, annotation_release)
-        fetched_genomic_entity = db.fetch_genomic_entity(genomic_entity)
-        
+        ftp = FtpLoaderEnsembl(self.dir_output, species, annotation_release)
+        fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
+
         annotation_file = fetched_genomic_entity["annotation_file"]
         annotation_release = fetched_genomic_entity["annotation_release"]
         genome_assembly = fetched_genomic_entity["genome_assembly"]
