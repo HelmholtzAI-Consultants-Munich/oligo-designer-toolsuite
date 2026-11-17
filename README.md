@@ -31,27 +31,18 @@ Various tools exist that provide custom design of oligo sequences depending on t
 
 🚀 ***Oligo Designer Toolsuite*** **is a collection of modules that provides all basic functionalities for custom oligo design pipelines as well as advanced experiment-specific functionalities like machine learning models for oligo specificity prediction within a flexible Python framework.**
 
-To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. We also provide ready-to-use oligo design pipelines for specific experimental setups, e.g. MERFISH or SeqFISH+ probe design for Spatial Transcriptomics.
+To allow the flexible usage of different modules, depending on the required processing steps, we developed a common underlying data structure that ensures the cross-compatibility of all modules within the framework. This data structure is runtime and memory optimized to enable the processing of large sequence dataset in a reasonable time frame. With our Oligo Designer Toolsuite we aim to set new standards in the development of oligo design pipelines, helping to accelerate the development of new tools and facilitate the upgrade of existing tools with the latest developments in the field. *We also provide ready-to-use oligo design pipelines for multiple experimental applications*.
+
+## ODT-Cloud
+
+Use Oligo Designer Toolsuite directly in your browser through **ODT-Cloud**:
+
+🌐 https://odt.helmholtz-munich.de/
+
+ODT-Cloud provides a graphical user interface for running oligo design pipelines without local installation or dependency management. For advanced customization, genome-wide applications, and integration into automated analysis pipelines, we recommend using the command-line interface.
+
 
 <!-- LINK INTRODUCTION END -->
-
-## Implemented Oligo Design Pipelines
-
-The following pipelines are pre-implemented and ready-to-use:
-
-[🧬 Genomic Region Generator](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html)
-
-[🧪 Scrinshot Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/scrinshot_probe_designer.html)
-
-[🧪 SeqFISH+ Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/seqfishplus_probe_designer.html)
-
-[🧪 MERFISH Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/merfish_probe_designer.html)
-
-[🧫 Oligo-Seq Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html)
-
-[🧫 CycleHCR Probe Designer](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/cyclehcr_probe_designer.html)
-
-If you would like to modify an existing pipeline for adjusted experimental settings or to design a new pipeline for a different experimental setup, feel free to reach out to us [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Jonas Hagenberg](mailto:jonas.hagenberg@helmholtz-munich.de).
 
 ## Installation
 
@@ -59,73 +50,59 @@ If you would like to modify an existing pipeline for adjusted experimental setti
 
 You have two options:
 
-1. Installation via [conda](#requirements)
-2. Using a [docker container](#docker)
+1. Installation via [conda](#Conda)
+2. Using a [docker container](#Docker)
 
-### Requirements
+### Conda
 
-This package was tested for ***Python 3.10 - 3.12*** on ***Linux (x64)*** and ***macOS (arm64)*** but not tested on Windows.
+**Requirements**
 
-*Note: Intel-based macOS (osx64) installation is ⚠️ DEPRECATED ⚠️*
+This package is continuously tested with **Python 3.10 – 3.12** on **Linux (x86_64)** and **macOS (Apple Silicon / arm64)**.
+Windows is currently not supported.
 
-For stable installation, we recommend to first setup a conda environment.
+> **Note:** Intel-based macOS (x86_64) is deprecated and no longer actively tested.
+>
+> *How to verify that you are using Apple Silicon?*
+> ```bash
+> python -c "import platform; print(platform.machine())"
+> ```
+> Expected output: `arm64`
 
-*Note: if your institution does not support anaconda, you can use [miniforge](https://github.com/conda-forge/miniforge) instead to run the conda installations.*
-
-First create a conda environment:
-
+For a stable installation, we recommend using a dedicated Conda environment via [miniforge](https://github.com/conda-forge/miniforge). Create a new Conda environment using the recommended channels and activate the environment:
 ```
-conda create -n odt python=3.12
+conda create -n odt "python=3.12" "mamba" "pip"
 conda activate odt
 ```
 
-To install the additional required tools via conda, please activate the *bioconda* and *conda-forge* channels in your conda environment and update conda and all packages in your environment:
-
+Install the required third-party tools:
 ```
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda update --all
-```
-
-The additional tools need to be installed independently:
-
-```
-conda install "blast>=2.15.0"
-conda install "bedtools>=2.30"
-conda install "bowtie>=1.3.1"
-conda install "bowtie2>=2.5"
-conda install "bcftools>=1.22"
-conda install "samtools>=1.22"
+mamba install -y \
+  -c conda-forge \
+  -c bioconda \
+  --override-channels \
+  "blast>=2.15.0" \
+  "bedtools>=2.30" \
+  "bowtie>=1.3.1" \
+  "bowtie2>=2.5" \
+  "samtools>=1.22" \
+  "bcftools>=1.22"
 ```
 
 All other required packages are automatically installed if installation is done via ```pip``` (see below).
 
-### Install Options
+**Install Options**
 
-The installation of the package is done via pip. Note: if you are using conda, first install pip with: ```conda install pip```.
-
-PyPI install:
-
+Install from PyPI:
 ```
 pip install oligo-designer-toolsuite
 ```
 
-
-Installation from source:
-
+Install from Source:
 ```
 git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
 cd oligo-designer-toolsuite
+pip install .
 ```
-
-- Installation as python package (run inside directory):
-
-		pip install .
-
-
-- Development installation as python package (run inside directory):
-
-		pip install -e .[dev]
 
 ### Docker
 
@@ -154,8 +131,90 @@ eval "$(micromamba shell hook --shell bash)"
 micromamba activate
 ```
 
-
 <!-- LINK INSTALLATION END -->
+
+## Quick Start
+
+<!-- LINK QUICKSTART START -->
+
+ODT pipelines are configured through YAML files. Example configuration files are available in: `data/configs/`.
+
+The probe design pipelines require genomic input sequences. These can be generated with the genomic region generator. Start from one of the example configuration files, e.g. `genomic_region_generator_ncbi.yaml`. Adjust the configuration to your species, genome annotation and output directory, then run:
+
+```bash
+genomic_region_generator --config data/configs/genomic_region_generator_ncbi.yaml
+```
+
+This generates the genomic region files that are used as input for downstream probe design pipelines.
+
+**Running a pipeline via CLI:** After generating the required genomic input files, choose the configuration file for your pipeline, e.g. `oligo_seq_probe_designer.yaml`. Adjust the input paths and design parameters, then run:
+
+```bash
+oligo_seq_probe_designer --config data/configs/oligo_seq_probe_designer.yaml
+```
+
+The pipeline writes the designed probes and summary files to the configured output directory.
+
+**Running a pipeline via Python:** Pipelines can also be called directly from Python. See an example for the Oligo-Seq pipeline below:
+
+```python
+import yaml
+from oligo_designer_toolsuite.config.pipelines.oligo_seq_probe_designer import OligoSeqProbeDesignerConfig
+from oligo_designer_toolsuite.pipelines import oligo_seq_probe_designer
+
+with open("data/configs/oligo_seq_probe_designer.yaml", "r") as handle:
+    config_raw = yaml.safe_load(handle)
+
+config = OligoSeqProbeDesignerConfig.model_validate(config_raw)
+oligo_seq_probe_designer(config)
+```
+
+For a complete description of all configuration parameters, see the documentation of the respective pipeline.
+
+<!-- LINK QUICKSTART END -->
+
+## Implemented Oligo Design Pipelines
+
+The following pipelines are pre-implemented, documented, and ready-to-use:
+
+**Genomic Region Generator**
+
+Extract genomic target regions from genome annotations and reference genomes. The pipeline can automatically download genome assemblies and annotations from Ensembl or NCBI, or work with user-provided FASTA and GTF files.
+
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/genomic_region_generator.html)
+
+**SCRINSHOT Probe Designer**
+
+Design padlock probes for SCRINSHOT (Single-Cell RNA In-Situ Hybridization and Sequencing On Tissue) experiments. The pipeline generates gene-specific padlock probes for highly multiplexed and spatially resolved RNA detection at single-cell resolution.
+
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/scrinshot_probe_designer.html)
+
+**MERFISH Probe Designer**
+
+Design encoding probes for MERFISH (Multiplexed Error-Robust Fluorescence In Situ Hybridization) experiments. Generated probes contain gene-specific targeting sequences and barcode regions enabling highly multiplexed spatial transcriptomics measurements.
+
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/merfish_probe_designer.html)
+
+**SeqFISH+ Probe Designer**
+
+Design encoding probes for SeqFISH+ (Sequential Fluorescence In Situ Hybridization) experiments. The pipeline generates barcoded probe sets for large-scale spatially resolved transcriptomics with single-cell resolution.
+
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/seqfishplus_probe_designer.html)
+
+**CycleHCR Probe Designer**
+
+Design barcoded probe sets for CycleHCR experiments. CycleHCR combines Hybridization Chain Reaction (HCR) with iterative barcoding strategies to enable highly multiplexed RNA imaging while minimizing molecular crowding effects.
+
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/cyclehcr_probe_designer.html)
+
+**Oligo-Seq Probe Designer**
+
+Design probe libraries for Oligo-seq, a targeted RNA profiling technology that combines in situ hybridization with sequencing-based readout. The pipeline generates probes targeting exonic regions and exon-intron junctions for sensitive and reproducible transcript detection from low-input samples.
+
+📖 [Documentation](https://oligo-designer-toolsuite.readthedocs.io/en/latest/_pipelines/oligoseq_probe_designer.html)
+
+For tutorials, configuration examples, API documentation, and detailed pipeline descriptions, visit: https://oligo-designer-toolsuite.readthedocs.io
+
 
 ## Contributing
 
@@ -165,70 +224,36 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 
 For any further inquiries please send an email to [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de) or [Jonas Hagenberg](mailto:jonas.hagenberg@helmholtz-munich.de).
 
+
 <!-- LINK CONTRIBUTION END -->
 
 ## How to cite
 
 <!-- LINK CITE START -->
 
-If the Oligo Designer Toolsuite is useful for your research, consider citing the package:
+If Oligo Designer Toolsuite is useful for your research, please consider citing the software:
 
-```
+```bibtex
 @software{
-	author		= 	{	Barros de Andrade e Sousa L.,
-  						Mekki I.,
-						Campi F.,
-						Kümmerle L.,
-						Bright C.,
-						Lücken M.,
-						Theis F.,
-						Piraud M.
-					},
-	title		= 	{Oligo Designer Toolsuite},
-	year		= 	{2025},
-	publisher	= 	{GitHub},
-	journal 	= 	{GitHub repository},
-	url 		= 	{https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite}
+    author      = {
+                    Barros de Andrade e Sousa L.,
+                    Mekki I.,
+                    Campi F.,
+                    Kümmerle L.,
+                    Bright C.,
+                    Lücken M.,
+                    Theis F.,
+                    Piraud M.
+                  },
+    title       = {Oligo Designer Toolsuite},
+    year        = {2025},
+    publisher   = {GitHub},
+    journal     = {GitHub repository},
+    url         = {https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite}
 }
 ```
 
 <!-- LINK CITE END -->
-
-If you are using the SCRINSHOT, MERFISH or SeqFISH+ pipeline provided along the Oligo Designer Toolsuite, consider citing in addition the paper:
-
-```
-@article{
-	author 	 	= 	{
-						Louis B. Kuemmerle,
-		     			Malte D. Luecken,
-		     			Alexandra B. Firsova
-		     			Lisa Barros de Andrade e Sousa
-		     			Lena Strasser
-                     	Ilhem Isra Mekki
-                     	Francesco Campi
-		     			Lukas Heumos
-		     			Maiia Shulman
-                     	Valentina Beliaeva
-                     	Soroor Hediyeh-Zadeh
-                     	Anna C. Schaar
-		     			Krishnaa T. Mahbubani
-		     			Alexandros Sountoulidis
-		     			Tamas Balassa
-		     			Ferenc Kovacs
-		     			Peter Horvath
-		     			Marie Piraud
-		     			Ali Ertürk
-		     			Christos Samakovlis
-		     			Fabian J. Theis
-					},
-    title 	 	= 	{Probe set selection for targeted spatial transcriptomics},
-    year 	 	= 	{2024},
-    publisher 	= 	{Nature Publishing Group US New York},
-    journal 	= 	{Nature methods},
-    doi 	 	= 	{10.1038/s41592-024-02496-z},
-    URL 	 	= 	{https://doi.org/10.1038/s41592-024-02496-z}
-}
-```
 
 ## License
 

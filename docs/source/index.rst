@@ -17,6 +17,7 @@
    :caption: GETTING STARTED
 
    _getting_started/installation.rst
+   _getting_started/quick_start.rst
    _getting_started/introduction_framework.rst
    _getting_started/build_a_custom_pipeline.rst
 
@@ -29,6 +30,8 @@
    _pipelines/merfish_probe_designer
    _pipelines/seqfishplus_probe_designer
    _pipelines/oligoseq_probe_designer
+   _pipelines/hcr_probe_designer
+   _pipelines/cyclehcr_probe_designer
 
 
 .. toctree::
