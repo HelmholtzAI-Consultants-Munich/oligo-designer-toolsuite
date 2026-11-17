@@ -50,8 +50,8 @@ ODT-Cloud provides a graphical user interface for running oligo design pipelines
 
 You have two options:
 
-1. Installation via [conda](#requirements)
-2. Using a [docker container](#docker)
+1. Installation via [conda](#Conda)
+2. Using a [docker container](#Docker)
 
 ### Conda
 
