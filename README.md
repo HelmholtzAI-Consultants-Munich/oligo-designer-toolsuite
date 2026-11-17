@@ -53,7 +53,9 @@ You have two options:
 1. Installation via [conda](#requirements)
 2. Using a [docker container](#docker)
 
-### Requirements
+### Conda
+
+**Requirements**
 
 This package is continuously tested with **Python 3.10 – 3.12** on **Linux (x86_64)** and **macOS (Apple Silicon / arm64)**.
 Windows is currently not supported.
@@ -88,7 +90,7 @@ mamba install -y \
 
 All other required packages are automatically installed if installation is done via ```pip``` (see below).
 
-### Install Options
+**Install Options**
 
 Install from PyPI:
 ```
@@ -100,6 +102,33 @@ Install from Source:
 git clone https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite.git
 cd oligo-designer-toolsuite
 pip install .
+```
+
+### Docker
+
+Alternatively, you can use our docker container:
+
+```
+# for this, you need to have docker installed
+docker pull ghcr.io/helmholtzai-consultants-munich/odt:latest
+# check that the container works
+docker run -it --rm odt:latest genomic_region_generator --help
+```
+
+You can convert the docker container to an apptainer container and execute commands:
+
+```
+apptainer build odt_latest.sif docker://ghcr.io/helmholtzai-consultants-munich/odt:latest
+apptainer exec odt_latest.sif genomic_region_generator --help
+```
+
+Internally, the container uses micromamba. In case you want to use `apptainer shell`, you need to execute
+the following:
+
+```
+apptainer shell odt_latest.sif
+eval "$(micromamba shell hook --shell bash)"
+micromamba activate
 ```
 
 <!-- LINK INSTALLATION END -->
