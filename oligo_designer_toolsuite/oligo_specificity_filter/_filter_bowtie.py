@@ -6,19 +6,11 @@ import os
 import subprocess
 
 import pandas as pd
-from Bio import SeqIO
 
-from oligo_designer_toolsuite._exceptions import (
-    ConfigurationError,
-    DatabaseError,
-    FeatureNotImplementedError,
-    FileFormatError,
-)
+from oligo_designer_toolsuite._exceptions import ConfigurationError, DatabaseError
 from oligo_designer_toolsuite.database import OligoDatabase
 from oligo_designer_toolsuite.oligo_specificity_filter import AlignmentSpecificityFilter
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
-
-from ..utils._sequence_processor import get_sequence_from_annotation
 
 ############################################
 # Oligo Bowtie Filter Classes
@@ -47,9 +39,6 @@ class BowtieFilter(AlignmentSpecificityFilter):
     -n <int>: Maximum number of mismatches permitted in the “seed”, i.e., the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2, or 3 and the defaults to 2.
     -l <int>: The “seed length”; i.e., the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the defaults to 28. Bowtie is faster for larger values of -l.
     All available Bowtie search parameters are listed on the Bowtie webpage.
-
-    The hits returned by Bowtie can be further filtered using machine learning models. For more information regarding which filters are available
-    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
     :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
     :type remove_hits: bool
@@ -222,84 +211,6 @@ class BowtieFilter(AlignmentSpecificityFilter):
 
         return search_results
 
-    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str) -> list:
-        """
-        Extracts reference sequences from the Bowtie search results and returns them as a list.
-
-        This function processes Bowtie alignment results to determine the start and end positions of the reference sequences aligned to the queries.
-        It then uses these coordinates to extract the corresponding sequences from the reference genome file.
-
-        :param table_hits: DataFrame containing Bowtie search hits with alignment information.
-        :type table_hits: pd.DataFrame
-        :param file_reference: Path to the reference genome file.
-        :type file_reference: str
-        :param region_id: Region ID to process.
-        :type region_id: str
-        :return: A list of reference sequences.
-        :rtype: list
-        """
-        required_fields = [
-            "query",
-            "strand",
-            "reference",
-            "reference_start",
-            "query_sequence",
-        ]
-        if not all(field in self.names_search_output for field in required_fields):
-            missing_fields = [field for field in required_fields if field not in self.names_search_output]
-            raise FileFormatError(
-                f"Required fields are missing in the search results: {missing_fields}. "
-                f"All of the following fields are required: {required_fields}."
-            )
-        table_hits["reference_end"] = table_hits.apply(
-            lambda x: x["reference_start"] + len(x["query_sequence"]), axis=1
-        )
-        bed = pd.DataFrame(
-            {
-                "chr": table_hits["reference"],
-                "start": table_hits["reference_start"],
-                "end": table_hits["reference_end"],
-                "name": table_hits["query"],
-                "score": 0,
-                "strand": table_hits["strand"],
-            }
-        )
-        file_bed = safe_append_filename(self.dir_output, f"references_{region_id}.bed")
-        bed.to_csv(file_bed, sep="\t", index=False, header=False)
-
-        references_fasta_file = safe_append_filename(self.dir_output, f"references_{region_id}.fasta")
-
-        get_sequence_from_annotation(
-            file_bed, file_reference, references_fasta_file, strand=True, nameOnly=True
-        )
-        references = [off_reference.seq for off_reference in SeqIO.parse(references_fasta_file, "fasta")]
-        os.remove(references_fasta_file)
-        os.remove(file_bed)
-        return references
-
-    def _add_alignment_gaps(
-        self, table_hits: pd.DataFrame, queries: list, references: list
-    ) -> tuple[list, list]:
-        """
-        Handles the addition of alignment gaps for queries and references.
-
-        This function is designed to process alignment gaps in sequences to ensure that
-        the query and reference sequences are properly aligned with gaps inserted where necessary.
-        However, since Bowtie does not support gaps in alignments, this implementation simply
-        returns the original query and reference sequences without modification.
-
-        :param table_hits: DataFrame containing information about the alignment hits, including gap positions (not utilized in this filter).
-        :type table_hits: pd.DataFrame
-        :param queries: List of query sequences to be aligned.
-        :type queries: list
-        :param references: List of reference sequences to be aligned.
-        :type references: list
-        :return: Unmodified lists of query and reference sequences.
-        :rtype: tuple[list, list]
-        """
-        # bowtie does not support gaps
-        return queries, references
-
 
 ############################################
 # Oligo Bowtie2 Filter Classes
@@ -327,9 +238,6 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
     -N <int>: Sets the number of mismatches allowed in a seed alignment during multiseed alignment. Can be set to 0 or 1. Setting this higher makes alignment slower (often much slower) but increases sensitivity. Default: 0.
     -L <int>: Sets the length of the seed substrings to align during multiseed alignment. Smaller values make alignment slower but more sensitive. Default: the --sensitive preset is used by default, which sets -L to 22 and 20 in --end-to-end mode and in --local mode.
     All available Bowtie2 search parameters are listed on the Bowtie2 webpage.
-
-    The hits returned by Bowtie2 can be further filtered using machine learning models. For more information regarding which filters are available
-    refer to https://github.com/HelmholtzAI-Consultants-Munich/oligo-designer-toolsuite-AI-filters.
 
     :param remove_hits: If True, oligos overlapping variants are removed. If False, they are flagged.
     :type remove_hits: bool
@@ -507,40 +415,3 @@ class Bowtie2Filter(AlignmentSpecificityFilter):
             ]
 
         return search_results
-
-    def _get_references(self, table_hits: pd.DataFrame, file_reference: str, region_id: str) -> list:
-        """
-        Raises an error indicating that AI filters are not supported for Bowtie2.
-
-        This method is intended to retrieve reference sequences based on search results.
-        However, in the context of Bowtie2, this method is not implemented and raises a `FeatureNotImplementedError`.
-
-        :param table_hits: DataFrame containing Bowtie2 search hits with alignment information.
-        :type table_hits: pd.DataFrame
-        :param file_reference: Path to the reference genome file.
-        :type file_reference: str
-        :param region_id: Region ID to process.
-        :type region_id: str
-        :raises FeatureNotImplementedError: Always, because AI filters are not supported for Bowtie2.
-        """
-        raise FeatureNotImplementedError("AI filters not supported for Bowtie2.")
-
-    def _add_alignment_gaps(
-        self, search_results: pd.DataFrame, queries: list, references: list
-    ) -> tuple[list, list]:
-        """
-        Raises an error indicating that AI filters are not supported for Bowtie2.
-
-        This method is intended to add alignment gaps to sequences based on search results.
-        However, in the context of Bowtie2, this method is not implemented and raises a `FeatureNotImplementedError`.
-
-        :param table_hits: DataFrame containing information about the alignment hits, including gap positions.
-        :type table_hits: pd.DataFrame
-        :param queries: List of query sequences to be aligned.
-        :type queries: list
-        :param references: List of reference sequences to be aligned.
-        :type references: list
-        :raises FeatureNotImplementedError: Always, because AI filters are not supported for Bowtie2.
-        """
-
-        raise FeatureNotImplementedError("AI filters not supported for Bowtie2.")

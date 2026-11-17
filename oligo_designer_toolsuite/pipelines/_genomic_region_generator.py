@@ -3,19 +3,19 @@
 ############################################
 
 import inspect
-import logging
 import os
 from pathlib import Path
 
 import yaml
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
-from oligo_designer_toolsuite.pipelines._utils import base_log_parameters, base_parser, setup_logging
+from oligo_designer_toolsuite.pipelines._utils import base_log_parameters, base_parser
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
     EnsemblGenomicRegionGenerator,
     NcbiGenomicRegionGenerator,
 )
+from oligo_designer_toolsuite.utils import configure_root_logger, logger
 
 ############################################
 # Genomic Region Generator Functions
@@ -36,13 +36,6 @@ class GenomicRegionGenerator:
         # create the output folder
         self.dir_output = os.path.abspath(dir_output)
         Path(dir_output).mkdir(parents=True, exist_ok=True)
-
-        # setup logger
-        setup_logging(
-            dir_output=self.dir_output,
-            pipeline_name="genomic_region_generation",
-            include_console=True,
-        )
 
     def load_annotations(
         self,
@@ -67,7 +60,7 @@ class GenomicRegionGenerator:
         :rtype: CustomGenomicRegionGenerator
         """
         ##### log parameters #####
-        logging.info("Parameters Load Annotations:")
+        logger.info("Parameters Load Annotations:")
         frame = inspect.currentframe()
         if frame is not None:
             args, _, _, values = inspect.getargvalues(frame)
@@ -119,10 +112,10 @@ class GenomicRegionGenerator:
             )
 
         ##### save annotation information #####
-        logging.info(
+        logger.info(
             f"The following annotation files are used for GTF annotation of regions: {region_generator.annotation_file} and for fasta sequence file: {region_generator.sequence_file} ."
         )
-        logging.info(
+        logger.info(
             f"The annotations are from {region_generator.files_source} source, for the species: {region_generator.species}, release number: {region_generator.annotation_release} and genome assembly: {region_generator.genome_assembly}"
         )
         return region_generator
@@ -172,7 +165,7 @@ class GenomicRegionGenerator:
                     )
 
                 files_fasta.append(file_fasta)
-                logging.info(f"The genomic region '{genomic_region}' was stored in :{file_fasta}.")
+                logger.info(f"The genomic region '{genomic_region}' was stored in :{file_fasta}.")
 
         return files_fasta
 
@@ -193,7 +186,7 @@ def main() -> None:
         - config: Path to the configuration YAML file containing parameters for the pipeline.
     :type args: dict
     """
-    logging.info("--------------START PIPELINE--------------")
+    print("--------------START PIPELINE--------------")
     args = base_parser()
 
     # read the config file
@@ -201,6 +194,13 @@ def main() -> None:
         config = yaml.safe_load(handle)
 
     pipeline = GenomicRegionGenerator(dir_output=config["dir_output"])
+
+    # setup logger
+    configure_root_logger(
+        dir_output=pipeline.dir_output,
+        pipeline_name="genomic_region_generation",
+        include_console=True,
+    )
 
     # generate the genomic regions
     region_generator = pipeline.load_annotations(
@@ -214,7 +214,7 @@ def main() -> None:
         block_size=config["exon_exon_junction_block_size"],
     )
 
-    logging.info("--------------END PIPELINE--------------")
+    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":

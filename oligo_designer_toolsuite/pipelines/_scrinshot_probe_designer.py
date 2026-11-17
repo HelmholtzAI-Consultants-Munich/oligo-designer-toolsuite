@@ -3,11 +3,9 @@
 ############################################
 
 import itertools
-import logging
 import os
 import random
 import shutil
-import warnings
 from pathlib import Path
 
 import yaml
@@ -61,9 +59,9 @@ from oligo_designer_toolsuite.pipelines._utils import (
     check_content_oligo_database,
     pipeline_step_basic,
     preprocess_tm_parameters,
-    setup_logging,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
+from oligo_designer_toolsuite.utils import configure_root_logger, logger
 
 ############################################
 # SCRINSHOT Probe Designer
@@ -135,13 +133,6 @@ class ScrinshotProbeDesigner:
         # create the output folder
         self.dir_output = os.path.abspath(dir_output)
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
-
-        # setup logger
-        setup_logging(
-            dir_output=self.dir_output,
-            pipeline_name="scrinshot_probe_designer",
-            log_start_message=True,
-        )
 
         ##### set class parameters #####
         self.write_intermediate_steps = write_intermediate_steps
@@ -365,7 +356,7 @@ class ScrinshotProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="1_db_probes_initial")
-            logging.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
+            logger.info(f"Saved probe database for step 1 (Create Database) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_property(
             oligo_database=oligo_database,
@@ -388,7 +379,7 @@ class ScrinshotProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="2_db_probes_property_filter")
-            logging.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
+            logger.info(f"Saved probe database for step 2 (Property Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.filter_by_specificity(
             oligo_database=oligo_database,
@@ -409,7 +400,7 @@ class ScrinshotProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="3_db_probes_specificity_filter")
-            logging.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
+            logger.info(f"Saved probe database for step 3 (Specificity Filters) in directory {dir_database}")
 
         oligo_database = target_probe_designer.create_oligo_sets(
             oligo_database=oligo_database,
@@ -455,9 +446,7 @@ class ScrinshotProbeDesigner:
 
         if self.write_intermediate_steps:
             dir_database = oligo_database.save_database(name_database="4_db_probes_probesets")
-            logging.info(
-                f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database}."
-            )
+            logger.info(f"Saved probe database for step 4 (Specificity Filters) in directory {dir_database}.")
 
         return oligo_database
 
@@ -1924,7 +1913,7 @@ def main() -> None:
     Command-line arguments are parsed using `base_parser()`, which expects:
     - `config`: Path to the YAML configuration file containing all pipeline parameters
     """
-    logging.info("--------------START PIPELINE--------------")
+    print("--------------START PIPELINE--------------")
 
     args = base_parser()
 
@@ -1934,7 +1923,7 @@ def main() -> None:
 
     ##### read the genes file #####
     if config["file_regions"] is None:
-        warnings.warn(
+        print(
             "No gene list file was provided! All genes from fasta file are used to generate the probes. This chioce can use a lot of resources."
         )
         region_ids = None
@@ -1952,6 +1941,12 @@ def main() -> None:
         write_intermediate_steps=config["write_intermediate_steps"],
         dir_output=config["dir_output"],
         n_jobs=config["n_jobs"],
+    )
+
+    # setup logger
+    configure_root_logger(
+        dir_output=pipeline.dir_output,
+        pipeline_name="scrinshot_probe_designer",
     )
 
     ##### design probes #####
@@ -2031,7 +2026,7 @@ def main() -> None:
 
     pipeline.generate_output(probe_database=probe_database)
 
-    logging.info("--------------END PIPELINE--------------")
+    print("--------------END PIPELINE--------------")
 
 
 if __name__ == "__main__":

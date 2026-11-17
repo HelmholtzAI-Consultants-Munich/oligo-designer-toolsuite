@@ -19,7 +19,6 @@ Module contents
    BowtieFilter
    Bowtie2Filter
    CrossHybridizationFilter
-   HybridizationProbabilityFilter
    VariantsFilter
    BaseFilterPolicy
    RemoveAllFilterPolicy

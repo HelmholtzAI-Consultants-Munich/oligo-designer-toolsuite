@@ -69,6 +69,30 @@ class TestOligoProperties(unittest.TestCase):
         assert length1 == 20, "error: wrong oligo length"
         assert length2 == 29, "error: wrong oligo length"
 
+    def test_calculate_oligo_length_single_region(self) -> None:
+        length_property = LengthProperty()
+        calculator = PropertyCalculator(properties=[length_property])
+        oligo_database = calculator.apply(
+            oligo_database=self.oligo_database,
+            sequence_type="oligo",
+            region_ids="region_1",
+            n_jobs=1,
+        )
+
+        length_region_1 = oligo_database.get_oligo_property_value(
+            property="length_oligo", flatten=True, region_id="region_1", oligo_id="region_1::1"
+        )
+        length_region_2 = oligo_database.get_oligo_property_value(
+            property="length_oligo", flatten=True, region_id="region_2", oligo_id="region_2::1"
+        )
+        length_region_3 = oligo_database.get_oligo_property_value(
+            property="length_oligo", flatten=True, region_id="region_3", oligo_id="region_3::1"
+        )
+
+        assert length_region_1 == 20, "error: wrong oligo length for selected region"
+        assert length_region_2 is None, "error: property calculated for unselected region"
+        assert length_region_3 is None, "error: property calculated for unselected region"
+
     def test_calculate_reverse_complement_sequence(self) -> None:
         reverse_complement_property = ReverseComplementSequenceProperty(
             sequence_type_reverse_complement="oligo"

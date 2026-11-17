@@ -412,7 +412,7 @@ class TestPropertyFilter(unittest.TestCase):
         property_filter = PropertyFilter(filters=self.filters)
 
         seq_keep = Seq("TGTCGGATCTCTTCAACAAGCTGGTCATGA")
-        res = property_filter._filter_sequence(seq_keep)
+        res = property_filter._filter_sequence(str(seq_keep))
         assert res == True, f"error: A sequence ({seq_keep}) fulfilling all conditions has not been accepted!"
 
     def test_property_filter_on_database(self) -> None:

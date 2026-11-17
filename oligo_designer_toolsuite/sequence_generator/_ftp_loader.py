@@ -4,11 +4,9 @@
 
 import gzip
 import itertools
-import logging
 import os
 import re
 import shutil
-import warnings
 from ftplib import FTP, error_perm
 from pathlib import Path
 from typing import IO, get_args
@@ -18,6 +16,7 @@ from Bio import SeqIO
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 from oligo_designer_toolsuite._exceptions import ConfigurationError
+from oligo_designer_toolsuite.utils import logger
 
 ############################################
 # FTP Classes
@@ -581,7 +580,7 @@ class FtpLoaderNCBI(BaseFtpLoader):
                         break
             os.remove(file_readme)
         except FileNotFoundError:
-            warnings.warn("No annotation name information available from NCBI.")
+            logger.warning("No annotation name information available from NCBI.")
 
     def _resolve_assembly_directory(self, ftp_directory: str) -> str:
         assembly_dir = f"{ftp_directory}{self.assembly_accession}_{self.assembly_name}"
@@ -714,6 +713,6 @@ class FtpLoaderNCBI(BaseFtpLoader):
                     )
                     SeqIO.write(chromosome_sequnece, handle, "fasta")
                 else:
-                    logging.warning("No mapping for accession number: {}".format(accession_number))
+                    logger.warning("No mapping for accession number: {}".format(accession_number))
 
         os.replace(file_tmp, ftp_file)

@@ -1,3 +1,11 @@
+"""
+Parse annotation, sequence, variant, and interval files used across the toolsuite.
+
+GFF/GTF annotations, FASTA sequences, VCF variants, and BED intervals are the main
+file types for region extraction, probe design, and coordinate conversion.
+See :class:`GffParser`, :class:`FastaParser`, :class:`VCFParser`, and :class:`BedParser`.
+"""
+
 ############################################
 # imports
 ############################################
@@ -17,7 +25,7 @@ from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS,
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
 )
-from oligo_designer_toolsuite._exceptions import FileFormatError
+from oligo_designer_toolsuite._exceptions import ConfigurationError, FileFormatError
 
 from ._checkers_and_helpers import cast_to_list
 
@@ -28,10 +36,11 @@ from ._checkers_and_helpers import cast_to_list
 
 class GffParser:
     """
-    A parser class for handling GFF (General Feature Format) files.
+    Parse genome annotations from GFF or GTF files.
 
-    GFF is a standard format for describing features of DNA, RNA, and protein sequences.
-    This class provides utilities to parse and process GFF files.
+    GFF/GTF files describe features such as genes, transcripts, and exons on a
+    reference sequence. Feature starts are 1-based. Use this class to check format,
+    load annotations into a table, and optionally cache them as a pickle for reuse.
     """
 
     def __init__(self) -> None:
@@ -52,16 +61,30 @@ class GffParser:
 
     def check_gff_format(self, file: str) -> bool:
         """
-        Checks if the provided GFF file is in the correct format by attempting to parse its content.
+        Check whether a GFF/GTF annotation file exists and has valid content.
 
-        :param file: The path to the GFF file to be checked.
+        Reads a sample of feature rows to confirm the file can be parsed. Useful
+        before loading a full annotation into a pipeline step.
+
+        :param file: Path to the GFF or GTF file to check.
         :type file: str
-        :raises ValueError: If the file does not exist or if the GFF format is incorrect.
-        :return: True if the file exists and is in the correct format, otherwise raises an error.
+        :raises FileFormatError: If the file is missing or not a valid GFF/GTF.
+        :return: ``True`` when the file exists and is a valid GFF/GTF.
         :rtype: bool
         """
 
         def _check_gff_content(file: str) -> bool:
+            """
+            Check whether the annotation file yields at least one feature row.
+
+            Parses a short sample of the file. An empty result means the content
+            is not usable as GFF/GTF.
+
+            :param file: Path to the GFF or GTF file to sample.
+            :type file: str
+            :return: ``True`` if at least one feature row is found.
+            :rtype: bool
+            """
             gtf = self.parse_annotation_from_gff(file, target_lines=100)
             return any(gtf)
 
@@ -80,17 +103,22 @@ class GffParser:
         target_lines: int = 100000000,
     ) -> str | pd.DataFrame:
         """
-        Parses the GFF annotation file and converts it into a DataFrame. Optionally, saves the DataFrame to a pickle file.
+        Parse a GFF/GTF annotation into a table of genomic features.
 
-        :param annotation_file: The path to the GFF annotation file to be parsed.
+        Combines the standard GFF columns with attribute fields into one DataFrame.
+        Feature starts are 1-based. Optionally write the table to a pickle for faster
+        reloads later.
+
+        :param annotation_file: Path to the GFF or GTF annotation file.
         :type annotation_file: str
-        :param file_pickle: The path to save the resulting DataFrame as a pickle file (optional).
+        :param file_pickle: Optional path to save the table as a pickle. If set, that
+            path is returned instead of the DataFrame.
         :type file_pickle: str | None
-        :param chunk_size: The number of lines to process at a time from the GFF file.
+        :param chunk_size: Number of lines to process per batch.
         :type chunk_size: int
-        :param target_lines: The number of lines to parse before stopping (useful for sampling).
+        :param target_lines: Maximum number of lines to read (useful for sampling).
         :type target_lines: int
-        :return: The parsed annotation as a DataFrame or the path to the pickle file if specified.
+        :return: Feature table, or the pickle path when ``file_pickle`` is set.
         :rtype: str | pd.DataFrame
         """
         csv_file, extra_info_file = self._split_annotation(
@@ -119,11 +147,14 @@ class GffParser:
 
     def load_annotation_from_pickle(self, file_pickel: str) -> pd.DataFrame:
         """
-        Loads a GFF annotation DataFrame from a pickle file.
+        Load a previously saved GFF/GTF annotation table from a pickle file.
 
-        :param file_pickel: The path to the pickle file containing the GFF annotation DataFrame.
+        Use this after :meth:`parse_annotation_from_gff` wrote a pickle, to avoid
+        re-parsing the original annotation.
+
+        :param file_pickel: Path to the pickle file with the annotation table.
         :type file_pickel: str
-        :return: The loaded DataFrame containing the GFF annotation.
+        :return: Table of genomic features from the pickle.
         :rtype: pd.DataFrame
         """
         dataframe_gff: pd.DataFrame = pickle.load(open(file_pickel, "rb"))
@@ -132,16 +163,19 @@ class GffParser:
 
     def _split_annotation(self, annotation_file: str, chunk_size: int, target_lines: int) -> tuple[str, str]:
         """
-        Splits the GFF annotation file into two separate files: one containing the standard GFF columns and the other containing the extra information.
+        Split a GFF/GTF file into standard columns and attribute fields.
 
-        :param annotation_file: The path to the GFF annotation file.
+        Writes two temporary files: one with the eight core GFF columns, and one
+        with the ninth-column attributes. Comment lines starting with ``#`` are skipped.
+
+        :param annotation_file: Path to the GFF or GTF annotation file.
         :type annotation_file: str
-        :param chunk_size: The number of lines to read at a time from the annotation file.
+        :param chunk_size: Number of lines to read per batch.
         :type chunk_size: int
-        :param target_lines: The maximum number of lines to process from the annotation file.
+        :param target_lines: Maximum number of lines to process.
         :type target_lines: int
-        :return: A tuple containing the paths to the CSV file with the main GFF content and the text file with extra information.
-        :rtype: Tuple[str, str]
+        :return: Paths to the core-column file and the attributes file.
+        :rtype: tuple[str, str]
         """
         csv_file = ".".join(annotation_file.split(".")[:-1]) + ".csv"
         extra_info_file = ".".join(annotation_file.split(".")[:-1]) + ".txt"
@@ -175,11 +209,14 @@ class GffParser:
 
     def _parse_fields(self, line: str) -> dict[str, Any]:
         """
-        Parse the attributes from a GFF line.
+        Parse attribute key-value pairs from a GFF/GTF attributes column.
 
-        :param line: The line of text containing attribute information from a GFF file.
+        Turns semicolon-separated tags such as gene and transcript IDs into a
+        dictionary for joining with the core feature columns.
+
+        :param line: Attributes text from one GFF/GTF feature row.
         :type line: str
-        :return: A dictionary where keys are attribute names and values are the corresponding values from the GFF line.
+        :return: Attribute names mapped to their values.
         :rtype: dict[str, Any]
         """
         result = {}
@@ -206,11 +243,14 @@ class GffParser:
 
     def _get_value(self, value: str) -> str | list[str] | None:
         """
-        Process the value extracted from a GFF line, handling special cases like lists, empty values, and standardization.
+        Normalize one attribute value from a GFF/GTF attributes field.
 
-        :param value: The value from an attribute in a GFF line.
+        Strips quotes, splits comma-separated lists, and treats empty, ``.``, and
+        ``NA`` as missing.
+
+        :param value: Raw attribute value text.
         :type value: str
-        :return: Processed value, which may be None, a string, or a list of strings.
+        :return: Cleaned string, list of strings, or ``None`` if missing.
         :rtype: str | list[str] | None
         """
         if not value:
@@ -230,11 +270,14 @@ class GffParser:
 
     def _info_to_df_chunk(self, data_chunk: list[str]) -> pd.DataFrame:
         """
-        Convert a chunk of data into a DataFrame by parsing its fields.
+        Convert a batch of GFF/GTF attribute lines into a table.
 
-        :param data_chunk: A chunk of data read from the GFF info file.
+        Each line becomes one row of parsed attribute columns for later merge
+        with the core GFF columns.
+
+        :param data_chunk: Attribute lines from the temporary info file.
         :type data_chunk: list[str]
-        :return: A DataFrame with parsed fields.
+        :return: Table of parsed attributes for the batch.
         :rtype: pd.DataFrame
         """
         parsed_fields = [self._parse_fields(line) for line in data_chunk]
@@ -242,13 +285,16 @@ class GffParser:
 
     def _info_to_df(self, info_file: str, chunk_size: int) -> pd.DataFrame:
         """
-        Read an info file in chunks and convert it into a DataFrame.
+        Load all GFF/GTF attribute lines from a temporary file into one table.
 
-        :param info_file: The path to the info file containing GFF attribute data.
+        Reads the file in batches so large annotations stay manageable, then
+        concatenates the batches.
+
+        :param info_file: Path to the temporary attributes file.
         :type info_file: str
-        :param chunk_size: The number of lines to process in each chunk.
+        :param chunk_size: Number of lines to parse per batch.
         :type chunk_size: int
-        :return: A DataFrame combining all chunks.
+        :return: Combined table of attribute columns.
         :rtype: pd.DataFrame
         """
         info_dfs = []
@@ -268,11 +314,12 @@ class GffParser:
 
 class FastaParser:
     """
-    A parser class for handling FASTA files.
+    Read, write, and merge nucleic acid sequences in FASTA format.
 
-    The FastaParser class provides methods for processing and manipulating sequences within FASTA files.
-    It is designed to support various sequence-related tasks, such as reading sequences, parsing sequence headers,
-    and performing operations on the parsed data.
+    FASTA files store reference genomes, extracted regions, and oligo sequences
+    used throughout the toolsuite. Headers from the region generator carry a region
+    ID plus optional metadata and 1-based coordinates
+    (``chromosome:start-end(strand)``).
     """
 
     def __init__(self) -> None:
@@ -280,17 +327,29 @@ class FastaParser:
 
     def check_fasta_format(self, file: str) -> bool:
         """
-        Validates whether the given file is in correct FASTA format.
+        Check whether a FASTA file exists and contains valid sequence records.
 
-        This function checks if a file exists and verifies whether it is in proper FASTA format by inspecting its content.
+        Confirms the file can be opened as FASTA before downstream read or merge
+        steps rely on it.
 
-        :param file: The path to the file to be checked.
+        :param file: Path to the FASTA file to check.
         :type file: str
-        :return: True if the file is a valid FASTA file, otherwise raises a ValueError.
+        :raises FileFormatError: If the file is missing or not a valid FASTA.
+        :return: ``True`` when the file exists and is a valid FASTA.
         :rtype: bool
         """
 
         def _check_fasta_content(file: str) -> bool:
+            """
+            Check whether the FASTA file yields at least one sequence record.
+
+            An empty index means the content is not usable as FASTA.
+
+            :param file: Path to the FASTA file to sample.
+            :type file: str
+            :return: ``True`` if at least one sequence record is found.
+            :rtype: bool
+            """
             fasta = SeqIO.index(file, "fasta")
             return any(fasta)  # False when `fasta` is empty, i.e. wasn't a FASTA file
 
@@ -306,11 +365,14 @@ class FastaParser:
 
     def is_coordinate(self, entry: str) -> bool:
         """
-        Checks if a given string is a valid coordinate format.
+        Check whether a header field looks like a genomic coordinate string.
 
-        :param entry: The string to be checked for coordinate format.
+        Matches the region-generator form ``chromosome:start-end(strand)``, where
+        starts are 1-based.
+
+        :param entry: Header field text to test.
         :type entry: str
-        :return: True if the string matches the coordinate pattern, otherwise False.
+        :return: ``True`` if the text matches the coordinate pattern.
         :rtype: bool
         """
         pattern = r"(\S+):(\d+)-(\d+)\(.*\)"
@@ -318,10 +380,13 @@ class FastaParser:
 
     def parse_number(self, s: str) -> int | float | str:
         """
-        Check if a string is an integer or a float. If so, return
-        the integer or float value. Otherwise, return the original string.
+        Parse a string as an integer or float when possible.
 
-        Examples:
+        Used when reading numeric metadata from FASTA header key-value fields.
+        Non-numeric text is returned unchanged.
+
+        Examples::
+
             >>> parse_number("42")
             42
             >>> parse_number("3.14")
@@ -329,11 +394,11 @@ class FastaParser:
             >>> parse_number("abc")
             "abc"
             >>> parse_number("5.0")
-            5.0   # note that "5.0" is treated as a float, not an integer
+            5.0
 
-        :param s: The string to parse.
+        :param s: Text to parse.
         :type s: str
-        :return: The parsed integer or float value if successful, or None otherwise.
+        :return: Integer, float, or the original string.
         :rtype: int | float | str
         """
         try:
@@ -350,11 +415,14 @@ class FastaParser:
 
     def get_fasta_regions(self, file_fasta_in: str) -> list[str]:
         """
-        Extracts unique region identifiers from a FASTA file.
+        List unique region IDs from a FASTA file.
 
-        :param file_fasta_in: The path to the input FASTA file.
+        Region IDs are taken from the first field of each sequence header, as
+        produced by the genomic region generator.
+
+        :param file_fasta_in: Path to the input FASTA file.
         :type file_fasta_in: str
-        :return: A list of unique region identifiers found in the FASTA file.
+        :return: Unique region identifiers found in the file.
         :rtype: list[str]
         """
         region_ids = []
@@ -369,17 +437,17 @@ class FastaParser:
         self, file_fasta_in: str, region_ids: str | list[str] | None = None
     ) -> list[Any]:
         """
-        Reads sequences from a FASTA file, optionally filtering by specific region identifiers.
+        Load sequences from a FASTA file, optionally filtered by region ID.
 
-        This function reads sequences from the specified FASTA file. If a list of region IDs is provided,
-        only the sequences corresponding to those regions are extracted.
+        When ``region_ids`` is set, only sequences whose header region matches are
+        returned. Otherwise every record in the file is loaded.
 
-        :param file_fasta_in: The path to the input FASTA file.
+        :param file_fasta_in: Path to the input FASTA file.
         :type file_fasta_in: str
-        :param region_ids: Region identifier(s) to process. Can be a single region ID (str) or a list of region IDs (list[str]). If None, all regions in the database are processed, defaults to None.
-        :type region_ids: str | list[str], optional
-        :return: A list of sequences from the FASTA file, filtered by region if specified.
-        :rtype: list
+        :param region_ids: One region ID, a list of IDs, or ``None`` for all regions.
+        :type region_ids: str | list[str] | None
+        :return: Sequence records from the file (filtered when IDs are given).
+        :rtype: list[Any]
         """
         region_ids_set = set(region_ids) if region_ids else None
 
@@ -404,19 +472,21 @@ class FastaParser:
         self, header: str, parse_coordinates: bool = True, parse_additional_info: bool = True
     ) -> tuple[str, dict[str, list[Any]] | str, dict[str, list[Any]]]:
         """
-        Parses the header of a FASTA sequence to extract region, coordinates, and additional information.
+        Parse region ID, coordinates, and metadata from a FASTA header.
 
-        This function processes the header of a FASTA sequence to extract the region name,
-        optional genomic coordinates, and additional key-value pair information.
+        Headers from the region generator look like
+        ``region_id::key=value::chr:start-end(strand)``. Coordinate starts are
+        1-based. Set the parse flags to skip coordinates or metadata when not needed.
 
-        :param header: The header string from a FASTA sequence.
+        :param header: FASTA header text (with or without a leading ``>``).
         :type header: str
-        :param parse_coordinates: Whether to parse genomic coordinates from the header, defaults to True.
-        :type parse_coordinates: bool, optional
-        :param parse_additional_info: Whether to parse additional information from the header, defaults to True.
-        :type parse_additional_info: bool, optional
-        :return: A tuple containing the region name, additional info dictionary, and coordinates dictionary.
-        :rtype: tuple[str, dict[str, list[Any]], dict[str, list[Any]]]
+        :param parse_coordinates: If ``True``, extract chromosome, start, end, and strand.
+        :type parse_coordinates: bool
+        :param parse_additional_info: If ``True``, parse key-value metadata into a dict;
+            if ``False``, return that field as a string when present.
+        :type parse_additional_info: bool
+        :return: Region ID, additional info (dict or string), and coordinates dict.
+        :rtype: tuple[str, dict[str, list[Any]] | str, dict[str, list[Any]]]
         """
         region: str = ""
         additional_info: dict[str, list[Any]] | str = {}
@@ -474,29 +544,33 @@ class FastaParser:
 
     def write_fasta_sequences(self, fasta_sequences: list[Any], file_out: str) -> None:
         """
-        Write a list of fasta sequences to an output file.
+        Write sequence records to a FASTA file.
 
-        :param fasta_sequences: list of fasta sequences to be written.
+        Overwrites ``file_out`` with the given records in standard FASTA layout.
+
+        :param fasta_sequences: Sequence records to write.
         :type fasta_sequences: list[Any]
-        :param file_out: Path to the output fasta file.
+        :param file_out: Path of the output FASTA file.
         :type file_out: str
+        :return: None
         """
         with open(file_out, "w") as handle_fasta:
             SeqIO.write(fasta_sequences, handle_fasta, "fasta")
 
     def merge_fasta_files(self, files_in: list[str], file_out: str, overwrite: bool = False) -> None:
         """
-        Merges multiple FASTA files into a single output file.
+        Merge several FASTA files into one output file.
 
-        This method takes a list of input FASTA files and merges their contents into a single output file.
-        The output file can either overwrite any existing file or append to it based on the `overwrite` parameter.
+        Concatenates all sequence records from the inputs. Set ``overwrite`` to
+        replace an existing output; otherwise records are appended.
 
-        :param files_in: A list of input FASTA files to be merged.
+        :param files_in: Paths of the FASTA files to merge.
         :type files_in: list[str]
-        :param file_out: The path to the output FASTA file.
+        :param file_out: Path of the merged FASTA file.
         :type file_out: str
-        :param overwrite: Whether to overwrite the output file if it exists, defaults to False.
+        :param overwrite: If ``True``, replace ``file_out``; if ``False``, append.
         :type overwrite: bool
+        :return: None
         """
         files_in = cast_to_list(files_in)
         file_out_mode = "w" if overwrite else "a"
@@ -508,14 +582,16 @@ class FastaParser:
 
     def index_fasta_file(self, file_fasta: str) -> None:
         """
-        Creates or refreshes the FASTA index file (.fai) for the given FASTA file.
+        Create or refresh a ``.fai`` index for a FASTA file.
 
-        This method ensures that a valid index exists for the FASTA file. Any existing index
-        will be removed before creating a new one. This is useful after overwriting a FASTA
-        file to ensure the index matches the new content.
+        Removes any existing index, then builds a new one with ``samtools faidx``.
+        Call this after rewriting a FASTA so tools such as bedtools see matching
+        sequence offsets.
 
         :param file_fasta: Path to the FASTA file to index.
         :type file_fasta: str
+        :raises FileFormatError: If the FASTA is missing or indexing fails.
+        :return: None
         """
         if not os.path.exists(file_fasta):
             raise FileFormatError(f"FASTA file '{file_fasta}' does not exist.")
@@ -548,8 +624,11 @@ class FastaParser:
 
 class VCFParser:
     """
-    A parser for handling VCF (Variant Call Format) files, including reading, writing,
-    merging, and verifying VCF file formats.
+    Read, write, and merge variant records in VCF format.
+
+    VCF files store SNPs and other variants relative to a reference genome.
+    Use this class to check format, load variants for filtering or annotation,
+    write selected records, and merge multiple VCF inputs into one file.
     """
 
     def __init__(self) -> None:
@@ -557,16 +636,28 @@ class VCFParser:
 
     def check_vcf_format(self, file: str) -> bool:
         """
-        Check if the provided file is a valid VCF file.
+        Check whether a VCF file exists and contains valid variant records.
+
+        Confirms the file can be opened as VCF before read or merge steps use it.
 
         :param file: Path to the VCF file to check.
         :type file: str
-        :return: True if the file is a valid VCF file, raises an exception otherwise.
+        :raises FileFormatError: If the file is missing or not a valid VCF.
+        :return: ``True`` when the file exists and is a valid VCF.
         :rtype: bool
-        :raises ValueError: If the file is missing or has an incorrect VCF format.
         """
 
         def _check_vcf_content(file: str) -> bool:
+            """
+            Check whether the VCF file yields at least one variant record.
+
+            An empty result means the content is not usable as VCF.
+
+            :param file: Path to the VCF file to sample.
+            :type file: str
+            :return: ``True`` if at least one variant record is found.
+            :rtype: bool
+            """
             vcf = VCF(file)
             return any(vcf)  # False when `vcf` is empty, i.e. wasn't a vcf file
 
@@ -580,13 +671,16 @@ class VCFParser:
 
     def read_vcf_variants(self, file: str) -> tuple[list[Any], Any]:
         """
-        Read variants from a VCF file.
+        Load variant records from a VCF file.
+
+        Checks format first, then returns every variant plus the VCF handle used
+        for writing compatible output later.
 
         :param file: Path to the VCF file to read.
         :type file: str
-        :return: A list of variant records and the VCF file handler.
-        :rtype: list
-        :raises ValueError: If the VCF file is not correctly formatted.
+        :raises FileFormatError: If the file is missing or not a valid VCF.
+        :return: List of variant records and the VCF file handle.
+        :rtype: tuple[list[Any], Any]
         """
         self.check_vcf_format(file)
 
@@ -600,14 +694,18 @@ class VCFParser:
 
     def write_vcf_variants(self, vcf_variants: list, vcf_in: str, file_out: str) -> None:
         """
-        Write a list of VCF variants to an output file.
+        Write variant records to a VCF file.
 
-        :param vcf_variants: list of variant records to be written.
+        Uses the input VCF handle for header and formatting so the output stays
+        compatible with the source file.
+
+        :param vcf_variants: Variant records to write.
         :type vcf_variants: list
-        :param vcf_in: VCF file handler used for formatting.
+        :param vcf_in: VCF handle that supplies header and format information.
         :type vcf_in: str
-        :param file_out: Path to the output VCF file.
+        :param file_out: Path of the output VCF file.
         :type file_out: str
+        :return: None
         """
         vcf_out = Writer(file_out, vcf_in)
         for variant in vcf_variants:
@@ -616,12 +714,16 @@ class VCFParser:
 
     def merge_vcf_files(self, files_in: list[str], file_out: str) -> None:
         """
-        Merge multiple VCF files into a single VCF file.
+        Merge several VCF files into one output file.
 
-        :param files_in: list of input VCF files to be merged.
-        :type files_in: list
-        :param file_out: Path to the output merged VCF file.
+        Compresses, sorts, and indexes inputs as needed, then merges them with
+        bcftools into a single uncompressed VCF.
+
+        :param files_in: Paths of the VCF files to merge.
+        :type files_in: list[str]
+        :param file_out: Path of the merged VCF file.
         :type file_out: str
+        :return: None
         """
         # Track compressed files that need to be cleaned up
         compressed_files_to_cleanup: list[str] = []
@@ -657,3 +759,142 @@ class VCFParser:
                 index_file = f"{file_vcf_compressed}{index_ext}"
                 if os.path.exists(index_file):
                     os.remove(index_file)
+
+
+############################################
+# BED Parser Class
+############################################
+
+
+class BedParser:
+    """
+    Read and write genomic intervals in BED format.
+
+    BED starts are 0-based. Region-generator FASTA headers and GFF/GTF annotations
+    use 1-based starts; convert with :meth:`convert_start` when moving between those
+    coordinate systems. On read, UCSC ``track``, ``browser``, and ``#`` lines are skipped.
+    """
+
+    BED_SKIP_LINE_PREFIXES = ("track", "browser", "#")
+    VALID_INDEXINGS = ("0-based", "1-based")
+
+    def __init__(self) -> None:
+        """Constructor for the BedParser class."""
+
+    def read_bed(
+        self,
+        filepath: str,
+        names: list[str] | None = None,
+        **kwargs: Any,
+    ) -> pd.DataFrame | Any:
+        """
+        Load genomic intervals from a BED file.
+
+        Ignores blank lines and UCSC header or comment lines that start with
+        ``track``, ``browser``, or ``#``. Those lines are expected only at the
+        start of the file. Interval starts in the result are 0-based.
+
+        For very large files, pass ``chunksize`` to read the intervals in batches
+        instead of loading the whole table at once.
+
+        :param filepath: Path to the BED file to load.
+        :type filepath: str
+        :param names: Column names for the BED fields. If ``None``, columns are numbered.
+        :type names: list[str] | None
+        :param kwargs: Extra options for ``pandas.read_csv`` (for example ``chunksize``).
+        :return: Table of intervals, or a chunk iterator when ``chunksize`` is set.
+        :rtype: pd.DataFrame | Any
+        """
+        # Header lines (track/browser/#/blank) are only at the top; stop at first data row.
+        skiprows: list[int] = []
+        with open(filepath) as handle:
+            for i, line in enumerate(handle):
+                if self._is_bed_data_line(line):
+                    break
+                skiprows.append(i)
+
+        dataframe = pd.read_csv(
+            filepath,
+            sep="\t",
+            header=None,
+            names=names,
+            comment="#",
+            skiprows=skiprows,
+            **kwargs,
+        )
+        return dataframe
+
+    def _is_bed_data_line(self, line: str) -> bool:
+        """
+        Check whether a line is a BED interval row.
+
+        Returns ``False`` for blank lines and for UCSC ``track``, ``browser``, or
+        ``#`` comment lines.
+
+        :param line: One line from a BED file.
+        :type line: str
+        :return: ``True`` if the line should be kept as interval data.
+        :rtype: bool
+        """
+        return bool(line.strip()) and not line.startswith(self.BED_SKIP_LINE_PREFIXES)
+
+    def write_bed(
+        self,
+        bed: pd.DataFrame,
+        filepath: str,
+        columns: list[str] | None = None,
+    ) -> None:
+        """
+        Write genomic intervals to a BED file.
+
+        The file has no header row. Starts must already be 0-based. If your
+        coordinates come from FASTA headers or GFF/GTF (1-based), convert them
+        with :meth:`convert_start` first.
+
+        :param bed: Table of intervals to write.
+        :type bed: pd.DataFrame
+        :param filepath: Path of the BED file to create.
+        :type filepath: str
+        :param columns: Columns to write, in order. If ``None``, all columns are written.
+        :type columns: list[str] | None
+        :return: None
+        """
+        bed_to_write = bed[columns] if columns is not None else bed
+        bed_to_write.to_csv(filepath, sep="\t", header=False, index=False)
+
+    def convert_start(
+        self,
+        start_coordinates: pd.Series,
+        from_indexing: str,
+        to_indexing: str,
+    ) -> pd.Series:
+        """
+        Convert interval start positions between 0-based and 1-based indexing.
+
+        Use this when moving starts between BED (0-based) and formats such as
+        GFF/GTF or region-generator FASTA headers (1-based). Ends are unchanged
+        in the usual half-open BED and inclusive GFF conventions.
+
+        :param start_coordinates: Series of start positions to convert.
+        :type start_coordinates: pd.Series
+        :param from_indexing: Current indexing, ``0-based`` or ``1-based``.
+        :type from_indexing: str
+        :param to_indexing: Desired indexing, ``0-based`` or ``1-based``.
+        :type to_indexing: str
+        :return: Converted start positions.
+        :rtype: pd.Series
+        :raises ConfigurationError: If ``from_indexing`` or ``to_indexing`` is not supported.
+        """
+        if from_indexing not in self.VALID_INDEXINGS:
+            raise ConfigurationError(
+                f"Invalid from_indexing '{from_indexing}'. Expected one of {self.VALID_INDEXINGS}."
+            )
+        if to_indexing not in self.VALID_INDEXINGS:
+            raise ConfigurationError(
+                f"Invalid to_indexing '{to_indexing}'. Expected one of {self.VALID_INDEXINGS}."
+            )
+        if from_indexing == to_indexing:
+            return start_coordinates
+        if from_indexing == "0-based" and to_indexing == "1-based":
+            return start_coordinates + 1
+        return start_coordinates - 1

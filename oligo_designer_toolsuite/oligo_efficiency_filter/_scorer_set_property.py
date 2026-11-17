@@ -42,7 +42,7 @@ class UniformDistanceScorer(BaseScorer):
         non_overlap_matrix_ids: list[str],
         set_oligo_ids: list[str],
         oligoset_size: int,
-        **_kwargs: Any,
+        **_: Any,
     ) -> float:
         """
         Compute the uniform-distance score for the given oligo with respect to the candidate set.
@@ -63,6 +63,8 @@ class UniformDistanceScorer(BaseScorer):
         :type set_oligo_ids: list[str]
         :param oligoset_size: Target size of the oligo set.
         :type oligoset_size: int
+        :param \\**_: Additional ignored keyword arguments.
+        :type \\**_: dict[str, Any]
         :return: Weighted score reflecting deviation from uniform spacing (lower is better).
         :rtype: float
         """
