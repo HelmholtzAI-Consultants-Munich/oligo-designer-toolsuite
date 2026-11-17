@@ -42,7 +42,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     PropertyFilter,
     SoftMaskedSequenceFilter,
 )
-from oligo_designer_toolsuite.oligo_selection import IndependentSetsOligoSelection
+from oligo_designer_toolsuite.oligo_selection import DynamicProgrammingOligoSelection
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     AlignmentSpecificityFilter,
     BlastNFilter,
@@ -61,7 +61,7 @@ from oligo_designer_toolsuite.pipelines._utils import (
     preprocess_tm_parameters,
 )
 from oligo_designer_toolsuite.sequence_generator import OligoSequenceGenerator
-from oligo_designer_toolsuite.utils import configure_root_logger, logger
+from oligo_designer_toolsuite.utils import configure_root_logger, is_none, logger
 
 ############################################
 # SCRINSHOT Probe Designer
@@ -615,7 +615,10 @@ class ScrinshotProbeDesigner:
 
             for index in range(len(oligo_sets_region.index)):
                 for column in oligo_sets_oligo_columns:
-                    oligo_id = str(oligo_sets_region.loc[index, column])
+                    oligo_id = oligo_sets_region.loc[index, column]
+                    if is_none(oligo_id):
+                        continue
+                    oligo_id = str(oligo_id)
                     barcode: str = barcodes[region_idx]
 
                     ligation_site = oligo_database.get_oligo_property_value(
@@ -1409,17 +1412,13 @@ class TargetProbeDesigner:
         set_scoring = LowestSetScoring(ascending=True)
 
         base_log_parameters({"Set Selection": "Independent Sets"})
-        oligoset_generator = IndependentSetsOligoSelection(
+        oligoset_generator = DynamicProgrammingOligoSelection(
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
             set_size_opt=set_size_opt,
             set_size_min=set_size_min,
             distance_between_oligos=distance_between_oligos,
-            n_attempts_graph=n_attempts_graph,
-            n_attempts_clique_enum=n_attempts_clique_enum,
-            diversification_fraction=diversification_fraction,
             jaccard_opt=jaccard_opt,
-            jaccard_step=jaccard_step,
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,
@@ -1624,7 +1623,10 @@ class DetectionOligoDesigner:
 
         for index in range(len(oligosets_region.index)):
             for column in oligosets_oligo_columns:
-                oligo_id = str(oligosets_region.loc[index, column])
+                oligo_id = oligosets_region.loc[index, column]
+                if is_none(oligo_id):
+                    continue
+                oligo_id = str(oligo_id)
 
                 ligation_site = oligo_database.get_oligo_property_value(
                     property="ligation_site", region_id=region_id, oligo_id=oligo_id, flatten=True

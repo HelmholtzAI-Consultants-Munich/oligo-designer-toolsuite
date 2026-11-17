@@ -43,8 +43,8 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SoftMaskedSequenceFilter,
 )
 from oligo_designer_toolsuite.oligo_selection import (
+    DynamicProgrammingOligoSelection,
     HomogeneousPropertyOligoSelection,
-    IndependentSetsOligoSelection,
 )
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BlastNFilter,
@@ -1687,17 +1687,13 @@ class TargetProbeDesigner:
         set_scoring = LowestSetScoring(ascending=True)
 
         base_log_parameters({"Set Selection": "Independent Sets"})
-        oligoset_generator = IndependentSetsOligoSelection(
+        oligoset_generator = DynamicProgrammingOligoSelection(
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
             set_size_opt=set_size_opt,
             set_size_min=set_size_min,
             distance_between_oligos=distance_between_oligos,
-            n_attempts_graph=n_attempts_graph,
-            n_attempts_clique_enum=n_attempts_clique_enum,
-            diversification_fraction=diversification_fraction,
             jaccard_opt=jaccard_opt,
-            jaccard_step=jaccard_step,
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,

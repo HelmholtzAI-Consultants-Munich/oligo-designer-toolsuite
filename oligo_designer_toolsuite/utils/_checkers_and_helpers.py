@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any, Iterable
 if TYPE_CHECKING:
     from _typeshed import SupportsItems  # only available to type checkers
 
+import numpy as np
+import pandas as pd
 import yaml
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
@@ -229,3 +231,14 @@ def safe_append_filename(dir_path: str, file_name: str) -> str:
     if not resolved_path.name == file_name:
         raise ConfigurationError(f"Invalid file name: {file_name}. The resolved file name does not match.")
     return str(joined_path)
+
+
+def is_none(value: Any) -> bool:
+    """Returns whether the given value is any kind of invalid.
+
+    :param value: Any value.
+    :type value: Any
+    :return: Whether the value is `None`, `np.nan` or `pd.NA`
+    :rtype: bool
+    """
+    return value is None or value is np.nan or value is pd.NA

@@ -19,7 +19,6 @@ from oligo_designer_toolsuite.oligo_efficiency_filter import (
     NormalizedDeviationFromOptimalTmScorer,
     OligoScoring,
     OverlapTargetedExonsScorer,
-    UniformDistanceScorer,
 )
 from oligo_designer_toolsuite.oligo_property_calculator import (
     GCContentProperty,
@@ -44,7 +43,7 @@ from oligo_designer_toolsuite.oligo_property_filter import (
     SelfComplementFilter,
     SoftMaskedSequenceFilter,
 )
-from oligo_designer_toolsuite.oligo_selection import IndependentSetsOligoSelection
+from oligo_designer_toolsuite.oligo_selection import DynamicProgrammingOligoSelection
 from oligo_designer_toolsuite.oligo_specificity_filter import (
     BaseSpecificityFilter,
     BlastNFilter,
@@ -977,16 +976,16 @@ class TargetProbeDesigner:
             Each region includes up to `n_sets` sets satisfying size and scoring constraints.
         :rtype: OligoDatabase
         """
-        oligo_lengths = [
-            len(sequence) for sequence in oligo_database.get_sequence_list(sequence_type="oligo")
-        ]
-        average_oligo_length = sum(oligo_lengths) / len(oligo_lengths)
+        # oligo_lengths = [
+        #     len(sequence) for sequence in oligo_database.get_sequence_list(sequence_type="oligo")
+        # ]
+        # average_oligo_length = sum(oligo_lengths) / len(oligo_lengths)
 
-        # Define all scorers
-        uniform_distance_scorer = UniformDistanceScorer(
-            average_oligo_length=average_oligo_length,
-            score_weight=uniform_distance_score["weight"],
-        )
+        # # Define all scorers
+        # uniform_distance_scorer = UniformDistanceScorer(
+        #     average_oligo_length=average_oligo_length,
+        #     score_weight=uniform_distance_score["weight"],
+        # )
         exon_scorer = OverlapTargetedExonsScorer(
             targeted_exons=targeted_exons_score["targeted_exons"],
             score_weight=targeted_exons_score["weight"],
@@ -1009,22 +1008,16 @@ class TargetProbeDesigner:
             score_weight=GC_content_score["weight"],
         )
 
-        oligos_scoring = OligoScoring(
-            scorers=[exon_scorer, isoform_scorer, Tm_scorer, GC_scorer, uniform_distance_scorer]
-        )
+        oligos_scoring = OligoScoring(scorers=[exon_scorer, isoform_scorer, Tm_scorer, GC_scorer])
         set_scoring = AverageSetScoring(ascending=True)
         base_log_parameters({"Set Selection": "Independent Sets"})
-        oligoset_generator = IndependentSetsOligoSelection(
+        oligoset_generator = DynamicProgrammingOligoSelection(
             oligos_scoring=oligos_scoring,
             set_scoring=set_scoring,
             set_size_opt=independent_set_selection["set_size_opt"],
             set_size_min=independent_set_selection["set_size_min"],
             distance_between_oligos=independent_set_selection["distance_between_target_probes"],
-            n_attempts_graph=independent_set_selection["n_attempts_graph"],
-            n_attempts_clique_enum=independent_set_selection["n_attempts_clique_enum"],
-            diversification_fraction=independent_set_selection["diversification_fraction"],
             jaccard_opt=independent_set_selection["jaccard_opt"],
-            jaccard_step=independent_set_selection["jaccard_step"],
         )
         oligo_database = oligoset_generator.apply(
             oligo_database=oligo_database,

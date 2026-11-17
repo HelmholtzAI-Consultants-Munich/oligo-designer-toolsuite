@@ -12,6 +12,7 @@ from ._checkers_and_helpers import (
     check_if_key_exists,
     check_tsv_format,
     generate_unique_filename,
+    is_none,
 )
 from ._database_processor import (
     check_if_key_in_database,
@@ -60,4 +61,5 @@ __all__ = [
     "count_kmer_abundance",
     "logger",
     "configure_root_logger",
+    "is_none",
 ]
