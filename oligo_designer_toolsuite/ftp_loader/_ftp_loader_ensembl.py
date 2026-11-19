@@ -5,8 +5,9 @@ from collections import defaultdict
 from collections.abc import Callable
 from ftplib import FTP
 from pathlib import Path
+from typing import ClassVar
 
-from typing_extensions import ClassVar, override
+from typing_extensions import override
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE_SEQ
 from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import (
@@ -42,12 +43,7 @@ class FtpLoaderEnsembl(FtpLoaderBase):
     def __init__(self, dir_output: str, species: str, annotation_release: str) -> None:
         """Constructor for the FtpLoaderEnsembl class."""
         super().__init__(Path(dir_output))
-        self.species = species
-        self.annotation_release = annotation_release
-        self.assembly_name = ""
         self.assembly_name_placeholder = "[^\\.]*"
-
-        self.ftp_link = "ftp.ensembl.org"
 
         self.file_type_folder = {"gff": "gff3", "gtf": "gtf", "fasta": "fasta"}
 
@@ -150,11 +146,15 @@ class FtpLoaderEnsembl(FtpLoaderBase):
         """
 
         # resolve current to actual release
-        self.annotation_release = self._get_annotation_release(entity.release)
+        annotation_release = self._get_annotation_release(entity.release)
 
         # Resolve filenames, remote directories and assembly
-        sequence_remote_dir, sequence_remote_filename = self._get_fasta_params("dna")
-        annotation_remote_dir, annotation_remote_filename = self._get_gtf_or_gff_params()
+        sequence_remote_dir, sequence_remote_filename = self._get_fasta_params(
+            "dna", entity.species, annotation_release
+        )
+        annotation_remote_dir, annotation_remote_filename = self._get_gtf_or_gff_params(
+            entity.species, annotation_release
+        )
 
         genome_assembly = self._get_genome_assembly(annotation_remote_filename, sequence_remote_filename)
 
@@ -163,7 +163,7 @@ class FtpLoaderEnsembl(FtpLoaderBase):
             annotation_remote_filename,
             sequence_remote_dir,
             sequence_remote_filename,
-            self.annotation_release,
+            annotation_release,
             genome_assembly,
             accession=None,
         )
@@ -177,8 +177,8 @@ class FtpLoaderEnsembl(FtpLoaderBase):
         :return: The annotation release that can be downloaded from Ensembl.
         :rtype: str
         """
-        if self.annotation_release == "current":
-            file_version = self._download(
+        if annotation_release == "current":
+            file_version = self.ftp_util.download(
                 "pub",
                 "VERSION",
             )
@@ -188,23 +188,27 @@ class FtpLoaderEnsembl(FtpLoaderBase):
 
         return annotation_release
 
-    def _get_fasta_params(self, sequence_nature: _TYPES_FILE_SEQ) -> tuple[str, str]:
-        ftp_directory = f"pub/release-{self.annotation_release}/{self.file_type_folder['fasta']}/{self.species}/{sequence_nature}/"
-        if sequence_nature == "dna":
-            ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.file_type_ending['fasta']}"
-        else:
-            ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{sequence_nature}.fa.gz"
-
-        return ftp_directory, self._get_exact_filename(ftp_directory, ftp_file)
-
-    def _get_gtf_or_gff_params(self) -> tuple[str, str]:
-        # TODO: how to handle missing file types here? Passthrough?
+    def _get_fasta_params(
+        self, sequence_nature: _TYPES_FILE_SEQ, species: str, annotation_release: str
+    ) -> tuple[str, str]:
         ftp_directory = (
-            f"pub/release-{self.annotation_release}/{self.file_type_folder['gtf']}/{self.species}/"
+            f"pub/release-{annotation_release}/{self.file_type_folder['fasta']}/{species}/{sequence_nature}/"
         )
-        ftp_file = f"{self.species.capitalize()}.{self.assembly_name_placeholder}.{self.annotation_release}.{self.file_type_ending['gtf']}"
+        if sequence_nature == "dna":
+            ftp_file = (
+                f"{species.capitalize()}.{self.assembly_name_placeholder}.{self.file_type_ending['fasta']}"
+            )
+        else:
+            ftp_file = f"{species.capitalize()}.{self.assembly_name_placeholder}.{sequence_nature}.fa.gz"
 
-        return ftp_directory, self._get_exact_filename(ftp_directory, ftp_file)
+        return ftp_directory, self.ftp_util.get_exact_filename(ftp_directory, ftp_file)
+
+    def _get_gtf_or_gff_params(self, species: str, annotation_release: str) -> tuple[str, str]:
+        # TODO: how to handle missing file types here? Passthrough?
+        ftp_directory = f"pub/release-{annotation_release}/{self.file_type_folder['gtf']}/{species}/"
+        ftp_file = f"{species.capitalize()}.{self.assembly_name_placeholder}.{annotation_release}.{self.file_type_ending['gtf']}"
+
+        return ftp_directory, self.ftp_util.get_exact_filename(ftp_directory, ftp_file)
 
     def _parse_assembly_from_filename(self, file_name: str) -> str | None:
         match = re.search("\\.([^\\.]*)\\.", file_name)

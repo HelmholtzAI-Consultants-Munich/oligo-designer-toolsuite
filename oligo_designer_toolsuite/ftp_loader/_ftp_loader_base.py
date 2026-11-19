@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from email.utils import formatdate, parsedate_to_datetime
 from ftplib import FTP
 from pathlib import Path
-from typing import ClassVar, get_args
+from typing import ClassVar, Generic, TypeVar, get_args
 
 import requests
 
@@ -46,7 +46,97 @@ class GenomicEntityContext:
     accession: str | None  # Ensembl doesn't use GCF/GCA accessions in filenames
 
 
-class FtpLoaderBase(ABC):
+class FtpUtil:
+
+    def __init__(
+        self,
+        host: str,
+        cache_dir: Path | None,
+        name: str,
+        download_chunk_size: int = 10 * 1024 * 1024,
+    ):
+        self.host = host
+        self.cache_dir = cache_dir
+        self.name = name
+        self.DOWNLOAD_CHUNK_SIZE = download_chunk_size
+
+    def get_exact_filename(self, ftp_directory: str, pattern: str) -> str:
+        ftp = FTP(self.host)
+        ftp.login()  # login to ftp server
+        ftp.cwd(ftp_directory)  # move to directory
+
+        files = ftp.nlst()
+        exact_file_name = None
+
+        for file in files:
+            if re.match(pattern, file):
+                exact_file_name = file
+
+        ftp.quit()
+
+        if exact_file_name is None:
+            raise FileNotFoundError(f"File '{pattern}' not found on FTP server.")
+
+        return exact_file_name
+
+    def download(self, dir: str, remote_filename: str) -> Path:
+        """Downloads a remote file if it changed.
+
+        Arguments:
+            dir {str} -- Remote directory where the to-be-dowloaded file is located.
+            remote_filename {str} -- Name of the remote file to download.
+
+        Notes:
+            This function avoids redownloads if the file is already present and up-to-date.
+            Since compressed files are deleted after extraction, this does not suffice as
+            a caching solution for genomic downloads - see _download_and_process for that.
+
+        Raises:
+            RuntimeError: No caching directory set for genomic downloads.
+
+        Returns:
+            pathlib.Path -- Local file path of the downloaded resource.
+        """
+        url = f"https://{self.host}/{dir}/{remote_filename}"
+        url_hash = hashlib.md5(url.encode()).hexdigest()
+
+        # Build local file path to save file at
+        if self.cache_dir is None:
+            raise RuntimeError("No caching directory set for genomic downloads.")
+        file_path = (self.cache_dir / self.name / f"{url_hash}-{remote_filename}").resolve()
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        headers: dict[str, str] = {}
+
+        # Check whether the file was downloaded before
+        if file_path.exists():
+            mtime = file_path.stat().st_mtime
+            headers["if-modified-since"] = formatdate(mtime, usegmt=True)
+
+        with requests.get(url, headers=headers, stream=True) as response:
+            response.raise_for_status()
+
+            if response.status_code == requests.codes.not_modified:
+                # Local file is already up-to-date
+                return file_path
+
+            if response.status_code == requests.codes.ok:
+                # Download the remote file
+                with open(file_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=self.DOWNLOAD_CHUNK_SIZE):
+                        f.write(chunk)
+
+                # Set local modification time to remote's 'last-modified' to use for future requests
+                if last_modified := response.headers.get("last-modified"):
+                    new_mtime = parsedate_to_datetime(last_modified).timestamp()
+                    os.utime(file_path, times=(datetime.datetime.now().timestamp(), new_mtime))
+        return file_path
+
+
+TGenomicEntity = TypeVar("TGenomicEntity")
+
+
+class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
     """
     A base class for downloading files via FTP and postprocessing the downloaded files.
 
@@ -76,7 +166,6 @@ class FtpLoaderBase(ABC):
         self,
         cache_dir: Path | None = None,
         allowlist: set[str] | None = None,
-        download_chunk_size: int = 10 * 1024 * 1024,
     ) -> None:
         """Initializes the genomic database.
 
@@ -86,7 +175,7 @@ class FtpLoaderBase(ABC):
         """
         self.cache_dir = cache_dir
         self.allowlist = allowlist
-        self.DOWNLOAD_CHUNK_SIZE = download_chunk_size
+        self.ftp_util = FtpUtil(self.host, self.cache_dir, self.name)
 
     # ---- Directory Discovery ----
     def _get_subdirs(self, ftp: FTP) -> list[str]:
@@ -210,60 +299,6 @@ class FtpLoaderBase(ABC):
             species_dirs = self._get_subdirectories(top_dirs, ftp)
         return self._build_species_mapping(species_dirs)
 
-    # ---- Genomic Asset Fetching ----
-    def _download(self, dir: str, remote_filename: str) -> Path:
-        """Downloads a remote file if it changed.
-
-        Arguments:
-            dir {str} -- Remote directory where the to-be-dowloaded file is located.
-            remote_filename {str} -- Name of the remote file to download.
-
-        Notes:
-            This function avoids redownloads if the file is already present and up-to-date.
-            Since compressed files are deleted after extraction, this does not suffice as
-            a caching solution for genomic downloads - see _download_and_process for that.
-
-        Raises:
-            RuntimeError: No caching directory set for genomic downloads.
-
-        Returns:
-            pathlib.Path -- Local file path of the downloaded resource.
-        """
-        url = f"https://{self.host}/{dir}/{remote_filename}"
-        url_hash = hashlib.md5(url.encode()).hexdigest()
-
-        # Build local file path to save file at
-        if self.cache_dir is None:
-            raise RuntimeError("No caching directory set for genomic downloads.")
-        file_path = (self.cache_dir / self.name / f"{url_hash}-{remote_filename}").resolve()
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        headers: dict[str, str] = {}
-
-        # Check whether the file was downloaded before
-        if file_path.exists():
-            mtime = file_path.stat().st_mtime
-            headers["if-modified-since"] = formatdate(mtime, usegmt=True)
-
-        with requests.get(url, headers=headers, stream=True) as response:
-            response.raise_for_status()
-
-            if response.status_code == requests.codes.not_modified:
-                # Local file is already up-to-date
-                return file_path
-
-            if response.status_code == requests.codes.ok:
-                # Download the remote file
-                with open(file_path, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=self.DOWNLOAD_CHUNK_SIZE):
-                        f.write(chunk)
-
-                # Set local modification time to remote's 'last-modified' to use for future requests
-                if last_modified := response.headers.get("last-modified"):
-                    new_mtime = parsedate_to_datetime(last_modified).timestamp()
-                    os.utime(file_path, times=(datetime.datetime.now().timestamp(), new_mtime))
-        return file_path
-
     @abstractmethod
     def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:
         """Checks whether a file maches the expected checksum.
@@ -300,13 +335,13 @@ class FtpLoaderBase(ABC):
         Returns:
             pathlib.Path -- Local file path of the downloaded resource.
         """
-        file_path = self._download(dir, remote_filename)
+        file_path = self.ftp_util.download(dir, remote_filename)
 
         # Verify checksum if provided. On mismatch, delete the cached file and retry the
         # download once before giving up.
         if expected_checksum is not None and not self._matches_checksum(file_path, expected_checksum):
             file_path.unlink(missing_ok=True)
-            file_path = self._download(dir, remote_filename)
+            file_path = self.ftp_util.download(dir, remote_filename)
             if not self._matches_checksum(file_path, expected_checksum):
                 raise RuntimeError(f"Checksum for {remote_filename} does not match.")
 
@@ -317,7 +352,7 @@ class FtpLoaderBase(ABC):
         return file_path
 
     @abstractmethod
-    def _get_entity_context(self, entity: GenomicEntity) -> GenomicEntityContext:
+    def _get_entity_context(self, entity: TGenomicEntity) -> GenomicEntityContext:
         """Retrieves context for a genomic entity.
 
         Arguments:
@@ -368,7 +403,7 @@ class FtpLoaderBase(ABC):
         # Use a set for both directories -> if they are equal, the checksums are only downloaded once
         for dir in {context.annotation_remote_dir, context.sequence_remote_dir}:
             # Always download without caching in case checksums changed
-            checksums_path = self._download(dir, self.checksums_filename)
+            checksums_path = self.ftp_util.download(dir, self.checksums_filename)
             with open(checksums_path) as checksums_file:
                 for line in checksums_file:
                     try:
@@ -403,7 +438,7 @@ class FtpLoaderBase(ABC):
                 f"Required file missing in {self.name}'s {self.checksums_filename}: {e}"
             ) from e
 
-    def fetch_genomic_entity(self, entity: GenomicEntity) -> dict[str, str]:
+    def fetch_genomic_entity(self, entity: TGenomicEntity) -> dict[str, str]:
         """Fetches genomic entity from cache or downloads it if not cached yet.
 
         Arguments:
@@ -489,22 +524,3 @@ class FtpLoaderBase(ABC):
         assert (
             sequence_nature in options
         ), f"Sequence nature type not supported! '{sequence_nature}' is not in {options}."
-
-    def _get_exact_filename(self, ftp_directory: str, ftp_filename: str) -> str:
-        ftp = FTP(self.host)
-        ftp.login()  # login to ftp server
-        ftp.cwd(ftp_directory)  # move to directory
-
-        files = ftp.nlst()
-        exact_file_name = None
-
-        for file in files:
-            if re.match(ftp_filename, file):
-                exact_file_name = file
-
-        ftp.quit()
-
-        if exact_file_name is None:
-            raise FileNotFoundError(f"File '{ftp_filename}' not found on FTP server.")
-
-        return exact_file_name

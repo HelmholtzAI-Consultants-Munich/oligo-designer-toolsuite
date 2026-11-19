@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from oligo_designer_toolsuite.ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI, GenomicEntity
+from oligo_designer_toolsuite.ftp_loader._ftp_loader_ncbi import NcbiGenomicEntity
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 pd.options.mode.chained_assignment = None
@@ -1372,47 +1373,20 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         """Constructor for the NcbiGenomicRegionGenerator class."""
         files_source = "NCBI"
 
-        if mode is None:
-            raise ConfigurationError("For source='ncbi', parameter 'mode' must be provided.")
-
-        if mode == "species":
-            if taxon is None:
-                raise ConfigurationError(f"No taxon defined.")
-
-            if species is None:
-                raise ConfigurationError(f"No species defined.")
-
-            if annotation_release is None:
-                annotation_release = "current"
-                logger.warning(f"No annotation release defined. Using default release {annotation_release}!")
-
-            if assembly_source is None:
-                assembly_source = "auto"
-                logger.warning(
-                    f"No assembly source defined. Using default assembly source {assembly_source}!"
-                )
-        elif mode == "assembly":
-            if assembly_source is None:
-                assembly_source = "auto"
-        else:
-            raise ConfigurationError("For source='ncbi', mode must be either 'species' or 'assembly'.")
-
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        # TODO: seperate Genomic Entity
-        genomic_entity = GenomicEntity(taxon, "", "")
-
-        ftp = FtpLoaderNCBI(
-            self.dir_output,
-            mode=mode,
-            taxon=taxon,
-            species=species,
-            annotation_release=annotation_release,
-            assembly_source=assembly_source if assembly_source is not None else "auto",
-            refseq_assembly_accession=refseq_assembly_accession,
-            assembly_name=assembly_name,
+        genomic_entity = NcbiGenomicEntity(
+            mode,
+            taxon,
+            species,
+            annotation_release,
+            assembly_name,
+            refseq_assembly_accession,
+            assembly_source,
         )
+
+        ftp = FtpLoaderNCBI(self.dir_output)
         fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
 
         annotation_file = fetched_genomic_entity["annotation_file"]
