@@ -45,5 +45,16 @@ repos:
           "pydantic>=2.12.5,<3",
         ]
         args: [--ignore-missing-imports, --follow-imports=silent]
+  - repo: local
+    hooks:
+      # needs uv; `uv run` creates/syncs the project environment and installs the package in it
+      - id: add-yaml-descriptions
+        name: add pydantic descriptions to pipeline configs
+        entry: uv run python -m oligo_designer_toolsuite.config._yaml_descriptions
+        language: system
+        # also on model changes, so an edited description is written into all pipeline configs
+        files: ^(data/configs/.*\.yaml|oligo_designer_toolsuite/config/.*\.py)$
+        pass_filenames: false
+        args: [data/configs]
 
 # run all hooks: pre-commit run --all-files
