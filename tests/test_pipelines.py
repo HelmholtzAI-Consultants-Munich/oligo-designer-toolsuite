@@ -38,7 +38,7 @@ SCRIPT_MERFISH_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_merfish_pro
 CONFIG_MERFISH_PROBE_DESIGNER = "data/configs/merfish_probe_designer.yaml"
 
 SCRIPT_CYCLEHCR_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_cycle_hcr_probe_designer.py"
-CONFIG_CYCLEHCR_PROBE_DESIGNER = "data/configs/cycle_hcr_probe_designer.yaml"
+CONFIG_CYCLEHCR_PROBE_DESIGNER = "data/configs/cycle_hcr_probe_designer_gandin.yaml"
 
 SCRIPT_HCR_PROBE_DESIGNER = "oligo_designer_toolsuite/pipelines/_hcr_probe_designer.py"
 CONFIG_HCR_PROBE_DESIGNER = "data/configs/hcr_probe_designer.yaml"

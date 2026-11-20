@@ -14,7 +14,6 @@ structure. See :func:`cycle_hcr_probe_designer` for the config-driven workflow.
 # imports
 ############################################
 
-import itertools
 import os
 import shutil
 from pathlib import Path
@@ -325,7 +324,7 @@ class CycleHCRProbeDesigner:
         """
         Load or create the CycleHCR readout probes and codebook.
 
-        The codebook assigns each target region to a pair of readout probes. These
+        The codebook assigns each target region to one readout probe pair. These
         readout probes later bind to barcode sequences on the primary probes and
         bring together the split HCR initiator during imaging.
 
@@ -360,9 +359,13 @@ class CycleHCRProbeDesigner:
             logger.info(
                 f"Loaded readout probes table from file and retrieved {len(readout_probe_table)} readout probes."
             )
-        else:
+        elif readout_probe_parameters["readout_probe_table"]["source"] == "generate":
             readout_probe_table = readout_probe_designer.generate_readout_probe_table()
             readout_probe_table_source = readout_probe_parameters["readout_probe_table"]["source"]
+        else:
+            raise ConfigurationError(
+                f"Invalid source for readout probe table: {readout_probe_parameters['readout_probe_table']['source']}"
+            )
 
         # Table-only validation: catch structural issues (index name, columns, DNA validity)
         # before generate_codebook consumes the table.
@@ -376,13 +379,16 @@ class CycleHCRProbeDesigner:
                 file_codebook=readout_probe_parameters["codebook"]["file"]
             )
             codebook_source = readout_probe_parameters["codebook"]["file"]
-        else:
+        elif readout_probe_parameters["codebook"]["source"] == "generate":
             codebook = readout_probe_designer.generate_codebook(
                 region_ids=region_ids,
                 readout_probe_table=readout_probe_table,
-                min_hamming_distance=readout_probe_parameters["codebook"]["min_hamming_distance"],
             )
             codebook_source = readout_probe_parameters["codebook"]["source"]
+        else:
+            raise ConfigurationError(
+                f"Invalid source for codebook: {readout_probe_parameters['codebook']['source']}"
+            )
 
         # Full pair validation: also checks that every codebook bit is covered by the table.
         readout_probe_designer.validate(
@@ -456,10 +462,9 @@ class CycleHCRProbeDesigner:
         for region_id in region_ids:
             barcode = codebook.loc[region_id]
             bits = barcode[barcode == 1].index
-            readout_probe_sequences = readout_probe_table.loc[bits, "readout_probe_sequence"]
-            # Weight-2 codebook: first active bit is L, second is R (validated upstream).
-            sequence_readout_probe_L = readout_probe_sequences.iloc[0]
-            sequence_readout_probe_R = readout_probe_sequences.iloc[1]
+            # Weight-1 codebook: the single active bit supplies both L and R readout halves.
+            sequence_readout_probe_L = readout_probe_table.loc[bits, "readout_probe_sequence_L"].iloc[0]
+            sequence_readout_probe_R = readout_probe_table.loc[bits, "readout_probe_sequence_R"].iloc[0]
 
             probe_ids = list(oligo_database.database[region_id].keys())
             new_properties: dict[str, dict[str, str]] = {probe_id: {} for probe_id in probe_ids}
@@ -1357,9 +1362,7 @@ class TargetProbeDesigner:
             score_weight=Tm_score["weight"],
         )
         oligos_scoring = OligoScoring(scorers=[isoform_consensus_scorer, Tm_scorer])
-        # ascending=False: higher aggregate scores win; Tm proximity to Tm_opt keeps
-        # probes bound through cyclic stripping.
-        set_scoring = AverageSetScoring(ascending=False)
+        set_scoring = AverageSetScoring(ascending=True)
 
         base_log_parameters({"Set Selection": "Independent Sets"})
         oligoset_generator = IndependentSetsOligoSelection(
@@ -1394,32 +1397,28 @@ class TargetProbeDesigner:
 
 class ReadoutProbeDesigner:
     """
-    Manage the readout probes and codebook used for CycleHCR decoding.
+    Manage the readout probe table and codebook for cycleHCR probe design.
 
-    In CycleHCR, each target is assigned a two-bit barcode. One active bit
-    selects the left readout probe, and one active bit selects the right readout
-    probe. These two readout probes bind to the barcode sequences carried by the
-    primary probe pair. Together, they bring the split HCR initiator into place
-    during imaging.
+    In cycleHCR, each target region is assigned a single barcode bit that
+    identifies a pair of left and right readout probes. These probes hybridize
+    to barcode sequences on the primary probes and reconstitute a split HCR
+    initiator, enabling fluorescence signal amplification.
 
-    This class handles the two tables needed for that assignment:
+    This class manages two tables:
 
-    - the **readout probe table**, which links each bit to a readout probe
-      sequence, an L/R role, a channel, and a readout probe ID,
-    - the **codebook**, which assigns each target region to exactly two active
-      bits.
+    - The **readout probe table**, which maps barcode bits to fluorescence
+      channels and left/right readout probe IDs and sequences.
+    - The **codebook**, which assigns each target region exactly one active
+      barcode bit.
 
-    Both tables can be loaded from files. The codebook can also be generated
-    from an existing readout probe table. Before the tables are used, they are
-    checked together to make sure that all requested target regions and barcode
-    bits are covered.
+    Both tables can be loaded from files. Alternatively, a codebook can be
+    generated from an existing readout probe table by combining left and right
+    readout probes within each fluorescence channel. Validation ensures that
+    the tables contain the required information and compatible bit assignments.
 
-    :param dir_output: Directory where output files and intermediate results are
-        saved.
+    :param dir_output: Directory for output files and intermediate results.
     :type dir_output: str
-    :param n_jobs: Number of worker processes used for steps that can run in
-        parallel. This value is kept for consistency with the other designer
-        classes.
+    :param n_jobs: Number of worker processes available for parallel execution.
     :type n_jobs: int
     """
 
@@ -1431,234 +1430,203 @@ class ReadoutProbeDesigner:
 
     def load_codebook(self, file_codebook: str) -> pd.DataFrame:
         """
-        Load a CycleHCR codebook from a table file.
+        Load a cycleHCR codebook from a file.
 
-        The codebook file should contain one row per target region and one column
-        per barcode bit. The target region column must be named ``gene_name``. Bit
-        columns are expected to be named ``bit_1``, ``bit_2``, and so on.
+        The codebook contains one row per target region and one column per
+        barcode bit. Target regions are identified by the ``gene_name`` column,
+        and barcode bits are named ``bit_1``, ``bit_2``, etc.
 
-        The table is loaded here, but the full content check is done later together
-        with the readout probe table. This makes sure that the codebook bits and the
-        available readout probes match.
+        The table is loaded without validation. Its structure, barcode
+        assignments, and compatibility with the readout probe table are
+        checked separately by :py:meth:`validate`.
 
-        :param file_codebook: Path to the codebook file. The file must contain a
-            ``gene_name`` column and one or more ``bit_*`` columns.
+        :param file_codebook: Path to the codebook file containing a
+            ``gene_name`` column and barcode bit columns.
         :type file_codebook: str
-        :return: Codebook table indexed by ``gene_name``.
+        :return: Codebook indexed by ``gene_name``.
         :rtype: pd.DataFrame
         """
         return pd.read_csv(file_codebook, sep=None, engine="python", index_col="gene_name")
 
     def generate_codebook(
-        self, region_ids: list[str], readout_probe_table: pd.DataFrame, min_hamming_distance: int
+        self,
+        region_ids: list[str],
+        readout_probe_table: pd.DataFrame,
     ) -> pd.DataFrame:
         """
-        Generate a CycleHCR codebook from the readout probe table.
+        Generate a cycleHCR codebook from a readout probe table.
 
-        The generated codebook assigns each target region to one left readout probe
-        and one right readout probe. Each row is a target region. Each column is a
-        barcode bit. A value of ``1`` means that the target uses the readout probe
-        linked to that bit.
+        Each target region is assigned exactly one active barcode bit,
+        corresponding to a left/right readout probe combination in the
+        readout probe table. The codebook is represented as a binary matrix
+        with target regions as rows and barcode bits as columns.
 
-        CycleHCR uses two active bits per target. One bit must point to an ``L``
-        readout probe, and one bit must point to an ``R`` readout probe. Both bits
-        are assigned within the same fluorescence channel, so the two readout probes
-        form a matched L/R pair for that channel.
+        Barcode bits are assigned in the order of the readout probe table,
+        prioritizing combinations with matching left/right probe indices
+        and distributing assignments across fluorescence channels according
+        to the available combinations.
 
-        The available barcode space is taken from the readout probe table:
+        The number of available barcode bits must be at least equal to the
+        number of target regions.
 
-        - ``channel`` defines the fluorescence channel or readout channel,
-        - ``L/R`` defines whether a readout probe is used on the left or right side,
-        - ``readout_probe_id`` groups matching left and right readout probes.
-
-        For each channel, the method builds barcode candidates from all possible
-        combinations of left and right readout probe IDs. Combinations where the
-        left and right readout probes have the same ID are tried first. These matched
-        pairs are useful because they keep the barcode design simple and allow
-        larger distances between codewords.
-
-        The requested ``min_hamming_distance`` controls how strictly barcodes must
-        differ from each other:
-
-        - ``4`` keeps only matched pairs where ``L`` and ``R`` use the same
-        readout probe ID. This gives disjoint two-bit barcodes and allows
-        single-bit errors to be detected.
-        - ``2`` allows all left/right combinations. This gives more barcodes, but
-        barcodes may share one bit.
-        - ``0`` is accepted for compatibility and uses the same full combination
-        space as ``2``.
-
-        Because every barcode has exactly two active bits, no other minimum Hamming
-        distances are possible for distinct valid barcodes.
-
-        :param region_ids: Target regions that need barcode assignments, usually
-            gene names or gene IDs.
+        :param region_ids: Target region identifiers to assign barcode bits to.
         :type region_ids: list[str]
-        :param readout_probe_table: Table linking each bit to a readout probe
-            sequence, channel, L/R role, and readout probe ID.
+        :param readout_probe_table: Readout probe table indexed by barcode bits,
+            containing fluorescence channels and left/right probe combinations.
         :type readout_probe_table: pd.DataFrame
-        :param min_hamming_distance: Required minimum distance between barcodes.
-            Must be ``0``, ``2``, or ``4``.
-        :type min_hamming_distance: int
-        :return: Codebook table with target regions as rows and barcode bits as
-            columns. Each row contains exactly two active bits.
+        :return: Binary codebook indexed by ``gene_name``, with one active
+            barcode bit per target region.
         :rtype: pd.DataFrame
-        :raises ConfigurationError: If the requested Hamming distance is not
-            possible, or if there are not enough available barcodes for all target
-            regions.
+        :raises ConfigurationError: If the number of available barcode bits
+            is smaller than the number of target regions.
         """
-        if min_hamming_distance not in (0, 2, 4):
-            raise ConfigurationError(
-                f"min_hamming_distance must be one of 0, 2, or 4 (got {min_hamming_distance}). "
-                f"Each codeword has Hamming weight 2, so no other minimum distances are achievable."
-            )
-
-        n_channels = len(readout_probe_table["channel"].unique())
-        n_readout_probes_R = readout_probe_table["L/R"].value_counts()["R"]
-        n_readout_probes_L = readout_probe_table["L/R"].value_counts()["L"]
-        n_readout_probes_LR = int(min([n_readout_probes_R, n_readout_probes_L]) / n_channels)
-
-        def _generate_barcode(combination: tuple[int, int, int], codebook_size: int) -> list:
-            """
-            Convert one left/right/channel choice into a two-bit barcode.
-
-            The ``combination`` contains three numbers: the left readout probe index,
-            the right readout probe index, and the channel index. The method turns this
-            choice into a barcode vector with two ``1`` values.
-
-            Bit positions are arranged in repeated channel blocks. Within each channel
-            block, the left bit comes first and the right bit comes second. This layout
-            keeps the generated codebook aligned with the generated readout probe table.
-
-            :param combination: Tuple containing the left probe index, right probe index,
-                and channel index.
-            :type combination: tuple[int, int, int]
-            :param codebook_size: Total number of bit columns in the codebook.
-            :type codebook_size: int
-            :return: Barcode vector with exactly two active bits.
-            :rtype: list
-            """
-            # Bit layout matches the generated readout table: per probe-id block,
-            # channels alternate L then R (even = L, odd = R).
-            index1 = ((n_channels * 2) * combination[0]) + (2 * combination[2])
-            index2 = ((n_channels * 2) * combination[1]) + (2 * combination[2]) + 1
-            barcode = np.zeros(codebook_size, dtype=np.int8)
-            barcode[[index1, index2]] = 1
-            return list(barcode)
-
         n_regions = len(region_ids)
-        codebook_size = n_channels * n_readout_probes_LR * 2
+        codebook_size = len(readout_probe_table)
 
-        combinations = list(
-            itertools.product(
-                list(range(n_readout_probes_LR)), list(range(n_readout_probes_LR)), list(range(n_channels))
+        if codebook_size < n_regions:
+            raise ConfigurationError(
+                f"Only {codebook_size} barcodes are available "
+                f"(= sum over channels of n_pairs**2), "
+                f"which is fewer than the {n_regions} requested regions. "
+                f"Consider adding more readout probe pairs or reducing the number of regions."
             )
+
+        codebook = pd.DataFrame(
+            np.zeros((n_regions, n_regions), dtype=np.int8),
+            index=region_ids,
+            columns=readout_probe_table.index[:n_regions],
         )
-        # Prefer matched L/R IDs first; they give disjoint bit pairs (distance 4).
-        combinations = sorted(combinations, key=lambda t: (0 if t[0] == t[1] else 1, t[1]))
-
-        if min_hamming_distance == 4:
-            # Only L == R combinations are pairwise distance 4.
-            combinations = [c for c in combinations if c[0] == c[1]]
-            if len(combinations) < n_regions:
-                raise ConfigurationError(
-                    f"Only {len(combinations)} barcodes are available at min_hamming_distance=4 "
-                    f"(= n_readout_probes_LR * n_channels = {n_readout_probes_LR} * {n_channels}), "
-                    f"which is fewer than the {n_regions} requested regions. "
-                    f"Consider increasing n_readout_probes_LR or n_channels, reducing the number of "
-                    f"regions, or lowering min_hamming_distance to 2."
-                )
-        else:
-            # Distance 0 or 2: any L/R pair is allowed; only the total count matters.
-            if len(combinations) < n_regions:
-                raise ConfigurationError(
-                    f"Only {len(combinations)} barcodes are available "
-                    f"(= n_readout_probes_LR**2 * n_channels = {n_readout_probes_LR**2} * {n_channels}), "
-                    f"which is fewer than the {n_regions} requested regions. "
-                    f"Consider increasing n_readout_probes_LR or n_channels, or reducing the number "
-                    f"of regions."
-                )
-
-        codebook_list = []
-        for combination in combinations[:n_regions]:
-            barcode = _generate_barcode(
-                combination=combination,
-                codebook_size=codebook_size,
-            )
-            codebook_list.append(barcode)
-
-        codebook: pd.DataFrame = pd.DataFrame(
-            codebook_list, index=region_ids, columns=[f"bit_{i+1}" for i in range(codebook_size)]
-        )
+        for i in range(n_regions):
+            codebook.iloc[i, i] = 1
         codebook.index.name = "gene_name"
 
         return codebook
 
     def load_readout_probe_table(self, file_readout_probe_table: str, codebook_source: str) -> pd.DataFrame:
         """
-        Load a CycleHCR readout probe table from a table file.
+        Load and prepare a cycleHCR readout probe table from a file.
 
-        The readout probe table links each barcode bit to a readout probe sequence.
-        It must contain the readout probe sequence, the fluorescence channel, the
-        L/R role, and the readout probe ID.
+        The readout probe table contains fluorescence channels and left/right
+        readout probe IDs and sequences. Each barcode bit corresponds to a
+        combination of one left and one right readout probe from the same
+        fluorescence channel.
 
-        Bit handling depends on how the codebook is provided.
+        If the codebook is loaded from file, the existing ``bit`` assignments
+        are preserved. Otherwise, readout probe IDs are validated to follow
+        the format ``P{channel}L_{index}`` and ``P{channel}R_{index}``, with
+        matching numerical indices for each left/right pair.
 
-        If the codebook is loaded from file, the readout probe table must already
-        contain a ``bit`` column. These bit names must match the bit columns in the
-        codebook. In this case, the user controls the bit-to-probe mapping.
+        All possible left/right probe combinations within each channel are
+        then generated and sorted. Combinations with matching probe indices
+        are prioritized, followed by left probe index, right probe index,
+        and fluorescence channel. Consecutive barcode bits are assigned
+        according to this order, replacing any existing bit assignments.
 
-        If the codebook will be generated, any existing ``bit`` column is ignored.
-        The table is sorted by ``readout_probe_id``, ``channel``, and ``L/R``. New
-        bit names are then assigned in this order. This creates the bit layout that
-        :py:meth:`generate_codebook` expects, with left and right readout probes
-        arranged in a predictable order.
+        Additional column and sequence validation is performed separately
+        by :py:meth:`validate`.
 
-        Column and sequence checks are done later by :py:meth:`validate`.
-
-        :param file_readout_probe_table: Path to the readout probe table file. The
-            file must contain ``readout_probe_sequence``, ``channel``,
-            ``readout_probe_id``, and ``L/R`` columns. If the codebook is loaded
-            from file, it must also contain a ``bit`` column.
+        :param file_readout_probe_table: Path to the readout probe table file
+            containing ``channel``, ``readout_probe_id_L``,
+            ``readout_probe_sequence_L``, ``readout_probe_id_R``, and
+            ``readout_probe_sequence_R`` columns. A ``bit`` column is
+            additionally required when loading an existing codebook.
         :type file_readout_probe_table: str
-        :param codebook_source: Source of the codebook. Use ``"load"`` when the
-            codebook is read from file. Other values indicate that the codebook will
-            be generated.
+        :param codebook_source: Source of the codebook. ``"load"`` preserves
+            existing bit assignments; other values generate new assignments.
         :type codebook_source: str
-        :return: Readout probe table indexed by ``bit``.
+        :return: Readout probe table indexed by ``bit``, containing the
+            original or generated left/right readout probe combinations.
         :rtype: pd.DataFrame
-        :raises FileFormatError: If the ``bit`` column is missing when a codebook
-            is loaded from file.
+        :raises FileFormatError: If the ``bit`` column is missing when loading
+            an existing codebook, or if readout probe IDs do not follow the
+            required format when generating a codebook.
         """
+
+        # TODO: PYDANTIC move this format checker to pydantic models
+        def _validate_readout_probe_table(readout_probe_table: pd.DataFrame) -> pd.DataFrame:
+            def _valid_prefix(readout_probe_table: pd.DataFrame, channel: str, side: str) -> bool:
+                # Check prefixes
+                prefix = "P" + channel + side + "_"
+                probe_ids = readout_probe_table[f"readout_probe_id_{side}"].astype(str)
+                prefix_valid = all(probe_id.startswith(p) for probe_id, p in zip(probe_ids, prefix))
+                return prefix_valid
+
+            def _id_matching(readout_probe_table: pd.DataFrame) -> bool:
+                # Check matching numerical suffixes if prefixes are valid
+                id_L = readout_probe_table["readout_probe_id_L"].str.extract(r"_(\d+)$")[0]
+                id_R = readout_probe_table["readout_probe_id_R"].str.extract(r"_(\d+)$")[0]
+                valid = bool((id_L.notna() & id_R.notna() & id_L.eq(id_R)).all())
+                return valid
+
+            channel = readout_probe_table["channel"].astype(str)
+            if (
+                _valid_prefix(readout_probe_table, channel, "L")
+                and _valid_prefix(readout_probe_table, channel, "R")
+                and _id_matching(readout_probe_table)
+            ):
+                return readout_probe_table
+            else:
+                raise FileFormatError(
+                    "Invalid readout probe ID format. Expected IDs to follow "
+                    "'P{channel}L_{index}' and 'P{channel}R_{index}', where "
+                    "{channel} is the fluorescence channel and {index} is a "
+                    "matching numerical index for the left and right probes. "
+                )
+
+        def _sort_readout_probe_table(readout_probe_table: pd.DataFrame) -> pd.DataFrame:
+            # get all possible combinations of left and right readout probes
+            left = readout_probe_table[["channel", "readout_probe_id_L", "readout_probe_sequence_L"]]
+            right = readout_probe_table[["channel", "readout_probe_id_R", "readout_probe_sequence_R"]]
+            combinations = left.merge(right, on="channel")
+
+            # extract the probe ID numbers from the readout probe IDs
+            combinations.assign(
+                _L=lambda df: df["readout_probe_id_L"].str.extract(r"_(\d+)$")[0].astype(int),
+                _R=lambda df: df["readout_probe_id_R"].str.extract(r"_(\d+)$")[0].astype(int),
+            )
+
+            # check if the left and right probe IDs match
+            combinations["_matching"] = combinations["_L"].eq(combinations["_R"])
+
+            # sort the combinations by matching left and right probe IDs, then by channel
+            combinations.sort_values(
+                ["_matching", "_L", "_R", "channel"],
+                ascending=[False, True, True, True],
+            ).drop(columns=["_matching", "_L", "_R"]).reset_index(drop=True)
+
+            return combinations
+
         readout_probe_table = pd.read_csv(file_readout_probe_table, sep=None, engine="python")
         if codebook_source == "load":
+            # TODO: PYDANTIC move this "bit_" checker to pydantic models
             if "bit" not in readout_probe_table.columns:
                 raise FileFormatError(
                     f"Readout probe table '{file_readout_probe_table}' must contain a 'bit' column "
                     f"when loading a codebook from file. The 'bit' values must match the codebook's "
                     f"bit columns; the user is responsible for that mapping."
                 )
+            return readout_probe_table.set_index("bit")
         else:
             # Regenerating the codebook: ignore any existing bit column and assign bits
             # in the order generate_codebook expects (probe id, channel, L then R).
-            if "bit" in readout_probe_table.columns:
-                readout_probe_table = readout_probe_table.drop(columns=["bit"])
-            readout_probe_table = readout_probe_table.sort_values(by=["readout_probe_id", "channel", "L/R"])
+            # TODO: PYDANTIC move this validate checker to pydantic models
+            readout_probe_table = _validate_readout_probe_table(readout_probe_table)
+            readout_probe_table = _sort_readout_probe_table(readout_probe_table)
             readout_probe_table.reset_index(inplace=True, drop=True)
             readout_probe_table["bit"] = "bit_" + (readout_probe_table.index + 1).astype(str)
-        return readout_probe_table.set_index("bit")
+            return readout_probe_table.set_index("bit")
 
     def generate_readout_probe_table(self) -> pd.DataFrame:
         """
-        Generate a CycleHCR readout probe table.
+        Generate a cycleHCR readout probe table.
 
-        This feature is not implemented yet. For now, the readout probe table must
-        be supplied as an input file.
+        This functionality is not yet implemented. The readout probe table
+        must currently be provided as an input file.
 
         :return: Readout probe table indexed by ``bit``.
         :rtype: pd.DataFrame
-        :raises FeatureNotImplementedError: Always raised until readout probe table
-            generation is implemented.
+        :raises FeatureNotImplementedError: Always raised because readout
+            probe table generation is not implemented.
         """
         raise FeatureNotImplementedError(
             "Generation of readout probe table is not yet implemented. "
@@ -1675,48 +1643,44 @@ class ReadoutProbeDesigner:
         codebook_source: str | None = None,
     ) -> None:
         """
-        Check the codebook and/or readout probe table.
+        Validate the cycleHCR codebook and/or readout probe table.
 
-        This method can check either table on its own, or both together. When a
-        codebook is provided, it must contain all requested target regions, use
-        ``gene_name`` as the row index, and contain only ``0`` and ``1`` values in
-        its bit columns. For CycleHCR, each target region must have exactly two
-        active bits.
+        The codebook and readout probe table can be validated independently
+        or together.
 
-        When a readout probe table is provided, it must include a valid DNA
-        sequence, channel, L/R role, and readout probe ID for each bit. If a
-        codebook is also provided, every bit used by the codebook must appear in
-        the table.
+        The codebook must contain all requested target regions, use
+        ``gene_name`` as its index name, and contain binary barcode
+        assignments. Each target region must have exactly one active bit.
 
-        Running these checks before probe assembly helps catch mismatched files
-        early, such as a codebook that refers to a bit missing from the readout
-        probe table.
+        The readout probe table must contain the required fluorescence
+        channel, left/right readout probe IDs, and valid DNA sequences.
+        When both tables are provided, all barcode bits referenced by the
+        codebook must be present in the readout probe table.
 
-        :param readout_probe_table: Optional table linking each barcode bit to a
-            readout probe sequence and its readout information. If ``None``, the
-            table is not checked.
+        :param readout_probe_table: Optional readout probe table indexed by
+            barcode bits, containing fluorescence channels and left/right
+            readout probe IDs and sequences.
         :type readout_probe_table: pd.DataFrame | None
-        :param readout_probe_table_source: File path or source label for the
-            readout probe table. Used in error messages when the table is checked.
+        :param readout_probe_table_source: Source identifier for the readout
+            probe table, used in validation error messages.
         :type readout_probe_table_source: str | None
-        :param codebook: Optional codebook table assigning target regions to
-            barcode bits. Rows are target regions and columns are ``bit_*``
-            entries. If ``None``, the codebook is not checked.
+        :param codebook: Optional binary codebook containing target regions
+            as rows and barcode bits as columns.
         :type codebook: pd.DataFrame | None
-        :param region_ids: Target regions that must be present in the codebook.
-            Required when a codebook is checked.
+        :param region_ids: Target region identifiers required in the codebook.
+            Must be provided when validating a codebook.
         :type region_ids: list[str] | None
-        :param codebook_source: File path or source label for the codebook. Used
-            in error messages when the codebook is checked.
+        :param codebook_source: Source identifier for the codebook, used in
+            validation error messages.
         :type codebook_source: str | None
         :return: None
         :rtype: None
-        :raises ValueError: If a table is checked without its required companion
-            arguments (for example ``region_ids`` / ``codebook_source`` with a
-            codebook, or ``readout_probe_table_source`` with a readout probe table).
-        :raises FileFormatError: If the codebook or readout probe table is missing
-            required information or contains invalid values.
+        :raises ValueError: If required companion arguments are missing
+            for the provided codebook or readout probe table.
+        :raises FileFormatError: If the codebook or readout probe table
+            contains missing, invalid, or incompatible information.
         """
+
         if codebook is not None:
             if region_ids is None:
                 raise ValueError("region_ids must be provided when validating a codebook.")
@@ -1726,7 +1690,7 @@ class ReadoutProbeDesigner:
                 codebook=codebook,
                 region_ids=region_ids,
                 source=codebook_source,
-                expected_hamming_weight=2,
+                expected_hamming_weight=1,
                 index_name="gene_name",
             )
         if readout_probe_table is not None:
@@ -1738,8 +1702,14 @@ class ReadoutProbeDesigner:
                 table=readout_probe_table,
                 codebook=codebook,
                 source=readout_probe_table_source,
-                required_columns=["channel", "readout_probe_id", "L/R", "readout_probe_sequence"],
-                sequence_columns=["readout_probe_sequence"],
+                required_columns=[
+                    "channel",
+                    "readout_probe_id_L",
+                    "readout_probe_sequence_L",
+                    "readout_probe_id_R",
+                    "readout_probe_sequence_R",
+                ],
+                sequence_columns=["readout_probe_sequence_L", "readout_probe_sequence_R"],
             )
 
 
@@ -1906,19 +1876,19 @@ def _preprocess_config(config_validated: CycleHcrProbeDesignerConfig) -> dict[st
     # Resolve Tm table names and blank disabled chem/salt corrections to None so
     # downstream filters treat None as "no correction" without checking the flag.
     for section in ["target_probes"]:
-        config[section]["global_parameters"]["Tm_parameters"] = preprocess_tm_parameters(
-            config[section]["global_parameters"]["Tm_parameters"]
+        config[section]["Tm_parameters"]["Tm_NN_parameters"] = preprocess_tm_parameters(
+            config[section]["Tm_parameters"]["Tm_NN_parameters"]
         )
         for correction in ["Tm_chem_correction_parameters", "Tm_salt_correction_parameters"]:
-            correction_cfg = config[section]["global_parameters"][correction]
+            correction_cfg = config[section]["Tm_parameters"][correction]
             if not correction_cfg["enabled"]:
                 correction_cfg["parameters"] = None
 
-    target_probe_Tm_parameters = config["target_probes"]["global_parameters"]["Tm_parameters"]
-    target_probe_Tm_chem_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_parameters = config["target_probes"]["Tm_parameters"]["Tm_NN_parameters"]
+    target_probe_Tm_chem_correction_parameters = config["target_probes"]["Tm_parameters"][
         "Tm_chem_correction_parameters"
     ]["parameters"]
-    target_probe_Tm_salt_correction_parameters = config["target_probes"]["global_parameters"][
+    target_probe_Tm_salt_correction_parameters = config["target_probes"]["Tm_parameters"][
         "Tm_salt_correction_parameters"
     ]["parameters"]
 

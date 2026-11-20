@@ -5,6 +5,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    HttpUrl,
     NonNegativeInt,
     NonPositiveInt,
     PositiveInt,
@@ -32,7 +33,7 @@ SPECIFICITY_FILTERS_DESC = "Parameters for filters that test the specificity of 
 PROBE_SET_SELECTION_DESC = (
     "Parameters for selecting multiple probe sets per gene (size, spacing, scoring, diversification)."
 )
-GLOBAL_PARAMETERS_DESC = (
+TM_PARAMETERS_DESC = (
     "Parameters for melting temperature computation that are reused for different filtering and "
     "scoring methods."
 )
@@ -41,6 +42,7 @@ READOUT_PROBE_TABLE_DESC = "Parameters that determine the readout probe table ge
 INITIATOR_TABLE_DESC = "Parameters that determine the initiator table generation or loading."
 FORWARD_PRIMER_DESC = "Parameters that determine the forward primer generation or loading."
 REVERSE_PRIMER_DESC = "Parameters that determine the reverse primer generation or loading."
+SCHEMA_VERSION_DESC = "Config file format version, do not edit"
 
 
 class General(BaseModel):
@@ -413,7 +415,7 @@ class BlastnSearchParameters(BaseModel):
 class BlastnHitParametersCoverage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    hit_criterion: Literal["coverage"] = "coverage"
+    hit_criterion: Literal["coverage"]
 
     value: float = Field(
         ge=0,
@@ -425,7 +427,7 @@ class BlastnHitParametersCoverage(BaseModel):
 class BlastnHitParametersMinAlignmentLength(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    hit_criterion: Literal["min_alignment_length"] = "min_alignment_length"
+    hit_criterion: Literal["min_alignment_length"]
 
     value: NonNegativeInt = Field(
         description="Number of nucleotides for alignment, alternatively, coverage can be used",
@@ -437,7 +439,7 @@ BlastnHitParameters = Annotated[
 ]
 
 
-class TmParameters(BaseModel):
+class TmNNParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     check: bool = Field(default=True, description="Checks if the sequence is valid for the given method.")
@@ -458,54 +460,43 @@ class TmParameters(BaseModel):
         description="Is the sequence self-complementary? If 'True' the primer is thought binding to itself, thus dnac2 is not considered.",
     )
     nn_table: Literal["DNA_NN1", "DNA_NN2", "DNA_NN3", "DNA_NN4"] | None = Field(
-        default=None, description="Thermodynamic NN values."
+        description="Thermodynamic NN values."
     )
     tmm_table: Literal["DNA_TMM1"] | None = Field(
         default=None, description="Thermodynamic values for terminal mismatches."
     )
     imm_table: Literal["DNA_IMM1"] | None = Field(
-        default=None,
         description="Thermodynamic values for internal mismatches, may include insosine mismatches.",
     )
-    de_table: Literal["DNA_DE1"] | None = Field(
-        default=None, description="Thermodynamic values for dangling ends."
-    )
-    dnac1: NonNegativeInt = Field(
-        default=25, description="Concentration of the higher concentrated strand [nM]."
-    )
-    dnac2: NonNegativeInt = Field(
-        default=25, description="Concentration of the lower concentrated strand [nM]."
-    )
+    de_table: Literal["DNA_DE1"] | None = Field(description="Thermodynamic values for dangling ends.")
+    dnac1: NonNegativeInt = Field(description="Concentration of the higher concentrated strand [nM].")
+    dnac2: NonNegativeInt = Field(description="Concentration of the lower concentrated strand [nM].")
     saltcorr: NonNegativeInt = Field(
-        default=5,
         ge=0,
         le=7,
         description="Salt correction method, see Bio.SeqUtils.MeltingTemp.salt_correction.",
     )
-    Na: NonNegativeInt = Field(default=50, description="Concentration of the ions [mM].")
-    K: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
-    Tris: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
-    Mg: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
-    dNTPs: NonNegativeInt = Field(default=0, description="Concentration of the ions [mM].")
+    Na: NonNegativeInt = Field(description="Concentration of the ions [mM].")
+    K: NonNegativeInt = Field(description="Concentration of the ions [mM].")
+    Tris: NonNegativeInt = Field(description="Concentration of the ions [mM].")
+    Mg: NonNegativeInt = Field(description="Concentration of the ions [mM].")
+    dNTPs: NonNegativeInt = Field(description="Concentration of the ions [mM].")
 
 
 class TmChemCorrectionParametersDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # defaults are from Bio.SeqUtils.MeltingTemp.chem_correction
-    DMSO: float = Field(default=0, ge=0, le=100, description="Percent DMSO")
-    DMSOfactor: float = Field(default=0.75, description="How much Tm should decrease per percent DMSO")
-    fmd: float = Field(
-        default=0, description="Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2)."
-    )
-    fmdfactor: float = Field(default=0.65, description="How much Tm should decrease per percent formamide")
+    DMSO: float = Field(ge=0, le=100, description="Percent DMSO")
+    DMSOfactor: float = Field(description="How much Tm should decrease per percent DMSO")
+    fmd: float = Field(description="Formamide concentration in %(fmdmethod=1) or molar (fmdmethod=2).")
+    fmdfactor: float = Field(description="How much Tm should decrease per percent formamide")
     fmdmethod: int = Field(
-        default=1,
         ge=1,
         le=2,
         description="Tm = Tm - factor(%formamide) (Default); Tm = Tm + (0.453(f(GC)) - 2.88) x [formamide]",
     )
-    GC: float | None = Field(default=None, ge=0, le=100, description="GC content in percent.")
+    GC: float | None = Field(ge=0, le=100, description="GC content in percent.")
 
     @model_validator(mode="after")
     def _check_fmd_vs_method(self) -> Self:
@@ -536,9 +527,8 @@ class TmChemCorrectionParametersEnabled(BaseModel):
 
     enabled: Literal[True] = Field(
         description="Should chem correction be used in the calculation of the melting temperature?",
-        default=True,
     )
-    parameters: TmChemCorrectionParametersDetails = TmChemCorrectionParametersDetails()
+    parameters: TmChemCorrectionParametersDetails
 
 
 class TmChemCorrectionParametersDisabled(BaseModel):
@@ -546,7 +536,6 @@ class TmChemCorrectionParametersDisabled(BaseModel):
 
     enabled: Literal[False] = Field(
         description="Should chem correction be used in the calculation of the melting temperature?",
-        default=False,
     )
 
 
@@ -558,13 +547,12 @@ TmChemCorrectionParameters = Annotated[
 class TmSaltCorrectionParametersDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    Na: NonNegativeInt = Field(default=0, description="[mM] of ion")
-    K: NonNegativeInt = Field(default=0, description="[mM] of ion")
-    Tris: NonNegativeInt = Field(default=0, description="[mM] of ion")
-    Mg: NonNegativeInt = Field(default=0, description="[mM] of ion")
-    dNTPs: NonNegativeInt = Field(default=0, description="[mM] of ion")
+    Na: NonNegativeInt = Field(description="[mM] of ion")
+    K: NonNegativeInt = Field(description="[mM] of ion")
+    Tris: NonNegativeInt = Field(description="[mM] of ion")
+    Mg: NonNegativeInt = Field(description="[mM] of ion")
+    dNTPs: NonNegativeInt = Field(description="[mM] of ion")
     method: PositiveInt = Field(
-        default=1,
         ge=1,
         le=7,
         description="Correction method to be applied. Methods 1-4 correct Tm, method 5 corrects deltaS, methods 6 and 7 correct 1/Tm.",
@@ -576,9 +564,8 @@ class TmSaltCorrectionParametersEnabled(BaseModel):
 
     enabled: Literal[True] = Field(
         description="Should salt correction be used in the calculation of the melting temperature?",
-        default=True,
     )
-    parameters: TmSaltCorrectionParametersDetails = TmSaltCorrectionParametersDetails()
+    parameters: TmSaltCorrectionParametersDetails
 
 
 class TmSaltCorrectionParametersDisabled(BaseModel):
@@ -586,10 +573,23 @@ class TmSaltCorrectionParametersDisabled(BaseModel):
 
     enabled: Literal[False] = Field(
         description="Should salt correction be used in the calculation of the melting temperature?",
-        default=False,
     )
 
 
 TmSaltCorrectionParameters = Annotated[
     TmSaltCorrectionParametersEnabled | TmSaltCorrectionParametersDisabled, Field(discriminator="enabled")
 ]
+
+
+class ProtocolMetadata(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    protocol: Literal["Cycle-HCR", "HCR", "MERFISH", "Oligo-Seq", "Scrinshot", "SeqFish+"] = Field(
+        description="Name of the protocol for which oligos are designed."
+    )
+    source_default_parameters: HttpUrl = Field(
+        description="Link to the paper from which the default parameters are taken."
+    )
+    name_default_parameters: str = Field(
+        description="Name of the source of the default parameters, e.g. the first author of the paper."
+    )
