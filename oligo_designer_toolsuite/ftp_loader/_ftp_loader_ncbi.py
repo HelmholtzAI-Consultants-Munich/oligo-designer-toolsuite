@@ -11,12 +11,14 @@ import pandas as pd
 from Bio import SeqIO
 from typing_extensions import IO, ClassVar, override
 
-from oligo_designer_toolsuite._constants import _TYPES_FILE
+from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import (
+    FetchedGenomicEntity,
     FtpLoaderBase,
     FtpUtil,
     GenomicEntityContext,
+    RemoteInfo,
 )
 from oligo_designer_toolsuite.utils import logger
 
@@ -160,10 +162,10 @@ class SpeciesMode(ModeStrategy):
             )
 
         if entity.taxon is None:
-            raise ConfigurationError(f"No taxon defined.")
+            raise ConfigurationError("No taxon defined.")
 
         if entity.species is None:
-            raise ConfigurationError(f"No species defined.")
+            raise ConfigurationError("No species defined.")
 
         if entity.annotation_release is None:
             annotation_release = "current"
@@ -182,7 +184,7 @@ class SpeciesMode(ModeStrategy):
     def get_ftp_directory(self) -> tuple[str, str, str]:
         source_subdir = self._resolve_source_subdir()
         ftp_dir = self._resolve_base_directory(source_subdir)
-        self._resolve_assembly_metadata(ftp_dir)
+        assembly_accession, assembly_name = self._resolve_assembly_metadata(ftp_dir)
         # all the numeric annotations (up until 110) have the following directory structure:
         # /genomes/refseq/vertebrate_mammalian/Homo_sapiens/annotation_releases/110
         # |- GCF_000001405.40_GRCh38.p14/
@@ -199,13 +201,15 @@ class SpeciesMode(ModeStrategy):
         # there the assembly accession & name was inferred from README_GCF_009914755.1-RS_2025_08 directly in
         # this directory and we don't need to change it anymore.
         return (
-            self._resolve_assembly_directory(ftp_dir),
-            self.assembly_accession,
-            self.assembly_name,
+            self._resolve_assembly_directory(ftp_dir, assembly_accession, assembly_name),
+            assembly_accession,
+            assembly_name,
         )
 
-    def _resolve_assembly_directory(self, ftp_directory: str) -> str:
-        assembly_dir = f"{ftp_directory}{self.assembly_accession}_{self.assembly_name}"
+    def _resolve_assembly_directory(
+        self, ftp_directory: str, assembly_accession: str, assembly_name: str
+    ) -> str:
+        assembly_dir = f"{ftp_directory}{assembly_accession}_{assembly_name}"
         assembly_dir = assembly_dir.replace(" ", "_")
         ftp = FTP(self.host)
         ftp.login()
@@ -265,14 +269,18 @@ class SpeciesMode(ModeStrategy):
             self.annotation_release = entries[0]
         return f"{base_directory}{self.annotation_release}/"
 
-    def _resolve_assembly_metadata(self, ftp_directory: str) -> None:
-        pass
+    def _resolve_assembly_metadata(self, ftp_directory: str) -> tuple[str, str]:
+        assembly_accession = None
+        assembly_name = None
 
         # all species where information about the used annotation is available
         # have a README_{annotation name} file; either in the directory that contains
         # the subdirectory with the data and also in the directory with all the data
         # define parser helpers
-        def parse_readme(handle: IO) -> None:
+        def parse_readme(handle: IO) -> tuple[str | None, str | None]:
+            assembly_accession = None
+            assembly_name = None
+
             for line in handle:
                 if line.startswith("ASSEMBLY NAME:"):
                     assembly_name = line.strip().split("\t", 1)[1]
@@ -280,19 +288,25 @@ class SpeciesMode(ModeStrategy):
                     assembly_accession = line.strip().split("\t", 1)[1]
                     break
 
-        def parse_assembly_report(handle: IO) -> None:
+            return assembly_accession, assembly_name
+
+        def parse_assembly_report(handle: IO) -> tuple[str | None, str | None]:
+            assembly_accession = None
+            assembly_name = None
+
             for line in handle:
                 if line.startswith("# Assembly name:"):
-                    self.assembly_name = line.split(":", 1)[1].strip()
+                    assembly_name = line.split(":", 1)[1].strip()
                 if line.startswith("# RefSeq assembly accession:"):
-                    self.assembly_accession = line.split(":", 1)[1].strip()
+                    assembly_accession = line.split(":", 1)[1].strip()
                     break
+
+            return assembly_accession, assembly_name
 
         candidates = [
             (r"README_(?!patch_release\.txt$).*", parse_readme),
             (r".*_assembly_report\.txt", parse_assembly_report),
         ]
-        success = False
         for pattern, parser in candidates:
             try:
                 file_path = self.ftp_util.download(
@@ -301,20 +315,21 @@ class SpeciesMode(ModeStrategy):
                 )
                 try:
                     with open(file_path, "r") as handle:
-                        parser(handle)
+                        assembly_accession, assembly_name = parser(handle)
                 finally:
                     os.remove(file_path)
-                if self.assembly_accession and self.assembly_name:
-                    success = True
+                if assembly_accession and assembly_name:
                     break
             except FileNotFoundError:
                 # try next candidate
                 continue
 
-        if not success:
+        if assembly_accession is None or assembly_name is None:
             raise ConfigurationError(
                 f"Could not resolve assembly metadata from '{ftp_directory}' on NCBI FTP."
             )
+
+        return assembly_accession, assembly_name
 
     def _validate_taxon_and_source(self) -> None:
         if self.taxon is None:
@@ -477,7 +492,12 @@ class FtpLoaderNCBI(FtpLoaderBase[NcbiGenomicEntity]):
 
         return digest.hexdigest() == expected_checksum
 
-    def fetch_genomic_entity(self, entity: NcbiGenomicEntity) -> dict[str, str]:
+    def fetch_genomic_entity(
+        self,
+        entity: NcbiGenomicEntity,
+        files: list[_TYPES_FILE] | None = None,
+        sequence_nature: _TYPES_FILE_SEQ = "dna",
+    ) -> FetchedGenomicEntity:
         """Fetches genomic entity from cache or downloads it if not cached yet.
 
         Arguments:
@@ -495,26 +515,18 @@ class FtpLoaderNCBI(FtpLoaderBase[NcbiGenomicEntity]):
         self.mode = self._get_mode(entity)
         self.mode._validate_taxon_and_source()
 
-        fetched_genomic_entity = super().fetch_genomic_entity(entity)
+        fetched_genomic_entity = super().fetch_genomic_entity(entity, files)
 
-        annotation_file = fetched_genomic_entity["annotation_file"]
-        sequence_file = fetched_genomic_entity["sequence_file"]
+        for file_type, file_path in fetched_genomic_entity["fetched_files"].items():
+            remote_dir, _, mapping_file = self._get_params(file_type)
+            self._apply_mapping_chr_names(file_type, file_path, remote_dir, mapping_file)
 
-        sequence_remote_dir, _, sequence_mapping_file = self._get_params("fasta")
-        annotation_remote_dir, _, annotation_mapping_file = self._get_params("gtf")
-
-        self._apply_mapping_chr_names("fasta", sequence_file, sequence_remote_dir, sequence_mapping_file)
-        self._apply_mapping_chr_names("gtf", annotation_file, annotation_remote_dir, annotation_mapping_file)
-
-        return {
-            "annotation_file": annotation_file,
-            "sequence_file": sequence_file,
-            "annotation_release": fetched_genomic_entity["annotation_release"],
-            "genome_assembly": fetched_genomic_entity["genome_assembly"],
-        }
+        return fetched_genomic_entity
 
     @override
-    def _get_entity_context(self, entity: NcbiGenomicEntity) -> GenomicEntityContext:
+    def _get_entity_context(
+        self, entity: NcbiGenomicEntity, files: list[_TYPES_FILE], sequence_nature: _TYPES_FILE_SEQ
+    ) -> GenomicEntityContext:
         """Retrieves context for a genomic entity.
 
         Arguments:
@@ -523,20 +535,19 @@ class FtpLoaderNCBI(FtpLoaderBase[NcbiGenomicEntity]):
         Returns:
             GenomicEntityContext -- Context for the requested entity.
         """
-        sequence_remote_dir, sequence_remote_filename, _ = self._get_params("fasta")
-        annotation_remote_dir, annotation_remote_filename, _ = self._get_params("gtf")
+        remote_file_infos: dict[_TYPES_FILE, RemoteInfo] = {}
+        for file_type in files:
+            file_type_remote_dir, file_type_remote_filename, _ = self._get_params(file_type)
+            remote_file_infos[file_type] = RemoteInfo(file_type_remote_dir, file_type_remote_filename)
 
         annotation_release = (
             self.annotation_release_from_ncbi
             if self.annotation_release_from_ncbi is not None
-            else f"{self.assembly_accession}_{self.assembly_name}"
+            else "no_annotation_info"
         )
 
         return GenomicEntityContext(
-            annotation_remote_dir,
-            annotation_remote_filename,
-            sequence_remote_dir,
-            sequence_remote_filename,
+            remote_file_infos,
             annotation_release,
             self.assembly_name,
             self.assembly_accession,
@@ -576,7 +587,7 @@ class FtpLoaderNCBI(FtpLoaderBase[NcbiGenomicEntity]):
                     raise ConfigurationError("For source='ncbi', parameter 'mode' must be provided.")
 
                 raise ConfigurationError(
-                    f"mode '{self.mode}' is not supported. Supported values for source='ncbi' are: {allowed_modes}."
+                    f"mode '{entity.mode}' is not supported. Supported values for source='ncbi' are: {allowed_modes}."
                 )
 
     def _apply_mapping_chr_names(
@@ -633,7 +644,7 @@ class FtpLoaderNCBI(FtpLoaderBase[NcbiGenomicEntity]):
             logger.warning("No annotation name information available from NCBI.")
 
     def _download_mapping_chr_names(self, ftp_directory: str, ftp_file_chr_mapping: str) -> dict:
-        """
+        """Literal["fasta", "gtf", "gff"]
         Downloads and processes the chromosome name mapping file from the NCBI FTP server.
 
         This function retrieves the chromosome name mapping file, skips comment lines, and extracts the mapping of RefSeq accession numbers to chromosome or scaffold names.

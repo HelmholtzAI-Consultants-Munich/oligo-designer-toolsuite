@@ -9,15 +9,16 @@ from typing import ClassVar
 
 from typing_extensions import override
 
-from oligo_designer_toolsuite._constants import _TYPES_FILE_SEQ
+from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import (
     FtpLoaderBase,
     GenomicEntity,
     GenomicEntityContext,
+    RemoteInfo,
 )
 
 
-class FtpLoaderEnsembl(FtpLoaderBase):
+class FtpLoaderEnsembl(FtpLoaderBase[GenomicEntity]):
     """
     A class for downloading genomic data from the Ensembl FTP server.
 
@@ -40,7 +41,7 @@ class FtpLoaderEnsembl(FtpLoaderBase):
     base_path: ClassVar[str] = "/pub"
     checksums_filename: ClassVar[str] = "CHECKSUMS"
 
-    def __init__(self, dir_output: str, species: str, annotation_release: str) -> None:
+    def __init__(self, dir_output: str) -> None:
         """Constructor for the FtpLoaderEnsembl class."""
         super().__init__(Path(dir_output))
         self.assembly_name_placeholder = "[^\\.]*"
@@ -135,7 +136,9 @@ class FtpLoaderEnsembl(FtpLoaderBase):
             return False
 
     @override
-    def _get_entity_context(self, entity: GenomicEntity) -> GenomicEntityContext:
+    def _get_entity_context(
+        self, entity: GenomicEntity, files: list[_TYPES_FILE], sequence_nature: _TYPES_FILE_SEQ
+    ) -> GenomicEntityContext:
         """Retrieves context for a genomic entity.
 
         Arguments:
@@ -149,20 +152,17 @@ class FtpLoaderEnsembl(FtpLoaderBase):
         annotation_release = self._get_annotation_release(entity.release)
 
         # Resolve filenames, remote directories and assembly
-        sequence_remote_dir, sequence_remote_filename = self._get_fasta_params(
-            "dna", entity.species, annotation_release
-        )
-        annotation_remote_dir, annotation_remote_filename = self._get_gtf_or_gff_params(
-            entity.species, annotation_release
-        )
+        remote_file_infos: dict[_TYPES_FILE, RemoteInfo] = {}
+        for file_type in files:
+            file_type_remote_dir, file_type_remote_filename = self._get_params(
+                file_type, sequence_nature, entity.species, entity.release
+            )
+            remote_file_infos[file_type] = RemoteInfo(file_type_remote_dir, file_type_remote_filename)
 
-        genome_assembly = self._get_genome_assembly(annotation_remote_filename, sequence_remote_filename)
+        genome_assembly = self._get_genome_assembly(remote_file_infos)
 
         return GenomicEntityContext(
-            annotation_remote_dir,
-            annotation_remote_filename,
-            sequence_remote_dir,
-            sequence_remote_filename,
+            remote_file_infos,
             annotation_release,
             genome_assembly,
             accession=None,
@@ -188,6 +188,14 @@ class FtpLoaderEnsembl(FtpLoaderBase):
 
         return annotation_release
 
+    def _get_params(
+        self, file_type: _TYPES_FILE, sequence_nature: _TYPES_FILE_SEQ, species: str, annotation_release: str
+    ) -> tuple[str, str]:
+        if file_type == "fasta":
+            return self._get_fasta_params(sequence_nature, species, annotation_release)
+        else:
+            return self._get_gtf_or_gff_params(species, annotation_release, file_type)
+
     def _get_fasta_params(
         self, sequence_nature: _TYPES_FILE_SEQ, species: str, annotation_release: str
     ) -> tuple[str, str]:
@@ -203,27 +211,41 @@ class FtpLoaderEnsembl(FtpLoaderBase):
 
         return ftp_directory, self.ftp_util.get_exact_filename(ftp_directory, ftp_file)
 
-    def _get_gtf_or_gff_params(self, species: str, annotation_release: str) -> tuple[str, str]:
-        # TODO: how to handle missing file types here? Passthrough?
-        ftp_directory = f"pub/release-{annotation_release}/{self.file_type_folder['gtf']}/{species}/"
-        ftp_file = f"{species.capitalize()}.{self.assembly_name_placeholder}.{annotation_release}.{self.file_type_ending['gtf']}"
+    def _get_gtf_or_gff_params(
+        self, species: str, annotation_release: str, file_type: _TYPES_FILE
+    ) -> tuple[str, str]:
+        ftp_directory = f"pub/release-{annotation_release}/{self.file_type_folder[file_type]}/{species}/"
+        ftp_file = f"{species.capitalize()}.{self.assembly_name_placeholder}.{annotation_release}.{self.file_type_ending[file_type]}"
 
         return ftp_directory, self.ftp_util.get_exact_filename(ftp_directory, ftp_file)
 
     def _parse_assembly_from_filename(self, file_name: str) -> str | None:
+        """
+        Try to parse assembly from annotation or sequence filename.
+
+        Annotation file name examples:
+            - Homo_sapiens.GRCh38.116.gtf.gz -> GRCh38
+            - Acanthochromis_polyacanthus.ASM210954v1.116.gtf.gz -> ASM210954v1
+
+        Sequence file name examples:
+            - Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz -> GRCh38
+            - Acanthochromis_polyacanthus.ASM210954v1.dna.toplevel.fa.gz -> ASM210954v1
+        """
+
         match = re.search("\\.([^\\.]*)\\.", file_name)
         return match.group().replace(".", "") if match is not None else None
 
-    def _get_genome_assembly(self, annotation_filename: str, sequence_filename: str) -> str:
-        # Try to parse assembly from annotation filename
-        # e.g. Homo_sapiens.GRCh38.116.gtf.gz -> GRCh38
-        # e.g. Acanthochromis_polyacanthus.ASM210954v1.116.gtf.gz -> ASM210954v1
-        assembly_from_annotation = self._parse_assembly_from_filename(annotation_filename)
-
-        # Try to parse assembly from sequence filename
-        # e.g. Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz -> GRCh38
-        # e.g. Acanthochromis_polyacanthus.ASM210954v1.dna.toplevel.fa.gz -> ASM210954v1
-        assembly_from_sequence = self._parse_assembly_from_filename(sequence_filename)
+    def _get_genome_assembly(self, remote_file_infos: dict[_TYPES_FILE, RemoteInfo]) -> str:
 
         # Prefer assembly parsed from sequence; assembly parsed from annotation as fallback
-        return assembly_from_sequence or assembly_from_annotation or "unknown"
+        file_type_priority: list[_TYPES_FILE] = ["fasta", "gtf", "gff"]
+
+        for file_type in file_type_priority:
+            remote_file_info = remote_file_infos.get(file_type)
+            if remote_file_info is None:
+                continue
+            assembly_from_annotation = self._parse_assembly_from_filename(remote_file_infos[file_type].name)
+            if assembly_from_annotation is not None:
+                return assembly_from_annotation
+
+        return "unknown"

@@ -1389,10 +1389,10 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         ftp = FtpLoaderNCBI(self.dir_output)
         fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
 
-        annotation_file = fetched_genomic_entity["annotation_file"]
+        annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]
         annotation_release = fetched_genomic_entity["annotation_release"]
         genome_assembly = fetched_genomic_entity["genome_assembly"]
-        sequence_file = fetched_genomic_entity["sequence_file"]
+        sequence_file = fetched_genomic_entity["fetched_files"]["fasta"]
 
         super().__init__(
             annotation_file,
@@ -1443,13 +1443,13 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         genomic_entity = GenomicEntity(None, species, annotation_release)
 
-        ftp = FtpLoaderEnsembl(self.dir_output, species, annotation_release)
+        ftp = FtpLoaderEnsembl(self.dir_output)
         fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
 
-        annotation_file = fetched_genomic_entity["annotation_file"]
+        annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]
         annotation_release = fetched_genomic_entity["annotation_release"]
         genome_assembly = fetched_genomic_entity["genome_assembly"]
-        sequence_file = fetched_genomic_entity["sequence_file"]
+        sequence_file = fetched_genomic_entity["fetched_files"]["fasta"]
 
         super().__init__(
             annotation_file,

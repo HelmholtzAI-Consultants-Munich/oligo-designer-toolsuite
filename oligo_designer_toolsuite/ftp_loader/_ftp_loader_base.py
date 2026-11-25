@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from email.utils import formatdate, parsedate_to_datetime
 from ftplib import FTP
 from pathlib import Path
-from typing import ClassVar, Generic, TypeVar, get_args
+from typing import ClassVar, Generic, TypedDict, TypeVar, get_args
 
 import requests
 
@@ -34,20 +34,34 @@ class GenomicEntity:
 
 
 @dataclass(frozen=True)
+class RemoteInfo:
+    dir: str
+    name: str
+
+
+@dataclass(frozen=True)
 class GenomicEntityContext:
     """Context about a genomic entity for genomic databases."""
 
-    annotation_remote_dir: str
-    annotation_remote_filename: str
-    sequence_remote_dir: str
-    sequence_remote_filename: str
+    file_remote_info: dict[_TYPES_FILE, RemoteInfo]
     annotation_release: str
     genome_assembly: str
     accession: str | None  # Ensembl doesn't use GCF/GCA accessions in filenames
 
 
-class FtpUtil:
+class FetchedFiles(TypedDict):
+    gtf: str | None
+    gff: str | None
+    fasta: str | None
 
+
+class FetchedGenomicEntity(TypedDict):
+    annotation_release: str
+    genome_assembly: str
+    fetched_files: dict[_TYPES_FILE, str]
+
+
+class FtpUtil:
     def __init__(
         self,
         host: str,
@@ -129,7 +143,10 @@ class FtpUtil:
                 # Set local modification time to remote's 'last-modified' to use for future requests
                 if last_modified := response.headers.get("last-modified"):
                     new_mtime = parsedate_to_datetime(last_modified).timestamp()
-                    os.utime(file_path, times=(datetime.datetime.now().timestamp(), new_mtime))
+                    os.utime(
+                        file_path,
+                        times=(datetime.datetime.now().timestamp(), new_mtime),
+                    )
         return file_path
 
 
@@ -352,7 +369,12 @@ class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
         return file_path
 
     @abstractmethod
-    def _get_entity_context(self, entity: TGenomicEntity) -> GenomicEntityContext:
+    def _get_entity_context(
+        self,
+        entity: TGenomicEntity,
+        files: list[_TYPES_FILE],
+        sequence_nature: _TYPES_FILE_SEQ,
+    ) -> GenomicEntityContext:
         """Retrieves context for a genomic entity.
 
         Arguments:
@@ -401,7 +423,7 @@ class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
         filename_to_checksum_map: dict[str, str] = {}
 
         # Use a set for both directories -> if they are equal, the checksums are only downloaded once
-        for dir in {context.annotation_remote_dir, context.sequence_remote_dir}:
+        for dir in {remote_info.dir for remote_info in context.file_remote_info.values()}:
             # Always download without caching in case checksums changed
             checksums_path = self.ftp_util.download(dir, self.checksums_filename)
             with open(checksums_path) as checksums_file:
@@ -438,7 +460,12 @@ class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
                 f"Required file missing in {self.name}'s {self.checksums_filename}: {e}"
             ) from e
 
-    def fetch_genomic_entity(self, entity: TGenomicEntity) -> dict[str, str]:
+    def fetch_genomic_entity(
+        self,
+        entity: TGenomicEntity,
+        files: list[_TYPES_FILE] | None = None,
+        sequence_nature: _TYPES_FILE_SEQ = "dna",
+    ) -> FetchedGenomicEntity:
         """Fetches genomic entity from cache or downloads it if not cached yet.
 
         Arguments:
@@ -454,30 +481,25 @@ class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
             dict[str, str] -- dict containing the file paths and the resolved release and assembly.
         """
 
+        if files is None:
+            files = ["fasta", "gtf"]
+
         # Obtain GenomicEntityContext (file names, location, etc.) using subclass-specific implementation
-        context = self._get_entity_context(entity)
+        context = self._get_entity_context(entity, files, sequence_nature)
         # Obtain filename-to-checksum map
         checksum_map = self._get_checksum_map(context)
 
-        # --- Annotation (GTF) ---
-        # Verify checksum is known
-        annotation_checksum = self._get_checksum(checksum_map, context.annotation_remote_filename)
-        # Download from source, verify checksum of compressed file and extract if necessary
-        annotation_file = self._download_and_process(
-            context.annotation_remote_dir, context.annotation_remote_filename, annotation_checksum
-        )
+        fetched_files: dict[_TYPES_FILE, str] = {}
 
-        # --- Sequence (FASTA) ---
-        # Verify checksum is known
-        sequence_checksum = self._get_checksum(checksum_map, context.sequence_remote_filename)
-        # Download from source, verify checksum of compressed file and extract if necessary
-        sequence_file = self._download_and_process(
-            context.sequence_remote_dir, context.sequence_remote_filename, sequence_checksum
-        )
+        for file_type, remote_info in context.file_remote_info.items():
+            # Verify checksum is known
+            checksum = self._get_checksum(checksum_map, remote_info.name)
+            # Download from source, verify checksum of compressed file and extract if necessary
+            annotation_file = self._download_and_process(remote_info.dir, remote_info.name, checksum)
+            fetched_files[file_type] = str(annotation_file)
 
         return {
-            "annotation_file": str(annotation_file),
-            "sequence_file": str(sequence_file),
+            "fetched_files": {**fetched_files},
             "annotation_release": context.annotation_release,
             "genome_assembly": context.genome_assembly,
         }
