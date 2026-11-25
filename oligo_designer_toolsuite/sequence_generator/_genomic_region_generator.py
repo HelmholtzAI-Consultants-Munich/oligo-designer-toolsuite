@@ -20,7 +20,11 @@ from typing import Callable, Iterable
 import numpy as np
 import pandas as pd
 
-from oligo_designer_toolsuite.ftp_loader import FtpLoaderEnsembl, FtpLoaderNCBI, GenomicEntity
+from oligo_designer_toolsuite.ftp_loader import (
+    GenomicDatabaseDownloaderEnsembl,
+    GenomicDatabaseDownloaderNcbi,
+    GenomicEntity,
+)
 from oligo_designer_toolsuite.ftp_loader._ftp_loader_ncbi import NcbiGenomicEntity
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
@@ -1386,7 +1390,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
             assembly_source,
         )
 
-        ftp = FtpLoaderNCBI(self.dir_output)
+        ftp = GenomicDatabaseDownloaderNcbi(self.dir_output)
         fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
 
         annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]
@@ -1443,7 +1447,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         genomic_entity = GenomicEntity(None, species, annotation_release)
 
-        ftp = FtpLoaderEnsembl(self.dir_output)
+        ftp = GenomicDatabaseDownloaderEnsembl(self.dir_output)
         fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
 
         annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]

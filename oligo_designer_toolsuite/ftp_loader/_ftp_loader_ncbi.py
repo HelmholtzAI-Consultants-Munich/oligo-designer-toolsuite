@@ -15,8 +15,9 @@ from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import (
     FetchedGenomicEntity,
-    FtpLoaderBase,
     FtpUtil,
+    GenomicDataBaseConfigBase,
+    GenomicDatabaseDownloaderBase,
     GenomicEntityContext,
     RemoteInfo,
 )
@@ -374,7 +375,14 @@ class SpeciesMode(ModeStrategy):
         return entries
 
 
-class FtpLoaderNCBI(FtpLoaderBase[NcbiGenomicEntity]):
+class GenomicDataBaseConfigNcbi(GenomicDataBaseConfigBase):
+    name: ClassVar[str] = "ncbi"
+    host: ClassVar[str] = "ftp.ncbi.nlm.nih.gov"
+    base_path: ClassVar[str] = "/genomes/refseq"
+    checksums_filename: ClassVar[str] = "md5checksums.txt"
+
+
+class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEntity]):
     """
     A class for downloading and processing genomic data files from the NCBI FTP server.
 
@@ -401,78 +409,13 @@ class FtpLoaderNCBI(FtpLoaderBase[NcbiGenomicEntity]):
 
     """A genomic database to interface with Ncbi."""
 
-    name: ClassVar[str] = "ncbi"
-    host: ClassVar[str] = "ftp.ncbi.nlm.nih.gov"
-    base_path: ClassVar[str] = "/genomes/refseq"
-    checksums_filename: ClassVar[str] = "md5checksums.txt"
+    name: ClassVar[str] = GenomicDataBaseConfigNcbi.name
+    host: ClassVar[str] = GenomicDataBaseConfigNcbi.host
+    base_path: ClassVar[str] = GenomicDataBaseConfigNcbi.base_path
+    checksums_filename: ClassVar[str] = GenomicDataBaseConfigNcbi.checksums_filename
 
     ALLOWED_MODES: set[str] = {"species", "assembly"}
 
-    # ---- Directory Discovery ----
-    @override
-    def _build_species_mapping(self, species_dirs: dict[str, list[str]]) -> dict[str, list[str]]:
-        """Builds the result of fetch_species_mapping.
-
-        Arguments:
-            species_dirs {dict[str, list[str]]} -- dict mapping taxon directories to their respective species.
-
-        Returns:
-            dict[str, list[str]] -- dict mapping taxons to their respective species.
-        """
-        return species_dirs
-
-    def _get_all_releases_dir(self, ftp: FTP, taxon: str, species: str) -> str | None:
-        """Searches for the remote directory containing all releases for a specific species.
-
-        Arguments:
-            ftp {ftplib.FTP} -- Active FTP handler.
-            taxon {str} -- Taxon of the species.
-            species {str} -- Species to look up, must be contained in taxon.
-
-        Returns:
-            str | None -- Directory containing all releases or None if not found.
-        """
-        candidate_subdirs = ["annotation_releases", "all_assembly_versions"]
-        species_base_dir = f"{self.base_path}/{taxon}/{species}"
-
-        # Look up all subdirectories for the species
-        ftp.cwd(species_base_dir)
-        subdirs = set(self._get_subdirs(ftp))
-
-        # Return first releases directory found
-        for candidate_subdir in candidate_subdirs:
-            if candidate_subdir in subdirs:
-                return f"{species_base_dir}/{candidate_subdir}"
-        return None
-
-    def fetch_annotations_releases(self, taxon: str, species: str) -> list[str] | None:
-        """Fetches all available annotation releases for a specific species.
-
-        Arguments:
-            taxon {str} -- Taxon of the species.
-            species {str} -- Species, must be contained in taxon.
-
-        Notes:
-            This function is decorated with our generic cache to reduce refetching.
-
-        Returns:
-            list[str] | None -- list of available annotation releases or None if none were found.
-        """
-
-        with FTP(self.host) as ftp:
-            ftp.login()
-            release_dir = self._get_all_releases_dir(ftp, taxon, species)
-            if release_dir is None:
-                return None
-            ftp.cwd(release_dir)
-            dirs = self._get_subdirs(ftp)
-
-        # Manually filter suppressed directories
-        if release_dir == "all_assembly_versions":
-            dirs = [dir for dir in dirs if dir != "suppressed"]
-        return dirs
-
-    # ---- Genomic Asset Fetching ----
     @override
     def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:
         """Checks whether a file maches the expected checksum from the md5checksums.txt file using an md5 hash.

@@ -153,7 +153,15 @@ class FtpUtil:
 TGenomicEntity = TypeVar("TGenomicEntity")
 
 
-class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
+class GenomicDataBaseConfigBase:
+    name: ClassVar[str]
+    host: ClassVar[str]
+    base_path: ClassVar[str]
+    checksums_filename: ClassVar[str]
+    allowlist: set[str] | None
+
+
+class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
     """
     A base class for downloading files via FTP and postprocessing the downloaded files.
 
@@ -182,7 +190,6 @@ class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
     def __init__(
         self,
         cache_dir: Path | None = None,
-        allowlist: set[str] | None = None,
     ) -> None:
         """Initializes the genomic database.
 
@@ -191,130 +198,7 @@ class FtpLoaderBase(ABC, Generic[TGenomicEntity]):
             allowlist {set[str] | None} -- Set of subdirectories. If provided, queries will be limited to these. (default: {None})
         """
         self.cache_dir = cache_dir
-        self.allowlist = allowlist
         self.ftp_util = FtpUtil(self.host, self.cache_dir, self.name)
-
-    # ---- Directory Discovery ----
-    def _get_subdirs(self, ftp: FTP) -> list[str]:
-        """Retrieves a list of subdirectories at the current FTP cursor.
-
-        Notes:
-            This does not use ftplib.FTP.mlsd as Ensembl's FTP server does not support that option.
-
-        Arguments:
-            ftp {ftplib.FTP} -- Active FTP handler.
-
-        Returns:
-            list[str] -- list of subdirectories at the current FTP cursor.
-        """
-        file_lines: list[str] = []
-        ftp.dir(file_lines.append)
-
-        def parse_file_line(line: str) -> tuple[str, str]:
-            """Parses filename and file permissions from a line returned by ftplib.FTP.dir.
-
-            Arguments:
-                line {str} -- Line returned from ftplib.FTP.dir.
-
-            Returns:
-                tuple[str, str] -- (filename, file permissions).
-            """
-            perms, *_, filename = line.split(maxsplit=8)
-            # Normalize file permissions
-            perms = perms.lower()
-            # The filename might be a symbolic link (e.g. "current -> release-116")
-            # Split this to just get the link's name (e.g. "current")
-            filename = filename.split(maxsplit=1)[0]
-            return filename, perms
-
-        def is_likely_directory(filename: str, perms: str) -> bool:
-            """Checks whether a file is likely a directory.
-
-            Notes:
-                Returns True for symbolic links if is does not have specific file extensions.
-                As this is a very inaccurate heuristic, the function may misclassify symbolic links.
-
-            Arguments:
-                filename {str} -- Filename to check.
-                perms {str} -- Permissions of the file.
-
-            Returns:
-                bool -- Whether the file is likely a directory.
-            """
-            non_dir_extensions = {"txt", "pdf", "gz"}
-            _, _, file_suffix = filename.rpartition(".")
-
-            return perms[0] == "d" or (perms[0] == "l" and file_suffix not in non_dir_extensions)
-
-        dirs = [
-            filename
-            for filename, perms in map(parse_file_line, file_lines)
-            if is_likely_directory(filename, perms)
-        ]
-
-        return sorted(dirs)  # sort for determinism
-
-    def _filter_allowlist(self, dirs: list[str]) -> list[str]:
-        """Filters the directories according to the allowlist.
-
-        Arguments:
-            dirs {list[str]} -- list of directories.
-
-        Returns:
-            list[str] -- list of all directories that are also in the allowlist.
-        """
-        if self.allowlist is not None:
-            return sorted(list(set(dirs).intersection(self.allowlist)))  # sort for determinism
-        return dirs
-
-    def _get_subdirectories(self, dirs: list[str], ftp: FTP) -> dict[str, list[str]]:
-        """Retrieves all subdirectories of all directories in dirs.
-
-        Arguments:
-            dirs {list[str]} -- list of directories.
-            ftp {ftplib.FTP} -- Active FTP handler.
-
-        Returns:
-            dict[str, list[str]] -- dict mapping directories from dirs to their respective subdirectories.
-        """
-        subdirectories_by_directory: dict[str, list[str]] = {}
-        for dir in dirs:
-            _ = ftp.cwd(f"{self.base_path}/{dir}")
-            subdirectories_by_directory[dir] = self._get_subdirs(ftp)
-        return subdirectories_by_directory
-
-    @abstractmethod
-    def _build_species_mapping(self, species_dirs: dict[str, list[str]]) -> dict[str, list[str]]:
-        """Builds the result of fetch_species_mapping.
-
-        Arguments:
-            species_dirs {dict[str, list[str]]} -- dict mapping directories their respective subdirectories.
-
-        Notes:
-            This is an abstract method and must be implemented by subclasses.
-
-        Returns:
-            dict[str, list[str]] -- dict mapping genomic categories to specific variants.
-        """
-
-    def fetch_species_mapping(self) -> dict[str, list[str]]:
-        """Fetches all available species for this genomic database.
-
-        Notes:
-            For Ensembl, this returns a dict mapping species to their available annotation releases.
-            For NCBI, this returns a dict mapping taxons to their respective species.
-            This may be confusing and is unfortunate from a maintainability standpoint.
-
-        Returns:
-            dict[str, list[str]] -- dict mapping genomic categories to specific variants.
-        """
-        with FTP(self.host) as ftp:
-            ftp.login()
-            ftp.cwd(self.base_path)
-            top_dirs = self._get_subdirs(ftp)
-            top_dirs = self._filter_allowlist(top_dirs)
-            species_dirs = self._get_subdirectories(top_dirs, ftp)
-        return self._build_species_mapping(species_dirs)
 
     @abstractmethod
     def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:

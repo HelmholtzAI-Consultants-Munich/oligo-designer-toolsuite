@@ -1,9 +1,6 @@
 import os
 import re
 import subprocess
-from collections import defaultdict
-from collections.abc import Callable
-from ftplib import FTP
 from pathlib import Path
 from typing import ClassVar
 
@@ -11,14 +8,22 @@ from typing_extensions import override
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import (
-    FtpLoaderBase,
+    GenomicDataBaseConfigBase,
+    GenomicDatabaseDownloaderBase,
     GenomicEntity,
     GenomicEntityContext,
     RemoteInfo,
 )
 
 
-class FtpLoaderEnsembl(FtpLoaderBase[GenomicEntity]):
+class GenomicDataBaseConfigEnsembl(GenomicDataBaseConfigBase):
+    name: ClassVar[str] = "ensembl"
+    host: ClassVar[str] = "ftp.ensembl.org"
+    base_path: ClassVar[str] = "/pub"
+    checksums_filename: ClassVar[str] = "CHECKSUMS"
+
+
+class GenomicDatabaseDownloaderEnsembl(GenomicDatabaseDownloaderBase[GenomicEntity]):
     """
     A class for downloading genomic data from the Ensembl FTP server.
 
@@ -36,10 +41,10 @@ class FtpLoaderEnsembl(FtpLoaderBase[GenomicEntity]):
 
     """A genomic database to interface with Ensembl."""
 
-    name: ClassVar[str] = "ensembl"
-    host: ClassVar[str] = "ftp.ensembl.org"
-    base_path: ClassVar[str] = "/pub"
-    checksums_filename: ClassVar[str] = "CHECKSUMS"
+    name: ClassVar[str] = GenomicDataBaseConfigEnsembl.name
+    host: ClassVar[str] = GenomicDataBaseConfigEnsembl.host
+    base_path: ClassVar[str] = GenomicDataBaseConfigEnsembl.base_path
+    checksums_filename: ClassVar[str] = GenomicDataBaseConfigEnsembl.checksums_filename
 
     def __init__(self, dir_output: str) -> None:
         """Constructor for the FtpLoaderEnsembl class."""
@@ -54,65 +59,6 @@ class FtpLoaderEnsembl(FtpLoaderBase[GenomicEntity]):
             "fasta": "dna_sm.primary_assembly.fa.gz",  # soft-masked version of the genome
         }
 
-    # ---- Directory Discovery ----
-    @override
-    def _get_subdirectories(self, dirs: list[str], ftp: FTP) -> dict[str, list[str]]:
-        """Retrieves all species for each release directory in dirs.
-
-        Arguments:
-            dirs {list[str]} -- list of release directories.
-            ftp {ftplib.FTP} -- Active FTP handler.
-
-        Returns:
-            dict[str, list[str]] -- dict mapping releases from dirs to their respective species.
-        """
-        lookup_dirs = [f"{dir}/fasta" for dir in dirs]
-        return super()._get_subdirectories(lookup_dirs, ftp)
-
-    @override
-    def _build_species_mapping(self, species_dirs: dict[str, list[str]]) -> dict[str, list[str]]:
-        """Builds the result of fetch_species_mapping.
-
-        Arguments:
-            species_dirs {list[str]} -- dict mapping release directories to their respective species.
-
-        Returns:
-            dict[str, list[str]] -- dict mapping species to their available annotation releases.
-        """
-
-        def format_release_name(release_name: str) -> str:
-            """Formats the release naming such that numeric releases are reduced to the plain number.
-
-            Arguments:
-                release_name {str} -- Name of the release to format.
-
-            Returns:
-                str -- Formatted release name.
-            """
-            return release_name.removeprefix("release-").removesuffix("/fasta")
-
-        def reverse_list_dict(
-            original_dict: dict[str, list[str]], key_formatter: Callable[[str], str]
-        ) -> dict[str, list[str]]:
-            """Reverses a dict of lists such that each list element is mapped to a list of keys it's contained in.
-
-            Arguments:
-                original_dict {dict[str, list[str]]} -- dict of lists.
-                key_formatter {Callable[[str], str]} -- Function that formats keys before they are added to a result list.
-
-            Returns:
-                dict[str, list[str]] -- Reversed dict.
-            """
-            reversed_dict = defaultdict(list)
-            for key, value_list in original_dict.items():
-                for value in value_list:
-                    reversed_dict[value].append(key_formatter(key))
-            return dict(reversed_dict)
-
-        # Turn version->list-of-species map into species->list-of-versions map
-        return reverse_list_dict(species_dirs, format_release_name)
-
-    # ---- Genomic Asset Fetching ----
     @override
     def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:
         """Checks whether a file maches the expected checksum from the CHECKSUMS file using the 'sum' command.
