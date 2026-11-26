@@ -35,28 +35,67 @@ class NcbiGenomicEntity:
     assembly_source: str | None
 
 
-class ModeStrategy(ABC):
+class NcbiDownloadMode(ABC):
+    """
+    Abstract interface for resolving NCBI assemblies and FTP locations.
+    """
+
     @abstractmethod
     def get_ftp_directory(self) -> tuple[str, str, str]:
-        pass
+        """
+        Resolve the FTP directory and assembly metadata.
+
+        :return: FTP directory, assembly accession and assembly name.
+        :rtype: tuple[str, str, str]
+        """
 
     @abstractmethod
     def validate_and_set(self, entity: NcbiGenomicEntity) -> None:
-        pass
+        """
+        Validate an entity configuration and initialize strategy state.
+
+        :param entity: Entity configuration to validate.
+        :type entity: NcbiGenomicEntity
+        """
 
     @abstractmethod
     def _validate_taxon_and_source(self) -> None:
-        pass
+        """
+        Validate taxon and assembly source configuration.
+
+        :raises ConfigurationError: If the configuration is invalid.
+        """
 
 
-class AssemblyMode(ModeStrategy):
+class AssemblyMode(NcbiDownloadMode):
+    """
+    Resolution strategy for direct assembly-based downloads.
+
+    This strategy resolves FTP locations directly from a RefSeq assembly
+    accession and assembly name.
+
+    :param entity: Entity describing the target assembly.
+    :type entity: NcbiGenomicEntity
+    """
+
     def __init__(self, entity: NcbiGenomicEntity):
+        """Constructor for AssemblyMode class."""
         self.validate_and_set(entity)
 
     def _validate_taxon_and_source(self) -> None:
-        pass
+        """
+        Not Implemented, since Assembly Mode does not need the taxon or assembly source.
+        """
 
     def _resolve_directory_from_direct_assembly(self) -> str:
+        """
+        Build the FTP directory for a RefSeq assembly.
+
+        :return: FTP directory containing assembly resources.
+        :rtype: str
+
+        :raises ConfigurationError: If the assembly accession is invalid.
+        """
         if not self.assembly_accession or not self.assembly_name:
             raise ConfigurationError(
                 "Direct assembly mode requires both 'refseq_assembly_accession' and 'assembly_name'."
@@ -82,6 +121,12 @@ class AssemblyMode(ModeStrategy):
         )
 
     def get_ftp_directory(self) -> tuple[str, str, str]:
+        """
+        Resolve FTP directory information for the configured assembly and adds assembly accession and assembly name for easier retrieval.
+
+        :return: FTP directory, assembly accession and assembly name.
+        :rtype: tuple[str, str, str]
+        """
         return (
             self._resolve_directory_from_direct_assembly(),
             self.assembly_accession,
@@ -89,6 +134,14 @@ class AssemblyMode(ModeStrategy):
         )
 
     def validate_and_set(self, entity: NcbiGenomicEntity) -> None:
+        """
+        Validate and initialize assembly mode parameters.
+
+        :param entity: Entity configuration.
+        :type entity: NcbiGenomicEntity
+
+        :raises ConfigurationError: If assembly mode parameters are invalid.
+        """
         if entity.assembly_accession is None or entity.assembly_name is None:
             raise ConfigurationError(
                 "In mode='assembly', both 'refseq_assembly_accession' and 'assembly_name' must be provided."
@@ -110,7 +163,21 @@ class AssemblyMode(ModeStrategy):
         self.assembly_name = entity.assembly_name
 
 
-class SpeciesMode(ModeStrategy):
+class SpeciesMode(NcbiDownloadMode):
+    """
+    Resolution strategy for species-based downloads.
+
+    This strategy resolves species, annotation releases and assembly
+    information through the NCBI RefSeq FTP structure.
+
+    :param host: FTP host name.
+    :type host: str
+    :param entity: Entity configuration.
+    :type entity: NcbiGenomicEntity
+    :param ftp_util: FTP helper instance.
+    :type ftp_util: FtpUtil
+    """
+
     SUPPORTED_TAXA_SOURCES: ClassVar[dict[str, set[str]]] = {
         "archaea": {"latest_assembly_versions", "reference"},
         "bacteria": {"latest_assembly_versions", "reference"},
@@ -151,12 +218,21 @@ class SpeciesMode(ModeStrategy):
     }
 
     def __init__(self, host: str, entity: NcbiGenomicEntity, ftp_util: FtpUtil):
+        """Constructor for AssemblyMode class."""
         self.validate_and_set(entity)
 
         self.host = host
         self.ftp_util = ftp_util
 
     def validate_and_set(self, entity: NcbiGenomicEntity) -> None:
+        """
+        Validate and initialize species mode parameters.
+
+        :param entity: Entity configuration.
+        :type entity: NcbiGenomicEntity
+
+        :raises ConfigurationError: If required parameters are missing or invalid.
+        """
         if bool(entity.assembly_accession) or bool(entity.assembly_name):
             raise ConfigurationError(
                 "In mode='species', refseq_assembly_accession/assembly_name must not be provided."
@@ -183,6 +259,13 @@ class SpeciesMode(ModeStrategy):
         self.annotation_release = entity.annotation_release
 
     def get_ftp_directory(self) -> tuple[str, str, str]:
+        """
+        Resolve the FTP directory and assembly metadata.
+
+        :return: FTP directory, assembly accession and assembly name.
+        :rtype: tuple[str, str, str]
+        """
+
         source_subdir = self._resolve_source_subdir()
         ftp_dir = self._resolve_base_directory(source_subdir)
         assembly_accession, assembly_name = self._resolve_assembly_metadata(ftp_dir)
@@ -210,6 +293,18 @@ class SpeciesMode(ModeStrategy):
     def _resolve_assembly_directory(
         self, ftp_directory: str, assembly_accession: str, assembly_name: str
     ) -> str:
+        """
+        Resolve the directory containing assembly files.
+
+        :param ftp_directory: Base FTP directory.
+        :type ftp_directory: str
+        :param assembly_accession: RefSeq assembly accession.
+        :type assembly_accession: str
+        :param assembly_name: Assembly name.
+        :type assembly_name: str
+        :return: Final FTP directory containing downloadable resources.
+        :rtype: str
+        """
         assembly_dir = f"{ftp_directory}{assembly_accession}_{assembly_name}"
         assembly_dir = assembly_dir.replace(" ", "_")
         ftp = FTP(self.host)
@@ -223,6 +318,13 @@ class SpeciesMode(ModeStrategy):
             ftp.quit()
 
     def _resolve_source_subdir(self) -> str:
+        """
+        Resolve the assembly source subdirectory.
+
+        :return: Selected source subdirectory.
+        :rtype: str
+        :raises ConfigurationError: If no valid source can be determined.
+        """
         if self.taxon is None:
             raise ConfigurationError("taxon cannot be none.")
         available_sources = self.SUPPORTED_TAXA_SOURCES[self.taxon]
@@ -238,6 +340,15 @@ class SpeciesMode(ModeStrategy):
         )
 
     def _resolve_base_directory(self, source_subdir: str) -> str:
+        """
+        Resolve the FTP base directory for the configured entity.
+
+        :param source_subdir: Selected assembly source.
+        :type source_subdir: str
+        :return: FTP directory containing assembly information.
+        :rtype: str
+        :raises ConfigurationError: If the directory configuration is invalid.
+        """
         if self.taxon is None or self.species is None:
             raise ConfigurationError("Taxon/species are not defined.")
         base_directory = f"genomes/refseq/{self.taxon}/{self.species}/{source_subdir}/"
@@ -271,6 +382,15 @@ class SpeciesMode(ModeStrategy):
         return f"{base_directory}{self.annotation_release}/"
 
     def _resolve_assembly_metadata(self, ftp_directory: str) -> tuple[str, str]:
+        """
+        Resolve assembly accession and assembly name from FTP metadata files.
+
+        :param ftp_directory: FTP directory to inspect.
+        :type ftp_directory: str
+        :return: Assembly accession and assembly name.
+        :rtype: tuple[str, str]
+        :raises ConfigurationError: If assembly metadata cannot be determined.
+        """
         assembly_accession = None
         assembly_name = None
 
@@ -333,6 +453,11 @@ class SpeciesMode(ModeStrategy):
         return assembly_accession, assembly_name
 
     def _validate_taxon_and_source(self) -> None:
+        """
+        Validate given taxon and assembly source.
+
+        :raises ConfigurationError: If taxon or assembly source are either invalid or unsupported.
+        """
         if self.taxon is None:
             raise ConfigurationError("Taxon is not defined.")
         if self.taxon in self.UNSUPPORTED_TAXA:
@@ -367,6 +492,14 @@ class SpeciesMode(ModeStrategy):
             )
 
     def _list_ftp_entries(self, ftp_directory: str) -> list[str]:
+        """
+        List entries contained in an FTP directory.
+
+        :param ftp_directory: FTP directory to inspect.
+        :type ftp_directory: str
+        :return: Directory entries.
+        :rtype: list[str]
+        """
         ftp = FTP(self.host)
         ftp.login()
         ftp.cwd(ftp_directory)
@@ -386,28 +519,13 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
     """
     A class for downloading and processing genomic data files from the NCBI FTP server.
 
-    The `FtpLoaderNCBI` class handles the retrieval of genomic data files, such as GFF, GTF, and FASTA, from the NCBI FTP server.
+    The `GenomicDatabaseDownloaderNcbi` class handles the retrieval of genomic data files, such as GFF, GTF, and FASTA, from the NCBI FTP server.
     It supports downloading, decompressing, and mapping chromosome names based on the specified taxon, species, and annotation release.
     The class also manages the correct retrieval paths and handles different versions and structures of NCBI directories.
 
-    :param mode: NCBI parameter mode. Supported values are "species" and "assembly".
-    :type mode: str | None
-    :param taxon: The taxonomic group of the species (e.g., "vertebrate_mammalian").
-    :type taxon: str | None
-    :param species: The species name (e.g., "homo_sapiens").
-    :type species: str | None
-    :param annotation_release: The annotation release version to download (e.g., "109" or "current").
-    :type annotation_release: str | None
-    :param assembly_source: NCBI source selection. Supported values are "auto", "annotation_releases",
-        "latest_assembly_versions", and "reference".
-    :type assembly_source: str
-    :param refseq_assembly_accession: Optional direct RefSeq assembly accession (e.g., "GCF_000001405.38").
-    :type refseq_assembly_accession: str | None
-    :param assembly_name: Optional direct assembly name (e.g., "GRCh38.p12").
-    :type assembly_name: str | None
+    :param dir_output: Local cache directory for downloaded files.
+    :type dir_output: str
     """
-
-    """A genomic database to interface with Ncbi."""
 
     name: ClassVar[str] = GenomicDataBaseConfigNcbi.name
     host: ClassVar[str] = GenomicDataBaseConfigNcbi.host
@@ -416,19 +534,38 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
 
     ALLOWED_MODES: set[str] = {"species", "assembly"}
 
+    def __init__(
+        self,
+        dir_output: str,
+    ) -> None:
+        """Constructor for GenomicDatabaseDownloaderNcbi class."""
+        super().__init__(Path(dir_output))
+
+        self.file_type_ending = {
+            "gff": "genomic.gff.gz",
+            "gtf": "genomic.gtf.gz",
+            "fasta": "genomic.fna.gz",  # soft-masked version of the genome
+        }
+
+        self.file_type_function = {
+            "gff": self._map_chr_names_gene_annotation,
+            "gtf": self._map_chr_names_gene_annotation,
+            "fasta": self._map_chr_names_genome_sequence,
+        }
+
+        self.annotation_release_from_ncbi: str | None = None
+
     @override
     def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:
-        """Checks whether a file maches the expected checksum from the md5checksums.txt file using an md5 hash.
+        """
+        Check whether a file matches the expected MD5 checksum.
 
-        Arguments:
-            file_path {pathlib.Path} -- Path to a local file.
-            expected_checksum {str} -- Expected checksum of the file.
-
-        Notes:
-            The checksum type used is an md5 hash.
-
-        Returns:
-            bool -- Whether the file matches the expected checksum.
+        :param file_path: Path to the local file.
+        :type file_path: pathlib.Path
+        :param expected_checksum: Expected checksum value.
+        :type expected_checksum: str
+        :return: True if the checksum matches, otherwise False.
+        :rtype: bool
         """
         with open(file_path, "rb") as f:
             digest = hashlib.file_digest(f, "md5")
@@ -441,19 +578,21 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
         files: list[_TYPES_FILE] | None = None,
         sequence_nature: _TYPES_FILE_SEQ = "dna",
     ) -> FetchedGenomicEntity:
-        """Fetches genomic entity from cache or downloads it if not cached yet.
+        """
+        Fetch a genomic entity from cache or download it.
 
-        Arguments:
-            entity {GenomicEntity} -- Genomic entity to fetch.
-
-        Raises:
-            RuntimeError: No cache_dir was set.
-            RuntimeError: A resource cannot be located.
-            RuntimeError: A download fails.
-            RuntimeError: A checksum cannot be verified.
-
-        Returns:
-            dict[str, str] -- dict containing the file paths and the resolved release and assembly.
+        :param entity: Genomic entity to fetch.
+        :type entity: NcbiGenomicEntity
+        :param files: Requested file types.
+        :type files: list[_TYPES_FILE] | None
+        :param sequence_nature: Requested sequence nature.
+        :type sequence_nature: _TYPES_FILE_SEQ
+        :return: Downloaded files together with resolved metadata.
+        :rtype: FetchedGenomicEntity
+        :raises RuntimeError: If no cache directory is configured.
+        :raises RuntimeError: If a required resource cannot be located.
+        :raises RuntimeError: If a download fails.
+        :raises RuntimeError: If checksum verification fails.
         """
         self.mode = self._get_mode(entity)
         self.mode._validate_taxon_and_source()
@@ -470,13 +609,17 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
     def _get_entity_context(
         self, entity: NcbiGenomicEntity, files: list[_TYPES_FILE], sequence_nature: _TYPES_FILE_SEQ
     ) -> GenomicEntityContext:
-        """Retrieves context for a genomic entity.
+        """
+        Retrieve download context for a genomic entity.
 
-        Arguments:
-            entity {GenomicEntity} -- Genomic entity to get context for.
-
-        Returns:
-            GenomicEntityContext -- Context for the requested entity.
+        :param entity: Genomic entity to resolve.
+        :type entity: NcbiGenomicEntity
+        :param files: Requested file types.
+        :type files: list[_TYPES_FILE]
+        :param sequence_nature: Requested sequence nature.
+        :type sequence_nature: _TYPES_FILE_SEQ
+        :return: Download context for the requested entity.
+        :rtype: GenomicEntityContext
         """
         remote_file_infos: dict[_TYPES_FILE, RemoteInfo] = {}
         for file_type in files:
@@ -496,28 +639,16 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
             self.assembly_accession,
         )
 
-    def __init__(
-        self,
-        dir_output: str,
-    ) -> None:
-        """Constructor for the FtpLoaderNCBI class."""
-        super().__init__(Path(dir_output))
+    def _get_mode(self, entity: NcbiGenomicEntity) -> NcbiDownloadMode:
+        """
+        Create the resolution mode for an entity.
 
-        self.file_type_ending = {
-            "gff": "genomic.gff.gz",
-            "gtf": "genomic.gtf.gz",
-            "fasta": "genomic.fna.gz",  # soft-masked version of the genome
-        }
-
-        self.file_type_function = {
-            "gff": self._map_chr_names_gene_annotation,
-            "gtf": self._map_chr_names_gene_annotation,
-            "fasta": self._map_chr_names_genome_sequence,
-        }
-
-        self.annotation_release_from_ncbi: str | None = None
-
-    def _get_mode(self, entity: NcbiGenomicEntity) -> ModeStrategy:
+        :param entity: Entity configuration.
+        :type entity: NcbiGenomicEntity
+        :return: Resolution mode instance.
+        :rtype: NcbiDownloadMode
+        :raises ConfigurationError: If the configured mode is unsupported.
+        """
         match entity.mode:
             case "assembly":
                 return AssemblyMode(entity)
@@ -540,6 +671,18 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
         ftp_directory: str,
         ftp_mapping_file: str,
     ) -> None:
+        """
+        Apply chromosome name mapping to a downloaded file.
+
+        :param file_type: File type being processed.
+        :type file_type: _TYPES_FILE
+        :param ftp_file: Local file path.
+        :type ftp_file: str
+        :param ftp_directory: FTP directory containing mapping resources.
+        :type ftp_directory: str
+        :param ftp_mapping_file: Mapping filename.
+        :type ftp_mapping_file: str
+        """
         mapping = self._download_mapping_chr_names(ftp_directory, ftp_mapping_file)
 
         self.file_type_function[file_type](ftp_file, mapping)
@@ -567,9 +710,13 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
 
     def _resolve_annotation_metadata(self, ftp_directory: str) -> None:
         """
-        All species annotated with the NCBI Eukaryotic Genome Annotation Pipeline should have a
-        README_{annotation name} file that contains the annotation name used by NCBI. In case
-        this is not found, keep the default value ("no_annotation_info").
+        Resolve annotation release metadata from NCBI README files.
+
+        The resolved annotation release name is stored in
+        ``annotation_release_from_ncbi`` if available.
+
+        :param ftp_directory: FTP directory containing annotation metadata.
+        :type ftp_directory: str
         """
         try:
             file_readme = self.ftp_util.download(

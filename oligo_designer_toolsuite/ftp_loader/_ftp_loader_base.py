@@ -75,6 +75,15 @@ class FtpUtil:
         self.DOWNLOAD_CHUNK_SIZE = download_chunk_size
 
     def get_exact_filename(self, ftp_directory: str, pattern: str) -> str:
+        """
+        Get exact filename by matching pattern against entries in FTP directory
+
+        :param ftp_directory: The directory on the server where to look for the pattern
+        :type ftp_directory: str
+        :param pattern: The pattern that should be matched
+        :type pattern: str
+
+        """
         ftp = FTP(self.host)
         ftp.login()  # login to ftp server
         ftp.cwd(ftp_directory)  # move to directory
@@ -94,22 +103,20 @@ class FtpUtil:
         return exact_file_name
 
     def download(self, dir: str, remote_filename: str) -> Path:
-        """Downloads a remote file if it changed.
+        """
+        Downloads a remote file if it changed.
 
-        Arguments:
-            dir {str} -- Remote directory where the to-be-dowloaded file is located.
-            remote_filename {str} -- Name of the remote file to download.
+        This function avoids redownloads if the file is already present and up
+        to date. Since compressed files are deleted after extraction, this acts
+        as a caching solution for genomic downloads.
 
-        Notes:
-            This function avoids redownloads if the file is already present and up-to-date.
-            Since compressed files are deleted after extraction, this does not suffice as
-            a caching solution for genomic downloads - see _download_and_process for that.
-
-        Raises:
-            RuntimeError: No caching directory set for genomic downloads.
-
-        Returns:
-            pathlib.Path -- Local file path of the downloaded resource.
+        :param dir: Remote directory containing the file.
+        :type dir: str
+        :param remote_filename: Name of the remote file.
+        :type remote_filename: str
+        :return: Local file path of the downloaded resource.
+        :rtype: pathlib.Path
+        :raises RuntimeError: If no caching directory is set.
         """
         url = f"https://{self.host}/{dir}/{remote_filename}"
         url_hash = hashlib.md5(url.encode()).hexdigest()
@@ -163,23 +170,19 @@ class GenomicDataBaseConfigBase:
 
 class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
     """
-    A base class for downloading files via FTP and postprocessing the downloaded files.
+    Base class for downloading genomic data and postprocessing downloaded files.
 
-    :param dir_output: Directory path where output files will be saved.
-    :type dir_output: str
-    """
+    This class serves as the base interface for genomic databases such as Ensembl and NCBI and should not be used directly.
 
-    """The base class of genomic databases, which serve as our interfaces with public services like Ensembl and NCBI.
+    For details on the caching procedure see "Caching FASTA Files" in the
+    developer documentation.
 
-    Notes:
-        This is a base class and should not be used directly.
-        For details on the caching procedure see 'Caching FASTA Files' in the developer documentation.
-
-    Class Variables:
-        name {str} -- Name of the genomic database.
-        host {str} -- Hostname of the genomic database service.
-        base_path {str} -- Path to the subdirectory containing genomic files.
-        checksums_filename {str} -- Filename of checksum files for this database.
+    :param cache_dir: Path to the local directory used as a download cache.
+    :type cache_dir: pathlib.Path | None
+    :cvar str name: Name of the genomic database.
+    :cvar str host: Hostname of the genomic database service.
+    :cvar str base_path: Path to the subdirectory containing genomic files.
+    :cvar str checksums_filename: Filename of checksum files for this database.
     """
 
     name: ClassVar[str]
@@ -191,50 +194,41 @@ class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
         self,
         cache_dir: Path | None = None,
     ) -> None:
-        """Initializes the genomic database.
-
-        Keyword Arguments:
-            cache_dir {pathlib.Path | None} -- Path to the local directory to use as a download cache. (default: {None})
-            allowlist {set[str] | None} -- Set of subdirectories. If provided, queries will be limited to these. (default: {None})
-        """
+        """Constructor for the GenomicDatabaseDownloaderBase class."""
         self.cache_dir = cache_dir
         self.ftp_util = FtpUtil(self.host, self.cache_dir, self.name)
 
     @abstractmethod
     def _matches_checksum(self, file_path: Path, expected_checksum: str) -> bool:
-        """Checks whether a file maches the expected checksum.
+        """
+        Check whether a file matches the expected checksum.
 
-        Arguments:
-            file_path {pathlib.Path} -- Path to a local file.
-            expected_checksum {str} -- Expected checksum of the file.
-
-        Notes:
-            This is an abstract method and must be implemented by subclasses.
-
-        Returns:
-            bool -- Whether the file matches the expected checksum.
+        :param file_path: Path to a local file.
+        :type file_path: pathlib.Path
+        :param expected_checksum: Expected checksum of the file.
+        :type expected_checksum: str
+        :return: True if the file matches the checksum, otherwise False.
+        :rtype: bool
+        :raises NotImplementedError: If not implemented by subclasses.
         """
 
     def _download_and_process(self, dir: str, remote_filename: str, expected_checksum: str | None) -> Path:
-        """Downloads a remote file and processes it as needed.
+        """
+        Download a remote file and process it as needed.
 
-        Arguments:
-            dir {str} -- Remote directory where the to-be-dowloaded file is located.
-            remote_filename {str} -- Name of the remote file to download.
-            expected_checksum {str | None} -- Expected checksum of the file.
+        Processing includes optional checksum verification and extraction of gzip-compressed files.
 
-        Notes:
-            Processing includes optional verification of a checksum and extraction of .gz files.
+        Since ``expected_checksum`` is part of the caching key and checksum files are not cached, a redownload will occur whenever the checksum changes.
 
-            This function is decorated with our file cache to serve as the level 2 cache.
-            Since expected_checksum is part of the caching key and the download of checksums
-            is not being cached, a redownload will occur if the checksum changes.
-
-        Raises:
-            RuntimeError: Checksum for provided file does not match.
-
-        Returns:
-            pathlib.Path -- Local file path of the downloaded resource.
+        :param dir: Remote directory containing the to-be-downloaded file.
+        :type dir: str
+        :param remote_filename: Name of the remote file to download.
+        :type remote_filename: str
+        :param expected_checksum: Expected checksum of the file.
+        :type expected_checksum: str | None
+        :return: Local file path of the processed resource.
+        :rtype: pathlib.Path
+        :raises RuntimeError: If checksum verification fails
         """
         file_path = self.ftp_util.download(dir, remote_filename)
 
@@ -259,49 +253,47 @@ class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
         files: list[_TYPES_FILE],
         sequence_nature: _TYPES_FILE_SEQ,
     ) -> GenomicEntityContext:
-        """Retrieves context for a genomic entity.
+        """
+        Retrieve context information for a genomic entity.
 
-        Arguments:
-            entity {GenomicEntity} -- Genomic entity to get context for.
-
-        Notes:
-            This is an abstract method and must be implemented by subclasses.
-
-        Returns:
-            GenomicEntityContext -- Context for the requested entity.
+        :param entity: Genomic entity to get context for.
+        :type entity: GenomicEntity
+        :param files: List of file types to fetch.
+        :type files: list[_TYPES_FILE]
+        :param sequence_nature: Sequence Types to fetch.
+        :type sequence_nature: _TYPES_FILE_SEQ
+        :return: Context for the requested entity.
+        :rtype: GenomicEntityContext
         """
 
     def _parse_checksum_line(self, line: str) -> tuple[str, str]:
-        """Parses a line of a checksums file.
+        """
+        Parse a line from a checksum file.
 
-        Arguments:
-            line {str} -- Line of a checksums file.
+        Expects checksum lines to start with a checksum value and end with a
+        filename, optionally containing additional whitespace-separated columns.
+        If filenames start with ``./`` this prefix is removed.
 
-        Notes:
-            Expects checksum lines to start with a checksum and end in a filename with
-            an arbitrary amount of other data points inbetween, separated by whitespace.
-            If filenames start with "./", this prefix will be removed.
+        Subclasses may override this method if their checksum file format differs.
 
-            Subclasses may want to override this method for their specific checksums file format.
-
-        Raises:
-            ValueError: Parsing was unsuccessful.
-
-        Returns:
-            tuple[str, str] -- (filename, checksum).
+        :param line: Line from a checksum file.
+        :type line: str
+        :return: Tuple of ``(filename, checksum)``.
+        :rtype: tuple[str, str]
+        :raises ValueError: If the line cannot be parsed.
         """
         checksum, *_, filename = line.strip().split()
         filename = filename.removeprefix("./")
         return filename, checksum
 
     def _get_checksum_map(self, context: GenomicEntityContext) -> dict[str, str]:
-        """Returns map of filenames to their respective checksum.
+        """
+        Build a mapping of filenames to checksums.
 
-        Arguments:
-            context {GenomicEntityContext} -- Context for the requested entity.
-
-        Returns:
-            dict[str, str] -- dict mapping filenames to their respective checksum.
+        :param context: Context of the requested genomic entity.
+        :type context: GenomicEntityContext
+        :return: Mapping from filename to checksum.
+        :rtype: dict[str, str]
         """
         # Combined checksum map for annotation (GTF) and sequence (FASTA) files
         filename_to_checksum_map: dict[str, str] = {}
@@ -321,21 +313,19 @@ class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
         return filename_to_checksum_map
 
     def _get_checksum(self, checksum_map: dict[str, str], filename: str) -> str:
-        """Gets a checksum from a checksum map and handles key errors.
+        """
+        Retrieve a checksum from a checksum map.
 
-        Arguments:
-            checksum_map {dict[str, str]} -- dict mapping filenames to their respective checksum.
-            filename {str} -- Name of the file to look up in the checksum map.
+        Converts a ``KeyError`` into a ``RuntimeError`` for easier downstream
+        handling.
 
-        Notes:
-            This method's purpose is to map the usual KeyError to a custom RuntimeError
-            for easier downstream error catching and handling.
-
-        Raises:
-            RuntimeError: File not found in checksum map.
-
-        Returns:
-            str -- Checksum of the specified file.
+        :param checksum_map: Mapping of filenames to checksums.
+        :type checksum_map: dict[str, str]
+        :param filename: Filename to look up.
+        :type filename: str
+        :return: Checksum of the specified file.
+        :rtype: str
+        :raises RuntimeError: If the file is not present in the checksum map.
         """
         try:
             return checksum_map[filename]
@@ -350,19 +340,21 @@ class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
         files: list[_TYPES_FILE] | None = None,
         sequence_nature: _TYPES_FILE_SEQ = "dna",
     ) -> FetchedGenomicEntity:
-        """Fetches genomic entity from cache or downloads it if not cached yet.
+        """
+        Fetch a genomic entity from cache or download it.
 
-        Arguments:
-            entity {GenomicEntity} -- Genomic entity to fetch.
-
-        Raises:
-            RuntimeError: No cache_dir was set.
-            RuntimeError: A resource cannot be located.
-            RuntimeError: A download fails.
-            RuntimeError: A checksum cannot be verified.
-
-        Returns:
-            dict[str, str] -- dict containing the file paths and the resolved release and assembly.
+        :param entity: Genomic entity to fetch.
+        :type entity: TGenomicEntity
+        :param files: Requested file types.
+        :type files: list[_TYPES_FILE] | None
+        :param sequence_nature: Type of sequence data to retrieve.
+        :type sequence_nature: _TYPES_FILE_SEQ
+        :return: Dictionary containing file paths together with the resolved annotation release and genome assembly.
+        :rtype: FetchedGenomicEntity
+        :raises RuntimeError: If no cache directory is configured.
+        :raises RuntimeError: If a resource cannot be located.
+        :raises RuntimeError: If a download fails.
+        :raises RuntimeError: If checksum verification fails.
         """
 
         if files is None:
@@ -390,12 +382,12 @@ class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
 
     def _decompress_gzip(self, file_path: Path) -> Path:
         """
-        Decompresses a .gz file and removes the original compressed file.
+        Decompress a gzip file and remove the original archive.
 
-        :param file_gzip: The path to the .gz file to be decompressed.
-        :type file_gzip: str
-        :return: The path to the decompressed file.
-        :rtype: str
+        :param file_path: Path to the gzip-compressed file.
+        :type file_path: pathlib.Path
+        :return: Path to the decompressed file.
+        :rtype: pathlib.Path
         """
 
         extracted_file_path = file_path.with_suffix("")  # remove .gz extension
@@ -411,20 +403,20 @@ class GenomicDatabaseDownloaderBase(ABC, Generic[TGenomicEntity]):
 
     def _check_file_type(self, file_type: _TYPES_FILE) -> None:
         """
-        Checks if the provided file type is supported.
+        Check whether the provided file type is supported.
 
-        :param file_type: The type of file to check.
-        :type file_type: _TYPES_FILE ["gff", "gtf", "fasta"]
+        :param file_type: File type to validate.
+        :type file_type: _TYPES_FILE
         """
         options = get_args(_TYPES_FILE)
         assert file_type in options, f"File type not supported! '{file_type}' is not in {options}."
 
     def _check_sequence_nature_type(self, sequence_nature: _TYPES_FILE_SEQ) -> None:
         """
-        Checks if the provided sequence nature type is supported.
+        Check whether the provided sequence nature is supported.
 
-        :param sequence_nature: The type of sequence nature to check.
-        :type sequence_nature: _TYPES_FILE_SEQ["dna", "ncrna"]
+        :param sequence_nature: Sequence nature to validate.
+        :type sequence_nature: _TYPES_FILE_SEQ
         """
         options = get_args(_TYPES_FILE_SEQ)
         assert (

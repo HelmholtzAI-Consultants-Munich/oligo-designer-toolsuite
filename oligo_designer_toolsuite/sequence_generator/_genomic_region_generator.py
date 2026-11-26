@@ -1338,7 +1338,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
     """
     Build genomic region FASTA files from NCBI annotation and genome downloads.
 
-    Downloads GTF annotation and genome FASTA via :class:`~oligo_designer_toolsuite.sequence_generator.FtpLoaderNCBI`,
+    Downloads GTF annotation and genome FASTA via :class:`~oligo_designer_toolsuite.ftp_loader.GenomicDatabaseDownloaderNcbi`,
     then reuses :class:`CustomGenomicRegionGenerator` extractors. Choose the genome
     either by taxon, species, and annotation release (``mode='species'``), or by
     RefSeq assembly accession and assembly name (``mode='assembly'``). Only one
@@ -1414,7 +1414,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
     Build genomic region FASTA files from Ensembl annotation and genome downloads.
 
     Downloads GTF annotation and genome FASTA via
-    :class:`~oligo_designer_toolsuite.sequence_generator.FtpLoaderEnsembl`, then
+    :class:`~oligo_designer_toolsuite.ftp_loader.GenomicDatabaseDownloaderEnsembl`, then
     reuses :class:`CustomGenomicRegionGenerator` extractors for the chosen species
     and annotation release.
 
