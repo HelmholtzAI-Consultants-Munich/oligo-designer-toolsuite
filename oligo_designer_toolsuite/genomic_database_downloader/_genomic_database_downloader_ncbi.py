@@ -16,7 +16,7 @@ from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_base import (
     FetchedGenomicEntity,
     FtpUtil,
-    GenomicDataBaseConfigBase,
+    GenomicDatabaseConfigBase,
     GenomicDatabaseDownloaderBase,
     GenomicEntityContext,
     RemoteInfo,
@@ -508,7 +508,7 @@ class SpeciesMode(NcbiDownloadMode):
         return entries
 
 
-class GenomicDataBaseConfigNcbi(GenomicDataBaseConfigBase):
+class GenomicDatabaseConfigNcbi(GenomicDatabaseConfigBase):
     name: ClassVar[str] = "ncbi"
     host: ClassVar[str] = "ftp.ncbi.nlm.nih.gov"
     base_path: ClassVar[str] = "/genomes/refseq"
@@ -527,10 +527,10 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
     :type dir_output: str
     """
 
-    name: ClassVar[str] = GenomicDataBaseConfigNcbi.name
-    host: ClassVar[str] = GenomicDataBaseConfigNcbi.host
-    base_path: ClassVar[str] = GenomicDataBaseConfigNcbi.base_path
-    checksums_filename: ClassVar[str] = GenomicDataBaseConfigNcbi.checksums_filename
+    name: ClassVar[str] = GenomicDatabaseConfigNcbi.name
+    host: ClassVar[str] = GenomicDatabaseConfigNcbi.host
+    base_path: ClassVar[str] = GenomicDatabaseConfigNcbi.base_path
+    checksums_filename: ClassVar[str] = GenomicDatabaseConfigNcbi.checksums_filename
 
     ALLOWED_MODES: set[str] = {"species", "assembly"}
 

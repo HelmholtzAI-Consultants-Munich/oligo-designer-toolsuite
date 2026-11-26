@@ -156,7 +156,7 @@ class FtpUtil:
 TGenomicEntity = TypeVar("TGenomicEntity")
 
 
-class GenomicDataBaseConfigBase:
+class GenomicDatabaseConfigBase:
     name: ClassVar[str]
     host: ClassVar[str]
     base_path: ClassVar[str]

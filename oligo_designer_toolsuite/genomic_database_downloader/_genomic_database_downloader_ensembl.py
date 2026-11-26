@@ -8,7 +8,7 @@ from typing_extensions import override
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_base import (
-    GenomicDataBaseConfigBase,
+    GenomicDatabaseConfigBase,
     GenomicDatabaseDownloaderBase,
     GenomicEntity,
     GenomicEntityContext,
@@ -16,7 +16,7 @@ from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_down
 )
 
 
-class GenomicDataBaseConfigEnsembl(GenomicDataBaseConfigBase):
+class GenomicDataBaseConfigEnsembl(GenomicDatabaseConfigBase):
     name: ClassVar[str] = "ensembl"
     host: ClassVar[str] = "ftp.ensembl.org"
     base_path: ClassVar[str] = "/pub"
