@@ -13,14 +13,20 @@ from Bio import SeqIO
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase
-from oligo_designer_toolsuite.ftp_loader import (
+from oligo_designer_toolsuite.genomic_database_downloader import (
     GenomicDatabaseDownloaderEnsembl,
     GenomicDatabaseDownloaderNcbi,
     GenomicEntity,
     NcbiGenomicEntity,
 )
-from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import GenomicDatabaseDownloaderBase, TGenomicEntity
-from oligo_designer_toolsuite.ftp_loader._ftp_loader_ncbi import AssemblyMode, SpeciesMode
+from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_base import (
+    GenomicDatabaseDownloaderBase,
+    TGenomicEntity,
+)
+from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_ncbi import (
+    AssemblyMode,
+    SpeciesMode,
+)
 from oligo_designer_toolsuite.oligo_property_calculator import (
     LengthProperty,
     PropertyCalculator,
@@ -95,19 +101,19 @@ FILE_NCBI_EXON_EXON_JUNCTIONS_SHORT = (
 ############################################
 # Tests
 ############################################
-class FTPTestBase(Generic[TGenomicEntity]):
+class GenomicDatabaseDownloaderTestBase(Generic[TGenomicEntity]):
     def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader")
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader")
         os.makedirs(self.tmp_path, exist_ok=True)
 
-        self.loader = self.setup_ftp_loader()
+        self.loader = self.setup_genomic_database_downloader()
         self.entity = self.setup_genomic_entity()
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_path, ignore_errors=True)
 
     @abstractmethod
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderBase[TGenomicEntity]:
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderBase[TGenomicEntity]:
         pass
 
     @abstractmethod
@@ -115,11 +121,11 @@ class FTPTestBase(Generic[TGenomicEntity]):
         pass
 
 
-class FTPLoaderDownloadBase(FTPTestBase):
+class GenomicDatabaseDownloaderDownloadBase(GenomicDatabaseDownloaderTestBase):
     def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader")
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader")
         os.makedirs(self.tmp_path, exist_ok=True)
-        self.loader = self.setup_ftp_loader()
+        self.loader = self.setup_genomic_database_downloader()
         self.genomic_entity = self.setup_genomic_entity()
 
     def tearDown(self) -> None:
@@ -129,8 +135,8 @@ class FTPLoaderDownloadBase(FTPTestBase):
         _ = self.loader.fetch_genomic_entity(self.genomic_entity, ["fasta"])
 
 
-class TestFTPLoaderNCBICurrent(FTPLoaderDownloadBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderNcbi:
+class TestGenomicDatabaseDownloaderNCBICurrent(GenomicDatabaseDownloaderDownloadBase, unittest.TestCase):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
         return GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
     def setup_genomic_entity(self) -> NcbiGenomicEntity:
@@ -146,8 +152,10 @@ class TestFTPLoaderNCBICurrent(FTPLoaderDownloadBase, unittest.TestCase):
         )
 
 
-class TestFTPLoaderNCBICurrentProkaryotes(FTPLoaderDownloadBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderNcbi:
+class TestGenomicDatabaseDownloaderNCBICurrentProkaryotes(
+    GenomicDatabaseDownloaderDownloadBase, unittest.TestCase
+):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
         return GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
     def setup_genomic_entity(self) -> NcbiGenomicEntity:
@@ -163,17 +171,17 @@ class TestFTPLoaderNCBICurrentProkaryotes(FTPLoaderDownloadBase, unittest.TestCa
         )
 
 
-class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderEnsembl:
+class TestGenomicDatabaseDownloaderEnsemblCurrent(GenomicDatabaseDownloaderDownloadBase, unittest.TestCase):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderEnsembl:
         return GenomicDatabaseDownloaderEnsembl(self.tmp_path)
 
     def setup_genomic_entity(self) -> GenomicEntity:
         return GenomicEntity(taxon=None, species="homo_sapiens", release="current")
 
 
-class TestFTPLoaderNCBIModeValidation(unittest.TestCase):
+class TestGenomicDatabaseDownloaderNCBIModeValidation(unittest.TestCase):
     def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader_mode_validation")
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader_mode_validation")
         os.makedirs(self.tmp_path, exist_ok=True)
         self.loader = GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
@@ -252,9 +260,9 @@ class TestFTPLoaderNCBIModeValidation(unittest.TestCase):
             self.loader._get_mode(entity)
 
 
-class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
+class TestGenomicDatabaseDownloaderNCBIUnitBehavior(unittest.TestCase):
     def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader_unit_behavior")
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader_unit_behavior")
         os.makedirs(self.tmp_path, exist_ok=True)
         self.loader = GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
@@ -487,7 +495,7 @@ class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
         assert assembly_accession == "GCF_012932745.1"
 
 
-class FTPLoaderFilesBase(FTPTestBase):
+class GenomicDatabaseDownloaderFilesBase(GenomicDatabaseDownloaderTestBase):
     @abstractmethod
     def get_correct_metadata(self) -> tuple[str, str]:
         pass
@@ -533,11 +541,11 @@ class FTPLoaderFilesBase(FTPTestBase):
         self.assert_file_name_is_included(result["fetched_files"]["fasta"], self.get_correct_fasta())
 
 
-class TestFTPLoaderNCBIOldAnnotations(
-    FTPLoaderFilesBase,
+class TestGenomicDatabaseDownloaderNCBIOldAnnotations(
+    GenomicDatabaseDownloaderFilesBase,
     unittest.TestCase,
 ):
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderNcbi:
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
         return GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
     def setup_genomic_entity(self) -> NcbiGenomicEntity:
@@ -564,11 +572,11 @@ class TestFTPLoaderNCBIOldAnnotations(
         return "GCF_000001405.40_GRCh38.p14_genomic.fna"
 
 
-class TestFTPLoaderNCBIReference(
-    FTPLoaderFilesBase,
+class TestGenomicDatabaseDownloaderNCBIReference(
+    GenomicDatabaseDownloaderFilesBase,
     unittest.TestCase,
 ):
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderNcbi:
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
         return GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
     def setup_genomic_entity(self) -> NcbiGenomicEntity:
@@ -598,11 +606,11 @@ class TestFTPLoaderNCBIReference(
         return "GCF_000001405.40_GRCh38.p14_genomic.fna"
 
 
-class TestFTPLoaderNCBIAssemblyNumber(
-    FTPLoaderFilesBase,
+class TestGenomicDatabaseDownloaderNCBIAssemblyNumber(
+    GenomicDatabaseDownloaderFilesBase,
     unittest.TestCase,
 ):
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderNcbi:
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
         return GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
     def setup_genomic_entity(self) -> NcbiGenomicEntity:
@@ -632,8 +640,10 @@ class TestFTPLoaderNCBIAssemblyNumber(
         return "GCF_000068585.1_ASM6858v1_genomic.fna"
 
 
-class TestFTPLoaderEnsemblOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> GenomicDatabaseDownloaderEnsembl:
+class TestGenomicDatabaseDownloaderEnsemblOldAnnotations(
+    GenomicDatabaseDownloaderFilesBase, unittest.TestCase
+):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderEnsembl:
         return GenomicDatabaseDownloaderEnsembl(self.tmp_path)
 
     def setup_genomic_entity(self) -> GenomicEntity:

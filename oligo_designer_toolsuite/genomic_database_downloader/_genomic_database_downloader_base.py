@@ -19,10 +19,6 @@ import requests
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 
-############################################
-# FTP Classes
-############################################
-
 
 @dataclass(frozen=True)
 class GenomicEntity:

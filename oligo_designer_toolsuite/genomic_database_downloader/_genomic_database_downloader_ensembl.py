@@ -7,7 +7,7 @@ from typing import ClassVar
 from typing_extensions import override
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
-from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import (
+from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_base import (
     GenomicDataBaseConfigBase,
     GenomicDatabaseDownloaderBase,
     GenomicEntity,
@@ -102,7 +102,7 @@ class GenomicDatabaseDownloaderEnsembl(GenomicDatabaseDownloaderBase[GenomicEnti
         remote_file_infos: dict[_TYPES_FILE, RemoteInfo] = {}
         for file_type in files:
             file_type_remote_dir, file_type_remote_filename = self._get_params(
-                file_type, sequence_nature, entity.species, entity.release
+                file_type, sequence_nature, entity.species, annotation_release
             )
             remote_file_infos[file_type] = RemoteInfo(file_type_remote_dir, file_type_remote_filename)
 

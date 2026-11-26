@@ -13,7 +13,7 @@ from typing_extensions import IO, ClassVar, override
 
 from oligo_designer_toolsuite._constants import _TYPES_FILE, _TYPES_FILE_SEQ
 from oligo_designer_toolsuite._exceptions import ConfigurationError
-from oligo_designer_toolsuite.ftp_loader._ftp_loader_base import (
+from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_base import (
     FetchedGenomicEntity,
     FtpUtil,
     GenomicDataBaseConfigBase,

@@ -20,12 +20,12 @@ from typing import Callable, Iterable
 import numpy as np
 import pandas as pd
 
-from oligo_designer_toolsuite.ftp_loader import (
+from oligo_designer_toolsuite.genomic_database_downloader import (
     GenomicDatabaseDownloaderEnsembl,
     GenomicDatabaseDownloaderNcbi,
     GenomicEntity,
+    NcbiGenomicEntity,
 )
-from oligo_designer_toolsuite.ftp_loader._ftp_loader_ncbi import NcbiGenomicEntity
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 pd.options.mode.chained_assignment = None
@@ -1338,7 +1338,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
     """
     Build genomic region FASTA files from NCBI annotation and genome downloads.
 
-    Downloads GTF annotation and genome FASTA via :class:`~oligo_designer_toolsuite.ftp_loader.GenomicDatabaseDownloaderNcbi`,
+    Downloads GTF annotation and genome FASTA via :class:`~oligo_designer_toolsuite.genomic_database_downloader.GenomicDatabaseDownloaderNcbi`,
     then reuses :class:`CustomGenomicRegionGenerator` extractors. Choose the genome
     either by taxon, species, and annotation release (``mode='species'``), or by
     RefSeq assembly accession and assembly name (``mode='assembly'``). Only one
@@ -1390,8 +1390,8 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
             assembly_source,
         )
 
-        ftp = GenomicDatabaseDownloaderNcbi(self.dir_output)
-        fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
+        downloader = GenomicDatabaseDownloaderNcbi(self.dir_output)
+        fetched_genomic_entity = downloader.fetch_genomic_entity(genomic_entity)
 
         annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]
         annotation_release = fetched_genomic_entity["annotation_release"]
@@ -1414,7 +1414,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
     Build genomic region FASTA files from Ensembl annotation and genome downloads.
 
     Downloads GTF annotation and genome FASTA via
-    :class:`~oligo_designer_toolsuite.ftp_loader.GenomicDatabaseDownloaderEnsembl`, then
+    :class:`~oligo_designer_toolsuite.genomic_database_downloader.GenomicDatabaseDownloaderEnsembl`, then
     reuses :class:`CustomGenomicRegionGenerator` extractors for the chosen species
     and annotation release.
 
@@ -1447,8 +1447,8 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
 
         genomic_entity = GenomicEntity(None, species, annotation_release)
 
-        ftp = GenomicDatabaseDownloaderEnsembl(self.dir_output)
-        fetched_genomic_entity = ftp.fetch_genomic_entity(genomic_entity)
+        downloader = GenomicDatabaseDownloaderEnsembl(self.dir_output)
+        fetched_genomic_entity = downloader.fetch_genomic_entity(genomic_entity)
 
         annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]
         annotation_release = fetched_genomic_entity["annotation_release"]
