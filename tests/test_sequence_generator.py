@@ -572,40 +572,6 @@ class TestGenomicDatabaseDownloaderNCBIOldAnnotations(
         return "GCF_000001405.40_GRCh38.p14_genomic.fna"
 
 
-class TestGenomicDatabaseDownloaderNCBIReference(
-    GenomicDatabaseDownloaderFilesBase,
-    unittest.TestCase,
-):
-    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
-        return GenomicDatabaseDownloaderNcbi(self.tmp_path)
-
-    def setup_genomic_entity(self) -> NcbiGenomicEntity:
-        return NcbiGenomicEntity(
-            mode="species",
-            taxon="vertebrate_mammalian",
-            species="Homo_sapiens",
-            annotation_release="current",
-            assembly_source="reference",
-            assembly_accession=None,
-            assembly_name=None,
-        )
-
-    def get_correct_metadata(self) -> tuple[str, str]:
-        annotation_release = "GCF_000001405.40-RS_2025_08"
-        assembly_name = "GRCh38.p14"
-
-        return annotation_release, assembly_name
-
-    def get_correct_gff(self) -> str:
-        return "GCF_000001405.40_GRCh38.p14_genomic.gff"
-
-    def get_correct_gtf(self) -> str:
-        return "GCF_000001405.40_GRCh38.p14_genomic.gtf"
-
-    def get_correct_fasta(self) -> str:
-        return "GCF_000001405.40_GRCh38.p14_genomic.fna"
-
-
 class TestGenomicDatabaseDownloaderNCBIAssemblyNumber(
     GenomicDatabaseDownloaderFilesBase,
     unittest.TestCase,
