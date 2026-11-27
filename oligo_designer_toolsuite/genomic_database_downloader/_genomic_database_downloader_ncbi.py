@@ -567,10 +567,16 @@ class GenomicDatabaseDownloaderNcbi(GenomicDatabaseDownloaderBase[NcbiGenomicEnt
         :return: True if the checksum matches, otherwise False.
         :rtype: bool
         """
-        with open(file_path, "rb") as f:
-            digest = hashlib.file_digest(f, "md5")
 
-        return digest.hexdigest() == expected_checksum
+        # NOTE: avoids hashlib.file_digest to support Python versions < 3.11
+        def file_digest(file_path: Path) -> str:
+            with open(file_path, "rb") as f:
+                md5 = hashlib.new("md5")
+                while (chunk := f.read(1024)) != b"":
+                    md5.update(chunk)
+                return md5.hexdigest()
+
+        return file_digest(file_path) == expected_checksum
 
     def fetch_genomic_entity(
         self,
