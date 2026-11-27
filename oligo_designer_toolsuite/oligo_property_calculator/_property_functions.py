@@ -136,8 +136,8 @@ def calc_length_complement(sequence1: str, sequence2: str) -> int:
             shifted_seq1 = sequence1[: len(shifted_seq2)]
         else:
             # Shift sequence2 to the right
-            shifted_seq2 = sequence2[:-shift] if shift != 0 else sequence2
             shifted_seq1 = sequence1[shift:]
+            shifted_seq2 = sequence2[: len(shifted_seq1)]
 
         len_comp = _calculate_max_overlap(shifted_seq1, shifted_seq2)
         max_len_overlap = max(max_len_overlap, len_comp)

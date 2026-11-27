@@ -24,6 +24,9 @@ from oligo_designer_toolsuite.oligo_property_calculator import (
     ShortenedSequenceProperty,
     TmNNProperty,
 )
+from oligo_designer_toolsuite.oligo_property_calculator._property_functions import (
+    calc_length_complement,
+)
 
 ############################################
 # setup
@@ -279,6 +282,17 @@ class TestOligoProperties(unittest.TestCase):
         )
 
         assert length_complement == 3, "error: wrong length of complement calculated"
+
+    def test_calc_length_complement_unequal_lengths(self) -> None:
+        # Match located strictly past len(sequence2) in sequence1
+        assert calc_length_complement("AAAAAGGGGG", "CCCCC") == 5
+        assert calc_length_complement("CCCCC", "AAAAAGGGGG") == 5
+        # Match spanning past len(sequence2) in sequence1
+        assert calc_length_complement("AAAAAGGGGG", "CCCCCTTT") == 5
+        assert calc_length_complement("CCCCCTTT", "AAAAAGGGGG") == 5
+        # Match at the 3' end of a longer oligo against a shorter comparison sequence
+        assert calc_length_complement("AAAAAAAAAATCAG", "AGTC") == 4
+        assert calc_length_complement("AGTC", "AAAAAAAAAATCAG") == 4
 
     def test_calculate_secondary_structure_DG(self) -> None:
         dg_secondary_structure_property = DGSecondaryStructureProperty(T=37)
