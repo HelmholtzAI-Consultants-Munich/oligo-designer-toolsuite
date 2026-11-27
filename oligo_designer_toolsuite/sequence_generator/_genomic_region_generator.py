@@ -20,6 +20,12 @@ from typing import Callable, Iterable
 import numpy as np
 import pandas as pd
 
+from oligo_designer_toolsuite.genomic_database_downloader import (
+    GenomicDatabaseDownloaderEnsembl,
+    GenomicDatabaseDownloaderNcbi,
+    GenomicEntity,
+    NcbiGenomicEntity,
+)
 from oligo_designer_toolsuite.utils._checkers_and_helpers import safe_append_filename
 
 pd.options.mode.chained_assignment = None
@@ -33,7 +39,6 @@ from oligo_designer_toolsuite._constants import (
     SEPARATOR_FASTA_HEADER_FIELDS_LIST,
 )
 from oligo_designer_toolsuite._exceptions import ConfigurationError
-from oligo_designer_toolsuite.sequence_generator import FtpLoaderEnsembl, FtpLoaderNCBI
 from oligo_designer_toolsuite.utils import (
     BedParser,
     GffParser,
@@ -1333,7 +1338,7 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
     """
     Build genomic region FASTA files from NCBI annotation and genome downloads.
 
-    Downloads GTF annotation and genome FASTA via :class:`~oligo_designer_toolsuite.sequence_generator.FtpLoaderNCBI`,
+    Downloads GTF annotation and genome FASTA via :class:`~oligo_designer_toolsuite.genomic_database_downloader.GenomicDatabaseDownloaderNcbi`,
     then reuses :class:`CustomGenomicRegionGenerator` extractors. Choose the genome
     either by taxon, species, and annotation release (``mode='species'``), or by
     RefSeq assembly accession and assembly name (``mode='assembly'``). Only one
@@ -1372,46 +1377,26 @@ class NcbiGenomicRegionGenerator(CustomGenomicRegionGenerator):
         """Constructor for the NcbiGenomicRegionGenerator class."""
         files_source = "NCBI"
 
-        if mode is None:
-            raise ConfigurationError("For source='ncbi', parameter 'mode' must be provided.")
-
-        if mode == "species":
-            if taxon is None:
-                raise ConfigurationError(f"No taxon defined.")
-
-            if species is None:
-                raise ConfigurationError(f"No species defined.")
-
-            if annotation_release is None:
-                annotation_release = "current"
-                logger.warning(f"No annotation release defined. Using default release {annotation_release}!")
-
-            if assembly_source is None:
-                assembly_source = "auto"
-                logger.warning(
-                    f"No assembly source defined. Using default assembly source {assembly_source}!"
-                )
-        elif mode == "assembly":
-            if assembly_source is None:
-                assembly_source = "auto"
-        else:
-            raise ConfigurationError("For source='ncbi', mode must be either 'species' or 'assembly'.")
-
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ftp = FtpLoaderNCBI(
-            self.dir_output,
-            mode=mode,
-            taxon=taxon,
-            species=species,
-            annotation_release=annotation_release,
-            assembly_source=assembly_source if assembly_source is not None else "auto",
-            refseq_assembly_accession=refseq_assembly_accession,
-            assembly_name=assembly_name,
+        genomic_entity = NcbiGenomicEntity(
+            mode,
+            taxon,
+            species,
+            annotation_release,
+            assembly_name,
+            refseq_assembly_accession,
+            assembly_source,
         )
-        annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
-        sequence_file, _, _ = ftp.download_files("fasta")
+
+        downloader = GenomicDatabaseDownloaderNcbi(self.dir_output)
+        fetched_genomic_entity = downloader.fetch_genomic_entity(genomic_entity)
+
+        annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]
+        annotation_release = fetched_genomic_entity["annotation_release"]
+        genome_assembly = fetched_genomic_entity["genome_assembly"]
+        sequence_file = fetched_genomic_entity["fetched_files"]["fasta"]
 
         super().__init__(
             annotation_file,
@@ -1429,7 +1414,7 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
     Build genomic region FASTA files from Ensembl annotation and genome downloads.
 
     Downloads GTF annotation and genome FASTA via
-    :class:`~oligo_designer_toolsuite.sequence_generator.FtpLoaderEnsembl`, then
+    :class:`~oligo_designer_toolsuite.genomic_database_downloader.GenomicDatabaseDownloaderEnsembl`, then
     reuses :class:`CustomGenomicRegionGenerator` extractors for the chosen species
     and annotation release.
 
@@ -1460,9 +1445,15 @@ class EnsemblGenomicRegionGenerator(CustomGenomicRegionGenerator):
         self.dir_output = os.path.join(dir_output, "annotation")
         Path(self.dir_output).mkdir(parents=True, exist_ok=True)
 
-        ftp = FtpLoaderEnsembl(self.dir_output, species, annotation_release)
-        annotation_file, annotation_release, genome_assembly = ftp.download_files("gtf")
-        sequence_file, _, _ = ftp.download_files("fasta")
+        genomic_entity = GenomicEntity(None, species, annotation_release)
+
+        downloader = GenomicDatabaseDownloaderEnsembl(self.dir_output)
+        fetched_genomic_entity = downloader.fetch_genomic_entity(genomic_entity)
+
+        annotation_file = fetched_genomic_entity["fetched_files"]["gtf"]
+        annotation_release = fetched_genomic_entity["annotation_release"]
+        genome_assembly = fetched_genomic_entity["genome_assembly"]
+        sequence_file = fetched_genomic_entity["fetched_files"]["fasta"]
 
         super().__init__(
             annotation_file,

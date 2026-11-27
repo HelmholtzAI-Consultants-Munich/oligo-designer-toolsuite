@@ -59,6 +59,7 @@ dependencies = [
   "pandas>=2.2,<3",
   "pydantic>=2.12.5,<3",
   "pyyaml>=6.0,<7",
+  "requests >=2.32, <3",
   "scipy>=1.13,<2",
   "seqfold>=0.9,<1",
 ]
@@ -122,5 +123,7 @@ module = [
   "joblib_progress.*",
   "biopython.*",
   "Bio.*",
+  "hashlib.*",
+  "requests.*"
 ]
 ignore_missing_imports = true

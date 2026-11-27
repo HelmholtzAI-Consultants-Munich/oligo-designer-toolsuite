@@ -6,22 +6,33 @@ import os
 import shutil
 import unittest
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, Callable, Generic, cast
 from unittest.mock import patch
 
 from Bio import SeqIO
 
 from oligo_designer_toolsuite._exceptions import ConfigurationError
 from oligo_designer_toolsuite.database import OligoDatabase
+from oligo_designer_toolsuite.genomic_database_downloader import (
+    GenomicDatabaseDownloaderEnsembl,
+    GenomicDatabaseDownloaderNcbi,
+    GenomicEntity,
+    NcbiGenomicEntity,
+)
+from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_base import (
+    GenomicDatabaseDownloaderBase,
+    TGenomicEntity,
+)
+from oligo_designer_toolsuite.genomic_database_downloader._genomic_database_downloader_ncbi import (
+    AssemblyMode,
+    SpeciesMode,
+)
 from oligo_designer_toolsuite.oligo_property_calculator import (
     LengthProperty,
     PropertyCalculator,
 )
 from oligo_designer_toolsuite.sequence_generator import (
     CustomGenomicRegionGenerator,
-    FtpLoaderEnsembl,
-    FtpLoaderNCBI,
     OligoSequenceGenerator,
 )
 from oligo_designer_toolsuite.utils import FastaParser, check_if_dna_sequence, get_complement_regions
@@ -86,299 +97,407 @@ FILE_NCBI_EXON_EXON_JUNCTIONS_SHORT = (
     "tests/data/genomic_regions/sequences_AARS1_ncbi_exon_exon_junctions_short.fna"
 )
 
+
 ############################################
 # Tests
 ############################################
-
-
-class FTPLoaderDownloadBase:
+class GenomicDatabaseDownloaderTestBase(Generic[TGenomicEntity]):
     def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader")
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader")
         os.makedirs(self.tmp_path, exist_ok=True)
-        self.loader = self.setup_ftp_loader()
+
+        self.loader = self.setup_genomic_database_downloader()
+        self.entity = self.setup_genomic_entity()
 
     def tearDown(self) -> None:
-        shutil.rmtree(self.tmp_path)
+        shutil.rmtree(self.tmp_path, ignore_errors=True)
 
     @abstractmethod
-    def setup_ftp_loader(self) -> FtpLoaderNCBI | FtpLoaderEnsembl:
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderBase[TGenomicEntity]:
         pass
 
-    def test_download(self) -> None:
-        _, _, _ = self.loader.download_files("fasta")
+    @abstractmethod
+    def setup_genomic_entity(self) -> TGenomicEntity:
+        pass
 
 
-class TestFTPLoaderNCBICurrent(FTPLoaderDownloadBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> FtpLoaderNCBI:
-        # Parameters
-        mode = "species"
-        taxon = "vertebrate_mammalian"  # taxon the species belongs to
-        species = "Homo_sapiens"
-        annotation_release = "current"
-
-        return FtpLoaderNCBI(
-            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
-        )
-
-
-class TestFTPLoaderNCBICurrentProkaryotes(FTPLoaderDownloadBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> FtpLoaderNCBI:
-        # Parameters
-        mode = "species"
-        taxon = "bacteria"  # taxon the species belongs to
-        species = "Actinomadura_yumaensis"
-        annotation_release = "current"
-
-        return FtpLoaderNCBI(
-            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
-        )
-
-
-class TestFTPLoaderEnsemblCurrent(FTPLoaderDownloadBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> FtpLoaderEnsembl:
-        # Parameters
-        species = "homo_sapiens"
-        annotation_release = "current"
-
-        return FtpLoaderEnsembl(self.tmp_path, species, annotation_release)
-
-
-class TestFTPLoaderNCBIModeValidation(unittest.TestCase):
+class GenomicDatabaseDownloaderDownloadBase(GenomicDatabaseDownloaderTestBase):
     def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader_mode_validation")
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader")
         os.makedirs(self.tmp_path, exist_ok=True)
+        self.loader = self.setup_genomic_database_downloader()
+        self.genomic_entity = self.setup_genomic_entity()
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_path)
 
-    def test_direct_mode_requires_both_fields(self) -> None:
-        with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                mode="assembly",
-                refseq_assembly_accession="GCF_000001405.38",
-            )
+    def test_download(self) -> None:
+        _ = self.loader.fetch_genomic_entity(self.genomic_entity, ["fasta"])
 
-    def test_direct_mode_rejects_taxon_mode_fields(self) -> None:
-        with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                mode="assembly",
-                taxon="vertebrate_mammalian",
-                species="Homo_sapiens",
-                annotation_release="current",
-                refseq_assembly_accession="GCF_000001405.38",
-                assembly_name="GRCh38.p12",
-            )
 
-    def test_direct_mode_accepts_valid_pair(self) -> None:
-        loader = FtpLoaderNCBI(
-            self.tmp_path,
-            mode="assembly",
-            refseq_assembly_accession="GCF_000001405.38",
-            assembly_name="GRCh38.p12",
+class TestGenomicDatabaseDownloaderNCBICurrent(GenomicDatabaseDownloaderDownloadBase, unittest.TestCase):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
+        return GenomicDatabaseDownloaderNcbi(self.tmp_path)
+
+    def setup_genomic_entity(self) -> NcbiGenomicEntity:
+        return NcbiGenomicEntity(
+            # Parameters
+            mode="species",
+            taxon="vertebrate_mammalian",  # taxon the species belongs to
+            species="Homo_sapiens",
+            annotation_release="current",
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source=None,
         )
-        assert loader is not None
+
+
+class TestGenomicDatabaseDownloaderNCBICurrentProkaryotes(
+    GenomicDatabaseDownloaderDownloadBase, unittest.TestCase
+):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
+        return GenomicDatabaseDownloaderNcbi(self.tmp_path)
+
+    def setup_genomic_entity(self) -> NcbiGenomicEntity:
+        return NcbiGenomicEntity(
+            # Parameters
+            mode="species",
+            taxon="bacteria",  # taxon the species belongs to
+            species="Actinomadura_yumaensis",
+            annotation_release="current",
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source=None,
+        )
+
+
+class TestGenomicDatabaseDownloaderEnsemblCurrent(GenomicDatabaseDownloaderDownloadBase, unittest.TestCase):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderEnsembl:
+        return GenomicDatabaseDownloaderEnsembl(self.tmp_path)
+
+    def setup_genomic_entity(self) -> GenomicEntity:
+        return GenomicEntity(taxon=None, species="homo_sapiens", release="current")
+
+
+class TestGenomicDatabaseDownloaderNCBIModeValidation(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader_mode_validation")
+        os.makedirs(self.tmp_path, exist_ok=True)
+        self.loader = GenomicDatabaseDownloaderNcbi(self.tmp_path)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp_path, ignore_errors=True)
+
+    def test_assembly_mode_requires_both_fields(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="assembly",
+            taxon=None,
+            species=None,
+            annotation_release=None,
+            assembly_name=None,
+            assembly_accession="GCF_000001405.38",
+            assembly_source=None,
+        )
+
+        with self.assertRaises(ConfigurationError):
+            self.loader._get_mode(entity)
+
+    def test_assembly_mode_rejects_species_fields(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="assembly",
+            taxon="vertebrate_mammalian",
+            species="Homo_sapiens",
+            annotation_release="current",
+            assembly_name="GRCh38.p12",
+            assembly_accession="GCF_000001405.38",
+            assembly_source=None,
+        )
+
+        with self.assertRaises(ConfigurationError):
+            self.loader._get_mode(entity)
+
+    def test_assembly_mode_accepts_valid_configuration(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="assembly",
+            taxon=None,
+            species=None,
+            annotation_release=None,
+            assembly_name="GRCh38.p12",
+            assembly_accession="GCF_000001405.38",
+            assembly_source=None,
+        )
+
+        mode = self.loader._get_mode(entity)
+
+        self.assertIsInstance(mode, AssemblyMode)
 
     def test_requires_explicit_mode(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode=None,
+            taxon="vertebrate_mammalian",
+            species="Homo_sapiens",
+            annotation_release="current",
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source=None,
+        )
+
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                taxon="vertebrate_mammalian",
-                species="Homo_sapiens",
-                annotation_release="current",
-            )
+            self.loader._get_mode(entity)
 
     def test_rejects_unknown_mode(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="unknown",
+            taxon="vertebrate_mammalian",
+            species="Homo_sapiens",
+            annotation_release="current",
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source=None,
+        )
+
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                mode="unknown",
-                taxon="vertebrate_mammalian",
-                species="Homo_sapiens",
-                annotation_release="current",
-            )
+            self.loader._get_mode(entity)
 
 
-class TestFTPLoaderNCBIUnitBehavior(unittest.TestCase):
+class TestGenomicDatabaseDownloaderNCBIUnitBehavior(unittest.TestCase):
     def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader_unit_behavior")
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_genomic_database_downloader_unit_behavior")
         os.makedirs(self.tmp_path, exist_ok=True)
+        self.loader = GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_path)
 
+    def getAssemblyMode(self, entity: NcbiGenomicEntity) -> AssemblyMode:
+        mode = self.loader._get_mode(entity)
+        assert isinstance(mode, AssemblyMode)
+        return mode
+
+    def getSpeciesMode(self, entity: NcbiGenomicEntity) -> SpeciesMode:
+        mode = self.loader._get_mode(entity)
+        assert isinstance(mode, SpeciesMode)
+        return mode
+
     def test_direct_mode_builds_expected_ncbi_all_path(self) -> None:
-        loader = FtpLoaderNCBI(
-            self.tmp_path,
+        entity = NcbiGenomicEntity(
             mode="assembly",
-            refseq_assembly_accession="GCF_000001405.38",
+            taxon=None,
+            species=None,
+            annotation_release=None,
             assembly_name="GRCh38.p12",
+            assembly_accession="GCF_000001405.38",
+            assembly_source=None,
         )
+
+        mode = self.getAssemblyMode(entity)
+
         assert (
-            loader._resolve_directory_from_direct_assembly()
+            mode._resolve_directory_from_direct_assembly()
             == "genomes/all/GCF/000/001/405/GCF_000001405.38_GRCh38.p12/"
         )
 
     def test_direct_mode_rejects_invalid_accession_format(self) -> None:
-        loader = FtpLoaderNCBI(
-            self.tmp_path,
+        entity = NcbiGenomicEntity(
             mode="assembly",
-            refseq_assembly_accession="GCF_123",
+            taxon=None,
+            species=None,
+            annotation_release=None,
             assembly_name="GRCh38.p12",
+            assembly_accession="GCF_123",
+            assembly_source=None,
         )
+
+        mode = self.getAssemblyMode(entity)
+
         with self.assertRaises(ConfigurationError):
-            loader._resolve_directory_from_direct_assembly()
+            mode._resolve_directory_from_direct_assembly()
 
     def test_taxon_mode_requires_required_fields(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="species",
+            taxon=None,
+            species="vertebrate_mammalian",
+            annotation_release=None,
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source=None,
+        )
+
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(self.tmp_path, mode="species", taxon="vertebrate_mammalian")
+            self.loader.fetch_genomic_entity(entity)
 
     def test_unsupported_taxon_is_rejected(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="species",
+            taxon="mitochondrion",
+            species="Homo_sapiens",
+            annotation_release="current",
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source=None,
+        )
+
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                mode="species",
-                taxon="mitochondrion",
-                species="Homo_sapiens",
-                annotation_release="current",
-            )
+            self.loader.fetch_genomic_entity(entity)
 
     def test_unknown_taxon_is_rejected(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="species",
+            taxon="foo_taxon",
+            species="Homo_sapiens",
+            annotation_release="current",
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source=None,
+        )
+
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                mode="species",
-                taxon="foo_taxon",
-                species="Homo_sapiens",
-                annotation_release="current",
-            )
+            self.loader.fetch_genomic_entity(entity)
 
     def test_assembly_source_incompatible_with_taxon_is_rejected(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="species",
+            taxon="viral",
+            species="SARS-CoV-2",
+            annotation_release="current",
+            assembly_name=None,
+            assembly_accession=None,
+            assembly_source="annotation_releases",
+        )
+
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                mode="species",
-                taxon="viral",
-                species="SARS-CoV-2",
-                annotation_release="current",
-                assembly_source="annotation_releases",
-            )
+            self.loader.fetch_genomic_entity(entity)
 
     def test_numeric_release_is_rejected_for_latest_assembly_versions(self) -> None:
+        entity = NcbiGenomicEntity(
+            mode="species",
+            taxon="bacteria",
+            species="Actinomadura_yumaensis",
+            annotation_release="110",
+            assembly_source="latest_assembly_versions",
+            assembly_name=None,
+            assembly_accession=None,
+        )
+
         with self.assertRaises(ConfigurationError):
-            FtpLoaderNCBI(
-                self.tmp_path,
-                mode="species",
-                taxon="bacteria",
-                species="Actinomadura_yumaensis",
-                annotation_release="110",
-                assembly_source="latest_assembly_versions",
-            )
+            self.loader.fetch_genomic_entity(entity)
 
     def test_current_annotation_release_uses_first_entry(self) -> None:
-        loader = FtpLoaderNCBI(
-            self.tmp_path,
+        entity = NcbiGenomicEntity(
             mode="species",
             taxon="vertebrate_mammalian",
             species="Homo_sapiens",
             annotation_release="current",
             assembly_source="annotation_releases",
+            assembly_name=None,
+            assembly_accession=None,
         )
+
+        species_mode = self.getSpeciesMode(entity)
+
         with patch.object(
-            loader,
+            species_mode,
             "_list_ftp_entries",
             return_value=["GCF_000001405.40-RS_2025_08", "GCF_009914755.1-RS_2025_08"],
         ):
-            ftp_directory = loader._resolve_base_directory("annotation_releases")
-        assert loader.annotation_release == "GCF_000001405.40-RS_2025_08"
+            ftp_directory = species_mode._resolve_base_directory("annotation_releases")
+        assert species_mode.annotation_release == "GCF_000001405.40-RS_2025_08"
         assert (
             ftp_directory == "genomes/refseq/vertebrate_mammalian/Homo_sapiens/annotation_releases/"
             "GCF_000001405.40-RS_2025_08/"
         )
 
     def test_non_annotation_source_uses_first_gcf_entry(self) -> None:
-        loader = FtpLoaderNCBI(
-            self.tmp_path,
+        entity = NcbiGenomicEntity(
             mode="species",
             taxon="bacteria",
             species="Actinomadura_yumaensis",
             annotation_release="current",
             assembly_source="latest_assembly_versions",
+            assembly_name=None,
+            assembly_accession=None,
         )
+
+        species_mode = self.getSpeciesMode(entity)
+
         with patch.object(
-            loader,
+            species_mode,
             "_list_ftp_entries",
             return_value=["README.txt", "GCF_003054545.1_ASM305454v1", "GCA_111111111.1_OTHER"],
         ):
-            ftp_directory = loader._resolve_base_directory("latest_assembly_versions")
+            ftp_directory = species_mode._resolve_base_directory("latest_assembly_versions")
         assert (
             ftp_directory == "genomes/refseq/bacteria/Actinomadura_yumaensis/latest_assembly_versions/"
             "GCF_003054545.1_ASM305454v1/"
         )
 
     def test_non_annotation_source_without_gcf_entry_raises(self) -> None:
-        loader = FtpLoaderNCBI(
-            self.tmp_path,
+        entity = NcbiGenomicEntity(
             mode="species",
             taxon="bacteria",
             species="Actinomadura_yumaensis",
             annotation_release="current",
             assembly_source="latest_assembly_versions",
+            assembly_name=None,
+            assembly_accession=None,
         )
-        with patch.object(loader, "_list_ftp_entries", return_value=["README.txt", "GCA_123456789.1_OTHER"]):
+
+        species_mode = self.getSpeciesMode(entity)
+
+        with patch.object(
+            species_mode, "_list_ftp_entries", return_value=["README.txt", "GCA_123456789.1_OTHER"]
+        ):
             with self.assertRaises(ConfigurationError):
-                loader._resolve_base_directory("latest_assembly_versions")
+                species_mode._resolve_base_directory("latest_assembly_versions")
 
     def test_resolve_assembly_metadata_falls_back_to_assembly_report(self) -> None:
-        loader = FtpLoaderNCBI(
-            self.tmp_path,
+        entity = NcbiGenomicEntity(
             mode="species",
             taxon="bacteria",
             species="Xanthobacter_sp._SG618",
             annotation_release="current",
             assembly_source="reference",
+            assembly_name=None,
+            assembly_accession=None,
         )
-        assembly_report = os.path.join(self.tmp_path, "GCF_012932745.1_ASM1293274v1_assembly_report.txt")
+
+        species_mode = self.getSpeciesMode(entity)
+
+        assembly_report_file_name = "GCF_012932745.1_ASM1293274v1_assembly_report.txt"
+        assembly_report = os.path.join(self.tmp_path, assembly_report_file_name)
+        assembly_report_copy = os.path.join(self.tmp_path, f"{assembly_report_file_name}-copy")
+
         with open(assembly_report, "w") as handle:
             handle.write("# Assembly name: ASM1293274v1\n")
             handle.write("# RefSeq assembly accession: GCF_012932745.1\n")
 
-        def _download_side_effect(ftp_link: str, ftp_directory: str, file_name: str) -> str:
+        def _download_side_effect(ftp_directory: str, file_name: str) -> str:
             if "README_" in file_name:
                 raise FileNotFoundError("README missing")
             if "_assembly_report" in file_name:
-                return assembly_report
+                shutil.copy(assembly_report, assembly_report_copy)
+                return assembly_report_copy
             raise FileNotFoundError("No file")
 
-        with patch.object(loader, "_download", side_effect=_download_side_effect):
-            loader._resolve_assembly_metadata("dummy_dir/")
+        def _get_exact_filename_side_effect(ftp_directory: str, pattern: str) -> str:
+            return assembly_report_file_name
 
-        assert loader.assembly_name == "ASM1293274v1"
-        assert loader.assembly_accession == "GCF_012932745.1"
+        with (
+            patch.object(species_mode.ftp_util, "download", side_effect=_download_side_effect),
+            patch.object(
+                species_mode.ftp_util, "get_exact_filename", side_effect=_get_exact_filename_side_effect
+            ),
+        ):
+            assembly_accession, assembly_name = species_mode._resolve_assembly_metadata("dummy_dir/")
+
+        assert assembly_name == "ASM1293274v1"
+        assert assembly_accession == "GCF_012932745.1"
 
 
-class FTPLoaderFilesBase:
-    def setUp(self) -> None:
-        self.tmp_path = os.path.join(os.getcwd(), "tmp_ftp_loader")
-        self.loader = self.setup_ftp_loader()
-
-    def tearDown(self) -> None:
-        try:
-            shutil.rmtree(self.tmp_path)
-        except:
-            pass
-
-    @abstractmethod
-    def setup_ftp_loader(self) -> FtpLoaderNCBI | FtpLoaderEnsembl:
-        pass
-
+class GenomicDatabaseDownloaderFilesBase(GenomicDatabaseDownloaderTestBase):
     @abstractmethod
     def get_correct_metadata(self) -> tuple[str, str]:
-        pass
-
-    @abstractmethod
-    def get_correct_gff(self) -> str:
         pass
 
     @abstractmethod
@@ -389,49 +508,62 @@ class FTPLoaderFilesBase:
     def get_correct_fasta(self) -> str:
         pass
 
-    @abstractmethod
-    def get_true_asserts(self) -> bool:
-        pass
+    def assert_file_name_is_included(self, file_path: str | None, expected_file_name: str) -> None:
+        assert file_path is not None
+        assert file_path.find(expected_file_name) > -1, "error: wrong file downloaded"
 
     def test_metadata_loader(self) -> None:
-        _, annotation_release, assembly_name = self.loader.download_files("fasta")
-        self.annotation_release, self.assembly_name = self.get_correct_metadata()
-        assert annotation_release == self.annotation_release, "error: wrong annotation release retrieved"
-        assert assembly_name == self.assembly_name, "error: wrong assembly name retrieved"
+        result = self.loader.fetch_genomic_entity(
+            self.entity,
+            files=["fasta"],
+        )
 
-    def test_gff_loader(self) -> None:
-        file_gff, _, _ = self.loader.download_files("gff")
-        assert Path(file_gff).name == self.get_correct_gff(), "error: wrong file downloaded"
+        annotation_release, assembly_name = self.get_correct_metadata()
+
+        assert result["annotation_release"] == annotation_release, "error: wrong annotation release retrieved"
+
+        assert result["genome_assembly"] == assembly_name, "error: wrong assembly retrieved"
 
     def test_gtf_loader(self) -> None:
-        file_gtf, _, _ = self.loader.download_files("gtf")
-        assert Path(file_gtf).name == self.get_correct_gtf(), "error: wrong file downloaded"
+        result = self.loader.fetch_genomic_entity(
+            self.entity,
+            files=["gtf"],
+        )
+
+        self.assert_file_name_is_included(result["fetched_files"]["gtf"], self.get_correct_gtf())
 
     def test_fasta_loader(self) -> None:
-        file_fasta, _, _ = self.loader.download_files("fasta")
-        assert Path(file_fasta).name == self.get_correct_fasta(), "error: wrong file downloaded"
+        result = self.loader.fetch_genomic_entity(
+            self.entity,
+            files=["fasta"],
+        )
+
+        self.assert_file_name_is_included(result["fetched_files"]["fasta"], self.get_correct_fasta())
 
 
-class TestFTPLoaderNCBIOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> FtpLoaderNCBI:
-        # Parameters
-        mode = "species"
-        taxon = "vertebrate_mammalian"  # taxon the species belongs to
-        species = "Homo_sapiens"
-        annotation_release = "110"
+class TestGenomicDatabaseDownloaderNCBIOldAnnotations(
+    GenomicDatabaseDownloaderFilesBase,
+    unittest.TestCase,
+):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
+        return GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
-        return FtpLoaderNCBI(
-            self.tmp_path, mode=mode, taxon=taxon, species=species, annotation_release=annotation_release
+    def setup_genomic_entity(self) -> NcbiGenomicEntity:
+        return NcbiGenomicEntity(
+            mode="species",
+            taxon="vertebrate_mammalian",
+            species="Homo_sapiens",
+            annotation_release="110",
+            assembly_source=None,
+            assembly_accession=None,
+            assembly_name=None,
         )
 
     def get_correct_metadata(self) -> tuple[str, str]:
-        annotation_release = "NCBI_Homo_sapiens_Annotation_Release_110"
-        assembly_name = "GRCh38.p14"
-
-        return annotation_release, assembly_name
-
-    def get_correct_gff(self) -> str:
-        return "GCF_000001405.40_GRCh38.p14_genomic.gff"
+        return (
+            "NCBI_Homo_sapiens_Annotation_Release_110",
+            "GRCh38.p14",
+        )
 
     def get_correct_gtf(self) -> str:
         return "GCF_000001405.40_GRCh38.p14_genomic.gtf"
@@ -440,52 +572,22 @@ class TestFTPLoaderNCBIOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
         return "GCF_000001405.40_GRCh38.p14_genomic.fna"
 
 
-class TestFTPLoaderNCBIReference(FTPLoaderFilesBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> FtpLoaderNCBI:
-        # Parameters
-        mode = "species"
-        taxon = "vertebrate_mammalian"  # taxon the species belongs to
-        species = "Homo_sapiens"
-        annotation_release = "current"
-        assembly_source = "reference"
+class TestGenomicDatabaseDownloaderNCBIAssemblyNumber(
+    GenomicDatabaseDownloaderFilesBase,
+    unittest.TestCase,
+):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderNcbi:
+        return GenomicDatabaseDownloaderNcbi(self.tmp_path)
 
-        return FtpLoaderNCBI(
-            self.tmp_path,
-            mode=mode,
-            taxon=taxon,
-            species=species,
-            annotation_release=annotation_release,
-            assembly_source=assembly_source,
-        )
-
-    def get_correct_metadata(self) -> tuple[str, str]:
-        annotation_release = "GCF_000001405.40-RS_2025_08"
-        assembly_name = "GRCh38.p14"
-
-        return annotation_release, assembly_name
-
-    def get_correct_gff(self) -> str:
-        return "GCF_000001405.40_GRCh38.p14_genomic.gff"
-
-    def get_correct_gtf(self) -> str:
-        return "GCF_000001405.40_GRCh38.p14_genomic.gtf"
-
-    def get_correct_fasta(self) -> str:
-        return "GCF_000001405.40_GRCh38.p14_genomic.fna"
-
-
-class TestFTPLoaderNCBIAssemblyNumber(FTPLoaderFilesBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> FtpLoaderNCBI:
-        # Parameters
-        mode = "assembly"
-        refseq_assembly_accession = "GCF_000068585.1"
-        assembly_name = "ASM6858v1"
-
-        return FtpLoaderNCBI(
-            self.tmp_path,
-            mode=mode,
-            refseq_assembly_accession=refseq_assembly_accession,
-            assembly_name=assembly_name,
+    def setup_genomic_entity(self) -> NcbiGenomicEntity:
+        return NcbiGenomicEntity(
+            mode="assembly",
+            taxon=None,
+            species=None,
+            annotation_release=None,
+            assembly_source=None,
+            assembly_accession="GCF_000068585.1",
+            assembly_name="ASM6858v1",
         )
 
     def get_correct_metadata(self) -> tuple[str, str]:
@@ -504,13 +606,14 @@ class TestFTPLoaderNCBIAssemblyNumber(FTPLoaderFilesBase, unittest.TestCase):
         return "GCF_000068585.1_ASM6858v1_genomic.fna"
 
 
-class TestFTPLoaderEnsemblOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
-    def setup_ftp_loader(self) -> FtpLoaderEnsembl:
-        # Parameters
-        species = "homo_sapiens"
-        annotation_release = "108"
+class TestGenomicDatabaseDownloaderEnsemblOldAnnotations(
+    GenomicDatabaseDownloaderFilesBase, unittest.TestCase
+):
+    def setup_genomic_database_downloader(self) -> GenomicDatabaseDownloaderEnsembl:
+        return GenomicDatabaseDownloaderEnsembl(self.tmp_path)
 
-        return FtpLoaderEnsembl(self.tmp_path, species, annotation_release)
+    def setup_genomic_entity(self) -> GenomicEntity:
+        return GenomicEntity(taxon=None, species="homo_sapiens", release="108")
 
     def get_correct_metadata(self) -> tuple[str, str]:
         annotation_release = "108"
@@ -528,9 +631,10 @@ class TestFTPLoaderEnsemblOldAnnotations(FTPLoaderFilesBase, unittest.TestCase):
         return "Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa"
 
     def test_download_ncrna_file(self) -> None:
-        ensembl_loader = cast(FtpLoaderEnsembl, self.loader)
-        file_fasta, _, _ = ensembl_loader.download_files("fasta", sequence_nature="ncrna")
-        assert Path(file_fasta).name == "Homo_sapiens.GRCh38.ncrna.fa", "error: wrong file downloaded"
+        ensembl_loader = cast(GenomicDatabaseDownloaderEnsembl, self.loader)
+        result = ensembl_loader.fetch_genomic_entity(self.entity, ["fasta"], sequence_nature="ncrna")
+
+        self.assert_file_name_is_included(result["fetched_files"]["fasta"], "Homo_sapiens.GRCh38.ncrna.fa")
 
 
 class GenomicRegionGeneratorBase(unittest.TestCase, ABC):

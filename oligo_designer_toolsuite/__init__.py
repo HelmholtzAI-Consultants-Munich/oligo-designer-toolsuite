@@ -16,6 +16,7 @@ Submodules:
 from . import (
     config,
     database,
+    genomic_database_downloader,
     oligo_efficiency_filter,
     oligo_property_filter,
     oligo_selection,
@@ -35,4 +36,5 @@ __all__ = [
     "pipelines",
     "sequence_generator",
     "utils",
+    "genomic_database_downloader",
 ]
